@@ -83,7 +83,9 @@ Automatic quoting has been removed. If you need a quoted executable, simply expl
 ```yaml
 :tools:
   :funky_compiler:
-    :executable: \"Code Cranker\"
+    # YAML explicitly requires the outer quotation marks.
+    # The command line requires the inner escaped quotation marks.
+    :executable: "\"Code Cranker\""
 ```
 
 ## Build output directory structure changes
@@ -180,6 +182,16 @@ The environment variable option for pointing Ceedling to a project file other th
 In addition, a previously undocumented feature for merging a second configuration via environment variable `CEEDLING_USER_PROJECT_FILE` has been removed. This feature has been superseded by the new Mixins functionality.
 
 Thorough documentation on Mixins and the new options for loading a project configuration can be found in _[CeedlingPacket](CeedlingPacket.md))_.
+
+## Replaced `options:` files, environment project specifications, and nested project files with comprehensive `mixins` feature
+
+The following features have all been removed from Ceedling's functionality. No need to worry, though. The new `mixins` feature can handle all the situations these features previously supported, and much more. Check out the [documentation](CeedlingPacket.md) for more detail.
+
+ - `options:blah.yml` command-line options (see `--mixin` command line option)
+ - The corresponding `options_paths:` key in the project.yml file no longer has any effect. (see `:mixins:` ➡️ `:load_paths:` project.yml specification)
+ - The `:import:` section of the `project.yml` has been replaced (see `:mixins:` ➡️ `:enabled:` section)
+ - `CEEDLING_PROJECT_FILE` environment variable (see `CEEDLING_MIXIN_#` specification)
+ - `CEEDLING_SER_FILE` environment variable (see `CEEDLING_MIXIN_#` specification)
 
 ## Tool definition inline Ruby evaluation replacement removed (inline Ruby string expansion remains)
 

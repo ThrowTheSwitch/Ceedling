@@ -72,32 +72,29 @@ class SystemWrapper
     # Parts of Process::Status's behavior is similar to an integer exit code in
     # some operations but not all.
     exit_code = 0
-
-    stdout, stderr = '' # Safe initialization defaults
-    status = nil        # Safe initialization default
     
-    stdout, stderr, status = Open3.capture3( command )
+    stdout, stderr, status = Open3.capture3(command)
 
     # If boom, then capture the actual exit code.
     # Otherwise, leave it as zero as though execution succeeded.
     exit_code = status.exitstatus.freeze if boom and !status.nil?
 
     # (Re)set the global system exit code so everything matches
-    $exit_code = exit_code
-
+    $exit_code = exit_code if exit_code != 0
+    
     return {
       # Combine stdout & stderr streams for complete output
-      :output    => (stdout + stderr).to_s.freeze,
-      
+      output: (stdout + stderr).to_s.freeze, 
+
       # Individual streams for detailed logging
-      :stdout    => stdout.freeze,
-      :stderr    => stderr.freeze,
+      stdout: stdout.freeze, #TODO PROBABLY DROP THESE TOO
+      stderr: stderr.freeze,
 
       # Relay full Process::Status
-      :status    => status.freeze,
-      
+      status: status.freeze,
+
       # Provide simple exit code accessor
-      :exit_code => exit_code.freeze
+      exit_code: exit_code.freeze
     }
   end
 
@@ -106,6 +103,9 @@ class SystemWrapper
     $exit_code = ($?.exitstatus).freeze if boom
     return {
       :output    => output.freeze,
+      :stdout    => "",
+      :stderr    => "",
+      :status    => nil,
       :exit_code => ($?.exitstatus).freeze
     }
   end

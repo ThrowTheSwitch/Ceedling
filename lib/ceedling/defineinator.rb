@@ -68,7 +68,7 @@ class Defineinator
       test_def = File.basename(filepath, '.*').strip
 
       # Replace any non-ASCII characters with underscores
-      test_def = test_def.clean_enoding('_')
+      test_def = test_def.clean_encoding('_')
 
       # Replace all non-alphanumeric characters (including spaces/punctuation but excluding underscores) with underscores
       test_def.gsub!(/[^0-9a-z_]/i, '_')

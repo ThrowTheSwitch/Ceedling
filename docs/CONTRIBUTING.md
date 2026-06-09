@@ -54,7 +54,7 @@ In short, since you are most likely a developer, **provide a ticket that you wou
 
 - **Review the documentation** before opening a new issue.
 
-- **Do not open a duplicate issue!** Search through existing issues to see if your issue has previously been reported. If your issue exists, comment with any additional information you have. You may simply note "I have this problem too", which helps prioritize the most common problems and requests. 
+- **Try not to open a duplicate issue** Search through existing issues to see if your issue has previously been reported. If your issue exists, comment with any additional information you have. You may simply note "I have this problem too", which helps prioritize the most common problems and requests. 
 
 - **Prefer using [reactions](https://github.blog/2016-03-10-add-reactions-to-pull-requests-issues-and-comments/)**, not comments, if you simply want to "+1" an existing issue.
 
@@ -79,8 +79,6 @@ You can triage issues which may include reproducing bug reports or asking for ad
 ## :repeat: Submitting Pull Requests
 
 We **love** pull requests! Before [forking the repo](https://help.github.com/en/github/getting-started-with-github/fork-a-repo) and [creating a pull request](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/proposing-changes-to-your-work-with-pull-requests) for non-trivial changes, it is usually best to first open an issue to discuss the changes, or discuss your intended approach for solving the problem in the comments for an existing issue.
-
-For most contributions, after your first pull request is accepted and merged, you will be [invited to the project](https://help.github.com/en/github/setting-up-and-managing-your-github-user-account/inviting-collaborators-to-a-personal-repository) and given **push access**. :tada:
 
 *Note: All contributions will be licensed under the project's license.*
 
@@ -157,15 +155,7 @@ See also: #456, #789
 
 ## :white_check_mark: Pull Request Checklist
 
-Not all Pull Requests require these things, but here's a great list of things to check to see if it makes sense for your situation:
-
- - [ ] Are the changes complete?
- - [ ] Are there tests for the new functionality?
- - [ ] Are the changes passing the style checks?
- - [ ] Is there documentation for the new functionality?
- - [ ] Has the change been added to `Changelog.md`?
- - [ ] Has the change been added to `ReleaseNotes.md`?
- - [ ] Have new config options been added as defaults to the `project.yml` files?
+Not all Pull Requests require these things, but [here's a great list](CeedlingPullRequestChecklist.md) of things to check to see if it makes sense for your situation:
 
 ## :heart: Who Loves Emoji?
 

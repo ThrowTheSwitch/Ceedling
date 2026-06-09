@@ -7,6 +7,14 @@ These release notes are complemented by two other documents:
 
 ---
 
+# 1.0.1 - January 30, 2025
+
+This is a collection of bugfixes found after the 1.0.0 release. If you are upgrading from a pre-1.0 release of Ceedling, we highly recommend reading the `1.0.0` release notes as well!
+
+See [Changelog](Changelog.md) for a full list of bugfixes and improvements.
+
+The most significant issues addressed with this release are problems with preprocessor handling, particularly when discovering which header files are required for each test. If you were running into similar problems with `1.0.0`, we highly recommend this upgrade.
+
 # 1.0.0 — January 01, 2025
 
 **This Ceedling release is probably the most significant since the project was first [posted to SourceForge in 2009][sourceforge].**

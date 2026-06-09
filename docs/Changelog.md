@@ -9,6 +9,93 @@ This changelog is complemented by two other documents:
 
 ---
 
+# [1.1.0] — Prerelease
+
+## 🌟 Added
+
+### Partials
+
+[A Partial](https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/) is a new feature that allows a test author to work with portions of the same C module under test differently from within the same test file.
+
+With Partials, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see #936). Partials also allow testing of `static` and `inline` functions with no modification of your source code under test.
+
+### Documentation site
+
+Ceedling is now complemented by a full, searchable [documentation site](https://throwtheswitch.github.io/Ceedling/).
+
+A local verion of this site that is navigable with your web browser from your filesystem is included within Ceedling and exportable through CLI commands.
+
+### CLI additions
+
+- `ceedling help` output provides links for further support and Github sponsorship.
+- `ceedling check` validates your configuration and produces logs from processing it without executing a build.
+- `ceedling docs` exports the new HTML-based documentation site to your local filesystem.
+
+### CppCheck plugin
+
+Alejandro Rosso's excellent Cppcheck plugin has been added to the default plugin collection (with Alejandro's permission). We're excited to make it easier for everyone to use this great addition!
+
+### GCov plugin support for Modified Condition / Decision Coverage
+
+Ceedling’s [GCov plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/) for coverage reporting now supports the [Modified Condition / Decision Coverage](https://ldra.com/capabilities/mc-dc/) abilities of GCC 14+ and optionally GCovr 8+.
+
+### System includes
+
+Preprocessing support now properly distinguishes and handles system includes (`#include <system.h>`) and user includes (`#include "user.h"`).
+
+## 💪 Fixed
+
+- #1011 Performance Improvements.
+- #1014 Line Continuations not working in test name.
+- #1015 directive-only issue.
+- #1024 Fixed bug in options-handling for warnings log report.
+- #358 Mocks with relative path in `#include` directive.
+- #1128 Command line mixin precedence.
+- Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) correct merge order explanations and clarify Mixins generally.
+- `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
+- Now properly reports timing for single-batch builds (i.e. non-parallel builds).
+- PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
+- PR #1056 fix for extracting `#include` directive filenames that contain dashes.
+- Multiple fixes to `#include`s handling and encoding.
+- Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
+- #1120 An overly “helpful” holdover from Ceedling’s earliest days caused certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
+- #1127 Fixes to path handling in `#include` directives
+
+## ⚠️ Changed
+
+- PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
+- Added warning logging if a Mixin contains mixins (nesting is not supported).
+- Mixins now merge list content according to mixin priority. In all cases but one, a higher priority mixin inserts its list content before the content of the existing list to which it is merging. In the case of `:tools` `:arguments` lists, insertion occurs at the end of the arguments list to enable the typical CLI convention of rightmost argument having the highest priority.
+- Significant refactoring and improvements to logging and parallel processing.
+- Streamlined preprocessing, eliminating redundant steps and reducing memory usage.
+- The GCov plugin now compiles all files with coverage (and filters out unneeded framework results) in order to meet the stricter coverage handling that began with GCC 14. This change is backwards and forwards compatible with virtually all versions of GCC and the GCov plugin’s supporting utilities.
+- Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
+- Fixes for typos and grammar in documentation and logging.
+
+## 👋 Removed
+
+- _CeedlingPacket.md_ user manual (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
+- _PluginDevelopmentGuide.md_ (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
+
+# [1.0.1] — 2025-01-30
+
+## 💪 Fixed
+
+- `#978` -- Ceedling attempts to link source files that are commented out and/or removed by preprocessor directives
+- `#979` -- FFF plugin generates "warning: already initialized constant CMock" on some platforms
+- `#980` -- FFF original plugin should not be part of release build (le sigh)
+- `#981` -- Ceedling could not find header file to mock when using preprocessor
+- `#982` -- Ceedling did not inject required header file into mock when using preprocessor
+- `#985` -- Macros not being properly hidden from CMock's parser when using preprocessor
+- `#988` -- Parsing of `TEST_SOURCE_FILE` did not support special characters (like `.`) in filenames
+- `#888` & `#977` -- Unicode characters produce crashes in various places
+- `#996` -- Improved handling and documentation of module generator path options
+- `#998` -- FFF plugin missing required stringio
+- `#1005` -- Additional handling of preprocessing extraction improvements
+- Restored `:use_mocks` default to `true` in Ceedling defaults to match documentation and other mocking defaults in template projects.
+- Resolved a preprocessing issue that could cause the content of a file having a similar filename to that of the file `#include`ing it to become mixed with that file.
+- additional documentation improvements
+
 # [1.0.0] — 2025-01-01
 
 ## 🌟 Added

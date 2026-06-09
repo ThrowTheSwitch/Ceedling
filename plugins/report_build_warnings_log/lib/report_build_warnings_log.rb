@@ -38,7 +38,7 @@ class ReportBuildWarningsLog < Plugin
     # After preprocessing, parse output, store warning if found
     process_output(
       arg_hash[:context],
-      arg_hash[:shell_result][:output],
+      arg_hash[:shell_result].nil? ? '' : arg_hash[:shell_result][:output],
       @warnings
     )
   end
@@ -48,7 +48,7 @@ class ReportBuildWarningsLog < Plugin
     # After preprocessing, parse output, store warning if found
     process_output(
       arg_hash[:context],
-      arg_hash[:shell_result][:output],
+      arg_hash[:shell_result].nil? ? '' : arg_hash[:shell_result][:output],
       @warnings
     )
   end
@@ -58,7 +58,7 @@ class ReportBuildWarningsLog < Plugin
     # After compiling, parse output, store warning if found
     process_output(
       arg_hash[:context],
-      arg_hash[:shell_result][:output],
+      arg_hash[:shell_result].nil? ? '' : arg_hash[:shell_result][:output],
       @warnings
     )
   end
@@ -68,7 +68,7 @@ class ReportBuildWarningsLog < Plugin
     # After linking, parse output, store warning if found
     process_output(
       arg_hash[:context],
-      arg_hash[:shell_result][:output],
+      arg_hash[:shell_result].nil? ? '' : arg_hash[:shell_result][:output],
       @warnings
     )
   end

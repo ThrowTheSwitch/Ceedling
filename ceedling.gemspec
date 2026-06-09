@@ -45,6 +45,7 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
   s.add_dependency "diy", "~> 1.1"
   s.add_dependency "constructor", "~> 2"
   s.add_dependency "unicode-display_width", "~> 3.1"
+  s.add_dependency "parallel", "~> 1.26"
 
   # Files needed from submodules
   s.files         = []
@@ -57,6 +58,7 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
   s.files        += Dir['vendor/unity/src/**/*.[ch]']
 
   s.files       += Dir['**/*']
+  s.files.reject! { |f| f.start_with?('site-web/') }
   s.test_files   = Dir['test/**/*', 'spec/**/*', 'features/**/*']
   s.executables  = ['ceedling'] # bin/ceedling
 

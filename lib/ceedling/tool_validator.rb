@@ -55,8 +55,8 @@ class ToolValidator
 
     # Skip everything if we've got an argument replacement pattern or Ruby string replacement in :executable
     # (Allow executable to be validated by shell at run time)
-    return true if (executable =~ TOOL_EXECUTOR_ARGUMENT_REPLACEMENT_PATTERN)
-    return true if (executable =~ RUBY_STRING_REPLACEMENT_PATTERN)
+    return true if (executable =~ PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
+    return true if (executable =~ PATTERNS::RUBY_STRING_REPLACEMENT)
 
     # Extract the executable (including optional filepath) apart from any additional arguments
     # Be mindful of legal quote enclosures (e.g. `"Code Cruncher" foo bar`)
@@ -103,7 +103,7 @@ class ToolValidator
     end
 
     if !exists
-      error = "#{name} ↳ :executable => `#{executable}` " + error
+      error = "#{name} ↳ :executable ➡️ `#{executable}` " + error
     end
 
     # Raise exception if executable can't be found and boom is set
@@ -130,7 +130,7 @@ class ToolValidator
     if redirect.class == Symbol
       if not StdErrRedirect.constants.map{|constant| constant.to_s}.include?( redirect.to_s.upcase )
         options = StdErrRedirect.constants.map{|constant| ':' + constant.to_s.downcase}.join(', ')
-        error = "#{name} ↳ :stderr_redirect => :#{redirect} is not a recognized option {#{options}}"
+        error = "#{name} ↳ :stderr_redirect ➡️ :#{redirect} is not a recognized option {#{options}}"
 
         # Raise exception if requested
         raise CeedlingException.new( error ) if boom

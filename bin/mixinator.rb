@@ -5,14 +5,13 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'deep_merge'
-
 class Mixinator
 
-  constructor :path_validator, :yaml_wrapper, :loginator
+  constructor :mixin_standardizer, :merginator, :path_validator, :yaml_wrapper, :loginator
 
   def setup
-    # ...
+    # Aliases
+    @standardinator = @mixin_standardizer
   end
 
   def validate_cmdline_filepaths(paths)
@@ -71,32 +70,49 @@ class Mixinator
   end
 
   def assemble_mixins(config:, env:, cmdline:)
-    assembly = []
+    # === Pass 1: Build combined list in deduplication-priority order ===
+    #
+    # uniq! (used below) keeps the first occurrence of each mixin and drops
+    # later duplicates. To give higher-priority sources the "winning" entry
+    # on a collision, we put them first in this pass:
+    #
+    #   1. Command line --mixin flags    (first → highest dedup priority)
+    #   2. CEEDLING_MIXIN_# env vars     (ascending numeric order)
+    #   3. Project configuration :enabled mixins (last → lowest dedup priority)
+    #
+    dedup = []
+    cmdline.each {|mixin| dedup << {'command line' => mixin}}
+    dedup += env
+    config.each  {|mixin| dedup << {'project configuration' => mixin}}
 
-    # Build list of hashses in precedence order to facilitate deduplication
-    # Any duplicates at greater indexes are removed
-    cmdline.each {|mixin| assembly << {'command line' => mixin}}
-    assembly += env
-    config.each {|mixin| assembly << {'project configuration' => mixin}}
-
-    # Remove duplicates inline
-    #  1. Expand filepaths to absolute paths for correct deduplication (skip expanding simple mixin names)
-    #  2. Remove duplicates
-    assembly.uniq! do |entry|
-      # If entry is filepath, expand it, otherwise leave entry untouched (it's a mixin name only)
+    # Remove duplicate mixins, keeping the highest-priority (first) occurrence.
+    # Filepaths are expanded to absolute paths so two relative paths that point
+    # to the same file are recognised as duplicates even if written differently.
+    # Simple mixin names (no path separators or extension) are compared as-is.
+    dedup.uniq! do |entry|
       mixin = entry.values.first
       @path_validator.filepath?( mixin ) ? File.expand_path( mixin ) : mixin
     end
 
-    # Return the compacted list in merge order
-    #  1. Config
-    #  2. Environment variable
-    #  3. Command line
-    # Later merges take precedence (e.g. command line mixins are last merge)
-    return assembly.reverse()
+    # === Pass 2: Re-partition into merge order ===
+    #
+    # Re-group the deduplicated entries by source (preserving within-group
+    # order), then concatenate in lowest-to-highest-priority order so that the
+    # later (higher-priority) merges win single-value conflicts and so that
+    # higher-priority list entries are prepended to appear first:
+    #
+    #   1. Project configuration :enabled mixins  (merged first — lowest priority)
+    #   2. CEEDLING_MIXIN_# environment variables  (ascending numeric order)
+    #   3. Command line --mixin flags              (merged last — highest priority)
+    #
+    config_entries  = dedup.select {|e| e.keys.first == 'project configuration'}
+    env_entries     = dedup.select {|e| e.keys.first.start_with?('CEEDLING_MIXIN_')}
+    cmdline_entries = dedup.select {|e| e.keys.first == 'command line'}
+
+    return config_entries + env_entries + cmdline_entries
   end
 
-  def merge(builtins:, config:, mixins:)
+  def mixin(builtins:, config:, mixins:)
     mixins.each do |mixin|
       source = mixin.keys.first
       filepath = mixin.values.first
@@ -108,29 +124,63 @@ class Mixinator
         _mixin = @yaml_wrapper.load( filepath )
 
         # Log what filepath we used for this mixin
-        @loginator.log( " + Merging #{'(empty) ' if _mixin.nil?}#{source} mixin using #{filepath}", Verbosity::OBNOXIOUS )
+        @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging #{'(empty) ' if _mixin.nil?}#{source} mixin using #{filepath}" }
 
       # Reference mixin from built-in hash-based mixins
       else
         _mixin = builtins[filepath.to_sym()]
 
         # Log built-in mixin we used
-        @loginator.log( " + Merging built-in mixin '#{filepath}' from #{source}", Verbosity::OBNOXIOUS )
+        @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging built-in mixin '#{filepath}' from #{source}" }
       end
 
       # Hnadle an empty mixin (it's unlikely but logically coherent and a good safety check)
       _mixin = {} if _mixin.nil?
 
-      # Sanitize the mixin config by removing any :mixins section (these should not end up in merges)
-      _mixin.delete(:mixins)
+      # Nested :mixins sections are not supported — warn and strip before merging
+      if _mixin.key?(:mixins)
+        msg = "Mixin from #{source} '#{filepath}' contains a `:mixins` section ➡️ Nested mixins are not supported and will be ignored."
+        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::WARNING )
+        _mixin.delete(:mixins)
+      end
 
-      # Merge this bad boy
-      config.deep_merge( _mixin )
+      # Prevent mixin files from injecting their own :history entries
+      _mixin.delete(:history)
+
+      # Run special handling using knowledge of Ceedling configuration conventions
+      notices = []
+      if @standardinator.smart_standardize( config:config, mixin:_mixin, notices:notices )
+        notices.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE ) }
+      end
+
+      warnings = []
+      if !@merginator.merge( config:config, mixin:_mixin, warnings:warnings )
+        msg = "Mixin values from #{filepath} will replace configuration values for incompatible merges..."
+        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        warnings.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN ) }
+      end
+
+      # Record this mixin in the configuration history
+      label = case source
+              when 'command line'          then '--mixin'
+              when 'project configuration' then ':mixins'
+              else source # environment variable name (e.g. CEEDLING_MIXIN_1)
+              end
+
+      config[:history] ||= {}
+      config[:history][:config] ||= []
+      if @path_validator.filepath?( filepath )
+        config[:history][:config] << "#{filepath} (#{label})"
+      else
+        config[:history][:config] << "#{filepath} (built-in, #{label})"
+      end
     end
 
     # Validate final configuration
+    # Exclude :history — it is internal bookkeeping added by this method and
+    # should not be counted as meaningful user configuration content.
     msg = "Final configuration is empty"
-    raise msg if config.empty?
+    raise msg if (config.keys - [:history]).empty?
   end
 
 end

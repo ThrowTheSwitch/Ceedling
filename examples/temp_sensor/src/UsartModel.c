@@ -8,7 +8,7 @@
 #include "Types.h"
 #include "UsartModel.h"
 #include "ModelConfig.h"
-#include "UsartBaudRateRegisterCalculator.h"
+#include "calculators/UsartBaudRateRegisterCalculator.h"
 #include "TemperatureFilter.h"
 #include <stdio.h>
 #include <math.h>

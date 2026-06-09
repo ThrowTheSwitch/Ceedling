@@ -1,11 +1,18 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-Welcome to **Ceedling 1.0.0** 
+**Ceedling 1.1.0** is nearing release.
 
-See the [Release Notes](docs/ReleaseNotes.md) for an overview
-of all that’s new since 0.31.1 plus links to the detailed Changelog and list of 
-Breaking Changes.
+[_Changelog_](docs/Changelog.md) is receiving updates and revisions and will 
+soon be complete. _Release Notes_, _Breaking Changes_, and _Known Issues_ documents 
+will be revised and updated soon.
+
+**Headliner improvements:**
+* A [Partial][partials-docs] allows a test to mix mocked and real functions from the same source module in a single test file and enables testing of `static` and `inline` functions without modifying source code.
+* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
+
+[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
+[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -13,12 +20,6 @@ Breaking Changes.
 
 Ceedling can build your release artifact but is especially adept at building
 unit test suites for your C projects — even in tricky embedded systems.
-
-Ceedling and its complementary pieces and parts are (and always will be) freely
-available and open source. **_[Ceedling Assist][ceedling-pro]_** is a growing list 
-of paid products and services to help you do even more with these tools.
-
-[ceedling-pro]: https://www.thingamabyte.com/ceedling
 
 ⭐️ **Eager to just get going? Jump to 
 [📚 Documentation & Learning](#-documentation--learning) and
@@ -32,17 +33,32 @@ Ceedling’s features support all types of C development from low-level embedded
 to enterprise systems. No tool is perfect, but Ceedling can do a whole lot to 
 help you and your team produce quality software.
 
+## Supporting this work
+
+Ceedling and its complementary [ThrowTheSwitch] pieces and parts are and always 
+will be freely available and open source.
+
+💼 **_[Ceedling Suite][ceedling-suite]_** is a growing collection of paid 
+products and services built around Ceedling to help you do even more.
+**_[Ceedling Assist][ceedling-assist]_** for support contracts and training 
+is now available.
+
+🙏🏻 **[Please consider supporting Ceedling as a Github Sponsor][tts-sponsor]**
+
+[ThrowTheSwitch]: https://github.com/ThrowTheSwitch
+[ceedling-suite]: https://www.thingamabyte.com/ceedling
+[ceedling-assist]: https://www.thingamabyte.com/ceedlingassist
+[tts-sponsor]: https://github.com/sponsors/ThrowTheSwitch
+
 ## Ceedling is a suite of tools
 
-Ceedling is also a suite of tools. It is the glue for bringing together three 
+Ceedling is also a suite of tools. It is the glue for bringing together two 
 other awesome open-source projects you can’t live without if you‘re creating 
 awesomeness in the C language.
 
 1. **[Unity]**, an [xUnit]-style test framework.
 1. **[CMock]**<sup>†</sup>, a code generating, 
    [function mocking & stubbing][test-doubles] kit for interaction-based testing.
-1. **[CException]**, a framework for adding simple exception handling to C projects
-   in the style of higher-order programming languages.
 
 <sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
 [fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
@@ -52,25 +68,23 @@ awesomeness in the C language.
 For simple project structures, Ceedling can build and test an entire project
 from just a few lines in its project configuration file.
 
-Because it handles all the nitty-gritty of rebuilds and becuase of Unity and
+Because it handles all the nitty-gritty of rebuilds and because of Unity and
 CMock, Ceedling makes [Test-Driven Development][TDD] in C a breeze. It even 
 provides handy backtrace debugging options for finding the source of crashing
 code exercised by your unit tests.
 
 Ceedling is extensible with a simple plugin mechanism. It comes with a
-number of [built-in plugins][ceedling-plugins] for code coverage, test suite
+number of [built-in plugins][ceedling-docs-plugins] for code coverage, test suite
 report generation, Continuous Integration features, IDE integration, release
 library builds & dependency management, and more.
 
 [Unity]: https://github.com/throwtheswitch/unity
 [xUnit]: https://en.wikipedia.org/wiki/XUnit
 [CMock]: https://github.com/throwtheswitch/cmock
-[CException]: https://github.com/throwtheswitch/cexception
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
-[FFF]: https://github.com/ElectronVector/fake_function_framework
-[FFF-plugin]: plugins/fff
-[ceedling-plugins]: docs/CeedlingPacket.md#ceedling-plugins
+[FFF]: https://github.com/meekrosoft/fff
+[FFF-plugin]: https://throwtheswitch.github.io/Ceedling/latest/plugins/fff/
 
 <br/>
 
@@ -81,17 +95,17 @@ library builds & dependency management, and more.
 * Trying to understand features or solve a testing problem? Hit the
   **[discussion forums][forums]**.
 * Paid training, customizations, and support contracts are available through 
-  **[Ceedling Pro][ceedling-pro]**.
+  **[Ceedling Assist][ceedling-assist]**.
 
 The ThrowTheSwitch community follows a **[code of conduct](docs/CODE_OF_CONDUCT.md)**.
 
 Please familiarize yourself with our guidelines for **[contributing](docs/CONTRIBUTING.md)** to this project, be it code, reviews, documentation, or reports.
 
-Yes, work has begun on certified versions of the Ceedling suite of tools to be available through **[Ceedling Pro][ceedling-pro]**. [Reach out to ThingamaByte][thingama-contact] for more.
+Yes, work has begun on **[Ceedling Certified][ceedling-certified]**, a validated version of Ceedling to meet the needs of industry software certification.
 
 [ceedling-issues]: https://github.com/ThrowTheSwitch/Ceedling/issues
 [forums]: https://www.throwtheswitch.org/forums
-[thingama-contact]: https://www.thingamabyte.com/contact
+[ceedling-certified]: https://www.thingamabyte.com/ceedlingcertified
 
 <br/>
 
@@ -331,7 +345,7 @@ Ceedling can do all the magic to build and run this test code simply by enabling
 
 A variety of options for [community-based support][TTS-help] exist.
 
-Training and support contracts are available through **_[Ceedling Pro][ceedling-pro]_**
+Training and support contracts are available through **_[Ceedling Assist][ceedling-assist]_**
 
 [TTS-help]: https://www.throwtheswitch.org/#help-section
 
@@ -342,11 +356,13 @@ The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedl
 
 ## Ceedling docs
 
-* **_[Ceedling Packet][ceedling-packet]_** is Ceedling’s user manual. It also references and links to the documentation of the projects, _Unity_, _CMock_, and _CException_, that it weaves together into your test and release builds.
+* **_[Ceedling’s documentation site][ceedling-docs-site]_** contains everything you need to know to run Ceedling. It also references and links to the documentation of the projects, _Unity_ and _CMock_, that Ceedling weaves together into your test and release builds.
 * **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a variety of guides and much more.
-* The **[Plugins section](https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#ceedling-plugins)** within _Ceedling Packet_ lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
+* The **[Plugins section][ceedling-docs-plugins]** of Ceedling’s documentation lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
 
 _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustrating project configuration option changes for new releases in the form of a Ceedling project YAML configuration file. This may be especially useful to those already familiar with the tool wanting to update to the latest and greatest as quickly as possible.
+
+[ceedling-docs-plugins]: https://throwtheswitch.github.io/Ceedling/latest/plugins/
 
 ## Library and courses
 
@@ -358,9 +374,8 @@ _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustr
 
 ## Online tutorial
 
-Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling to build a C project with test suite. As the tutorial is a number of years old, the content is a bit out of date. That said, it provides an excellent overview of a real project. Matt is the author of [FFF] and the [FFF plugin][FFF-plugin] for Ceedling.
+Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling to build a C project with test suite. As the tutorial is a number of years old, the content is a bit out of date. That said, it provides an excellent overview of a real project. Matt is the author of [FFF].
 
-[ceedling-packet]: docs/CeedlingPacket.md
 [release-notes]: docs/ReleaseNotes.md
 [breaking-changes]: docs/BreakingChanges.md
 [changelog]: docs/Changelog.md
@@ -374,7 +389,9 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 # 🚀 Getting Started
 
-👀 See the **_[Quick Start](docs/CeedlingPacket.md#quick-start)_** section in Ceedling’s user manual, _Ceedling Packet_.
+👀 See the **_[Quick Start][ceedling-docs-quick-start]_** section of Ceedling’s documentation site.
+
+[ceedling-docs-quick-start]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/quick-start/
 
 ## The basics
 
@@ -464,13 +481,13 @@ Once the _MadScienceLab_ container’s command line is available, to run Ceedlin
 Alternatively, you can run Ceedling through the _MadScienceLab_ Docker container directly from the command line as a command line utility. The general pattern is immediately below.
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 <Ceedling command line>
+ > docker run --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 <Ceedling command line>
 ```
 
 As a specific example, to run all tests in a suite, the command line would be this:
 
 ```shell
- > docker run -it --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 ceedling test:all
+ > docker run --rm -v /my/local/project/path:/home/dev/project throwtheswitch/madsciencelab-plugins:1.0.0 ceedling test:all
 ```
 
 In this usage, the container starts, executes Ceedling, and then ends.
@@ -503,10 +520,10 @@ See this [commented project configuration file][example-config-file] for a much 
 
 Or, use Ceedling’s built-in `examples` & `example` commands to extract a sample project and reference its project file.
 
-See the [configuration section][ceedling-packet-config] in _Ceedling Packet_ for way more details on your project configuration options than we can provide here.
+See the [configuration section][ceedling-docs-config] of Ceedling’s documentation for way more details on your project configuration options than we can provide here.
 
-[example-config-file]: assets/project_as_gem.yml
-[ceedling-packet-config]: docs/CeedlingPacket.md#the-almighty-ceedling-project-configuration-file-in-glorious-yaml
+[example-config-file]: assets/project.yml
+[ceedling-docs-config]: https://throwtheswitch.github.io/Ceedling/latest/configuration/
 
 ## Using Ceedling’s command line (and related)
 
@@ -543,12 +560,18 @@ tooling setup.
 #### Installing local documentation
 
 Are you just getting started with Ceedling? Maybe you’d like your
-project to be installed with some of its handy [documentation](docs/)? 
+project to be installed with some of its handy documentation? 
 No problem! You can do this when you create a new project…
 
 ```shell
  > ceedling new --docs MyAwesomeProject
 ```
+
+The `--docs` flag exports a version of Ceedling’s HTML-based documentation site
+to your local filesystem that is navigable with your web browser.
+
+`ceedling docs` exports just the documentation bundle to a destination path
+of your choosing.
 
 #### Attaching a Ceedling version to your project
 
@@ -566,7 +589,7 @@ your project:
  > ceedling new --local YourNewProjectName
 ```
 
-This will install all of Unity, CMock, CException, and Ceedling itself 
+This will install all of Unity, CMock, and Ceedling itself 
 into a new folder `vendor/` inside your project `YourNewProjectName/`.
 It will create the same simple empty directory structure for you with
 `src/` and `test/` folders as the standard `new` command.
@@ -591,7 +614,7 @@ Running Ceedling build tasks tends to look like this…
 ### Upgrading / updating Ceedling
 
 You can upgrade to the latest version of Ceedling at any time, automatically
-gaining access to any accompanying updates to Unity, CMock, and CException.
+gaining access to any accompanying updates to Unity and CMock.
 
 To update a locally installed gem…
 
@@ -722,6 +745,40 @@ local Ceedling repo, list those task like this:
 
 [RSpec]: https://rspec.info
 
+## Working with Documentation
+
+Ceedling's documentation is built with [MkDocs] + [Material theme] and versioned
+with [mike]. All Markdown source lives under `docs/mkdocs/`. The public site 
+configuration is in `mkdocs.yml` while the local site bundle configuration is in
+`mkdocs.local.yml`.
+
+**First-time setup** (installs MkDocs, Material, and mike into the container):
+
+```shell
+ > rake docs:install
+```
+
+**Available Rake tasks:**
+
+| Task | Description |
+|---|---|
+| `rake docs:install` | Install Python documentation tooling |
+| `rake docs:build:local` | Build the site for local filesystem navigation in strict mode — fails on broken links or warnings |
+| `rake docs:build:web` | Build the site to be served in strict mode — fails on broken links or warnings |
+| `rake docs:serve` | Serve plain MkDocs site locally on port 8000 |
+| `rake docs:deploy` | Deploy `dev` version to local `gh-pages` branch (no remote push) |
+| `rake docs:preview` | Browse mike-versioned site locally on port 8000 |
+
+**Browser preview in VS Code:** When `mkdocs serve` or `mike serve` binds to 
+port 8000, VS Code detects it and shows a notification. The **Ports** panel also
+provides an **Open in Browser** button.
+
+**Hosted site:** [https://throwtheswitch.github.io/Ceedling/](https://throwtheswitch.github.io/Ceedling/)
+
+[MkDocs]: https://www.mkdocs.org
+[Material theme]: https://squidfunk.github.io/mkdocs-material/
+[mike]: https://github.com/jimporter/mike
+
 ## Working in `bin/` vs. `lib/`
 
 Most of Ceedling’s functionality is contained in the application code residing 
@@ -741,7 +798,6 @@ If you are only working in `lib/`, you can:
    you.
 1. Modify a project file by setting a path value for `:project` ↳ `:which_ceedling` 
    that points to the local copy of Ceedling you cloned from the Git repository.
-   See _CeedlingPacket_ for details.
 
 If you are working in `bin/`, running `ceedling` at the command line will not
 call your modified code. Instead, you must execute the path to the executable

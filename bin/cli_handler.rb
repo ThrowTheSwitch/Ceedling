@@ -12,6 +12,8 @@ require 'versionator' # Outisde DIY context
 
 class CliHandler
 
+  DOCS_SUBDIR = 'docs'
+
   constructor :configinator, :projectinator, :cli_helper, :path_validator, :actions_wrapper, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
@@ -53,40 +55,47 @@ class CliHandler
     return if !command.nil?
 
     # If project configuration is available, also display Rake tasks
-    @path_validator.standardize_paths( options[:project], *options[:mixin], )
-    return if !@projectinator.config_available?( filepath:options[:project], env:env )
+    @path_validator.standardize_paths( options[:project], *options[:mixin] )
+    if @projectinator.config_available?( filepath:options[:project], env:env )
+      list_rake_tasks(
+        env:env,
+        app_cfg: app_cfg,
+        filepath: options[:project],
+        mixins: options[:mixin],
+        # Silent Ceedling loading unless debug verbosity
+        silent: !(verbosity == Verbosity::DEBUG)
+      )
+    else
+      # If no project configuration is available then note why we aren't displaying more
+      msg = "Run help commands in a directory with a project file to list additional options\n\n"
+      @loginator.console( msg, LogLabels::NOTICE )
+    end
 
-    list_rake_tasks(
-      env:env,
-      app_cfg: app_cfg,
-      filepath: options[:project],
-      mixins: options[:mixin],
-      # Silent Ceedling loading unless debug verbosity
-      silent: !(verbosity == Verbosity::DEBUG)
-    )
+    version = @helper.manufacture_app_version( app_cfg )
+
+    @helper.help_footer( version.ceedling_tag )
   end
 
 
   # Public to be used by `-T` ARGV hack handling
   def rake_help(env:, app_cfg:)
-    @helper.set_verbosity() # Default to normal
+    @helper.set_verbosity( Verbosity::ERRORS )
 
     list_rake_tasks( env:env, app_cfg:app_cfg )
   end
 
 
-  def new_project(env, app_cfg, ceedling_tag, options, name, dest)
+  def new_project(env, app_cfg, ceedling_tag, options, dest)
     @helper.set_verbosity( options[:verbosity] )
 
     @path_validator.standardize_paths( dest )
 
-    # If destination is nil, reassign it to name
-    # Otherwise, join the destination and name into a new path
-    dest = dest.nil? ? ('./' + name) : File.join( dest, name )
+    # If destination is nil, assume it's the working directory
+    dest ||= '.'
 
     # Check for existing project (unless --force)
     if @helper.project_exists?( dest, :|, DEFAULT_PROJECT_FILENAME, 'src', 'test' )
-      msg = "It appears a project already exists at #{dest}/. Use --force to destroy it and create a new project."
+      msg = "It appears a project already exists at \"#{dest}/\"! Use --force to destroy it and create a new project."
       raise msg
     end unless options[:force]
 
@@ -107,11 +116,11 @@ class CliHandler
     # Vendor the tools and install command line helper scripts
     @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
 
-    # Copy in documentation
-    @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
-
     # Copy / set up project file
     @helper.create_project_file( dest, options[:local], ceedling_tag ) if options[:configs]
+    
+    # Copy in documentation
+    @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( dest, DOCS_SUBDIR ) ) if options[:docs]
 
     # Copy Git Ignore file 
     if options[:gitsupport]
@@ -123,8 +132,7 @@ class CliHandler
       @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
-    @loginator.log() # Blank line
-    @loginator.log( "New project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( "\nNew project created at #{File.absolute_path(dest)}/\n", LogLabels::TITLE )
   end
 
 
@@ -142,7 +150,7 @@ class CliHandler
     which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
     if (which == :gem)
       msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      @loginator.console( msg, LogLabels::NOTICE )
     end
 
     # Thor Actions for project tasks use paths in relation to this path
@@ -158,20 +166,22 @@ class CliHandler
     founds_docs = @helper.project_exists?( path, :&, File.join( 'docs', 'CeedlingPacket.md' ) )
     if founds_docs
       @actions.remove_dir( docs_path )
-      @helper.copy_docs( app_cfg[:ceedling_root_path], path )
+      @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( path, DOCS_SUBDIR ) )
     end
 
-    @loginator.log() # Blank line
-    @loginator.log( "Upgraded project at #{path}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( "\nUpgraded project at #{path}/\n", LogLabels::TITLE )
   end
 
 
   def build(env:, app_cfg:, options:{}, tasks:)
-    @helper.set_verbosity( options[:verbosity] )
+    # No override, allow build verbosity to be set by config or command line
+    @helper.set_verbosity( options[:verbosity], override: false )
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    @cli_helper.log_project_name( config )
 
     default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
@@ -186,7 +196,7 @@ class CliHandler
     logging_path = @helper.process_logging_path( config )
     log_filepath = @helper.process_log_filepath( logging_path, options[:log], options[:logfile] )
 
-    @loginator.log( " > Logfile: #{log_filepath}" ) if !log_filepath.empty?
+    @loginator.console( " > Logfile: #{log_filepath}" ) if !log_filepath.empty?
 
     # Save references
     app_cfg.set_project_config( config )
@@ -224,8 +234,10 @@ class CliHandler
      CException => #{_version.cexception_tag}
     VERSION
 
-    @loginator.log( '', Verbosity::OBNOXIOUS )
-    @loginator.log( version, Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT )
+    @loginator.lazy( Verbosity::OBNOXIOUS )
+    @loginator.lazy( Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT ) do 
+      version
+    end
 
     @helper.load_ceedling( 
       config: config,
@@ -245,6 +257,8 @@ class CliHandler
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
+    @cli_helper.log_project_name( config )
+
     # Exception handling to ensure we dump the configuration regardless of config validation errors
     begin
       # If enabled, process the configuration through Ceedling automatic settings, defaults, plugins, etc.
@@ -263,13 +277,43 @@ class CliHandler
           default_tasks: default_tasks
         )
       else
-        @loginator.log( " > Skipped loading Ceedling application", Verbosity::OBNOXIOUS )
+        @loginator.console( " > Skipped loading Ceedling application" )
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
 
-      @loginator.log() # Blank line
-      @loginator.log( "Dumped project configuration to #{filepath}\n", Verbosity::NORMAL, LogLabels::TITLE )      
+      @loginator.console( "\nDumped project configuration to #{filepath}\n", LogLabels::TITLE )      
+    end
+  end
+
+
+  def check(env, app_cfg, options)
+    # Force obnoxious (or debug) verbosity, overriding any prior verbosity state
+    @helper.set_verbosity( options[:verbosity] )
+
+    @path_validator.standardize_paths( options[:project], *options[:mixin] )
+
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    @cli_helper.log_project_name( config )
+
+    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+
+    # Save references; explicitly disable log file output
+    app_cfg.set_project_config( config )
+    app_cfg.set_logging_path( @helper.process_logging_path( config ) )
+    app_cfg.set_log_filepath( '' )
+
+    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
+
+    begin
+      @helper.load_ceedling(
+        config: config,
+        rakefile_path: path,
+        default_tasks: default_tasks
+      )
+    ensure
+      @loginator.console( "\nProject configuration processed.\n\n", LogLabels::TITLE )
     end
   end
 
@@ -280,6 +324,8 @@ class CliHandler
     @path_validator.standardize_paths( options[:project], *options[:mixin] )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+
+    @cli_helper.log_project_name( config )
 
     # Save references
     app_cfg.set_project_config( config )
@@ -309,14 +355,19 @@ class CliHandler
       end
     end
 
-    output = "Environment variables:\n"
+    output = "Environment variables:"
 
     env_list.sort.each do |line|
-      output << " • #{line}\n"
+      output << "\n • #{line}"
     end
 
-    @loginator.log() # Blank line
-    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
+    if env_list.empty?
+      output << " <none>\n"
+    else
+      output << "\n"
+    end
+
+    @loginator.console( "#{output}\n", LogLabels::TITLE )
   end
 
 
@@ -334,8 +385,7 @@ class CliHandler
 
     examples.each {|example| output << " • #{example}\n" }
 
-    @loginator.log() # Blank line
-    @loginator.log( output + "\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( "#{output}\n", LogLabels::TITLE )
   end
 
 
@@ -376,17 +426,28 @@ class CliHandler
     @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
 
     # Copy in documentation
-    @helper.copy_docs( app_cfg[:ceedling_root_path], dest ) if options[:docs]
+    @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( dest, DOCS_SUBDIR ) ) if options[:docs]
 
-    @loginator.log() # Blank line
-    @loginator.log( "Example project '#{name}' created at #{dest}/\n", Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( "Example project '#{name}' created at #{dest}/\n", LogLabels::TITLE )
+  end
+
+
+  def docs(app_cfg, dest)
+    # Thor Actions file operations require an anchored source root
+    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+
+    # Default to current working directory when no destination is given
+    dest ||= '.'
+
+    # Written directly to chosen destination path
+    @helper.copy_docs( app_cfg[:ceedling_root_path], dest )
   end
 
 
   def version(env, app_cfg)
     # Versionator is not needed to persist. So, it's not built in the DIY collection.
 
-    @helper.set_verbosity() # Default to normal
+    @helper.set_verbosity( Verbosity::ERRORS )
 
     # Ceedling bootloader
     launcher = Versionator.new( app_cfg[:ceedling_root_path] )
@@ -395,10 +456,7 @@ class CliHandler
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
     # Ceedling application
-    application = Versionator.new(
-      app_cfg[:ceedling_root_path],
-      app_cfg[:ceedling_vendor_path]
-    )
+    application = @helper.manufacture_app_version( app_cfg )
 
     # Blank Ceedling version block to be built out conditionally below
     ceedling = nil
@@ -441,7 +499,7 @@ class CliHandler
     # Add a header
     version = "Welcome to Ceedling!\n\n" + version
 
-    @loginator.log( version, Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( version, LogLabels::TITLE )
   end
 
 
@@ -472,7 +530,7 @@ class CliHandler
     )
 
     msg = "Ceedling build & plugin tasks:\n(Parameterized tasks tend to need enclosing quotes or escape sequences in most shells)"
-    @loginator.log( msg, Verbosity::NORMAL, LogLabels::TITLE )
+    @loginator.console( msg, LogLabels::TITLE )
 
     @helper.print_rake_tasks()
   end

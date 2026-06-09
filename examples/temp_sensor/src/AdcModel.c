@@ -7,7 +7,7 @@
 
 #include "AdcModel.h"
 #include "TaskScheduler.h"
-#include "TemperatureCalculator.h"
+#include "calculators/TemperatureCalculator.h"
 #include "TemperatureFilter.h"
 
 bool AdcModel_DoGetSample(void)

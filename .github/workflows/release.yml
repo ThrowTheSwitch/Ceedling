@@ -1,0 +1,78 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# -----------------------------------------------------------------------
+# Release Publishing Workflow
+#
+# Purpose:
+#   Build the Ceedling gem and publish it as a GitHub full release.
+#   The test suite is NOT re-run here — ci.yml must have passed on the
+#   commit being tagged before the tag is pushed.
+#
+# Trigger:
+#   Push of a tag matching: v*.*.*  (e.g. v1.1.0)
+#
+#   Important: the v*.*.* glob also matches pre-release tags (e.g. v1.1.0-pre.1).
+#   The 'if' guard on the publish job provides a second line of defense:
+#   any tag containing a hyphen is rejected and the publish job is skipped,
+#   so only clean version tags (no suffix) produce a full release.
+#
+# Tag-to-gem-version convention:
+#   v1.1.0  →  ceedling-1.1.0.gem
+#
+# Post-release steps (manual):
+#   After pushing a release tag, bump lib/version.rb to the next .dev
+#   version (e.g. GEM = '1.1.1.dev') and commit to continue development.
+#
+# RubyGems.org publishing:
+#   The "Push to RubyGems.org" step in _publish-gem.yml is stubbed and
+#   commented out. Uncomment it and add a RUBYGEMS_API_KEY repository
+#   secret to enable automated publishing to rubygems.org.
+#
+# Related workflows:
+#   ci.yml          — runs on every push to any branch; no publishing
+#   prerelease.yml  — triggered by pre-release tags (v*.*.*-pre.*, etc.)
+# -----------------------------------------------------------------------
+
+---
+name: Release
+
+# Triggers on release tag pattern only.
+# Primary defense: the negative pattern '!v*.*.*-*' excludes any tag containing
+# a hyphen (e.g. v1.0.0-pre.1), which would otherwise match the v*.*.* glob.
+# Fallback defense: the 'if' guard on the publish job also rejects hyphenated tags.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - '!v*.*.*-*'   # Exclude pre-release tags (e.g. v1.0.0-pre.1, v1.0.0-beta.1)
+
+
+# contents: write is required to create and upload GitHub releases
+permissions:
+  contents: write
+
+
+jobs:
+  # Job: Build MkDocs HTML documentation bundle for gem inclusion
+  generate-docs:
+    name: "Generate Local Docs Bundle for Gem Inclusion"
+    uses: ./.github/workflows/_generate-docs.yml
+
+  # Job: Build gem and publish GitHub full release
+  # The 'if' guard rejects tags that contain a hyphen (e.g. v1.1.0-pre.1),
+  # which would otherwise match the v*.*.* trigger glob and create a spurious
+  # full release instead of a pre-release
+  publish:
+    name: "Build and Publish Release Gem"
+    needs: generate-docs
+    if: ${{ !contains(github.ref_name, '-') }}
+    uses: ./.github/workflows/_publish-gem.yml
+    with:
+      prerelease: false
+    # Pass GITHUB_TOKEN and any other secrets through to the reusable workflow
+    secrets: inherit

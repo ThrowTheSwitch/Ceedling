@@ -27,7 +27,7 @@ def prep_test
 end
 
 def prep_stub(num)
-  FileUtils.cp_r("../assets/stubby#{num}.h","./i/stubby.h")
+  FileUtils.cp_r("../assets/stubby#{num}.h","./i/rev/stubby.h")
 end
 
 def assert_file_exist(path)
@@ -81,6 +81,16 @@ def call_create(cmd)
   end
 end
 
+def call_create_expecting_error(cmd)
+  retval = `#{CEEDLING_CLI_EXEC} module:create[#{cmd}] 2>&1`
+  puts retval # Debug logging
+  if retval.match? /Error/i
+    puts "Received expected error when creating #{cmd}"
+  else
+    raise "Should have received error when creating #{cmd}"
+  end
+end
+
 def call_destroy(cmd)
   retval = `#{CEEDLING_CLI_EXEC} module:destroy[#{cmd}] 2>&1`
   puts retval # Debug logging
@@ -101,6 +111,10 @@ def call_stub(cmd)
   end
 end
 
+def puts_heading(title)
+  puts "\n\n#{title}\n#{"="*title.length}"
+end
+
 desc "Run integration test on example"
 task :integration_test do
   chdir("./example/") do
@@ -111,16 +125,16 @@ task :integration_test do
 
     # Add a module without path. 
     # It should be added to first path on list of each category
-    puts "\nVerifying Default Create:"
+    puts_heading "Verifying Default Create:"
     call_create("a_file")
-    assert_file_exist("s/rev/a_file.c")
-    assert_file_exist("i/rev/a_file.h")
+    assert_file_exist("s/a_file.c")
+    assert_file_exist("i/a_file.h")
     assert_file_exist("sub/t/test_a_file.c")
     assert_test_run_contains("TESTED:  1")
 
     # Make sure that we can add modules properly when the directory
     # pattern is subdirs with src, inc, and test folders each
-    puts "\nVerifying Subdirectory Create:"
+    puts_heading "Verifying Subdirectory Create:"
     call_create("sub:b_file")
     assert_file_exist("sub/s/b_file.c")
     assert_file_exist("sub/i/b_file.h")
@@ -129,7 +143,7 @@ task :integration_test do
 
     # Make sure that we can add modules properly when the directory
     # pattern is subdirs under the src, inc, and test folders
-    puts "\nVerifying Reverse Subdirectory Create:"
+    puts_heading "Verifying Reverse Subdirectory Create:"
     call_create("rev:c_file")
     assert_file_exist("s/rev/c_file.c")
     assert_file_exist("i/rev/c_file.h")
@@ -137,29 +151,29 @@ task :integration_test do
     assert_test_run_contains("TESTED:  3")
 
     # Does our Boilerplate mechanism work?
-    puts "\nVerifying Boilerplate:"
+    puts_heading "Verifying Boilerplate:"
     assert_file_contains("s/rev/c_file.c", "MAY THE SOURCE BE WITH YOU")
     assert_file_contains("i/rev/c_file.h", "feel included")
     assert_file_contains("t/rev/test_c_file.c", "Don't Test Me, Sir")
 
     # Are other essentials being injected
-    puts "\nVerifying Guts:"
-    assert_file_contains("s/rev/a_file.c", "#include \"a_file.h\"")
-    assert_file_contains("i/rev/a_file.h", "#ifndef A_FILE_H")
+    puts_heading "Verifying Guts:"
+    assert_file_contains("s/a_file.c", "#include \"a_file.h\"")
+    assert_file_contains("i/a_file.h", "#ifndef A_FILE_H")
     assert_file_contains("sub/t/test_a_file.c", "test_a_file_NeedToImplement")
 
     # Destroy a module without path. 
     # It should be removed from first path on list of each category
-    puts "\nVerifying Default Destroy:"
+    puts_heading "Verifying Default Destroy:"
     call_destroy("a_file")
-    assert_file_not_exist("s/rev/a_file.c")
-    assert_file_not_exist("i/rev/a_file.h")
+    assert_file_not_exist("s/a_file.c")
+    assert_file_not_exist("i/a_file.h")
     assert_file_not_exist("sub/t/test_a_file.c")
     assert_test_run_contains("TESTED:  2")
 
     # Make sure that we can destroy modules properly when the directory
     # pattern is subdirs with src, inc, and test folders each
-    puts "\nVerifying Subdirectory Destroy:"
+    puts_heading "Verifying Subdirectory Destroy:"
     call_destroy("sub:b_file")
     assert_file_not_exist("sub/s/b_file.c")
     assert_file_not_exist("sub/i/b_file.h")
@@ -168,7 +182,7 @@ task :integration_test do
 
     # Make sure that we can destroy modules properly when the directory
     # pattern is subdirs under the src, inc, and test folders
-    puts "\nVerifying Reverse Subdirectory Destroy:"
+    puts_heading "Verifying Reverse Subdirectory Destroy:"
     call_destroy("rev:c_file")
     assert_file_not_exist("s/rev/c_file.c")
     assert_file_not_exist("i/rev/c_file.h")
@@ -176,28 +190,41 @@ task :integration_test do
     assert_test_run_contains("No tests executed")
 
     # Verify stubbing functionality can make a new source file
-    puts "\nVerifying Stubbing:"
+    puts_heading "Verifying Stubbing:"
     prep_stub(1)
-    call_stub("i:stubby")
+    call_stub("rev:stubby")
     assert_file_contains("s/rev/stubby.c","void shorty")
 
     # Verify stubbing functionality can update a source file
-    puts "\nVerifying Stub Updating:"
+    puts_heading "Verifying Stub Updating:"
     prep_stub(2)
-    call_stub("i:stubby")
+    call_stub("rev:stubby")
     assert_file_contains("s/rev/stubby.c","void shorty")
     assert_file_contains("s/rev/stubby.c","void shrimpy")
     assert_file_contains("s/rev/stubby.c","int tiny")
 
     # Make sure that we can destroy modules properly even when the
     # entire set doesn't exist
-    puts "\nVerifying Partial Destroy:"
-    call_destroy("i:stubby")
+    puts_heading "Verifying Partial Destroy:"
+    call_destroy("rev:stubby")
     assert_file_not_exist("s/rev/stubby.c")
     assert_file_not_exist("i/rev/stubby.h")
-    prep_test
 
-    puts "\nPASSES MODULE SELF-TESTS"
+    # Make sure that it complains about path hints that don't match paths
+    puts_heading "Verifying Matcher Failure Handling:"
+    call_create_expecting_error("bad:stubby")
+    assert_file_not_exist("s/bad/stubby.c")
+    assert_file_not_exist("i/bad/stubby.h")
+
+    # Make sure it allows us to create a subdir if slash used
+    puts_heading "Verifying Default Create:"
+    call_create("slash/d_file")
+    assert_file_exist("s/slash/d_file.c")
+    assert_file_exist("i/slash/d_file.h")
+    assert_file_exist("sub/t/slash/test_d_file.c")
+
+    prep_test
+    puts_heading "PASSES MODULE SELF-TESTS"
 
   end
 end

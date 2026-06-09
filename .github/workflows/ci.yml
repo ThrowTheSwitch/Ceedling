@@ -1,0 +1,342 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# -----------------------------------------------------------------------
+# Continuous Integration Workflow
+#
+# Purpose:
+#   Run the full test suite and verify a clean gem build on every push.
+#   No releases are created here — publishing is handled by prerelease.yml
+#   and release.yml, which trigger only on intentional Git tags.
+#
+# Triggers:
+#   - Push to any branch
+#   - Pull request targeting master
+#   - Manual dispatch (workflow_dispatch)
+#
+# Skip-CI:
+#   Add any of the following to your commit message to skip this workflow:
+#     [skip ci]  [ci skip]  [no ci]  [skip actions]  [actions skip]
+#   Note: skip keywords have no effect on workflow_dispatch runs.
+#
+# Branch exclusions:
+#   To permanently exclude a branch pattern from CI, add a branches-ignore
+#   list under the push: trigger below (e.g. docs/**, wip/**).
+# -----------------------------------------------------------------------
+
+---
+name: CI
+
+# Triggers the workflow on push to any branch (tag pushes excluded — handled by
+# prerelease.yml and release.yml), pull requests targeting master, or manual dispatch
+on:
+  push:
+    branches:
+      - '**'             # All branches; branches: ['**'] scopes push to refs/heads/ only,
+                         # excluding refs/tags/ pushes — see Skip-CI above
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+
+# Cancel any in-progress run on the same ref when a new push arrives,
+# preventing stale run pile-up on active branches
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+
+permissions:
+  contents: read
+
+
+jobs:
+  # Job: Build MkDocs HTML documentation bundle for gem inclusion
+  generate-docs:
+    name: "Generate Local Docs Bundle for Gem Inclusion"
+    uses: ./.github/workflows/_generate-docs.yml
+
+
+  # Job: Linux unit test suite
+  tests-linux:
+    name: "Linux Test Suite"
+    needs: generate-docs
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
+    steps:
+      # Use a cache for our tools to speed up testing
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
+
+      # Checks out repository under $GITHUB_WORKSPACE
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Set up Ruby to run test & build steps on multiple ruby versions
+      # This action installs Ruby and the Bundler gem using the version captured in Gemfile.lock
+      - name: Set Up Ruby with Version Matrix
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
+      # Workaround: Fix Ruby toolcache Gem directory permissions (Bundler exit 38)
+      # This is an environmental Ruby/toolcache issue, not a Bundler issue; the fix must
+      # run after setup-ruby (which populates the toolcache) but before bundle install.
+      # Issue: https://github.com/rubygems/rubygems/issues/7983
+      - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
+        run: |
+          sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
+
+      # Install Gem Dependencies
+      - name: Install Gem Dependencies
+        # Ensure local installation to prevent system directory permission problems
+        run: |
+          bundle install
+
+      # Install gdb for backtrace feature testing
+      - name: Install gdb for Backtrace Feature Testing
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --assume-yes --quiet gdb
+
+      # --break-system-packages is required on Ubuntu 24.04+
+      # (PEP 668 prevents pip from installing to the system Python environment without explicit opt-in)
+      - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
+        run: |
+          pip install --break-system-packages gcovr
+
+      # Install ReportGenerator for Gcov plugin
+      # Fix PATH before tool installation
+      # https://stackoverflow.com/questions/59010890/github-action-how-to-restart-the-session
+      - name: "Install ReportGenerator for Tests of Ceedling Plugin: Gcov"
+        run: |
+          mkdir --parents $HOME/.dotnet/tools
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      # Download HTML docs bundle built by generate-docs job
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+
+      # Run Tests
+      - name: Run All Self Tests
+        env:
+          # Set the RSpec formatter to condensed dots
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: |
+          rake ci
+
+      # Upload any system test failure logs on test job failure
+      - name: Upload system test failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: systest-failure-logs-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: systest.*.fail.log
+          if-no-files-found: ignore
+
+      # Build & Install Ceedling Gem
+      # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
+      - name: Build and Install Ceedling Gem
+        run: |
+          gem build ceedling.gemspec
+          gem install --local ceedling-*.gem
+
+      # Run FFF Plugin Tests
+      - name: "Run Tests on Ceedling Plugin: FFF"
+        run: |
+          cd plugins/fff
+          rake
+          cd ../..
+
+      # Run Module Generator Plugin Tests
+      - name: "Run Tests on Ceedling Plugin: Module Generator"
+        run: |
+          cd plugins/module_generator
+          rake
+          cd ../..
+
+      # Run Dependencies Plugin Tests
+      - name: "Run Tests on Ceedling Plugin: Dependencies"
+        run: |
+          cd plugins/dependencies
+          rake
+          cd ../..
+
+
+  # Job: Windows unit test suite
+  tests-windows:
+    name: "Windows Test Suite"
+    needs: generate-docs
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
+    steps:
+      # Use a cache for our tools to speed up testing
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
+
+      # Checks out repository under $GITHUB_WORKSPACE
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Set up Ruby to run test & build steps on multiple ruby versions
+      # This action installs Ruby and the Bundler gem using the version captured in Gemfile.lock
+      - name: Set Up Ruby with Version Matrix
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
+      # Install Gem Dependencies
+      - name: Install Gem Dependencies
+        # Ensure local installation to prevent system directory permission problems
+        run: |
+          bundle install
+
+      # Install GCovr for Gcov plugin test
+      - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
+        run: |
+          pip install gcovr
+
+      # Install ReportGenerator for Gcov plugin test
+      - name: "Install ReportGenerator for Tests of Ceedling Plugin: Gcov"
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      # Install cppcheck via Chocolatey (installs the MSI to C:\Program Files\Cppcheck\).
+      # Add the real install directory to PATH ahead of the Chocolatey shim so that
+      # cppcheck can locate its cfg/ directory (needed for std.cfg library lookups).
+      - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
+        run: |
+          choco upgrade cppcheck -y
+          echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
+
+      # Download HTML docs bundle built by generate-docs job
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+
+      # Run Tests
+      - name: Run All Self Tests
+        env:
+          # Set the RSpec formatter to condensed dots
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: |
+          rake ci
+
+      # Upload any system test failure logs on test job failure
+      - name: Upload system test failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: systest-failure-logs-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: systest.*.fail.log
+          if-no-files-found: ignore
+
+      # Build & Install Ceedling Gem
+      # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
+      - name: Build and Install Ceedling Gem
+        run: |
+          gem build ceedling.gemspec
+          gem install --local ceedling-*.gem
+
+      # Run FFF Plugin Tests
+      - name: "Run Tests on Ceedling Plugin: FFF"
+        run: |
+          cd plugins/fff
+          rake
+          cd ../..
+
+      # Run Module Generator Plugin Tests
+      - name: "Run Tests on Ceedling Plugin: Module Generator"
+        run: |
+          cd plugins/module_generator
+          rake
+          cd ../..
+
+      # Run Dependencies Plugin Tests
+      - name: "Run Tests on Ceedling Plugin: Dependencies"
+        run: |
+          cd plugins/dependencies
+          rake
+          cd ../..
+
+
+  # Job: Build the Ceedling gem once all tests pass
+  # Verifies a clean gem build is possible; the built gem is uploaded as a
+  # downloadable workflow artifact. No release is created here.
+  build-gem:
+    name: "Build Ceedling Gem"
+    needs:
+      - tests-linux
+      - tests-windows
+    runs-on: ubuntu-latest
+
+    steps:
+      # Use a cache for our tools to speed up builds
+      # No matrix here; Ruby version is hardcoded to match the cache key format used by test jobs
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-3.3-
+
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      # Download HTML docs bundle built by generate-docs job
+      - name: Download HTML Documentation Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: gem-docs-site-local
+          path: site-local/
+
+      - name: Build Ceedling Gem
+        run: |
+          gem build ceedling.gemspec
+
+      # Upload the built gem as a workflow artifact (downloadable from the Actions UI)
+      - name: Upload Built Gem Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ceedling-gem
+          path: ceedling-*.gem
+          if-no-files-found: error

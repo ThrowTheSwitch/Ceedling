@@ -1,0 +1,184 @@
+# Site metadata
+site_name: Ceedling
+site_description: Test-Centered Build System for C
+site_url: https://throwtheswitch.github.io/Ceedling/
+repo_url: https://github.com/ThrowTheSwitch/Ceedling
+repo_name: ThrowTheSwitch/Ceedling
+
+docs_dir: docs/mkdocs/
+
+site_dir: site-web
+
+# Footer copyright notice
+copyright: >-
+  &copy; 2010-2026 M. Karlesky, M. VanderVoord, and G. Williams &mdash;
+  Documentation license: 
+  <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.en">CC BY-SA 4.0</a>
+
+# Material theme configuration
+theme:
+  name: material
+  favicon: assets/images/favicon.png
+  palette:
+    - scheme: default
+      primary: green
+      accent: deep_purple
+  features:
+    - navigation.tabs        # Top-level nav rendered as tabs
+    - navigation.sections    # Sections rendered as groups in left sidebar
+    - navigation.top         # Back-to-top button
+    - navigation.indexes     # Section index pages (first item in section = section landing page)
+    - navigation.path        # Breadcrumb trail below page title
+    - navigation.instant     # Instant navigation with page content swaps (without page reloads)
+    - search.suggest         # Autocomplete suggestions in search
+    - search.highlight       # Highlight search terms on result pages
+    - content.code.copy      # Copy button on code blocks
+    - content.code.annotate  # Inline annotation support in code blocks
+
+# Extra site configuration
+extra:
+  generator: false  # Suppress "Made with Material for MkDocs" footer text
+  version:
+    provider: mike  # Versioned documentation deployment via mike
+    default: latest
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sponsors/ThrowTheSwitch
+      name: Sponsor ThrowTheSwitch on GitHub
+
+extra_css:
+  - assets/stylesheets/styling.css      # Custom style tweaks
+  - assets/stylesheets/admonitions.css  # Custom admonition types
+
+# Plugins
+plugins:
+  - search  # Full-text search index
+  - mike:   # Versioned documentation deployment to gh-pages
+      alias_type: symlink
+      canonical_version: latest
+
+# Markdown extensions
+markdown_extensions:
+  - toc:
+      toc_depth: 3      # Limits TOC to show headings H1 through H3
+                        # (H2 and H3 in reality since H1 is reserved for page titles)
+  - admonition          # !!! note / tip / warning / etc. callout blocks
+  - md_in_html          # Markdown inside raw HTML elements (required for card grids)
+  - footnotes
+  - pymdownx.emoji:     # Emoji shortcodes (:material-icon:, :fontawesome-icon:, etc.)
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight: # Syntax highlighting for fenced code blocks via Pygments
+      use_pygments: true
+      anchor_linenums: true
+  - pymdownx.superfences  # Fenced code blocks inside admonitions and other nested elements
+  - pymdownx.inlinehilite # Inline code syntax highlighting with `#!lang code` syntax
+
+# Files in docs/ excluded from the generated site.
+# These are standalone reference documents, developer files, PDFs, or historical records
+# maintained separately from the versioned documentation bundle.
+exclude_docs: |
+  snapshot.yml
+
+# Site navigation tree
+nav:
+  - Home: index.md
+  - Overview:
+    - overview/index.md
+    - Build System: overview/build-system.md
+    - Tools & Frameworks: overview/tools-and-frameworks.md
+    - Test Environments: overview/test-environments.md
+  - Getting Started:
+    - getting-started/index.md
+    - Quick Start: getting-started/quick-start.md
+    - Installation: getting-started/installation.md
+    - Command Line: getting-started/command-line.md
+  - Testing Guide:
+    - testing-guide/index.md
+    - How Does a Test Case Work?: testing-guide/test-cases.md
+    - Commented Sample Test File: testing-guide/test-sample.md
+    - Anatomy of a Test Suite: testing-guide/test-suite-anatomy.md
+    - Conventions & Behaviors: testing-guide/conventions.md
+    - Unity, CMock & CException: testing-guide/frameworks.md
+    - Partials:
+      - testing-guide/partials/index.md
+      - What Is a Partial?: testing-guide/partials/overview.md
+      - Configuration: testing-guide/partials/configuration.md
+      - Walk-Through Example: testing-guide/partials/example.md
+      - Conventions & Terminology: testing-guide/partials/conventions.md
+      - Partial Directive Macros: testing-guide/partials/directives.md
+      - Accessing Static Variables: testing-guide/partials/variables.md
+    - Build Directive Macros: testing-guide/build-directives.md
+  - Configuration:
+    - configuration/index.md
+    - Loading Configuration: configuration/loading.md
+    - Project File Basics: configuration/project-file.md
+    - Parallel Builds: configuration/parallel-builds.md
+    - Environment Variables: configuration/environment-vars.md
+    - Which Ceedling: configuration/which-ceedling.md
+    - Global Collections: configuration/global-collections.md
+    - Configuration Reference:
+      - configuration/reference/index.md
+      - Global Project Settings: configuration/reference/project.md
+      - Mixins: configuration/reference/mixins.md
+      - Test Build Settings: configuration/reference/test-build.md
+      - Release Build Settings: configuration/reference/release-build.md
+      - Search Paths: configuration/reference/paths.md
+      - File Collections: configuration/reference/files.md
+      - Environment Variables: configuration/reference/environment.md
+      - File Extensions: configuration/reference/extension.md
+      - Defines: configuration/reference/defines.md
+      - Compilation & Link Flags: configuration/reference/flags.md
+      - Libraries: configuration/reference/libraries.md
+      - Unity: configuration/reference/unity.md
+      - CMock: configuration/reference/cmock.md
+      - Test Runner: configuration/reference/test-runner.md
+      - CException: configuration/reference/cexception.md
+      - Plugins: configuration/reference/plugins.md
+      - Tools: configuration/reference/tools.md
+  - Plugins:
+    - Overview: plugins/index.md
+    - Test Report — Pretty: plugins/report-tests-pretty-stdout.md
+    - Test Report — IDE: plugins/report-tests-ide-stdout.md
+    - Test Report — GTest-like: plugins/report-tests-gtestlike-stdout.md
+    - Test Report — TeamCity: plugins/report-tests-teamcity-stdout.md
+    - Test Report Log Factory: plugins/report-tests-log-factory.md
+    - Test Report — Raw Output: plugins/report-tests-raw-output-log.md
+    - Build Warnings Log: plugins/report-build-warnings-log.md
+    - GCov (Coverage):
+      - plugins/gcov/index.md
+      - Overview: plugins/gcov/overview.md
+      - Tool Versions: plugins/gcov/tool-versions.md
+      - Set Up & Configuration: plugins/gcov/setup.md
+      - Example Usage: plugins/gcov/examples.md
+      - Reporting Configuration: plugins/gcov/reporting.md
+      - GCovr Configuration: plugins/gcov/gcovr.md
+      - ReportGenerator Configuration: plugins/gcov/reportgenerator.md
+      - Advanced & Troubleshooting: plugins/gcov/troubleshooting.md
+    - Bullseye (Coverage): plugins/bullseye.md
+    - FFF (Fake Functions): plugins/fff.md
+    - Command Hooks: plugins/command-hooks.md
+    - Compile Commands JSON DB: plugins/compile-commands-json-db.md
+    - Beep: plugins/beep.md
+    - Module Generator: plugins/module-generator.md
+    - Dependencies: plugins/dependencies.md
+  - Reference:
+    - reference/index.md
+    - Command Line: reference/command-line.md
+    - Project Configuration: reference/project-configuration.md
+    - Test Build Directives: reference/build-directives.md
+    - Partials Macros: reference/partials-macros.md
+    - Environment Variables: reference/environment-vars.md
+    - Coverage Reporting: reference/gcov-plugin.md
+    - Global Collections: reference/global-collections.md
+  - Releases:
+    - History Documents: project/release-history.md
+    - Upgrading: project/upgrade.md
+  - Help: help.md
+  - Development:
+    - development/index.md
+    - Plugin Development:
+      - development/plugins/index.md
+      - Configuration Plugin: development/plugins/configuration.md
+      - Plugin Subclass: development/plugins/plugin-subclass.md
+      - Rake Task Plugin: development/plugins/rake-tasks.md

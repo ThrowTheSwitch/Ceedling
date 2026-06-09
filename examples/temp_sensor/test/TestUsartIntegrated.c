@@ -15,7 +15,7 @@
 #include "MockUsartConfigurator.h"
 #include "MockUsartPutChar.h"
 #include "MockTemperatureFilter.h"
-#include "MockUsartBaudRateRegisterCalculator.h"
+#include "calculators/MockUsartBaudRateRegisterCalculator.h" // Proves we can find a mock even with a path
 #include <string.h>
 
 /* NOTE: we probably wouldn't actually perform this test on our own projects
