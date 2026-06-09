@@ -578,7 +578,7 @@ module CeedlingTasks
 
       • `version` does not load your project file.
 
-      • The build frameworks Unity & CMock are always sourced from
+      • The build frameworks Unity, CMock, and CException are always sourced from
       the Ceedling application.
       LONGDESC
     ) )
