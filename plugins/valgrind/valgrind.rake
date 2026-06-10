@@ -1,10 +1,12 @@
 directory(VALGRIND_BUILD_OUTPUT_PATH)
+directory(VALGRIND_ARTIFACTS_PATH)
 
 CLEAN.include(File.join(VALGRIND_BUILD_OUTPUT_PATH, '*'))
+CLEAN.include(File.join(VALGRIND_ARTIFACTS_PATH, '*'))
 
 CLOBBER.include(File.join(VALGRIND_BUILD_PATH, '**/*'))
 
-task directories: [VALGRIND_BUILD_OUTPUT_PATH]
+task directories: [VALGRIND_BUILD_OUTPUT_PATH, VALGRIND_ARTIFACTS_PATH]
 
 namespace VALGRIND_SYM do
 
@@ -15,7 +17,8 @@ namespace VALGRIND_SYM do
       test_name  = File.basename(test, '.*')
       build_path = File.join(@ceedling[:configurator].project_build_root, TEST_SYM.to_s, 'out', test_name)
       executable = @ceedling[:file_path_utils].form_test_executable_filepath(build_path, test)
-      command = @ceedling[:tool_executor].build_command_line(TOOLS_VALGRIND, [], executable)
+      log_path   = File.join(VALGRIND_ARTIFACTS_PATH, "#{test_name}.log")
+      command = @ceedling[:tool_executor].build_command_line(TOOLS_VALGRIND, ["--log-file=#{log_path}"], executable)
       @ceedling[:loginator].log("\nINFO: #{command[:line]}\n\n")
       @ceedling[:tool_executor].exec(command)
     end
@@ -44,7 +47,8 @@ namespace VALGRIND_SYM do
     test_name  = File.basename(test.source, '.*')
     build_path = File.join(@ceedling[:configurator].project_build_root, TEST_SYM.to_s, 'out', test_name)
     executable = @ceedling[:file_path_utils].form_test_executable_filepath(build_path, test.source)
-    command = @ceedling[:tool_executor].build_command_line(TOOLS_VALGRIND, [], executable)
+    log_path   = File.join(VALGRIND_ARTIFACTS_PATH, "#{test_name}.log")
+    command = @ceedling[:tool_executor].build_command_line(TOOLS_VALGRIND, ["--log-file=#{log_path}"], executable)
     @ceedling[:loginator].log("\nINFO: #{command[:line]}\n\n")
     @ceedling[:tool_executor].exec(command)
   end

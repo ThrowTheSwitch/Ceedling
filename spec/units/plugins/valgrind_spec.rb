@@ -13,7 +13,8 @@ require 'ceedling/plugin'
 # Define Ceedling runtime path constants needed by valgrind_constants.rb at
 # require time. The `unless defined?` guard keeps them from being re-assigned
 # if another spec already loaded them.
-PROJECT_BUILD_ROOT = 'build' unless defined?(PROJECT_BUILD_ROOT)
+PROJECT_BUILD_ROOT           = 'build'     unless defined?(PROJECT_BUILD_ROOT)
+PROJECT_BUILD_ARTIFACTS_ROOT = 'artifacts' unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
 
 $: << File.expand_path('../../../../plugins/valgrind/lib', __FILE__)
 
@@ -47,6 +48,10 @@ describe "Valgrind constants" do
 
   it "defines VALGRIND_BUILD_OUTPUT_PATH under VALGRIND_BUILD_PATH/out" do
     expect(VALGRIND_BUILD_OUTPUT_PATH).to eq(File.join('build', 'test', 'out'))
+  end
+
+  it "defines VALGRIND_ARTIFACTS_PATH under PROJECT_BUILD_ARTIFACTS_ROOT/valgrind" do
+    expect(VALGRIND_ARTIFACTS_PATH).to eq(File.join('artifacts', 'valgrind'))
   end
 end
 

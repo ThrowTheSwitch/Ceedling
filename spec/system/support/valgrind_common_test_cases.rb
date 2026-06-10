@@ -33,6 +33,8 @@ module ValgrindCommonTestCases
         output = @c.ceedling_build_exec("valgrind:all")
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/INFO:.*valgrind/i)
+        expect(File.exist?('build/artifacts/valgrind/test_example_file_success.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test_example_file_success.log')).to be > 0
       end
     end
   end
@@ -49,6 +51,8 @@ module ValgrindCommonTestCases
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/INFO:.*valgrind/i)
         expect(output).to match(/test_example_file_success/i)
+        expect(File.exist?('build/artifacts/valgrind/test_example_file_success.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test_example_file_success.log')).to be > 0
       end
     end
   end
