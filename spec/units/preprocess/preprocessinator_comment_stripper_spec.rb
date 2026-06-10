@@ -514,6 +514,67 @@ RSpec.describe PreprocessinatorCommentStripper do
 
     end
 
+
+    # -------------------------------------------------------------------------
+    context 'with non-ASCII characters in comments' do
+    # -------------------------------------------------------------------------
+
+      it 'fully strips a /* */ comment containing a non-ASCII character and all subsequent comments' do
+        # Bug regression: non-ASCII bytes (e.g. © = 0xC2 0xA9 in UTF-8) cause
+        # StringScanner byte positions to diverge from Ruby String character positions,
+        # leaving the leading / of every comment after the non-ASCII char intact.
+        content = "/* Copyright © 2024 */\n#define FOO 1\n// a comment\n#define BAR 2\n"
+
+        result = @stripper.strip_string(content)
+
+        expect(result).not_to include('/*')
+        expect(result).not_to include('*/')
+        expect(result).not_to include('//')
+        # No orphaned leading slash left over from any comment
+        expect(result).not_to match(%r{^/}m)
+        expect(result).to include('#define FOO 1')
+        expect(result).to include('#define BAR 2')
+      end
+
+      it 'fully strips // comments containing non-ASCII characters' do
+        content = "int x = 1; // © copyright\nint y = 2; // another comment\n"
+
+        result = @stripper.strip_string(content)
+
+        expect(result).not_to include('//')
+        expect(result).to include('int x = 1;')
+        expect(result).to include('int y = 2;')
+      end
+
+      it 'preserves source-line mapping when a block comment contains a non-ASCII character' do
+        # The 2-line block comment (lines_removed=1) is replaced by \n, preserving
+        # line count.  All markers must be unchanged after non-ASCII-aware stripping.
+        content = <<~PREPROCESSED
+          # 1 "module.c"
+          /* Copyright © 2024
+             All rights reserved */
+          # 4 "module.c"
+          #define MODULE_H
+          # 5 "module.c"
+          #define VERSION 1 // © versioned
+          # 6 "module.c"
+          int init(void);
+        PREPROCESSED
+
+        result = @stripper.strip_string(content)
+
+        expect(result).not_to include('/*')
+        expect(result).not_to include('//')
+        expect(result).not_to match(%r{^/}m)
+
+        # Markers unchanged; code finder verifies byte-accurate replacement
+        expect(@finder.find_in_preprpocessed_string(result, '#define MODULE_H')).to eq(4)
+        expect(@finder.find_in_preprpocessed_string(result, '#define VERSION 1')).to eq(5)
+        expect(@finder.find_in_preprpocessed_string(result, 'int init(void);')).to eq(6)
+      end
+
+    end
+
   end
 
 end

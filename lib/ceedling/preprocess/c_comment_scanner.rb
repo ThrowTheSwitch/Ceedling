@@ -40,17 +40,28 @@ class CCommentScanner
   # to ensure each comment removal does not disturb earlier comments in the content
   # with respect to `CommentInfo` details.
   def remove(content, comment_infos, mode: COMPACT)
-    result = content.dup
+    # comment_infos positions and lengths are byte offsets (recorded by scan using
+    # StringScanner#pos).  String#[] on a text-encoded string uses character
+    # indexing, which diverges from byte indexing when non-ASCII characters appear
+    # before a comment.  Working on a binary (ASCII-8BIT) copy keeps indexing
+    # byte-accurate throughout.
+    orig_encoding = content.encoding
+    result = content.b
+
     # Process in descending position order so earlier byte positions remain valid
     comment_infos.sort_by { |info| -info.position }.each do |info|
       replacement = ' '
       if (mode == PRESERVE_LINES && info.lines_removed > 0)
-        replacement = "\n" * info.lines_removed        
+        replacement = "\n" * info.lines_removed
       end
 
       result[info.position, info.length] = replacement
     end
-    return result
+
+    # Re-tag the encoding without converting bytes.  Only ASCII delimiters were
+    # removed and only ASCII characters were inserted, so all remaining multi-byte
+    # sequences are intact and the byte content is valid in the original encoding.
+    return result.force_encoding(orig_encoding)
   end
 
   # Scan an IO stream (File or StringIO) and return all C comments found.
@@ -65,6 +76,14 @@ class CCommentScanner
   def scan(io:)
     content = io.read
     return [] if content.nil? || content.empty?
+
+    # StringScanner#pos returns byte offsets, but String#[index, length] uses
+    # character-based indexing for text-encoded (e.g. UTF-8) strings.  Non-ASCII
+    # characters such as © (2 bytes in UTF-8) cause the two to diverge: a byte
+    # offset N maps to character N-1 after one such character, so comment
+    # boundaries and newline counts are wrong.  Forcing binary encoding makes
+    # String#[] byte-indexed throughout, keeping it in sync with StringScanner.
+    content = content.b
 
     scanner  = StringScanner.new(content)
     comments = []
