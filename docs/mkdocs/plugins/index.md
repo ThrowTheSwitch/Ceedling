@@ -95,6 +95,14 @@ for how to enable built-in plugins and load custom plugins in your project.
     coding style. It is able to analyze C/C++ code with non-standard syntax, as
     is usual in embedded projects.
 
+-   :material-memory: **[`valgrind`](valgrind.md)**
+
+    ---
+
+    Adds Ceedling tasks to run test executables under [Valgrind] memory error
+    detection. Catches memory leaks, invalid accesses, and use-after-free bugs,
+    producing per-test log files in the build artifacts directory.
+
 </div>
 
 ### Code Coverage
@@ -193,6 +201,7 @@ for how to enable built-in plugins and load custom plugins in your project.
 [gtest-sample-output]: https://subscription.packtpub.com/book/programming/9781800208988/11/ch11lvl1sec31/controlling-output-with-google-test
 [TeamCity]: https://jetbrains.com/teamcity
 [Cppcheck]: https://cppcheck.sourceforge.io
+[Valgrind]: https://valgrind.org
 [gcov]: http://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 [GCovr]: https://www.gcovr.com/
 [ReportGenerator]: https://reportgenerator.io

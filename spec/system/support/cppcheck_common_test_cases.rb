@@ -74,6 +74,7 @@ module CppcheckCommonTestCases
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/Creating Cppcheck xml report/i)
         expect(File.exist?('build/artifacts/cppcheck/CppcheckReport.xml')).to eq(true)
+        expect(File.size('build/artifacts/cppcheck/CppcheckReport.xml')).to be > 0
       end
     end
   end
@@ -89,6 +90,7 @@ module CppcheckCommonTestCases
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/Creating Cppcheck text report/i)
         expect(File.exist?('build/artifacts/cppcheck/CppcheckReport.txt')).to eq(true)
+        expect(File.size('build/artifacts/cppcheck/CppcheckReport.txt')).to be > 0
       end
     end
   end
