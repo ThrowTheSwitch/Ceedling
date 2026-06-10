@@ -6,7 +6,6 @@ DEFAULT_VALGRIND = {
     :optional => false.freeze,
     :arguments => [
       "--leak-check=full".freeze,
-      "--show-reachable=yes".freeze,
       "--show-leak-kinds=all".freeze,
       "--track-origins=yes".freeze,
       "--errors-for-leak-kinds=all".freeze,

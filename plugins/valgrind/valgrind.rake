@@ -36,7 +36,7 @@ namespace VALGRIND_SYM do
            test = "#{PROJECT_TEST_FILE_PREFIX}#{test}" unless test.start_with?(PROJECT_TEST_FILE_PREFIX)
            @ceedling[:file_finder].find_test_file_from_filepath(test)
          end
-       ]) do test
+       ]) do |test|
     @ceedling[:rake_wrapper][:prepare].invoke
     @ceedling[:test_invoker].setup_and_invoke(tests:[test.source], options:{:build_only => true}.merge(TOOL_COLLECTION_TEST_TASKS))
     executable = @ceedling[:file_path_utils].form_test_executable_filepath(VALGRIND_BUILD_OUTPUT_PATH, test.source)

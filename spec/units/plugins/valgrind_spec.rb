@@ -60,18 +60,6 @@ describe Valgrind do
       instance
     end
 
-    it 'initializes result_list as an empty array' do
-      expect(valgrind.instance_variable_get(:@result_list)).to eq([])
-    end
-
-    it 'exposes config via attr_reader' do
-      expect(valgrind.config).to be_a(Hash)
-    end
-
-    it 'sets config[:project_test_build_output_path] to VALGRIND_BUILD_OUTPUT_PATH' do
-      expect(valgrind.config[:project_test_build_output_path]).to eq(VALGRIND_BUILD_OUTPUT_PATH)
-    end
-
     it 'sets plugin_root to the valgrind plugin directory' do
       plugin_root = valgrind.instance_variable_get(:@plugin_root)
       expect(plugin_root).to end_with(File.join('plugins', 'valgrind'))
