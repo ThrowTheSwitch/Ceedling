@@ -58,6 +58,7 @@
     - module_generator                # handy for quickly creating source, header, and test templates
     #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
     #- cppcheck                       # static analysis using cppcheck. Requires cppcheck to be installed
+    #- valgrind                       # memory analysis using valgrind. Requires valgrind to be installed (Linux only)
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
     #- compile_commands_json_db       # generate a compile_commands.json file
