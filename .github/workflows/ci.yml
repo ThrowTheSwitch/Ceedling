@@ -112,6 +112,38 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install --assume-yes --quiet gdb
 
+      # Install valgrind for Valgrind plugin testing
+      - name: Install valgrind for Valgrind Feature Testing
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --assume-yes --quiet valgrind
+                # Build cppcheck from source at a pinned version so all plugin options
+                
+      # (including SARIF, which requires 2.16+) are available for testing.
+      # The installed binary is cached by version to avoid rebuilding on every run.
+      - name: Cache cppcheck binary and data files
+        id: cache-cppcheck
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/bin/cppcheck
+            /usr/local/share/cppcheck
+          key: cppcheck-${{ env.CPPCHECK_VERSION }}-linux
+        env:
+          CPPCHECK_VERSION: '2.16.0'
+
+      - name: "Build and Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
+        if: steps.cache-cppcheck.outputs.cache-hit != 'true'
+        env:
+          CPPCHECK_VERSION: '2.16.0'
+        run: |
+          sudo apt-get install --assume-yes --quiet cmake
+          wget -q https://github.com/danmar/cppcheck/archive/refs/tags/${CPPCHECK_VERSION}.tar.gz -O cppcheck.tar.gz
+          tar xzf cppcheck.tar.gz
+          cmake -S cppcheck-${CPPCHECK_VERSION} -B cppcheck-build -DCMAKE_BUILD_TYPE=Release -DUSE_MATCHCOMPILER=ON -DFILESDIR=/usr/local/share/cppcheck
+          cmake --build cppcheck-build --parallel $(nproc)
+          sudo cmake --install cppcheck-build
+
       # --break-system-packages is required on Ubuntu 24.04+
       # (PEP 668 prevents pip from installing to the system Python environment without explicit opt-in)
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"

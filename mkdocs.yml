@@ -155,6 +155,8 @@ nav:
       - GCovr Configuration: plugins/gcov/gcovr.md
       - ReportGenerator Configuration: plugins/gcov/reportgenerator.md
       - Advanced & Troubleshooting: plugins/gcov/troubleshooting.md
+    - Cppcheck (Static Analysis): plugins/cppcheck.md
+    - Valgrind (Memory Analysis): plugins/valgrind.md
     - Bullseye (Coverage): plugins/bullseye.md
     - FFF (Fake Functions): plugins/fff.md
     - Command Hooks: plugins/command-hooks.md

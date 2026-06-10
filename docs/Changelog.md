@@ -35,6 +35,10 @@ A local verion of this site that is navigable with your web browser from your fi
 
 Alejandro Rosso's excellent Cppcheck plugin has been added to the default plugin collection (with Alejandro's permission). We're excited to make it easier for everyone to use this great addition!
 
+### Valgrind plugin
+
+James Raphael Tiovalen's helpful Valgrind plugin has been updated to work with the latest Ceedling, and added to the default plugin collection. Thank you, James for the great contribution!
+
 ### GCov plugin support for Modified Condition / Decision Coverage
 
 Ceedling’s [GCov plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/) for coverage reporting now supports the [Modified Condition / Decision Coverage](https://ldra.com/capabilities/mc-dc/) abilities of GCC 14+ and optionally GCovr 8+.
