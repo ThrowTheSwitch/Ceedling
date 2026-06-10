@@ -12,7 +12,9 @@ namespace VALGRIND_SYM do
   task all: [:prepare] do
     @ceedling[:test_invoker].setup_and_invoke(tests:COLLECTION_ALL_TESTS, options:{:build_only => true}.merge(TOOL_COLLECTION_TEST_TASKS))
     COLLECTION_ALL_TESTS.each do |test|
-      executable = @ceedling[:file_path_utils].form_test_executable_filepath(VALGRIND_BUILD_OUTPUT_PATH, test)
+      test_name  = File.basename(test, '.*')
+      build_path = File.join(@ceedling[:configurator].project_build_root, TEST_SYM.to_s, 'out', test_name)
+      executable = @ceedling[:file_path_utils].form_test_executable_filepath(build_path, test)
       command = @ceedling[:tool_executor].build_command_line(TOOLS_VALGRIND, [], executable)
       @ceedling[:loginator].log("\nINFO: #{command[:line]}\n\n")
       @ceedling[:tool_executor].exec(command)
@@ -39,7 +41,9 @@ namespace VALGRIND_SYM do
        ]) do |test|
     @ceedling[:rake_wrapper][:prepare].invoke
     @ceedling[:test_invoker].setup_and_invoke(tests:[test.source], options:{:build_only => true}.merge(TOOL_COLLECTION_TEST_TASKS))
-    executable = @ceedling[:file_path_utils].form_test_executable_filepath(VALGRIND_BUILD_OUTPUT_PATH, test.source)
+    test_name  = File.basename(test.source, '.*')
+    build_path = File.join(@ceedling[:configurator].project_build_root, TEST_SYM.to_s, 'out', test_name)
+    executable = @ceedling[:file_path_utils].form_test_executable_filepath(build_path, test.source)
     command = @ceedling[:tool_executor].build_command_line(TOOLS_VALGRIND, [], executable)
     @ceedling[:loginator].log("\nINFO: #{command[:line]}\n\n")
     @ceedling[:tool_executor].exec(command)
