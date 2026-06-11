@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 
 DEFAULT_VALGRIND = {
     :executable => ENV['VALGRIND'].nil? ? FilePathUtils.os_executable_ext('valgrind').freeze : ENV['VALGRIND'].split[0],

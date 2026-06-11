@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 # Files snapshotted from the project tree into docs/snapshot/ for versioned documentation.
 # Paths are relative to the project root. Each file or directory is copied to docs/snapshot/<path>,
 # preserving directory structure.

@@ -1,3 +1,10 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
 CPPCHECK_ROOT_NAME           = 'cppcheck'.freeze
 CPPCHECK_TASK_ROOT           = CPPCHECK_ROOT_NAME + ':'
 CPPCHECK_SYM                 = CPPCHECK_ROOT_NAME.to_sym
