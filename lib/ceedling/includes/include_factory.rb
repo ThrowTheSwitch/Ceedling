@@ -5,8 +5,6 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-'
-
 require 'ceedling/constants'
 require 'ceedling/includes/includes'
 
