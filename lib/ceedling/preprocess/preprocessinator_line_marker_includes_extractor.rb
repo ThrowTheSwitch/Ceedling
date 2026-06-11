@@ -96,7 +96,10 @@ class PreprocessinatorLineMarkerIncludesExtractor
     validate_type_argument( type )
     includes = []
     begin
-      File.open(filepath, 'r') do |file|
+      # Open in binary mode: GCC output under non-C locale contains non-ASCII bytes.
+      # LINE_MARKER_REGEX uses only ASCII delimiters, so binary mode is safe.
+      # Localized markers like <組み込み> are skipped by filepath.start_with?('<').
+      File.open(filepath, 'rb') do |file|
         includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth)
       end
     rescue StandardError => e

@@ -422,6 +422,32 @@ module CommonSystemTestCases
     end
   end
 
+  def can_test_projects_with_preprocessing_fallback_and_multibyte_comments
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("tests_with_encoding/src/unicoder.h"),        'src/'
+        FileUtils.cp test_asset_path("tests_with_encoding/src/unicoder.c"),        'src/'
+        FileUtils.cp test_asset_path("tests_with_encoding/test/test_unicoder.c"),  'test/'
+        # Fallback preprocessing mode + mock preprocessing:
+        #  Source files contain UTF-8 © and accented characters in comments,
+        #  exercising encoding-safe fallback paths.
+        settings = { :project    => { :use_test_preprocessor => :mocks },
+                     :test_build => { :preprocessing_fallback => true }
+                   }
+        @c.merge_project_yml_for_test(settings)
+
+        output = @c.ceedling_build_exec("test:unicoder")
+        expect(@c.last_exit_status).to eq(0)
+        # Ensure logging contains notice of fallback usage
+        expect(output).to match(/using fallback method/i)
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+      end
+    end
+  end
+
+
   def can_test_projects_with_fail
     @c.with_context do
       Dir.chdir @proj_name do

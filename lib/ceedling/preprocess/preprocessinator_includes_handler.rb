@@ -120,7 +120,9 @@ class PreprocessinatorIncludesHandler
     )
     @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
-    @file_wrapper.open(filepath, 'r') do |input|
+    # Open in binary mode: code_lines applies clean_encoding per-line, but each_line
+    # itself can raise on invalid byte sequences before clean_encoding is reached.
+    @file_wrapper.open(filepath, 'rb') do |input|
       @parsing_parcels.code_lines( input ) do |line|
         _include = @include_factory.user_include_from_directive( line )
         includes << _include if !_include.nil?
@@ -129,7 +131,7 @@ class PreprocessinatorIncludesHandler
 
     return clean_self_reference( filepath, includes )
   end
-  
+
   def extract_system_includes_preprocess(name:, filepath:, preprocessed_filepath:)
     includes = []
 
@@ -164,7 +166,9 @@ class PreprocessinatorIncludesHandler
     )
     @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
-    @file_wrapper.open(filepath, 'r') do |input|
+    # Open in binary mode: code_lines applies clean_encoding per-line, but each_line
+    # itself can raise on invalid byte sequences before clean_encoding is reached.
+    @file_wrapper.open(filepath, 'rb') do |input|
       @parsing_parcels.code_lines( input ) do |line|
         _include = @include_factory.system_include_from_directive( line )
         includes << _include if !_include.nil?

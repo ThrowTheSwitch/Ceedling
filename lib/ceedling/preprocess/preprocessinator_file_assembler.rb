@@ -7,6 +7,7 @@
 
 require 'rake' # for ext() method
 require 'ceedling/file_wrapper'
+require 'ceedling/encodinator'
 
 class PreprocessinatorFileAssembler
 
@@ -65,7 +66,7 @@ class PreprocessinatorFileAssembler
     # It's possible preserving the macro from the original file's #include guard could trip something up.
     # Of course, it's also possible some header conditional compilation feature is dependent on it.
     # ¯\_(ツ)_/¯
-    include_guard = @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath, 2048 ) )
+    include_guard = @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath, 2048 ).clean_encoding )
 
     if fallback
       msg = @reportinator.generate_module_progress(
@@ -75,12 +76,13 @@ class PreprocessinatorFileAssembler
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
-      @file_wrapper.open( filepath, 'r' ) do |file|
-        # Get code contents of original source file as a string
+      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
+      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
+      @file_wrapper.open( filepath, 'rb' ) do |file|
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = file.read
+        _contents = file.read.clean_encoding
 
-        # Extract pragmas and macros from 
+        # Extract pragmas and macros from
         pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
         macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
       end
@@ -113,8 +115,10 @@ class PreprocessinatorFileAssembler
   end
 
   def collect_file_contents_fallback(source_filepath:)
-    @file_wrapper.open( source_filepath, 'r' ) do |file|
-      return file.readlines( chomp: true )
+    # Open in binary mode + clean encoding: source files may have non-ASCII bytes
+    # in comments that fail under locale-dependent text-mode encoding.
+    @file_wrapper.open( source_filepath, 'rb' ) do |file|
+      return file.readlines( chomp: true ).map { |line| line.clean_encoding }
     end
   end
 
@@ -212,9 +216,10 @@ class PreprocessinatorFileAssembler
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
-      @file_wrapper.open( filepath, 'r' ) do |file|
-        # Get code contents of original source file as a string
-        _contents = file.read
+      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
+      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
+      @file_wrapper.open( filepath, 'rb' ) do |file|
+        _contents = file.read.clean_encoding
 
         # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
         test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )

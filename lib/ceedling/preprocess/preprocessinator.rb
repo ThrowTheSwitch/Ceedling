@@ -40,6 +40,11 @@ class Preprocessinator
   end
 
   def directives_only_available?
+    # When :test_build ↳ :preprocessing_fallback is set, skip directives-only preprocessing
+    # entirely and use text-based fallback for all files. Useful for testing the fallback
+    # path and for toolchains that falsely claim -fdirectives-only support.
+    # NOTE: `test_build_preprocessing_fallback` is not available at construction (DI) time.
+    return false if @configurator.test_build_preprocessing_fallback
     return @directives_only_available
   end
 
@@ -78,7 +83,7 @@ class Preprocessinator
     results = @tool_executor.exec( command )
 
     # Handle warning from preprocessor saying that clang can't handle directives-only (common with older clang)
-    if results[:output].match /warning[^\n]+-fdirectives-only/
+    if results[:output].match( /warning[^\n]+-fdirectives-only/ )
       msg = "Your C preprocessor lacks support for directives-only output that Ceedling relies upon."
       @directives_only_available = false
       raise CeedlingException.new( msg )
