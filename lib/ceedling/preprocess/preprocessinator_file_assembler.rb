@@ -116,9 +116,15 @@ class PreprocessinatorFileAssembler
 
   def collect_file_contents_fallback(source_filepath:)
     # Open in binary mode + clean encoding: source files may have non-ASCII bytes
-    # in comments that fail under locale-dependent text-mode encoding.
+    # in comments (e.g. © symbols) that raise encoding errors under locale-dependent
+    # text-mode encoding on non-C-locale systems.
+    # Call line.chomp before clean_encoding: readlines(chomp:true) in binary mode
+    # removes the \n separator but leaves \r on Windows CRLF lines. clean_encoding's
+    # :universal_newline option would then convert that lone \r → \n, producing lines
+    # with a spurious trailing \n that causes double-newlines in assembled output.
+    # String#chomp (no-arg) removes \r\n, \r, or \n — safe on all platforms.
     @file_wrapper.open( source_filepath, 'rb' ) do |file|
-      return file.readlines( chomp: true ).map { |line| line.clean_encoding }
+      return file.readlines( chomp: true ).map { |line| line.chomp.clean_encoding }
     end
   end
 
