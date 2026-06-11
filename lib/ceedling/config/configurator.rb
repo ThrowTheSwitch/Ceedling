@@ -450,7 +450,7 @@ class Configurator
     end
     
     # Config plugins
-    config_plugins = @configurator_plugins.find_config_plugins( config, paths_hash )
+    @configurator_plugins.find_config_plugins( config, paths_hash )
     if !@configurator_plugins.config_plugins.empty?
       @loginator.lazy( Verbosity::DEBUG ) do
         " > Config plugins: " + @configurator_plugins.config_plugins.map{|p| p[:plugin]}.join( ', ' )
