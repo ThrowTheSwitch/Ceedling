@@ -17,8 +17,7 @@ ceedling_system_tests do
     @c.done!
   end
 
-  before { @proj_name = "encoding_test_proj" }
-  after  { @c.with_context { FileUtils.rm_rf @proj_name } }
+  before { @proj_name = unique_proj_name("encoding") }
 
   describe "Deployed as a gem" do
     before do
@@ -31,16 +30,16 @@ ceedling_system_tests do
       before do
         @c.with_context do
           Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("tests_with_encoding/src/unicoder.h"),       'src/'
-            FileUtils.cp test_asset_path("tests_with_encoding/src/unicoder.c"),       'src/'
-            FileUtils.cp test_asset_path("tests_with_encoding/test/test_unicoder.c"), 'test/'
+            FileUtils.cp test_asset_path("tests_with_encoding/src/unicoder.h"), 'src/'
+            FileUtils.cp test_asset_path("tests_with_encoding/src/unicoder.c"), 'src/'
           end
         end
       end
 
-      it "can test with standard preprocessing when source files contain non-ASCII UTF-8 characters in comments" do
+      it "tests standard preprocessing with non-ASCII UTF-8 characters in comments" do
         @c.with_context do
           Dir.chdir @proj_name do
+            FileUtils.cp test_asset_path("tests_with_encoding/test/test_unicoder.c"), 'test/'
             @c.merge_project_yml_for_test({ :project => { :use_test_preprocessor => :mocks } })
             output = @c.ceedling_build_exec("test:unicoder")
             expect(@c.last_exit_status).to eq(0)
@@ -52,15 +51,52 @@ ceedling_system_tests do
         end
       end
 
-      it "can test with fallback preprocessing when source files contain non-ASCII UTF-8 characters in comments" do
+      it "tests fallback preprocessing with non-ASCII UTF-8 characters in comments" do
         @c.with_context do
           Dir.chdir @proj_name do
+            FileUtils.cp test_asset_path("tests_with_encoding/test/test_unicoder.c"), 'test/'
             settings = {
               :project    => { :use_test_preprocessor => :mocks },
               :test_build => { :preprocessing_fallback => true }
             }
             @c.merge_project_yml_for_test(settings)
             output = @c.ceedling_build_exec("test:unicoder")
+            expect(@c.last_exit_status).to eq(0)
+            expect(output).to match(/using fallback method/i)
+            expect(output).to match(/TESTED:\s+1/)
+            expect(output).to match(/PASSED:\s+1/)
+            expect(output).to match(/FAILED:\s+0/)
+          end
+        end
+      end
+
+      it "tests Partials with standard preprocessing and non-ASCII UTF-8 characters in comments" do
+        @c.with_context do
+          Dir.chdir @proj_name do
+            FileUtils.cp test_asset_path("tests_with_encoding/test/test_unicoder_partial.c"), 'test/'
+            # :use_partials automatically enables mocking and preprocessing — no explicit
+            # :use_test_preprocessor needed.
+            @c.merge_project_yml_for_test({ :project => { :use_partials => true } })
+            output = @c.ceedling_build_exec("test:unicoder_partial")
+            expect(@c.last_exit_status).to eq(0)
+            expect(output).not_to match(/using fallback method/i)
+            expect(output).to match(/TESTED:\s+1/)
+            expect(output).to match(/PASSED:\s+1/)
+            expect(output).to match(/FAILED:\s+0/)
+          end
+        end
+      end
+
+      it "tests Partials with fallback preprocessing and non-ASCII UTF-8 characters in comments" do
+        @c.with_context do
+          Dir.chdir @proj_name do
+            FileUtils.cp test_asset_path("tests_with_encoding/test/test_unicoder_partial.c"), 'test/'
+            settings = {
+              :project    => { :use_partials => true },
+              :test_build => { :preprocessing_fallback => true }
+            }
+            @c.merge_project_yml_for_test(settings)
+            output = @c.ceedling_build_exec("test:unicoder_partial")
             expect(@c.last_exit_status).to eq(0)
             expect(output).to match(/using fallback method/i)
             expect(output).to match(/TESTED:\s+1/)

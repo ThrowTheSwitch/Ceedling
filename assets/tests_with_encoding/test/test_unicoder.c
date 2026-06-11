@@ -7,9 +7,6 @@
 #include "unity.h"
 #include "mock_unicoder.h"
 
-void setUp(void) {}
-void tearDown(void) {}
-
 /* Verify that the mocked unicoder_greet() returns the expected value. */
 void test_unicoder_greet_returns_expected_length(void)
 {

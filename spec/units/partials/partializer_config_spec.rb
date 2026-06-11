@@ -36,9 +36,8 @@ describe PartializerConfig do
       @config = described_class.new({ c_extractor_preprocessing: c_extractor_preprocessing })
     end
 
-    it "extracts configs from a raw IO object" do
-      io = StringIO.new('TEST_PARTIAL_PUBLIC_MODULE(widget)')
-      result = @config.extract_configs(io)
+    it "extracts configs from a string" do
+      result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(widget)')
       expect( result['widget'].tests.type ).to eq Partials::PUBLIC
     end
   end

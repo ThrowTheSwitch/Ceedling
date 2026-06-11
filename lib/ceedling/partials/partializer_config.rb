@@ -10,6 +10,7 @@ require 'strscan'
 require 'ceedling/partials/partials'
 require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_preprocessing'
+require 'ceedling/encodinator'
 
 class PartializerConfig
 
@@ -69,21 +70,20 @@ class PartializerConfig
   # Extract partial configuration macros from a string.
   # Returns a hash of module_name => Config.
   def extract_configs_from_string(string)
-    extract_configs( StringIO.new(string) )
+    extract_configs( string.clean_encoding )
   end
 
   # Extract partial configuration macros from a file.
   # Returns a hash of module_name => Config.
   def extract_configs_from_file(filepath)
-    File.open(filepath) { |f| extract_configs(f) }
+    extract_configs( File.read(filepath).clean_encoding )
   end
 
   # Core three-pass extraction:
   #   Pass 1 — MODULE macros: build Config entries, set types
   #   Pass 2 — CONFIG macros: populate additions/subtractions
   #   Pass 3 — Validation: raise if any Config has no meaningful content
-  def extract_configs(io)
-    content = io.read
+  def extract_configs(content)
     scanner = StringScanner.new(content)
     calls   = @c_extractor_preprocessing.try_extract_macro_calls(scanner, MACRO_NAMES)
 

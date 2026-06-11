@@ -398,6 +398,40 @@ describe TestContextExtractor do
       expect( @extractor.lookup_test_cases( filepath ) ).to eq expected
     end
 
+    it "should extract test cases when source file contains non-ASCII UTF-8 characters in comments" do
+      filepath = "path/tests/test_file.c"
+
+      file_contents = <<~CONTENTS
+      // Copyright © 2024 Ünïcödé Corp. All rights reserved.
+      void test_this_function(void) {}
+      CONTENTS
+
+      input = StringIO.new( file_contents )
+      expect {
+        @extractor.collect_context( filepath, input, TestContextExtractor::Context::TEST_RUNNER_DETAILS )
+      }.not_to raise_error
+
+      expected = [{ :line_number => 2, :test => 'test_this_function' }]
+      expect( @extractor.lookup_test_cases( filepath ) ).to eq expected
+    end
+
+    it "should extract partials configuration when source file contains non-ASCII UTF-8 characters in comments" do
+      filepath = "path/tests/test_file_with_partials.c"
+
+      file_contents = <<~CONTENTS
+      // Partials config — © 2024 Ünïcödé Corp.
+      #include TEST_PARTIAL_PUBLIC_MODULE(foo)
+      CONTENTS
+
+      input = StringIO.new( file_contents )
+      expect {
+        @extractor.collect_context( filepath, input, TestContextExtractor::Context::PARTIALS_CONFIGURATION )
+      }.not_to raise_error
+
+      result = @extractor.lookup_partials_config( filepath )
+      expect( result ).to have_key( 'foo' )
+    end
+
   end
 
 end
