@@ -5,8 +5,6 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-'
-
 class Includes
   # Class method to convert mixed list of Include objects into an order-preserving list of hashes
   #
