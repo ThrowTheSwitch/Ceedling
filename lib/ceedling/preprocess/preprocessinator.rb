@@ -40,11 +40,11 @@ class Preprocessinator
   end
 
   def directives_only_available?
-    # When :test_build ↳ :preprocessing_fallback is set, skip directives-only preprocessing
+    # When :test_build ↳ :preprocess_force_fallback is set, skip directives-only preprocessing
     # entirely and use text-based fallback for all files. Useful for testing the fallback
     # path and for toolchains that falsely claim -fdirectives-only support.
-    # NOTE: `test_build_preprocessing_fallback` is not available at construction (DI) time.
-    return false if @configurator.test_build_preprocessing_fallback
+    # NOTE: `test_build_preprocess_force_fallback` is not available at construction (DI) time.
+    return false if @configurator.test_build_preprocess_force_fallback
     return @directives_only_available
   end
 

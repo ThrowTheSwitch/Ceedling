@@ -57,7 +57,7 @@ ceedling_system_tests do
             FileUtils.cp test_asset_path("tests_with_encoding/test/test_unicoder.c"), 'test/'
             settings = {
               :project    => { :use_test_preprocessor => :mocks },
-              :test_build => { :preprocessing_fallback => true }
+              :test_build => { :preprocess_force_fallback => true }
             }
             @c.merge_project_yml_for_test(settings)
             output = @c.ceedling_build_exec("test:unicoder")
@@ -93,7 +93,7 @@ ceedling_system_tests do
             FileUtils.cp test_asset_path("tests_with_encoding/test/test_unicoder_partial.c"), 'test/'
             settings = {
               :project    => { :use_partials => true },
-              :test_build => { :preprocessing_fallback => true }
+              :test_build => { :preprocess_force_fallback => true }
             }
             @c.merge_project_yml_for_test(settings)
             output = @c.ceedling_build_exec("test:unicoder_partial")
