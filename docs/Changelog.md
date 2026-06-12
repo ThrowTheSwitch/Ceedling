@@ -33,11 +33,11 @@ A local verion of this site that is navigable with your web browser from your fi
 
 ### CppCheck plugin
 
-Alejandro Rosso's excellent Cppcheck plugin has been added to the default plugin collection (with Alejandro's permission). We're excited to make it easier for everyone to use this great addition!
+Alejandro Rosso's excellent Cppcheck plugin has been added to the stock plugin collection (with Alejandro's permission). We're excited to make it easier for everyone to use this great addition!
 
 ### Valgrind plugin
 
-James Raphael Tiovalen's helpful Valgrind plugin has been updated to work with the latest Ceedling, and added to the default plugin collection. Thank you, James for the great contribution!
+James Raphael Tiovalen's helpful Valgrind plugin has been updated to work with the latest Ceedling and added to the stock plugin collection. Thank you, James for the great contribution!
 
 ### GCov plugin support for Modified Condition / Decision Coverage
 
@@ -47,24 +47,33 @@ Ceedling’s [GCov plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugi
 
 Preprocessing support now properly distinguishes and handles system includes (`#include <system.h>`) and user includes (`#include "user.h"`).
 
+### Project configuration
+
+#### `:project` ↳ `:name`
+Optional project name that, if present, adds a new first line to build logging output with the project name.
+
+#### `:test_build` ↳ `:preprocess_force_fallback`
+When test preprocessing is enabled, Ceedling discovers whether your toolchain supports certain preprocessing options. If it does not, Ceedling uses simpler fallback options to extract text from C source and header files. This option overrides that discovery and forces the fallback options to be used. This is primarily used for Ceedling’s self-tests, but it could be handy if the automatic feature probe fails with a false positive.
+
 ## 💪 Fixed
 
 - #1011 Performance Improvements.
 - #1014 Line Continuations not working in test name.
 - #1015 directive-only issue.
 - #1024 Fixed bug in options-handling for warnings log report.
-- #358 Mocks with relative path in `#include` directive.
 - #1128 Command line mixin precedence.
 - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) correct merge order explanations and clarify Mixins generally.
 - `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
 - PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
-- PR #1056 fix for extracting `#include` directive filenames that contain dashes.
-- Multiple fixes to `#include`s handling and encoding.
+- Multiple fixes and improvements to `#include`s handling and encoding plus these issues & PRs:
+   - #358 Mocks with relative path in `#include` directive.
+   - PR #1056 fix for extracting `#include` directive filenames that contain dashes.
+   - #1127 Fixes to path handling in `#include` directives.
 - Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
 - #1120 An overly “helpful” holdover from Ceedling’s earliest days caused certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
-- #1127 Fixes to path handling in `#include` directives.
-- #1162 Fixes to Partials handling for multi-byte characters (e.g. ©) in comment blocks.
+- #1162 Fixes to Partials handling for file encoding / multi-byte characters (e.g. ©) in comment blocks.
+- #1160 Proper handling of locales and file encoding.
 
 ## ⚠️ Changed
 
