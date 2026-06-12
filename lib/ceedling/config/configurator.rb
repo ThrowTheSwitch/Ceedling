@@ -90,6 +90,61 @@ class Configurator
   end
 
 
+  def resolve_directives_only_preprocessing(config, tool_executor)
+    # Nothing to probe if preprocessing is disabled
+    preprocessing = config[:project][:use_test_preprocessor]
+    config[:test_build][:preprocess_directives_only_available] = false
+    return if preprocessing == :none
+
+    # When forced fallback is enabled, skip the probe and mark directives-only unavailable
+    if config[:test_build][:preprocess_force_fallback]
+      @loginator.log(
+        "Forcing fallback text-based preprocessing in place of directives-only (:test_build ↳ :preprocess_force_fallback is enabled).",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+      return
+    end
+
+    # Probe whether the configured C preprocessor supports -fdirectives-only.
+    # Use the Unity header as it is always-available, self-contained, no include paths needed.
+    # Output goes to stdout (no -o flag) to avoid platform-specific null device paths.
+    probe_filepath = File.join( CEEDLING_VENDOR, UNITY_LIB_PATH, UNITY_H_FILE )
+
+    # Minimal subset of the directives-only preprocessor tool: no defines, no include paths,
+    # no output file. Sufficient to detect `-fdirectives-only` support via warning or exit code.
+    probe_tool = {
+      executable: config[:tools][:test_file_directives_only_preprocessor][:executable],
+      name:       'directives_only_probe',
+      arguments:  [
+        '-E',
+        '-fdirectives-only',
+        '-x c',
+        "\"${1}\""
+      ]
+    }
+
+    command = tool_executor.build_command_line( probe_tool, [], probe_filepath )
+    # Exception if something goes wrong; we want to detect errors here
+    command[:options][:boom] = false
+    results = tool_executor.exec( command )
+
+    # Clang and some older GCC emit a warning (not an error) when -fdirectives-only is unsupported
+    warning_detected = results[:output].match?( /warning[^\n]+-fdirectives-only/ )
+
+    if warning_detected || results[:exit_code] != 0
+      @loginator.log(
+        "Preprocessor lacks -fdirectives-only support ➡️ Ceedling will use text-based fallback for preprocessing.",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+      # :preprocess_directives_only_available already set to false above
+    else
+      config[:test_build][:preprocess_directives_only_available] = true
+    end
+  end
+
+
   # The default tools (eg. DEFAULT_TOOLS_TEST) are merged into default config hash
   def merge_tools_defaults(config, default_config)
     @loginator.lazy( Verbosity::OBNOXIOUS ) do 

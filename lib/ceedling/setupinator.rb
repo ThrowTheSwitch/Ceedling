@@ -139,6 +139,12 @@ class Setupinator
     # Fill out any missing tool config value
     @configurator.populate_tools_config( config_hash )
 
+    # Probe whether the configured C preprocessor supports -fdirectives-only output.
+    # Must run after tool configs are populated (executable name resolved) and before
+    # build() flattens the config ➡️ the new key is picked up by accessor generation.
+    log_step( 'Probing directives-only preprocessor support', heading: false )
+    @configurator.resolve_directives_only_preprocessing( config_hash, @ceedling[:tool_executor] )
+
     # From any tool definition shortcuts:
     #  - Redefine executable if set
     #  - Add arguments from tool definition shortcuts if set

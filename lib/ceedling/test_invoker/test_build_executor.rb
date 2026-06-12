@@ -34,6 +34,8 @@ class TestBuildExecutor
 
   # Stage 6: Preprocess partial header files for extract-and-generate pass.
   def stage_preprocess_partial_headers(state)
+    directives_only = @configurator.test_build_preprocess_directives_only_available
+
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
       config   = details[:config]
@@ -49,15 +51,8 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      begin
-        _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-      rescue => ex
-        msg = "Using fallback methods to extract #includes and other directives: #{ex.message}"
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        next
-      end
-      details[:directives_only_filepath] = _filepath
-    end if @preprocessinator.directives_only_available?
+      details[:directives_only_filepath] = @preprocessinator.generate_directives_only_output( **arg_hash )
+    end if directives_only
 
     # Preprocess and assemble header files
     @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
@@ -70,7 +65,7 @@ class TestBuildExecutor
         test:                     name,
         filepath:                 config.filepath,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
+        fallback:                 (!directives_only or directives_only_filepath.nil?),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
         vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
@@ -101,6 +96,8 @@ class TestBuildExecutor
 
   # Stage 7: Preprocess partial source files for extract-and-generate pass.
   def stage_preprocess_partial_sources(state)
+    directives_only = @configurator.test_build_preprocess_directives_only_available
+
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
       config   = details[:config]
@@ -116,15 +113,8 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      begin
-        _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-      rescue => ex
-        msg = "Using fallback methods to extract #includes and other directives: #{ex.message}"
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        next
-      end
-      details[:directives_only_filepath] = _filepath
-    end if @preprocessinator.directives_only_available?
+      details[:directives_only_filepath] = @preprocessinator.generate_directives_only_output( **arg_hash )
+    end if directives_only
 
     # Preprocess and assemble source files
     @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
@@ -137,7 +127,7 @@ class TestBuildExecutor
         test:                     name,
         filepath:                 config.filepath,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
+        fallback:                 (!directives_only or directives_only_filepath.nil?),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
         vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
@@ -168,6 +158,8 @@ class TestBuildExecutor
 
   # Stage 8: Extract and generate partial implementation and interface files.
   def stage_generate_partials(state)
+    directives_only = @configurator.test_build_preprocess_directives_only_available
+
     partials = []
     state.testables.each do |_, testable|
       next if testable.partials.configs.empty?
@@ -184,7 +176,7 @@ class TestBuildExecutor
       module_contents = @partializer.extract_module_contents(
         name,
         config,
-        !@preprocessinator.directives_only_available?
+        !directives_only
       )
 
       @partializer.validate_config( c_module: module_contents, config: config, name: name )
@@ -263,6 +255,8 @@ class TestBuildExecutor
 
   # Stage 9: Preprocess header files to be mocked.
   def stage_preprocess_mocks(state)
+    directives_only = @configurator.test_build_preprocess_directives_only_available
+
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
       details  = mock[:details]
@@ -279,13 +273,7 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      begin
-        _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-      rescue => ex
-        msg = "Using fallback methods to extract #includes and other directives: #{ex.message}"
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        next
-      end
+      _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
 
       if _filepath.nil?
         msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
@@ -293,7 +281,7 @@ class TestBuildExecutor
       end
 
       mock[:directives_only_filepath] = _filepath
-    end if @preprocessinator.directives_only_available?
+    end if directives_only
 
     # Preprocess and assemble header files to be mocked
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
@@ -307,7 +295,7 @@ class TestBuildExecutor
         test:                     testable.name,
         filepath:                 details[:source],
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?),
+        fallback:                 (!directives_only or directives_only_filepath.nil?),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
         vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
@@ -342,13 +330,15 @@ class TestBuildExecutor
 
   # Stage 11: Preprocess test files and extract source build directives.
   def stage_preprocess_test_files(state)
+    directives_only = @configurator.test_build_preprocess_directives_only_available
+
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath                 = testable.filepath
       filename                 = File.basename( filepath )
       name                     = testable.name
       directives_only_filepath = testable.preprocess[:directives_only][:filepath]
 
-      fallback = (!@preprocessinator.directives_only_available? or directives_only_filepath.nil?)
+      fallback = (!directives_only or directives_only_filepath.nil?)
 
       arg_hash = {
         test:                     name,

@@ -35,17 +35,6 @@ class Preprocessinator
     # Key: includes list filepath (String), Value: Mutex
     @file_locks = {}
     @file_locks_mutex = Mutex.new
-
-    @directives_only_available = true
-  end
-
-  def directives_only_available?
-    # When :test_build ↳ :preprocess_force_fallback is set, skip directives-only preprocessing
-    # entirely and use text-based fallback for all files. Useful for testing the fallback
-    # path and for toolchains that falsely claim -fdirectives-only support.
-    # NOTE: `test_build_preprocess_force_fallback` is not available at construction (DI) time.
-    return false if @configurator.test_build_preprocess_force_fallback
-    return @directives_only_available
   end
 
   # Extract bare includes (does not differentiate user/system) from a file.
@@ -81,13 +70,6 @@ class Preprocessinator
     )
     command[:options][:boom] = false
     results = @tool_executor.exec( command )
-
-    # Handle warning from preprocessor saying that clang can't handle directives-only (common with older clang)
-    if results[:output].match( /warning[^\n]+-fdirectives-only/ )
-      msg = "Your C preprocessor lacks support for directives-only output that Ceedling relies upon."
-      @directives_only_available = false
-      raise CeedlingException.new( msg )
-    end
 
     # Preprocessor did not succeed
     if results[:exit_code] != 0
