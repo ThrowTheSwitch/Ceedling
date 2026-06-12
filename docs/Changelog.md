@@ -43,9 +43,14 @@ James Raphael Tiovalen's helpful Valgrind plugin has been updated to work with t
 
 Ceedling’s [GCov plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/) for coverage reporting now supports the [Modified Condition / Decision Coverage](https://ldra.com/capabilities/mc-dc/) abilities of GCC 14+ and optionally GCovr 8+.
 
-### System includes
+### Preprocessing for tests
 
+#### System includes
 Preprocessing support now properly distinguishes and handles system includes (`#include <system.h>`) and user includes (`#include "user.h"`).
+
+#### Fallback preprocessing
+When your toolchain’s preprocessor lacks certain features, Ceedling still attempts to extract information and code from C files through fallback text processing.
+This fallback processing has been improved in a handful of ways, most notably implementing simple conditional compilation (`#ifdef`) processing.
 
 ### Project configuration
 
