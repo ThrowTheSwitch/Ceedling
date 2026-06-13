@@ -21,8 +21,7 @@ ceedling_system_tests do
     @c.done!
   end
 
-  before { @proj_name = "fake_project" }
-  after { @c.with_context { FileUtils.rm_rf @proj_name } }
+  before { @proj_name = unique_proj_name("vendor") }
 
   describe "Deployed in a project's `vendor` directory" do
     before do

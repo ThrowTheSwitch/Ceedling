@@ -87,7 +87,7 @@ ceedling_system_tests do
       # mock is generated. The #ifndef CONDITIONAL_FEATURE test case runs and
       # passes (calls ConditionalModule_Init(), which is a no-op in the partial).
       # -----------------------------------------------------------------------
-      it "fallback partials without defines: excludes inactive #ifdef block from partial, runs #ifndef test case" do
+      it "should exclude inactive #ifdef block from partial and run #ifndef test case when defines are not provided" do
         @c.with_context do
           Dir.chdir @proj_name do
             settings = {
@@ -115,7 +115,7 @@ ceedling_system_tests do
       # passes (ConditionalModule_Init() calls OptionalDep_DoWork() in the
       # partial; the mock satisfies the expectation).
       # -----------------------------------------------------------------------
-      it "fallback partials with defines: includes active #ifdef block in partial, runs #ifdef test case" do
+      it "should include active #ifdef block in partial and run #ifdef test case when defines are provided" do
         @c.with_context do
           Dir.chdir @proj_name do
             settings = {
@@ -142,7 +142,7 @@ ceedling_system_tests do
       # the fallback partial preprocessor processes them.
       # (The test assets already contain non-ASCII UTF-8 in comments.)
       # -----------------------------------------------------------------------
-      it "fallback partials with UTF-8 in source/header comments near #ifdef does not raise errors" do
+      it "should not raise errors when processing UTF-8 in source/header comments near #ifdef" do
         @c.with_context do
           Dir.chdir @proj_name do
             settings = {

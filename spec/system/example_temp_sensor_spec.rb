@@ -20,7 +20,6 @@ ceedling_system_tests do
   end
 
   before { @proj_name = "temp_sensor" }
-  after { @c.with_context { FileUtils.rm_rf @proj_name } }
 
   describe "Command: `ceedling examples`" do
     before do
