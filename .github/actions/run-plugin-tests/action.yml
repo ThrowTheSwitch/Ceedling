@@ -1,0 +1,54 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# Internal composite action — not intended to be triggered directly.
+# Called after run-tests in the tests-linux and tests-windows jobs in ci.yml.
+# Requires the Ceedling gem to already be installed (done in run-tests).
+#
+# Note: Composite actions require an explicit `shell:` on every `run:` step — there is no
+# default shell. Steps using `uses:` (action calls) do not need `shell:`.
+
+name: 'Run Plugin Tests'
+description: 'Run FFF, module_generator, and dependencies plugin test suites (requires installed Ceedling gem)'
+
+runs:
+  using: "composite"
+  steps:
+    # Remove any systest results before building the gem
+    # This prevents breaking the gem build with super long filenames
+    - name: Remove any system test results before gem build
+      shell: bash
+      run: rm -rf systests/
+
+    # Build & Install Ceedling Gem
+    # Plugin test suites require the installed gem
+    - name: Build and Install Ceedling Gem
+      shell: bash
+      run: |
+        gem build ceedling.gemspec
+        gem install --local ceedling-*.gem
+
+    - name: "Run Tests on Ceedling Plugin: FFF"
+      shell: bash
+      run: |
+        cd plugins/fff
+        rake
+        cd ../..
+
+    - name: "Run Tests on Ceedling Plugin: Module Generator"
+      shell: bash
+      run: |
+        cd plugins/module_generator
+        rake
+        cd ../..
+
+    - name: "Run Tests on Ceedling Plugin: Dependencies"
+      shell: bash
+      run: |
+        cd plugins/dependencies
+        rake
+        cd ../..

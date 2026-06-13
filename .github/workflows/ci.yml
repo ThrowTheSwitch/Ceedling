@@ -71,26 +71,11 @@ jobs:
       matrix:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
-      # Use a cache for our tools to speed up testing
-      - uses: actions/cache@v4
+      # Common set up steps
+      - name: Set Up Ruby Test Environment
+        uses: ./.github/actions/setup
         with:
-          path: vendor/bundle
-          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
-
-      # Checks out repository under $GITHUB_WORKSPACE
-      - name: Checkout Latest Repo
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      # Set up Ruby to run test & build steps on multiple ruby versions
-      # This action installs Ruby and the Bundler gem using the version captured in Gemfile.lock
-      - name: Set Up Ruby with Version Matrix
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: ${{ matrix.ruby }}
+          ruby: ${{ matrix.ruby }}
 
       # Workaround: Fix Ruby toolcache Gem directory permissions (Bundler exit 38)
       # This is an environmental Ruby/toolcache issue, not a Bundler issue; the fix must
@@ -117,8 +102,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install --assume-yes --quiet valgrind
-                # Build cppcheck from source at a pinned version so all plugin options
-                
+
+      # Build cppcheck from source at a pinned version so all plugin options
       # (including SARIF, which requires 2.16+) are available for testing.
       # The installed binary is cached by version to avoid rebuilding on every run.
       - name: Cache cppcheck binary and data files
@@ -159,72 +144,15 @@ jobs:
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
-      # Download HTML docs bundle built by generate-docs job
-      - name: Download HTML Documentation Bundle
-        uses: actions/download-artifact@v4
+      # Common test suite
+      - name: Run Test Suite
+        uses: ./.github/actions/run-tests
         with:
-          name: gem-docs-site-local
-          path: site-local/
+          ruby: ${{ matrix.ruby }}
 
-      # Run Tests
-      - name: Run All Self Tests
-        env:
-          # Set the RSpec formatter to condensed dots
-          CI_RSPEC_PROGRESS_FORMAT: true
-        run: |
-          rake ci
-
-      # Remove passing system test artifacts before upload so the artifact contains only failure data
-      - name: Remove passing system test artifacts before upload
-        if: failure()
-        shell: bash
-        run: |
-          rm -rf systests/proj/pass
-          rm -f systests/systest.pass.*.log
-
-      # Upload system test failure logs and temp project directories on test job failure
-      - name: Upload system test failure artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: systest-failures-${{ runner.os }}-ruby-${{ matrix.ruby }}
-          path: systests/
-          if-no-files-found: ignore
-
-      # Remove any systest results before building the gem
-      # This prevents breaking the gem build with super long filenames
-      - name: Remove any system test results before gem build
-        shell: bash
-        run: |
-          rm -rf systests/
-
-      # Build & Install Ceedling Gem
-      # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
-      - name: Build and Install Ceedling Gem
-        run: |
-          gem build ceedling.gemspec
-          gem install --local ceedling-*.gem
-
-      # Run FFF Plugin Tests
-      - name: "Run Tests on Ceedling Plugin: FFF"
-        run: |
-          cd plugins/fff
-          rake
-          cd ../..
-
-      # Run Module Generator Plugin Tests
-      - name: "Run Tests on Ceedling Plugin: Module Generator"
-        run: |
-          cd plugins/module_generator
-          rake
-          cd ../..
-
-      # Run Dependencies Plugin Tests
-      - name: "Run Tests on Ceedling Plugin: Dependencies"
-        run: |
-          cd plugins/dependencies
-          rake
-          cd ../..
+      # Common plugin test steps
+      - name: Run Plugin Tests
+        uses: ./.github/actions/run-plugin-tests
 
 
   # Job: Windows test suite
@@ -237,26 +165,11 @@ jobs:
       matrix:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
-      # Use a cache for our tools to speed up testing
-      - uses: actions/cache@v4
+      # Common set up steps
+      - name: Set Up Ruby Test Environment
+        uses: ./.github/actions/setup
         with:
-          path: vendor/bundle
-          key: bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            bundle-use-ruby-${{ runner.os }}-${{ matrix.ruby }}-
-
-      # Checks out repository under $GITHUB_WORKSPACE
-      - name: Checkout Latest Repo
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      # Set up Ruby to run test & build steps on multiple ruby versions
-      # This action installs Ruby and the Bundler gem using the version captured in Gemfile.lock
-      - name: Set Up Ruby with Version Matrix
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: ${{ matrix.ruby }}
+          ruby: ${{ matrix.ruby }}
 
       # Install Gem Dependencies
       - name: Install Gem Dependencies
@@ -282,72 +195,15 @@ jobs:
           choco upgrade cppcheck -y
           echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
 
-      # Download HTML docs bundle built by generate-docs job
-      - name: Download HTML Documentation Bundle
-        uses: actions/download-artifact@v4
+      # Common test suite
+      - name: Run Test Suite
+        uses: ./.github/actions/run-tests
         with:
-          name: gem-docs-site-local
-          path: site-local/
+          ruby: ${{ matrix.ruby }}
 
-      # Run Tests
-      - name: Run All Self Tests
-        env:
-          # Set the RSpec formatter to condensed dots
-          CI_RSPEC_PROGRESS_FORMAT: true
-        run: |
-          rake ci
-
-      # Remove passing system test artifacts before upload so the artifact contains only failure data
-      - name: Remove passing system test artifacts before upload
-        if: failure()
-        shell: bash
-        run: |
-          rm -rf systests/proj/pass
-          rm -f systests/systest.pass.*.log
-
-      # Upload system test failure logs and temp project directories on test job failure
-      - name: Upload system test failure artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: systest-failures-${{ runner.os }}-ruby-${{ matrix.ruby }}
-          path: systests/
-          if-no-files-found: ignore
-
-      # Remove any systest results before building the gem
-      # This prevents breaking the gem build with super long filenames
-      - name: Remove any system test results before gem build
-        shell: bash
-        run: |
-          rm -rf systests/
-
-      # Build & Install Ceedling Gem
-      # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
-      - name: Build and Install Ceedling Gem
-        run: |
-          gem build ceedling.gemspec
-          gem install --local ceedling-*.gem
-
-      # Run FFF Plugin Tests
-      - name: "Run Tests on Ceedling Plugin: FFF"
-        run: |
-          cd plugins/fff
-          rake
-          cd ../..
-
-      # Run Module Generator Plugin Tests
-      - name: "Run Tests on Ceedling Plugin: Module Generator"
-        run: |
-          cd plugins/module_generator
-          rake
-          cd ../..
-
-      # Run Dependencies Plugin Tests
-      - name: "Run Tests on Ceedling Plugin: Dependencies"
-        run: |
-          cd plugins/dependencies
-          rake
-          cd ../..
+      # Common plugin test steps
+      - name: Run Plugin Tests
+        uses: ./.github/actions/run-plugin-tests
 
 
   # Job: Preprocessing locale encoding regression test
@@ -422,7 +278,7 @@ jobs:
   # Verifies a clean gem build is possible; the built gem is uploaded as a
   # downloadable workflow artifact. No release is created here.
   build-gem:
-    name: "Build Ceedling Gem"
+    name: "Validate Ceedling Gem Build"
     needs:
       - tests-linux
       - tests-windows
@@ -453,7 +309,7 @@ jobs:
         run: |
           bundle install
 
-      # Download HTML docs bundle built by generate-docs job
+      # Download HTML docs bundle built by generate-docs job to validate docs ingestion in gem build
       - name: Download HTML Documentation Bundle
         uses: actions/download-artifact@v4
         with:
