@@ -176,7 +176,6 @@ jobs:
 
       # Remove passing system test artifacts before upload so the artifact contains only failure data
       - name: Remove passing system test artifacts before upload
-        if: failure()
         shell: bash
         run: |
           rm -rf systest-results/projects/pass
@@ -190,6 +189,12 @@ jobs:
           name: systest-failures-${{ runner.os }}-ruby-${{ matrix.ruby }}
           path: systest-results/
           if-no-files-found: ignore
+
+      # Remove any systest results before building the gem
+      - name: Remove any system test results before gem build
+        shell: bash
+        run: |
+          rm -rf systest-results/
 
       # Build & Install Ceedling Gem
       # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
@@ -292,7 +297,6 @@ jobs:
 
       # Remove passing system test artifacts before upload so the artifact contains only failure data
       - name: Remove passing system test artifacts before upload
-        if: failure()
         shell: bash
         run: |
           rm -rf systest-results/projects/pass
@@ -306,6 +310,12 @@ jobs:
           name: systest-failures-${{ runner.os }}-ruby-${{ matrix.ruby }}
           path: systest-results/
           if-no-files-found: ignore
+
+      # Remove any systest results before building the gem
+      - name: Remove any system test results before gem build
+        shell: bash
+        run: |
+          rm -rf systest-results/
 
       # Build & Install Ceedling Gem
       # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
