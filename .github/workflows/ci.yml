@@ -176,6 +176,7 @@ jobs:
 
       # Remove passing system test artifacts before upload so the artifact contains only failure data
       - name: Remove passing system test artifacts before upload
+        if: failure()
         shell: bash
         run: |
           rm -rf systest-results/projects/pass
@@ -191,6 +192,7 @@ jobs:
           if-no-files-found: ignore
 
       # Remove any systest results before building the gem
+      # This prevents breaking the gem build with super long filenames
       - name: Remove any system test results before gem build
         shell: bash
         run: |
@@ -297,6 +299,7 @@ jobs:
 
       # Remove passing system test artifacts before upload so the artifact contains only failure data
       - name: Remove passing system test artifacts before upload
+        if: failure()
         shell: bash
         run: |
           rm -rf systest-results/projects/pass
@@ -312,6 +315,7 @@ jobs:
           if-no-files-found: ignore
 
       # Remove any systest results before building the gem
+      # This prevents breaking the gem build with super long filenames
       - name: Remove any system test results before gem build
         shell: bash
         run: |
