@@ -174,13 +174,21 @@ jobs:
         run: |
           rake ci
 
-      # Upload any system test failure logs on test job failure
-      - name: Upload system test failure logs
+      # Remove passing system test artifacts before upload so the artifact contains only failure data
+      - name: Remove passing system test artifacts before upload
+        if: failure()
+        shell: bash
+        run: |
+          rm -rf systest-results/projects/pass
+          rm -f systest-results/systest.pass.*.log
+
+      # Upload system test failure logs and temp project directories on test job failure
+      - name: Upload system test failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: systest-failure-logs-${{ runner.os }}-ruby-${{ matrix.ruby }}
-          path: systest.*.fail.log
+          name: systest-failures-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: systest-results/
           if-no-files-found: ignore
 
       # Build & Install Ceedling Gem
@@ -282,13 +290,21 @@ jobs:
         run: |
           rake ci
 
-      # Upload any system test failure logs on test job failure
-      - name: Upload system test failure logs
+      # Remove passing system test artifacts before upload so the artifact contains only failure data
+      - name: Remove passing system test artifacts before upload
+        if: failure()
+        shell: bash
+        run: |
+          rm -rf systest-results/projects/pass
+          rm -f systest-results/systest.pass.*.log
+
+      # Upload system test failure logs and temp project directories on test job failure
+      - name: Upload system test failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: systest-failure-logs-${{ runner.os }}-ruby-${{ matrix.ruby }}
-          path: systest.*.fail.log
+          name: systest-failures-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: systest-results/
           if-no-files-found: ignore
 
       # Build & Install Ceedling Gem
@@ -368,14 +384,23 @@ jobs:
           LANG: ja_JP.UTF-8
           CI_RSPEC_PROGRESS_FORMAT: true
         run: |
-          rake spec:system:preprocessing_locale
+          rake spec:system:debug:preprocessing_locale
 
-      - name: Upload system test failure logs
+      # Remove passing system test artifacts before upload so the artifact contains only failure data
+      - name: Remove passing system test artifacts before upload
+        if: failure()
+        shell: bash
+        run: |
+          rm -rf systest-results/projects/pass
+          rm -f systest-results/systest.pass.*.log
+
+      # Upload system test failure logs and temp project directories on test job failure
+      - name: Upload system test failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: systest-locale-failure-logs-ruby-3.3
-          path: systest.*.fail.log
+          name: systest-failures-locale-ruby-3.3
+          path: systest-results/
           if-no-files-found: ignore
 
 

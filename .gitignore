@@ -16,7 +16,7 @@ plugins/dependencies/example/supervisor/build/
 # Logs / test output
 *.pass
 *.fail
-*.fail.log
+systest-results/
 
 # Generated documentation site builds
 site-web/

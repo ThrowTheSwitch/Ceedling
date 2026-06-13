@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'fileutils'
 require_relative 'gem_dir_layout'
 
 class SystemContext
@@ -13,19 +14,38 @@ class SystemContext
 
   attr_reader :dir, :gem, :console_summary, :raw_output, :last_exit_status, :last_cmd
 
+  SYSTEM_TEST_KEEP_ENV = 'CEEDLING_SYSTEM_TEST_KEEP'
+
   def initialize
-    @dir = Dir.mktmpdir
+    if ENV[SYSTEM_TEST_KEEP_ENV]
+      # In debug mode, root the temp dir inside systest-results/projects/ so CI can upload it.
+      # done! will sort it into pass/ or fail/ once the test outcome is known.
+      base = File.join(Dir.pwd, 'systest-results', 'projects')
+      FileUtils.mkdir_p(base)
+      @dir = Dir.mktmpdir('systest_', base)
+    else
+      @dir = Dir.mktmpdir
+    end
     @gem = GemDirLayout.new(@dir)
   end
 
-  SYSTEM_TEST_KEEP_ENV = 'CEEDLING_SYSTEM_TEST_KEEP'
-
   def done!
     if ENV[SYSTEM_TEST_KEEP_ENV]
-      $stderr.puts "Keeping test artifacts at: #{@dir} (#{SYSTEM_TEST_KEEP_ENV} is set)"
+      # Move temp dir to pass/ or fail/ so CI can delete the pass/ tree before uploading,
+      # keeping the artifact lean and containing only failure-relevant data.
+      subdir = @failed ? 'fail' : 'pass'
+      dest   = File.join(File.dirname(@dir), subdir, File.basename(@dir))
+      FileUtils.mkdir_p(File.dirname(dest))
+      FileUtils.mv(@dir, dest)
+      $stderr.puts "Test artifacts saved at: #{dest} (#{SYSTEM_TEST_KEEP_ENV} is set)"
     else
       FileUtils.rm_rf(@dir)
     end
+  end
+
+  # Called by the RSpec after(:each) hook on failure so done! routes this context to fail/.
+  def mark_failed!
+    @failed = true
   end
 
   def deploy_gem

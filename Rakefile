@@ -2,7 +2,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -35,7 +35,7 @@ end
 desc "Run all specs: unit specs first, then system specs"
 task 'specs:all' => ['specs:units', 'specs:system']
 
-desc "Run system specs with artifact retention and per-test failure log files"
+desc "Run all system specs with artifact retention"
 task 'specs:system:debug' do
   ENV['CEEDLING_SYSTEM_TEST_KEEP'] = '1'
   Rake::Task['specs:system'].invoke
@@ -58,6 +58,15 @@ Dir['spec/system/**/*_spec.rb'].each do |p|
   RSpec::Core::RakeTask.new("spec:system:#{base}") do |t|
     t.pattern    = p
     t.rspec_opts = '--format documentation'
+  end
+end
+
+# Individual system specs with debug artifact retention (unadvertised)
+Dir['spec/system/**/*_spec.rb'].each do |p|
+  base = File.basename(p,'.*').gsub('_spec','')
+  task "spec:system:debug:#{base}" do
+    ENV['CEEDLING_SYSTEM_TEST_KEEP'] = '1'
+    Rake::Task["spec:system:#{base}"].invoke
   end
 end
 
@@ -87,7 +96,7 @@ end
 ##
 
 task :default => ['specs:all']
-task :ci      => ['specs:all']
+task :ci      => ['specs:units', 'specs:system:debug']
 
 task :no_color do 
   #doesn't do anything at the moment
@@ -179,8 +188,16 @@ namespace :docs do
     venv_sh "mike serve"
   end
 
-  desc "Deploy 'dev' version to branch and push to Github Pages"
-  task :deploy do
-    venv_sh "mike deploy --push dev"
+  namespace :deploy do
+    desc "Deploy 'dev' version to Github Pages"
+    task :dev do
+      venv_sh "mike deploy --push dev"
+    end
+
+    desc "Deploy a release version to Github Pages (usage: rake docs:deploy:release[1.1.0])"
+    task :release, [:version] do |t, args|
+      version = args[:version] || raise("Version required: rake docs:deploy:release[1.1.0]")
+      venv_sh "mike deploy --push #{version} latest"
+    end
   end
 end
