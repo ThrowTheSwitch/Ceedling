@@ -61,7 +61,7 @@ jobs:
     uses: ./.github/workflows/_generate-docs.yml
 
 
-  # Job: Linux unit test suite
+  # Job: Linux test suite
   tests-linux:
     name: "Linux Test Suite"
     needs: generate-docs
@@ -212,7 +212,7 @@ jobs:
           cd ../..
 
 
-  # Job: Windows unit test suite
+  # Job: Windows test suite
   tests-windows:
     name: "Windows Test Suite"
     needs: generate-docs
@@ -320,6 +320,65 @@ jobs:
           cd ../..
 
 
+  # Job: Preprocessing locale encoding regression test
+  # Installs ja_JP.UTF-8 locale and runs the locale encoding spec under it.
+  # This replicates issue #1160's root cause: GCC under a non-C locale outputs
+  # localized preprocessor markers (e.g. <組み込み> for <built-in>) that Ceedling
+  # must handle without raising encoding errors.
+  # Note: No generate-docs dependency or docs download needed — system tests use
+  # a path-based Bundler deployment (deploy_gem) that does not require a gem build.
+  tests-linux-locale:
+    name: "Linux Test Suite (ja_JP.UTF-8 Locale)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-3.3-
+
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
+        run: |
+          sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      - name: Install ja_JP.UTF-8 Locale
+        run: |
+          sudo locale-gen ja_JP.UTF-8
+          sudo update-locale
+          locale -a
+
+      - name: Run Preprocessing Locale Spec under ja_JP.UTF-8
+        env:
+          LC_ALL: ja_JP.UTF-8
+          LANG: ja_JP.UTF-8
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: |
+          rake spec:system:preprocessing_locale
+
+      - name: Upload system test failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: systest-locale-failure-logs-ruby-3.3
+          path: systest.*.fail.log
+          if-no-files-found: ignore
+
+
   # Job: Build the Ceedling gem once all tests pass
   # Verifies a clean gem build is possible; the built gem is uploaded as a
   # downloadable workflow artifact. No release is created here.
@@ -328,6 +387,7 @@ jobs:
     needs:
       - tests-linux
       - tests-windows
+      - tests-linux-locale
     runs-on: ubuntu-latest
 
     steps:

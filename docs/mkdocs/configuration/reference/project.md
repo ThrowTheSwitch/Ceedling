@@ -19,8 +19,14 @@
 
 ## `:name`
 
-Optional project name that, if present, adds a new first line to logging output
-with the project name.
+Optional project name that, if present, adds a new first line to build logging 
+output with the project name.
+
+Example YAML:
+```yaml
+:project:
+  :name: "Q-36 Space Modulator"
+```
 
 ## `:build_root`
 

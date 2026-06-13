@@ -7,6 +7,8 @@
 
 require 'rake' # for ext() method
 require 'ceedling/file_wrapper'
+require 'ceedling/encodinator'
+require 'ceedling/preprocess/c_preprocessor_conditionals'
 
 class PreprocessinatorFileAssembler
 
@@ -16,6 +18,7 @@ class PreprocessinatorFileAssembler
     :tool_executor,
     :file_path_utils,
     :file_wrapper,
+    :parsing_parcels,
     :loginator,
     :reportinator
   )
@@ -65,7 +68,7 @@ class PreprocessinatorFileAssembler
     # It's possible preserving the macro from the original file's #include guard could trip something up.
     # Of course, it's also possible some header conditional compilation feature is dependent on it.
     # ¯\_(ツ)_/¯
-    include_guard = @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath, 2048 ) )
+    include_guard = @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath, 2048 ).clean_encoding )
 
     if fallback
       msg = @reportinator.generate_module_progress(
@@ -75,12 +78,17 @@ class PreprocessinatorFileAssembler
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
-      @file_wrapper.open( filepath, 'r' ) do |file|
-        # Get code contents of original source file as a string
+      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
+      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
+      @file_wrapper.open( filepath, 'rb' ) do |file|
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = file.read
+        _contents = file.read.clean_encoding
 
-        # Extract pragmas and macros from 
+        # Filter out inactive conditional blocks before extraction so that only
+        # pragmas and macros that are active for the current defines list are returned.
+        _contents = _filter_conditionals( _contents, defines )
+
+        # Extract pragmas and macros from
         pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
         macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
       end
@@ -112,10 +120,44 @@ class PreprocessinatorFileAssembler
     return contents
   end
 
-  def collect_file_contents_fallback(source_filepath:)
-    @file_wrapper.open( source_filepath, 'r' ) do |file|
-      return file.readlines( chomp: true )
+  def collect_file_contents_fallback(source_filepath:, defines: [])
+    # Open in binary mode + clean encoding: source files may have non-ASCII bytes
+    # in comments (e.g. © symbols) that raise encoding errors under locale-dependent
+    # text-mode encoding on non-C-locale systems.
+    # Call line.chomp before clean_encoding: readlines(chomp:true) in binary mode
+    # removes the \n separator but leaves \r on Windows CRLF lines. clean_encoding's
+    # :universal_newline option would then convert that lone \r → \n, producing lines
+    # with a spurious trailing \n that causes double-newlines in assembled output.
+    # String#chomp (no-arg) removes \r\n, \r, or \n — safe on all platforms.
+    cond_tracker = CPreprocessorConditionals.new( defines )
+    result = []
+
+    @file_wrapper.open( source_filepath, 'rb' ) do |file|
+      file.readlines( chomp: true ).each do |raw_line|
+        line = raw_line.chomp.clean_encoding
+
+        # Strip inline // comment from a temporary copy for directive detection only.
+        # We preserve the original line (with comments) in output per design intent.
+        stripped = line.sub( /\s*\/\/.*$/, '' ).lstrip
+
+        # Feed the comment-stripped line to the conditional tracker.
+        # The tracker only reacts to lines beginning with '#'.
+        cond_tracker.process_directive( stripped )
+
+        # Skip all preprocessor directive lines from output (they appear in the
+        # assembled file via the includes list and extras rather than raw content).
+        # The non-fallback path produces GCC expansion output which contains no
+        # literal #include/#define/#pragma lines either.
+        next if stripped.start_with?( '#' )
+
+        # Skip lines inside inactive conditional blocks
+        next unless cond_tracker.active?
+
+        result << line
+      end
     end
+
+    return result
   end
 
 
@@ -212,9 +254,14 @@ class PreprocessinatorFileAssembler
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
-      @file_wrapper.open( filepath, 'r' ) do |file|
-        # Get code contents of original source file as a string
-        _contents = file.read
+      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
+      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
+      @file_wrapper.open( filepath, 'rb' ) do |file|
+        _contents = file.read.clean_encoding
+
+        # Filter out inactive conditional blocks before extraction so that only
+        # test directives that are active for the current defines list are returned.
+        _contents = _filter_conditionals( _contents, defines )
 
         # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
         test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
@@ -232,6 +279,27 @@ class PreprocessinatorFileAssembler
     return contents, test_directives
   end
 
+
+  ### Private ###
+
+  private
+
+  # Filters `file_contents` string through CPreprocessorConditionals, returning
+  # only lines in active conditional blocks. Uses code_lines internally so
+  # comments are stripped and line continuations are joined before filtering.
+  # Intended for token extraction (pragmas, macro defs, test directives) — NOT
+  # for content output where comments must be preserved.
+  def _filter_conditionals(file_contents, defines)
+    tracker = CPreprocessorConditionals.new( defines )
+    lines = []
+    @parsing_parcels.code_lines( file_contents ) do |line|
+      tracker.process_directive( line )
+      lines << line if tracker.active?
+    end
+    lines.join("\n") + "\n"
+  end
+
+  public
 
   def assemble_preprocessed_code_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
     # Write contents of final preprocessed file a line at a time

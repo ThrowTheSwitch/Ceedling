@@ -100,6 +100,15 @@ def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', asset_file_name)
 end
 
+def unique_proj_name(prefix)
+  safe = RSpec.current_example.description
+    .downcase
+    .gsub(/[^a-z0-9]+/, '_')
+    .gsub(/\A_+|_+\z/, '')
+    .slice(0, 80)
+  "#{prefix}_#{safe}"
+end
+
 def convert_slashes(path)
   if RUBY_PLATFORM.downcase.match(/mingw|win32/)
     path.gsub("/","\\")

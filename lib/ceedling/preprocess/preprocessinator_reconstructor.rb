@@ -104,7 +104,9 @@ class PreprocessinatorReconstructor
   # Opens `input_filepath` for reading and `output_filepath` for writing,
   # then delegates to `compact_from_expansion` with the resulting IO objects.
   def compact_file_from_expansion(input_filepath:, source_filepath:, output_filepath:)
-    File.open( input_filepath, 'r' ) do |input|
+    # Open input in binary mode: GCC output under non-C locale contains non-ASCII bytes
+    # (localized markers). Per-line clean_encoding in _scan_expansion_for_file handles content.
+    File.open( input_filepath, 'rb' ) do |input|
       File.open( output_filepath, 'w' ) do |output|
         compact_from_expansion( input: input, filepath: source_filepath, output: output )
       end

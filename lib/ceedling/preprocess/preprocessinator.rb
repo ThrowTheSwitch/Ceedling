@@ -35,12 +35,6 @@ class Preprocessinator
     # Key: includes list filepath (String), Value: Mutex
     @file_locks = {}
     @file_locks_mutex = Mutex.new
-
-    @directives_only_available = true
-  end
-
-  def directives_only_available?
-    return @directives_only_available
   end
 
   # Extract bare includes (does not differentiate user/system) from a file.
@@ -77,13 +71,6 @@ class Preprocessinator
     command[:options][:boom] = false
     results = @tool_executor.exec( command )
 
-    # Handle warning from preprocessor saying that clang can't handle directives-only (common with older clang)
-    if results[:output].match /warning[^\n]+-fdirectives-only/
-      msg = "Your C preprocessor lacks support for directives-only output that Ceedling relies upon."
-      @directives_only_available = false
-      raise CeedlingException.new( msg )
-    end
-
     # Preprocessor did not succeed
     if results[:exit_code] != 0
       msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
@@ -108,7 +95,7 @@ class Preprocessinator
 
   # Extract user includes from a file using directives-only output (or text-only fallback).
   # Called externally and internally by `preprocess_common`.
-  def preprocess_user_includes(name:, filepath:, directives_only_filepath:, fallback: false)
+  def preprocess_user_includes(name:, filepath:, directives_only_filepath:, fallback: false, defines: [])
     includes = []
 
     if !fallback
@@ -119,8 +106,9 @@ class Preprocessinator
       )
     else
       includes = @includes_handler.extract_user_includes_from_text(
-        name:      name,
-        filepath:  filepath
+        name:     name,
+        filepath: filepath,
+        defines:  defines
       )
     end
 
@@ -129,10 +117,10 @@ class Preprocessinator
 
     return includes
   end
- 
+
   # Extract system includes from a file using directives-only output (or text-only fallback).
   # Called externally and internally by `preprocess_common`.
-  def preprocess_system_includes(name:, filepath:, directives_only_filepath:, fallback: false)
+  def preprocess_system_includes(name:, filepath:, directives_only_filepath:, fallback: false, defines: [])
     includes = []
 
     if !fallback
@@ -143,8 +131,9 @@ class Preprocessinator
       )
     else
       includes = @includes_handler.extract_system_includes_from_text(
-        name:                   name,
-        filepath:               filepath
+        name:     name,
+        filepath: filepath,
+        defines:  defines
       )
     end
 
@@ -332,7 +321,7 @@ class Preprocessinator
 
     contents =
       if fallback
-        @file_assembler.collect_file_contents_fallback( source_filepath: filepath )
+        @file_assembler.collect_file_contents_fallback( source_filepath: filepath, defines: defines )
       else
         @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
       end
@@ -342,7 +331,7 @@ class Preprocessinator
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                [],
-      includes:              includes                       
+      includes:              includes
     }
 
     # Create a reconstituted header file
@@ -389,7 +378,7 @@ class Preprocessinator
 
     contents =
       if fallback
-        @file_assembler.collect_file_contents_fallback( source_filepath: filepath )
+        @file_assembler.collect_file_contents_fallback( source_filepath: filepath, defines: defines )
       else
         @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
       end
@@ -399,7 +388,7 @@ class Preprocessinator
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                [],
-      includes:              includes                       
+      includes:              includes
     }
 
     # Create a reconstituted source file
@@ -574,7 +563,8 @@ class Preprocessinator
         name:                     test,
         filepath:                 filepath,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 fallback
+        fallback:                 fallback,
+        defines:                  defines
       )
 
       # Extract system includes
@@ -582,7 +572,8 @@ class Preprocessinator
         name:                     test,
         filepath:                 filepath,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 fallback
+        fallback:                 fallback,
+        defines:                  defines
       )
 
       # Reconcile includes with overlapping information

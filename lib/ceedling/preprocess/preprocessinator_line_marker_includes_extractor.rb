@@ -96,7 +96,16 @@ class PreprocessinatorLineMarkerIncludesExtractor
     validate_type_argument( type )
     includes = []
     begin
-      File.open(filepath, 'r') do |file|
+      # Open in binary mode: GCC output under a non-C locale contains non-ASCII bytes
+      # (e.g. <組み込み> for <built-in> under ja_JP). Text mode would interpret those
+      # bytes using the locale-dependent external encoding (e.g. Windows-31J on ja_JP
+      # Windows), raising an encoding error on read. Binary mode bypasses that translation.
+      # LINE_MARKER_REGEX uses only ASCII delimiters and is safe in binary mode.
+      # The filepath.start_with?('<') guard correctly skips localized markers because
+      # their first byte is 0x3C — ASCII '<' — regardless of the surrounding encoding.
+      # NOTE: binary mode means \r\n line endings are NOT translated on Windows; the
+      # extract_includes method calls line.chomp! before regex matching to handle this.
+      File.open(filepath, 'rb') do |file|
         includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth)
       end
     rescue StandardError => e
@@ -135,6 +144,16 @@ class PreprocessinatorLineMarkerIncludesExtractor
     source_filename = File.basename(filepath)
     
     io.each_line do |line|
+      # Binary mode ('rb') yields raw bytes without platform newline translation.
+      # On Windows (MinGW/MSYS2), GCC writes \r\n line endings in preprocessor output.
+      # IO#each_line splits on \n and preserves the preceding \r in the yielded string.
+      # LINE_MARKER_REGEX ends with $ which anchors before \n but does NOT match when
+      # \r immediately precedes it — the optional flags group (?:\s+(\d+...))? cannot
+      # consume the stray \r, so every line marker match fails on Windows, producing
+      # an empty include list and cascading test build failures.
+      # String#chomp! (no-arg) removes \r\n, \r, or \n — safe on all platforms.
+      line.chomp!
+
       # Match GCC line markers
       if (match = LINE_MARKER_REGEX.match(line))
         # String filename

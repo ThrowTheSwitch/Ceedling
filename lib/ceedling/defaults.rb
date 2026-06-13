@@ -292,8 +292,12 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     },
 
   :test_build => {
-    :use_assembly => false
-    },
+    :use_assembly => false,
+    # Force fallback text-based preprocessing regardless of preprocessor capability.
+    # Primarily useful for testing the fallback path and for toolchains that report
+    # false support for -fdirectives-only. Default: false (use preprocessor when available).
+    :preprocess_force_fallback => false,
+  },
 
   # Unlike other top-level entries, :environment is an array (of hashes) to preserve order
   :environment => [],

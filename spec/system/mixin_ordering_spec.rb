@@ -67,7 +67,6 @@ ceedling_system_tests do
   end
 
   before { @proj_name = 'temp_sensor' }
-  after  { @c.with_context { FileUtils.rm_rf @proj_name } }
 
   # =========================================================================
   describe 'Mixin loading :: single-source smoke tests' do

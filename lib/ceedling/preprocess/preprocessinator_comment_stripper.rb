@@ -19,23 +19,25 @@ class PreprocessinatorCommentStripper
   # Every single-line comment is replaced by a single space. Every multi-line
   # comment is replaced by an equivalent number of newlines.
   def strip_file(filepath)
-    stripped = ''
-    changed = false
+    stripped = nil
 
     begin
-      File.open(filepath) do |buffer|
-        stripped = strip(buffer)  
-        changed = !stripped.nil?
+      # Open in binary mode to avoid locale-dependent encoding failures.
+      # GCC preprocessor output may contain localized strings (e.g. <組み込み> under ja_JP locale).
+      # CCommentScanner already operates byte-accurately internally.
+      File.open(filepath, 'rb') do |buffer|
+        stripped = strip(buffer)
       end
     rescue => e
       raise CeedlingException.new("Failed to read '#{filepath}' for comment stripping ⏩️ #{e}")
     end
 
     # No change
-    return changed unless changed
+    return false if stripped.nil?
 
     begin
-      File.write(filepath, stripped)
+      # Write in binary mode to match binary read — preserves original line endings exactly
+      File.write(filepath, stripped, mode: 'wb')
     rescue => e
       raise CeedlingException.new("Failed to rewrite '#{filepath}' after comment stripping ⏩️ #{e}")
     end

@@ -317,6 +317,7 @@ preprocessinator_file_assembler:
     - tool_executor
     - file_path_utils
     - file_wrapper
+    - parsing_parcels
     - loginator
     - reportinator
 

@@ -20,8 +20,7 @@ ceedling_system_tests do
     @c.done!
   end
 
-  before { @proj_name = "fake_project" }
-  after { @c.with_context { FileUtils.rm_rf @proj_name } }
+  before { @proj_name = unique_proj_name("gem") }
 
   describe "Deployed as a gem" do
     before do

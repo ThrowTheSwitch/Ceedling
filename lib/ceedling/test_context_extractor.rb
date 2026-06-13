@@ -113,7 +113,7 @@ class TestContextExtractor
       input.rewind()
 
       # Ultimately, we rely on Unity's runner generator that processes file contents as a single string
-      _collect_test_runner_details( filepath, input.read() )
+      _collect_test_runner_details( filepath, input.read().clean_encoding )
     end
   
     if args.include?( Context::PARTIALS_CONFIGURATION )
@@ -121,7 +121,7 @@ class TestContextExtractor
       input.rewind()
 
       # Scan for Partials configuration directive macros
-      partials_config = _extract_partials_config( input )
+      partials_config = _extract_partials_config( input.read.clean_encoding )
       collect_partials_configuration( filepath, partials_config ) if !partials_config.empty?
     end  
 
@@ -378,8 +378,8 @@ class TestContextExtractor
     return includes
   end
 
-  def _extract_partials_config(input)
-    @partializer_config.extract_configs(input)
+  def _extract_partials_config(content)
+    @partializer_config.extract_configs(content)
   end
 
   ##

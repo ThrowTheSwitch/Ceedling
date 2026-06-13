@@ -208,21 +208,12 @@ class TestBuildSetup
     end
 
     # Second pass: generate directives-only preprocessor output after stand-ins exist
+    directives_only = @configurator.test_build_preprocess_directives_only_available
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      next unless @preprocessinator.directives_only_available?
+      next unless directives_only
 
       name     = testable.name
       filepath = testable.filepath
-
-      unless @preprocessinator.directives_only_available?
-        msg = @reportinator.generate_module_progress(
-          operation:   'Will use fallback methods to extract #includes and other directives for',
-          module_name: name,
-          filename:    File.basename( filepath )
-        )
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        next
-      end
 
       arg_hash = {
         filepath:      filepath,
@@ -240,20 +231,12 @@ class TestBuildSetup
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-      _filepath = nil
-
-      begin
-        _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-      rescue => ex
-        msg = "Using fallback methods to extract #includes and other directives: #{ex.message}"
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        next
-      end
-
-      testable.preprocess[:directives_only][:filepath] = _filepath
+      testable.preprocess[:directives_only][:filepath] =
+        @preprocessinator.generate_directives_only_output( **arg_hash )
     end
 
     # Third pass: reconcile includes from all extraction sources and ingest
+    directives_only = @configurator.test_build_preprocess_directives_only_available
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
       filename = File.basename( filepath )
@@ -265,7 +248,7 @@ class TestBuildSetup
         next
       end
 
-      unless @preprocessinator.directives_only_available?
+      unless directives_only
         msg = @reportinator.generate_module_progress(
           operation:   'Using fallback text-only includes extracted for',
           module_name: name,
