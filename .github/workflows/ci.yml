@@ -179,8 +179,8 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          rm -rf systest-results/projects/pass
-          rm -f systest-results/systest.pass.*.log
+          rm -rf systests/proj/pass
+          rm -f systests/systest.pass.*.log
 
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
@@ -188,7 +188,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: systest-failures-${{ runner.os }}-ruby-${{ matrix.ruby }}
-          path: systest-results/
+          path: systests/
           if-no-files-found: ignore
 
       # Remove any systest results before building the gem
@@ -196,7 +196,7 @@ jobs:
       - name: Remove any system test results before gem build
         shell: bash
         run: |
-          rm -rf systest-results/
+          rm -rf systests/
 
       # Build & Install Ceedling Gem
       # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
@@ -302,8 +302,8 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          rm -rf systest-results/projects/pass
-          rm -f systest-results/systest.pass.*.log
+          rm -rf systests/proj/pass
+          rm -f systests/systest.pass.*.log
 
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
@@ -311,7 +311,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: systest-failures-${{ runner.os }}-ruby-${{ matrix.ruby }}
-          path: systest-results/
+          path: systests/
           if-no-files-found: ignore
 
       # Remove any systest results before building the gem
@@ -319,7 +319,7 @@ jobs:
       - name: Remove any system test results before gem build
         shell: bash
         run: |
-          rm -rf systest-results/
+          rm -rf systests/
 
       # Build & Install Ceedling Gem
       # Plugin test suites (FFF, module_generator, dependencies) require the installed gem
@@ -405,8 +405,8 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          rm -rf systest-results/projects/pass
-          rm -f systest-results/systest.pass.*.log
+          rm -rf systests/proj/pass
+          rm -f systests/systest.pass.*.log
 
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
@@ -414,7 +414,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: systest-failures-locale-ruby-3.3
-          path: systest-results/
+          path: systests/
           if-no-files-found: ignore
 
 

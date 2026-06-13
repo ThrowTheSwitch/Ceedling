@@ -83,7 +83,7 @@ RSpec.configure do |config|
 
     timestamp   = Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
     # Centralize all system test result logs so CI can upload one directory as an artifact.
-    results_dir = File.join(Dir.pwd, 'systest-results')
+    results_dir = File.join(Dir.pwd, 'systests')
     FileUtils.mkdir_p(results_dir)
 
     result_tag = is_failure ? 'fail' : 'pass'
@@ -119,7 +119,7 @@ def unique_proj_name(prefix)
     .downcase
     .gsub(/[^a-z0-9]+/, '_')
     .gsub(/\A_+|_+\z/, '')
-    .slice(0, 80)
+    .slice(0, 60)
   "#{prefix}_#{safe}"
 end
 

@@ -556,7 +556,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_run_single_test_with_full_test_case_name_from_test_file_with_success
+  def run_single_test_with_full_name_filter
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -574,7 +574,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_run_single_test_with_partial_test_case_name_from_test_file_with_success
+  def run_single_test_with_partial_name_filter
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -592,7 +592,7 @@ module CommonSystemTestCases
     end
   end
 
-  def none_of_test_is_executed_if_test_case_name_passed_does_not_fit_defined_in_test_file
+  def no_tests_run_when_filter_matches_nothing
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -607,7 +607,7 @@ module CommonSystemTestCases
     end
   end
 
-  def none_of_test_is_executed_if_test_case_name_and_exclude_test_case_name_is_the_same
+  def no_tests_run_when_filter_and_exclusion_cancel
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -622,7 +622,7 @@ module CommonSystemTestCases
     end
   end
 
-  def exclude_test_case_name_filter_works_and_only_one_test_case_is_executed
+  def exclusion_filter_leaves_one_test_case
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -640,7 +640,7 @@ module CommonSystemTestCases
     end
   end
 
-  def run_one_testcase_from_one_test_file_when_test_case_name_is_passed
+  def run_one_test_case_with_name_filter
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -697,7 +697,7 @@ module CommonSystemTestCases
     end
   end
 
-  def execute_all_test_cases_from_crashing_test_runner_and_return_test_report_with_failue
+  def backtrace_all_crash_test_cases_and_report
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -721,7 +721,7 @@ module CommonSystemTestCases
     end
   end
 
-  def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_test_case_argument_with_enabled_debug
+  def backtrace_crash_targets_test_case_filter
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -745,7 +745,7 @@ module CommonSystemTestCases
     end
   end
 
-  def execute_and_collect_debug_logs_from_crashing_test_case_defined_by_exclude_test_case_argument_with_enabled_debug
+  def backtrace_crash_excludes_test_case_filter
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -785,7 +785,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_success_when_space_appears_between_hash_and_include
+  def space_between_hash_and_include_is_valid
     # test case cover issue described in https://github.com/ThrowTheSwitch/Ceedling/issues/588
     @c.with_context do
       Dir.chdir @proj_name do

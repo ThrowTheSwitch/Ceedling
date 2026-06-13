@@ -134,7 +134,7 @@ ceedling_system_tests do
       end
     end
 
-    it 'loads a mixin exactly once when listed in both :enabled and --mixin cmdline' do
+    it 'deduplicates mixin listed in :enabled and --mixin cmdline' do
       @c.with_context do
         Dir.chdir @proj_name do
           File.write('mixin/shared.yml', ORDERING_MIXIN_CONFIG)
@@ -148,7 +148,7 @@ ceedling_system_tests do
       expect(@output.to_s.scan(/Merging.*mixin.*shared/i).length).to eq(1)
     end
 
-    it 'loads a mixin exactly once when listed in both CEEDLING_MIXIN_1 and --mixin cmdline' do
+    it 'deduplicates mixin listed in env var and --mixin cmdline' do
       @c.with_context do
         Dir.chdir @proj_name do
           File.write('mixin/shared.yml', ORDERING_MIXIN_CONFIG)
@@ -200,7 +200,7 @@ ceedling_system_tests do
       expect(env_pos).to be < cmdline_pos
     end
 
-    it 'merges CEEDLING_MIXIN_1 before CEEDLING_MIXIN_5 so MIXIN_5 is merged last and wins per documentation' do
+    it 'lower-numbered mixin env var merges first; higher-numbered wins' do
       @c.with_context do
         Dir.chdir @proj_name do
           File.write('mixin/mixin_low.yml',  SCALAR_MIXIN_LOW)
@@ -223,7 +223,7 @@ ceedling_system_tests do
       expect(mixin_1_pos).to be < mixin_5_pos
     end
 
-    it 'merges env var array contributions in ascending numeric order (MIXIN_1 first, MIXIN_3 last) per documentation' do
+    it 'env var array mixins merge in ascending numeric order' do
       @c.with_context do
         Dir.chdir @proj_name do
           File.write('mixin/array_mixin_1.yml', ARRAY_MIXIN_1)
@@ -262,7 +262,7 @@ ceedling_system_tests do
       end
     end
 
-    it 'command line mixin single value overrides config mixin single value (cmdline highest priority)' do
+    it 'cmdline mixin overrides config mixin scalar value' do
       @c.with_context do
         Dir.chdir @proj_name do
           File.write('mixin/mixin_cfg.yml', SCALAR_MIXIN_LOW)
@@ -280,7 +280,7 @@ ceedling_system_tests do
       expect(@dump_content).not_to match(/build_low/)
     end
 
-    it 'env var mixin single value overrides config mixin single value (env var higher priority than config)' do
+    it 'env var mixin overrides config mixin scalar value' do
       @c.with_context do
         Dir.chdir @proj_name do
           File.write('mixin/mixin_cfg.yml', SCALAR_MIXIN_LOW)

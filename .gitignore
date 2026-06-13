@@ -14,9 +14,9 @@ plugins/dependencies/example/boss/third_party/
 plugins/dependencies/example/supervisor/build/
 
 # Logs / test output
-*.pass
-*.fail
-systest-results/
+systest.pass.*
+systest.fail.*
+systests/
 
 # Generated documentation site builds
 site-web/

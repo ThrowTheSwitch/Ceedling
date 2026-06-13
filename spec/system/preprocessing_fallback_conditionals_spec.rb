@@ -36,8 +36,8 @@ require 'spec_system_helper'
 ##   - conditional_module.c: conditionally includes optional_dep.h and
 ##     calls OptionalDep_DoWork() when CONDITIONAL_FEATURE is defined
 ##   - optional_dep.h: header for the optional dependency (mockable)
-##   - test_conditional_module.c: uses TEST_PARTIAL_ALL_MODULE to pull in
-##     the partial; conditionally includes mock_optional_dep.h and selects
+##   - test_conditionals.c: uses TEST_PARTIAL_ALL_MODULE to pull in the
+##     partial; conditionally includes mock_optional_dep.h and selects
 ##     test cases based on CONDITIONAL_FEATURE
 ##   - Files contain UTF-8 multi-byte characters in comments to exercise
 ##     encoding safety of the conditional-tracking path
@@ -74,7 +74,7 @@ ceedling_system_tests do
             FileUtils.cp test_asset_path("tests_with_fallback_conditionals/src/conditional_module.h"), 'src/'
             FileUtils.cp test_asset_path("tests_with_fallback_conditionals/src/conditional_module.c"), 'src/'
             FileUtils.cp test_asset_path("tests_with_fallback_conditionals/src/optional_dep.h"), 'src/'
-            FileUtils.cp test_asset_path("tests_with_fallback_conditionals/test/test_conditional_module.c"), 'test/'
+            FileUtils.cp test_asset_path("tests_with_fallback_conditionals/test/test_conditionals.c"), 'test/'
           end
         end
       end
@@ -87,7 +87,7 @@ ceedling_system_tests do
       # mock is generated. The #ifndef CONDITIONAL_FEATURE test case runs and
       # passes (calls ConditionalModule_Init(), which is a no-op in the partial).
       # -----------------------------------------------------------------------
-      it "should exclude inactive #ifdef block from partial and run #ifndef test case when defines are not provided" do
+      it "should exclude inactive #ifdef block and run #ifndef test case" do
         @c.with_context do
           Dir.chdir @proj_name do
             settings = {
@@ -96,7 +96,7 @@ ceedling_system_tests do
             }
             @c.merge_project_yml_for_test(settings)
 
-            output = @c.ceedling_build_exec("test:conditional_module")
+            output = @c.ceedling_build_exec("test:conditionals")
             expect(@c.last_exit_status).to eq(0)
             expect(output).to match(/using fallback method/i)
             expect(output).to match(/TESTED:\s+1/)
@@ -115,7 +115,7 @@ ceedling_system_tests do
       # passes (ConditionalModule_Init() calls OptionalDep_DoWork() in the
       # partial; the mock satisfies the expectation).
       # -----------------------------------------------------------------------
-      it "should include active #ifdef block in partial and run #ifdef test case when defines are provided" do
+      it "should include active #ifdef block and run #ifdef test case" do
         @c.with_context do
           Dir.chdir @proj_name do
             settings = {
@@ -125,7 +125,7 @@ ceedling_system_tests do
             }
             @c.merge_project_yml_for_test(settings)
 
-            output = @c.ceedling_build_exec("test:conditional_module")
+            output = @c.ceedling_build_exec("test:conditionals")
             expect(@c.last_exit_status).to eq(0)
             expect(output).to match(/using fallback method/i)
             expect(output).to match(/TESTED:\s+1/)
@@ -142,7 +142,7 @@ ceedling_system_tests do
       # the fallback partial preprocessor processes them.
       # (The test assets already contain non-ASCII UTF-8 in comments.)
       # -----------------------------------------------------------------------
-      it "should not raise errors when processing UTF-8 in source/header comments near #ifdef" do
+      it "should not raise errors for UTF-8 in comments near #ifdef" do
         @c.with_context do
           Dir.chdir @proj_name do
             settings = {
@@ -151,7 +151,7 @@ ceedling_system_tests do
             }
             @c.merge_project_yml_for_test(settings)
 
-            output = @c.ceedling_build_exec("test:conditional_module")
+            output = @c.ceedling_build_exec("test:conditionals")
             expect(@c.last_exit_status).to eq(0)
             expect(output).to match(/using fallback method/i)
             expect(output).to match(/PASSED:\s+1/)

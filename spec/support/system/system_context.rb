@@ -18,11 +18,11 @@ class SystemContext
 
   def initialize
     if ENV[SYSTEM_TEST_KEEP_ENV]
-      # In debug mode, root the temp dir inside systest-results/projects/ so CI can upload it.
+      # In debug mode, root the temp dir inside systests/proj/ so CI can upload it.
       # done! will sort it into pass/ or fail/ once the test outcome is known.
-      base = File.join(Dir.pwd, 'systest-results', 'projects')
+      base = File.join(Dir.pwd, 'systests', 'proj')
       FileUtils.mkdir_p(base)
-      @dir = Dir.mktmpdir('systest_', base)
+      @dir = Dir.mktmpdir(nil, base)
     else
       @dir = Dir.mktmpdir
     end
