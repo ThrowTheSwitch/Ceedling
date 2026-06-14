@@ -26,11 +26,6 @@ runs:
         restore-keys: |
           bundle-use-ruby-${{ runner.os }}-${{ inputs.ruby }}-
 
-    - name: Checkout Latest Repo
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
     - name: Set Up Ruby with Version Matrix
       uses: ruby/setup-ruby@v1
       with:

@@ -71,6 +71,12 @@ jobs:
       matrix:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
+      # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
       # Common set up steps
       - name: Set Up Ruby Test Environment
         uses: ./.github/actions/setup
@@ -165,6 +171,12 @@ jobs:
       matrix:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
+      # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
       # Common set up steps
       - name: Set Up Ruby Test Environment
         uses: ./.github/actions/setup

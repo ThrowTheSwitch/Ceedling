@@ -7,7 +7,6 @@
 
 # Internal composite action — not intended to be triggered directly.
 # Called after run-tests in the tests-linux and tests-windows jobs in ci.yml.
-# Requires the Ceedling gem to already be installed (done in run-tests).
 #
 # Note: Composite actions require an explicit `shell:` on every `run:` step — there is no
 # default shell. Steps using `uses:` (action calls) do not need `shell:`.
