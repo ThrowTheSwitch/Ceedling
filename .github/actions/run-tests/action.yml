@@ -22,6 +22,14 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Download HTML docs bundle built by generate-docs job
+    # Documentation bundle must be present for those self-tests involving documentation
+    - name: Download HTML Documentation Bundle
+      uses: actions/download-artifact@v4
+      with:
+        name: gem-docs-site-local
+        path: site-local/
+
     - name: Run All Self Tests
       shell: bash
       env:
