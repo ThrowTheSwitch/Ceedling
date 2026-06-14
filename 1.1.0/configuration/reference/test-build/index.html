@@ -1844,6 +1844,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#preprocess_force_fallback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :preprocess_force_fallback
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2271,6 +2282,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -2863,6 +2878,62 @@
           </ul>
         </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../plugins/cppcheck/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cppcheck (Static Analysis)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../plugins/valgrind/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Valgrind (Memory Analysis)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -3792,6 +3863,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#preprocess_force_fallback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :preprocess_force_fallback
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3888,6 +3970,7 @@ organized beneath <code>:project</code> will be renamed and migrated to this sec
 <h2 id="example-test_build-yaml">Example <code>:test_build</code> YAML</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:test_build</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:use_assembly</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">:preprocess_force_fallback</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span>
 </code></pre></div>
 <h2 id="use_assembly"><code>:use_assembly</code></h2>
 <p>This option causes Ceedling to enable an assembler tool and collect a
@@ -3904,6 +3987,19 @@ inject assembly code into the build of a test executable:</p>
    given assembly file. The easiest way to do so is with the
    <a href="../../../testing-guide/build-directives/"><code>TEST_SOURCE_FILE()</code> build directive macro</a>.</li>
 </ol>
+<p><strong>Default</strong>: FALSE</p>
+<h2 id="preprocess_force_fallback"><code>:preprocess_force_fallback</code></h2>
+<p>This option is primarily used to enable certain Ceedling self-tests,
+but it may be valuable is a tool chain’s preprocessor somehow falsely
+indicates that directives-only preprocessing is available.</p>
+<p>At startup, if test preprocessing is enabled, Ceedling probes the 
+C preprocessor tool for indications that it support directives-only
+mode. If it does not, Ceedling uses less capable text-only scanning
+of C files when directives-only C preprocessing is preferred. Some 
+toolchains, particularly older variations, may not support this mode.</p>
+<p>This flag forces Ceedling to use text-scanning fallback mechanisms
+regardless of preprocessor capabilities (the start up probe is 
+entirely skipped.)</p>
 <p><strong>Default</strong>: FALSE</p>
 <p><br/><br/></p>
 
