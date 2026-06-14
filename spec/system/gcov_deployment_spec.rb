@@ -38,7 +38,7 @@ ceedling_system_tests do
       # test_case :can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list
       # test_case :can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list_with_globs
       test_case :can_test_projects_with_gcov_with_compile_error
-      test_case :can_fetch_project_help_for_gcov
+      test_case :project_build_tasks_plugins_help_for_gcov
       test_case :can_create_html_reports
       test_case :can_create_html_reports_from_crashing_test_runner_with_enabled_debug_for_test_cases_not_causing_crash
       test_case :can_create_html_reports_from_crashing_test_runner_with_enabled_debug_with_zero_coverage

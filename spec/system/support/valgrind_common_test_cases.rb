@@ -10,7 +10,7 @@ require_relative 'valgrind_helpers'
 module ValgrindCommonTestCases
   include ValgrindHelpers
 
-  def can_fetch_project_help_for_valgrind
+  def project_build_tasks_plugins_help_for_valgrind
     @c.with_context do
       Dir.chdir @proj_name do
         prep_project_yml_for_valgrind

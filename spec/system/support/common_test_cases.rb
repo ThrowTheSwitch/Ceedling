@@ -63,7 +63,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_upgrade_projects_even_if_test_support_folder_does_not_exist
+  def can_upgrade_projects_with_no_test_support_folder
     @c.with_context do
       output = @c.ceedling_appcmd_exec("upgrade #{@proj_name}")
       FileUtils.rm_rf("#{@proj_name}/test/support")
@@ -125,7 +125,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_success
+  def test_project_success
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -142,7 +142,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_success_test_alias
+  def test_project_with_test_all_alias
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -159,7 +159,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_success_default
+  def test_project_success_default_task
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -176,7 +176,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_named_verbosity
+  def test_project_with_named_verbosity
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -195,7 +195,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_numerical_verbosity
+  def test_project_with_numerical_verbosity
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -214,7 +214,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_unity_exec_time
+  def test_project_with_unity_exec_time
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -233,7 +233,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_test_and_vendor_defines_with_success
+  def test_project_with_test_and_vendor_defines
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -254,15 +254,19 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_test_name_replaced_defines_with_success
+  def test_project_with_per_file_defines
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.copy_entry test_asset_path("tests_with_defines/src/"), 'src/'
         FileUtils.cp_r test_asset_path("tests_with_defines/test/."), 'test/'
-        settings = { :defines => { :test => { '*' => [ "TEST", "STANDARD_CONFIG" ],
-                                   'test_adc_hardware_special.c' => [ "TEST", "SPECIFIC_CONFIG" ],
-                                 } }
-                   }
+        settings = { 
+          :defines => { 
+            :test => {
+              '*' => [ "TEST", "STANDARD_CONFIG" ],
+              'test_adc_hardware_special.c' => [ "TEST", "SPECIFIC_CONFIG" ],
+            }
+          }
+        }
         @c.merge_project_yml_for_test(settings)
 
         output = @c.ceedling_build_exec
@@ -276,7 +280,7 @@ module CommonSystemTestCases
   end
 
   # Ceedling :use_test_preprocessor is disabled
-  def can_test_projects_unity_parameterized_test_cases_with_success
+  def test_project_unity_parameterized_test_cases
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
@@ -296,7 +300,7 @@ module CommonSystemTestCases
   end
 
   # NOTE: This is not supported in this release, therefore is not getting called.
-  def can_test_projects_unity_parameterized_test_cases_with_preprocessor_with_success
+  def test_project_preprocessed_unity_parameterized_test_cases
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
@@ -315,7 +319,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_preprocessing_for_test_files_symbols_undefined
+  def test_project_preprocessing_undefined_symbols
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareA.c"), 'test/'
@@ -337,7 +341,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_preprocessing_for_test_files_symbols_defined
+  def test_project_preprocessing_defined_symbols
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareA.c"), 'test/'
@@ -359,7 +363,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_preprocessing_for_mocks_success
+  def test_project_with_preprocessing_for_mocks
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareB.c"), 'test/'
@@ -381,7 +385,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_preprocessing_for_mocks_intentional_build_failure
+  def test_project_with_preprocessing_for_missing_mock
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareB.c"), 'test/'
@@ -400,7 +404,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_preprocessing_all
+  def test_project_with_preprocessing_all
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("tests_with_preprocessing/test/test_adc_hardwareC.c"), 'test/'
@@ -422,7 +426,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_fail
+  def test_project_fail
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -439,7 +443,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_fail_alias
+  def test_project_fail_alias
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -456,7 +460,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_fail_default
+  def test_project_fail_default
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -473,7 +477,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_compile_error
+  def test_project_with_compile_error
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -487,7 +491,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_both_mock_and_real_header
+  def test_project_with_both_mock_and_real_header
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -506,7 +510,7 @@ module CommonSystemTestCases
     end
   end
 
-  def uses_report_tests_raw_output_log_plugin
+  def report_tests_raw_output_log_plugin
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -526,8 +530,7 @@ module CommonSystemTestCases
     end
   end
 
-
-  def can_fetch_non_project_help
+  def application_commands_help
     @c.with_context do
       # notice we don't change directory into the project
       output = @c.ceedling_appcmd_exec("help")
@@ -539,7 +542,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_fetch_project_help
+  def project_build_tasks_plugins_help
     @c.with_context do
       Dir.chdir @proj_name do
         output = @c.ceedling_appcmd_exec("help")
@@ -659,7 +662,7 @@ module CommonSystemTestCases
   end
 
 
-  def test_run_of_projects_fail_because_of_crash_without_report
+  def project_fail_because_of_crash_without_report
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -677,7 +680,7 @@ module CommonSystemTestCases
     end
   end
 
-  def test_run_of_projects_fail_because_of_crash_with_report
+  def project_fail_because_of_crash_with_report
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -769,7 +772,7 @@ module CommonSystemTestCases
     end
   end
 
-  def can_test_projects_with_test_file_directly_including_source_file
+  def project_with_test_file_directly_including_source_file
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file_with_statics.c"), 'src/'

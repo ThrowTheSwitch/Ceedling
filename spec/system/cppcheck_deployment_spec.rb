@@ -38,7 +38,7 @@ ceedling_system_tests do
         end
       end
 
-      test_case :can_fetch_project_help_for_cppcheck
+      test_case :project_build_tasks_plugins_help_for_cppcheck
       test_case :can_run_cppcheck_on_whole_project
       test_case :can_run_cppcheck_on_single_file
       test_case :can_list_cppcheck_suppression_files

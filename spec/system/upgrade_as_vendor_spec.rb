@@ -36,34 +36,34 @@ ceedling_system_tests do
       end
 
       describe "Help system" do
-        test_case :can_fetch_non_project_help
-        test_case :can_fetch_project_help
+        test_case :application_commands_help
+        test_case :project_build_tasks_plugins_help
       end
 
       describe "Basic test execution" do
-        test_case :can_test_projects_with_success
-        test_case :can_test_projects_with_success_test_alias
-        test_case :can_test_projects_with_success_default
-        test_case :can_test_projects_with_fail
-        test_case :can_test_projects_with_fail_alias
-        test_case :can_test_projects_with_fail_default
-        test_case :can_test_projects_with_compile_error
-        test_case :can_test_projects_with_test_file_directly_including_source_file
+        test_case :test_project_success
+        test_case :test_project_with_test_all_alias
+        test_case :test_project_success_default_task
+        test_case :test_project_fail
+        test_case :test_project_fail_alias
+        test_case :test_project_fail_default
+        test_case :test_project_with_compile_error
+        test_case :project_with_test_file_directly_including_source_file
       end
 
       describe "Unity features" do
-        test_case :can_test_projects_with_unity_exec_time
+        test_case :test_project_with_unity_exec_time
       end
 
       describe "Defines and configuration" do
-        test_case :can_test_projects_with_test_and_vendor_defines_with_success
+        test_case :test_project_with_test_and_vendor_defines
       end
     end
 
     describe "After upgrade" do
       describe "Upgrade operations" do
         test_case :can_upgrade_projects
-        test_case :can_upgrade_projects_even_if_test_support_folder_does_not_exist
+        test_case :can_upgrade_projects_with_no_test_support_folder
       end
 
       describe "Project structure" do
@@ -72,27 +72,27 @@ ceedling_system_tests do
       end
 
       describe "Help system" do
-        test_case :can_fetch_non_project_help
-        test_case :can_fetch_project_help
+        test_case :application_commands_help
+        test_case :project_build_tasks_plugins_help
       end
 
       describe "Basic test execution" do
-        test_case :can_test_projects_with_success
-        test_case :can_test_projects_with_success_test_alias
-        test_case :can_test_projects_with_success_default
-        test_case :can_test_projects_with_fail
-        test_case :can_test_projects_with_fail_alias
-        test_case :can_test_projects_with_fail_default
-        test_case :can_test_projects_with_compile_error
-        test_case :can_test_projects_with_test_file_directly_including_source_file
+        test_case :test_project_success
+        test_case :test_project_with_test_all_alias
+        test_case :test_project_success_default_task
+        test_case :test_project_fail
+        test_case :test_project_fail_alias
+        test_case :test_project_fail_default
+        test_case :test_project_with_compile_error
+        test_case :project_with_test_file_directly_including_source_file
       end
 
       describe "Unity features" do
-        test_case :can_test_projects_with_unity_exec_time
+        test_case :test_project_with_unity_exec_time
       end
 
       describe "Defines and configuration" do
-        test_case :can_test_projects_with_test_and_vendor_defines_with_success
+        test_case :test_project_with_test_and_vendor_defines
       end
     end
   end

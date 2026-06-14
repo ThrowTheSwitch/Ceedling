@@ -10,7 +10,7 @@ require_relative 'cppcheck_helpers'
 module CppcheckCommonTestCases
   include CppcheckHelpers
 
-  def can_fetch_project_help_for_cppcheck
+  def project_build_tasks_plugins_help_for_cppcheck
     @c.with_context do
       Dir.chdir @proj_name do
         prep_project_yml_for_cppcheck

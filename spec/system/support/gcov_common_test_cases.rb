@@ -130,7 +130,7 @@ module GcovCommonTestCases
     end
   end
 
-  def can_fetch_project_help_for_gcov
+  def project_build_tasks_plugins_help_for_gcov
     @c.with_context do
       Dir.chdir @proj_name do
         prep_project_yml_for_coverage

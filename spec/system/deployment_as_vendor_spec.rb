@@ -44,39 +44,39 @@ ceedling_system_tests do
     end
 
     describe "Help system" do
-      test_case :can_fetch_non_project_help
-      test_case :can_fetch_project_help
+      test_case :application_commands_help
+      test_case :project_build_tasks_plugins_help
     end
 
     describe "Basic test execution" do
-      test_case :can_test_projects_with_success
-      test_case :can_test_projects_with_success_test_alias
-      test_case :can_test_projects_with_success_default
-      test_case :can_test_projects_with_fail
-      test_case :can_test_projects_with_fail_alias
-      test_case :can_test_projects_with_fail_default
-      test_case :can_test_projects_with_compile_error
-      test_case :can_test_projects_with_test_file_directly_including_source_file
+      test_case :test_project_success
+      test_case :test_project_with_test_all_alias
+      test_case :test_project_success_default_task
+      test_case :test_project_fail
+      test_case :test_project_fail_alias
+      test_case :test_project_fail_default
+      test_case :test_project_with_compile_error
+      test_case :project_with_test_file_directly_including_source_file
     end
 
     describe "Test builds with preprocessing" do
-      test_case :can_test_projects_with_preprocessing_for_test_files_symbols_undefined
-      test_case :can_test_projects_with_preprocessing_for_test_files_symbols_defined
-      test_case :can_test_projects_with_preprocessing_for_mocks_success
-      test_case :can_test_projects_with_preprocessing_for_mocks_intentional_build_failure
-      test_case :can_test_projects_with_preprocessing_all
+      test_case :test_project_preprocessing_undefined_symbols
+      test_case :test_project_preprocessing_defined_symbols
+      test_case :test_project_with_preprocessing_for_mocks
+      test_case :test_project_with_preprocessing_for_missing_mock
+      test_case :test_project_with_preprocessing_all
     end
 
     describe "Defines and configuration" do
-      test_case :can_test_projects_with_test_name_replaced_defines_with_success
-      test_case :can_test_projects_with_test_and_vendor_defines_with_success
-      test_case :can_test_projects_with_both_mock_and_real_header
+      test_case :test_project_with_per_file_defines
+      test_case :test_project_with_test_and_vendor_defines
+      test_case :test_project_with_both_mock_and_real_header
     end
 
     describe "Unity features" do
-      test_case :can_test_projects_unity_parameterized_test_cases_with_success
-      #test_case :can_test_projects_unity_parameterized_test_cases_with_preprocessor_with_success
-      test_case :can_test_projects_with_unity_exec_time
+      test_case :test_project_unity_parameterized_test_cases
+      #test_case :test_project_preprocessed_unity_parameterized_test_cases
+      test_case :test_project_with_unity_exec_time
     end
 
     describe "Edge cases parsing" do
@@ -84,14 +84,14 @@ ceedling_system_tests do
     end
 
     describe "Verbosity and output" do
-      test_case :can_test_projects_with_named_verbosity
-      test_case :can_test_projects_with_numerical_verbosity
-      test_case :uses_report_tests_raw_output_log_plugin
+      test_case :test_project_with_named_verbosity
+      test_case :test_project_with_numerical_verbosity
+      test_case :report_tests_raw_output_log_plugin
     end
 
     describe "Crash handling" do
-      test_case :test_run_of_projects_fail_because_of_crash_without_report
-      test_case :test_run_of_projects_fail_because_of_crash_with_report
+      test_case :project_fail_because_of_crash_without_report
+      test_case :project_fail_because_of_crash_with_report
       test_case :backtrace_all_crash_test_cases_and_report
       test_case :backtrace_crash_targets_test_case_filter
       test_case :backtrace_crash_excludes_test_case_filter
@@ -122,8 +122,8 @@ ceedling_system_tests do
     end
 
     describe "Basic test execution" do
-      test_case :can_test_projects_with_success
-      test_case :can_test_projects_with_test_file_directly_including_source_file
+      test_case :test_project_success
+      test_case :project_with_test_file_directly_including_source_file
     end
   end
 
@@ -141,37 +141,37 @@ ceedling_system_tests do
     end
 
     describe "Help system" do
-      test_case :can_fetch_non_project_help
-      test_case :can_fetch_project_help
+      test_case :application_commands_help
+      test_case :project_build_tasks_plugins_help
     end
 
     describe "Basic test execution" do
-      test_case :can_test_projects_with_success
-      test_case :can_test_projects_with_success_test_alias
-      test_case :can_test_projects_with_success_default
-      test_case :can_test_projects_with_fail
-      test_case :can_test_projects_with_fail_alias
-      test_case :can_test_projects_with_fail_default
-      test_case :can_test_projects_with_compile_error
-      test_case :can_test_projects_with_test_file_directly_including_source_file
+      test_case :test_project_success
+      test_case :test_project_with_test_all_alias
+      test_case :test_project_success_default_task
+      test_case :test_project_fail
+      test_case :test_project_fail_alias
+      test_case :test_project_fail_default
+      test_case :test_project_with_compile_error
+      test_case :project_with_test_file_directly_including_source_file
     end
 
     describe "Test builds with preprocessing" do
-      test_case :can_test_projects_with_preprocessing_for_test_files_symbols_undefined
-      test_case :can_test_projects_with_preprocessing_for_test_files_symbols_defined
-      test_case :can_test_projects_with_preprocessing_for_mocks_success
-      test_case :can_test_projects_with_preprocessing_for_mocks_intentional_build_failure
-      test_case :can_test_projects_with_preprocessing_all
+      test_case :test_project_preprocessing_undefined_symbols
+      test_case :test_project_preprocessing_defined_symbols
+      test_case :test_project_with_preprocessing_for_mocks
+      test_case :test_project_with_preprocessing_for_missing_mock
+      test_case :test_project_with_preprocessing_all
     end
 
     describe "Defines and configuration" do
-      test_case :can_test_projects_with_test_name_replaced_defines_with_success
-      test_case :can_test_projects_with_test_and_vendor_defines_with_success
+      test_case :test_project_with_per_file_defines
+      test_case :test_project_with_test_and_vendor_defines
     end
 
     describe "Unity features" do
-      test_case :can_test_projects_unity_parameterized_test_cases_with_success
-      test_case :can_test_projects_with_unity_exec_time
+      test_case :test_project_unity_parameterized_test_cases
+      test_case :test_project_with_unity_exec_time
     end
   end
 end
