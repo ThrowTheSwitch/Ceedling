@@ -31,18 +31,18 @@ ceedling_system_tests do
         end
       end
 
-      test_case :can_test_projects_with_gcov_with_success
-      test_case :can_test_projects_with_gcov_with_fail
+      test_case :project_with_gcov_success
+      test_case :project_with_gcov_fail
       # TODO: Restore these tests when the :abort_on_uncovered option is restored in the Gcov plugin
-      # test_case :can_test_projects_with_gcov_with_fail_because_of_uncovered_files
-      # test_case :can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list
-      # test_case :can_test_projects_with_gcov_with_success_because_of_ignore_uncovered_list_with_globs
-      test_case :can_test_projects_with_gcov_with_compile_error
-      test_case :project_build_tasks_plugins_help_for_gcov
-      test_case :can_create_html_reports
-      test_case :can_create_html_reports_from_crashing_test_runner_with_enabled_debug_for_test_cases_not_causing_crash
-      test_case :can_create_html_reports_from_crashing_test_runner_with_enabled_debug_with_zero_coverage
-      test_case :can_create_html_reports_from_test_runner_with_enabled_debug_with_100_coverage_when_excluding_crashing_test_case
+      # test_case :project_with_gcov_fail_because_of_uncovered_files
+      # test_case :project_with_gcov_success_because_of_ignore_uncovered_list
+      # test_case :project_with_gcov_success_because_of_ignore_uncovered_list_with_globs
+      test_case :project_with_gcov_compile_error
+      test_case :help_tasks_include_gcov
+      test_case :create_html_report
+      test_case :create_html_report_from_crashing_test_runner_with_backtrace_enabled
+      test_case :create_html_report_with_zero_coverage_after_crashing_test_runner_and_backtrace
+      test_case :create_html_report_100_coverage_excluding_crashing_test_case
     end
 
 
