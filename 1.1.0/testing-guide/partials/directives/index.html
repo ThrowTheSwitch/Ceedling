@@ -4139,6 +4139,14 @@
 
 
 <h1 id="partial-directive-macros">Partial Directive Macros</h1>
+<div class="admonition note">
+<p class="admonition-title">Documentation convention</p>
+<ul>
+<li><code>*</code> is a stand-in or wildcard to refer to all variations of a particular macro type.</li>
+<li>For brevity, some classes of directive macros are referred to simply by their common
+  suffix (e.g <code>_MODULE</code> refers to all the macros with this suffix.)</li>
+</ul>
+</div>
 <p>All Partial configuration is expressed through C macros placed
 in your test file. No separate configuration file is required. The macros
 require <code>#include "ceedling.h"</code> present in the test file above and before
@@ -4260,30 +4268,30 @@ listing each function individually.</p>
 <tbody>
 <tr>
 <td style="text-align: right;">void foo(void)</td>
-<td>foo</td>
-<td>foo</td>
-<td>bar</td>
+<td>✅</td>
+<td>✅</td>
+<td></td>
 <td></td>
 </tr>
 <tr>
 <td style="text-align: right;">static void bar(void)</td>
-<td>bar</td>
-<td>baz</td>
-<td>oof</td>
+<td>✅</td>
+<td></td>
+<td>✅</td>
 <td></td>
 </tr>
 <tr>
 <td style="text-align: right;">int baz(void)</td>
-<td>baz</td>
-<td></td>
+<td>✅</td>
+<td>✅</td>
 <td></td>
 <td></td>
 </tr>
 <tr>
 <td style="text-align: right;">inline int oof(int)</td>
-<td>oof</td>
+<td>✅</td>
 <td></td>
-<td></td>
+<td>✅</td>
 <td></td>
 </tr>
 </tbody>

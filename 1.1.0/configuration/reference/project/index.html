@@ -4281,6 +4281,9 @@ output with the project name.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:project</span><span class="p">:</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Q-36</span><span class="nv"> </span><span class="s">Space</span><span class="nv"> </span><span class="s">Modulator&quot;</span>
 </code></pre></div></p>
+<p>Example first logging line:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>🌱 Q-36 SPACE MODULATOR
+</code></pre></div></p>
 <h2 id="build_root"><code>:build_root</code></h2>
 <p>Top level directory into which generated path structure and files are placed.</p>
 <div class="admonition note">
@@ -4303,11 +4306,11 @@ to understand the distinction between application commands and build &amp;
 plugin tasks.</p>
 </div>
 <p>Example YAML:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:project</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:default_tasks</span><span class="p">:</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clobber</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test:all</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">release</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:project</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:default_tasks</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clobber</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test:all</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">release</span>
 </code></pre></div>
 <strong>Default</strong>: <code>['test:all']</code></p>
 <h2 id="use_mocks"><code>:use_mocks</code></h2>
@@ -4406,43 +4409,6 @@ final test reporting results from these individual test case runs.</p>
 <p><code>:none</code> will simply cause a test report to list each test case as failed
 due to a test executable crash.</p>
 <p>Sample Ceedling run output with backtrace <code>:none</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>👟 Executing
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>------------
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>Running TestUsartModel.out...
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>-------------------
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>FAILED TEST SUMMARY
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>-------------------
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>[test/TestUsartModel.c]
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>  Test: testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  At line (24): &quot;Test executable crashed&quot;
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>  Test: testCrash
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>  At line (37): &quot;Test executable crashed&quot;
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>  Test: testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>  At line (44): &quot;Test executable crashed&quot;
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>  Test: testShouldReturnErrorMessageUponInvalidTemperatureValue
-<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>  At line (50): &quot;Test executable crashed&quot;
-<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>
-<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>  Test: testShouldReturnWakeupMessage
-<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>  At line (56): &quot;Test executable crashed&quot;
-<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>
-<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>-----------------------
-<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>❌ OVERALL TEST SUMMARY
-<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>-----------------------
-<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>TESTED:  5
-<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>PASSED:  0
-<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>FAILED:  5
-<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>IGNORED: 0
-</code></pre></div>
-<h3 id="simple"><code>:simple</code></h3>
-<p><code>:simple</code> causes Ceedling to re-run each test case in the test executable
-individually to identify and report the problematic test case(s). This is
-the default option and is described above.</p>
-<p>Sample Ceedling run output with backtrace <code>:simple</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>👟 Executing
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>------------
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Running TestUsartModel.out...
@@ -4452,23 +4418,34 @@ the default option and is described above.</p>
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>FAILED TEST SUMMARY
 <a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>-------------------
 <a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>[test/TestUsartModel.c]
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  Test: testCrash
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  At line (37): &quot;Test case crashed&quot;
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>  Test: testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  At line (24): &quot;Test executable crashed&quot;
 <a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>-----------------------
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>❌ OVERALL TEST SUMMARY
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>-----------------------
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>TESTED:  5
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>PASSED:  4
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>FAILED:  1
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>IGNORED: 0
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  Test: testCrash
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>  At line (37): &quot;Test executable crashed&quot;
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>  Test: testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>  At line (44): &quot;Test executable crashed&quot;
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>  Test: testShouldReturnErrorMessageUponInvalidTemperatureValue
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>  At line (50): &quot;Test executable crashed&quot;
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>  Test: testShouldReturnWakeupMessage
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>  At line (56): &quot;Test executable crashed&quot;
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>-----------------------
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>❌ OVERALL TEST SUMMARY
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>-----------------------
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>TESTED:  5
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>PASSED:  0
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>FAILED:  5
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>IGNORED: 0
 </code></pre></div>
-<h3 id="gdb"><code>:gdb</code></h3>
-<p><code>:gdb</code> uses the <a href="https://www.sourceware.org/gdb/"><code>gdb</code></a> debugger to identify and report the troublesome
-line of code triggering the crash. If this option is enabled, but <code>gdb</code> is
-not available to Ceedling, project configuration validation will terminate
-with an error at startup.</p>
-<p>Sample Ceedling run output with backtrace <code>:gdb</code>:</p>
+<h3 id="simple"><code>:simple</code></h3>
+<p><code>:simple</code> causes Ceedling to re-run each test case in the test executable
+individually to identify and report the problematic test case(s). This is
+the default option and is described above.</p>
+<p>Sample Ceedling run output with backtrace <code>:simple</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>👟 Executing
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>------------
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Running TestUsartModel.out...
@@ -4479,17 +4456,43 @@ with an error at startup.</p>
 <a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>-------------------
 <a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>[test/TestUsartModel.c]
 <a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>  Test: testCrash
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  At line (40): &quot;Test case crashed &gt;&gt; Program received signal SIGSEGV, Segmentation fault.
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>                0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>                40    uint32_t i = *nullptr;&quot;
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  At line (37): &quot;Test case crashed&quot;
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>-----------------------
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>❌ OVERALL TEST SUMMARY
 <a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>-----------------------
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>❌ OVERALL TEST SUMMARY
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>-----------------------
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>TESTED:  5
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>PASSED:  4
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>FAILED:  1
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>IGNORED: 0
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>TESTED:  5
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>PASSED:  4
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>FAILED:  1
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>IGNORED: 0
+</code></pre></div>
+<h3 id="gdb"><code>:gdb</code></h3>
+<p><code>:gdb</code> uses the <a href="https://www.sourceware.org/gdb/"><code>gdb</code></a> debugger to identify and report the troublesome
+line of code triggering the crash. If this option is enabled, but <code>gdb</code> is
+not available to Ceedling, project configuration validation will terminate
+with an error at startup.</p>
+<p>Sample Ceedling run output with backtrace <code>:gdb</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>👟 Executing
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>------------
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>Running TestUsartModel.out...
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>☠️ ERROR: Test executable `TestUsartModel.out` seems to have crashed
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>-------------------
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>FAILED TEST SUMMARY
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>-------------------
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>[test/TestUsartModel.c]
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  Test: testCrash
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  At line (40): &quot;Test case crashed &gt;&gt; Program received signal SIGSEGV, Segmentation fault.
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>                0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>                40    uint32_t i = *nullptr;&quot;
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>-----------------------
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>❌ OVERALL TEST SUMMARY
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>-----------------------
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>TESTED:  5
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>PASSED:  4
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>FAILED:  1
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>IGNORED: 0
 </code></pre></div>
 <p><strong><em>Notes:</em></strong></p>
 <ol>

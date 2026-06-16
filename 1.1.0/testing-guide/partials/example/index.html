@@ -4099,11 +4099,11 @@ to export the <code>wondrous_forest</code> project.</p>
 <p>Partials allows you to accomplish both of these goals with no changes to
 <em>sensor.c</em> even though <code>_ConvertRawToMilliCelsius()</code> is static.</p>
 <div class="admonition warning">
-<p class="admonition-title">A Function Cannot Be Both Tested and Mocked</p>
+<p class="admonition-title">A function cannot be both tested and mocked in the same test file</p>
 <p>A core restriction of the C language remains here! <code>_ConvertRawToMilliCelsius()</code>
 cannot be both tested and mocked in the same test. Attempting to do so would
-duplicate the function and cause a doubly-defined symbol failure during linking.
-We solve this by simply creating two peer test files for the different Partials
+duplicate the function and cause a doubly-defined symbol failure during linking.</p>
+<p>We solve this by simply creating two peer test files for the different Partials
 usage scenarios.</p>
 </div>
 <h2 id="using-the-testable-partial">Using the testable partial</h2>
