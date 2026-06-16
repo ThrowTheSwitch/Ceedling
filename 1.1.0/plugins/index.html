@@ -3782,10 +3782,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#static-analysis" class="md-nav__link">
+  <a href="#static-dynamic-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Static Analysis
+        Static &amp; Dynamic Analysis
       
     </span>
   </a>
@@ -3978,23 +3978,30 @@ a simple text file that collects all such warning messages.</p>
 </li>
 </ul>
 </div>
-<h3 id="static-analysis">Static Analysis</h3>
+<h3 id="static-dynamic-analysis">Static &amp; Dynamic Analysis</h3>
+<div class="admonition tip">
+<p class="admonition-title">Ceedling includes integrated <code>gdb</code> support</p>
+<p>Tracking down weird test failures can require multiple approaches and tools. 
+Diagnosing a bug causing a test executable crash can benefit from either or 
+both of these plugins plus Ceedling’s 
+<a href="../configuration/reference/project/#use_backtrace">backtrace feature</a>.</p>
+</div>
 <div class="grid cards">
 <ul>
 <li>
 <p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m23.5 17-5 5-3.5-3.5 1.5-1.5 2 2 3.5-3.5zM6 2c-1.11 0-2 .89-2 2v16c0 1.11.89 2 2 2h7.81c-.53-.91-.81-1.95-.81-3 0-3.31 2.69-6 6-6 .34 0 .67.03 1 .08V8l-6-6m-1 1.5L18.5 9H13Z"/></svg></span> <strong><a href="cppcheck/"><code>cppcheck</code></a></strong></p>
 <hr />
-<p>Adds Ceedling tasks to execute static analysis with <a href="https://cppcheck.sourceforge.io">Cppcheck</a>. It helps
-finding bugs related to undefined behaviour, dangerous code patterns and
-coding style. It is able to analyze C/C++ code with non-standard syntax, as
-is usual in embedded projects.</p>
+<p>Adds Ceedling tasks to execute static analysis with <a href="https://cppcheck.sourceforge.io">Cppcheck</a>. Cppcheck helps
+find bugs related to undefined behavior, dangerous code patterns, and
+coding style. Cppcheck is even able to analyze non-standard syntax C/C++ code, 
+as is common in embedded projects. The plugin can produce various reports.</p>
 </li>
 <li>
 <p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 17H7V7h10m4 4V9h-2V7a2 2 0 0 0-2-2h-2V3h-2v2h-2V3H9v2H7c-1.11 0-2 .89-2 2v2H3v2h2v2H3v2h2v2a2 2 0 0 0 2 2h2v2h2v-2h2v2h2v-2h2a2 2 0 0 0 2-2v-2h2v-2h-2v-2m-6 2h-2v-2h2m2-2H9v6h6z"/></svg></span> <strong><a href="valgrind/"><code>valgrind</code></a></strong></p>
 <hr />
 <p>Adds Ceedling tasks to run test executables under <a href="https://valgrind.org">Valgrind</a> memory error
-detection. Catches memory leaks, invalid accesses, and use-after-free bugs,
-producing per-test log files in the build artifacts directory.</p>
+detection. Valgrind catches memory leaks, invalid accesses, and use-after-free
+bugs. The plugin produces per-test log files in the build artifacts directory.</p>
 </li>
 </ul>
 </div>
