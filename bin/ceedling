@@ -78,6 +78,7 @@ begin
   # This prevents double instantiation and preserves object state in handoff
   handoff_objects = {}
   handoff = [
+    :rake_task_registry,
     :reportinator,
     :loginator,
     :file_wrapper,

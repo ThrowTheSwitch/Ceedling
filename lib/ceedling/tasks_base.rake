@@ -32,8 +32,8 @@ end
 if (not PLUGINS_ENABLED.empty?)
 desc "Execute plugin result summaries (no build triggering)."
 task :summary do
-	@ceedling[:plugin_manager].summary
-  puts "\nNOTE: Summaries may be out of date with project sources.\n\n"
+  @ceedling[:loginator].console( "\nSummaries may be out of date with project sources.\n", LogLabels::NOTICE )
+  @ceedling[:plugin_manager].summary
 end
 end
 

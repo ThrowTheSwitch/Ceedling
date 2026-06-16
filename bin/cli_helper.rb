@@ -10,15 +10,17 @@ require 'app_cfg'
 # From Ceedling application
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/rakefile_component_resolver'
 require 'versionator' # Outisde DIY context
 
 class CliHelper
 
-  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :loginator, :system_wrapper
+  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :system_wrapper
 
   def setup
     # Aliases
     @actions = @actions_wrapper
+    @registry = @rake_task_registry
   end
 
   def log_project_name(config)
@@ -167,6 +169,18 @@ class CliHelper
   end
 
 
+  def build_rake_task_registry(config:)
+    paths = RakefileComponentResolver.resolve(
+      config,
+      CEEDLING_APPCFG[:ceedling_lib_path],
+      CEEDLING_APPCFG[:ceedling_plugins_path]
+    )
+
+    @registry.register_test_tasks( paths )
+    @registry.register_release_tasks( paths )
+  end
+
+
   def load_ceedling(config:, rakefile_path:, default_tasks:[])
     # Set default tasks
     Rake::Task.define_task(:default => default_tasks) if !default_tasks.empty?
@@ -183,8 +197,9 @@ class CliHelper
     # Do nothing if no test case filters
     return if (include.nil? || include.empty?) && (exclude.nil? || exclude.empty?)
 
-    # TODO: When we can programmatically check if a task is a test task,
-    #       raise an exception if --graceful-fail is set without test operations
+    unless test_task?( tasks: (tasks.empty? ? default_tasks : tasks ) )
+      raise CeedlingException.new( "Test case filters are only applicable to test tasks. No test tasks were specified." )
+    end
 
     # Add test runner configuration setting necessary to use test case filters
     value, _ = @config_walkinator.fetch_value( :test_runner, hash:config )
@@ -199,15 +214,19 @@ class CliHelper
 
 
   def process_graceful_fail(config:, cmdline_graceful_fail:, tasks:, default_tasks:)
-    # TODO: When we can programmatically check if a task is a test task,
-    #       raise an exception if --graceful-fail is set without test operations
-
     # Precedence
     #  1. Command line option
     #  2. Configuration entry
 
     # If command line option was set, use it
-    return cmdline_graceful_fail if !cmdline_graceful_fail.nil?
+    if !cmdline_graceful_fail.nil?
+
+      if cmdline_graceful_fail && !test_task?( tasks: (tasks.empty? ? default_tasks : tasks ) )
+        raise CeedlingException.new( "The graceful fail option is only applicable to test tasks. No test tasks were specified." )
+      end
+
+      return cmdline_graceful_fail
+    end
 
     # If configuration contains :graceful_fail, use it
     value, _ = @config_walkinator.fetch_value( :test_build, :graceful_fail, hash:config )
@@ -258,21 +277,13 @@ class CliHelper
   end
 
 
-  # TODO: This is a hack until Rake is fully removed and plugin/build tasks incorporate a purpose classification
-  def build_or_plugin_task?(tasks:, default_tasks:)
-    _tasks = tasks.empty?() ? default_tasks.dup() : tasks.dup()
+  def test_task?(tasks:)
+    return tasks.any? { |task| @registry.task_is?( task, RakeTaskRegistry::TAG_TEST ) }
+  end
 
-    # These namespace-less tasks are definitely build tasks
-    return true if _tasks.include?('test')
-    return true if _tasks.include?('release')
 
-    # Namespace-less (clobber, clean, etc.), files:, and paths: tasks are not build / plugin tasks
-    #  1. Filter out tasks lacking a namespace
-    #  2. Look for any tasks other than paths: or files:
-    _tasks.select! {|t| t.include?( ':') }
-    _tasks.reject! {|t| t =~ /(^files:|^paths:)/}
-
-    return !_tasks.empty?
+  def build_task?(tasks:)
+    return tasks.any? { |task| @registry.task_is?( task, RakeTaskRegistry::TAG_BUILD ) }
   end
 
 

@@ -5,28 +5,6 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-rule(/#{PROJECT_TEST_BUILD_OUTPUT_PATH}\/#{'.+\\' + EXTENSION_OBJECT}$/ => [
-    proc do |task_name|
-      _, object = (task_name.split('+'))
-      @ceedling[:file_finder].find_build_input_file(filepath: object, context: TEST_SYM)
-    end
-  ]) do |target|
-    test, object = (target.name.split('+'))
-
-    tool = TOOLS_TEST_COMPILER
-
-    if @ceedling[:file_wrapper].extname(target.source) == EXTENSION_ASSEMBLY
-      tool = TOOLS_TEST_ASSEMBLER
-    end
-
-    @ceedling[:test_invoker].compile_test_component(
-      tool: tool,
-      test: test.to_sym,
-      source: target.source,
-      object: object
-    )
-  end
-
 namespace TEST_SYM do
   TOOL_COLLECTION_TEST_RULES = {
     :context        => TEST_SYM,

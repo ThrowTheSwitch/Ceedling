@@ -35,8 +35,12 @@ REMOVE_FILE_PROC = Proc.new { |fn| rm_r fn rescue nil }
 desc "Delete all build artifacts and temporary products."
 task(:clean) do
   # because :clean is a prerequisite for :clobber, intelligently display the progress message
-  if (not @ceedling[:task_invoker].invoked?(/^clobber$/))
-    @ceedling[:loginator].log("\nCleaning build artifacts...\n(For large projects, this task may take a long time to complete)\n\n")
+  if (not @ceedling[:rake_task_invoker].invoked?(/^clobber$/))
+    @ceedling[:loginator].console(
+      "\nCleaning build artifacts...\n" +
+      "(For large projects, this task may take a long time to complete)\n\n",
+      LogLabels::NOTICE
+    )
   end
   CLEAN.each { |fn| REMOVE_FILE_PROC.call(fn) }
 end
@@ -44,7 +48,11 @@ end
 # redefine clobber so we can override how it advertises itself
 desc "Delete all generated files (and build artifacts)."
 task(:clobber => [:clean]) do
-  @ceedling[:loginator].log("\nClobbering all generated files...\n(For large projects, this task may take a long time to complete)\n\n")
+  @ceedling[:loginator].console(
+    "\nClobbering all generated files...\n" +
+    "(For large projects, this task may take a long time to complete)\n\n",
+    LogLabels::NOTICE
+  )
   CLOBBER.each { |fn| REMOVE_FILE_PROC.call(fn) }
 end
 
@@ -66,11 +74,12 @@ namespace :paths do
   paths.each do |name|
     desc "List all collected #{name} paths." if standard_paths.include?(name)
     task(name.to_sym) do
+      loginator = @ceedling[:loginator]
       path_list = Object.const_get("COLLECTION_PATHS_#{name.upcase}")
-      puts "#{name.capitalize} paths:#{' None' if path_list.size == 0}"
+      loginator.console( "\n#{name.capitalize} paths:#{' None' if path_list.size == 0}", LogLabels::TITLE )
       if path_list.size > 0
-        path_list.sort.each {|path| puts " - #{path}" }
-        puts "Path count: #{path_list.size}"
+        path_list.sort.each {|path| loginator.console(" • #{path}") }
+        loginator.console("Path count: #{path_list.size}\n\n")
       end
     end
   end
@@ -84,12 +93,13 @@ namespace :files do
   categories.each do |category|
     desc "List all collected #{category.chomp('s')} files."
     task(category.chomp('s').to_sym) do
+      loginator = @ceedling[:loginator]
       files_list = Object.const_get("COLLECTION_ALL_#{category.upcase}")
-      puts "#{category.chomp('s').capitalize} files:#{' None' if files_list.size == 0}"
+      loginator.console( "\n#{category.chomp('s').capitalize} files:#{' None' if files_list.size == 0}", LogLabels::TITLE )
       if files_list.size > 0
-        files_list.sort.each { |filepath| puts " - #{filepath}" }
-        puts "File count: #{files_list.size}"
-        puts "Note: This list sourced only from your project file, not from any build directive macros in test files."
+        files_list.sort.each { |filepath| loginator.console(" • #{filepath}") }
+        loginator.console("File count: #{files_list.size}")
+        loginator.console("\nThis list sourced only from your project file, not from any build directive macros in test files.\n\n", LogLabels::NOTICE)
       end
     end
   end

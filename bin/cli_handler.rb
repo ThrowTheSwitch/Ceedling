@@ -7,14 +7,15 @@
 
 require 'thor'
 require 'mixins' # Built-in Mixins
-require 'ceedling/constants' # From Ceedling application
-require 'versionator' # Outisde DIY context
+require 'ceedling/constants'          # From Ceedling application
+require 'ceedling/rake_task_registry' # From Ceedling application
+require 'versionator'                 # Outisde DIY context
 
 class CliHandler
 
   DOCS_SUBDIR = 'docs'
 
-  constructor :configinator, :projectinator, :cli_helper, :path_validator, :actions_wrapper, :loginator
+  constructor :configinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actions_wrapper, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
@@ -27,6 +28,7 @@ class CliHandler
     # Aliases
     @helper = @cli_helper
     @actions = @actions_wrapper
+    @registry = @rake_task_registry
   end
 
 
@@ -175,6 +177,7 @@ class CliHandler
 
   def build(env:, app_cfg:, options:{}, tasks:)
     # No override, allow build verbosity to be set by config or command line
+    # But, we may change verbosity just before processing the project configuration and running tasks (at bottom)
     @helper.set_verbosity( options[:verbosity], override: false )
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
@@ -182,6 +185,11 @@ class CliHandler
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
+
+    # Populate Rake task registry early (Pass 1) so the same instance is reused by
+    # rakefile.rb via CEEDLING_HANDOFF_OBJECTS injection and re-scanned (Pass 2)
+    # after all .rake files are loaded with constants fully resolved.
+    @helper.build_rake_task_registry( config:config )
 
     default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
@@ -215,8 +223,11 @@ class CliHandler
       )
     )
 
-    # Enable setup / operations duration logging in Rake context
-    app_cfg.set_build_tasks( @helper.build_or_plugin_task?( tasks:tasks, default_tasks:default_tasks ) )
+    # Look up if any tasks we will execute are build tasks
+    build_tasks = @helper.build_task?( tasks: (tasks.empty? ? default_tasks : tasks ) )
+
+    # Enable setup / operations duration logging in Rake context if build tasks are being invoked
+    app_cfg.set_build_tasks( build_tasks )
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
@@ -226,20 +237,23 @@ class CliHandler
       app_cfg[:ceedling_vendor_path]
     )
 
-    version = <<~VERSION
-    Application & Build Frameworks
-       Ceedling => #{_version.ceedling_build}
-          CMock => #{_version.cmock_tag}
-          Unity => #{_version.unity_tag}
-     CException => #{_version.cexception_tag}
-    VERSION
-
-    @loginator.lazy( Verbosity::OBNOXIOUS )
     @loginator.lazy( Verbosity::OBNOXIOUS, LogLabels::CONSTRUCT ) do 
-      version
+      <<~VERSION
+      \nApplication & Build Frameworks
+         Ceedling => #{_version.ceedling_build}
+            CMock => #{_version.cmock_tag}
+            Unity => #{_version.unity_tag}
+       CException => #{_version.cexception_tag}
+      VERSION
+    end
+  
+    # If no build tasks are to be invoked, then quiet down logging for simple tasks
+    # (Unless debug verbosity)
+    if (!build_tasks and options[:verbosity] != Verbosity::DEBUG)
+      @helper.set_verbosity( Verbosity::ERRORS )
     end
 
-    @helper.load_ceedling( 
+    @helper.load_ceedling(
       config: config,
       rakefile_path: path,
       default_tasks: default_tasks

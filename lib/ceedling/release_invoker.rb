@@ -10,12 +10,12 @@ require 'ceedling/constants'
 
 class ReleaseInvoker
 
-  constructor :configurator, :release_invoker_helper, :dependinator, :task_invoker, :file_path_utils, :file_wrapper
+  constructor :configurator, :release_invoker_helper, :dependinator, :rake_task_invoker, :file_path_utils, :file_wrapper
 
 
   def setup_and_invoke_objects( files )
     objects = @file_path_utils.form_release_build_objects_filelist( files )
-    @task_invoker.invoke_release_objects( objects )
+    @rake_task_invoker.invoke_release_objects( objects )
     return objects
   end
 

@@ -72,11 +72,10 @@ class ConfiguratorPlugins
   # Gather up and return .rake filepaths that exist in plugin paths
   def find_rake_plugins(config, plugin_paths)
     @rake_plugins = []
-    plugins_with_path = []
 
     config[:plugins][:enabled].each do |plugin|
       if path = plugin_paths[(plugin + '_path').to_sym]
-        rake_plugin_path = File.join(path, "#{plugin}.rake")
+        rake_plugin_path = File.join( path, "#{plugin}.rake" )
         if @file_wrapper.exist?( rake_plugin_path )
           @rake_plugins << {:plugin => plugin, :path => rake_plugin_path}
         end
@@ -108,7 +107,6 @@ class ConfiguratorPlugins
   # Gather up and return config .yml filepaths that exist in plugin paths + config/
   def find_config_plugins(config, plugin_paths)
     @config_plugins = []
-    plugins_with_path = []
 
     config[:plugins][:enabled].each do |plugin|
       if path = plugin_paths[(plugin + '_path').to_sym]

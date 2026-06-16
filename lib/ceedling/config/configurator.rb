@@ -9,6 +9,7 @@ require 'ceedling/defaults'
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
+require 'ceedling/rakefile_component_resolver'
 require 'deep_merge'
 
 class Configurator
@@ -211,14 +212,16 @@ class Configurator
   def prepare_plugins_load_paths(plugins_load_path, config)
     # Plugins must be loaded before generic path evaluation & magic that happen later.
     # So, perform path magic here as discrete step.
+    # (String replacement and standardization require DI objects not available in bin/ scope.)
     config[:plugins][:load_paths].each do |path|
       path.replace( @system_wrapper.module_eval( path ) ) if (path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
       FilePathUtils::standardize( path )
     end
 
-    # Add Ceedling's plugins path as load path so built-in plugins can be found
-    config[:plugins][:load_paths] << plugins_load_path
-    config[:plugins][:load_paths].uniq!
+    # Delegate list construction to the shared helper (user paths first, built-in last).
+    # This mirrors what RakefileComponentResolver.resolve() does in the bin/ CLI scope,
+    # ensuring both scopes search plugins in the same priority order.
+    config[:plugins][:load_paths] = RakefileComponentResolver.prepare_plugin_load_paths( config, plugins_load_path )
 
     return @configurator_plugins.process_aux_load_paths( config )
   end

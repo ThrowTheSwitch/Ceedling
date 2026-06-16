@@ -5,47 +5,24 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-class TaskInvoker
+class RakeTaskInvoker
 
-  attr_accessor :first_run
+  constructor :rake_task_registry, :batchinator, :rake_utils, :rake_wrapper
 
-  constructor :dependinator, :batchinator, :rake_utils, :rake_wrapper
-
-  def setup
-    @test_regexs = [/^#{TEST_ROOT_NAME}:/]
-    @release_regexs = [/^#{RELEASE_ROOT_NAME}(:|$)/]
-    @first_run = true
-
-  end
-  
-  def add_test_task_regex(regex)
-    @test_regexs << regex
-  end
-
-  def add_release_task_regex(regex)
-    @release_regexs << regex
-  end
-  
+  # Post-execution lookup: returns true if any registered test namespace was invoked.
   def test_invoked?
-    invoked = false
-    
-    @test_regexs.each do |regex|
-      invoked = true if (@rake_utils.task_invoked?(regex))
-      break if invoked
-    end
-    
-    return invoked
+    namespaces = @rake_task_registry.namespaces_for_tag( RakeTaskRegistry::TAG_TEST )
+    return false if namespaces.empty?
+    pattern = /^(#{namespaces.map { |ns| Regexp.escape(ns) }.join('|')})(:|$)/
+    @rake_utils.task_invoked?( pattern )
   end
-  
+
+  # Post-execution lookup: returns true if any registered release namespace was invoked.
   def release_invoked?
-    invoked = false
-    
-    @release_regexs.each do |regex|
-      invoked = true if (@rake_utils.task_invoked?(regex))
-      break if invoked
-    end
-    
-    return invoked
+    namespaces = @rake_task_registry.namespaces_for_tag( RakeTaskRegistry::TAG_RELEASE )
+    return false if namespaces.empty?
+    pattern = /^(#{namespaces.map { |ns| Regexp.escape(ns) }.join('|')})(:|$)/
+    @rake_utils.task_invoked?( pattern )
   end
 
   def invoked?(regex)
@@ -64,5 +41,5 @@ class TaskInvoker
       @rake_wrapper[object].invoke
     end
   end
-  
+
 end

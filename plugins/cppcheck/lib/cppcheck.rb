@@ -250,7 +250,7 @@ end
 # end blocks always executed following rake run
 END {
   # cache our input configurations to use in comparison upon next execution
-  if @ceedling[:task_invoker].invoked?(/^#{CPPCHECK_TASK_ROOT}/)
+  if @ceedling[:rake_task_invoker].invoked?(/^#{CPPCHECK_TASK_ROOT}/)
     @ceedling[:cacheinator].cache_test_config(@ceedling[:setupinator].config_hash)
   end
 }

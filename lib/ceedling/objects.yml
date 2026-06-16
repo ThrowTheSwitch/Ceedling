@@ -184,9 +184,11 @@ include_pathinator:
     - loginator
     - file_wrapper
 
-task_invoker:
+rake_task_registry:
+
+rake_task_invoker:
   compose:
-    - dependinator
+    - rake_task_registry
     - batchinator
     - rake_utils
     - rake_wrapper
@@ -256,11 +258,6 @@ generator_partials:
     - file_path_utils
     - file_wrapper
     - loginator
-
-batchinator:
-  compose:
-    - batchinator_helper
-    - task_invoker
 
 dependinator:
   compose:
@@ -441,7 +438,7 @@ release_invoker:
     - configurator
     - release_invoker_helper
     - dependinator
-    - task_invoker
+    - rake_task_invoker
     - file_path_utils
     - file_wrapper
 
@@ -449,6 +446,6 @@ release_invoker_helper:
   compose:
     - configurator
     - dependinator
-    - task_invoker
+    - rake_task_invoker
 
 erb_wrapper:

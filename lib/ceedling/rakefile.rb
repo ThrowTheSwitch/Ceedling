@@ -97,6 +97,11 @@ begin
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
+
+  # Re-scan loaded .rake files with all constants now resolvable (Pass 2).
+  # The same RakeTaskRegistry instance built in bin/ is reused via CEEDLING_HANDOFF_OBJECTS.
+  @ceedling[:rake_task_registry].register_test_tasks( PROJECT_RAKEFILE_COMPONENT_FILES )
+  @ceedling[:rake_task_registry].register_release_tasks( PROJECT_RAKEFILE_COMPONENT_FILES )
 rescue StandardError => ex
   boom_handler( @ceedling[:loginator], ex )
   exit(1)
@@ -122,7 +127,7 @@ END {
       end
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )
-      test_failures_handler() if (@ceedling[:task_invoker].test_invoked? || @ceedling[:task_invoker].invoked?(/^gcov:/))
+      test_failures_handler() if @ceedling[:rake_task_invoker].test_invoked?
     rescue => ex
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )

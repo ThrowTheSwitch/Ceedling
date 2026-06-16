@@ -113,9 +113,9 @@ class PluginReportinator
     @plugin_manager.register_build_failure( failure )
   
     # Set verbosity to error level if there were failures
-    verbosity = failure ? Verbosity::ERRORS : Verbosity::NORMAL
+    _verbosity = failure ? Verbosity::ERRORS : verbosity
 
-    @plugin_reportinator_helper.run_report( template, hash, verbosity )
+    @plugin_reportinator_helper.run_report( template, hash, _verbosity )
   end
   
   #

@@ -7,6 +7,6 @@
 
 class ReleaseInvokerHelper
 
-  constructor :configurator, :dependinator, :task_invoker
+  constructor :configurator, :dependinator, :rake_task_invoker
 
 end

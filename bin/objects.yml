@@ -22,6 +22,8 @@ verbosinator:
 
 reportinator:
 
+rake_task_registry:
+
 loginator:
   compose:
     - verbosinator
@@ -42,6 +44,7 @@ cli_handler:
     - projectinator
     - cli_helper
     - path_validator
+    - rake_task_registry
     - actions_wrapper
     - loginator
 
@@ -51,6 +54,7 @@ cli_helper:
     - config_walkinator
     - path_validator
     - actions_wrapper
+    - rake_task_registry
     - loginator
     - system_wrapper
 

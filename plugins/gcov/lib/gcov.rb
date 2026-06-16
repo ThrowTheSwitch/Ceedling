@@ -162,7 +162,8 @@ class Gcov < Plugin
       )
     }
 
-    @plugin_reportinator.run_test_results_report(hash)
+    # Ensure that summary logging is displayed (highest level of verbosity)
+    @plugin_reportinator.run_test_results_report(hash, Verbosity::SILENT)
   end
 
   # Called within class and also externally by conditionally regnerated Rake task
