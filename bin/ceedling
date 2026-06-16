@@ -64,6 +64,8 @@ begin
     CEEDLING_APPCFG[:ceedling_lib_path],
     # Add lib/ceedling/config to load configuration handling utils
     File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'config' ),
+    # Add lib/ceedling/rake_app to load Rake application handling code
+    File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'rake_app' ),
     # DIY vendored path
     diy_vendor_path
   )

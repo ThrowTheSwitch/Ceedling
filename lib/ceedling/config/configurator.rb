@@ -9,7 +9,7 @@ require 'ceedling/defaults'
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
-require 'ceedling/rakefile_component_resolver'
+require 'ceedling/rake_app/rakefile_component_resolver'
 require 'deep_merge'
 
 class Configurator

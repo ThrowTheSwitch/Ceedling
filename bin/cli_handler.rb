@@ -7,9 +7,9 @@
 
 require 'thor'
 require 'mixins' # Built-in Mixins
-require 'ceedling/constants'          # From Ceedling application
-require 'ceedling/rake_task_registry' # From Ceedling application
-require 'versionator'                 # Outisde DIY context
+require 'ceedling/constants' # From Ceedling application
+require 'ceedling/rake_app/rake_task_registry' # From Ceedling application
+require 'versionator' # Outisde DIY context
 
 class CliHandler
 

@@ -10,7 +10,7 @@ require 'app_cfg'
 # From Ceedling application
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'ceedling/rakefile_component_resolver'
+require 'ceedling/rake_app/rakefile_component_resolver'
 require 'versionator' # Outisde DIY context
 
 class CliHelper
