@@ -82,7 +82,13 @@ for how to enable built-in plugins and load custom plugins in your project.
 
 </div>
 
-### Static Analysis
+### Static & Dynamic Analysis
+
+!!! tip "Ceedling includes integrated `gdb` support"
+    Tracking down weird test failures can require multiple approaches and tools. 
+    Diagnosing a bug causing a test executable crash can benefit from either or 
+    both of these plugins plus Ceedling’s 
+    [backtrace feature](../configuration/reference/project.md#use_backtrace).
 
 <div class="grid cards" markdown>
 
@@ -90,18 +96,18 @@ for how to enable built-in plugins and load custom plugins in your project.
 
     ---
 
-    Adds Ceedling tasks to execute static analysis with [Cppcheck]. It helps
-    finding bugs related to undefined behaviour, dangerous code patterns and
-    coding style. It is able to analyze C/C++ code with non-standard syntax, as
-    is usual in embedded projects.
+    Adds Ceedling tasks to execute static analysis with [Cppcheck]. Cppcheck helps
+    find bugs related to undefined behavior, dangerous code patterns, and
+    coding style. Cppcheck is even able to analyze non-standard syntax C/C++ code, 
+    as is common in embedded projects. The plugin can produce various reports.
 
 -   :material-memory: **[`valgrind`](valgrind.md)**
 
     ---
 
     Adds Ceedling tasks to run test executables under [Valgrind] memory error
-    detection. Catches memory leaks, invalid accesses, and use-after-free bugs,
-    producing per-test log files in the build artifacts directory.
+    detection. Valgrind catches memory leaks, invalid accesses, and use-after-free
+    bugs. The plugin produces per-test log files in the build artifacts directory.
 
 </div>
 

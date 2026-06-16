@@ -28,6 +28,11 @@ Example YAML:
   :name: "Q-36 Space Modulator"
 ```
 
+Example first logging line:
+```
+🌱 Q-36 SPACE MODULATOR
+```
+
 ## `:build_root`
 
 Top level directory into which generated path structure and files are placed.

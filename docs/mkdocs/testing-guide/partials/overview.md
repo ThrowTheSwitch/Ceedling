@@ -12,6 +12,14 @@ Ceedling can create two kinds of Partials:
 1. A **_Mock Partial_** for mocking otherwise inaccessible functions in your
    source code.
 
+!!! warning "A function cannot be both tested and mocked in the same test file"
+    A core restriction of the C language remains. A partialized function cannot
+    be both tested and mocked in the same test. Attempting to do so would duplicate
+    the function and cause a doubly-defined symbol failure during linking.
+    
+    We solve this by simply creating two peer test files for the different Partials
+    usage scenarios.
+
 When a test file references a Partial, Ceedling excludes the original source
 file from that test executable's build. The generated Partial 
 source is compiled and linked in place of the original source C.

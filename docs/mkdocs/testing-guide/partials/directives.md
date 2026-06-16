@@ -1,5 +1,10 @@
 # Partial Directive Macros
 
+!!! note "Documentation convention"
+    - `*` is a stand-in or wildcard to refer to all variations of a particular macro type.
+    - For brevity, some classes of directive macros are referred to simply by their common
+      suffix (e.g `_MODULE` refers to all the macros with this suffix.)
+
 All Partial configuration is expressed through C macros placed
 in your test file. No separate configuration file is required. The macros
 require `#include "ceedling.h"` present in the test file above and before
@@ -97,10 +102,10 @@ listing each function individually.
 
 | Functions | `ALL` | `PUBLIC` | `PRIVATE` | None |
 |---:|---|---|---|---|
-| void foo(void) | foo | foo | bar | |
-| static void bar(void) | bar | baz | oof | |
-| int baz(void) | baz | | | |
-| inline int oof(int) | oof | | | |
+| void foo(void) | ✅ | ✅ |  | |
+| static void bar(void) | ✅ | | ✅ | |
+| int baz(void) | ✅ | ✅ | | |
+| inline int oof(int) | ✅ | | ✅ | |
 
 **Notes:**
 

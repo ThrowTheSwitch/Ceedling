@@ -53,10 +53,11 @@ You as a test author want to:
 Partials allows you to accomplish both of these goals with no changes to
 _sensor.c_ even though `_ConvertRawToMilliCelsius()` is static.
 
-!!! warning "A Function Cannot Be Both Tested and Mocked"
+!!! warning "A function cannot be both tested and mocked in the same test file"
     A core restriction of the C language remains here! `_ConvertRawToMilliCelsius()`
     cannot be both tested and mocked in the same test. Attempting to do so would
     duplicate the function and cause a doubly-defined symbol failure during linking.
+
     We solve this by simply creating two peer test files for the different Partials
     usage scenarios.
 
