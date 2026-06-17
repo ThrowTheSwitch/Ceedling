@@ -195,6 +195,13 @@ Run all unit tests.
 
 ---
 
+### `ceedling test:build_only`
+
+Build the entire test suite but do not execute it. This is a simple 
+validation of code and configuration via your toolchain.
+
+---
+
 ### `ceedling test:*`
 
 Execute the named test file or the named source file that has an
