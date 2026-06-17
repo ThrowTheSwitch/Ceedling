@@ -12,7 +12,6 @@ require 'ceedling/generators/generator_test_results_sanity_checker'
 require 'ceedling/generators/generator_test_results'
 require 'ceedling/yaml_wrapper'
 require 'ceedling/constants'
-require 'ceedling/loginator'
 require 'ceedling/config/configurator'
 
 NORMAL_OUTPUT =
@@ -63,31 +62,37 @@ TEST_OUT_FILE_FAIL = 'out.fail'
 
 describe GeneratorTestResults do
   before(:each) do
-    # these will always be mocked
-    # this will always be mocked
-    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
+    # Stub logging dependencies — all log/progress calls are silently ignored in tests
+    @loginator = double('loginator')
+    allow(@loginator).to receive(:log)
+
+    @reportinator = double('reportinator')
+    allow(@reportinator).to receive(:generate_progress).and_return('')
+
     @configurator = Configurator.new({
-      :configurator_setup => nil,
+      :configurator_setup   => nil,
       :configurator_builder => nil,
       :configurator_plugins => nil,
-      :config_walkinator => nil,
-      :yaml_wrapper => nil,
-      :system_wrapper => nil,
-      :loginator => @loginator,
-      :reportinator => nil
+      :config_walkinator    => nil,
+      :yaml_wrapper         => nil,
+      :system_wrapper       => nil,
+      :loginator            => @loginator,
+      :reportinator         => @reportinator
     })
-    
-    # these will always be used as is.
-    @yaml_wrapper = YamlWrapper.new
-    @sanity_checker = GeneratorTestResultsSanityChecker.new({:configurator => @configurator, :loginator => @loginator})
 
-    @generate_test_results = described_class.new(
-      {
-        :configurator => @configurator,
-        :generator_test_results_sanity_checker => @sanity_checker,
-        :yaml_wrapper => @yaml_wrapper
-      }
-    )
+    @yaml_wrapper = YamlWrapper.new
+    @sanity_checker = GeneratorTestResultsSanityChecker.new({
+      :configurator => @configurator,
+      :loginator    => @loginator
+    })
+
+    @generate_test_results = described_class.new({
+      :configurator                          => @configurator,
+      :generator_test_results_sanity_checker => @sanity_checker,
+      :loginator                             => @loginator,
+      :reportinator                          => @reportinator,
+      :yaml_wrapper                          => @yaml_wrapper
+    })
 
     @tmpdir = Dir.mktmpdir
     @tmp_out_file = File.join(@tmpdir, TEST_OUT_FILE)
@@ -97,7 +102,7 @@ describe GeneratorTestResults do
   after(:each) do
     FileUtils.rm_rf(@tmpdir)
   end
-  
+
   describe '#process_and_write_results' do
     it 'raises on an empty input' do
       expect{
