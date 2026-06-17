@@ -33,11 +33,11 @@ A local verion of this site that is navigable with your web browser from your fi
 
 ### CppCheck plugin
 
-Alejandro Rosso's excellent Cppcheck plugin has been added to the stock plugin collection (with Alejandro's permission). We're excited to make it easier for everyone to use this great addition!
+Alejandro Rosso’s excellent [Cppcheck plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/) has been added to the stock plugin collection (with Alejandro’s permission). We’re excited to make it easier for everyone to use this great addition!
 
 ### Valgrind plugin
 
-James Raphael Tiovalen's helpful Valgrind plugin has been updated to work with the latest Ceedling and added to the stock plugin collection. Thank you, James for the great contribution!
+James Raphael Tiovalen’s helpful [Valgrind plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/) has been updated to work with the latest Ceedling and added to the stock plugin collection. Thank you, James for the great contribution!
 
 ### GCov plugin support for Modified Condition / Decision Coverage
 
@@ -105,7 +105,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - `#980` -- FFF original plugin should not be part of release build (le sigh)
 - `#981` -- Ceedling could not find header file to mock when using preprocessor
 - `#982` -- Ceedling did not inject required header file into mock when using preprocessor
-- `#985` -- Macros not being properly hidden from CMock's parser when using preprocessor
+- `#985` -- Macros not being properly hidden from CMock’s parser when using preprocessor
 - `#988` -- Parsing of `TEST_SOURCE_FILE` did not support special characters (like `.`) in filenames
 - `#888` & `#977` -- Unicode characters produce crashes in various places
 - `#996` -- Improved handling and documentation of module generator path options
@@ -288,7 +288,7 @@ A shortcut for adding arguments to an existing tool defition already existed. Th
     - --flag2
 ```
 
-### Gcov plugin: Support for `gcovr`'s `--merge-mode-functions` for v6.0+
+### Gcov plugin: Support for `gcovr`’s `--merge-mode-functions` for v6.0+
 
 Starting with `gcovr` v6.0 (now at v7.2), report generation can encounters a fatal error if multiple coverage results exist for the same function. This is a very possible scenario with Ceedling 1.0.0 now being able to build and run the same same test executable multiple ways.
 

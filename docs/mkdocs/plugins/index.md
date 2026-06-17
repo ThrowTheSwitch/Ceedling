@@ -155,7 +155,7 @@ for how to enable built-in plugins and load custom plugins in your project.
 
 <div class="grid cards" markdown>
 
--   :material-connection: **[`command_hooks`](command-hooks.md)**
+-   :material-script-text-play: **[`command_hooks`](command-hooks.md)**
 
     ---
 
@@ -163,7 +163,7 @@ for how to enable built-in plugins and load custom plugins in your project.
     project configuration. Easily attach your own scripts or command line
     utilities to build steps without writing a full custom plugin.
 
--   :material-connection: **[`compile_commands_json_db`](compile-commands-json-db.md)**
+-   :material-database: **[`compile_commands_json_db`](compile-commands-json-db.md)**
 
     ---
 
@@ -171,7 +171,7 @@ for how to enable built-in plugins and load custom plugins in your project.
     `compile_commands.json` file useful to any editor or IDE that implements
     [`clangd`][clangd] Language Server Protocol support.
 
--   :material-connection: **[`beep`](beep.md)**
+-   :material-bell-ring: **[`beep`](beep.md)**
 
     ---
 
