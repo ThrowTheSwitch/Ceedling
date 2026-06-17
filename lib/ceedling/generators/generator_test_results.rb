@@ -87,7 +87,7 @@ require 'ceedling/exceptions'
 
 class GeneratorTestResults
 
-  constructor :configurator, :generator_test_results_sanity_checker, :yaml_wrapper
+  constructor :configurator, :generator_test_results_sanity_checker, :loginator, :reportinator, :yaml_wrapper
 
   def setup()
     # Aliases
@@ -151,9 +151,14 @@ class GeneratorTestResults
       end
     end
 
+    @loginator.log("Test results from #{File.basename(executable)} => #{results}", Verbosity::DEBUG)
+
     @sanity_checker.verify( results, unity_shell_result[:exit_code] )
 
     output_file = output_file.ext( @configurator.extension_testfail ) if (results[:counts][:failed] > 0)
+
+    msg = @reportinator.generate_progress("Collecting test results from #{File.basename(executable)} to #{output_file}")
+    @loginator.log(msg, Verbosity::OBNOXIOUS)
 
     @yaml_wrapper.dump(output_file, results)
 
