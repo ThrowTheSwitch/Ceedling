@@ -5,9 +5,15 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+---
+:valgrind:
+  # Halt the build if valgrind reports memory errors in any test binary
+  :halt_on_error: FALSE
 
-VALGRIND_ROOT_NAME              = 'valgrind'.freeze
-VALGRIND_TASK_ROOT              = VALGRIND_ROOT_NAME + ':'
-VALGRIND_SYM                    = VALGRIND_ROOT_NAME.to_sym unless defined?(VALGRIND_SYM)
-
-VALGRIND_ARTIFACTS_PATH         = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, VALGRIND_ROOT_NAME)
+  # Valgrind flags (do not include --log-file or the ${1} executable token)
+  :arguments:
+    - "--leak-check=full"
+    - "--show-leak-kinds=all"
+    - "--track-origins=yes"
+    - "--errors-for-leak-kinds=all"
+...

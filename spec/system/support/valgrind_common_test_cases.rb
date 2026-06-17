@@ -22,7 +22,7 @@ module ValgrindCommonTestCases
     end
   end
 
-  def can_run_valgrind_on_all_tests
+  def run_valgrind_on_all_tests
     @c.with_context do
       Dir.chdir @proj_name do
         prep_project_yml_for_valgrind
@@ -32,14 +32,14 @@ module ValgrindCommonTestCases
 
         output = @c.ceedling_build_exec("valgrind:all")
         expect(@c.last_exit_status).to eq(0)
-        expect(output).to match(/INFO:.*valgrind/i)
+        expect(output).to match(/Wrote 1 Valgrind report/i)
         expect(File.exist?('build/artifacts/valgrind/test_example_file_success.log')).to eq(true)
         expect(File.size('build/artifacts/valgrind/test_example_file_success.log')).to be > 0
       end
     end
   end
 
-  def can_run_valgrind_on_single_test
+  def run_valgrind_on_single_test
     @c.with_context do
       Dir.chdir @proj_name do
         prep_project_yml_for_valgrind
@@ -49,8 +49,7 @@ module ValgrindCommonTestCases
 
         output = @c.ceedling_build_exec("valgrind:test_example_file_success.c")
         expect(@c.last_exit_status).to eq(0)
-        expect(output).to match(/INFO:.*valgrind/i)
-        expect(output).to match(/test_example_file_success/i)
+        expect(output).to match(/Wrote 1 Valgrind report/i)
         expect(File.exist?('build/artifacts/valgrind/test_example_file_success.log')).to eq(true)
         expect(File.size('build/artifacts/valgrind/test_example_file_success.log')).to be > 0
       end

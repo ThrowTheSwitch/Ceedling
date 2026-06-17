@@ -39,8 +39,8 @@ ceedling_system_tests do
       end
 
       test_case :project_build_tasks_plugins_help_for_valgrind
-      test_case :can_run_valgrind_on_all_tests
-      test_case :can_run_valgrind_on_single_test
+      test_case :run_valgrind_on_all_tests
+      test_case :run_valgrind_on_single_test
     end
   end
 end

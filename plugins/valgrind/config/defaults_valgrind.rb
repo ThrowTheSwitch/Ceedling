@@ -6,24 +6,15 @@
 # =========================================================================
 
 
-DEFAULT_VALGRIND = {
-    :executable => ENV['VALGRIND'].nil? ? FilePathUtils.os_executable_ext('valgrind').freeze : ENV['VALGRIND'].split[0],
+DEFAULT_VALGRIND_TOOL = {
+    :executable => FilePathUtils.os_executable_ext('valgrind').freeze,
     :name => 'default_valgrind'.freeze,
-    :stderr_redirect => StdErrRedirect::NONE.freeze,
     :optional => false.freeze,
-    :arguments => [
-      "--leak-check=full".freeze,
-      "--show-leak-kinds=all".freeze,
-      "--track-origins=yes".freeze,
-      "--errors-for-leak-kinds=all".freeze,
-      "--exit-on-first-error=yes".freeze,
-      "--error-exitcode=1".freeze,
-      "${1}".freeze
-      ].freeze
+    :arguments => [].freeze  # Arguments built dynamically by the plugin from :valgrind: :arguments: config
     }
 
 def get_default_config
     return :tools => {
-        :valgrind => DEFAULT_VALGRIND
+        :valgrind => DEFAULT_VALGRIND_TOOL
     }
 end
