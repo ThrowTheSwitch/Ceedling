@@ -178,7 +178,8 @@ class CliHandler
   def build(env:, app_cfg:, options:{}, tasks:)
     # No override, allow build verbosity to be set by config or command line
     # But, we may change verbosity just before processing the project configuration and running tasks (at bottom)
-    @helper.set_verbosity( options[:verbosity], override: false )
+    _verbosity = options[:verbosity]
+    @helper.set_verbosity( _verbosity, override: false )
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *options[:mixin] )
 
@@ -247,7 +248,8 @@ class CliHandler
       VERSION
     end
   
-    # If no build tasks are to be invoked, then quiet down logging for simple tasks
+    # If no build tasks are to be invoked, then quiet down logging during configuration processing.
+    # This prevents a flood of often non-relevant configuration processing logging during simple tasks.
     # (Unless debug verbosity)
     if (!build_tasks and options[:verbosity] != Verbosity::DEBUG)
       @helper.set_verbosity( Verbosity::ERRORS )
@@ -258,6 +260,9 @@ class CliHandler
       rakefile_path: path,
       default_tasks: default_tasks
     )
+
+    # Restore original verbosity state after optionally quieting down configuration processing logging
+    @helper.set_verbosity( _verbosity )
 
     # Hand Rake tasks off to be executed
     @helper.run_rake_tasks( tasks )
