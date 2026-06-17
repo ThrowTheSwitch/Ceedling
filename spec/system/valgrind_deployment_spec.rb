@@ -42,5 +42,17 @@ ceedling_system_tests do
       test_case :run_valgrind_on_all_tests
       test_case :run_valgrind_on_single_test
     end
+
+    describe "Memory error detection" do
+      before do
+        skip "valgrind is not installed or not in PATH" unless @valgrind_available
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :run_valgrind_memory_error_suite_completes
+      test_case :run_valgrind_memory_error_suite_halts
+    end
   end
 end

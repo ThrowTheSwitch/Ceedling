@@ -56,4 +56,53 @@ module ValgrindCommonTestCases
     end
   end
 
+  def run_valgrind_memory_error_suite_completes
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_valgrind
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
+
+        output = @c.ceedling_build_exec("valgrind:all")
+
+        expect(@c.last_exit_status).to eq(1) # Crash → test failure
+        # Ceedling crash detection
+        expect(output).to match(/test_example_file_crash.+crashed/i)
+        # Absence of Valgrind build halting exception
+        expect(output).not_to match(/Valgrind detected.*memory error/i)
+        expect(output).to match(/Wrote 1 Valgrind report/i)
+        expect(File.exist?('build/artifacts/valgrind/test_example_file_crash.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test_example_file_crash.log')).to be > 0
+        # Expected memory error(s) detected by Valgrind
+        expect(File.read('build/artifacts/valgrind/test_example_file_crash.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
+      end
+    end
+  end
+
+  def run_valgrind_memory_error_suite_halts
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_valgrind
+        @c.merge_project_yml_for_test({ :valgrind => { :halt_on_error => true } })
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
+
+        output = @c.ceedling_build_exec("valgrind:all")
+
+        expect(@c.last_exit_status).to eq(1) # Build halted by plugin
+        # Ceedling crash detection
+        expect(output).to match(/test_example_file_crash.+crashed/i)
+        # Valgrind build halting exception
+        expect(output).to match(/Valgrind detected.*memory error/i)
+        expect(output).to match(/Wrote 1 Valgrind report/i)
+        expect(File.exist?('build/artifacts/valgrind/test_example_file_crash.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test_example_file_crash.log')).to be > 0
+        # Expected memory error(s) detected by Valgrind
+        expect(File.read('build/artifacts/valgrind/test_example_file_crash.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
+      end
+    end
+  end
+
 end
