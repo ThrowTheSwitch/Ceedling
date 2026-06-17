@@ -350,13 +350,13 @@ class Generator
       :test_name => test_name,
       :test_filepath => test_filepath,
       :executable => executable,
-      :result_file => result
+      :result_file => result,
+      :msg => @reportinator.generate_progress( "Running #{File.basename(executable)}" )
     }
 
     @plugin_manager.pre_test_fixture_execute( arg_hash )
 
-    msg = @reportinator.generate_progress( "Running #{File.basename(arg_hash[:executable])}" )
-    @loginator.log( msg )
+    @loginator.log( arg_hash[:msg] )
 
     # Unity's exit code is equivalent to the number of failed tests.
     # We tell @tool_executor not to fail out if there are failures
@@ -409,7 +409,7 @@ class Generator
         )
       end
     end
-
+    
     shell_result[:executable] = executable
     shell_result[:result_file] = arg_hash[:result_file]
     shell_result[:test_file] = @file_finder.find_test_file_from_filepath( arg_hash[:executable] )
