@@ -70,7 +70,6 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - #1024 Fixed bug in options-handling for warnings log report.
 - #1128 Command line mixin precedence.
 - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) correct merge order explanations and clarify Mixins generally.
-- `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
 - PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
 - Multiple fixes and improvements to `#include`s handling and encoding plus these issues & PRs:
@@ -84,7 +83,10 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - #1160 Proper handling of locales and file encoding.
 - #1135 Fixed test fixture results handling to properly process Unity’s colored output when enabled.
 - #1114 Fixed `:default_tasks` handling.
-- #1115 Fixed Gcov plugin for Gcovr configuration file handling.
+- GCov plugin
+   - `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
+   - #1115 Fixed Gcov plugin for Gcovr configuration file handling.
+   - #1161 Fixed “Found no coverage results” when system headers are processed by coverage.
 
 ## ⚠️ Changed
 

@@ -162,6 +162,48 @@ module GcovCommonTestCases
     end
   end
 
+  def gcov_console_report_with_system_header
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        FileUtils.cp test_asset_path("example_file_with_stdio.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file_with_stdio.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_with_stdio.c"), 'test/'
+
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        expect($?.exitstatus).to match(0)
+        # Console summary must report coverage for the source file, not a warning.
+        # When <stdio.h> is included, gcov may list a system header (e.g. _stdio.h)
+        # as the first File entry — the fix ensures the correct source is found.
+        expect(output).to match(/example_file_with_stdio\.c \| Lines executed:/)
+        expect(output).not_to match(/Found no coverage results for.*example_file_with_stdio/)
+      end
+    end
+  end
+
+  def gcov_console_report_with_partial
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+
+        asset_base = test_asset_path("tests_with_fallback_conditionals")
+        FileUtils.cp "#{asset_base}/src/conditional_module.h", 'src/'
+        FileUtils.cp "#{asset_base}/src/conditional_module.c", 'src/'
+        FileUtils.cp "#{asset_base}/src/optional_dep.h",       'src/'
+        FileUtils.cp "#{asset_base}/test/test_conditionals.c", 'test/'
+
+        @c.merge_project_yml_for_test({ :project => { :use_partials => true } })
+
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        expect($?.exitstatus).to match(0)
+        # Coverage must be reported for the Partial (gcov references the original
+        # module via #line remapping); no spurious "Found no coverage results" warning.
+        expect(output).to match(/Lines executed:/)
+        expect(output).not_to match(/Found no coverage results for.*conditional_module/)
+      end
+    end
+  end
+
   def create_html_report_with_gcovr_config_file_overrides_default
     @c.with_context do
       Dir.chdir @proj_name do

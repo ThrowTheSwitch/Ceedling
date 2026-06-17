@@ -99,15 +99,25 @@ class ConsoleReportinator
   end
 
   def extract_gcov_source_path(results, test, source)
-    # Source filepath to be extracted from gcov coverage results via regex
-    # Extract (relative) filepath from results and expand to absolute path
-    matches = results.match(/File\s+'(.+)'/)
+    filename_no_ext = File.basename(source, '.*')
+
+    # Prefer the File header that specifically matches the queried source filename.
+    # gcov may list instrumented system headers (e.g. _stdio.h pulled in via FILE*)
+    # before the actual source file, so the first File entry is not always correct.
+    matches = results.match(/File\s+'([^']*#{Regexp.escape(filename_no_ext)}[^']*)'/)
+
+    # Fall back to the first File header for Partial implementations: their #line
+    # directives remap gcov output to the original module name, so the Partial
+    # filename itself will not appear in any File header.
+    matches ||= results.match(/File\s+'(.+)'/)
+
     if matches.nil? || matches.length != 2
       @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do
         "Could not extract filepath via regex from gcov results for #{test}::#{File.basename(source)}"
       end
       return ''
     end
+
     # Expand to full path from likely partial path to ensure correct matches on source component within gcov results
     File.expand_path( matches[1] )
   end
