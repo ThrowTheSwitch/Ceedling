@@ -53,8 +53,7 @@ NOTE: The ReportGenerator tool does not support extracting MC/DC even if those m
 Preprocessing support now properly distinguishes and handles system includes (`#include <system.h>`) and user includes (`#include "user.h"`).
 
 #### Fallback preprocessing
-When your toolchain’s preprocessor lacks certain features, Ceedling still attempts to extract information and code from C files through fallback text processing.
-This fallback processing has been improved in a handful of ways, most notably implementing simple conditional compilation (`#ifdef`) processing.
+When your toolchain’s preprocessor lacks certain features, Ceedling still attempts to extract information and code from C files through fallback text processing. This fallback processing has been improved in a handful of ways, most notably implementing simple conditional compilation (`#ifdef`) processing.
 
 ### Project configuration
 
@@ -68,13 +67,13 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 
 - #1011 Performance Improvements.
 - #1014 Line Continuations not working in test name.
-- #1015 directive-only issue.
 - #1024 Fixed bug in options-handling for warnings log report.
 - #1128 Command line mixin precedence.
 - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) correct merge order explanations and clarify Mixins generally.
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
 - PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
-- Multiple fixes and improvements to `#include`s handling and encoding plus these issues & PRs:
+- Multiple fixes and improvements to `#include`s handling and preprocessing plus these issues & PRs:
+   - #1015 Probing toolchain for presence of preprocessor directives-only ability.
    - #358 Mocks with relative path in `#include` directive.
    - PR #1056 fix for extracting `#include` directive filenames that contain dashes.
    - #1127 Fixes to path handling in `#include` directives.
