@@ -82,6 +82,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - #1120 Fixed (by removal) an overly “helpful” holdover from Ceedling’s earliest days causing certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
 - #1162 Fixes to Partials handling for file encoding / multi-byte characters (e.g. ©) in comment blocks.
 - #1160 Proper handling of locales and file encoding.
+- #1135 Fixed test fixture results handling to properly process Unity’s colored output when enabled.
 
 ## ⚠️ Changed
 

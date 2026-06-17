@@ -107,18 +107,27 @@ class GeneratorTestResults
     results[:source][:file] = test_file
     results[:time] = unity_shell_result[:time] unless unity_shell_result[:time].nil?
 
+    # When Unity is built with UNITY_OUTPUT_COLOR, ANSI escape sequences wrap
+    # test-result tokens and the summary result token, e.g.:
+    #   test_foo.c:24:test_bar:\e[0;32mPASS\e[0m
+    #   test_foo.c:39:test_baz:\e[0;31mFAIL\e[0m: Expected 2 Was 3
+    #   ---------\n2 Tests 0 Failures 0 Ignored\n\e[0;32mOK\e[0m
+    # Strip them up front so that all downstream regex anchors and literal
+    # tokens (including TEST_STDOUT_STATISTICS) work correctly.
+    raw_output = unity_shell_result[:output].gsub(/\e\[[\d;]*[mK]/, '')
+
     # Process test statistics
-    if (unity_shell_result[:output] =~ PATTERNS::TEST_STDOUT_STATISTICS)
+    if (raw_output =~ PATTERNS::TEST_STDOUT_STATISTICS)
       results[:counts][:total] =   $1.to_i
       results[:counts][:failed] =  $2.to_i
       results[:counts][:ignored] = $3.to_i
       results[:counts][:passed] = (results[:counts][:total] - results[:counts][:failed] - results[:counts][:ignored])
     else
-      raise CeedlingException.new( "Could not parse output for `#{executable}` ⏩️ \"#{unity_shell_result[:output]}\"" ) 
+      raise CeedlingException.new( "Could not parse output for `#{executable}` ⏩️ \"#{unity_shell_result[:output]}\"" )
     end
 
     # Remove test statistics lines
-    output_string = unity_shell_result[:output].sub( PATTERNS::TEST_STDOUT_STATISTICS, '' )
+    output_string = raw_output.sub( PATTERNS::TEST_STDOUT_STATISTICS, '' )
 
     # Process test executable results line-by-line
     output_string.lines do |line|
