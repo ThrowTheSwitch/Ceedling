@@ -236,6 +236,8 @@ generator_test_results:
   compose:
     - configurator
     - generator_test_results_sanity_checker
+    - loginator
+    - reportinator
     - yaml_wrapper
 
 generator_test_results_backtrace:
