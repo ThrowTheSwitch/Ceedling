@@ -7,11 +7,17 @@ Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg
 soon be complete. _Release Notes_, _Breaking Changes_, and _Known Issues_ documents 
 will be revised and updated soon.
 
-**Headliner improvements:**
-* A [Partial][partials-docs] allows a test to mix mocked and real functions from the same source module in a single test file and enables testing of `static` and `inline` functions without modifying source code.
+**New goodies:**
+* A [Partial][partials-docs] allows a test to mix mocked and real functions 
+from the same source module in a single test file and enables testing of 
+`static` and `inline` functions without modifying source code.
+* New stock plugins for [Valgrind memory checking][valgrind-plugin] and 
+[Cppcheck static analysis][cppcheck-plugin].
 * Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
 
 [partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
+[valgrind-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/
+[cppcheck-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/
 [ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
 
 # 🌱 Ceedling is a handy-dandy build system for C projects

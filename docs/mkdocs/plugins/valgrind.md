@@ -28,9 +28,14 @@ By default the build continues after Valgrind errors so that all log files are
 produced. The optional `:halt_on_error:` setting stops the build after the first
 test binary whose Valgrind log reports memory errors.
 
-## Setup & installation
+## Installation & set up
 
-### Linux package manager
+### Installation
+
+You have at least 3 options for getting the `valgrind` tool working on your
+system, including one readymade option.
+
+#### Linux package manager
 
 Install Valgrind from your Linux distribution’s package manager:
 
@@ -39,11 +44,11 @@ sudo apt-get install valgrind   # Debian / Ubuntu
 sudo dnf install valgrind       # Fedora / RHEL
 ```
 
-### Build from source
+#### Build from source
 
 Or build from source from [valgrind.org/downloads/](https://valgrind.org/downloads/).
 
-### _MadScienceLab_ Docker images
+#### _MadScienceLab_ Docker images
 
 Fully packaged [_MadScienceLab_ Docker images][docker-hub] containing Ruby, 
 Ceedling, the GCC toolchain, and more are available. The `-plugins` variants 
@@ -92,6 +97,7 @@ defaults, redefine the argument list in your project configuration:
 ```yaml
 :valgrind:
   :arguments:
+    # A subset of the default arguments
     - "--leak-check=full"
     - "--show-leak-kinds=all"
 ```

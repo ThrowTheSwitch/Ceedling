@@ -19,6 +19,8 @@ This changelog is complemented by two other documents:
 
 With Partials, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see #936). Partials also allow testing of `static` and `inline` functions with no modification of your source code under test.
 
+💲 Partials was made possible thanks to a generous corporate sponsor via a [Ceedling Assist](https://www.thingamabyte.com/ceedling) engagement.
+
 ### Documentation site
 
 Ceedling is now complemented by a full, searchable [documentation site](https://throwtheswitch.github.io/Ceedling/).

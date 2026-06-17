@@ -20,6 +20,9 @@ embedded systems developers.
     access without rewriting your source code. Think of Partials as a scalpel 
     for testing your code.
 
+    👀 See the [Changelog](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md)
+    for all the new goodness in 1.1.0.
+
 ## Overview
 
 <div class="grid cards" markdown>
