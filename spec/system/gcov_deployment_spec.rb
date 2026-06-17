@@ -40,6 +40,7 @@ ceedling_system_tests do
       test_case :project_with_gcov_compile_error
       test_case :help_tasks_include_gcov
       test_case :create_html_report
+      test_case :create_html_report_with_gcovr_config_file_overrides_default
       test_case :create_html_report_from_crashing_test_with_backtrace_enabled
       test_case :create_html_report_with_zero_coverage_after_crashing_test_and_backtrace
       test_case :create_html_report_100_coverage_excluding_crashing_test_case

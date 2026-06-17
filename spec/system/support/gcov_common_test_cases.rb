@@ -162,6 +162,58 @@ module GcovCommonTestCases
     end
   end
 
+  def create_html_report_with_gcovr_config_file_overrides_default
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        # A second test file covering the same source creates duplicate function
+        # coverage entries: Ceedling builds one executable per test file, and both
+        # link against example_file.c, producing two sets of .gcda coverage data
+        # for the same functions.
+        File.write('test/test_example_file_2.c', <<~C)
+          #include "unity.h"
+          #include "example_file.h"
+
+          void setUp(void) {}
+          void tearDown(void) {}
+
+          void test_difference_between_two_numbers(void)
+          {
+            TEST_ASSERT_EQUAL_INT(0, difference_between_numbers(1, 1));
+          }
+        C
+
+        # 'strict' causes gcovr to exit non-zero when the same function appears in
+        # multiple test executables' coverage data. Ceedling's default is
+        # 'merge-use-line-max' (set in defaults.yml), which it injects as a CLI
+        # arg that would override this config file setting without the fix.
+        File.write('gcovr.cfg', [
+          "[gcovr]",
+          "merge-mode-functions = strict"
+        ].join("\n"))
+
+        @c.merge_project_yml_for_test({
+          :gcov => {
+            :gcovr => {
+              :config_file => 'gcovr.cfg'
+            }
+          }
+        })
+
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        if @gcov_reports.include? :gcovr
+          # Config file honored (fix applied): strict mode exits non-zero on duplicate functions.
+          # Config file overridden by Ceedling CLI (bug): merge-use-line-max exits 0.
+          expect($?.exitstatus).not_to eq(0)
+        end
+      end
+    end
+  end
+
   def create_html_report_from_crashing_test_with_backtrace_enabled
     @c.with_context do
       Dir.chdir @proj_name do

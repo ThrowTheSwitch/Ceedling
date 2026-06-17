@@ -137,6 +137,13 @@ class GcovrReportinator
     args = ""
     args += "--root \"#{gcovr_opts[:report_root]}\" " unless gcovr_opts[:report_root].nil?
     args += "--config \"#{gcovr_opts[:config_file]}\" " unless gcovr_opts[:config_file].nil?
+
+    # When a config file is provided, defer all other options to it.
+    # This prevents Ceedling from overriding config file values with its CLI arguments.
+    # Only :report_root is still applied because Ceedling may invoke gcovr from a
+    # different working directory than the project root.
+    return args if gcovr_opts[:config_file]
+
     args += "--filter \"#{gcovr_opts[:report_include]}\" " unless gcovr_opts[:report_include].nil?
     Array(gcovr_opts[:report_exclude]).each { |pat| args += "--exclude \"#{pat}\" " }
     args += "--gcov-filter \"#{gcovr_opts[:gcov_filter]}\" " unless gcovr_opts[:gcov_filter].nil?
@@ -311,10 +318,15 @@ class GcovrReportinator
   def collect_gcovr_opts(opts)
     _opts = opts[GCOVR_SETTING_PREFIX.to_sym]
 
-    # Build array of --exclude patterns: user-provided string (if any) + auto-generated per-file patterns
-    excludes = build_report_exclusions()
-    excludes.unshift( _opts[:report_exclude] ) if _opts[:report_exclude]
-    _opts[:report_exclude] = excludes unless excludes.empty?
+    # Only auto-generate --exclude patterns when no config file is specified.
+    # A gcovr config file is authoritative; CLI args override it, so injecting
+    # auto-excludes would silently defeat the config file.
+    unless _opts[:config_file]
+      # Build array of --exclude patterns: user-provided string (if any) + auto-generated per-file patterns
+      excludes = build_report_exclusions()
+      excludes.unshift( _opts[:report_exclude] ) if _opts[:report_exclude]
+      _opts[:report_exclude] = excludes unless excludes.empty?
+    end
 
     _opts[:mcdc] = true if opts[:gcov_mcdc]
 

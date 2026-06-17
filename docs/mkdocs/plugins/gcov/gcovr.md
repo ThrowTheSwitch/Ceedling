@@ -105,6 +105,23 @@ and test runners, are not compiled with coverage.
     root of your project, you may need set `:report_root` as well as
     `:report_exclude` and `:exclude_directories`.
 
+!!! note "Using a gcovr configuration file"
+    When `:config_file:` is set, Ceedling passes only `--root` and `--config`
+    to gcovr and defers all other settings to that file. This prevents Ceedling
+    from overriding config file values with its CLI arguments. Only `:report_root:`
+    is still applied because Ceedling may invoke gcovr from a different working
+    directory than your project root.
+
+    To preserve the plugin's default filtering of test and build files, include
+    equivalent exclusion patterns in your gcovr config file (adjust for your
+    project's `:test_file_prefix`, test paths, and `:build_root` settings):
+
+    ```ini
+    [gcovr]
+    exclude = .*test.*/test_.+\.c$
+    exclude = .*build/.+\.c$
+    ```
+
 ```yaml
 :gcov:
   :gcovr:
@@ -113,8 +130,22 @@ and test runners, are not compiled with coverage.
     # Default if unspecified: "."
     :report_root: <path>
 
-    # Load the specified configuration file.
-    # Defaults to gcovr.cfg in the report_root directory. (gcovr --config)
+    # Load the specified configuration file. (gcovr --config)
+    # Defaults to gcovr.cfg in the report_root directory if that file exists.
+    #
+    # When :config_file is set, Ceedling passes only --root and --config to
+    # gcovr and defers all other configuration to the file. This prevents
+    # Ceedling from overriding config file values with its CLI arguments. Only
+    # :report_root is still applied because Ceedling may invoke gcovr from a
+    # different working directory than your project root.
+    #
+    # To preserve the plugin's base filtering behavior, include the following
+    # patterns in your config file (adjust paths to match your project's
+    # :test_file_prefix, test paths, and :build_root settings):
+    #
+    #   [gcovr]
+    #   exclude = .*test.*/test_.+\.c$
+    #   exclude = .*build/.+\.c$
     :config_file: <config_file>
 
     # Exit with a status of 2 if the total line coverage is less than MIN percentage.
