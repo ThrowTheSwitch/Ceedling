@@ -2907,44 +2907,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setup-installation" class="md-nav__link">
+  <a href="#installation-set-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setup &amp; installation
+        Installation &amp; set up
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Setup &amp; installation">
+    <nav class="md-nav" aria-label="Installation &amp; set up">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#linux-package-manager" class="md-nav__link">
+  <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Linux package manager
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#build-from-source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Build from source
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#madsciencelab-docker-images" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MadScienceLab Docker images
+        Installation
       
     </span>
   </a>
@@ -4001,44 +3979,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setup-installation" class="md-nav__link">
+  <a href="#installation-set-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setup &amp; installation
+        Installation &amp; set up
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Setup &amp; installation">
+    <nav class="md-nav" aria-label="Installation &amp; set up">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#linux-package-manager" class="md-nav__link">
+  <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Linux package manager
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#build-from-source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Build from source
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#madsciencelab-docker-images" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MadScienceLab Docker images
+        Installation
       
     </span>
   </a>
@@ -4265,15 +4221,18 @@ executable off to Valgrind along with configurable arguments.</p>
 <p>By default the build continues after Valgrind errors so that all log files are
 produced. The optional <code>:halt_on_error:</code> setting stops the build after the first
 test binary whose Valgrind log reports memory errors.</p>
-<h2 id="setup-installation">Setup &amp; installation</h2>
-<h3 id="linux-package-manager">Linux package manager</h3>
+<h2 id="installation-set-up">Installation &amp; set up</h2>
+<h3 id="installation">Installation</h3>
+<p>You have at least 3 options for getting the <code>valgrind</code> tool working on your
+system, including one readymade option.</p>
+<h4 id="linux-package-manager">Linux package manager</h4>
 <p>Install Valgrind from your Linux distribution’s package manager:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>valgrind<span class="w">   </span><span class="c1"># Debian / Ubuntu</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>valgrind<span class="w">       </span><span class="c1"># Fedora / RHEL</span>
 </code></pre></div>
-<h3 id="build-from-source">Build from source</h3>
+<h4 id="build-from-source">Build from source</h4>
 <p>Or build from source from <a href="https://valgrind.org/downloads/">valgrind.org/downloads/</a>.</p>
-<h3 id="madsciencelab-docker-images"><em>MadScienceLab</em> Docker images</h3>
+<h4 id="madsciencelab-docker-images"><em>MadScienceLab</em> Docker images</h4>
 <p>Fully packaged <a href="https://hub.docker.com/repository/docker/throwtheswitch/"><em>MadScienceLab</em> Docker images</a> containing Ruby, 
 Ceedling, the GCC toolchain, and more are available. The <code>-plugins</code> variants 
 of the images come with all of Ceedling’s plugin tools preinstalled.</p>
@@ -4306,8 +4265,9 @@ suite, collecting Valgrind reports for each test fixture executable.</p>
 defaults, redefine the argument list in your project configuration:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:valgrind</span><span class="p">:</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:arguments</span><span class="p">:</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--leak-check=full&quot;</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--show-leak-kinds=all&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="c1"># A subset of the default arguments</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--leak-check=full&quot;</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--show-leak-kinds=all&quot;</span>
 </code></pre></div>
 <h3 id="halt_on_error"><code>:halt_on_error:</code></h3>
 <p>When <code>false</code> (the default), the build runs all test binaries to completion.
