@@ -152,7 +152,7 @@ class Generator
 
     # Further filter others to remove vendor files
     others = includes.reject do |include|
-      !VENDORS_FILES.include?( include.filename.ext() )
+      VENDORS_FILES.include?( include.filename.ext() )
     end
 
     # Build runner file
