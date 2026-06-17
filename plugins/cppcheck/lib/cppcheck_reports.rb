@@ -17,6 +17,7 @@ class CppcheckReport
     
     @file_wrapper = @ceedling[:file_wrapper]
     @loginator = @ceedling[:loginator]
+    @reportinator = @ceedling[:reportinator]
     @tool_executor = @ceedling[:tool_executor]
     @tool_validator = @ceedling[:tool_validator]
     
@@ -72,7 +73,8 @@ class CppcheckHtmlReport < CppcheckReport
   def report_type = :html
   
   def generate(opts, *args)
-    @loginator.log("Creating Cppcheck #{report_type} report...", Verbosity::NORMAL)
+    msg = @reportinator.generate_progress( "Creating Cppcheck #{report_type} report" )
+    @loginator.log(msg, Verbosity::NORMAL)
     run_tool(TOOLS_CPPCHECK_HTMLREPORT, build_opts())
   end
   

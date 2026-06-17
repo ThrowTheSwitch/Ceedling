@@ -10,21 +10,28 @@ class RakeTaskInvoker
   constructor :rake_task_registry, :batchinator, :rake_utils, :rake_wrapper
 
   # Post-execution lookup: returns true if any registered test namespace was invoked.
-  def test_invoked?
+  def test_build_invoked?
     namespaces = @rake_task_registry.namespaces_for_tag( RakeTaskRegistry::TAG_TEST )
     return false if namespaces.empty?
     pattern = /^(#{namespaces.map { |ns| Regexp.escape(ns) }.join('|')})(:|$)/
     @rake_utils.task_invoked?( pattern )
   end
 
+  # Post-execution lookup: returns true if a `test` task was invoked.
+  # Note: This can include tasks that, in turn, invoke test tasks.
+  def test_task_invoked?
+    @rake_utils.task_invoked?( /^test(:|$)/ )
+  end
+
   # Post-execution lookup: returns true if any registered release namespace was invoked.
-  def release_invoked?
+  def release_build_invoked?
     namespaces = @rake_task_registry.namespaces_for_tag( RakeTaskRegistry::TAG_RELEASE )
     return false if namespaces.empty?
     pattern = /^(#{namespaces.map { |ns| Regexp.escape(ns) }.join('|')})(:|$)/
     @rake_utils.task_invoked?( pattern )
   end
 
+  # Post-execution lookup: returns true if the matching the given regex was invoked.
   def invoked?(regex)
     return @rake_utils.task_invoked?(regex)
   end

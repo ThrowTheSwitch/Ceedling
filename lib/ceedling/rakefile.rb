@@ -127,7 +127,7 @@ END {
       end
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )
-      test_failures_handler() if @ceedling[:rake_task_invoker].test_invoked?
+      test_failures_handler() if @ceedling[:rake_task_invoker].test_build_invoked?
     rescue => ex
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )

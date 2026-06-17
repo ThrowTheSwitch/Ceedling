@@ -16,16 +16,18 @@ class RakeTaskRegistry
   TAGS_TEST    = [TAG_TEST,    TAG_BUILD].freeze
   TAGS_RELEASE = [TAG_RELEASE, TAG_BUILD].freeze
 
-  # Marker substrings — a line containing the marker signals the enclosing namespace
-  # belongs to the associated domain. String#include? is used (no regex needed).
+  # Marker regexes — a line matching any marker signals the enclosing namespace
+  # belongs to the associated domain.
   #
-  # MARKER_TEST_TASKS matches any call of the form:
+  # MARKER_TEST_TASKS_SETUP_AND_INVOKE matches any call of the form:
   #   @ceedling[:test_invoker].setup_and_invoke(
   #
   # MARKER_RELEASE_TASKS matches any call of the form:
   #   @ceedling[:release_invoker].setup_and_invoke_objects(
-  MARKER_TEST_TASKS    = '[:test_invoker].setup_and_invoke'
-  MARKER_RELEASE_TASKS = '[:release_invoker].setup_and_invoke_objects'
+
+  MARKER_TEST_TASKS_SETUP_AND_INVOKE = /\[\s*:test_invoker\s*\]\.setup_and_invoke/
+  MARKER_TEST_TASKS_RAKE_INVOKE      = /test:.+\.invoke/
+  MARKER_RELEASE_TASKS               = /\[\s*:release_invoker\s*\]\.setup_and_invoke_objects/
 
   def initialize
     # Maps root namespace string → Array<Symbol> of semantic tags
@@ -55,6 +57,16 @@ class RakeTaskRegistry
     @namespace_tags.select { |_, tags| tags.include?( tag ) }.keys
   end
 
+  # Directly register a namespace string with one or more tags.
+  # Merges with any existing tags — does not overwrite prior registrations.
+  # Example: register_namespace( 'plugin', *TAGS_TEST )
+  def register_namespace(namespace, *tags)
+    @namespace_tags[namespace] ||= []
+    tags.each do |tag|
+      @namespace_tags[namespace] << tag unless @namespace_tags[namespace].include?( tag )
+    end
+  end
+
   # Scan .rake files as text to identify Rake namespaces (and lone task aliases)
   # that invoke the test pipeline. Text scanning is used instead of Rake's task
   # inspection API because Rake tasks don't exist as objects until their .rake
@@ -70,8 +82,8 @@ class RakeTaskRegistry
   # namespace is registered.
   #
   # Algorithm per file:
-  #   1. Skip the file if the marker substring is absent (fast pre-check).
-  #   2. For each line containing the marker, search backwards to find the
+  #   1. Skip the file if no marker regex matches the full content (fast pre-check).
+  #   2. For each line matching any marker, search backwards to find the
   #      enclosing `namespace` declaration.
   #   3. Resolve the namespace identifier to a string (see find_enclosing_namespace).
   #   4. Register the namespace string with the provided tags.
@@ -90,7 +102,7 @@ class RakeTaskRegistry
   #
   # Unresolvable constants (NameError in Pass 1) are handled by the _SYM convention
   # fallback in find_enclosing_namespace.
-  def register_tasks(rakefile_paths, marker:, tags:)
+  def register_tasks(rakefile_paths, markers:, tags:)
     rakefile_paths.each do |filepath|
       begin
         content = File.read( filepath )
@@ -98,12 +110,12 @@ class RakeTaskRegistry
         next  # Skip unreadable files without failing
       end
 
-      next unless content.include?( marker )
+      next unless markers.any? { |m| content.match?( m ) }
 
       lines = content.lines
 
       lines.each_with_index do |line, idx|
-        next unless line.include?( marker )
+        next unless markers.any? { |m| line.match?( m ) }
 
         namespace_name = find_enclosing_namespace( lines, idx )
         next if namespace_name.nil?
@@ -121,13 +133,20 @@ class RakeTaskRegistry
   # disturbing release-tagged entries registered independently.
   def register_test_tasks(rakefile_paths)
     @namespace_tags.delete_if { |_, tags| tags.include?( TAG_TEST ) }
-    register_tasks( rakefile_paths, marker: MARKER_TEST_TASKS, tags: TAGS_TEST )
+    register_tasks(
+      rakefile_paths, 
+      markers: [
+        MARKER_TEST_TASKS_SETUP_AND_INVOKE,
+        MARKER_TEST_TASKS_RAKE_INVOKE
+        ],
+      tags: TAGS_TEST
+    )
   end
 
   # Clears all release-tagged namespaces and re-scans for release pipeline invocations.
   def register_release_tasks(rakefile_paths)
     @namespace_tags.delete_if { |_, tags| tags.include?( TAG_RELEASE ) }
-    register_tasks( rakefile_paths, marker: MARKER_RELEASE_TASKS, tags: TAGS_RELEASE )
+    register_tasks( rakefile_paths, markers: [MARKER_RELEASE_TASKS], tags: TAGS_RELEASE )
   end
 
   private
