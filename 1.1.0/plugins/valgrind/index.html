@@ -2907,13 +2907,63 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
+  <a href="#setup-installation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setup
+        Setup &amp; installation
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Setup &amp; installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#linux-package-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux package manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build from source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#madsciencelab-docker-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MadScienceLab Docker images
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enable-the-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable the plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2930,10 +2980,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#default-tool-configuration" class="md-nav__link">
+  <a href="#default-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Default tool configuration
+        Default configuration
       
     </span>
   </a>
@@ -2941,10 +2991,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#overriding-valgrind-arguments" class="md-nav__link">
+  <a href="#arguments" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overriding Valgrind arguments
+        :arguments:
       
     </span>
   </a>
@@ -2952,10 +3002,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#selecting-a-custom-valgrind-binary" class="md-nav__link">
+  <a href="#halt_on_error" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Selecting a custom Valgrind binary
+        :halt_on_error:
       
     </span>
   </a>
@@ -3951,13 +4001,63 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
+  <a href="#setup-installation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setup
+        Setup &amp; installation
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Setup &amp; installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#linux-package-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux package manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build from source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#madsciencelab-docker-images" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MadScienceLab Docker images
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enable-the-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable the plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3974,10 +4074,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#default-tool-configuration" class="md-nav__link">
+  <a href="#default-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Default tool configuration
+        Default configuration
       
     </span>
   </a>
@@ -3985,10 +4085,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#overriding-valgrind-arguments" class="md-nav__link">
+  <a href="#arguments" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overriding Valgrind arguments
+        :arguments:
       
     </span>
   </a>
@@ -3996,10 +4096,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#selecting-a-custom-valgrind-binary" class="md-nav__link">
+  <a href="#halt_on_error" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Selecting a custom Valgrind binary
+        :halt_on_error:
       
     </span>
   </a>
@@ -4142,12 +4242,17 @@
 
 <h1 id="valgrind">Valgrind</h1>
 <p>Adds Ceedling tasks to run test executables under <a href="https://valgrind.org">Valgrind</a> memory error
-detection, helping catch memory leaks, invalid memory accesses, and
+detection to help find memory leaks, invalid memory accesses, and
 use-after-free bugs in your C code.</p>
 <h2 id="plugin-overview">Plugin overview</h2>
+<div class="admonition note">
+<p class="admonition-title">Linux only</p>
+<p>Valgrind runs on Linux and other Unix-like systems. It is not available
+on Windows or macOS (ARM).</p>
+</div>
 <p>The Valgrind plugin integrates <a href="https://valgrind.org">Valgrind</a> dynamic analysis into Ceedling,
-building and then running test executables under Valgrind's Memcheck tool.
-It provides two invocation modes:</p>
+building and then running test executables under Valgrind’s Memcheck tool.</p>
+<p>The plugin provides two invocation modes mirroring standard <code>test:</code> tasks.</p>
 <ul>
 <li><strong>Whole test suite</strong>: By running <code>ceedling valgrind:all</code>, all test
   executables are built and then each is run under Valgrind. A separate log
@@ -4155,98 +4260,102 @@ It provides two invocation modes:</p>
 <li><strong>Single test file</strong>: By running <code>ceedling valgrind:&lt;filename&gt;</code>, a single
   test executable is built and run under Valgrind, producing one log file.</li>
 </ul>
-<p>The plugin builds test executables in the same way as the standard <code>test</code>
-tasks and then hands each executable off to Valgrind, passing it configurable
-arguments. The Valgrind exit code is forwarded so the build fails when
-Valgrind detects an error.</p>
-<div class="admonition note">
-<p class="admonition-title">Linux only</p>
-<p>Valgrind runs on Linux and other Unix-like systems. It is not available
-on Windows or macOS (ARM).</p>
-</div>
-<h2 id="setup">Setup</h2>
-<p>Install Valgrind from your Linux distribution's package manager:</p>
+<p>The plugin triggers standard <code>test</code> task builds but hands each test fixture
+executable off to Valgrind along with configurable arguments.</p>
+<p>By default the build continues after Valgrind errors so that all log files are
+produced. The optional <code>:halt_on_error:</code> setting stops the build after the first
+test binary whose Valgrind log reports memory errors.</p>
+<h2 id="setup-installation">Setup &amp; installation</h2>
+<h3 id="linux-package-manager">Linux package manager</h3>
+<p>Install Valgrind from your Linux distribution’s package manager:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>valgrind<span class="w">   </span><span class="c1"># Debian / Ubuntu</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>valgrind<span class="w">       </span><span class="c1"># Fedora / RHEL</span>
 </code></pre></div>
+<h3 id="build-from-source">Build from source</h3>
 <p>Or build from source from <a href="https://valgrind.org/downloads/">valgrind.org/downloads/</a>.</p>
+<h3 id="madsciencelab-docker-images"><em>MadScienceLab</em> Docker images</h3>
+<p>Fully packaged <a href="https://hub.docker.com/repository/docker/throwtheswitch/"><em>MadScienceLab</em> Docker images</a> containing Ruby, 
+Ceedling, the GCC toolchain, and more are available. The <code>-plugins</code> variants 
+of the images come with all of Ceedling’s plugin tools preinstalled.</p>
+<h3 id="enable-the-plugin">Enable the plugin</h3>
 <p>Enable the plugin by adding <code>valgrind</code> to the enabled plugins list in your
-<code>project.yml</code> file:</p>
+project configuration:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:plugins</span><span class="p">:</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">valgrind</span>
 </code></pre></div>
 <h2 id="configuration">Configuration</h2>
-<p>The plugin ships with sensible defaults that enable full leak checking and
-treat any detected error as a build failure. You can override the Valgrind
-tool configuration in your <code>project.yml</code> under the <code>:tools</code> section.</p>
-<h3 id="default-tool-configuration">Default tool configuration</h3>
-<p>The default tool entry used by the plugin is:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:tools</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:valgrind</span><span class="p">:</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">valgrind</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="nt">:arguments</span><span class="p">:</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--leak-check=full</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--show-leak-kinds=all</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--track-origins=yes</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--errors-for-leak-kinds=all</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--exit-on-first-error=yes</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--error-exitcode=1</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${1}</span>
+<p>The plugin ships with sensible defaults that enable full leak checking. By
+default the build continues after Valgrind errors so that every test binary
+runs and produces a log file. Use <code>:halt_on_error:</code> to stop early on the
+first test fixture executable in the suite with memory errors.</p>
+<p>You can change the Valgrind configuration in your project configuration 
+under an optional <code>:valgrind</code> section.</p>
+<h3 id="default-configuration">Default configuration</h3>
+<p>In the default configuration, the Valgrind plugin will run the entire test 
+suite, collecting Valgrind reports for each test fixture executable.</p>
+<p>By default, the plugin runs with these command line arguments for <code>valgrind</code>:</p>
+<ul>
+<li><code>--leak-check=full</code></li>
+<li><code>--show-leak-kinds=all</code></li>
+<li><code>--track-origins=yes</code></li>
+<li><code>--errors-for-leak-kinds=all</code></li>
+</ul>
+<h3 id="arguments"><code>:arguments:</code></h3>
+<p>The list of flags passed to Valgrind for every test binary. To override the
+defaults, redefine the argument list in your project configuration:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:valgrind</span><span class="p">:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:arguments</span><span class="p">:</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--leak-check=full&quot;</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--show-leak-kinds=all&quot;</span>
 </code></pre></div>
-<p><code>${1}</code> is replaced at runtime with the path to the test executable being
-analyzed.</p>
-<h3 id="overriding-valgrind-arguments">Overriding Valgrind arguments</h3>
-<p>To use a different Valgrind binary or pass different flags, override the
-<code>:valgrind</code> tool entry:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:tools</span><span class="p">:</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:valgrind</span><span class="p">:</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">valgrind</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="nt">:arguments</span><span class="p">:</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--leak-check=full</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--show-leak-kinds=all</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--track-origins=yes</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--errors-for-leak-kinds=all</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--exit-on-first-error=yes</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--error-exitcode=1</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--suppressions=my_suppressions.supp</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${1}</span>
+<h3 id="halt_on_error"><code>:halt_on_error:</code></h3>
+<p>When <code>false</code> (the default), the build runs all test binaries to completion.
+Memory errors appear in the per-binary log files but do not stop the build.
+This is often the right choice for an initial analysis run; you get the full
+picture of which binaries have problems.</p>
+<p>When <code>true</code>, the plugin reads the Valgrind log after each test binary finishes
+and checks the <code>ERROR SUMMARY</code> line. If the error count is greater than zero,
+Ceedling raises a build error and halts before running any subsequent test
+fixture executables. Valgrind logs created to that point will remain.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:valgrind</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:halt_on_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
-<h3 id="selecting-a-custom-valgrind-binary">Selecting a custom Valgrind binary</h3>
-<p>You can also select the Valgrind binary via the <code>VALGRIND</code> environment
-variable without changing <code>project.yml</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nv">VALGRIND</span><span class="o">=</span>/usr/local/bin/valgrind<span class="w"> </span>ceedling<span class="w"> </span>valgrind:all
-</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Detection uses log parsing, not Valgrind’s exit code</p>
+<p>Valgrind’s <code>--error-exitcode</code> flag is not used because its exit code would
+overlap with Unity’s own exit code, which equals the number of failing test
+cases. Instead, the plugin parses the <code>ERROR SUMMARY: N errors</code> line written
+to the Valgrind log file.</p>
+</div>
 <h2 id="usage">Usage</h2>
+<p>The Valgrind plugin follows the conventions of <code>test:</code> tasks.</p>
 <h3 id="run-valgrind-for-all-tests">Run Valgrind for all tests</h3>
 <p>Build all test executables and run each under Valgrind:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>valgrind:all
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>valgrind:all
 </code></pre></div>
 <h3 id="run-valgrind-for-a-single-test-file">Run Valgrind for a single test file</h3>
 <p>Build and run Valgrind for one test file (pass the filename, no path):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>valgrind:test_my_module.c
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>valgrind:test_my_module.c
 </code></pre></div>
 <p>You can also pass just the source filename; Ceedling will locate the
 corresponding test file automatically:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>valgrind:my_module.c
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>valgrind:my_module.c
 </code></pre></div>
 <h2 id="artifacts">Artifacts</h2>
 <p>Each test executable produces a Valgrind log file at:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>build/artifacts/valgrind/&lt;test_name&gt;.log
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>build/artifacts/valgrind/&lt;test_name&gt;.log
 </code></pre></div>
 <p>For example, running <code>ceedling valgrind:test_my_module.c</code> produces:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>build/artifacts/valgrind/test_my_module.log
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>build/artifacts/valgrind/test_my_module.log
 </code></pre></div>
 <p>These log files contain the full Valgrind Memcheck output, including any
 detected memory errors, leak summaries, and (with <code>--track-origins=yes</code>)
 the origin of uninitialized values.</p>
 <p>The log files are included in <code>ceedling clean</code> targets.</p>
 <h2 id="interpreting-results">Interpreting results</h2>
-<p>A non-zero exit from Valgrind (controlled by <code>--error-exitcode=1</code>) causes
-the Ceedling task to fail. The Valgrind log file for the failing test
-contains the full error details.</p>
 <p>To review the log for a specific test:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cat<span class="w"> </span>build/artifacts/valgrind/test_my_module.log
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>cat<span class="w"> </span>build/artifacts/valgrind/test_my_module.log
 </code></pre></div>
 <p>Common Valgrind findings include:</p>
 <table>
@@ -4275,6 +4384,7 @@ contains the full error details.</p>
 </tr>
 </tbody>
 </table>
+<p>See <a href="https://valgrind.org">Valgrind</a> documentation for more details.</p>
 
 
 
