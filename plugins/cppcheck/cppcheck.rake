@@ -16,7 +16,7 @@ CLOBBER.include(File.join(CPPCHECK_BUILD_PATH, '**/*'))
 task :cppcheck_deps => [:directories, CPPCHECK_BUILD_PATH, CPPCHECK_ARTIFACTS_PATH]
 task :cppcheck => ['cppcheck:all']
 
-namespace :cppcheck do
+namespace CPPCHECK_SYM do
   desc "Run whole project analysis (also just 'cppcheck' works)."
   task :all => [:cppcheck_deps] do
     @ceedling[CPPCHECK_SYM].generate_reports()
