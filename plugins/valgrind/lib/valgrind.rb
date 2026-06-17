@@ -67,6 +67,7 @@ class Valgrind < Plugin
 
     log_content = File.read( log_path )
     if (m = log_content.match( /ERROR SUMMARY:\s+(\d+) errors?/ )) && m[1].to_i > 0
+      log_results()
       raise CeedlingException.new(
         "Valgrind detected #{m[1]} memory error(s) in #{test_name} ➡️ see #{log_path}"
       )
@@ -74,10 +75,18 @@ class Valgrind < Plugin
   end
 
   def post_build
-    if @results > 0
-      plural = @results == 1 ? '' : 's'
-      msg = "\nWrote #{@results} Valgrind report#{plural} to #{VALGRIND_ARTIFACTS_PATH}/"
-      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+    log_results()
+  end
+
+  private
+
+  def log_results
+    @mutex.synchronize do
+      if @results > 0
+        plural = @results == 1 ? '' : 's'
+        msg = "\nWrote #{@results} Valgrind report#{plural} to #{VALGRIND_ARTIFACTS_PATH}/"
+        @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      end
     end
   end
 
