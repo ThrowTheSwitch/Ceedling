@@ -77,8 +77,9 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
    - #358 Mocks with relative path in `#include` directive.
    - PR #1056 fix for extracting `#include` directive filenames that contain dashes.
    - #1127 Fixes to path handling in `#include` directives.
+   - #1158 Fixes for `#include` filtering in test runner generation.
 - Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
-- #1120 An overly “helpful” holdover from Ceedling’s earliest days caused certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
+- #1120 Fixed (by removal) an overly “helpful” holdover from Ceedling’s earliest days causing certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
 - #1162 Fixes to Partials handling for file encoding / multi-byte characters (e.g. ©) in comment blocks.
 - #1160 Proper handling of locales and file encoding.
 
