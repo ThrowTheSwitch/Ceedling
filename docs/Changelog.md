@@ -83,6 +83,8 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - #1162 Fixes to Partials handling for file encoding / multi-byte characters (e.g. ©) in comment blocks.
 - #1160 Proper handling of locales and file encoding.
 - #1135 Fixed test fixture results handling to properly process Unity’s colored output when enabled.
+- #1114 Fixed `:default_tasks` handling.
+- #1115 Fixed Gcov plugin for Gcovr configuration file handling.
 
 ## ⚠️ Changed
 
