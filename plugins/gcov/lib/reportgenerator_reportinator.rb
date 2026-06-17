@@ -50,7 +50,7 @@ class ReportGeneratorReportinator
 
       opts[:gcov_reports].each do |report|
         msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}/'")
-        @loginator.log( msg )
+        @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
       end
 
       # Cleanup any existing .gcov files to avoid reporting old coverage results.

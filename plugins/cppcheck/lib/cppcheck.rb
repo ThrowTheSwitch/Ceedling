@@ -17,12 +17,12 @@ class Cppcheck < Plugin
     @file_path_collection_utils = @ceedling[:file_path_collection_utils]
     @file_wrapper = @ceedling[:file_wrapper]
     @loginator = @ceedling[:loginator]
-    @setupinator = @ceedling[:setupinator]
+    @reportinator = @ceedling[:reportinator]
     @system_wrapper = @ceedling[:system_wrapper]
     @tool_executor = @ceedling[:tool_executor]
     @tool_validator = @ceedling[:tool_validator]
     
-    @config = @setupinator.config_hash[CPPCHECK_SYM]
+    @config = @ceedling[:setupinator].config_hash[CPPCHECK_SYM]
     
     evaluate_config()
     
@@ -73,7 +73,8 @@ class Cppcheck < Plugin
       filepath
     ]
     
-    @loginator.log("Running Cppcheck on file #{filepath} ...", Verbosity::NORMAL)
+    msg = @reportinator.generate_progress( "Running Cppcheck on file #{filepath}" )
+    @loginator.log( msg, Verbosity::NORMAL)
     results = run_tool(TOOLS_CPPCHECK, opts, *args)
     @loginator.log(results[:output], Verbosity::COMPLAIN, LogLabels::NONE)
   end

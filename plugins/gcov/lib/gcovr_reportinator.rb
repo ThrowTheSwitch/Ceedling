@@ -79,7 +79,7 @@ class GcovrReportinator
       
       reports.each do |report|
         msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}/'")
-        @loginator.log( msg )
+        @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
       end
 
       # Generate the report(s).

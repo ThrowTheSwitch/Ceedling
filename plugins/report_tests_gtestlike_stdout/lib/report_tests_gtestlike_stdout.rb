@@ -63,8 +63,7 @@ class ReportTestsGtestlikeStdout < Plugin
       )
     }
 
-    # Ensure that summary logging is displayed (highest level of verbosity)
-    @ceedling[:plugin_reportinator].run_test_results_report(hash, Verbosity::SILENT)
+    @ceedling[:plugin_reportinator].run_test_results_report(hash)
   end
 
 end
