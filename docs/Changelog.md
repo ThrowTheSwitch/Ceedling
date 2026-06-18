@@ -37,11 +37,11 @@ A local verion of this site that is navigable with your web browser from your fi
 - `ceedling check` validates your configuration and produces logs from processing it without executing a build.
 - `ceedling docs` exports the new HTML-based documentation site to your local filesystem.
 
-### CppCheck plugin
+### Cppcheck static analysis plugin
 
 Alejandro Rosso’s excellent [Cppcheck plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/) has been added to the stock plugin collection (with Alejandro’s permission). We’re excited to make it easier for everyone to use this great addition!
 
-### Valgrind plugin
+### Valgrind memory check plugin
 
 James Raphael Tiovalen’s helpful [Valgrind plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/) has been updated to work with the latest Ceedling and added to the stock plugin collection. Thank you, James for the great contribution!
 
