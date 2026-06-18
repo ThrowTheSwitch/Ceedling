@@ -23,7 +23,7 @@ With Partials, a test can now cause some functions in the source module under te
 
 ### New example project
 
-The `wondrous_forest` project demonstrates using Partials in sample code reasonably representative of real-world use. This ready-to-run example project is available to be exported to you local file system with `ceedling example wondrous_forest [DEST]` (where `DEST` is an optional directory path). Ceedling example projects may be listed with `ceedling examples`.
+The `wondrous_forest` project demonstrates using Partials in sample code reasonably representative of real-world use. This ready-to-run example project may be exported to your local file system with `ceedling example wondrous_forest [DEST]` (where `DEST` is an optional directory path). Avaiable Ceedling example projects may be listed with `ceedling examples`.
 
 ### Documentation site
 
