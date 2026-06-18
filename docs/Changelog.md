@@ -21,6 +21,10 @@ With Partials, a test can now cause some functions in the source module under te
 
 💲 Partials was made possible thanks to a generous corporate sponsor via a [Ceedling Assist](https://www.thingamabyte.com/ceedling) engagement.
 
+### New example project
+
+The `wondrous_forest` project demonstrates using Partials in sample code reasonably representative of real-world use. This ready-to-run example project is available to be exported to you local file system with `ceedling example wondrous_forest [DEST]` (where `DEST` is an optional directory path). Ceedling example projects may be listed with `ceedling examples`.
+
 ### Documentation site
 
 Ceedling is now complemented by a full, searchable [documentation site](https://throwtheswitch.github.io/Ceedling/).
