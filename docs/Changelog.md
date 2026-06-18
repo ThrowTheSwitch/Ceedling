@@ -72,11 +72,12 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - #1011 Performance Improvements.
 - #1014 Line Continuations not working in test name.
 - #1024 Fixed bug in options-handling for warnings log report.
-- #1128 Command line mixin precedence.
-- Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) correct merge order explanations and clarify Mixins generally.
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
-- PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
+- Mixins
+   - #1128 Command line mixin precedence.
+   - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) to correct merge order explanations and clarify Mixins generally.
 - Multiple fixes and improvements to `#include`s handling and preprocessing plus these issues & PRs:
+   - PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
    - #1015 Probing toolchain for presence of preprocessor directives-only ability.
    - #358 Mocks with relative path in `#include` directive.
    - PR #1056 fix for extracting `#include` directive filenames that contain dashes.
