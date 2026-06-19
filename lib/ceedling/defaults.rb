@@ -105,7 +105,6 @@ DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
     "-I\"${4}\"".freeze,     # Per-test executable search paths
     "-D\"${3}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    # '-nostdinc'.freeze,    # disabled temporarily due to stdio access violations on OSX
     "-x c".freeze,           # Force C language
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
@@ -123,7 +122,6 @@ DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL = {
     "-I\"${4}\"".freeze, # Per-test executable search paths
     "-D\"${3}\"".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "-x c".freeze,           # Force C language
     "-fdirectives-only",     # Only preprocess directives
     "\"${1}\"".freeze,
@@ -149,7 +147,6 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
     "-MF \"${2}\"".freeze,
     "-x c".freeze, # Force C language
     "-c \"${1}\"".freeze,
-    # '-nostdinc'.freeze,
     ].freeze
   }
 
