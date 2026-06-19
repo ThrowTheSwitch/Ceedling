@@ -248,8 +248,12 @@ jobs:
       # No toolcache permissions workaround — that step targets /opt/hostedtoolcache (Linux-specific path)
 
       # Install Gem Dependencies
+      # force_ruby_platform bypasses Bundler's multi-platform gem resolution, which fails on
+      # macOS ARM64 due to mixed versioned/generic platform strings in the lockfile.
+      # All Ceedling gem dependencies are pure Ruby, so this has no functional effect.
       - name: Install Gem Dependencies
         run: |
+          bundle config set --local force_ruby_platform true
           bundle install
 
       # gdb is not installed on macOS runners — backtrace specs detect absence and skip
