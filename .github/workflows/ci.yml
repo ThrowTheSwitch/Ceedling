@@ -218,6 +218,74 @@ jobs:
         uses: ./.github/actions/run-plugin-tests
 
 
+  # Job: macOS test suite
+  # Targets Apple Clang (the gcc alias on macOS resolves to Xcode's LLVM-based Clang).
+  # Homebrew GCC is effectively covered by the Linux job, so no compiler matrix is needed.
+  # Ruby matrix starts at 3.1: macos-latest runs on Apple Silicon (ARM64), and
+  # ruby/setup-ruby has no pre-built binary for Ruby 3.0 on ARM64 (would compile from source).
+  # Note for the future: Ruby 3.1 will itself be dropped starting with macOS 26.
+  tests-macos:
+    name: "macOS Test Suite"
+    needs: generate-docs
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.1', '3.2', '3.3', '3.4']
+    steps:
+      # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Common set up steps
+      - name: Set Up Ruby Test Environment
+        uses: ./.github/actions/setup
+        with:
+          ruby: ${{ matrix.ruby }}
+
+      # No toolcache permissions workaround — that step targets /opt/hostedtoolcache (Linux-specific path)
+
+      # Install Gem Dependencies
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      # gdb is not installed on macOS runners — backtrace specs detect absence and skip
+      # valgrind is unavailable on macOS — valgrind specs already skip via @valgrind_available guard
+
+      # Install cppcheck via Homebrew
+      - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
+        run: |
+          brew install cppcheck
+
+      # --break-system-packages required on macOS 14+ (PEP 668 prevents pip from installing
+      # to the system Python environment without explicit opt-in, same as Ubuntu 24.04+)
+      - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
+        run: |
+          pip install --break-system-packages gcovr
+
+      # Install ReportGenerator for Gcov plugin
+      # Fix PATH before tool installation
+      # https://stackoverflow.com/questions/59010890/github-action-how-to-restart-the-session
+      - name: "Install ReportGenerator for Tests of Ceedling Plugin: Gcov"
+        run: |
+          mkdir -p $HOME/.dotnet/tools
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+
+      # Common test suite
+      - name: Run Test Suite
+        uses: ./.github/actions/run-tests
+        with:
+          ruby: ${{ matrix.ruby }}
+
+      # Common plugin test steps
+      - name: Run Plugin Tests
+        uses: ./.github/actions/run-plugin-tests
+
+
   # Job: Preprocessing locale encoding regression test
   # Installs ja_JP.UTF-8 locale and runs the locale encoding spec under it.
   # This replicates issue #1160's root cause: GCC under a non-C locale outputs
@@ -294,6 +362,7 @@ jobs:
     needs:
       - tests-linux
       - tests-windows
+      - tests-macos
       - tests-linux-locale
     runs-on: ubuntu-latest
 
