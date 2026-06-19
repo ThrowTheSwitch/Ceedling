@@ -7,6 +7,7 @@ GEM
     diff-lcs (1.6.2)
     diy (1.1.2)
       constructor (>= 1.0.0)
+    parallel (1.28.0)
     require_all (3.0.0)
     rr (3.1.2)
     rspec (3.13.2)
@@ -31,6 +32,7 @@ PLATFORMS
   ruby
   x64-mingw-ucrt
   x64-mingw32
+  arm64-darwin
   x86_64-darwin-22
   x86_64-linux
 
