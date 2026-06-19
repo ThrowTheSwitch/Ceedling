@@ -105,7 +105,6 @@ DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
     "-I\"${4}\"".freeze,     # Per-test executable search paths
     "-D\"${3}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    # '-nostdinc'.freeze,    # disabled temporarily due to stdio access violations on OSX
     "-x c".freeze,           # Force C language
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
@@ -123,20 +122,12 @@ DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL = {
     "-I\"${4}\"".freeze, # Per-test executable search paths
     "-D\"${3}\"".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "-x c".freeze,           # Force C language
     "-fdirectives-only",     # Only preprocess directives
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
     ].freeze
   }
-
-# Disable the -MD flag for OSX LLVM Clang, since unsupported
-if RUBY_PLATFORM =~ /darwin/ && `gcc --version 2> /dev/null` =~ /Apple LLVM version .* \(clang/m # OSX w/LLVM Clang
-  MD_FLAG = '' # Clang doesn't support the -MD flag
-else
-  MD_FLAG = '-MD'
-end
 
 DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
@@ -151,12 +142,11 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
     "-DGNU_COMPILER".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
-    MD_FLAG.freeze,
+    '-MD'.freeze,
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
     "-x c".freeze, # Force C language
     "-c \"${1}\"".freeze,
-    # '-nostdinc'.freeze,
     ].freeze
   }
 

@@ -10,12 +10,7 @@ require 'fileutils'
 module ValgrindHelpers
 
   def valgrind_available?
-    begin
-      `valgrind --version 2>&1`
-      $?.exitstatus == 0
-    rescue
-      false
-    end
+    tool_available?('valgrind --version 2>&1')
   end
 
   def prep_project_yml_for_valgrind

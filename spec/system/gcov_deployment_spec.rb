@@ -43,9 +43,20 @@ ceedling_system_tests do
       test_case :help_tasks_include_gcov
       test_case :create_html_report
       test_case :create_html_report_with_gcovr_config_file_overrides_default
+      test_case :create_html_report_100_coverage_excluding_crashing_test_case
+    end
+
+    describe "Backtrace with GDB" do
+      include_context "requires gdb"
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
       test_case :create_html_report_from_crashing_test_with_backtrace_enabled
       test_case :create_html_report_with_zero_coverage_after_crashing_test_and_backtrace
-      test_case :create_html_report_100_coverage_excluding_crashing_test_case
     end
 
 

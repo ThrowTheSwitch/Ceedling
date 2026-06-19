@@ -89,6 +89,11 @@ ceedling_system_tests do
     describe "Crash handling" do
       test_case :project_fail_because_of_crash_without_report
       test_case :project_fail_because_of_crash_with_report
+    end
+
+    describe "Backtrace with GDB" do
+      include_context "requires gdb"
+
       test_case :backtrace_all_crash_test_cases_and_report
       test_case :backtrace_crash_targets_test_case_filter
       test_case :backtrace_crash_excludes_test_case_filter

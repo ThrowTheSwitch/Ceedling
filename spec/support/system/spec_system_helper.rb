@@ -130,3 +130,41 @@ def convert_slashes(path)
     path
   end
 end
+
+# Generic tool availability probe.
+# cmd is a complete shell command string — the named probes below own their
+# own arguments, redirects, etc.
+def tool_available?(cmd)
+  `#{cmd}`
+  $?.exitstatus == 0
+rescue
+  false
+end
+
+def gdb_available?
+  tool_available?('gdb --version 2>&1')
+end
+
+def valgrind_available?
+  tool_available?('valgrind --version 2>&1')
+end
+
+RSpec.shared_context "requires gdb" do
+  before :all do
+    @gdb_available = gdb_available?
+  end
+
+  before do
+    skip "gdb is not installed or not in PATH" unless @gdb_available
+  end
+end
+
+RSpec.shared_context "requires valgrind" do
+  before :all do
+    @valgrind_available = valgrind_available?
+  end
+
+  before do
+    skip "valgrind is not installed or not in PATH" unless @valgrind_available
+  end
+end
