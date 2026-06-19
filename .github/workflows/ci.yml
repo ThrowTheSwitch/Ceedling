@@ -177,6 +177,12 @@ jobs:
         with:
           submodules: recursive
 
+      # Windows Defender real-time monitoring scans every file touched during gem installation
+      # and C compilation, adding 5–15 minutes of overhead per run. Disable it for CI performance.
+      - name: Disable Windows Defender real-time monitoring
+        shell: powershell
+        run: Set-MpPreference -DisableRealtimeMonitoring $true
+
       # Common set up steps
       - name: Set Up Ruby Test Environment
         uses: ./.github/actions/setup
