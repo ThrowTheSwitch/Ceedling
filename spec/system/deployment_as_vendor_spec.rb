@@ -95,18 +95,7 @@ ceedling_system_tests do
     end
 
     describe "Backtrace with GDB" do
-      before :all do
-        @gdb_available = begin
-          `gdb --version 2>&1`
-          $?.exitstatus == 0
-        rescue
-          false
-        end
-      end
-
-      before do
-        skip "gdb is not installed or not in PATH" unless @gdb_available
-      end
+      include_context "requires gdb"
 
       test_case :backtrace_all_crash_test_cases_and_report
       test_case :backtrace_crash_targets_test_case_filter

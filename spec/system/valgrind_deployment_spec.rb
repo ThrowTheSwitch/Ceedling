@@ -13,13 +13,6 @@ ceedling_system_tests do
     include ValgrindCommonTestCases
 
     before :all do
-      @valgrind_available = begin
-        `valgrind --version 2>&1`
-        $?.exitstatus == 0
-      rescue
-        false
-      end
-
       @c = SystemContext.new
       @c.deploy_gem
     end
@@ -31,8 +24,9 @@ ceedling_system_tests do
     before { @proj_name = unique_proj_name("valgrind") }
 
     describe "Basic operations" do
+      include_context "requires valgrind"
+
       before do
-        skip "valgrind is not installed or not in PATH" unless @valgrind_available
         @c.with_context do
           @c.ceedling_appcmd_exec("new --local #{@proj_name}")
         end
@@ -44,8 +38,9 @@ ceedling_system_tests do
     end
 
     describe "Memory error detection" do
+      include_context "requires valgrind"
+
       before do
-        skip "valgrind is not installed or not in PATH" unless @valgrind_available
         @c.with_context do
           @c.ceedling_appcmd_exec("new --local #{@proj_name}")
         end
