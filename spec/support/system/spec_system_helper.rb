@@ -39,6 +39,17 @@ end
 RSpec.configure do |config|
   config.extend CeedlingSystemSpecHelpers
 
+  # Build and install the Ceedling gem once for the entire suite.
+  # All describe blocks reuse this shared installation via SystemContext#deploy_gem,
+  # eliminating redundant `bundle install` calls (one per describe group previously).
+  config.before(:suite) do
+    SystemContext.setup_shared_gem!
+  end
+
+  config.after(:suite) do
+    SystemContext.cleanup_shared_gem!
+  end
+
   # Exclude any line that does NOT contain "system" and ends with .rb from backtraces
   # This helps reduce RSpec backtrace noise that is irrelevant to system test failures
   config.backtrace_formatter.exclusion_patterns = [

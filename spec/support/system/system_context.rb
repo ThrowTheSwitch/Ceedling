@@ -16,6 +16,64 @@ class SystemContext
 
   SYSTEM_TEST_KEEP_ENV = 'CEEDLING_SYSTEM_TEST_KEEP'
 
+  # Shared gem installation — built once by setup_shared_gem!, reused by every deploy_gem call.
+  # Eliminates redundant `bundle install` runs (one per describe group → one per suite).
+  @@shared_gem_dir = nil
+  @@shared_gem     = nil
+
+  def self.setup_shared_gem!
+    return if @@shared_gem_dir
+
+    shared_dir = Dir.mktmpdir('ceedling_test_gem_')
+    shared_gem = GemDirLayout.new(shared_dir)
+
+    git_repo = File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..'))
+    File.write(
+      File.join(shared_dir, 'Gemfile'),
+      [
+        %Q{source "http://rubygems.org/"},
+        %Q{gem "rake"},
+        %Q{gem "constructor"},
+        %Q{gem "diy"},
+        %Q{gem "thor"},
+        %Q{gem "deep_merge"},
+        %Q{gem "unicode-display_width"},
+        %Q{gem "ceedling", :path => '#{git_repo}'}
+      ].join("\n")
+    )
+
+    Dir.chdir(shared_dir) do
+      saved = ENV.to_hash
+      begin
+        %w{BUNDLE_GEMFILE BUNDLE_BIN_PATH RUBYOPT}.each { |k| ENV.delete(k) }
+        deploy_output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
+        deploy_output += `bundle install 2>&1`
+        raise VerificationFailed, "bundle install failed:\n#{deploy_output}" unless $?.success?
+
+        verify = `bundle exec ruby -S ceedling version 2>&1`
+        unless $?.success?
+          raise VerificationFailed,
+            "Ceedling does not appear to be installed or ready for use.\n" \
+            "Output:\n#{verify}"
+        end
+      rescue
+        FileUtils.rm_rf(shared_dir)
+        raise
+      ensure
+        ENV.replace(saved)
+      end
+    end
+
+    @@shared_gem_dir = shared_dir
+    @@shared_gem     = shared_gem
+  end
+
+  def self.cleanup_shared_gem!
+    FileUtils.rm_rf(@@shared_gem_dir) if @@shared_gem_dir
+    @@shared_gem_dir = nil
+    @@shared_gem     = nil
+  end
+
   def initialize
     if ENV[SYSTEM_TEST_KEEP_ENV]
       # In debug mode, root the temp dir inside systests/proj/ so CI can upload it.
@@ -49,41 +107,11 @@ class SystemContext
   end
 
   def deploy_gem
-    git_repo = File.expand_path( File.join( File.dirname( __FILE__ ), '..', '..', '..') )
-    bundler_gem_file_data = [
-      %Q{source "http://rubygems.org/"},
-      %Q{gem "rake"},
-      %Q{gem "constructor"},
-      %Q{gem "diy"},
-      %Q{gem "thor"},
-      %Q{gem "deep_merge"},
-      %Q{gem "unicode-display_width"},
-      %Q{gem "ceedling", :path => '#{git_repo}'}
-    ].join("\n")
-
-    File.open(File.join(@dir, "Gemfile"), "w+") do |f|
-      f.write(bundler_gem_file_data)
-    end
-
-    Dir.chdir @dir do
-      with_constrained_env do
-        deploy_output  = `bundle config set --local path '#{@gem.install_dir}' 2>&1`
-        deploy_output += `bundle install 2>&1`
-        raise VerificationFailed, "bundle install failed:\n#{deploy_output}" unless $?.success?
-
-        checks = ["bundle exec ruby -S ceedling version 2>&1"]
-        checks.each do |c|
-          result = `#{c}`
-          unless $?.success?
-            raise VerificationFailed,
-              "Ceedling does not appear to be installed or ready for use.\n" \
-              "Command: `#{c}`\n" \
-              "Output:\n#{result}"
-          end
-        end
-      end
-    end
-
+    raise VerificationFailed,
+      "Shared gem not initialized — ensure SystemContext.setup_shared_gem! " \
+      "is called before running system specs (see spec_system_helper.rb before(:suite))" \
+      unless @@shared_gem
+    @gem = @@shared_gem
   end
 
   # Does a few things:
@@ -99,6 +127,9 @@ class SystemContext
   def with_context
     Dir.chdir @dir do |current_dir|
       with_constrained_env do
+        # Point bundle exec to the shared Gemfile so it works from any project directory.
+        # constrain_env removes BUNDLE_GEMFILE; we re-set it here within the constrained scope.
+        ENV['BUNDLE_GEMFILE'] = File.join(@@shared_gem_dir, 'Gemfile') if @@shared_gem_dir
         ENV['RUBYLIB'] = @gem.lib
         ENV['RUBYPATH'] = @gem.bin
 
