@@ -144,6 +144,8 @@ use `+:`, but strictly speaking, it’s not necessary.
 
 Subtractive paths may be simple paths or globs just like any other path entry.
 
+See the [example section](#advanced-tailoring).
+
 
 [globs-tutorial]: http://ruby.about.com/od/beginningruby/a/dir2.htm
 [ruby-globs]: https://ruby-doc.org/core-3.0.0/Dir.html#method-c-glob

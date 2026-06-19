@@ -77,10 +77,11 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
    - #1128 Command line mixin precedence.
    - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) to correct merge order explanations and clarify Mixins generally.
 - Multiple fixes and improvements to `#include`s handling and preprocessing plus these issues & PRs:
-   - PR #1126 fix for race condition in cache handling of `#include` listings in YAML files.
+   - PR #1126 Fix for race condition in cache handling of `#include` listings in YAML files.
    - #1015 Probing toolchain for presence of preprocessor directives-only ability.
+   - #1085 Fix relative `#include` path handling that broke test build convention.
    - #358 Mocks with relative path in `#include` directive.
-   - PR #1056 fix for extracting `#include` directive filenames that contain dashes.
+   - PR #1056 Fix for extracting `#include` directive filenames that contain dashes.
    - #1127 Fixes to path handling in `#include` directives.
    - #1158 Fixes for `#include` filtering in test runner generation.
 - Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
