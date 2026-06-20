@@ -39,10 +39,33 @@ end
 RSpec.configure do |config|
   config.extend CeedlingSystemSpecHelpers
 
-  # Build and install the Ceedling gem once for the entire suite.
-  # All describe blocks reuse this shared installation via SystemContext#deploy_gem,
-  # eliminating redundant `bundle install` calls (one per describe group previously).
+  # Announce artifact preservation policy before any test runs so the developer knows
+  # what will be kept. Two debug modes are available via CEEDLING_SYSTEM_TEST_KEEP:
+  #   'failures' — set by `specs:system:debug` (CI batch mode via run-system-tests action):
+  #                only failing project directories and logs are preserved.
+  #   'all'      — set by `spec:system:debug:<name>` (individual dev debug and the CI locale
+  #                test job): all artifacts — pass and fail — are preserved for inspection.
+  # Normal mode (env var unset): all temporary files are deleted silently.
   config.before(:suite) do
+    case ENV[SystemContext::SYSTEM_TEST_KEEP_ENV]
+    when 'all'
+      # Individual spec debug mode (and CI locale test): preserve everything for inspection.
+      $stdout.puts "\n[System Tests] Artifact preservation: ALL (pass + fail)"
+      $stdout.puts "  Pass project dirs: systests/proj/pass/"
+      $stdout.puts "  Fail project dirs: systests/proj/fail/"
+      $stdout.puts "  Pass logs:         systests/systest.pass.*.log"
+      $stdout.puts "  Fail logs:         systests/systest.fail.*.log\n\n"
+    when 'failures'
+      # CI batch debug mode: preserve only failures; passing dirs are deleted immediately.
+      $stdout.puts "\n[System Tests] Artifact preservation: FAILURES ONLY"
+      $stdout.puts "  Fail project dirs: systests/proj/fail/"
+      $stdout.puts "  Fail logs:         systests/systest.fail.*.log"
+      $stdout.puts "  Passing artifacts deleted immediately.\n\n"
+    end
+
+    # Build and install the Ceedling gem once for the entire suite.
+    # All describe blocks reuse this shared installation via SystemContext#deploy_gem,
+    # eliminating redundant `bundle install` calls (one per describe group previously).
     SystemContext.setup_shared_gem!
   end
 
@@ -66,7 +89,13 @@ RSpec.configure do |config|
   end
 
   config.after(:each) do |example|
-    next if example.exception.nil?
+    is_failure  = !example.exception.nil?
+    # 'all' mode (individual spec debug): log every test — pass and fail.
+    # 'failures' mode (CI batch debug): log only failures.
+    # Normal mode (env var unset): log nothing.
+    is_keep_all = (ENV[SystemContext::SYSTEM_TEST_KEEP_ENV] == 'all')
+
+    next if !is_failure && !is_keep_all
     next unless defined?(@c) && @c.respond_to?(:raw_output) && !@c.raw_output.nil?
 
     test_name =
@@ -93,24 +122,27 @@ RSpec.configure do |config|
     results_dir = File.join(Dir.pwd, 'systests')
     FileUtils.mkdir_p(results_dir)
 
-    log_path = File.join(results_dir, "systest.fail.#{test_name}.#{timestamp}.log")
+    result_tag = is_failure ? 'fail' : 'pass'
+    log_path   = File.join(results_dir, "systest.#{result_tag}.#{test_name}.#{timestamp}.log")
 
     log_content = ""
     log_content << "Command: `#{@c.last_cmd}`\n\n" if @c.respond_to?(:last_cmd) && !@c.last_cmd.nil?
     log_content << @c.raw_output.to_s
     File.write(log_path, log_content)
 
-    @c.mark_failed! if @c.respond_to?(:mark_failed!)
+    if is_failure
+      @c.mark_failed! if @c.respond_to?(:mark_failed!)
 
-    $stderr.puts "\n" + ("=" * 72)
-    $stderr.puts "FAILED: #{format_description.call(example)}"
-    $stderr.puts "Temp dir: #{@c.dir}"
-    $stderr.puts "Log file: #{log_path}"
-    if @c.respond_to?(:console_summary) && !@c.console_summary.nil?
-      $stderr.puts "-" * 72
-      $stderr.puts @c.console_summary
+      $stderr.puts "\n" + ("=" * 72)
+      $stderr.puts "FAILED: #{format_description.call(example)}"
+      $stderr.puts "Temp dir: #{@c.dir}"
+      $stderr.puts "Log file: #{log_path}"
+      if @c.respond_to?(:console_summary) && !@c.console_summary.nil?
+        $stderr.puts "-" * 72
+        $stderr.puts @c.console_summary
+      end
+      $stderr.puts "=" * 72 + "\n"
     end
-    $stderr.puts "=" * 72 + "\n"
   end
 end
 

@@ -76,9 +76,9 @@ class SystemContext
 
   def initialize
     if ENV[SYSTEM_TEST_KEEP_ENV]
-      # In debug mode, root the temp dir inside systests/proj/ so that done! can move
-      # failing test artifacts there without a cross-device rename.
-      # Passing directories are immediately deleted by done! — only fail/ is preserved.
+      # In either debug mode ('failures' or 'all'), root the temp dir inside systests/proj/
+      # so that done! can rename it to pass/ or fail/ on the same filesystem without a
+      # cross-device copy. The specific subdir (pass/ or fail/) is determined by done!.
       base = File.join(Dir.pwd, 'systests', 'proj')
       FileUtils.mkdir_p(base)
       @dir = Dir.mktmpdir(nil, base)
@@ -89,14 +89,16 @@ class SystemContext
   end
 
   def done!
-    if ENV[SYSTEM_TEST_KEEP_ENV] && @failed
-      # Only preserve artifacts for failing tests — passing project directories are
-      # deleted immediately to avoid accumulating thousands of files on disk during
-      # a full CI run (each --local project copies the entire Ceedling source tree).
-      dest = File.join(File.dirname(@dir), 'fail', File.basename(@dir))
+    if keep_all? || (keep_failures_only? && @failed)
+      # 'all' mode: preserve pass and fail artifacts for post-run inspection.
+      # 'failures' mode: preserve only failing artifacts; passing dirs are discarded
+      # immediately to avoid accumulating thousands of files during a full CI run
+      # (each --local project copies the entire Ceedling source tree).
+      subdir = @failed ? 'fail' : 'pass'
+      dest   = File.join(File.dirname(@dir), subdir, File.basename(@dir))
       FileUtils.mkdir_p(File.dirname(dest))
       FileUtils.mv(@dir, dest)
-      $stderr.puts "Test artifacts saved at: #{dest} (#{SYSTEM_TEST_KEEP_ENV} is set)"
+      $stderr.puts "Test artifacts saved: #{dest}"
     else
       FileUtils.rm_rf(@dir)
     end
@@ -237,6 +239,19 @@ class SystemContext
   end
 
   private
+
+  # True when running the full suite in CI batch debug mode: keep only failing artifacts.
+  # Set by `specs:system:debug` rake task via CEEDLING_SYSTEM_TEST_KEEP='failures'.
+  def keep_failures_only?
+    ENV[SYSTEM_TEST_KEEP_ENV] == 'failures'
+  end
+
+  # True when running an individual spec in developer debug mode: keep all artifacts.
+  # Set by `spec:system:debug:<name>` rake tasks via CEEDLING_SYSTEM_TEST_KEEP='all'.
+  # Also used by the CI locale test job (spec:system:debug:preprocessing_locale).
+  def keep_all?
+    ENV[SYSTEM_TEST_KEEP_ENV] == 'all'
+  end
 
   def compose_failure_report(stdout, stderr)
     sections = []

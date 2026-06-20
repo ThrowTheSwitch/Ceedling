@@ -1,0 +1,55 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# Internal composite action — not intended to be triggered directly.
+# Called after the explicit Run Unit Tests step in each tests-* job in ci.yml.
+# Runs only system tests (rake specs:system:debug) in CI batch debug mode:
+# only failing project directories and logs are preserved; passing artifacts
+# are deleted immediately so they don't accumulate on disk during the run.
+#
+# Note: Composite actions require an explicit `shell:` on every `run:` step — there is no
+# default shell. Steps using `uses:` (action calls) do not need `shell:`.
+
+name: 'Run Ceedling System Test Suite'
+description: 'Download docs artifact, run rake specs:system:debug (CI batch debug mode — failures only preserved), upload failure artifacts'
+
+inputs:
+  ruby:
+    description: 'Ruby version (used in failure artifact name)'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    # Download HTML docs bundle built by generate-docs job.
+    # Required by system tests that exercise Ceedling documentation features.
+    # Unit tests (run as a separate job step before this action) do not need the docs bundle.
+    - name: Download HTML Documentation Bundle
+      uses: actions/download-artifact@v4
+      with:
+        name: gem-docs-site-local
+        path: site-local/
+
+    # Run system tests in CI batch debug mode.
+    # specs:system:debug sets CEEDLING_SYSTEM_TEST_KEEP='failures' before invoking specs:system,
+    # so only failing project directories and logs are preserved; passing artifacts are discarded.
+    - name: Run System Tests
+      shell: bash
+      env:
+        CI_RSPEC_PROGRESS_FORMAT: true
+      run: rake specs:system:debug
+
+    # Upload system test failure logs and temp project directories on test job failure.
+    # In 'failures' mode, passing artifacts are never created, so there is nothing to clean up
+    # before uploading — the systests/ directory contains only failure data.
+    - name: Upload system test failure artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: systest-failures-${{ runner.os }}-ruby-${{ inputs.ruby }}
+        path: systests/
+        if-no-files-found: ignore

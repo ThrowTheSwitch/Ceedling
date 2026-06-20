@@ -97,6 +97,14 @@ jobs:
         run: |
           bundle install
 
+      # Run unit tests immediately after gem install — before the slower external tool
+      # installation steps — so unit failures surface as quickly as possible.
+      # Unit tests have no dependency on gdb, valgrind, cppcheck, gcovr, or ReportGenerator.
+      - name: Run Unit Tests
+        env:
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: rake specs:units
+
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
         run: |
@@ -150,9 +158,9 @@ jobs:
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
-      # Common test suite
-      - name: Run Test Suite
-        uses: ./.github/actions/run-tests
+      # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
+      - name: Run System Tests
+        uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
 
@@ -195,6 +203,14 @@ jobs:
         run: |
           bundle install
 
+      # Run unit tests immediately after gem install — before the slower external tool
+      # installation steps — so unit failures surface as quickly as possible.
+      # Unit tests have no dependency on gcovr, ReportGenerator, or cppcheck.
+      - name: Run Unit Tests
+        env:
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: rake specs:units
+
       # Install GCovr for Gcov plugin test
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
         run: |
@@ -213,9 +229,9 @@ jobs:
           choco upgrade cppcheck -y
           echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
 
-      # Common test suite
-      - name: Run Test Suite
-        uses: ./.github/actions/run-tests
+      # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
+      - name: Run System Tests
+        uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
 
@@ -262,6 +278,14 @@ jobs:
           bundle config set --local force_ruby_platform true
           bundle install
 
+      # Run unit tests immediately after gem install — before the slower external tool
+      # installation steps — so unit failures surface as quickly as possible.
+      # Unit tests have no dependency on cppcheck, gcovr, or ReportGenerator.
+      - name: Run Unit Tests
+        env:
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: rake specs:units
+
       # gdb is not installed on macOS runners — backtrace specs detect absence and skip
       # valgrind is unavailable on macOS — valgrind specs already skip via @valgrind_available guard
 
@@ -285,9 +309,9 @@ jobs:
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
-      # Common test suite
-      - name: Run Test Suite
-        uses: ./.github/actions/run-tests
+      # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
+      - name: Run System Tests
+        uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
 
