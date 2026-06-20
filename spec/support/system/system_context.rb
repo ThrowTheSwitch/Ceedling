@@ -16,10 +16,69 @@ class SystemContext
 
   SYSTEM_TEST_KEEP_ENV = 'CEEDLING_SYSTEM_TEST_KEEP'
 
+  # Shared gem installation — built once by setup_shared_gem!, reused by every deploy_gem call.
+  # Eliminates redundant `bundle install` runs (one per describe group → one per suite).
+  @@shared_gem_dir = nil
+  @@shared_gem     = nil
+
+  def self.setup_shared_gem!
+    return if @@shared_gem_dir
+
+    shared_dir = Dir.mktmpdir('ceedling_test_gem_')
+    shared_gem = GemDirLayout.new(shared_dir)
+
+    git_repo = File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..'))
+    File.write(
+      File.join(shared_dir, 'Gemfile'),
+      [
+        %Q{source "http://rubygems.org/"},
+        %Q{gem "rake"},
+        %Q{gem "constructor"},
+        %Q{gem "diy"},
+        %Q{gem "thor"},
+        %Q{gem "deep_merge"},
+        %Q{gem "unicode-display_width"},
+        %Q{gem "ceedling", :path => '#{git_repo}'}
+      ].join("\n")
+    )
+
+    Dir.chdir(shared_dir) do
+      saved = ENV.to_hash
+      begin
+        %w{BUNDLE_GEMFILE BUNDLE_BIN_PATH RUBYOPT}.each { |k| ENV.delete(k) }
+        deploy_output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
+        deploy_output += `bundle install 2>&1`
+        raise VerificationFailed, "bundle install failed:\n#{deploy_output}" unless $?.success?
+
+        verify = `bundle exec ruby -S ceedling version 2>&1`
+        unless $?.success?
+          raise VerificationFailed,
+            "Ceedling does not appear to be installed or ready for use.\n" \
+            "Output:\n#{verify}"
+        end
+      rescue
+        FileUtils.rm_rf(shared_dir)
+        raise
+      ensure
+        ENV.replace(saved)
+      end
+    end
+
+    @@shared_gem_dir = shared_dir
+    @@shared_gem     = shared_gem
+  end
+
+  def self.cleanup_shared_gem!
+    FileUtils.rm_rf(@@shared_gem_dir) if @@shared_gem_dir
+    @@shared_gem_dir = nil
+    @@shared_gem     = nil
+  end
+
   def initialize
     if ENV[SYSTEM_TEST_KEEP_ENV]
-      # In debug mode, root the temp dir inside systests/proj/ so CI can upload it.
-      # done! will sort it into pass/ or fail/ once the test outcome is known.
+      # In either debug mode ('failures' or 'all'), root the temp dir inside systests/proj/
+      # so that done! can rename it to pass/ or fail/ on the same filesystem without a
+      # cross-device copy. The specific subdir (pass/ or fail/) is determined by done!.
       base = File.join(Dir.pwd, 'systests', 'proj')
       FileUtils.mkdir_p(base)
       @dir = Dir.mktmpdir(nil, base)
@@ -30,14 +89,16 @@ class SystemContext
   end
 
   def done!
-    if ENV[SYSTEM_TEST_KEEP_ENV]
-      # Move temp dir to pass/ or fail/ so CI can delete the pass/ tree before uploading,
-      # keeping the artifact lean and containing only failure-relevant data.
+    if keep_all? || (keep_failures_only? && @failed)
+      # 'all' mode: preserve pass and fail artifacts for post-run inspection.
+      # 'failures' mode: preserve only failing artifacts; passing dirs are discarded
+      # immediately to avoid accumulating thousands of files during a full CI run
+      # (each --local project copies the entire Ceedling source tree).
       subdir = @failed ? 'fail' : 'pass'
       dest   = File.join(File.dirname(@dir), subdir, File.basename(@dir))
       FileUtils.mkdir_p(File.dirname(dest))
       FileUtils.mv(@dir, dest)
-      $stderr.puts "Test artifacts saved at: #{dest} (#{SYSTEM_TEST_KEEP_ENV} is set)"
+      $stderr.puts "Test artifacts saved: #{dest}"
     else
       FileUtils.rm_rf(@dir)
     end
@@ -49,41 +110,11 @@ class SystemContext
   end
 
   def deploy_gem
-    git_repo = File.expand_path( File.join( File.dirname( __FILE__ ), '..', '..', '..') )
-    bundler_gem_file_data = [
-      %Q{source "http://rubygems.org/"},
-      %Q{gem "rake"},
-      %Q{gem "constructor"},
-      %Q{gem "diy"},
-      %Q{gem "thor"},
-      %Q{gem "deep_merge"},
-      %Q{gem "unicode-display_width"},
-      %Q{gem "ceedling", :path => '#{git_repo}'}
-    ].join("\n")
-
-    File.open(File.join(@dir, "Gemfile"), "w+") do |f|
-      f.write(bundler_gem_file_data)
-    end
-
-    Dir.chdir @dir do
-      with_constrained_env do
-        deploy_output  = `bundle config set --local path '#{@gem.install_dir}' 2>&1`
-        deploy_output += `bundle install 2>&1`
-        raise VerificationFailed, "bundle install failed:\n#{deploy_output}" unless $?.success?
-
-        checks = ["bundle exec ruby -S ceedling version 2>&1"]
-        checks.each do |c|
-          result = `#{c}`
-          unless $?.success?
-            raise VerificationFailed,
-              "Ceedling does not appear to be installed or ready for use.\n" \
-              "Command: `#{c}`\n" \
-              "Output:\n#{result}"
-          end
-        end
-      end
-    end
-
+    raise VerificationFailed,
+      "Shared gem not initialized — ensure SystemContext.setup_shared_gem! " \
+      "is called before running system specs (see spec_system_helper.rb before(:suite))" \
+      unless @@shared_gem
+    @gem = @@shared_gem
   end
 
   # Does a few things:
@@ -99,6 +130,9 @@ class SystemContext
   def with_context
     Dir.chdir @dir do |current_dir|
       with_constrained_env do
+        # Point bundle exec to the shared Gemfile so it works from any project directory.
+        # constrain_env removes BUNDLE_GEMFILE; we re-set it here within the constrained scope.
+        ENV['BUNDLE_GEMFILE'] = File.join(@@shared_gem_dir, 'Gemfile') if @@shared_gem_dir
         ENV['RUBYLIB'] = @gem.lib
         ENV['RUBYPATH'] = @gem.bin
 
@@ -205,6 +239,19 @@ class SystemContext
   end
 
   private
+
+  # True when running the full suite in CI batch debug mode: keep only failing artifacts.
+  # Set by `specs:system:debug` rake task via CEEDLING_SYSTEM_TEST_KEEP='failures'.
+  def keep_failures_only?
+    ENV[SYSTEM_TEST_KEEP_ENV] == 'failures'
+  end
+
+  # True when running an individual spec in developer debug mode: keep all artifacts.
+  # Set by `spec:system:debug:<name>` rake tasks via CEEDLING_SYSTEM_TEST_KEEP='all'.
+  # Also used by the CI locale test job (spec:system:debug:preprocessing_locale).
+  def keep_all?
+    ENV[SYSTEM_TEST_KEEP_ENV] == 'all'
+  end
 
   def compose_failure_report(stdout, stderr)
     sections = []

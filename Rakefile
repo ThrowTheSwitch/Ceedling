@@ -35,9 +35,12 @@ end
 desc "Run all specs: unit specs first, then system specs"
 task 'specs:all' => ['specs:units', 'specs:system']
 
-desc "Run all system specs with artifact retention"
+# CI batch debug mode: run all system specs, keeping only failure artifacts.
+# 'failures' is checked by keep_failures_only? in system_context.rb.
+# Passing project directories are deleted immediately; passing logs are never written.
+desc "Run all system specs with artifact retention for failures only"
 task 'specs:system:debug' do
-  ENV['CEEDLING_SYSTEM_TEST_KEEP'] = '1'
+  ENV['CEEDLING_SYSTEM_TEST_KEEP'] = 'failures'
   Rake::Task['specs:system'].invoke
 end
 
@@ -61,11 +64,16 @@ Dir['spec/system/**/*_spec.rb'].each do |p|
   end
 end
 
-# Individual system specs with debug artifact retention (unadvertised)
+# Individual system specs with full artifact retention (unadvertised).
+# Developer debug mode: preserve all artifacts — both pass and fail project directories
+# and logs — for post-run inspection of a single targeted spec.
+# 'all' is checked by keep_all? in system_context.rb.
+# Also used by the CI locale test job (spec:system:debug:preprocessing_locale),
+# where full preservation of a single spec's artifacts is acceptable overhead.
 Dir['spec/system/**/*_spec.rb'].each do |p|
   base = File.basename(p,'.*').gsub('_spec','')
   task "spec:system:debug:#{base}" do
-    ENV['CEEDLING_SYSTEM_TEST_KEEP'] = '1'
+    ENV['CEEDLING_SYSTEM_TEST_KEEP'] = 'all'
     Rake::Task["spec:system:#{base}"].invoke
   end
 end

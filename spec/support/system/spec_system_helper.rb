@@ -39,6 +39,40 @@ end
 RSpec.configure do |config|
   config.extend CeedlingSystemSpecHelpers
 
+  # Announce artifact preservation policy before any test runs so the developer knows
+  # what will be kept. Two debug modes are available via CEEDLING_SYSTEM_TEST_KEEP:
+  #   'failures' — set by `specs:system:debug` (CI batch mode via run-system-tests action):
+  #                only failing project directories and logs are preserved.
+  #   'all'      — set by `spec:system:debug:<name>` (individual dev debug and the CI locale
+  #                test job): all artifacts — pass and fail — are preserved for inspection.
+  # Normal mode (env var unset): all temporary files are deleted silently.
+  config.before(:suite) do
+    case ENV[SystemContext::SYSTEM_TEST_KEEP_ENV]
+    when 'all'
+      # Individual spec debug mode (and CI locale test): preserve everything for inspection.
+      $stdout.puts "\n[System Tests] Artifact preservation: ALL (pass + fail)"
+      $stdout.puts "  Pass project dirs: systests/proj/pass/"
+      $stdout.puts "  Fail project dirs: systests/proj/fail/"
+      $stdout.puts "  Pass logs:         systests/systest.pass.*.log"
+      $stdout.puts "  Fail logs:         systests/systest.fail.*.log\n\n"
+    when 'failures'
+      # CI batch debug mode: preserve only failures; passing dirs are deleted immediately.
+      $stdout.puts "\n[System Tests] Artifact preservation: FAILURES ONLY"
+      $stdout.puts "  Fail project dirs: systests/proj/fail/"
+      $stdout.puts "  Fail logs:         systests/systest.fail.*.log"
+      $stdout.puts "  Passing artifacts deleted immediately.\n\n"
+    end
+
+    # Build and install the Ceedling gem once for the entire suite.
+    # All describe blocks reuse this shared installation via SystemContext#deploy_gem,
+    # eliminating redundant `bundle install` calls (one per describe group previously).
+    SystemContext.setup_shared_gem!
+  end
+
+  config.after(:suite) do
+    SystemContext.cleanup_shared_gem!
+  end
+
   # Exclude any line that does NOT contain "system" and ends with .rb from backtraces
   # This helps reduce RSpec backtrace noise that is irrelevant to system test failures
   config.backtrace_formatter.exclusion_patterns = [
@@ -55,11 +89,13 @@ RSpec.configure do |config|
   end
 
   config.after(:each) do |example|
-    is_failure = !example.exception.nil?
-    is_debug   = !ENV[SystemContext::SYSTEM_TEST_KEEP_ENV].nil?
+    is_failure  = !example.exception.nil?
+    # 'all' mode (individual spec debug): log every test — pass and fail.
+    # 'failures' mode (CI batch debug): log only failures.
+    # Normal mode (env var unset): log nothing.
+    is_keep_all = (ENV[SystemContext::SYSTEM_TEST_KEEP_ENV] == 'all')
 
-    # Write a result log for every test in debug mode; in normal mode write only on failure.
-    next unless is_failure || is_debug
+    next if !is_failure && !is_keep_all
     next unless defined?(@c) && @c.respond_to?(:raw_output) && !@c.raw_output.nil?
 
     test_name =
