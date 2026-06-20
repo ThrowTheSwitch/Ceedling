@@ -36,13 +36,14 @@ runs:
         CI_RSPEC_PROGRESS_FORMAT: true
       run: rake ci
 
-    # Remove passing system test artifacts before upload so the artifact contains only failure data
+    # Passing project directories are deleted immediately by done!; passing logs are never written.
+    # This step is retained as a safety net in case of any leftover pass artifacts.
     - name: Remove passing system test artifacts before upload
       if: failure()
       shell: bash
       run: |
-        rm -rf systests/proj/pass
-        rm -f systests/systest.pass.*.log
+        rm -rf systests/proj/pass || true
+        rm -f systests/systest.pass.*.log || true
 
     # Upload system test failure logs and temp project directories on test job failure
     - name: Upload system test failure artifacts

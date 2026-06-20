@@ -76,8 +76,9 @@ class SystemContext
 
   def initialize
     if ENV[SYSTEM_TEST_KEEP_ENV]
-      # In debug mode, root the temp dir inside systests/proj/ so CI can upload it.
-      # done! will sort it into pass/ or fail/ once the test outcome is known.
+      # In debug mode, root the temp dir inside systests/proj/ so that done! can move
+      # failing test artifacts there without a cross-device rename.
+      # Passing directories are immediately deleted by done! — only fail/ is preserved.
       base = File.join(Dir.pwd, 'systests', 'proj')
       FileUtils.mkdir_p(base)
       @dir = Dir.mktmpdir(nil, base)
@@ -88,11 +89,11 @@ class SystemContext
   end
 
   def done!
-    if ENV[SYSTEM_TEST_KEEP_ENV]
-      # Move temp dir to pass/ or fail/ so CI can delete the pass/ tree before uploading,
-      # keeping the artifact lean and containing only failure-relevant data.
-      subdir = @failed ? 'fail' : 'pass'
-      dest   = File.join(File.dirname(@dir), subdir, File.basename(@dir))
+    if ENV[SYSTEM_TEST_KEEP_ENV] && @failed
+      # Only preserve artifacts for failing tests — passing project directories are
+      # deleted immediately to avoid accumulating thousands of files on disk during
+      # a full CI run (each --local project copies the entire Ceedling source tree).
+      dest = File.join(File.dirname(@dir), 'fail', File.basename(@dir))
       FileUtils.mkdir_p(File.dirname(dest))
       FileUtils.mv(@dir, dest)
       $stderr.puts "Test artifacts saved at: #{dest} (#{SYSTEM_TEST_KEEP_ENV} is set)"

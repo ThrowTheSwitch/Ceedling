@@ -66,11 +66,7 @@ RSpec.configure do |config|
   end
 
   config.after(:each) do |example|
-    is_failure = !example.exception.nil?
-    is_debug   = !ENV[SystemContext::SYSTEM_TEST_KEEP_ENV].nil?
-
-    # Write a result log for every test in debug mode; in normal mode write only on failure.
-    next unless is_failure || is_debug
+    next if example.exception.nil?
     next unless defined?(@c) && @c.respond_to?(:raw_output) && !@c.raw_output.nil?
 
     test_name =
@@ -97,27 +93,24 @@ RSpec.configure do |config|
     results_dir = File.join(Dir.pwd, 'systests')
     FileUtils.mkdir_p(results_dir)
 
-    result_tag = is_failure ? 'fail' : 'pass'
-    log_path   = File.join(results_dir, "systest.#{result_tag}.#{test_name}.#{timestamp}.log")
+    log_path = File.join(results_dir, "systest.fail.#{test_name}.#{timestamp}.log")
 
     log_content = ""
     log_content << "Command: `#{@c.last_cmd}`\n\n" if @c.respond_to?(:last_cmd) && !@c.last_cmd.nil?
     log_content << @c.raw_output.to_s
     File.write(log_path, log_content)
 
-    if is_failure
-      @c.mark_failed! if @c.respond_to?(:mark_failed!)
+    @c.mark_failed! if @c.respond_to?(:mark_failed!)
 
-      $stderr.puts "\n" + ("=" * 72)
-      $stderr.puts "FAILED: #{format_description.call(example)}"
-      $stderr.puts "Temp dir: #{@c.dir}"
-      $stderr.puts "Log file: #{log_path}"
-      if @c.respond_to?(:console_summary) && !@c.console_summary.nil?
-        $stderr.puts "-" * 72
-        $stderr.puts @c.console_summary
-      end
-      $stderr.puts "=" * 72 + "\n"
+    $stderr.puts "\n" + ("=" * 72)
+    $stderr.puts "FAILED: #{format_description.call(example)}"
+    $stderr.puts "Temp dir: #{@c.dir}"
+    $stderr.puts "Log file: #{log_path}"
+    if @c.respond_to?(:console_summary) && !@c.console_summary.nil?
+      $stderr.puts "-" * 72
+      $stderr.puts @c.console_summary
     end
+    $stderr.puts "=" * 72 + "\n"
   end
 end
 
