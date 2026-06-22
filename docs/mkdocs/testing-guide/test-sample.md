@@ -32,7 +32,7 @@ that follow.
 !!! tip "Example projects"
     Ceedling’s built-in [example projects](../getting-started/example-projects/index.md)
     provide fully working code for your reference and learning. The examples span 
-    test assertions, mocks, partials, release builds, and system & embedded 
+    test assertions, mocks, partials, release builds, mixins, and system & embedded 
     programming.
 
 ```c

@@ -18,9 +18,13 @@
 #include "calculators/MockUsartBaudRateRegisterCalculator.h" // Proves we can find a mock even with a path
 #include <string.h>
 
-/* NOTE: we probably wouldn't actually perform this test on our own projects
-  but it's a good example of testing the same module(s) from multiple test
-  files, and therefore we like having it in this example. 
+/* NOTES:
+  - We probably wouldn't perform this test on our own projects,
+    but it's a good example of testing the same module(s) from multiple test
+    files, and therefore we like having it in this example.
+  - That said, it is appropriate in some testing scenarios to test
+    multiple source files together (e.g. protocol handling or memory management).
+    Typically, unit tests isolate a single source module.
 */
 
 #ifndef TEST_USART_INTEGRATED_STRING

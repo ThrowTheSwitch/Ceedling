@@ -13,7 +13,7 @@ reasonable approximations of real world code for learning and reference.
 
 ## Available projects
 
-Once you've exported a project you can inspect the _project.yml_ file and 
+Once you’ve exported a project you can inspect the _project.yml_ file and 
 source & test code. Run `ceedling help` from the root of an example project
 to see what you can do, or just go nuts with `ceedling test:all`.
 
@@ -24,7 +24,7 @@ to see what you can do, or just go nuts with `ceedling test:all`.
     ---
 
     An imagined temperature sensor project containing assertions, 
-    mocks, and code techniques representative of testing in  embedded 
+    mocks, and code techniques representative of testing in embedded 
     development. Test suite only.
 
 -   :material-forest-outline: **[`wondrous_forest`](wondrous-forest.md)**
@@ -42,7 +42,7 @@ to see what you can do, or just go nuts with `ceedling test:all`.
     An imagined spy’s command line string manipulation toolkit. This
     project can be run both as a test suite and as a release build. It
     demonstrates build options around conditional compilation (`ifdef`) 
-    and defnining symbols with Ceedling.
+    and defining symbols with Ceedling including with Mixins.
 
 </div>
 
