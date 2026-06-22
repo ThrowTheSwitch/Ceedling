@@ -1,0 +1,28 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# Release build mixin: Text analysis variant
+#
+# Enables the text analysis feature for a release build. Merge into the
+# project configuration using the --mixin flag:
+#
+#   ceedling release --mixin mixin/release_analyze.yml
+#
+# Or by simple mixin name (Ceedling searches mixin/ load paths):
+#
+#   ceedling release --mixin release_analyze
+#
+# Or supply the equivalent YAML directly using the = sigil
+# (quote the value to protect YAML special characters from the shell):
+#
+#   ceedling release --mixin "=:defines: {release: [ANALYZER_ENABLED]}"
+
+---
+:defines:
+  :release:
+    - ANALYZER_ENABLED
+...

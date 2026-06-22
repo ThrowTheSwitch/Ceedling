@@ -1,0 +1,105 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+:project:
+  :name: "Cipher Quest"
+  # Ceedling is used as a gem; version '?' accepts any installed version
+  :which_ceedling: gem
+  :ceedling_version: '?'
+
+  # No mocks needed — all dependencies are real implementations
+  :use_mocks: FALSE
+
+  # No preprocessor needed — #ifdefs are handled naturally by test-specific defines
+  :use_test_preprocessor: :none
+
+  :build_root: build
+  :test_file_prefix: Test
+  :default_tasks:
+    - test:all
+
+  :test_threads: 8
+  :compile_threads: 8
+
+  # Release build is enabled — but requires a mixin to supply feature symbols
+  :release_build: TRUE
+
+:test_build:
+  :use_assembly: FALSE
+
+:release_build:
+  :output: cipher_quest.out
+  :use_assembly: FALSE
+  :artifacts: []
+
+# Mixins are optional configuration fragments merged into this project config.
+# The mixin/ directory contains release build variants that supply the feature
+# symbols required by the conditional compilation in main.c (see src/main.c).
+# Without a mixin, `ceedling release` will fail with a descriptive #error.
+#
+# Usage (file-based mixin, works today):
+#   ceedling release --mixin=mixin/release_rot13.yml
+#   ceedling release --mixin=mixin/release_caesar.yml
+#   ceedling release --mixin=mixin/release_full.yml
+#
+# Usage (inline-YAML mixin, a feature under development):
+#   ceedling release --mixin=":defines: :release: [CIPHER_ROT13]"
+:mixins:
+  :enabled: []
+  :load_paths:
+    - mixin
+
+:plugins:
+  :load_paths: []
+  :enabled:
+    - module_generator
+    - report_tests_pretty_stdout
+
+:extension:
+  :executable: .out
+
+:paths:
+  :test:
+    - +:test/**
+  :source:
+    - src/**
+  :include:
+    - src/**
+  :libraries: []
+
+# Symbols for test builds use matchers to apply per-test-file defines.
+# Each test file that exercises a conditionally compiled feature gets the
+# symbol that enables that feature. The wildcard '*' applies TEST to all.
+#
+# Release builds intentionally have no defines here — feature symbols must
+# be supplied by a mixin (see :mixins above and the mixin/ directory).
+# Without a mixin providing at least one feature symbol, `ceedling release`
+# will fail at compilation of main.c with a clear #error message.
+:defines:
+  :test:
+    '*':
+      - TEST
+    :TestCipherRot13:
+      - CIPHER_ROT13
+    :TestCipherCaesar:
+      - CIPHER_CAESAR
+    :TestAnalyzer:
+      - ANALYZER_ENABLED
+  :release: []
+
+  :use_test_definition: FALSE
+
+:flags:
+  :test:
+    :compile:
+      '*':
+        - '-std=c99'
+  :release:
+    :compile:
+      - '-std=c99'
+...

@@ -1,0 +1,30 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# Release build mixin: Full-featured variant (all features enabled)
+#
+# Enables all features for a release build. Merge into the project
+# configuration using the --mixin flag:
+#
+#   ceedling release --mixin mixin/release_full.yml
+#
+# Or by simple mixin name (Ceedling searches mixin/ load paths):
+#
+#   ceedling release --mixin release_full
+#
+# Or supply the equivalent YAML directly using the = sigil
+# (quote the value to protect YAML special characters from the shell):
+#
+#   ceedling release --mixin "=:defines: {release: [CIPHER_ROT13, CIPHER_CAESAR, ANALYZER_ENABLED]}"
+
+---
+:defines:
+  :release:
+    - CIPHER_ROT13
+    - CIPHER_CAESAR
+    - ANALYZER_ENABLED
+...
