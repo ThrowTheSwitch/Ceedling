@@ -81,9 +81,7 @@ markdown_extensions:
   - pymdownx.superfences  # Fenced code blocks inside admonitions and other nested elements
   - pymdownx.inlinehilite # Inline code syntax highlighting with `#!lang code` syntax
 
-# Files in docs/ excluded from the generated site.
-# These are standalone reference documents, developer files, PDFs, or historical records
-# maintained separately from the versioned documentation bundle.
+# Files in docs/mkdocs/ excluded from the generated site.
 exclude_docs: |
   snapshot.yml
 
