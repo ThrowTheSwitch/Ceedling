@@ -414,7 +414,15 @@ class CliHandler
 
     examples.each {|example| output << " • #{example}\n" }
 
-    @loginator.console( "#{output}\n", LogLabels::TITLE )
+    @loginator.console(
+      "#{output}\n",
+      LogLabels::TITLE
+    )
+
+    @loginator.console(
+      "See Ceedling documentation for details of each project.\n",
+      LogLabels::DOCUMENTATION
+    )
   end
 
 
@@ -457,7 +465,15 @@ class CliHandler
     # Copy in documentation
     @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( dest, DOCS_SUBDIR ) ) if options[:docs]
 
-    @loginator.console( "Example project '#{name}' created at #{dest}/\n", LogLabels::TITLE )
+    @loginator.console(
+      "\nExample project '#{name}' created at #{dest}/\n\n",
+      LogLabels::TITLE
+    )
+
+    @loginator.console(
+      "See #{dest}/README.md for project details.\n",
+      LogLabels::DOCUMENTATION
+    )
   end
 
 
