@@ -4,7 +4,7 @@
 
 * [Installation](installation.md)
 * [Sample test code file](../testing-guide/test-sample.md)
-* [Example Ceedling projects](../testing-guide/test-sample.md#ceedling-includes-example-projects)
+* [Example Ceedling projects](example-projects/index.md)
 * [Simple Ceedling project file](../overview/build-system.md#simple-sample-project-file)
 * [Ceedling at the command line](command-line.md)
 * [All your project configuration file options](../configuration/index.md)

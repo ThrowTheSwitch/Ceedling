@@ -361,38 +361,78 @@ any or all of these options.
 As already discussed above, many of Ceedling’s application commands 
 include an optional `--project` flag. Most of these same commands 
 also recognize optional `--mixin` flags. Note that `--mixin` can be 
-used multiple times in a single command line.
+used multiple times in a single command line and is processed 
+strictly left-to-right.
 
-When provided, Ceedling will load the specified YAML file and merge
-it with the base project configuration.
+When provided, Ceedling merges the specified mixin into the base 
+project configuration. A `--mixin` value accepts three forms 
+distinguished by an optional sigil prefix:
 
-A Mixin flag can contain one of two types of values:
+#### File or named mixin (no sigil or `@` sigil)
 
-1. A filename or filepath to a mixin yaml file.
-    * A simple filename contains a file extension.
-    * A filepath includes a leading directory path before a filename.
-1. A simple name (no file extension and no path). This mixin name is 
-   used as a filename lookup among Ceedling’s mixin load paths.
+The value is treated as a file path or named mixin lookup. Two 
+equivalent syntaxes are accepted:
 
-Example: `ceedling --project=build.yml --mixin=foo --mixin=bar/mixin.yaml test:all`
+```sh
+--mixin my_compiler           # simple name lookup (no sigil)
+--mixin bar/mixin.yaml        # filepath (no sigil)
+--mixin @bar/mixin.yaml       # filepath (explicit @ sigil — same result)
+```
 
-Simple mixin names (#2 above) require mixin load paths to search.
-A default mixin load path is always in the list and points to within
-Ceedling itself (in order to host eventual built-in mixins like 
-built-in plugins). User-specified load paths must be added through 
-the `:mixins` section of the base configuration project file. See 
-the [documentation for the `:mixins` section of your project 
+- A **simple name** (no extension, no path separator) is looked up 
+  among Ceedling’s mixin load paths.
+- A **filename or filepath** (with extension or path separator) loads 
+  the specified YAML file directly.
+- The `@` sigil is optional and makes the file/name intent explicit; 
+  it is otherwise identical to providing the value without a sigil.
+
+#### Inline YAML (`=` sigil)
+
+The value is treated as a YAML string merged directly into 
+configuration — no file needed. Prefix the value with `=` and quote 
+the argument to protect YAML special characters (colons, brackets, 
+spaces) from shell interpretation:
+
+```sh
+--mixin "=:defines: {release: [MY_SYMBOL]}"
+```
+
+The YAML content must evaluate to a Hash at the top level (matching 
+the structure of a project configuration file). Arrays, scalars, and 
+empty strings are rejected with an error.
+
+#### Combining forms
+
+All three forms can be mixed freely in a single command line and are 
+processed in the order they appear, left-to-right:
+
+```sh
+ceedling release \
+  --mixin @base_compiler.yml \
+  --mixin "=:defines: {release: [CIPHER_ROT13]}" \
+  --mixin @ci_overrides.yml
+```
+
+In this example: `base_compiler.yml` is merged first, then the 
+inline YAML, then `ci_overrides.yml`. Later entries win on scalar 
+conflicts, so `ci_overrides.yml` has the highest priority.
+
+#### Error behavior
+
+Simple mixin names require mixin load paths to search. A default 
+mixin load path always points to within Ceedling itself (for 
+built-in mixins). User-specified load paths must be added through 
+the `:mixins` section of the base project file. See the
+[documentation for the `:mixins` section of your project 
 configuration][mixins-config-section] for more details.
 
-Order of precedence is set by the command line mixin order 
-left-to-right. Rightmost is highest priority.
-
-Filepaths may be relative (in relation to the working directory) or
-absolute.
+Filepaths may be relative (to the working directory) or absolute.
 
 If the `--mixin` filename or filepath does not exist, Ceedling 
 terminates with an error. If Ceedling cannot find a mixin name in 
-any load paths, it terminates with an error.
+any load paths, it terminates with an error. If an inline YAML 
+string cannot be parsed or does not evaluate to a Hash, Ceedling 
+terminates with an error.
 
 [mixins-config-section]: #base-configuration-file-mixins-entries
 

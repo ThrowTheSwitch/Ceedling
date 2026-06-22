@@ -30,6 +30,12 @@
     A sample test file illustrating the Ceedling conventions that make it go. 
     Includes a discussion of what gets compiled and linked into a test executable.
 
+-   :material-package-variant-closed-check: **[Example Projects](example-projects/index.md)**
+
+    ---
+
+    Ceedling includes several readymade example projects for learning and reference.
+
 </div>
 
 <br/><br/>

@@ -29,11 +29,11 @@ The sample test file below demonstrates the following:
 All other conventions and features are documented in the sections
 that follow.
 
-!!! tip
-   The `temp_sensor` example project is a real world project that expands 
-   on the style of test code below.
-   [See below](#ceedling-includes-example-projects) for instructions on 
-   how to access example projects.
+!!! tip "Example projects"
+    Ceedling’s built-in [example projects](../getting-started/example-projects/index.md)
+    provide fully working code for your reference and learning. The examples span 
+    test assertions, mocks, partials, release builds, and system & embedded 
+    programming.
 
 ```c
 // test_foo.c -----------------------------------------------
@@ -90,18 +90,5 @@ Ceedling finds the needed code files, generates mocks, generates a runner,
 compiles all the code files, and links everything into the test executable. 
 Ceedling will then run the test executable and collect test results from it 
 to be reported to the developer at the command line.
-
-## Ceedling includes example projects
-
-Ceedling comes with entire example projects you can extract.
-
-1. Execute `ceedling examples` in your terminal to list available example 
-   projects.
-1. Execute `ceedling example <project> [destination]` to extract the 
-   named example project.
-
-You can inspect the _project.yml_ file and source & test code. Run 
-`ceedling help` from the root of the example projects to see what you can
-do, or just go nuts with `ceedling test:all`.
 
 <br/><br/>

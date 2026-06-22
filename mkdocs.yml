@@ -100,6 +100,11 @@ nav:
     - Quick Start: getting-started/quick-start.md
     - Installation: getting-started/installation.md
     - Command Line: getting-started/command-line.md
+    - Example Projects:
+      - getting-started/example-projects/index.md
+      - Temp Sensor: getting-started/example-projects/temp-sensor.md
+      - Wondrous Forest: getting-started/example-projects/wondrous-forest.md
+      - Cipher Quest: getting-started/example-projects/cipher-quest.md
   - Testing Guide:
     - testing-guide/index.md
     - How Does a Test Case Work?: testing-guide/test-cases.md
