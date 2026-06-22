@@ -63,10 +63,10 @@ ceedling_system_tests do
         end
       end
 
-      it "should build a release binary with the ROT13 file mixin" do
+      it "should build a release binary with the ROT13 file mixin via sigil" do
         @c.with_context do
           Dir.chdir "cipher_quest" do
-            @output = @c.ceedling_build_exec("release --mixin=mixin/release_rot13.yml")
+            @output = @c.ceedling_build_exec("release --mixin=@mixin/release_rot13.yml")
             expect(@output).to match(/Merging command line mixin using mixin\/release_rot13\.yml/)
             expect(@output).to match(/Release build.+cipher_quest\.out/)
           end
@@ -83,10 +83,10 @@ ceedling_system_tests do
         end
       end
 
-      it "should build a release binary with the Caesar cipher file mixin" do
+      it "should build a release binary with the Caesar cipher file mixin via sigil" do
         @c.with_context do
           Dir.chdir "cipher_quest" do
-            @output = @c.ceedling_build_exec("release --mixin=mixin/release_caesar.yml")
+            @output = @c.ceedling_build_exec("release --mixin=@mixin/release_caesar.yml")
             expect(@output).to match(/Merging command line mixin using mixin\/release_caesar\.yml/)
             expect(@output).to match(/Release build.+cipher_quest\.out/)
           end
@@ -103,10 +103,10 @@ ceedling_system_tests do
         end
       end
 
-      it "should build a release binary with the full-featured file mixin" do
+      it "should build a release binary with the full-featured file mixin via sigil" do
         @c.with_context do
           Dir.chdir "cipher_quest" do
-            @output = @c.ceedling_build_exec("release --mixin=mixin/release_full.yml")
+            @output = @c.ceedling_build_exec("release --mixin=@mixin/release_full.yml")
             expect(@output).to match(/Merging command line mixin using mixin\/release_full\.yml/)
             expect(@output).to match(/Release build.+cipher_quest\.out/)
           end
