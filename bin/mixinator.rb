@@ -25,6 +25,44 @@ class Mixinator
     end
   end
 
+  def validate_cmdline_yaml_strings(yaml_strings)
+    # Validate a list of inline YAML strings from --mixin "=..." command line arguments.
+    # Errors are accumulated so the user sees all problems before the run aborts.
+    # Raises on any validation failure (mirrors validate_mixins behavior for file entries).
+    validated = true
+
+    yaml_strings.each_with_index do |str, idx|
+      label = "Inline YAML mixin ##{idx + 1}"  # 1-based, matches user's command line order
+
+      # Empty string means the user typed --mixin "=" with nothing after the sigil
+      if str.nil? || str.strip.empty?
+        @loginator.log( "#{label} is empty", Verbosity::ERRORS, LogLabels::ERROR )
+        validated = false
+        next
+      end
+
+      begin
+        parsed = @yaml_wrapper.load_string( str )
+
+        # A Ceedling configuration must be a Hash at the top level; arrays and scalars
+        # cannot be merged into config and indicate a user error in the YAML string
+        unless parsed.is_a?( Hash )
+          @loginator.log(
+            "#{label} did not produce a configuration Hash after parsing (got #{parsed.class})",
+            Verbosity::ERRORS, LogLabels::ERROR
+          )
+          validated = false
+        end
+      rescue => e
+        # YAML parse failure: surface the parser message so the user can fix their string
+        @loginator.log( "#{label} YAML parse error: #{e.message}", Verbosity::ERRORS, LogLabels::ERROR )
+        validated = false
+      end
+    end
+
+    raise 'Command line --mixin inline YAML failed validation' unless validated
+  end
+
   def fetch_env_filepaths(env)
     var_names = []
 
@@ -81,7 +119,9 @@ class Mixinator
     #   3. Project configuration :enabled mixins (last → lowest dedup priority)
     #
     dedup = []
-    cmdline.each {|mixin| dedup << {'command line' => mixin}}
+    # cmdline entries are pre-tagged {source_label => value} hashes from configinator;
+    # they carry either 'command line' (file/builtin) or 'command line (inline)' (YAML string)
+    cmdline.each {|mixin| dedup << mixin}
     dedup += env
     config.each  {|mixin| dedup << {'project configuration' => mixin}}
 
@@ -107,7 +147,9 @@ class Mixinator
     #
     config_entries  = dedup.select {|e| e.keys.first == 'project configuration'}
     env_entries     = dedup.select {|e| e.keys.first.start_with?('CEEDLING_MIXIN_')}
-    cmdline_entries = dedup.select {|e| e.keys.first == 'command line'}
+    # Include both 'command line' (file/builtin) and 'command line (inline)' (YAML string) entries;
+    # relative order within this group is preserved from Pass 1 (original left-to-right cmdline order)
+    cmdline_entries = dedup.select {|e| e.keys.first.start_with?('command line')}
 
     return config_entries + env_entries + cmdline_entries
   end
@@ -119,8 +161,16 @@ class Mixinator
 
       _mixin = {} # Empty initial value
 
+      # Dispatch on source label to select the appropriate load strategy.
+      # Inline YAML entries carry source label 'command line (inline)' and hold the raw
+      # YAML string in the filepath slot (named for the common case; dual-purposed here).
+      if source == 'command line (inline)'
+        # Inline YAML: parse the string directly instead of reading a file
+        _mixin = @yaml_wrapper.load_string( filepath )
+        @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging command line inline YAML mixin" }
+
       # Load mixin from filepath if it is a filepath
-      if @path_validator.filepath?( filepath )
+      elsif @path_validator.filepath?( filepath )
         _mixin = @yaml_wrapper.load( filepath )
 
         # Log what filepath we used for this mixin
@@ -136,6 +186,11 @@ class Mixinator
 
       # Hnadle an empty mixin (it's unlikely but logically coherent and a good safety check)
       _mixin = {} if _mixin.nil?
+
+      # Normalize String keys to Symbol keys: YAML flow mappings ({key: value}) produce
+      # String keys, but Ceedling config uses Symbol keys throughout. Converting here
+      # makes flow-style inline YAML merge correctly without requiring the invalid {: key:} syntax.
+      _mixin = deep_symbolize_keys( _mixin )
 
       # Nested :mixins sections are not supported — warn and strip before merging
       if _mixin.key?(:mixins)
@@ -160,16 +215,23 @@ class Mixinator
         warnings.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN ) }
       end
 
-      # Record this mixin in the configuration history
+      # Record this mixin in the configuration history.
+      # Map source labels to the flag name shown in history output.
+      # Inline YAML gets a distinct label so history clearly distinguishes it from files.
       label = case source
               when 'command line'          then '--mixin'
+              when 'command line (inline)' then '--mixin (inline YAML)'
               when 'project configuration' then ':mixins'
               else source # environment variable name (e.g. CEEDLING_MIXIN_1)
               end
 
       config[:history] ||= {}
       config[:history][:config] ||= []
-      if @path_validator.filepath?( filepath )
+      # Record the mixin in config history with a format matching the source type.
+      # Inline YAML has no filepath to display, so use a descriptive placeholder instead.
+      if source == 'command line (inline)'
+        config[:history][:config] << "(inline YAML, #{label})"
+      elsif @path_validator.filepath?( filepath )
         config[:history][:config] << "#{filepath} (#{label})"
       else
         config[:history][:config] << "#{filepath} (built-in, #{label})"
@@ -181,6 +243,28 @@ class Mixinator
     # should not be counted as meaningful user configuration content.
     msg = "Final configuration is empty"
     raise msg if (config.keys - [:history]).empty?
+  end
+
+  private
+
+  # Recursively convert all String keys in a nested Hash/Array structure to Symbol keys.
+  # This normalizes YAML flow mappings ({key: value} → String keys) to match Ceedling's
+  # Symbol-keyed configuration ({:key => value}), enabling correct deep merging.
+  # Safe to call on Hash structures already using Symbol keys — it's a no-op for those.
+  def deep_symbolize_keys(obj)
+    case obj
+    when Hash
+      # Rebuild the hash with Symbol keys, recursing into values
+      obj.each_with_object({}) do |(k, v), memo|
+        memo[k.is_a?( String ) ? k.to_sym : k] = deep_symbolize_keys( v )
+      end
+    when Array
+      # Recurse into arrays in case they contain hashes (e.g. :tools sections)
+      obj.map { |el| deep_symbolize_keys( el ) }
+    else
+      # Scalars (strings, integers, booleans, nil) are returned unchanged
+      obj
+    end
   end
 
 end

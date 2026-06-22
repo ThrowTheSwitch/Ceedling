@@ -29,7 +29,31 @@ class Configinator
     cfg_enabled_mixins.uniq!
     # Use absolute path to ensure proper deduplication
     cfg_load_paths.uniq! { |path| File.expand_path(path) }
-    cmdline_mixins.uniq!
+
+    # Parse sigils from each raw --mixin value to tag entries as file-based or inline YAML.
+    # This tagging happens before any validation or lookup so that each type is routed
+    # to the appropriate validator. Positional order is captured here in tagged_cmdline
+    # and must be preserved through the pipeline so that left-to-right merge semantics
+    # on the command line are honored (later entries win on scalar conflicts).
+    #
+    # Sigil conventions:
+    #   '=' prefix  → inline YAML string (strip the sigil, treat value as YAML content)
+    #   '@' prefix  → explicit file/name reference (strip the sigil, existing behavior)
+    #   no prefix   → file/name reference, backwards-compatible with existing usage
+    tagged_cmdline = cmdline_mixins.map do |m|
+      if    m.start_with?('=') then {type: :yaml, value: m[1..]}
+      elsif m.start_with?('@') then {type: :file, value: m[1..]}
+      else                           {type: :file, value: m}
+      end
+    end
+
+    # Pull out the two streams for type-specific processing
+    cmdline_file_values = tagged_cmdline.select {|e| e[:type] == :file}.map {|e| e[:value]}
+    cmdline_yaml_values = tagged_cmdline.select {|e| e[:type] == :yaml}.map {|e| e[:value]}
+
+    # Deduplicate file values only (existing behavior); inline YAML is deduplicated
+    # later by assemble_mixins via exact-string comparison
+    cmdline_file_values.uniq!
 
     # Validate :cfg_load_paths from :mixins section of project configuration
     @projectinator.validate_mixin_load_paths( cfg_load_paths )
@@ -45,9 +69,9 @@ class Configinator
       raise 'Project configuration file section :mixins failed validation'
     end
 
-    # Validate command line mixins
+    # Validate only file-based cmdline entries; inline YAML is validated separately below
     if not @projectinator.validate_mixins(
-      mixins: cmdline_mixins,
+      mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
       builtins: builtin_mixins,
       source: 'Mixin',
@@ -55,6 +79,9 @@ class Configinator
     )
       raise 'Command line failed validation'
     end
+
+    # Validate inline YAML strings: must parse cleanly and produce a Hash
+    @mixinator.validate_cmdline_yaml_strings( cmdline_yaml_values )
 
     # Find mixins in project file among load paths or built-in mixins
     # Return ordered list of filepaths or built-in mixin names
@@ -65,14 +92,32 @@ class Configinator
       yaml_extension: yaml_ext
     )
 
-    # Find mixins from command line among load paths or built-in mixins
-    # Return ordered list of filepaths or built-in mixin names
-    cmdline_mixins = @projectinator.lookup_mixins(
-      mixins: cmdline_mixins,
+    # Resolve file-based names/paths to canonical filepaths (or built-in keys).
+    # Returns values in the same order as the input; zip them back into a hash for
+    # O(1) lookup when reconstructing positional order below.
+    resolved_file_values = @projectinator.lookup_mixins(
+      mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
       builtins: builtin_mixins,
       yaml_extension: yaml_ext
     )
+    file_resolution_map = Hash[cmdline_file_values.zip(resolved_file_values)]
+
+    # Reconstruct the full cmdline sequence in original left-to-right order,
+    # replacing stripped file values with their resolved forms and tagging each
+    # entry with a source label that mixin() uses to select the load strategy.
+    # File entries that were deduplicated (absent from map after first use) are
+    # skipped — delete after first fetch enforces single-use per unique value.
+    cmdline_ordered = tagged_cmdline.each_with_object([]) do |e, arr|
+      if e[:type] == :yaml
+        # Inline YAML: source label 'command line (inline)' triggers load_string() in mixin()
+        arr << {'command line (inline)' => e[:value]}
+      elsif (resolved = file_resolution_map[e[:value]])
+        # File/name: source label 'command line' triggers existing file/builtin dispatch in mixin()
+        arr << {'command line' => resolved}
+        file_resolution_map.delete(e[:value])  # consume so duplicate raw values are skipped
+      end
+    end
 
     # Fetch CEEDLING_MIXIN_# environment variables
     # Sort into ordered list of hash tuples [{env variable => filepath}...]
@@ -81,10 +126,12 @@ class Configinator
 
     # Eliminate duplicate mixins and return list of mixins in merge order
     # [{source => filepath}...]
+    # cmdline_ordered is pre-tagged and positionally ordered; assemble_mixins preserves
+    # relative order within each tier (config → env → cmdline)
     mixins_assembled = @mixinator.assemble_mixins(
       config: config_mixins,
       env: env_mixins,
-      cmdline: cmdline_mixins
+      cmdline: cmdline_ordered
     )
 
     # Merge mixins

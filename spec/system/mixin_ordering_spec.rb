@@ -299,6 +299,124 @@ ceedling_system_tests do
   end
 
   # =========================================================================
+  describe 'Mixin loading :: --mixin inline YAML (= sigil)' do
+    before do
+      @c.with_context do
+        @c.ceedling_appcmd_exec('example temp_sensor')
+      end
+    end
+
+    it 'loads inline YAML and logs its use at obnoxious verbosity' do
+      # '=...' sigil form: value is passed as a separate shell argument quoted to protect YAML chars
+      @c.with_context do
+        Dir.chdir @proj_name do
+          @output = @c.ceedling_build_exec(
+            'files:header --verbosity=obnoxious --mixin "=:paths: {include: []}"'
+          )
+        end
+      end
+      expect(@output).to match(/Merging command line inline YAML mixin/i)
+    end
+
+    it 'merges inline YAML value into configuration (visible in dumpconfig)' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          @c.ceedling_appcmd_exec(
+            'dumpconfig --no-app dump.yml --mixin "=:project: {build_root: inline_build_test}"'
+          )
+          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+        end
+      end
+      # The inline YAML must appear in the dumped merged configuration
+      expect(@dump_content).to match(/inline_build_test/)
+    end
+
+    it 'inline YAML wins scalar conflict when it follows a file mixin (left-to-right order)' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          File.write('mixin/mixin_low.yml', SCALAR_MIXIN_LOW)
+
+          @c.ceedling_appcmd_exec(
+            "dumpconfig --no-app dump.yml" \
+            " --mixin #{convert_slashes('mixin/mixin_low.yml')}" \
+            ' --mixin "=:project: {build_root: build_high}"'
+          )
+          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+        end
+      end
+      # Inline YAML comes second, so it wins the scalar conflict
+      expect(@dump_content).to match(/build_high/)
+      expect(@dump_content).not_to match(/build_low/)
+    end
+
+    it 'file mixin wins scalar conflict when it follows inline YAML (left-to-right order)' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          File.write('mixin/mixin_high.yml', SCALAR_MIXIN_HIGH)
+
+          @c.ceedling_appcmd_exec(
+            "dumpconfig --no-app dump.yml" \
+            ' --mixin "=:project: {build_root: build_low}"' \
+            " --mixin #{convert_slashes('mixin/mixin_high.yml')}"
+          )
+          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+        end
+      end
+      # File mixin comes second, so it wins the scalar conflict
+      expect(@dump_content).to match(/build_high/)
+      expect(@dump_content).not_to match(/build_low/)
+    end
+
+    it 'three-way positional order: file-low, inline-mid, file-high → file-high wins' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          File.write('mixin/mixin_low.yml',  SCALAR_MIXIN_LOW)
+          File.write('mixin/mixin_high.yml', SCALAR_MIXIN_HIGH)
+
+          @c.ceedling_appcmd_exec(
+            "dumpconfig --no-app dump.yml" \
+            " --mixin #{convert_slashes('mixin/mixin_low.yml')}" \
+            ' --mixin "=:project: {build_root: build_mid}"' \
+            " --mixin #{convert_slashes('mixin/mixin_high.yml')}"
+          )
+          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+        end
+      end
+      # Rightmost --mixin wins; file-high is last → build_high
+      expect(@dump_content).to match(/build_high/)
+      expect(@dump_content).not_to match(/build_low/)
+      expect(@dump_content).not_to match(/build_mid/)
+    end
+
+    it 'exits with error for non-Hash inline YAML (array value)' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          @output = @c.ceedling_build_exec('files:header --mixin "=- just_a_list_item"')
+        end
+      end
+      expect(@c.last_exit_status).not_to eq(0)
+    end
+
+    it 'exits with error for invalid YAML in inline mixin' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          @output = @c.ceedling_build_exec('files:header --mixin "={{{ broken yaml"')
+        end
+      end
+      expect(@c.last_exit_status).not_to eq(0)
+    end
+
+    it 'exits with error for empty inline YAML (bare = sigil with no content)' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          @output = @c.ceedling_build_exec('files:header --mixin "="')
+        end
+      end
+      expect(@c.last_exit_status).not_to eq(0)
+    end
+  end
+
+  # =========================================================================
   describe 'Mixin loading :: error handling' do
     before do
       @c.with_context do

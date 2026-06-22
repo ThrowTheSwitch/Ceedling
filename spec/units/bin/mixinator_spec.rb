@@ -100,6 +100,94 @@ describe Mixinator do
   end
 
   # =========================================================================
+  describe '#validate_cmdline_yaml_strings' do
+    it 'does not raise for a valid Hash-producing YAML string' do
+      allow(@yaml_wrapper).to receive(:load_string)
+        .and_return({defines: {release: ['MY_SYM']}})
+      expect {
+        @mixinator.validate_cmdline_yaml_strings([':defines: :release: [MY_SYM]'])
+      }.not_to raise_error
+    end
+
+    it 'raises and logs an error for an empty string (bare = sigil with no content)' do
+      # load_string is not called — the method short-circuits on the empty check
+      expect(@loginator).to receive(:log).with(
+        /Inline YAML mixin #1 is empty/i,
+        anything,
+        LogLabels::ERROR
+      )
+      expect {
+        @mixinator.validate_cmdline_yaml_strings([''])
+      }.to raise_error(/inline YAML failed validation/i)
+    end
+
+    it 'raises and logs an error for a whitespace-only string' do
+      # load_string is not called — the method short-circuits on the empty check
+      expect(@loginator).to receive(:log).with(
+        /Inline YAML mixin #1 is empty/i,
+        anything,
+        LogLabels::ERROR
+      )
+      expect {
+        @mixinator.validate_cmdline_yaml_strings(['   '])
+      }.to raise_error(/inline YAML failed validation/i)
+    end
+
+    it 'raises and logs an error when YAML parses to an Array (not a Hash)' do
+      allow(@yaml_wrapper).to receive(:load_string).and_return(['just_a_list_item'])
+      expect(@loginator).to receive(:log).with(
+        /did not produce a configuration Hash/i,
+        anything,
+        LogLabels::ERROR
+      )
+      expect {
+        @mixinator.validate_cmdline_yaml_strings(['- just_a_list_item'])
+      }.to raise_error(/inline YAML failed validation/i)
+    end
+
+    it 'raises and logs an error when YAML parses to a scalar' do
+      allow(@yaml_wrapper).to receive(:load_string).and_return('just_a_string')
+      expect(@loginator).to receive(:log).with(
+        /did not produce a configuration Hash/i,
+        anything,
+        LogLabels::ERROR
+      )
+      expect {
+        @mixinator.validate_cmdline_yaml_strings(['just_a_string'])
+      }.to raise_error(/inline YAML failed validation/i)
+    end
+
+    it 'raises and logs a parse error for invalid YAML' do
+      allow(@yaml_wrapper).to receive(:load_string)
+        .and_raise(StandardError, 'did not find expected key')
+      expect(@loginator).to receive(:log).with(
+        /YAML parse error/i,
+        anything,
+        LogLabels::ERROR
+      )
+      expect {
+        @mixinator.validate_cmdline_yaml_strings(['{{{ bad yaml'])
+      }.to raise_error(/inline YAML failed validation/i)
+    end
+
+    it 'accumulates all errors across multiple strings before raising' do
+      # Both invalid strings must be reported; error count == 2 log calls
+      allow(@yaml_wrapper).to receive(:load_string).with('- array_not_hash')
+        .and_return(['array_not_hash'])
+      allow(@yaml_wrapper).to receive(:load_string).with('{{{ broken')
+        .and_raise(StandardError, 'did not find expected key')
+      expect(@loginator).to receive(:log).with(anything, anything, LogLabels::ERROR).twice
+      expect {
+        @mixinator.validate_cmdline_yaml_strings(['- array_not_hash', '{{{ broken'])
+      }.to raise_error(/inline YAML failed validation/i)
+    end
+
+    it 'does not raise for an empty input array (no inline YAML provided)' do
+      expect { @mixinator.validate_cmdline_yaml_strings([]) }.not_to raise_error
+    end
+  end
+
+  # =========================================================================
   describe '#assemble_mixins' do
     it 'returns empty array when all sources are empty' do
       result = @mixinator.assemble_mixins(config: [], env: [], cmdline: [])
@@ -120,8 +208,13 @@ describe Mixinator do
       expect(result).to eq([{'CEEDLING_MIXIN_1' => 'env_mixin'}])
     end
 
-    it 'returns wrapped cmdline entry when only cmdline is provided' do
-      result = @mixinator.assemble_mixins(config: [], env: [], cmdline: ['cli_mixin'])
+    it 'returns pre-tagged cmdline entry when only cmdline is provided' do
+      # cmdline entries arrive as pre-tagged hashes from configinator
+      result = @mixinator.assemble_mixins(
+        config:  [],
+        env:     [],
+        cmdline: [{'command line' => 'cli_mixin'}]
+      )
       expect(result).to eq([{'command line' => 'cli_mixin'}])
     end
 
@@ -129,7 +222,7 @@ describe Mixinator do
       result = @mixinator.assemble_mixins(
         config:  ['cfg_mixin'],
         env:     [{'CEEDLING_MIXIN_1' => 'env_mixin'}],
-        cmdline: ['cli_mixin']
+        cmdline: [{'command line' => 'cli_mixin'}]
       )
       expect(result).to eq([
         {'project configuration' => 'cfg_mixin'},
@@ -142,7 +235,7 @@ describe Mixinator do
       result = @mixinator.assemble_mixins(
         config:  ['shared_mixin'],
         env:     [],
-        cmdline: ['shared_mixin']
+        cmdline: [{'command line' => 'shared_mixin'}]
       )
       expect(result.length).to eq(1)
       expect(result.first.keys.first).to eq('command line')
@@ -152,7 +245,7 @@ describe Mixinator do
       result = @mixinator.assemble_mixins(
         config:  [],
         env:     [{'CEEDLING_MIXIN_1' => 'shared_mixin'}],
-        cmdline: ['shared_mixin']
+        cmdline: [{'command line' => 'shared_mixin'}]
       )
       expect(result.length).to eq(1)
       expect(result.first.keys.first).to eq('command line')
@@ -176,7 +269,7 @@ describe Mixinator do
         result = @mixinator.assemble_mixins(
           config:  [shared],
           env:     [],
-          cmdline: [shared]
+          cmdline: [{'command line' => shared}]
         )
         expect(result.length).to eq(1)
         expect(result.first.keys.first).to eq('command line')
@@ -198,11 +291,15 @@ describe Mixinator do
       ])
     end
 
-    it 'orders multiple cmdline entries so the rightmost is merged last (wins) per documentation' do
+    it 'orders multiple cmdline file entries so the rightmost is merged last (wins) per documentation' do
       result = @mixinator.assemble_mixins(
         config:  [],
         env:     [],
-        cmdline: ['first_mixin', 'second_mixin', 'third_mixin']
+        cmdline: [
+          {'command line' => 'first_mixin'},
+          {'command line' => 'second_mixin'},
+          {'command line' => 'third_mixin'}
+        ]
       )
       expect(result.map { |e| e.values.first }).to eq([
         'first_mixin', 'second_mixin', 'third_mixin'
@@ -216,6 +313,54 @@ describe Mixinator do
         cmdline: []
       )
       expect(result.map { |e| e.values.first }).to eq(['first_mixin', 'second_mixin'])
+    end
+
+    it 'includes command line (inline) entries in cmdline tier alongside file entries' do
+      # Both 'command line' and 'command line (inline)' belong to the cmdline tier (merged last)
+      result = @mixinator.assemble_mixins(
+        config:  ['cfg_mixin'],
+        env:     [],
+        cmdline: [
+          {'command line'          => 'file_mixin'},
+          {'command line (inline)' => ':defines: :release: [CIPHER_ROT13]'}
+        ]
+      )
+      expect(result).to eq([
+        {'project configuration'  => 'cfg_mixin'},
+        {'command line'           => 'file_mixin'},
+        {'command line (inline)'  => ':defines: :release: [CIPHER_ROT13]'}
+      ])
+    end
+
+    it 'preserves left-to-right positional order of mixed file and inline YAML cmdline entries' do
+      # The interleaved order from the command line must be maintained through assembly
+      result = @mixinator.assemble_mixins(
+        config:  [],
+        env:     [],
+        cmdline: [
+          {'command line'          => 'first_file'},
+          {'command line (inline)' => ':project: :build_root: ci_build'},
+          {'command line'          => 'last_file'}
+        ]
+      )
+      sources = result.map { |e| e.keys.first }
+      values  = result.map { |e| e.values.first }
+      expect(sources).to eq(['command line', 'command line (inline)', 'command line'])
+      expect(values).to  eq(['first_file', ':project: :build_root: ci_build', 'last_file'])
+    end
+
+    it 'deduplicates identical inline YAML strings in cmdline' do
+      # Exact-string dedup: two identical inline YAML entries → only one survives
+      result = @mixinator.assemble_mixins(
+        config:  [],
+        env:     [],
+        cmdline: [
+          {'command line (inline)' => ':defines: :release: [MY_SYM]'},
+          {'command line (inline)' => ':defines: :release: [MY_SYM]'}
+        ]
+      )
+      expect(result.length).to eq(1)
+      expect(result.first.keys.first).to eq('command line (inline)')
     end
   end
 
@@ -363,6 +508,68 @@ describe Mixinator do
         config:   base_config,
         mixins:   [{'command line' => mixin_filepath}]
       )
+    end
+
+    it 'parses an inline YAML string via load_string when source is command line (inline)' do
+      yaml_string  = ':defines: :release: [MY_SYM]'
+      mixin_content = {:defines => {:release => ['MY_SYM']}}
+
+      # Must call load_string (not load) for the inline YAML case
+      expect(@yaml_wrapper).to receive(:load_string).with(yaml_string).and_return(mixin_content)
+      expect(@yaml_wrapper).not_to receive(:load)
+
+      expect(@merginator).to receive(:merge).with(
+        hash_including(mixin: mixin_content)
+      ).and_return(true)
+
+      @mixinator.mixin(
+        builtins: builtins,
+        config:   base_config,
+        mixins:   [{'command line (inline)' => yaml_string}]
+      )
+    end
+
+    it 'records inline YAML in config history with (inline YAML, --mixin (inline YAML)) label' do
+      yaml_string = ':defines: :release: [MY_SYM]'
+      allow(@yaml_wrapper).to receive(:load_string).and_return({:defines => {:release => ['MY_SYM']}})
+
+      @mixinator.mixin(
+        builtins: builtins,
+        config:   base_config,
+        mixins:   [{'command line (inline)' => yaml_string}]
+      )
+
+      expect(base_config[:history][:config]).to include('(inline YAML, --mixin (inline YAML))')
+    end
+
+    it 'strips :mixins section from inline YAML content before merging' do
+      yaml_string = ':defines: :release: [MY_SYM]'
+      mixin_with_nested = {
+        :defines => {:release => ['MY_SYM']},
+        :mixins  => {:enabled => ['nested']}
+      }
+      allow(@yaml_wrapper).to receive(:load_string).and_return(mixin_with_nested)
+
+      captured_mixin = nil
+      allow(@merginator).to receive(:merge) do |args|
+        captured_mixin = args[:mixin]
+        true
+      end
+
+      expect(@loginator).to receive(:log).with(
+        /nested mixins are not supported/i,
+        anything,
+        LogLabels::WARNING
+      )
+
+      @mixinator.mixin(
+        builtins: builtins,
+        config:   base_config,
+        mixins:   [{'command line (inline)' => yaml_string}]
+      )
+
+      expect(captured_mixin).not_to have_key(:mixins)
+      expect(captured_mixin).to have_key(:defines)
     end
   end
 end
