@@ -684,6 +684,8 @@
       
         
       
+        
+      
     
     
     
@@ -817,6 +819,171 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../getting-started/example-projects/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Projects
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Example Projects
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/example-projects/temp-sensor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Temp Sensor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/example-projects/wondrous-forest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wondrous Forest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/example-projects/cipher-quest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cipher Quest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1025,17 +1192,6 @@
     <span class="md-ellipsis">
       
         Ceedling actions
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ceedling-includes-example-projects" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ceedling includes example projects
       
     </span>
   </a>
@@ -3861,17 +4017,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#ceedling-includes-example-projects" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ceedling includes example projects
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -3968,12 +4113,12 @@ of the rest of the documentation.</p>
 <p>All other conventions and features are documented in the sections
 that follow.</p>
 <div class="admonition tip">
-<p class="admonition-title">Tip</p>
+<p class="admonition-title">Example projects</p>
+<p>Ceedling’s built-in <a href="../../getting-started/example-projects/">example projects</a>
+provide fully working code for your reference and learning. The examples span 
+test assertions, mocks, partials, release builds, mixins, and system &amp; embedded 
+programming.</p>
 </div>
-<p>The <code>temp_sensor</code> example project is a real world project that expands 
-   on the style of test code below.
-   <a href="#ceedling-includes-example-projects">See below</a> for instructions on 
-   how to access example projects.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// test_foo.c -----------------------------------------------</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;unity.h&quot;</span><span class="c1">     // Compile/link in Unity test framework</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;types.h&quot;</span><span class="c1">     // Header file with no *.c file -- no compilation/linking</span>
@@ -4024,17 +4169,6 @@ of the linker having processed <code>unity.o</code>, <code>foo.o</code>, <code>m
 compiles all the code files, and links everything into the test executable. 
 Ceedling will then run the test executable and collect test results from it 
 to be reported to the developer at the command line.</p>
-<h2 id="ceedling-includes-example-projects">Ceedling includes example projects</h2>
-<p>Ceedling comes with entire example projects you can extract.</p>
-<ol>
-<li>Execute <code>ceedling examples</code> in your terminal to list available example 
-   projects.</li>
-<li>Execute <code>ceedling example &lt;project&gt; [destination]</code> to extract the 
-   named example project.</li>
-</ol>
-<p>You can inspect the <em>project.yml</em> file and source &amp; test code. Run 
-<code>ceedling help</code> from the root of the example projects to see what you can
-do, or just go nuts with <code>ceedling test:all</code>.</p>
 <p><br/><br/></p>
 
 

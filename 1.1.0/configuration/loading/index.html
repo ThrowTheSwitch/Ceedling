@@ -684,6 +684,8 @@
       
         
       
+        
+      
     
     
     
@@ -817,6 +819,171 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../getting-started/example-projects/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Projects
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Example Projects
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/example-projects/temp-sensor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Temp Sensor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/example-projects/wondrous-forest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wondrous Forest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/example-projects/cipher-quest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cipher Quest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -4640,34 +4807,60 @@ any or all of these options.</p>
 <p>As already discussed above, many of Ceedling’s application commands 
 include an optional <code>--project</code> flag. Most of these same commands 
 also recognize optional <code>--mixin</code> flags. Note that <code>--mixin</code> can be 
-used multiple times in a single command line.</p>
-<p>When provided, Ceedling will load the specified YAML file and merge
-it with the base project configuration.</p>
-<p>A Mixin flag can contain one of two types of values:</p>
-<ol>
-<li>A filename or filepath to a mixin yaml file.<ul>
-<li>A simple filename contains a file extension.</li>
-<li>A filepath includes a leading directory path before a filename.</li>
+used multiple times in a single command line and is processed 
+strictly left-to-right.</p>
+<p>When provided, Ceedling merges the specified mixin into the base 
+project configuration. A <code>--mixin</code> value accepts three forms 
+distinguished by an optional sigil prefix:</p>
+<h4 id="file-or-named-mixin-no-sigil-or-sigil">File or named mixin (no sigil or <code>@</code> sigil)</h4>
+<p>The value is treated as a file path or named mixin lookup. Two 
+equivalent syntaxes are accepted:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>--mixin<span class="w"> </span>my_compiler<span class="w">           </span><span class="c1"># simple name lookup (no sigil)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>--mixin<span class="w"> </span>bar/mixin.yaml<span class="w">        </span><span class="c1"># filepath (no sigil)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>--mixin<span class="w"> </span>@bar/mixin.yaml<span class="w">       </span><span class="c1"># filepath (explicit @ sigil — same result)</span>
+</code></pre></div>
+<ul>
+<li>A <strong>simple name</strong> (no extension, no path separator) is looked up 
+  among Ceedling’s mixin load paths.</li>
+<li>A <strong>filename or filepath</strong> (with extension or path separator) loads 
+  the specified YAML file directly.</li>
+<li>The <code>@</code> sigil is optional and makes the file/name intent explicit; 
+  it is otherwise identical to providing the value without a sigil.</li>
 </ul>
-</li>
-<li>A simple name (no file extension and no path). This mixin name is 
-   used as a filename lookup among Ceedling’s mixin load paths.</li>
-</ol>
-<p>Example: <code>ceedling --project=build.yml --mixin=foo --mixin=bar/mixin.yaml test:all</code></p>
-<p>Simple mixin names (#2 above) require mixin load paths to search.
-A default mixin load path is always in the list and points to within
-Ceedling itself (in order to host eventual built-in mixins like 
-built-in plugins). User-specified load paths must be added through 
-the <code>:mixins</code> section of the base configuration project file. See 
-the <a href="#base-configuration-file-mixins-entries">documentation for the <code>:mixins</code> section of your project 
+<h4 id="inline-yaml-sigil">Inline YAML (<code>=</code> sigil)</h4>
+<p>The value is treated as a YAML string merged directly into 
+configuration — no file needed. Prefix the value with <code>=</code> and quote 
+the argument to protect YAML special characters (colons, brackets, 
+spaces) from shell interpretation:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>--mixin<span class="w"> </span><span class="s2">&quot;=:defines: {release: [MY_SYMBOL]}&quot;</span>
+</code></pre></div>
+<p>The YAML content must evaluate to a Hash at the top level (matching 
+the structure of a project configuration file). Arrays, scalars, and 
+empty strings are rejected with an error.</p>
+<h4 id="combining-forms">Combining forms</h4>
+<p>All three forms can be mixed freely in a single command line and are 
+processed in the order they appear, left-to-right:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ceedling<span class="w"> </span>release<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--mixin<span class="w"> </span>@base_compiler.yml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--mixin<span class="w"> </span><span class="s2">&quot;=:defines: {release: [CIPHER_ROT13]}&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--mixin<span class="w"> </span>@ci_overrides.yml
+</code></pre></div>
+<p>In this example: <code>base_compiler.yml</code> is merged first, then the 
+inline YAML, then <code>ci_overrides.yml</code>. Later entries win on scalar 
+conflicts, so <code>ci_overrides.yml</code> has the highest priority.</p>
+<h4 id="error-behavior">Error behavior</h4>
+<p>Simple mixin names require mixin load paths to search. A default 
+mixin load path always points to within Ceedling itself (for 
+built-in mixins). User-specified load paths must be added through 
+the <code>:mixins</code> section of the base project file. See the
+<a href="#base-configuration-file-mixins-entries">documentation for the <code>:mixins</code> section of your project 
 configuration</a> for more details.</p>
-<p>Order of precedence is set by the command line mixin order 
-left-to-right. Rightmost is highest priority.</p>
-<p>Filepaths may be relative (in relation to the working directory) or
-absolute.</p>
+<p>Filepaths may be relative (to the working directory) or absolute.</p>
 <p>If the <code>--mixin</code> filename or filepath does not exist, Ceedling 
 terminates with an error. If Ceedling cannot find a mixin name in 
-any load paths, it terminates with an error.</p>
+any load paths, it terminates with an error. If an inline YAML 
+string cannot be parsed or does not evaluate to a Hash, Ceedling 
+terminates with an error.</p>
 <h3 id="mixin-environment-variables">Mixin environment variables</h3>
 <p>Mixins can also be loaded through environment variables. Ceedling
 recognizes environment variables with a naming scheme of 
@@ -4724,13 +4917,13 @@ line via <code>--mixin</code> flag use this list of load paths for searches.</p>
 </li>
 </ul>
 <p>Example <code>:mixins</code> YAML blurb:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">:mixins</span><span class="p">:</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foo</span><span class="w">            </span><span class="c1"># Search for foo.yml in proj/mixins &amp; support/ and &#39;foo&#39; among built-in mixins</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/bar.yaml</span><span class="w">  </span><span class="c1"># Merge this file with base project conig</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">  </span><span class="nt">:load_paths</span><span class="p">:</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proj/mixins</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">:mixins</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foo</span><span class="w">            </span><span class="c1"># Search for foo.yml in proj/mixins &amp; support/ and &#39;foo&#39; among built-in mixins</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/bar.yaml</span><span class="w">  </span><span class="c1"># Merge this file with base project conig</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="nt">:load_paths</span><span class="p">:</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proj/mixins</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support</span>
 </code></pre></div>
 <p>Relating the above example to command line <code>--mixin</code> flag handling:</p>
 <ul>
