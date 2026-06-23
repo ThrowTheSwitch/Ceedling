@@ -354,7 +354,7 @@ processed in the order they appear, left-to-right:
 ```sh
 ceedling release \
   --mixin @mixins/base_compiler.yml \
-  --mixin "=:defines: {release: [CIPHER_ROT13]}" \
+  --mixin "=defines: {release: ['CIPHER_ROT13']}" \
   --mixin ci_overrides
 ```
 

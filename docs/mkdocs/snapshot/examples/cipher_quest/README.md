@@ -149,19 +149,19 @@ characters (colons, brackets, spaces) from shell interpretation:
 
 ```sh
 # ROT13 variant
-ceedling release --mixin "=:defines: {release: [CIPHER_ROT13]}"
+ceedling release --mixin "=defines: {release: [CIPHER_ROT13]}"
 
 # Caesar cipher variant
-ceedling release --mixin "=:defines: {release: [CIPHER_CAESAR]}"
+ceedling release --mixin "=defines: {release: [CIPHER_CAESAR]}"
 
 # All features enabled
-ceedling release --mixin "=:defines: {release: [CIPHER_ROT13, CIPHER_CAESAR, ANALYZER_ENABLED]}"
+ceedling release --mixin "=defines: {release: [CIPHER_ROT13, CIPHER_CAESAR, ANALYZER_ENABLED]}"
 ```
 
 Multiple `--mixin` values can be combined and are processed left-to-right:
 
 ```sh
-ceedling release --mixin @mixin/release_rot13.yml --mixin "=:project: {build_root: ci_build}"
+ceedling release --mixin @mixin/release_rot13.yml --mixin "=project: {build_root: ci_build}"
 ```
 
 ---

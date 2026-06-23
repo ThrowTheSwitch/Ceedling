@@ -311,7 +311,7 @@ ceedling_system_tests do
       @c.with_context do
         Dir.chdir @proj_name do
           @output = @c.ceedling_build_exec(
-            'files:header --verbosity=obnoxious --mixin "=:paths: {include: []}"'
+            'files:header --verbosity=obnoxious --mixin "=paths: {include: []}"'
           )
         end
       end
@@ -322,7 +322,7 @@ ceedling_system_tests do
       @c.with_context do
         Dir.chdir @proj_name do
           @c.ceedling_appcmd_exec(
-            'dumpconfig --no-app dump.yml --mixin "=:project: {build_root: inline_build_test}"'
+            'dumpconfig --no-app dump.yml --mixin "=project: {build_root: inline_build_test}"'
           )
           @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
         end
@@ -339,7 +339,7 @@ ceedling_system_tests do
           @c.ceedling_appcmd_exec(
             "dumpconfig --no-app dump.yml" \
             " --mixin #{convert_slashes('mixin/mixin_low.yml')}" \
-            ' --mixin "=:project: {build_root: build_high}"'
+            ' --mixin "=project: {build_root: build_high}"'
           )
           @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
         end
@@ -356,7 +356,7 @@ ceedling_system_tests do
 
           @c.ceedling_appcmd_exec(
             "dumpconfig --no-app dump.yml" \
-            ' --mixin "=:project: {build_root: build_low}"' \
+            ' --mixin "=project: {build_root: build_low}"' \
             " --mixin #{convert_slashes('mixin/mixin_high.yml')}"
           )
           @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
@@ -376,7 +376,7 @@ ceedling_system_tests do
           @c.ceedling_appcmd_exec(
             "dumpconfig --no-app dump.yml" \
             " --mixin #{convert_slashes('mixin/mixin_low.yml')}" \
-            ' --mixin "=:project: {build_root: build_mid}"' \
+            ' --mixin "=project: {build_root: build_mid}"' \
             " --mixin #{convert_slashes('mixin/mixin_high.yml')}"
           )
           @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''

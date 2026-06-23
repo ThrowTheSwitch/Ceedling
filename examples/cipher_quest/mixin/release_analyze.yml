@@ -19,7 +19,7 @@
 # Or supply the equivalent YAML directly using the = sigil
 # (quote the value to protect YAML special characters from the shell):
 #
-#   ceedling release --mixin "=:defines: {release: [ANALYZER_ENABLED]}"
+#   ceedling release --mixin "=defines: {release: [ANALYZER_ENABLED]}"
 
 ---
 :defines:
