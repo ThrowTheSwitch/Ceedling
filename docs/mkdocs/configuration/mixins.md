@@ -19,6 +19,14 @@ just after the base project file is loaded. The merge is so low-level
 and generic that you can, in fact, load an empty base configuration 
 and merge in entire project configurations through mixins.
 
+Mixins may be merged per a priority scheme:
+
+1. `mixins:` section in your base configuration file that loads mixin 
+   YAML files.
+1. Environment variables that point to mixin files.
+1. Command line `--mixin` flags that point to mixin files or provide
+   inline YAML.
+
 !!! tip
     The [`cipher_quest` example project](../getting-started/example-projects/cipher-quest.md)
     illustrates the use of Mixins for build variants.
@@ -131,9 +139,29 @@ Then, the documentation sections that follow will discuss everything
 in detail.
 
 In this example, we will load a base project configuration and then
-apply three mixin files using each of the available means — command line,
-envionment variable, and `:mixins` section in the base project 
-configuration file.
+apply three mixin files using each of the available means:
+
+1. `:mixins` section in the base project configuration file
+1. Envionment variable `CEEDLING_MIXIN_1`
+1. Command line `--mixin` flag
+
+```mermaid
+---
+title: Example Mixin Merge Pipeline
+config:
+  flowchart:
+    wrappingWidth: 600
+---
+flowchart TD
+    A["<b>base.yml</b> — <code>:mixins</code> section\n<i>support/mixins/enabled.yml</i>"]
+    B["<b><code>CEEDLING_MIXIN_1</code></b>\n<i>./env.yml</i>"]
+    C["<b><code>--mixin</code> flag</b>\n<i>support/mixins/cmdline.yml</i>"]
+    D["<b>Final configuration</b>"]
+
+    A -->|"① First — lowest priority"| B
+    B -->|"② Next"| C
+    C -->|"③ Last — highest priority"| D
+```
 
 ### Example environment variable
 
@@ -298,27 +326,29 @@ project configuration. A `--mixin` value accepts three forms
 distinguished by an optional sigil prefix:
 
 !!! note "Sigil definition"
-    A sigil is a non-alphabetic symbol (e.g. `$`, `@`, or `%`) that 
+    A _sigil_ is a non-alphabetic symbol (e.g. `$`, `@`, `%`) that 
     serves as a visual prefix or suffix that instantly tells an 
-    interpreter and the developer data type, scope, or structure.
+    interpreter and the developer a data type, scope, or structure.
 
-#### File or named mixin (no sigil or `@` sigil)
+#### File or named mixin (optional `@` sigil)
 
 The value is treated as a file path or named mixin lookup. Two 
 equivalent syntaxes are accepted:
 
 ```sh
 --mixin my_compiler         # simple name lookup (no sigil)
+--mixin @my_compiler        # simple name lookup (no sigil)
 --mixin bar/mixin.yaml      # filepath (no sigil)
 --mixin @bar/mixin.yaml     # filepath (explicit @ sigil — same result)
 ```
 
 - A **simple name** (no extension, no path separator) is looked up 
-  among Ceedling’s mixin load paths.
+  among Ceedling’s configured mixin load paths.
 - A **filename or filepath** (with extension or path separator) loads 
   the specified YAML file directly.
 - The `@` sigil is optional and makes the file/name intent explicit; 
-  it is otherwise identical to providing the value without a sigil.
+  it is otherwise identical to providing the value without a sigil
+  (primarily for backwards compatibility pre-inline YAML).
 
 #### Inline YAML (`=` sigil)
 

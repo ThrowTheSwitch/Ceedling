@@ -78,7 +78,11 @@ markdown_extensions:
   - pymdownx.highlight: # Syntax highlighting for fenced code blocks via Pygments
       use_pygments: true
       anchor_linenums: true
-  - pymdownx.superfences  # Fenced code blocks inside admonitions and other nested elements
+  - pymdownx.superfences:  # Fenced code blocks inside admonitions and other nested elements
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.inlinehilite # Inline code syntax highlighting with `#!lang code` syntax
 
 # Files in docs/mkdocs/ excluded from the generated site.
