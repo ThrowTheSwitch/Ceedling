@@ -189,9 +189,10 @@ describe Mixinator do
       expect(result).to eq([])
     end
 
-    it 'returns wrapped config entry when only config is provided' do
-      result = @mixinator.assemble_mixins(config: ['my_mixin'], env: [], cmdline: [])
-      expect(result).to eq([{'project configuration' => 'my_mixin'}])
+    it 'returns config entry unchanged when only config is provided' do
+      entry = {'project configuration' => 'my_mixin', :_input => 'my_mixin'}
+      result = @mixinator.assemble_mixins(config: [entry], env: [], cmdline: [])
+      expect(result).to eq([entry])
     end
 
     it 'returns wrapped env entry when only env is provided' do
@@ -214,21 +215,22 @@ describe Mixinator do
     end
 
     it 'orders assembled list as [config, env, cmdline] per documentation' do
+      cfg_entry = {'project configuration' => 'cfg_mixin', :_input => 'cfg_mixin'}
       result = @mixinator.assemble_mixins(
-        config:  ['cfg_mixin'],
+        config:  [cfg_entry],
         env:     [{'CEEDLING_MIXIN_1' => 'env_mixin'}],
         cmdline: [{'command line' => 'cli_mixin'}]
       )
       expect(result).to eq([
-        {'project configuration' => 'cfg_mixin'},
-        {'CEEDLING_MIXIN_1'      => 'env_mixin'},
-        {'command line'          => 'cli_mixin'}
+        cfg_entry,
+        {'CEEDLING_MIXIN_1' => 'env_mixin'},
+        {'command line'     => 'cli_mixin'}
       ])
     end
 
     it 'deduplicates cmdline and config sharing the same mixin name, keeping cmdline entry' do
       result = @mixinator.assemble_mixins(
-        config:  ['shared_mixin'],
+        config:  [{'project configuration' => 'shared_mixin', :_input => 'shared_mixin'}],
         env:     [],
         cmdline: [{'command line' => 'shared_mixin'}]
       )
@@ -248,7 +250,7 @@ describe Mixinator do
 
     it 'deduplicates env and config sharing the same mixin name, keeping env entry' do
       result = @mixinator.assemble_mixins(
-        config:  ['shared_mixin'],
+        config:  [{'project configuration' => 'shared_mixin', :_input => 'shared_mixin'}],
         env:     [{'CEEDLING_MIXIN_1' => 'shared_mixin'}],
         cmdline: []
       )
@@ -262,7 +264,7 @@ describe Mixinator do
         FileUtils.touch(shared)
 
         result = @mixinator.assemble_mixins(
-          config:  [shared],
+          config:  [{'project configuration' => shared, :_input => File.basename(shared, '.yml')}],
           env:     [],
           cmdline: [{'command line' => shared}]
         )
@@ -303,7 +305,10 @@ describe Mixinator do
 
     it 'orders multiple config :enabled entries so the last-listed is merged last (wins) per documentation' do
       result = @mixinator.assemble_mixins(
-        config:  ['first_mixin', 'second_mixin'],
+        config:  [
+          {'project configuration' => 'first_mixin',  :_input => 'first_mixin'},
+          {'project configuration' => 'second_mixin', :_input => 'second_mixin'}
+        ],
         env:     [],
         cmdline: []
       )
@@ -312,8 +317,9 @@ describe Mixinator do
 
     it 'includes command line (inline) entries in cmdline tier alongside file entries' do
       # Both 'command line' and 'command line (inline)' belong to the cmdline tier (merged last)
+      cfg_entry = {'project configuration' => 'cfg_mixin', :_input => 'cfg_mixin'}
       result = @mixinator.assemble_mixins(
-        config:  ['cfg_mixin'],
+        config:  [cfg_entry],
         env:     [],
         cmdline: [
           {'command line'          => 'file_mixin'},
@@ -321,9 +327,9 @@ describe Mixinator do
         ]
       )
       expect(result).to eq([
-        {'project configuration'  => 'cfg_mixin'},
-        {'command line'           => 'file_mixin'},
-        {'command line (inline)'  => ':defines: :release: [CIPHER_ROT13]'}
+        cfg_entry,
+        {'command line'          => 'file_mixin'},
+        {'command line (inline)' => ':defines: :release: [CIPHER_ROT13]'}
       ])
     end
 
@@ -523,17 +529,19 @@ describe Mixinator do
       )
     end
 
-    it 'records inline YAML in config history with (inline YAML, --mixin (inline YAML)) label' do
+    it 'records inline YAML in config history as a structured hash' do
       yaml_string = ':defines: :release: [MY_SYM]'
       allow(@yaml_wrapper).to receive(:load_string).and_return({:defines => {:release => ['MY_SYM']}})
 
       @mixinator.mixin(
         builtins: builtins,
         config:   base_config,
-        mixins:   [{'command line (inline)' => yaml_string}]
+        mixins:   [{'command line (inline)' => yaml_string, :_input => yaml_string}]
       )
 
-      expect(base_config[:history][:config]).to include('(inline YAML, --mixin (inline YAML))')
+      expect(base_config[:history][:config]).to include(
+        hash_including(type: :inline, mechanism: :cmdline, source: '--mixin', value: yaml_string)
+      )
     end
 
     it 'strips :mixins section from inline YAML content before merging' do

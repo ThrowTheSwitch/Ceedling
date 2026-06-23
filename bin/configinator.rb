@@ -92,6 +92,13 @@ class Configinator
       yaml_extension: yaml_ext
     )
 
+    # Pre-build config entries as tagged hashes carrying both the resolved path and
+    # the original :enabled name. This preserves the user-provided name for history
+    # traceability without losing the resolved path needed by the merge pipeline.
+    config_entries = cfg_enabled_mixins.zip(config_mixins).map do |(name, path)|
+      {'project configuration' => path, :_input => name}
+    end
+
     # Resolve file-based names/paths to canonical filepaths (or built-in keys).
     # Returns values in the same order as the input; zip them back into a hash for
     # O(1) lookup when reconstructing positional order below.
@@ -111,10 +118,12 @@ class Configinator
     cmdline_ordered = tagged_cmdline.each_with_object([]) do |e, arr|
       if e[:type] == :yaml
         # Inline YAML: source label 'command line (inline)' triggers load_string() in mixin()
-        arr << {'command line (inline)' => e[:value]}
+        # :_input carries the raw YAML string as the original user value for history traceability
+        arr << {'command line (inline)' => e[:value], :_input => e[:value]}
       elsif (resolved = file_resolution_map[e[:value]])
         # File/name: source label 'command line' triggers existing file/builtin dispatch in mixin()
-        arr << {'command line' => resolved}
+        # :_input carries the original user-provided value (before load-path resolution) for history
+        arr << {'command line' => resolved, :_input => e[:value]}
         file_resolution_map.delete(e[:value])  # consume so duplicate raw values are skipped
       end
     end
@@ -129,7 +138,7 @@ class Configinator
     # cmdline_ordered is pre-tagged and positionally ordered; assemble_mixins preserves
     # relative order within each tier (config → env → cmdline)
     mixins_assembled = @mixinator.assemble_mixins(
-      config: config_mixins,
+      config: config_entries,
       env: env_mixins,
       cmdline: cmdline_ordered
     )

@@ -123,7 +123,8 @@ class Mixinator
     # they carry either 'command line' (file/builtin) or 'command line (inline)' (YAML string)
     cmdline.each {|mixin| dedup << mixin}
     dedup += env
-    config.each  {|mixin| dedup << {'project configuration' => mixin}}
+    # config entries arrive pre-built from configinator as {'project configuration' => path, :_input => name}
+    config.each  {|entry| dedup << entry}
 
     # Remove duplicate mixins, keeping the highest-priority (first) occurrence.
     # Filepaths are expanded to absolute paths so two relative paths that point
@@ -215,26 +216,41 @@ class Mixinator
         warnings.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN ) }
       end
 
-      # Record this mixin in the configuration history.
-      # Map source labels to the flag name shown in history output.
-      # Inline YAML gets a distinct label so history clearly distinguishes it from files.
-      label = case source
-              when 'command line'          then '--mixin'
-              when 'command line (inline)' then '--mixin (inline YAML)'
-              when 'project configuration' then ':mixins'
-              else source # environment variable name (e.g. CEEDLING_MIXIN_1)
-              end
+      # Record this mixin in the configuration history as a structured hash.
+      # :_input carries the original user-provided value (before load-path resolution) for cmdline
+      # and config entries; env var entries use the filepath directly (it IS the original value).
+      input = mixin[:_input]
+
+      mechanism    = case source
+                     when 'command line', 'command line (inline)' then :cmdline
+                     when 'project configuration'                 then :config
+                     else                                              :env
+                     end
+      source_label = case source
+                     when 'command line', 'command line (inline)' then '--mixin'
+                     when 'project configuration'                 then ':enabled'
+                     else                                              source  # env var name as-is
+                     end
 
       config[:history] ||= {}
       config[:history][:config] ||= []
-      # Record the mixin in config history with a format matching the source type.
-      # Inline YAML has no filepath to display, so use a descriptive placeholder instead.
+
       if source == 'command line (inline)'
-        config[:history][:config] << "(inline YAML, #{label})"
-      elsif @path_validator.filepath?( filepath )
-        config[:history][:config] << "#{filepath} (#{label})"
+        # For inline YAML, the filepath slot holds the raw YAML string (see dispatch above)
+        config[:history][:config] << {
+          type:      :inline,
+          mechanism: :cmdline,
+          source:    source_label,
+          value:     filepath
+        }
       else
-        config[:history][:config] << "#{filepath} (built-in, #{label})"
+        config[:history][:config] << {
+          type:      :file,
+          path:      filepath,
+          mechanism: mechanism,
+          source:    source_label,
+          value:     input || filepath  # original user input if threaded; fall back to filepath
+        }
       end
     end
 

@@ -29,7 +29,7 @@ class Projectinator
       @path_validator.standardize_paths( filepath )
       _filepath = File.expand_path( filepath )
       config = load_and_log( _filepath, 'from command line argument', silent )
-      config[:history] = { config: ["#{filepath} (--project)"] }
+      config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
       return _filepath, config
 
     # Next priority: environment variable
@@ -43,7 +43,7 @@ class Projectinator
         "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`",
         silent
       )
-      config[:history] = { config: ["#{filepath} (#{PROJECT_FILEPATH_ENV_VAR})"] }
+      config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
       return _filepath, config
 
     # Final option: default filepath
@@ -51,7 +51,7 @@ class Projectinator
       filepath = DEFAULT_PROJECT_FILEPATH
       _filepath = File.expand_path( filepath )
       config = load_and_log( _filepath, "from working directory", silent )
-      config[:history] = { config: ["#{filepath} (default)"] }
+      config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
       return _filepath, config
 
     # If no user-provided filepath and the default filepath does not exist, we have a big problem
