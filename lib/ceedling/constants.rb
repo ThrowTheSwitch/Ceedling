@@ -101,6 +101,9 @@ GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
 # Escaped newline literal (literally double-slash-n) for "encoding" multiline strings as single string
 NEWLINE_TOKEN = '\\n'
 
+MIXIN_SIGIL_INLINE_YAML = '='
+MIXIN_SIGIL_FILEPATH    = '@'
+
 DEFAULT_PROJECT_FILENAME = 'project.yml'
 DEFAULT_BUILD_LOGS_PATH = 'logs'
 

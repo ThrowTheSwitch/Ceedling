@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'deep_merge'
+require 'ceedling/constants'
 
 class Configinator
 
@@ -41,8 +42,8 @@ class Configinator
     #   '@' prefix  → explicit file/name reference (strip the sigil, existing behavior)
     #   no prefix   → file/name reference, backwards-compatible with existing usage
     tagged_cmdline = cmdline_mixins.map do |m|
-      if    m.start_with?('=') then {type: :yaml, value: m[1..]}
-      elsif m.start_with?('@') then {type: :file, value: m[1..]}
+      if    m.start_with?(MIXIN_SIGIL_INLINE_YAML) then {type: :yaml, value: m[1..]}
+      elsif m.start_with?(MIXIN_SIGIL_FILEPATH)    then {type: :file, value: m[1..]}
       else                          {type: :file, value: m}
       end
     end

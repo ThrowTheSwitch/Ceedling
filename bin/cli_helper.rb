@@ -236,6 +236,11 @@ class CliHelper
   end
 
 
+  def process_mixin_filepaths(mixins)
+    mixins.reject {|m| m.start_with?(MIXIN_SIGIL_INLINE_YAML)}
+  end
+
+
   def process_logging_path(config)
     build_root, _ = @config_walkinator.fetch_value( :project, :build_root, hash:config )
 

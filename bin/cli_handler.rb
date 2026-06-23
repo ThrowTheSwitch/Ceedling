@@ -57,9 +57,7 @@ class CliHandler
     return if !command.nil?
 
     # If project configuration is available, also display Rake tasks
-    # Inline YAML mixin entries (= sigil) are not file paths; exclude them from path normalization
-    _mixin_paths = options[:mixin].reject {|m| m.start_with?('=')}
-    @path_validator.standardize_paths( options[:project], *_mixin_paths )
+    @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
     if @projectinator.config_available?( filepath:options[:project], env:env )
       list_rake_tasks(
         env:env,
@@ -183,9 +181,7 @@ class CliHandler
     _verbosity = options[:verbosity]
     @helper.set_verbosity( _verbosity, override: false )
 
-    # Inline YAML mixin entries (= sigil) are not file paths; exclude them from path normalization
-    _mixin_paths = options[:mixin].reject {|m| m.start_with?('=')}
-    @path_validator.standardize_paths( options[:project], options[:logfile], *_mixin_paths )
+    @path_validator.standardize_paths( options[:project], options[:logfile], *@helper.process_mixin_filepaths(options[:mixin]) )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
@@ -276,9 +272,7 @@ class CliHandler
   def dumpconfig(env, app_cfg, options, filepath, sections)
     @helper.set_verbosity( options[:verbosity] )
 
-    # Inline YAML mixin entries (= sigil) are not file paths; exclude them from path normalization
-    _mixin_paths = options[:mixin].reject {|m| m.start_with?('=')}
-    @path_validator.standardize_paths( filepath, options[:project], *_mixin_paths )
+    @path_validator.standardize_paths( filepath, options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
@@ -316,9 +310,7 @@ class CliHandler
     # Force obnoxious (or debug) verbosity, overriding any prior verbosity state
     @helper.set_verbosity( options[:verbosity] )
 
-    # Inline YAML mixin entries (= sigil) are not file paths; exclude them from path normalization
-    _mixin_paths = options[:mixin].reject {|m| m.start_with?('=')}
-    @path_validator.standardize_paths( options[:project], *_mixin_paths )
+    @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
@@ -348,9 +340,7 @@ class CliHandler
   def environment(env, app_cfg, options)
     @helper.set_verbosity( options[:verbosity] )
 
-    # Inline YAML mixin entries (= sigil) are not file paths; exclude them from path normalization
-    _mixin_paths = options[:mixin].reject {|m| m.start_with?('=')}
-    @path_validator.standardize_paths( options[:project], *_mixin_paths )
+    @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
 
