@@ -43,7 +43,7 @@ class Configinator
     tagged_cmdline = cmdline_mixins.map do |m|
       if    m.start_with?('=') then {type: :yaml, value: m[1..]}
       elsif m.start_with?('@') then {type: :file, value: m[1..]}
-      else                           {type: :file, value: m}
+      else                          {type: :file, value: m}
       end
     end
 
@@ -51,8 +51,7 @@ class Configinator
     cmdline_file_values = tagged_cmdline.select {|e| e[:type] == :file}.map {|e| e[:value]}
     cmdline_yaml_values = tagged_cmdline.select {|e| e[:type] == :yaml}.map {|e| e[:value]}
 
-    # Deduplicate file values only (existing behavior); inline YAML is deduplicated
-    # later by assemble_mixins via exact-string comparison
+    # Deduplicate file values only; inline YAML is deduplicated later
     cmdline_file_values.uniq!
 
     # Validate :cfg_load_paths from :mixins section of project configuration

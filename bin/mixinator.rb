@@ -36,7 +36,7 @@ class Mixinator
 
       # Empty string means the user typed --mixin "=" with nothing after the sigil
       if str.nil? || str.strip.empty?
-        @loginator.log( "#{label} is empty", Verbosity::ERRORS, LogLabels::ERROR )
+        @loginator.log( "#{label} is empty", Verbosity::ERRORS )
         validated = false
         next
       end
@@ -48,14 +48,14 @@ class Mixinator
         # cannot be merged into config and indicate a user error in the YAML string
         unless parsed.is_a?( Hash )
           @loginator.log(
-            "#{label} did not produce a configuration Hash after parsing (got #{parsed.class})",
-            Verbosity::ERRORS, LogLabels::ERROR
+            "#{label} did not produce a configuration hash after parsing (got #{parsed.class})",
+            Verbosity::ERRORS
           )
           validated = false
         end
       rescue => e
         # YAML parse failure: surface the parser message so the user can fix their string
-        @loginator.log( "#{label} YAML parse error: #{e.message}", Verbosity::ERRORS, LogLabels::ERROR )
+        @loginator.log( "#{label} YAML parse error: #{e.message}", Verbosity::ERRORS )
         validated = false
       end
     end
@@ -195,7 +195,7 @@ class Mixinator
       # Nested :mixins sections are not supported — warn and strip before merging
       if _mixin.key?(:mixins)
         msg = "Mixin from #{source} '#{filepath}' contains a `:mixins` section ➡️ Nested mixins are not supported and will be ignored."
-        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::WARNING )
+        @loginator.log( msg, Verbosity::COMPLAIN )
         _mixin.delete(:mixins)
       end
 
