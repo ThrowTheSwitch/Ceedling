@@ -113,8 +113,7 @@ describe Mixinator do
       # load_string is not called — the method short-circuits on the empty check
       expect(@loginator).to receive(:log).with(
         /Inline YAML mixin #1 is empty/i,
-        anything,
-        LogLabels::ERROR
+        anything
       )
       expect {
         @mixinator.validate_cmdline_yaml_strings([''])
@@ -125,8 +124,7 @@ describe Mixinator do
       # load_string is not called — the method short-circuits on the empty check
       expect(@loginator).to receive(:log).with(
         /Inline YAML mixin #1 is empty/i,
-        anything,
-        LogLabels::ERROR
+        anything
       )
       expect {
         @mixinator.validate_cmdline_yaml_strings(['   '])
@@ -137,8 +135,7 @@ describe Mixinator do
       allow(@yaml_wrapper).to receive(:load_string).and_return(['just_a_list_item'])
       expect(@loginator).to receive(:log).with(
         /did not produce a configuration Hash/i,
-        anything,
-        LogLabels::ERROR
+        anything
       )
       expect {
         @mixinator.validate_cmdline_yaml_strings(['- just_a_list_item'])
@@ -149,8 +146,7 @@ describe Mixinator do
       allow(@yaml_wrapper).to receive(:load_string).and_return('just_a_string')
       expect(@loginator).to receive(:log).with(
         /did not produce a configuration Hash/i,
-        anything,
-        LogLabels::ERROR
+        anything
       )
       expect {
         @mixinator.validate_cmdline_yaml_strings(['just_a_string'])
@@ -162,8 +158,7 @@ describe Mixinator do
         .and_raise(StandardError, 'did not find expected key')
       expect(@loginator).to receive(:log).with(
         /YAML parse error/i,
-        anything,
-        LogLabels::ERROR
+        anything
       )
       expect {
         @mixinator.validate_cmdline_yaml_strings(['{{{ bad yaml'])
@@ -176,7 +171,7 @@ describe Mixinator do
         .and_return(['array_not_hash'])
       allow(@yaml_wrapper).to receive(:load_string).with('{{{ broken')
         .and_raise(StandardError, 'did not find expected key')
-      expect(@loginator).to receive(:log).with(anything, anything, LogLabels::ERROR).twice
+      expect(@loginator).to receive(:log).with(anything, anything).twice
       expect {
         @mixinator.validate_cmdline_yaml_strings(['- array_not_hash', '{{{ broken'])
       }.to raise_error(/inline YAML failed validation/i)
@@ -408,8 +403,7 @@ describe Mixinator do
 
       expect(@loginator).to receive(:log).with(
         /nested mixins are not supported/i,
-        anything,
-        LogLabels::WARNING
+        anything
       )
 
       @mixinator.mixin(
@@ -558,8 +552,7 @@ describe Mixinator do
 
       expect(@loginator).to receive(:log).with(
         /nested mixins are not supported/i,
-        anything,
-        LogLabels::WARNING
+        anything
       )
 
       @mixinator.mixin(
