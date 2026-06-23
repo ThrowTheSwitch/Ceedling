@@ -15,3 +15,6 @@ files:
   - assets/project.yml
   - plugins/gcov/config/defaults_gcov.rb
   - plugins/gcov/config/defaults.yml
+  - examples/temp_sensor/README.md
+  - examples/wondrous_forest/README.md
+  - examples/cipher_quest/README.md

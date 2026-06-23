@@ -32,11 +32,10 @@ RSpec::Core::RakeTask.new('specs:system') do |t|
 end
 
 # Run unit tests first to fail on fast before running slower system tests
-desc "Run all specs: unit specs first, then system specs"
+desc "Run all specs: units first then system (non-debug)"
 task 'specs:all' => ['specs:units', 'specs:system']
 
 # CI batch debug mode: run all system specs, keeping only failure artifacts.
-# 'failures' is checked by keep_failures_only? in system_context.rb.
 # Passing project directories are deleted immediately; passing logs are never written.
 desc "Run all system specs with artifact retention for failures only"
 task 'specs:system:debug' do
@@ -65,11 +64,7 @@ Dir['spec/system/**/*_spec.rb'].each do |p|
 end
 
 # Individual system specs with full artifact retention (unadvertised).
-# Developer debug mode: preserve all artifacts — both pass and fail project directories
-# and logs — for post-run inspection of a single targeted spec.
-# 'all' is checked by keep_all? in system_context.rb.
-# Also used by the CI locale test job (spec:system:debug:preprocessing_locale),
-# where full preservation of a single spec's artifacts is acceptable overhead.
+# Developer debug mode: preserve all artifacts — both pass and fail project directories and logs
 Dir['spec/system/**/*_spec.rb'].each do |p|
   base = File.basename(p,'.*').gsub('_spec','')
   task "spec:system:debug:#{base}" do
@@ -104,11 +99,7 @@ end
 ##
 
 task :default => ['specs:all']
-task :ci      => ['specs:units', 'specs:system:debug']
-
-task :no_color do 
-  #doesn't do anything at the moment
-end
+task :ci      => :default
 
 ##
 ## Documentation tasks

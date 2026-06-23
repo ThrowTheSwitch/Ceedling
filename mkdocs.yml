@@ -81,9 +81,7 @@ markdown_extensions:
   - pymdownx.superfences  # Fenced code blocks inside admonitions and other nested elements
   - pymdownx.inlinehilite # Inline code syntax highlighting with `#!lang code` syntax
 
-# Files in docs/ excluded from the generated site.
-# These are standalone reference documents, developer files, PDFs, or historical records
-# maintained separately from the versioned documentation bundle.
+# Files in docs/mkdocs/ excluded from the generated site.
 exclude_docs: |
   snapshot.yml
 
@@ -100,6 +98,11 @@ nav:
     - Quick Start: getting-started/quick-start.md
     - Installation: getting-started/installation.md
     - Command Line: getting-started/command-line.md
+    - Example Projects:
+      - getting-started/example-projects/index.md
+      - Temp Sensor: getting-started/example-projects/temp-sensor.md
+      - Wondrous Forest: getting-started/example-projects/wondrous-forest.md
+      - Cipher Quest: getting-started/example-projects/cipher-quest.md
   - Testing Guide:
     - testing-guide/index.md
     - How Does a Test Case Work?: testing-guide/test-cases.md
@@ -119,6 +122,7 @@ nav:
   - Configuration:
     - configuration/index.md
     - Loading Configuration: configuration/loading.md
+    - Mixins: configuration/mixins.md
     - Project File Basics: configuration/project-file.md
     - Parallel Builds: configuration/parallel-builds.md
     - Environment Variables: configuration/environment-vars.md

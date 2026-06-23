@@ -123,19 +123,23 @@ module CeedlingTasks
 
   DOC_PROJECT_FLAG = "Loads the filepath as your base project configuration"
 
-  DOC_MIXIN_FLAG = "Merges the configuration mixin by name or filepath."
+  DOC_MIXIN_FLAG = "Merges the configuration mixin by name, filepath, or inline YAML (= sigil)."
 
-  LONGDOC_LOCAL_FLAG = "`--local` copies Ceedling and its dependencies to a vendor/ 
-    subdirectory in the root of the project. It also installs a 
-    platform-appropriate executable script `ceedling` at the root of the 
+  LONGDOC_LOCAL_FLAG = "`--local` copies Ceedling and its dependencies to a vendor/
+    subdirectory in the root of the project. It also installs a
+    platform-appropriate executable script `ceedling` at the root of the
     project."
 
-  LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This 
-    flag may be repeated for multiple mixins. A simple mixin name initiates a 
-    lookup from within mixin load paths in your project file and among built-in 
-    mixins. A filepath and/or filename (with extension) will instead merge the 
-    specified YAML file. See documentation for complete details.
-    \x5> --mixin my_compiler --mixin my/path/mixin.yml"
+  LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This
+    flag may be repeated for multiple mixins and is processed left-to-right
+    (rightmost is final merge).
+    Three forms are accepted:
+    \x5 1. A simple name for a lookup within configured mixin load paths.
+    \x5 2. A filepath (with extension or path separator) loads and merges the
+    specified YAML file.
+    \x5 3. Inline YAML merged directly (denoted by `=` sigil prefix).
+    See documentation for complete details.
+    \x5> --mixin my_compiler --mixin my/path/mixin.yml --mixin \"=defines: {release: ['MY_SYMBOL']}\""
 
   # Intentionally disallowed Linux/Unix/Windows filename characters to minimize the chance
   # of mistakenly filtering various string-base flags missing a parmeter

@@ -14,9 +14,13 @@
 #include "MockTimerInterruptHandler.h"
 #include "MockTaskScheduler.h"
 
-/* NOTE: we probably wouldn't actually perform this test on our own projects
-  but it's a good example of testing the same module(s) from multiple test
-  files, and therefore we like having it in this example. 
+/* NOTES:
+  - We probably wouldn't perform this test on our own projects,
+    but it's a good example of testing the same module(s) from multiple test
+    files, and therefore we like having it in this example.
+  - That said, it is appropriate in some testing scenarios to test
+    multiple source files together (e.g. protocol handling or memory management).
+    Typically, unit tests isolate a single source module.
 */
 
 void setUp(void)
