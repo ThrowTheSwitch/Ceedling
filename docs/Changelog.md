@@ -34,11 +34,18 @@ Ceedling is now complemented by a full, searchable [documentation site](https://
 
 A local verion of this site that is navigable with your web browser from your filesystem is included within Ceedling and exportable through CLI commands.
 
-### CLI additions
+### Command line interface additions
 
-- `ceedling help` output provides links for further support and Github sponsorship.
+- `ceedling help` output now provides links for further support and Github sponsorship.
+
+#### New application commands
+
 - `ceedling check` validates your configuration and produces logs from processing it without executing a build.
 - `ceedling docs` exports the new HTML-based documentation site to your local filesystem.
+
+#### Mixins inline YAML
+
+The optional `--mixin` flag for all application commands supporting it now [supports inline YAML](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/mixins/#-mixin-command-line-flags). Example: `--mixin "=defines: {release: ['MY_SYMBOL']}"`
 
 ### Cppcheck static analysis plugin
 
