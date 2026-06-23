@@ -22,13 +22,19 @@
     Exhaustive documentation for all project configuration options —
     organized by section.
 
--   :material-file-import: **[How to Load a Project Configuration][configuration-loading]**
+-   :material-file-import: **[Loading a Project Configuration][configuration-loading]**
 
     ---
 
-    Load your base configuration via command line flag, environment variable, or
-    default file. Add Mixins to merge additional configuration for different
-    build scenarios.
+    Load your base configuration via command line flag, environment variable,
+    or default filename in your working directory.
+
+-   :material-layers-plus: **[Mixins][mixins]**
+
+    ---
+
+    Merge additional configuration into your project configuration on demand
+    for build variants, local overrides, CI settings, toolchain differences, etc.
 
 </div>
 
@@ -64,5 +70,6 @@
 [which-ceedling]:          which-ceedling.md
 [global-collections]:      global-collections.md
 [parallel-builds]:         parallel-builds.md
+[mixins]:                  mixins.md
 
 <br/><br/>

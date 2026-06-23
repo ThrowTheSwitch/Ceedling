@@ -43,7 +43,7 @@ The project ships two mixin files that activate optional features:
   `EXAMPLE_STRUCT_T`, enabling more detailed failure messages for struct
   comparisons. Run with `ceedling test:all --mixin=mixin/add_unity_helper.yml`.
 
-See the [Mixins](../../configuration/loading.md#applying-mixins-to-base-configuration)
+See the [Mixins](../../configuration/mixins.md)
 documentation for more on how to use and write mixin files.
 
 <br/><br/>

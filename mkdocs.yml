@@ -122,6 +122,7 @@ nav:
   - Configuration:
     - configuration/index.md
     - Loading Configuration: configuration/loading.md
+    - Mixins: configuration/mixins.md
     - Project File Basics: configuration/project-file.md
     - Parallel Builds: configuration/parallel-builds.md
     - Environment Variables: configuration/environment-vars.md

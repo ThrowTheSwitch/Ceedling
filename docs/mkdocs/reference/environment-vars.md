@@ -19,7 +19,7 @@ project configuration. Multiple mixin environment variables are merged in
 ascending numeric order (e.g. `CEEDLING_MIXIN_1` before `CEEDLING_MIXIN_5`
 before `CEEDLING_MIXIN_99`).
 
-See [_Loading Configuration_](../configuration/loading.md#mixin-environment-variables)
+See [_Loading Configuration_](../configuration/mixins.md#environment-variables)
 for the full details on Mixin environment variables.
 
 ## Console output — `CEEDLING_DECORATORS`

@@ -33,7 +33,7 @@ Symbols needed by the release build can be provided by:
 
 1. Editing the [`:defines` section](../../configuration/reference/defines.md)
    of the example project file.
-2. Making use of [Mixins](../../configuration/loading.md#applying-mixins-to-base-configuration)
+2. Making use of [Mixins](../../configuration/mixins.md)
    to selectively enable the needed symbols. The example project includes 
    mixin files, and the project README provides examples of enacting all 
    availble Mixin features.
