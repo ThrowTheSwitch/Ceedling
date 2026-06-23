@@ -26,7 +26,7 @@ With Partials, a test can now cause some functions in the source module under te
 `wondrous_forest` and `cipher_quest` join the existing `temp_sensor` project. All example projects now have [comprehensive documentation](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/example-projects/).
 
 1. The `wondrous_forest` test-only project demonstrates using [Partials](https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/) in sample code reasonably representative of real-world use.
-1. The `cipher_quest` project is both a release and test build project that demonstrates conditional compilation builds (`ifdef`) and using [Mixins](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/loading/#applying-mixins-to-base-configuration) to control builds.
+1. The `cipher_quest` project is both a release and test build project that demonstrates conditional compilation builds (`ifdef`) and using [Mixins](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/mixins) to control builds.
 
 ### Documentation site
 
@@ -78,7 +78,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
 - Mixins
    - #1128 Command line mixin precedence.
-   - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/loading/#applying-mixins-to-base-configuration) to correct merge order explanations and clarify Mixins generally.
+   - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
 - Multiple fixes and improvements to `#include`s handling and preprocessing plus these issues & PRs:
    - PR #1126 Fix for race condition in cache handling of `#include` listings in YAML files.
    - #1015 Probing toolchain for presence of preprocessor directives-only ability.
