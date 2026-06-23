@@ -4412,6 +4412,14 @@ modify it for any number of reasons. Some example scenarios:</p>
 just after the base project file is loaded. The merge is so low-level
 and generic that you can, in fact, load an empty base configuration 
 and merge in entire project configurations through mixins.</p>
+<p>Mixins may be merged per a priority scheme:</p>
+<ol>
+<li><code>mixins:</code> section in your base configuration file that loads mixin 
+   YAML files.</li>
+<li>Environment variables that point to mixin files.</li>
+<li>Command line <code>--mixin</code> flags that point to mixin files or provide
+   inline YAML.</li>
+</ol>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>The <a href="../../getting-started/example-projects/cipher-quest/"><code>cipher_quest</code> example project</a>
@@ -4510,9 +4518,27 @@ for more.</p>
 Then, the documentation sections that follow will discuss everything
 in detail.</p>
 <p>In this example, we will load a base project configuration and then
-apply three mixin files using each of the available means — command line,
-envionment variable, and <code>:mixins</code> section in the base project 
-configuration file.</p>
+apply three mixin files using each of the available means:</p>
+<ol>
+<li><code>:mixins</code> section in the base project configuration file</li>
+<li>Envionment variable <code>CEEDLING_MIXIN_1</code></li>
+<li>Command line <code>--mixin</code> flag</li>
+</ol>
+<pre class="mermaid"><code>---
+title: Example Mixin Merge Pipeline
+config:
+  flowchart:
+    wrappingWidth: 600
+---
+flowchart TD
+    A["&lt;b&gt;base.yml&lt;/b&gt; — &lt;code&gt;:mixins&lt;/code&gt; section\n&lt;i&gt;support/mixins/enabled.yml&lt;/i&gt;"]
+    B["&lt;b&gt;&lt;code&gt;CEEDLING_MIXIN_1&lt;/code&gt;&lt;/b&gt;\n&lt;i&gt;./env.yml&lt;/i&gt;"]
+    C["&lt;b&gt;&lt;code&gt;--mixin&lt;/code&gt; flag&lt;/b&gt;\n&lt;i&gt;support/mixins/cmdline.yml&lt;/i&gt;"]
+    D["&lt;b&gt;Final configuration&lt;/b&gt;"]
+
+    A --&gt;|"① First — lowest priority"| B
+    B --&gt;|"② Next"| C
+    C --&gt;|"③ Last — highest priority"| D</code></pre>
 <h3 id="example-environment-variable">Example environment variable</h3>
 <p><code>CEEDLING_MIXIN_1</code> = <code>./env.yml</code></p>
 <h3 id="example-command-line">Example command line</h3>
@@ -4646,24 +4672,26 @@ project configuration. A <code>--mixin</code> value accepts three forms
 distinguished by an optional sigil prefix:</p>
 <div class="admonition note">
 <p class="admonition-title">Sigil definition</p>
-<p>A sigil is a non-alphabetic symbol (e.g. <code>$</code>, <code>@</code>, or <code>%</code>) that 
+<p>A <em>sigil</em> is a non-alphabetic symbol (e.g. <code>$</code>, <code>@</code>, <code>%</code>) that 
 serves as a visual prefix or suffix that instantly tells an 
-interpreter and the developer data type, scope, or structure.</p>
+interpreter and the developer a data type, scope, or structure.</p>
 </div>
-<h4 id="file-or-named-mixin-no-sigil-or-sigil">File or named mixin (no sigil or <code>@</code> sigil)</h4>
+<h4 id="file-or-named-mixin-optional-sigil">File or named mixin (optional <code>@</code> sigil)</h4>
 <p>The value is treated as a file path or named mixin lookup. Two 
 equivalent syntaxes are accepted:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>--mixin<span class="w"> </span>my_compiler<span class="w">         </span><span class="c1"># simple name lookup (no sigil)</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>--mixin<span class="w"> </span>bar/mixin.yaml<span class="w">      </span><span class="c1"># filepath (no sigil)</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>--mixin<span class="w"> </span>@bar/mixin.yaml<span class="w">     </span><span class="c1"># filepath (explicit @ sigil — same result)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>--mixin<span class="w"> </span>@my_compiler<span class="w">        </span><span class="c1"># simple name lookup (no sigil)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>--mixin<span class="w"> </span>bar/mixin.yaml<span class="w">      </span><span class="c1"># filepath (no sigil)</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>--mixin<span class="w"> </span>@bar/mixin.yaml<span class="w">     </span><span class="c1"># filepath (explicit @ sigil — same result)</span>
 </code></pre></div>
 <ul>
 <li>A <strong>simple name</strong> (no extension, no path separator) is looked up 
-  among Ceedling’s mixin load paths.</li>
+  among Ceedling’s configured mixin load paths.</li>
 <li>A <strong>filename or filepath</strong> (with extension or path separator) loads 
   the specified YAML file directly.</li>
 <li>The <code>@</code> sigil is optional and makes the file/name intent explicit; 
-  it is otherwise identical to providing the value without a sigil.</li>
+  it is otherwise identical to providing the value without a sigil
+  (primarily for backwards compatibility pre-inline YAML).</li>
 </ul>
 <h4 id="inline-yaml-sigil">Inline YAML (<code>=</code> sigil)</h4>
 <p>The value is treated as a YAML string merged directly into 
@@ -4691,7 +4719,7 @@ empty strings are rejected with an error.</p>
 processed in the order they appear, left-to-right:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ceedling<span class="w"> </span>release<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--mixin<span class="w"> </span>@mixins/base_compiler.yml<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--mixin<span class="w"> </span><span class="s2">&quot;=:defines: {release: [CIPHER_ROT13]}&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--mixin<span class="w"> </span><span class="s2">&quot;=defines: {release: [&#39;CIPHER_ROT13&#39;]}&quot;</span><span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--mixin<span class="w"> </span>ci_overrides
 </code></pre></div>
 <p>In this example: <code>mixins/base_compiler.yml</code> is merged first as a
