@@ -131,21 +131,15 @@ module CeedlingTasks
     project."
 
   LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This
-    flag may be repeated for multiple mixins and is processed left-to-right.
-    Three value forms are accepted:
-    \x5  1. A simple name performs a lookup within mixin load paths configured in
-    your project file and among built-in mixins.
-    \x5  2. A filepath (with extension or path separator) loads and merges the
-    specified YAML file. The optional `@` sigil prefix makes the file intent
-    explicit but is otherwise equivalent.
-    \x5  3. A `=` sigil prefix treats the remainder of the value as an inline YAML
-    string merged directly into configuration. The value should be quoted to
-    protect YAML colons, brackets, and spaces from shell interpretation.
-    \x5See documentation for complete details.
-    \x5> --mixin my_compiler
-    \x5> --mixin my/path/mixin.yml
-    \x5> --mixin @my/path/mixin.yml
-    \x5> --mixin \"=:defines: {release: [MY_SYMBOL]}\""
+    flag may be repeated for multiple mixins and is processed left-to-right
+    (rightmost is final merge).
+    Three forms are accepted:
+    \x5 1. A simple name for a lookup within configured mixin load paths.
+    \x5 2. A filepath (with extension or path separator) loads and merges the
+    specified YAML file.
+    \x5 3. Inline YAML merged directly (denoted by `=` sigil prefix).
+    See documentation for complete details.
+    \x5> --mixin my_compiler --mixin my/path/mixin.yml --mixin \"=defines: {release: ['MY_SYMBOL']}\""
 
   # Intentionally disallowed Linux/Unix/Windows filename characters to minimize the chance
   # of mistakenly filtering various string-base flags missing a parmeter
