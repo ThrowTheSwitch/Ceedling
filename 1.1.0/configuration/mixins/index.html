@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://throwtheswitch.github.io/Ceedling/latest/plugins/cppcheck/">
+        <link rel="canonical" href="https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins/">
       
       
-        <link rel="prev" href="../gcov/troubleshooting/">
+        <link rel="prev" href="../loading/">
       
       
-        <link rel="next" href="../valgrind/">
+        <link rel="next" href="../project-file/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Cppcheck (Static Analysis) - Ceedling</title>
+        <title>Mixins - Ceedling</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#cppcheck" class="md-skip">
+        <a href="#mixins" class="md-skip">
           Skip to content
         </a>
       
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Cppcheck (Static Analysis)
+              Mixins
             
           </span>
         </div>
@@ -302,11 +302,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../configuration/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -324,13 +326,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../plugins/" class="md-tabs__link">
           
   
   
@@ -1511,6 +1511,8 @@
       
   
   
+    
+  
   
   
     
@@ -1540,20 +1542,23 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1571,13 +1576,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1597,7 +1602,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/loading/" class="md-nav__link">
+      <a href="../loading/" class="md-nav__link">
         
   
   
@@ -1622,10 +1627,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../configuration/mixins/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mixins
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1641,6 +1673,187 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#designing-for-mixins-merge-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Designing for Mixins merge rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Designing for Mixins merge rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#additive-mixin-merges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additive Mixin merges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mixins-deep-merge-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mixins deep merge rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mixins-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mixins Example
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mixins Example">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#our-example-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Our Example Scenario
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-environment-variable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example environment variable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-command-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example command line
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Configuration files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-resulting-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example resulting configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options-for-loading-mixins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options for loading Mixins
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Options for loading Mixins">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-mixin-command-line-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --mixin command line flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#base-configuration-mixins-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base configuration :mixins entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1653,7 +1866,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/project-file/" class="md-nav__link">
+      <a href="../project-file/" class="md-nav__link">
         
   
   
@@ -1681,7 +1894,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/parallel-builds/" class="md-nav__link">
+      <a href="../parallel-builds/" class="md-nav__link">
         
   
   
@@ -1709,7 +1922,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/environment-vars/" class="md-nav__link">
+      <a href="../environment-vars/" class="md-nav__link">
         
   
   
@@ -1737,7 +1950,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/which-ceedling/" class="md-nav__link">
+      <a href="../which-ceedling/" class="md-nav__link">
         
   
   
@@ -1765,7 +1978,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/global-collections/" class="md-nav__link">
+      <a href="../global-collections/" class="md-nav__link">
         
   
   
@@ -1839,10 +2052,13 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
@@ -1850,7 +2066,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/reference/" class="md-nav__link ">
+            <a href="../reference/" class="md-nav__link ">
               
   
   
@@ -1868,7 +2084,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_9" id="__nav_5_9_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5_9" id="__nav_5_9_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -1894,7 +2110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/project/" class="md-nav__link">
+      <a href="../reference/project/" class="md-nav__link">
         
   
   
@@ -1922,7 +2138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/mixins/" class="md-nav__link">
+      <a href="../reference/mixins/" class="md-nav__link">
         
   
   
@@ -1950,7 +2166,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/test-build/" class="md-nav__link">
+      <a href="../reference/test-build/" class="md-nav__link">
         
   
   
@@ -1978,7 +2194,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/release-build/" class="md-nav__link">
+      <a href="../reference/release-build/" class="md-nav__link">
         
   
   
@@ -2006,7 +2222,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/paths/" class="md-nav__link">
+      <a href="../reference/paths/" class="md-nav__link">
         
   
   
@@ -2034,7 +2250,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/files/" class="md-nav__link">
+      <a href="../reference/files/" class="md-nav__link">
         
   
   
@@ -2062,7 +2278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/environment/" class="md-nav__link">
+      <a href="../reference/environment/" class="md-nav__link">
         
   
   
@@ -2090,7 +2306,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/extension/" class="md-nav__link">
+      <a href="../reference/extension/" class="md-nav__link">
         
   
   
@@ -2118,7 +2334,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/defines/" class="md-nav__link">
+      <a href="../reference/defines/" class="md-nav__link">
         
   
   
@@ -2146,7 +2362,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/flags/" class="md-nav__link">
+      <a href="../reference/flags/" class="md-nav__link">
         
   
   
@@ -2174,7 +2390,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/libraries/" class="md-nav__link">
+      <a href="../reference/libraries/" class="md-nav__link">
         
   
   
@@ -2202,7 +2418,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/unity/" class="md-nav__link">
+      <a href="../reference/unity/" class="md-nav__link">
         
   
   
@@ -2230,7 +2446,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/cmock/" class="md-nav__link">
+      <a href="../reference/cmock/" class="md-nav__link">
         
   
   
@@ -2258,7 +2474,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/test-runner/" class="md-nav__link">
+      <a href="../reference/test-runner/" class="md-nav__link">
         
   
   
@@ -2286,7 +2502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/cexception/" class="md-nav__link">
+      <a href="../reference/cexception/" class="md-nav__link">
         
   
   
@@ -2314,7 +2530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/plugins/" class="md-nav__link">
+      <a href="../reference/plugins/" class="md-nav__link">
         
   
   
@@ -2342,7 +2558,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/reference/tools/" class="md-nav__link">
+      <a href="../reference/tools/" class="md-nav__link">
         
   
   
@@ -2382,8 +2598,6 @@
       
   
   
-    
-  
   
   
     
@@ -2431,23 +2645,20 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../plugins/" class="md-nav__link ">
               
   
   
@@ -2465,13 +2676,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2491,7 +2702,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../report-tests-pretty-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-pretty-stdout/" class="md-nav__link">
         
   
   
@@ -2519,7 +2730,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../report-tests-ide-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-ide-stdout/" class="md-nav__link">
         
   
   
@@ -2547,7 +2758,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../report-tests-gtestlike-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-gtestlike-stdout/" class="md-nav__link">
         
   
   
@@ -2575,7 +2786,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../report-tests-teamcity-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-teamcity-stdout/" class="md-nav__link">
         
   
   
@@ -2603,7 +2814,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../report-tests-log-factory/" class="md-nav__link">
+      <a href="../../plugins/report-tests-log-factory/" class="md-nav__link">
         
   
   
@@ -2631,7 +2842,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../report-tests-raw-output-log/" class="md-nav__link">
+      <a href="../../plugins/report-tests-raw-output-log/" class="md-nav__link">
         
   
   
@@ -2659,7 +2870,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../report-build-warnings-log/" class="md-nav__link">
+      <a href="../../plugins/report-build-warnings-log/" class="md-nav__link">
         
   
   
@@ -2715,13 +2926,10 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
@@ -2729,7 +2937,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../gcov/" class="md-nav__link ">
+            <a href="../../plugins/gcov/" class="md-nav__link ">
               
   
   
@@ -2747,7 +2955,7 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_9" id="__nav_6_9_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_9" id="__nav_6_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
@@ -2773,7 +2981,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gcov/overview/" class="md-nav__link">
+      <a href="../../plugins/gcov/overview/" class="md-nav__link">
         
   
   
@@ -2801,7 +3009,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gcov/tool-versions/" class="md-nav__link">
+      <a href="../../plugins/gcov/tool-versions/" class="md-nav__link">
         
   
   
@@ -2829,7 +3037,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gcov/setup/" class="md-nav__link">
+      <a href="../../plugins/gcov/setup/" class="md-nav__link">
         
   
   
@@ -2857,7 +3065,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gcov/examples/" class="md-nav__link">
+      <a href="../../plugins/gcov/examples/" class="md-nav__link">
         
   
   
@@ -2885,7 +3093,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gcov/reporting/" class="md-nav__link">
+      <a href="../../plugins/gcov/reporting/" class="md-nav__link">
         
   
   
@@ -2913,7 +3121,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gcov/gcovr/" class="md-nav__link">
+      <a href="../../plugins/gcov/gcovr/" class="md-nav__link">
         
   
   
@@ -2941,7 +3149,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gcov/reportgenerator/" class="md-nav__link">
+      <a href="../../plugins/gcov/reportgenerator/" class="md-nav__link">
         
   
   
@@ -2969,7 +3177,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gcov/troubleshooting/" class="md-nav__link">
+      <a href="../../plugins/gcov/troubleshooting/" class="md-nav__link">
         
   
   
@@ -3002,37 +3210,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Cppcheck (Static Analysis)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../plugins/cppcheck/" class="md-nav__link">
         
   
   
@@ -3048,258 +3229,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#plugin-overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plugin overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Setup
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#reports" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reports
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#import-project-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Import project file
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#preprocessor-defines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Preprocessor defines
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#includes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Includes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#excludes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excludes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#platform" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Platform
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#standard" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Standard
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#check-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Check level
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#addons" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Addons
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#suppressions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Suppressions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#library-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Library configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rules
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#extra-options" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Extra options
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#analyze-whole-project" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Analyze whole project
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#analyze-single-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Analyze single file
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3312,7 +3241,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../valgrind/" class="md-nav__link">
+      <a href="../../plugins/valgrind/" class="md-nav__link">
         
   
   
@@ -3340,7 +3269,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../bullseye/" class="md-nav__link">
+      <a href="../../plugins/bullseye/" class="md-nav__link">
         
   
   
@@ -3368,7 +3297,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fff/" class="md-nav__link">
+      <a href="../../plugins/fff/" class="md-nav__link">
         
   
   
@@ -3396,7 +3325,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../command-hooks/" class="md-nav__link">
+      <a href="../../plugins/command-hooks/" class="md-nav__link">
         
   
   
@@ -3424,7 +3353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../compile-commands-json-db/" class="md-nav__link">
+      <a href="../../plugins/compile-commands-json-db/" class="md-nav__link">
         
   
   
@@ -3452,7 +3381,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../beep/" class="md-nav__link">
+      <a href="../../plugins/beep/" class="md-nav__link">
         
   
   
@@ -3480,7 +3409,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../module-generator/" class="md-nav__link">
+      <a href="../../plugins/module-generator/" class="md-nav__link">
         
   
   
@@ -3508,7 +3437,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dependencies/" class="md-nav__link">
+      <a href="../../plugins/dependencies/" class="md-nav__link">
         
   
   
@@ -4236,44 +4165,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#plugin-overview" class="md-nav__link">
+  <a href="#designing-for-mixins-merge-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Plugin overview
+        Designing for Mixins merge rules
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Setup
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration">
+    <nav class="md-nav" aria-label="Designing for Mixins merge rules">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#reports" class="md-nav__link">
+  <a href="#additive-mixin-merges" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reports
+        Additive Mixin merges
       
     </span>
   </a>
@@ -4281,142 +4188,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#import-project-file" class="md-nav__link">
+  <a href="#mixins-deep-merge-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Import project file
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#preprocessor-defines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Preprocessor defines
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#includes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Includes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#excludes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excludes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#platform" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Platform
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#standard" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Standard
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#check-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Check level
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#addons" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Addons
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#suppressions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Suppressions
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#library-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Library configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rules
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#extra-options" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Extra options
+        Mixins deep merge rules
       
     </span>
   </a>
@@ -4429,22 +4204,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
+  <a href="#mixins-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Usage
+        Mixins Example
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Usage">
+    <nav class="md-nav" aria-label="Mixins Example">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#analyze-whole-project" class="md-nav__link">
+  <a href="#our-example-scenario" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Analyze whole project
+        Our Example Scenario
       
     </span>
   </a>
@@ -4452,10 +4227,93 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#analyze-single-file" class="md-nav__link">
+  <a href="#example-environment-variable" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Analyze single file
+        Example environment variable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-command-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example command line
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Configuration files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-resulting-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example resulting configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options-for-loading-mixins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options for loading Mixins
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Options for loading Mixins">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-mixin-command-line-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --mixin command line flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#base-configuration-mixins-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base configuration :mixins entries
       
     </span>
   </a>
@@ -4513,7 +4371,7 @@
         <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
-    Plugins
+    Configuration
   </span>
 
         </a>
@@ -4535,257 +4393,402 @@
   
 
 
-<h1 id="cppcheck">Cppcheck</h1>
-<p>Adds Ceedling tasks to execute Cppcheck static analysis, helping detect
-undefined behavior, dangerous code patterns, and style issues across your
-project or individual files.</p>
-<h2 id="plugin-overview">Plugin overview</h2>
-<p>The Cppcheck plugin integrates <a href="https://cppcheck.sourceforge.io">Cppcheck</a>
-static analysis into Ceedling, facilitating automated code quality checks as
-part of your development workflow. It provides two analysis modes:</p>
+<h1 id="mixins">Mixins</h1>
+<p>Once you have a <a href="../loading/">base configuration loaded</a>, you may want to 
+modify it for any number of reasons. Some example scenarios:</p>
 <ul>
-<li><strong>Whole project analysis</strong>: By running <code>ceedling cppcheck:all</code>, all project
-source files will be analyzed with all checks enabled (<code>--enable=all</code>) and
-configurable reports can be generated in multiple formats.</li>
-<li><strong>Single file analysis</strong>: By running <code>ceedling cppcheck:&lt;filename&gt;</code>, an
-individual source file will be analyzed using the checks configured in the
-<code>:enable_checks</code> list (defaults to <code>style</code>).</li>
+<li>A single project actually contains mutiple build variations. You would
+  like to maintain a common configuration that is shared among build
+  variations with each build variation’s differences maintained separately.</li>
+<li>Your repository contains the configuration needed by your Continuous
+  Integration server setup, but this is not fun to run locally. You would
+  like to modify the configuration locally with configuration details 
+  maintained by you external to your locally cloned repository.</li>
+<li>Ceedling’s default <code>gcc</code> tools do not work for your project needs. You
+  would like the complex tooling configurations you most often need to
+  be maintained separately and shared among projects.</li>
 </ul>
-<p>The plugin supports extensive Cppcheck configuration options such as platform,
-language standard, preprocessor defines, include/exclude paths, and suppression
-management. It also integrates with advanced features like MISRA addons, custom
-check levels, library configuration files, and regular expression rules. All of
-these can be configured in your <code>project.yml</code> file.</p>
-<p>The plugin can produce reports in HTML, SARIF, text, and XML (v2 and v3)
-formats, all stored under the build artifacts directory.</p>
-<p>It also suppoprts using a project file (such as <code>compile_commands.json</code> or a
-Cppcheck GUI project), in which case, the plugin delegates source and include
-path discovery to Cppcheck rather than using Ceedling's own file collection.</p>
-<h2 id="setup">Setup</h2>
-<p>Enable the plugin by adding <code>cppcheck</code> to the enabled plugins list in your
-<code>project.yml</code> file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:plugins</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cppcheck</span>
-</code></pre></div>
-<h2 id="configuration">Configuration</h2>
-<p>Add <code>cppcheck</code> section to your <code>project.yml</code> specifying configuration options.
-e.g:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:reports</span><span class="p">:</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">html</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">:addons</span><span class="p">:</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">misra</span>
-</code></pre></div>
-<h3 id="reports">Reports</h3>
-<p>Four types of reports are available:</p>
+<p>Mixins allow you to merge configuration with your project configuration
+just after the base project file is loaded. The merge is so low-level
+and generic that you can, in fact, load an empty base configuration 
+and merge in entire project configurations through mixins.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The <a href="../../getting-started/example-projects/cipher-quest/"><code>cipher_quest</code> example project</a>
+illustrates the use of Mixins for build variants.</p>
+</div>
+<h2 id="designing-for-mixins-merge-rules">Designing for Mixins merge rules</h2>
+<p>Merging of any sort tends to be hard to do well. It’s tricky at a 
+code-level, yes, but, just as importantly, merging can be hard to grasp in
+your head.</p>
+<p>The brief sections that follow provide an overview of our recommended
+design approach and the merge rules at play.</p>
+<div class="admonition tip">
+<p class="admonition-title">Use <code>dumpconfig</code> to debug mixins</p>
+<p><code>ceedling dumpconfig</code> can be invaluable in developing and troubleshooting
+your mixins. The <code>dumpconfig</code> application command will load your mixins
+just as a build would but produce the resulting merged configuration for
+inspection in a YAML file you specify.</p>
+</div>
+<h3 id="additive-mixin-merges">Additive Mixin merges</h3>
+<p>Generally speaking, the simplest way to conceive of managing your project
+configuration with mixins is to design for an additive merge. This means
+each mixin is successively adding something to your base configuration. 
+In certain scenarios it is possible to overwrite configuration values with 
+mixin values (see the rules that follow), but an additive merge is 
+probably easier to understand and create.</p>
+<p>At a high level, additive merges can be constructed like this:</p>
+<ol>
+<li>Plan to add to lists with mixins. Path collections, plugins, and 
+   tool flags &amp; compilation symbols are all examples of lists that
+   can be added to. Other lists exist in a project configuration too —
+   many within containing configuration entries. Add paths, plugins, and 
+   flags &amp; symbols to your base configuration that are in common to all 
+   your buid variations and then customize the lists by adding to them 
+   with mixins.</li>
+<li>Leave entire sections in your base configuration blank and fill them 
+   out by merging mixins. With this strategy, you might configure all
+   the basics in a base project configuration but merge into it the 
+   path collections, tool configurations, and compilation symbols you need
+   for a specific project.</li>
+</ol>
+<h3 id="mixins-deep-merge-rules">Mixins deep merge rules</h3>
+<p>Mixins are merged in a specific order. See the documentation sections 
+following the examples for details.</p>
+<p>Smooshing of mixin configurations into the base project configuration
+follows a few basic rules.</p>
+<h4 id="new-keyvalue-pair">New key/value pair</h4>
+<p>If a configuration key/value pair does not already exist at the time
+of merging, the mixin key/value pair is added to the configuration.</p>
+<h4 id="existing-container-list-or-hash">Existing container (list or hash)</h4>
+<p>If a container — e.g. list or hash — already exists at the time of a
+merge, the contents are <em>combined</em>.</p>
+<h5 id="hash-merge">Hash merge</h5>
+<p>A hash (key/value pairs) merge is straightforward. The key/value pairs
+are intermingled at the same level.</p>
+<h5 id="list-merge">List merge</h5>
+<p>A list merge is a bit more complex:</p>
 <ul>
-<li>html</li>
-<li>sarif</li>
-<li>text</li>
-<li>xml (v2 and v3)</li>
+<li>When two lists are merged, the mixin’s entries are placed <em>before</em> the
+  existing list entries. This means higher-priority mixin content appears
+  first in the combined list. For example, if a command line mixin and
+  the base project configuration both add header search paths, the
+  command line mixin paths come first in the resulting merged list. As
+  such, ultimately, the mixin’s paths are searched first.</li>
+<li>If the existing configuration contains a list but the mixin value is a 
+  different type, the mixin is treated as a one-element list and placed 
+  before the existing list. The typical case is a list of strings growing 
+  with an additional single string.</li>
 </ul>
-<p>They can be enabled by listing them on the <code>:reports</code> list:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:reports</span><span class="p">:</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">text</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">html</span>
-</code></pre></div>
-<h4 id="html">HTML</h4>
-<p>HTML title can be configured:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:html_title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Awesome Project</span>
+<div class="admonition note">
+<p class="admonition-title">An exception to the preceding — tool argument lists</p>
+<p>In the case of tool argument lists (<code>:tools</code> ↳ <code>&lt;tool name&gt;</code> ↳ <code>:arguments</code>),
+mixin entries are placed <em>after</em> the existing argument list entries 
+rather than before. Command line tools tend to process arguments 
+left-to-right such that a later occurrence of a flag takes precedence 
+(e.g. <code>-O0</code> after <code>-O2</code> overrides <code>-02</code>). Appending ensures that a 
+higher-priority mixin’s tool arguments override lower-priority 
+arguments by conforming to the typical CLI convention.</p>
+</div>
+<h4 id="existing-simple-value-boolean-string-numeric">Existing simple value (boolean, string, numeric)</h4>
+<p>If a simple value already exists in the configuration at the time of
+merging, that value is replaced by the mixin value being merged. Because
+higher-priority mixins are merged last, the last write wins.</p>
+<div class="admonition info">
+<p class="admonition-title">Mixin merge order and list content order</p>
+<p>Because mixin entries are placed <em>before</em> existing list entries,
+higher-priority mixin content appears first in combined lists. For
+example, include search paths added by a command line mixin will be
+searched before those in an environment variable mixin, which will be
+searched before those in the project configuration file. See the
+section <a href="../../testing-guide/conventions/#search-paths-for-test-builds">Search Paths for Test Builds</a>
+for more.</p>
+</div>
+<h2 id="mixins-example">Mixins Example</h2>
+<h3 id="our-example-scenario">Our Example Scenario</h3>
+<p>Let’s start with an example that helps explain how mixins are merged.
+Then, the documentation sections that follow will discuss everything
+in detail.</p>
+<p>In this example, we will load a base project configuration and then
+apply three mixin files using each of the available means — command line,
+envionment variable, and <code>:mixins</code> section in the base project 
+configuration file.</p>
+<h3 id="example-environment-variable">Example environment variable</h3>
+<p><code>CEEDLING_MIXIN_1</code> = <code>./env.yml</code></p>
+<h3 id="example-command-line">Example command line</h3>
+<p>An environment variable as the preceding inserts a mixin outside of the 
+command line shown below. The <em>base.yml</em> file is merged with the mixin file 
+<em>enabled.yml</em> (all documented below).</p>
+<p><code>ceedling --project=base.yml --mixin=support/mixins/cmdline.yml &lt;tasks&gt;</code></p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The <code>--mixin</code> flag supports more than filepaths, and the 
+<a href="#-mixin-command-line-flags"><code>--mixin</code> flag</a> can be used multiple times 
+in the same command line to smoosh together multiple mixins.</p>
+</div>
+<p>The example command line above with the precending environment variable 
+will produce the following logging output if verbosity is set above NORMAL:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>🚧 Loaded project configuration from command line argument using base.yml
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a> + Merging project configuration mixin using ./enabled.yml
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a> + Merging CEEDLING_MIXIN_1 mixin using ./env.yml
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a> + Merging command line mixin using support/mixins/cmdline.yml
 </code></pre></div>
 <p><em>Notes:</em></p>
 <ul>
-<li>This report requires the <code>cppcheck-htmlreport</code> tool to be available.</li>
-<li>This report implies the <code>xml</code> report.</li>
+<li>The logging output above referencing <em>enabled.yml</em> comes from the 
+  <code>:mixins</code> section within the base project configuration file (<em>base.yml</em>)
+  provided below.</li>
+<li>The resulting configuration in this annotated example is missing settings 
+  required by Ceedling. If these examples were to be used in their stripped 
+  down form, they would cause a validation build error.</li>
 </ul>
-<h4 id="sarif">Sarif</h4>
-<p>Artifact file can be configured:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">:sarif_artifact_filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CppcheckResults.sarif</span>
+<h3 id="example-configuration-files">Example Configuration files</h3>
+<h4 id="baseyml-our-base-project-configuration-file"><em>base.yml</em> — Our base project configuration file</h4>
+<p>Our base project configuration file:</p>
+<ol>
+<li>Sets up a configuration file-based mixin. Ceedling will look for a mixin
+   named <em>enabled</em> in the specified load paths. In this simple configuration
+   that means Ceedling looks for and merges <em>support/mixins/enabled.yml</em>.</li>
+<li>Creates a <code>:project</code> section in our configuration.</li>
+<li>Creates a <code>:plugins</code> section in our configuration and enables the standard 
+   console test report output plugin.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:mixins</span><span class="p">:</span><span class="w">              </span><span class="c1"># `:mixins` section only recognized in base project configuration</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span><span class="w">           </span><span class="c1"># `:enabled` list supports names and filepaths</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enabled</span><span class="w">         </span><span class="c1"># Ceedling looks for name as enabled.yml in load paths and merges if found</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">:load_paths</span><span class="p">:</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support/mixins</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nt">:project</span><span class="p">:</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">:build_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">build/</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_pretty_stdout</span>
 </code></pre></div>
-<h4 id="text">Text</h4>
-<p>Artifact file and output format can be configured:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">:text_artifact_filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CppcheckResults.txt</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">:template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcc</span>
+<h4 id="supportmixinscmdlineyml-mixin-via-command-line-filepath-flag"><em>support/mixins/cmdline.yml</em> — Mixin via command line filepath flag</h4>
+<p>This mixin will merge a <code>:project</code> section with the existing <code>:project</code>
+section from the base project file per the deep merge rules above.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:project</span><span class="p">:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:use_test_preprocessor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:all</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">:test_file_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Test</span>
 </code></pre></div>
-<p><code>:template</code> can be any of the ones included with Cppcheck or custom format string.</p>
-<h4 id="xml">XML</h4>
-<p>Artifact file and XML version can be configured:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">:xml_artifact_filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CppcheckResults.xml</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">:xml_report_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<h4 id="envyml-mixin-via-environment-variable-filepath"><em>env.yml</em> — Mixin via environment variable filepath</h4>
+<p>This mixin will merge a <code>:plugins</code> section with the existing <code>:plugins</code>
+section from the base project file per the deep merge rules (noted 
+after the examples).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compile_commands_json_db</span>
 </code></pre></div>
-<h3 id="import-project-file">Import project file</h3>
-<p>You can import some project files and build configurations into Cppcheck.
-Some of compatible files are:</p>
+<h4 id="supportmixinsenabledyml-mixin-via-base-project-configuration-file-mixins-section"><em>support/mixins/enabled.yml</em> — Mixin via base project configuration file <code>:mixins</code> section</h4>
+<p>This mixin listed in the base configuration project file will merge
+<code>:project</code> and <code>:plugins</code> sections with those that already exist from
+the base configuration plus earlier mixin merges per the deep merge 
+rules (noted after the examples).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">:project</span><span class="p">:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">:use_test_preprocessor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:none</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcov</span>
+</code></pre></div>
+<h3 id="example-resulting-configuration">Example resulting configuration</h3>
+<p>Behold the project configuration following mixin merges:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">:project</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">:build_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">build/</span><span class="w">           </span><span class="c1"># From base.yml</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">:use_test_preprocessor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:all</span><span class="w">  </span><span class="c1"># Value in support/mixins/cmdline.yml overwrote value from support/mixins/enabled.yml (cmdline merged last)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">:test_file_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Test</span><span class="w">       </span><span class="c1"># Added to :project from support/mixins/cmdline.yml</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span><span class="w">                       </span><span class="c1"># :plugins ↳ :enabled from two mixins merged with original list in base.yml</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">compile_commands_json_db</span><span class="w">    </span><span class="c1"># From env.yml (prepended before base.yml entry — env.yml is higher priority)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcov</span><span class="w">                        </span><span class="c1"># From support/mixins/enabled.yml (prepended before base.yml entry)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_pretty_stdout</span><span class="w">  </span><span class="c1"># From base.yml</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Original <code>:mixins</code> section is removed from resulting config</p>
+</div>
+<h2 id="options-for-loading-mixins">Options for loading Mixins</h2>
+<p>You have three options for telling Ceedling what mixins to load. These
+options are ordered below according to their precedence. A Mixin higher
+in the list is merged <strong>later</strong> and therefore its content takes priority 
+over lower-listed options in two ways:</p>
 <ul>
-<li>Cppcheck GUI project (*.cppcheck)</li>
-<li>Compile Commands (compile_commands.json)</li>
-<li>Visual Studio projects (*.vcxproj, *.sln)</li>
+<li><strong>Single values</strong> (a path string, a number, true/false): The higher-priority
+  mixin’s value replaces any lower-priority mixin’s value for the same setting.</li>
+<li><strong>Lists</strong> (e.g. search paths, plugin names): The higher-priority mixin’s
+  entries appear <strong>before</strong> lower-priority entries in the combined list.
+  For example, if a command line mixin adds the search path <code>vendor/include</code>
+  and the project configuration mixin adds <code>src/include</code>, the merged include
+  path list will be <code>[vendor/include, src/include]</code> — the command line path
+  is searched first.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">:project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/to/compile_commands.json</span>
+<p>In addition, options higher in the list force duplicate mixin filepaths in
+lower-listed options to be ignored (i.e. deduplicated).</p>
+<p>Unlike project file loading that resolves to a single filepath
+to load your base configuration, multiple mixins can be specified using 
+any or all of these options.</p>
+<ol>
+<li>Command line option flags</li>
+<li>Environment variables</li>
+<li>Base project configuration file entries</li>
+</ol>
+<h3 id="-mixin-command-line-flags"><code>--mixin</code> command line flags</h3>
+<p>As already discussed above, many of Ceedling’s application commands 
+include an optional <code>--project</code> flag. Most of these same commands 
+also recognize optional <code>--mixin</code> flags.</p>
+<p>Note that <code>--mixin</code> can be used multiple times in a single command line 
+and the rightmost instance is merged last (i.e. highest priority).</p>
+<p>When provided, Ceedling merges the specified mixin into the base 
+project configuration. A <code>--mixin</code> value accepts three forms 
+distinguished by an optional sigil prefix:</p>
+<div class="admonition note">
+<p class="admonition-title">Sigil definition</p>
+<p>A sigil is a non-alphabetic symbol (e.g. <code>$</code>, <code>@</code>, or <code>%</code>) that 
+serves as a visual prefix or suffix that instantly tells an 
+interpreter and the developer data type, scope, or structure.</p>
+</div>
+<h4 id="file-or-named-mixin-no-sigil-or-sigil">File or named mixin (no sigil or <code>@</code> sigil)</h4>
+<p>The value is treated as a file path or named mixin lookup. Two 
+equivalent syntaxes are accepted:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>--mixin<span class="w"> </span>my_compiler<span class="w">         </span><span class="c1"># simple name lookup (no sigil)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>--mixin<span class="w"> </span>bar/mixin.yaml<span class="w">      </span><span class="c1"># filepath (no sigil)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>--mixin<span class="w"> </span>@bar/mixin.yaml<span class="w">     </span><span class="c1"># filepath (explicit @ sigil — same result)</span>
 </code></pre></div>
-<p><em>Note: If configured, Cppcheck won't look for sources and includes paths from</em>
-<em><em>Ceedling</em> configuration files.</em></p>
-<h3 id="preprocessor-defines">Preprocessor defines</h3>
-<h4 id="define">Define</h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">:defines</span><span class="p">:</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">B</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">C=1</span>
-</code></pre></div>
-<h4 id="undefine">Undefine</h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">:undefines</span><span class="p">:</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">B</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">C</span>
-</code></pre></div>
-<p><em>Note: By default <code>TEST</code> is undefined so the analysis is performed against production code.</em></p>
-<h3 id="includes">Includes</h3>
-<p>Force inclusion of files before checked files.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">:includes</span><span class="p">:</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file1.h</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file2.h</span>
-</code></pre></div>
-<h3 id="excludes">Excludes</h3>
-<p>Exclude files from the analysis.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">:excludes</span><span class="p">:</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file1.c</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file2.c</span>
-</code></pre></div>
-<h3 id="platform">Platform</h3>
-<p>Specify platform to use for the analysis, can be any of the ones included with
-Cppcheck, e.g.: unix64, or the path of the platform XML file.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span><span class="nt">:platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unix64</span>
-</code></pre></div>
-<h3 id="standard">Standard</h3>
-<p>Specify C/C++ language standard.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span><span class="nt">:standard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c99</span>
-</code></pre></div>
-<h3 id="check-level">Check level</h3>
-<p>Specify the check level to be used.</p>
 <ul>
-<li><em>normal</em></li>
-<li><em>exhaustive</em></li>
+<li>A <strong>simple name</strong> (no extension, no path separator) is looked up 
+  among Ceedling’s mixin load paths.</li>
+<li>A <strong>filename or filepath</strong> (with extension or path separator) loads 
+  the specified YAML file directly.</li>
+<li>The <code>@</code> sigil is optional and makes the file/name intent explicit; 
+  it is otherwise identical to providing the value without a sigil.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span><span class="nt">:check_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exhaustive</span>
+<h4 id="inline-yaml-sigil">Inline YAML (<code>=</code> sigil)</h4>
+<p>The value is treated as a YAML string merged directly into 
+configuration — no file needed.</p>
+<div class="admonition note">
+<p class="admonition-title">Flow-style versus block YAML</p>
+<p>Ceedling can parse both flow-style and block YAML in the 
+configuration files it loads. The inline YAML command line 
+option must use <a href="https://www.educative.io/answers/what-is-flow-style-in-yaml">flow-style</a>.
+Block-style YAML supports a leading optional colon for key names,
+and Ceedling uses this internally. Flow-style does not support
+this YAML notation style. So, <code>:foo: 'bar'</code> is illegal in 
+inline YAML; <code>foo: 'bar'</code> must be used instead.</p>
+</div>
+<p>Prefix the value with <code>=</code> and quote the argument to protect 
+YAML special characters (colons, brackets, spaces) from shell 
+interpretation:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>--mixin<span class="w"> </span><span class="s2">&quot;=defines: {release: [&#39;MY_SYMBOL&#39;]}&quot;</span>
 </code></pre></div>
-<h3 id="addons">Addons</h3>
-<p>Addons to be run.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="nt">:addons</span><span class="p">:</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">misra</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/to/addon.py</span>
+<p>The YAML content must evaluate to a Hash at the top level (matching 
+the structure of a project configuration file). Arrays, scalars, and 
+empty strings are rejected with an error.</p>
+<h4 id="combining-forms">Combining forms</h4>
+<p>All three forms can be mixed freely in a single command line and are 
+processed in the order they appear, left-to-right:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ceedling<span class="w"> </span>release<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--mixin<span class="w"> </span>@mixins/base_compiler.yml<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--mixin<span class="w"> </span><span class="s2">&quot;=:defines: {release: [CIPHER_ROT13]}&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--mixin<span class="w"> </span>ci_overrides
 </code></pre></div>
-<h4 id="misra-with-rule-texts-file">MISRA with rule texts file</h4>
-<p>Locate your rules text file or copy it to your project.
-e.g.: <code>&lt;your-project&gt;/misra.txt</code> and create the addon file <code>misra.json</code> inside
-your project:</p>
-<h5 id="misrajson"><strong><code>misra.json</code></strong></h5>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="p">{</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">    </span><span class="nt">&quot;script&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;misra&quot;</span><span class="p">,</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--rule-texts=misra.txt&quot;</span><span class="p">]</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="p">}</span>
+<p>In this example: <code>mixins/base_compiler.yml</code> is merged first as a
+loaded file, then the inline YAML, and finally a <code>ci_overrides</code> file 
+found among mixin paths specified in the base configuration file
+(not shown).</p>
+<p>Later entries (on the right side of a command line) win on conflicts,
+so the content of <code>ci_overrides.yml</code> has the highest priority.</p>
+<h4 id="error-behavior">Error behavior</h4>
+<p>Simple mixin names require mixin load paths to search. A default 
+mixin load path always points to within Ceedling itself (for 
+built-in mixins). User-specified load paths must be added through 
+the <code>:mixins</code> section of the base project file. See the
+<a href="#base-configuration-mixins-entries">documentation for the <code>:mixins</code> section of your project 
+configuration</a> for more details.</p>
+<p>Filepaths may be relative (to the working directory) or absolute.</p>
+<p>If the <code>--mixin</code> filename or filepath does not exist, Ceedling 
+terminates with an error. If Ceedling cannot find a mixin name in 
+any load paths, it terminates with an error. If an inline YAML 
+string cannot be parsed or does not evaluate to a Hash, Ceedling 
+terminates with an error.</p>
+<h3 id="environment-variables">Environment variables</h3>
+<p>Mixins can also be loaded through environment variables. Ceedling
+recognizes environment variables with a naming scheme of 
+<code>CEEDLING_MIXIN_#</code>, where <code>#</code> is any number greater than 0.</p>
+<p>Precedence among the environment variables follows a simple ascending
+sort of the trailing numeric value in the environment variable name.
+Lower-numbered variables are merged first (lower priority); higher-numbered
+variables are merged last (higher priority). For example,
+<code>CEEDLING_MIXIN_5</code> is merged before <code>CEEDLING_MIXIN_99</code>, so
+<code>CEEDLING_MIXIN_99</code> takes priority.</p>
+<p>Mixin environment variables only hold filepaths. Filepaths may be 
+relative (in relation to the working directory) or absolute.</p>
+<p>If the filepath specified by an environment variable does not exist,
+Ceedling terminates with an error.</p>
+<h3 id="base-configuration-mixins-entries">Base configuration <code>:mixins</code> entries</h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Ceedling only recognizes a <code>:mixins</code> section in your base project
+configuration file. A <code>:mixins</code> section nested in a mixin is ignored.</p>
+</div>
+<p>The <code>:mixins</code> section of a base project configuration file is filtered
+out of the resulting merged configuration and will be absent in 
+<code>ceedling dumpconfig</code> output.</p>
+<p>The <code>:mixins</code> configuration section can contain up to two subsections.
+Each subsection is optional.</p>
+<ul>
+<li>
+<p><code>:enabled</code></p>
+<p>An optional array comprising (A) mixin filenames/filepaths and/or 
+(B) simple mixin names.</p>
+<ol>
+<li>A filename contains a file extension. A filepath includes a 
+   directory path. The file content is YAML.</li>
+<li>A simple name (no file extension and no path) is used
+   as a file lookup among any configured load paths (see next
+   section) and as a lookup name among Ceedling’s built-in mixins
+   (currently none).</li>
+</ol>
+<p>Enabled entries support <a href="../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>.</p>
+<p><strong>Default</strong>: <code>[]</code></p>
+</li>
+<li>
+<p><code>:load_paths</code></p>
+<p>Paths containing mixin files to be searched via mixin names. A mixin
+filename in a load path has the form <em><name>.yml</em> by default. If
+an alternate filename extension has been specified in your project
+configuration (<code>:extension</code> ↳ <code>:yaml</code>) it will be used for file
+lookups in the mixin load paths instead of <em>.yml</em>.</p>
+<p>Searches start in the path at the top of the list.</p>
+<p>Both mixin names in the <code>:enabled</code> list (above) and on the command
+line via <code>--mixin</code> flag use this list of load paths for searches.</p>
+<p>Load paths entries support <a href="../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>.</p>
+<p><strong>Default</strong>: <code>[]</code></p>
+</li>
+</ul>
+<p>Example <code>:mixins</code> YAML blurb:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">:mixins</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foo</span><span class="w">            </span><span class="c1"># Search for foo.yml in proj/mixins &amp; support/ and &#39;foo&#39; among built-in mixins</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/bar.yaml</span><span class="w">  </span><span class="c1"># Merge this file with base project conig</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="nt">:load_paths</span><span class="p">:</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">proj/mixins</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">support</span>
 </code></pre></div>
-<p>Enable the addon:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span><span class="nt">:addons</span><span class="p">:</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">misra.json</span>
-</code></pre></div>
-<h3 id="checks">Checks</h3>
-<p>Enable additional checks.
-Default is <em>style</em>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span><span class="nt">:enable_checks</span><span class="p">:</span>
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">performance</span>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">portability</span>
-</code></pre></div>
-<p><em>Note: These are only used for single file analysis.</em>
-<em>Whole project analysis always enable all checks.</em></p>
-<p>Disable individual checks:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span><span class="nt">:disable_checks</span><span class="p">:</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">style</span>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">information</span>
-</code></pre></div>
-<h3 id="suppressions">Suppressions</h3>
-<h4 id="inline">Inline</h4>
-<p>Inline suppressions are disabled by default, they can be enabled with:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="nt">:inline_suppressions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
-<h4 id="list-files">List files</h4>
-<p>Suppressions files can be used by giving the search paths and/or files in the
-<code>:paths</code> and <code>:files</code> sections of  your <code>project.yml</code> respectively.
-e.g.:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nt">:paths</span><span class="p">:</span>
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">suppressions/</span>
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">source/*/suppressions/</span>
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>
-<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="nt">:files</span><span class="p">:</span>
-<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="w">  </span><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">suppressions.xml</span>
-</code></pre></div>
-<p>Both XML and text files are supported, and for the latter, the file extension
-can be configured. The default is <code>.txt</code>.
-e.g.:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nt">:extension</span><span class="p">:</span>
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span><span class="nt">:cppcheck</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.txt</span>
-</code></pre></div>
-<p>The files that will ultimately be used can be verified with:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>files:cppcheck
-</code></pre></div>
-<h4 id="command-line">Command line</h4>
-<p>Command line suppressions can also be added:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span><span class="nt">:suppressions</span><span class="p">:</span>
-<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">memleak:src/file1.cpp</span>
-<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exceptNew:src/file1.cpp</span>
-</code></pre></div>
-<h3 id="library-configuration">Library configuration</h3>
-<p>Add library configuration files:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="w">  </span><span class="nt">:libraries</span><span class="p">:</span>
-<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lib1.cfg</span>
-<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lib2.cfg</span>
-</code></pre></div>
-<h3 id="rules">Rules</h3>
-<p>Regular expression rules:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="w">  </span><span class="nt">:rules</span><span class="p">:</span>
-<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">if \( p \) { free \( p \) ; }</span>
-</code></pre></div>
-<h3 id="extra-options">Extra options</h3>
-<p>For things not covered above, add extra command line options:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="w">  </span><span class="nt">:options</span><span class="p">:</span>
-<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--max-configs=&lt;limit&gt;</span>
-<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--suppressions-list=&lt;file&gt;</span>
-</code></pre></div>
-<h2 id="usage">Usage</h2>
-<h3 id="analyze-whole-project">Analyze whole project</h3>
-<p>Run analysis for all project sources:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>cppcheck:all
-</code></pre></div>
-<p><em>Note: Analysis is run with</em> all <em>checks enabled.</em></p>
-<h3 id="analyze-single-file">Analyze single file</h3>
-<p>Run analysis for single source file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>cppcheck:&lt;filename&gt;
-</code></pre></div>
-<p><em>Note: Analysis will run with the checks in <a href="#checks"><code>:enable_checks</code></a> list enabled.</em></p>
+<p>Relating the above example to command line <code>--mixin</code> flag handling:</p>
+<ul>
+<li>A command line flag of <code>--mixin=foo</code> is equivalent to the <code>foo</code> 
+  entry in the <code>:enabled</code> mixin configuration.</li>
+<li>A command line flag of <code>--mixin=path/bar.yaml</code> is equivalent to the 
+  <code>path/bar.yaml</code> entry in the <code>:enabled</code> mixin configuration.</li>
+<li>Note that while command line <code>--mixin</code> flags work identically to
+  entries in <code>:mixins</code> ↳ <code>:enabled</code>, they are merged <strong>last</strong> and therefore
+  have the highest priority. The <code>:enabled</code> list is merged <strong>first</strong> (because
+  it resides in the base configuration and has the lowest priority).</li>
+</ul>
+<p><br/><br/></p>
 
 
 
