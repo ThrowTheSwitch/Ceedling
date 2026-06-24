@@ -269,15 +269,15 @@ ceedling_system_tests do
           File.write('mixin/mixin_cli.yml', SCALAR_MIXIN_HIGH)
           @c.merge_project_yml_for_test({mixins: {enabled: ['mixin_cfg']}})
 
+          dump_file = 'dump_cmdline_over_config.yml'
           @c.ceedling_appcmd_exec(
-            "dumpconfig --mixin=#{convert_slashes('mixin/mixin_cli.yml')} --no-app dump.yml"
+            "dumpconfig --mixin=#{convert_slashes('mixin/mixin_cli.yml')} --no-app #{dump_file}"
           )
-          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
         end
       end
       # SCALAR_MIXIN_HIGH sets build_root: build_high; cmdline wins over config
-      expect(@dump_content).to match(/build_high/)
-      expect(@dump_content).not_to match(/build_low/)
+      expect(@dump_config.dig(:project, :build_root)).to eq('build_high')
     end
 
     it 'env var mixin overrides config mixin scalar value' do
@@ -288,13 +288,13 @@ ceedling_system_tests do
           @c.merge_project_yml_for_test({mixins: {enabled: ['mixin_cfg']}})
           ENV['CEEDLING_MIXIN_1'] = convert_slashes('mixin/mixin_env.yml')
 
-          @c.ceedling_appcmd_exec('dumpconfig --no-app dump.yml')
-          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+          dump_file = 'dump_env_over_config.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file}")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
         end
       end
       # SCALAR_MIXIN_HIGH sets build_root: build_high; env var wins over config
-      expect(@dump_content).to match(/build_high/)
-      expect(@dump_content).not_to match(/build_low/)
+      expect(@dump_config.dig(:project, :build_root)).to eq('build_high')
     end
   end
 
@@ -318,17 +318,18 @@ ceedling_system_tests do
       expect(@output).to match(/Merging command line inline YAML mixin/i)
     end
 
-    it 'merges inline YAML value into configuration (visible in dumpconfig)' do
+    it 'merges inline YAML value into configuration' do
       @c.with_context do
         Dir.chdir @proj_name do
+          dump_file = 'dump_inline_yaml_merge.yml'
           @c.ceedling_appcmd_exec(
-            'dumpconfig --no-app dump.yml --mixin "=project: {build_root: inline_build_test}"'
+            "dumpconfig --no-app #{dump_file} --mixin \"=project: {build_root: inline_build_test}\""
           )
-          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
         end
       end
       # The inline YAML must appear in the dumped merged configuration
-      expect(@dump_content).to match(/inline_build_test/)
+      expect(@dump_config.dig(:project, :build_root)).to eq('inline_build_test')
     end
 
     it 'inline YAML wins scalar conflict when it follows a file mixin (left-to-right order)' do
@@ -336,17 +337,17 @@ ceedling_system_tests do
         Dir.chdir @proj_name do
           File.write('mixin/mixin_low.yml', SCALAR_MIXIN_LOW)
 
+          dump_file = 'dump_inline_wins.yml'
           @c.ceedling_appcmd_exec(
-            "dumpconfig --no-app dump.yml" \
+            "dumpconfig --no-app #{dump_file}" \
             " --mixin #{convert_slashes('mixin/mixin_low.yml')}" \
             ' --mixin "=project: {build_root: build_high}"'
           )
-          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
         end
       end
       # Inline YAML comes second, so it wins the scalar conflict
-      expect(@dump_content).to match(/build_high/)
-      expect(@dump_content).not_to match(/build_low/)
+      expect(@dump_config.dig(:project, :build_root)).to eq('build_high')
     end
 
     it 'file mixin wins scalar conflict when it follows inline YAML (left-to-right order)' do
@@ -354,17 +355,17 @@ ceedling_system_tests do
         Dir.chdir @proj_name do
           File.write('mixin/mixin_high.yml', SCALAR_MIXIN_HIGH)
 
+          dump_file = 'dump_file_wins.yml'
           @c.ceedling_appcmd_exec(
-            "dumpconfig --no-app dump.yml" \
+            "dumpconfig --no-app #{dump_file}" \
             ' --mixin "=project: {build_root: build_low}"' \
             " --mixin #{convert_slashes('mixin/mixin_high.yml')}"
           )
-          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
         end
       end
       # File mixin comes second, so it wins the scalar conflict
-      expect(@dump_content).to match(/build_high/)
-      expect(@dump_content).not_to match(/build_low/)
+      expect(@dump_config.dig(:project, :build_root)).to eq('build_high')
     end
 
     it 'three-way positional order: file-low, inline-mid, file-high → file-high wins' do
@@ -373,19 +374,18 @@ ceedling_system_tests do
           File.write('mixin/mixin_low.yml',  SCALAR_MIXIN_LOW)
           File.write('mixin/mixin_high.yml', SCALAR_MIXIN_HIGH)
 
+          dump_file = 'dump_three_way.yml'
           @c.ceedling_appcmd_exec(
-            "dumpconfig --no-app dump.yml" \
+            "dumpconfig --no-app #{dump_file}" \
             " --mixin #{convert_slashes('mixin/mixin_low.yml')}" \
             ' --mixin "=project: {build_root: build_mid}"' \
             " --mixin #{convert_slashes('mixin/mixin_high.yml')}"
           )
-          @dump_content = File.exist?('dump.yml') ? File.read('dump.yml') : ''
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
         end
       end
       # Rightmost --mixin wins; file-high is last → build_high
-      expect(@dump_content).to match(/build_high/)
-      expect(@dump_content).not_to match(/build_low/)
-      expect(@dump_content).not_to match(/build_mid/)
+      expect(@dump_config.dig(:project, :build_root)).to eq('build_high')
     end
 
     it 'exits with error for non-Hash inline YAML (array value)' do
