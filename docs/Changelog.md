@@ -19,7 +19,7 @@ This changelog is complemented by two other documents:
 
 With Partials, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see #936). Partials also allow testing of `static` and `inline` functions with no modification of your source code under test.
 
-💲 Partials was made possible thanks to a generous corporate sponsor via a [Ceedling Assist](https://www.thingamabyte.com/ceedling) engagement.
+💲 The Partials feature made possible thanks to a generous corporate sponsor via a [Ceedling Assist](https://www.thingamabyte.com/ceedling) engagement.
 
 ### Two more example projects
 
@@ -104,6 +104,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
    - `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
    - #1115 Fixed Gcov plugin for Gcovr configuration file handling.
    - #1161 Fixed “Found no coverage results” when system headers are processed by coverage.
+- #1144 Fixed flags for release build linking.
 
 ## ⚠️ Changed
 
