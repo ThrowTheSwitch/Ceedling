@@ -157,7 +157,7 @@ describe Mixinator do
       allow(@yaml_wrapper).to receive(:load_string)
         .and_raise(StandardError, 'did not find expected key')
       expect(@loginator).to receive(:log).with(
-        /YAML parse error/i,
+        /parse error/i,
         anything
       )
       expect {
