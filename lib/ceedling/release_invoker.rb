@@ -26,10 +26,18 @@ class ReleaseInvoker
   end
 
   def convert_libraries_to_arguments(libraries)
-    args = ((libraries || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
+    args =
+      (libraries || []) + 
+      ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : []) +
+      ((defined? LIBRARIES_RELEASE) ? LIBRARIES_RELEASE : [])
+
+    args.flatten!
+    args.compact!
+
     if (defined? LIBRARIES_FLAG)
       args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) }
     end
+
     return args
   end
 

@@ -25,9 +25,8 @@ task RELEASE_SYM => [:prepare] do
 
     core_objects.concat( @ceedling[:release_invoker].setup_and_invoke_objects( COLLECTION_RELEASE_BUILD_INPUT ) )
   
-    # If we're using libraries, we need to add those to our collection as well
-    library_objects = (defined? LIBRARIES_RELEASE && !LIBRARIES_RELEASE.empty?) ? LIBRARIES_RELEASE.flatten.compact : []
-    file( PROJECT_RELEASE_BUILD_TARGET => (core_objects + extra_objects + library_objects) )
+    file( PROJECT_RELEASE_BUILD_TARGET => (core_objects + extra_objects) )
+
     Rake::Task[PROJECT_RELEASE_BUILD_TARGET].invoke()
 
   rescue StandardError => ex
