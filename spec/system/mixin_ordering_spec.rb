@@ -273,7 +273,7 @@ ceedling_system_tests do
           @c.ceedling_appcmd_exec(
             "dumpconfig --mixin=#{convert_slashes('mixin/mixin_cli.yml')} --no-app #{dump_file}"
           )
-          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
         end
       end
       # SCALAR_MIXIN_HIGH sets build_root: build_high; cmdline wins over config
@@ -290,7 +290,7 @@ ceedling_system_tests do
 
           dump_file = 'dump_env_over_config.yml'
           @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file}")
-          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
         end
       end
       # SCALAR_MIXIN_HIGH sets build_root: build_high; env var wins over config
@@ -325,7 +325,7 @@ ceedling_system_tests do
           @c.ceedling_appcmd_exec(
             "dumpconfig --no-app #{dump_file} --mixin \"=project: {build_root: inline_build_test}\""
           )
-          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
         end
       end
       # The inline YAML must appear in the dumped merged configuration
@@ -343,7 +343,7 @@ ceedling_system_tests do
             " --mixin #{convert_slashes('mixin/mixin_low.yml')}" \
             ' --mixin "=project: {build_root: build_high}"'
           )
-          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
         end
       end
       # Inline YAML comes second, so it wins the scalar conflict
@@ -361,7 +361,7 @@ ceedling_system_tests do
             ' --mixin "=project: {build_root: build_low}"' \
             " --mixin #{convert_slashes('mixin/mixin_high.yml')}"
           )
-          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
         end
       end
       # File mixin comes second, so it wins the scalar conflict
@@ -381,7 +381,7 @@ ceedling_system_tests do
             ' --mixin "=project: {build_root: build_mid}"' \
             " --mixin #{convert_slashes('mixin/mixin_high.yml')}"
           )
-          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file), permitted_classes: [Symbol]) : {}
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
         end
       end
       # Rightmost --mixin wins; file-high is last → build_high
