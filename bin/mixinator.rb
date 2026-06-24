@@ -55,7 +55,7 @@ class Mixinator
         end
       rescue => e
         # YAML parse failure: surface the parser message so the user can fix their string
-        @loginator.log( "#{label} YAML parse error: #{e.message}", Verbosity::ERRORS )
+        @loginator.log( "#{label} parse error ⏩️ #{e.message}", Verbosity::ERRORS )
         validated = false
       end
     end
