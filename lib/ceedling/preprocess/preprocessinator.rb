@@ -326,11 +326,15 @@ class Preprocessinator
         @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
       end
 
+    # In fallback mode, #define macros are stripped from contents (all '#' lines skipped).
+    # Re-extract them so the CExtractor can see them when parsing the reconstituted file.
+    extras = fallback ? @file_assembler.collect_macros_and_pragmas_fallback( source_filepath: filepath, defines: defines ) : []
+
     arg_hash = {
       filename:              File.basename( filepath ),
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
-      extras:                [],
+      extras:                extras,
       includes:              includes
     }
 
@@ -383,11 +387,15 @@ class Preprocessinator
         @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
       end
 
+    # In fallback mode, #define macros are stripped from contents (all '#' lines skipped).
+    # Re-extract them so the CExtractor can see them when parsing the reconstituted file.
+    extras = fallback ? @file_assembler.collect_macros_and_pragmas_fallback( source_filepath: filepath, defines: defines ) : []
+
     arg_hash = {
       filename:              File.basename( filepath ),
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
-      extras:                [],
+      extras:                extras,
       includes:              includes
     }
 

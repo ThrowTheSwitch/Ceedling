@@ -43,7 +43,9 @@ ceedling_system_tests do
             @c.merge_project_yml_for_test({ :project => { :use_test_preprocessor => :mocks } })
             output = @c.ceedling_build_exec("test:unicoder")
             expect(@c.last_exit_status).to eq(0)
-            expect(output).not_to match(/using fallback method/i)
+            # Only assert non-fallback when the platform actually supports -fdirectives-only.
+            # Apple clang (macOS) silently ignores the flag and ceedling falls back automatically.
+            expect(output).not_to match(/using fallback method/i) unless output.match(/lacks -fdirectives-only support/i)
             expect(output).to match(/TESTED:\s+1/)
             expect(output).to match(/PASSED:\s+1/)
             expect(output).to match(/FAILED:\s+0/)
@@ -79,7 +81,9 @@ ceedling_system_tests do
             @c.merge_project_yml_for_test({ :project => { :use_partials => true } })
             output = @c.ceedling_build_exec("test:unicoder_partial")
             expect(@c.last_exit_status).to eq(0)
-            expect(output).not_to match(/using fallback method/i)
+            # Only assert non-fallback when the platform actually supports -fdirectives-only.
+            # Apple clang (macOS) silently ignores the flag and ceedling falls back automatically.
+            expect(output).not_to match(/using fallback method/i) unless output.match(/lacks -fdirectives-only support/i)
             expect(output).to match(/TESTED:\s+1/)
             expect(output).to match(/PASSED:\s+1/)
             expect(output).to match(/FAILED:\s+0/)
