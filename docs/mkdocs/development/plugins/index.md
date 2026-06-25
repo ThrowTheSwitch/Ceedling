@@ -55,8 +55,8 @@ Conventions & requirements:
 
 * Plugin configuration names, the containing directory names, and filenames 
   must:
-   * All match (i.e. identical names)
-   * Be snake_case (lowercase with connecting underscores).
+    * All match (i.e. identical names)
+    * Be snake_case (lowercase with connecting underscores).
 * Plugins must be organized in a containing directory (the name of the plugin
   as used in the project configuration `:plugins` ↳ `:enabled` list is its 
   containing directory name).

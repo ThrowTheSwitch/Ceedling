@@ -139,8 +139,8 @@ mock function substitution or limiting the size of the generated mocks.
 See these two important discussions to fully understand your options for header
 file search paths:
 
- * [Configuring Your Header File Search Paths][header-file-search-paths]
- * [`TEST_INCLUDE_PATH(...)` build directive macro][test-include-path-macro]
+* [Configuring Your Header File Search Paths][header-file-search-paths]
+* [`TEST_INCLUDE_PATH(...)` build directive macro][test-include-path-macro]
 
 [header-file-search-paths]: ../../testing-guide/conventions.md#search-paths-for-test-builds
 [test-include-path-macro]: ../../testing-guide/build-directives.md#test_include_path

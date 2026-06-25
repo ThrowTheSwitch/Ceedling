@@ -26,8 +26,8 @@ a final test executable.
 * A generated test runner C code file (`test_foo_runner.c`). `main()` is located
   in the runner.
 * If using mocks:
-   * `cmock.c`
-   * One more mock C code files generated from source header files (`mock_bar.c`)
+    * `cmock.c`
+    * One more mock C code files generated from source header files (`mock_bar.c`)
 
 ## Why multiple individual test executables in a suite?
 

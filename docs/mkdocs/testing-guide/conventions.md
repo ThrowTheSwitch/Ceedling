@@ -76,11 +76,11 @@ _**Notes:**_
 * The order of your `:paths` entries directly translates to the ordering
   of search paths.
 * The logic of the ordering above is essentially that:
-   * Everything above (5) should have precedence to allow test-specific 
+    * Everything above (5) should have precedence to allow test-specific 
      symbols, function signatures, etc. to be found before that of your 
      source code under test. This is the necessary pattern for effective 
      testing and test builds.
-   * Everything below (5) is supporting symbols and function signatures
+    * Everything below (5) is supporting symbols and function signatures
      for your source code. Your source code should be processed before
      these for effective builds generally.
 * (3) is a balancing act. It is entirely possible that test developers
@@ -414,10 +414,10 @@ Generally, Ceedling preprocessing is needed when:
 
   Possible solutions to this problem include:
 
-   1. Move symbols and macros in your header file that do not impact function 
+    1. Move symbols and macros in your header file that do not impact function 
       signatures to another source header file that will not be filtered
       by Ceedling's header file preprocessing.
-   1. If (1) is not possible, you may duplicate the needed symbols and macros
+    1. If (1) is not possible, you may duplicate the needed symbols and macros
       in a header file that is only available in your test build search paths
       and include it in your test file.
 
@@ -584,9 +584,9 @@ all test case statistics.
 In its default configuration, Ceedling terminates with an exit code 
 of `1`:
 
- * On any build error and immediately terminates upon that build 
+* On any build error and immediately terminates upon that build 
    error.
- * On any test case failure but runs the build to completion and
+* On any test case failure but runs the build to completion and
    shuts down normally.
 
 This behavior can be especially handy in Continuous Integration 

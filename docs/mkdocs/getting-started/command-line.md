@@ -223,13 +223,13 @@ command (but the `build` keyword can be omitted — see above).
     Execute individual test cases which match `test_case_name`.
 
     For instance, if you have a test file _test_gpio.c_ containing the following 
-    test cases (test cases are simply `void test_name(void)`:
+    test cases (test cases are simply `void test_name(void)`):
 
-      - `test_gpio_start`
-      - `test_gpio_configure_proper`
-      - `test_gpio_configure_fail_pin_not_allowed`
+    - `test_gpio_start`
+    - `test_gpio_configure_proper`
+    - `test_gpio_configure_fail_pin_not_allowed`
 
-    … and you want to run only _configure_ tests, you can call:
+    … and you want to run only `configure` tests, you can call:
 
       `ceedling test:gpio --test-case=configure`
 
@@ -244,13 +244,13 @@ command (but the `build` keyword can be omitted — see above).
 * `ceedling test:* --exclude_test_case=<test_case_name> `
     Execute test cases which do not match `test_case_name`.
 
-    For instance, if you have file test_gpio.c with defined 3 tests:
+    For instance, if you have file _test_gpio.c_ with 3 tests:
 
-      - `test_gpio_start`
-      - `test_gpio_configure_proper`
-      - `test_gpio_configure_fail_pin_not_allowed`
+    - `test_gpio_start`
+    - `test_gpio_configure_proper`
+    - `test_gpio_configure_fail_pin_not_allowed`
 
-    … and you want to run only start tests, you can call:
+    … and you want to run only `start` tests, you can call:
 
       `ceedling test:gpio --exclude_test_case=configure`
 

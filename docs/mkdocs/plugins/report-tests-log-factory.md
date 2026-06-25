@@ -334,10 +334,10 @@ To create a custom report, here's what you gotta do:
 1. The Ruby code itself must subclass an existing plugin class, `TestsReporter`.
 1. Your new subclass must be named `<CustomReport>TestsReporter` where `<CustomReport>` is the camelcase version of your report name from (1).
 1. Fill out up to four methods in your custom `TestsReporter` subclass:
-   * `setup()`
-   * `header()` (optional)
-   * `body()`
-   * `footer()` (optional)
+    * `setup()`
+    * `header()` (optional)
+    * `body()`
+    * `footer()` (optional)
 
 Overriding the default filename of your custom report happens just as it does for the built-in reports. In fact, apart from the custom load path, the built-in reports documented above use the same mechanisms as a custom report. These Ruby files can and should be used as references.
 

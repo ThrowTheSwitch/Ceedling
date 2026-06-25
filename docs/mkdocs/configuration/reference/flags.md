@@ -196,6 +196,7 @@ These matchers are available:
 1. Regex (`/.../`) — Matches test file names against a regular expression.
 
 Notes:
+
 * Substring filename matching is case sensitive.
 * Wildcard matching is effectively a simplified form of regex. That is, 
   multiple approaches to matching can match the same filename.

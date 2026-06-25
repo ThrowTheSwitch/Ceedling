@@ -114,12 +114,12 @@ command line for `:tools` ↳ `:power_drill` would look like this:
 
 Compiler for test & source-under-test code
 
- - `${1}`: Input source
- - `${2}`: Output object
- - `${3}`: Optional output list
- - `${4}`: Optional output dependencies file
- - `${5}`: Header file search paths
- - `${6}`: Command line #defines
+- `${1}`: Input source
+- `${2}`: Output object
+- `${3}`: Optional output list
+- `${4}`: Optional output dependencies file
+- `${5}`: Header file search paths
+- `${6}`: Command line #defines
 
 **Default**: `gcc`
 
@@ -127,10 +127,10 @@ Compiler for test & source-under-test code
 
 Assembler for test assembly code
 
- - `${1}`: input assembly source file
- - `${2}`: output object file
- - `${3}`: search paths
- - `${4}`: #define symbols (accepted but ignored by GNU assembler)
+- `${1}`: input assembly source file
+- `${2}`: output object file
+- `${3}`: search paths
+- `${4}`: #define symbols (accepted but ignored by GNU assembler)
 
 **Default**: `as`
 
@@ -138,11 +138,11 @@ Assembler for test assembly code
 
 Linker to generate test fixture executables
 
- - `${1}`: input objects
- - `${2}`: output binary
- - `${3}`: optional output map
- - `${4}`: optional library list
- - `${5}`: optional library path list
+- `${1}`: input objects
+- `${2}`: output binary
+- `${3}`: optional output map
+- `${4}`: optional library list
+- `${5}`: optional library path list
 
 **Default**: `gcc`
 
@@ -150,7 +150,7 @@ Linker to generate test fixture executables
 
 Executable test fixture
 
- - `${1}`: simulator as executable with `${1}` as input binary file argument or native test executable
+- `${1}`: simulator as executable with `${1}` as input binary file argument or native test executable
 
 **Default**: `${1}`
 
@@ -158,10 +158,10 @@ Executable test fixture
 
 Compiler for release source code
 
- - `${1}`: input source
- - `${2}`: output object
- - `${3}`: optional output list
- - `${4}`: optional output dependencies file
+- `${1}`: input source
+- `${2}`: output object
+- `${3}`: optional output list
+- `${4}`: optional output dependencies file
 
 **Default**: `gcc`
 
@@ -169,10 +169,10 @@ Compiler for release source code
 
 Assembler for release assembly code
 
- - `${1}`: input assembly source file
- - `${2}`: output object file
- - `${3}`: search paths
- - `${4}`: #define symbols (accepted but ignored by GNU assembler)
+- `${1}`: input assembly source file
+- `${2}`: output object file
+- `${3}`: search paths
+- `${4}`: #define symbols (accepted but ignored by GNU assembler)
 
 **Default**: `as`
 
@@ -180,11 +180,11 @@ Assembler for release assembly code
 
 Linker for release source code
 
- - `${1}`: input objects
- - `${2}`: output binary
- - `${3}`: optional output map
- - `${4}`: optional library list
- - `${5}`: optional library path list
+- `${1}`: input objects
+- `${2}`: output binary
+- `${3}`: optional output map
+- `${4}`: optional library list
+- `${5}`: optional library path list
 
 **Default**: `gcc`
 
@@ -263,13 +263,13 @@ way needed. To use a literal `$`, escape it as `\\$`.
   substitution values. Each numbered substitution corresponds to a position in
   a parameter list.
 
-   * In the case of a compiler `${1}` will be a C code file path, and `${2}`
+    * In the case of a compiler `${1}` will be a C code file path, and `${2}`
      will be the file path of the resulting object file.
 
-   * For a linker `${1}` will be an array of object files to link, and `${2}`
+    * For a linker `${1}` will be an array of object files to link, and `${2}`
      will be the resulting binary executable.
 
-   * For an executable test fixture `${1}` is either the binary executable
+    * For an executable test fixture `${1}` is either the binary executable
      itself (when using a local toolchain such as GCC) or a binary input file
      given to a simulator in its arguments.
 

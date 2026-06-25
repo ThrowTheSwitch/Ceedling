@@ -25,8 +25,8 @@ images and go.
 
 1. Use Ruby's command line gem package manager to install Ceedling from
    the [RubyGems repository][rubygems-repo]: `gem install ceedling`.
-   * Unity and CMock come along with Ceedling at no extra charge.
-   * Installing from the RubyGems repo will also install Ceedling's 
+    * Unity and CMock come along with Ceedling at no extra charge.
+    * Installing from the RubyGems repo will also install Ceedling's 
      dependencies.
 1. Execute Ceedling at the command line to export an example project
    or create an empty Ceedling project in your filesystem (executing
@@ -76,11 +76,11 @@ To use a _MadScienceLab_ image from your local terminal:
 
 1. [Install Docker][docker-install]
 1. Determine:
-   1. The local path of your Ceedling project
-   1. The variant and revision of the Docker image you'll be using
+    1. The local path of your Ceedling project
+    1. The variant and revision of the Docker image you'll be using
 1. Run the container with:
-   1. The Docker `run` command and `-it --rm` command line options
-   1. A Docker volume mapping from the root of your project to the default project path inside the container (_/home/dev/project_)
+    1. The Docker `run` command and `-it --rm` command line options
+    1. A Docker volume mapping from the root of your project to the default project path inside the container (_/home/dev/project_)
 
 See the command line examples in the following two sections.
 

@@ -11,13 +11,13 @@ item listed below.
 
 1. **[Native][tts-build-native].** This option builds and runs code on your 
    host system.
-      * In the simplest case this means you are testing code that is intended
-        to run on the same sort of system as the test suite. Your test 
-        compiler toolchain is the same as your release compiler toolchain.
-      * However, a native build can also mean your test compiler is different
-        than your release compiler. With some thought and effort, code for
-        another platform can be tested on your host system. This is often
-        the best approach for embedded and other specialized development.
+    * In the simplest case this means you are testing code that is intended
+      to run on the same sort of system as the test suite. Your test 
+      compiler toolchain is the same as your release compiler toolchain.
+    * However, a native build can also mean your test compiler is different
+      than your release compiler. With some thought and effort, code for
+      another platform can be tested on your host system. This is often
+      the best approach for embedded and other specialized development.
 1. **[Emulator][tts-build-cross].** In this option, you build your test code with your target's
    toolchain, and then run the test suite using an emulator provided for
    that target. This is a good option for embedded and other specialized

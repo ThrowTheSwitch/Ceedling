@@ -36,12 +36,12 @@ that nice?
 
 The module generator understands the following patterns:
 
- - `src` -- generate only a source file
- - `test` -- generate only a test file
- - `dh` -- generate 6 files for the driver-hardware pattern
- - `dih` -- generate 9 files for the driver-interrupt-hardware pattern
- - `mch` -- generate 9 files for the model-conductor-hardware pattern
- - `mvp` -- generate 9 files for the model-view-presenter pattern
+- `src` -- generate only a source file
+- `test` -- generate only a test file
+- `dh` -- generate 6 files for the driver-hardware pattern
+- `dih` -- generate 9 files for the driver-interrupt-hardware pattern
+- `mch` -- generate 9 files for the model-conductor-hardware pattern
+- `mvp` -- generate 9 files for the model-view-presenter pattern
 
 ## Paths
 
@@ -80,9 +80,9 @@ Say your directory structure looks like this:
 
 In this case, the `lab:` hint would make the module generator guess you want your files here:
 
- - source files: `lab/src` (because it's a close match)
- - include files: `lab/src` (because no include paths were listed)
- - test files: `lab/test` (because it's a close match)
+- source files: `lab/src` (because it's a close match)
+- include files: `lab/src` (because no include paths were listed)
+- test files: `lab/test` (because it's a close match)
 
 Instead, if your directory structure looks like this:
 
@@ -98,9 +98,9 @@ Instead, if your directory structure looks like this:
 
 In this case, the `lab:` hint would make the module generator guess you want your files here:
 
- - source files: `src/lab` (because it's a close match)
- - include files: `inc/lab` (because it's a close match)
- - test files: `test` (because there wasn't a close match, and this was the first entry on our list)
+- source files: `src/lab` (because it's a close match)
+- include files: `inc/lab` (because it's a close match)
+- test files: `test` (because there wasn't a close match, and this was the first entry on our list)
 
 You can see that more complicated structures will have files placed in the wrong place from time to
 time... no worries... you can move the file after it's created... but if your project has any kind of 
@@ -147,9 +147,9 @@ ceedling module:create[newlab/SecretLair]
 
 This will create the following 3 files:
 
- - `src/newlab/SecretLair.c`
- - `inc/newlab/SecretLair.h`
- - `test/newlab/TestSecretLair.c`
+- `src/newlab/SecretLair.c`
+- `inc/newlab/SecretLair.h`
+- `test/newlab/TestSecretLair.c`
 
 Technically, you can start with a colon and specify part of a path, then use a slash
 to specify the remainder of the path to use. In most circumstances, this should work... however
@@ -259,9 +259,9 @@ generate files like `MY_NEW_MODULE.c`. This keeps everyone on your team behaving
 
 Your options for `:naming:` are as follows:
 
-  - `:bumpy` - BumpyFilesLooksLikeSo
-  - `:camel` - camelFilesAreSimilarButStartLow
-  - `:snake` - snake_case_is_all_lower_and_uses_underscores
-  - `:caps`  - CAPS_FEELS_LIKE_YOU_ARE_SCREAMING
+    - `:bumpy` - BumpyFilesLooksLikeSo
+    - `:camel` - camelFilesAreSimilarButStartLow
+    - `:snake` - snake_case_is_all_lower_and_uses_underscores
+    - `:caps`  - CAPS_FEELS_LIKE_YOU_ARE_SCREAMING
 
 <br/><br/>

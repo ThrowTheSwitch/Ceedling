@@ -102,6 +102,7 @@ Ceedling application (e.g. path handling). In other cases, this evaluation
 occurs each time a project configuration element is referenced (e.g. tools).
 
 _Notes:_
+
 * One good option for validating and troubleshooting inline Ruby string 
   exapnsion is use of `ceedling dumpconfig` at the command line. This application
   command causes your project configuration to be processed and written to a 

@@ -20,8 +20,8 @@ may be sufficient for your needs:
 The Gcov plugin is known to work with `gcov` packaged with GNU Compiler
 Collection 12 through at least 15.
 
-The maintainers of `gcov` introduced significant behavioral changes for version
-12. Previous versions of `gcov` had a simple exit code scheme with only a
+The maintainers of `gcov` introduced significant behavioral changes for
+version 12. Previous versions of `gcov` had a simple exit code scheme with only a
 single non-zero exit code upon fatal errors. Since version 12 `gcov` emits a
 variety of exit codes even if the noted issue is a non-fatal error. The Gcov
 plugin's logic assumes version 12 behavior and processes failure messages and
