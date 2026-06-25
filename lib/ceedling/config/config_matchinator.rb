@@ -95,7 +95,7 @@ class ConfigMatchinator
     # Sanity check
     if filepath.nil?
       path = generate_matcher_path(section, context, operation)
-      error = "#{path} ↳ #{matcher} matching provided nil #{filepath}"
+      error = "#{path} matching provided nil filepath"
       raise CeedlingException.new(error)
     end
 
@@ -148,6 +148,68 @@ class ConfigMatchinator
 
     # Flatten to handle list-nested YAML aliasing (should have already been flattened during validation)
     return _values.flatten
+  end
+
+  ### Class Methods ###
+
+  # Append one or more entries to a config section value holding either a simple list or a matcher hash.
+  # This handles the two structural forms documented in :defines and :flags sections:
+  #   - Simple list (Array): a flat list applied to all build contexts -- shortcut for the :* wildcard.
+  #   - Matcher hash (Hash): keys are test filepath matchers (:*, regex /.../, substring, wildcard string).
+  #
+  # config_entry: Array or matcher Hash (e.g. the raw value at config[:defines][:test]).
+  # entries:      String or Array of strings to append.
+  # matcher:      Optional keyword arg (default :*). The hash key to target.
+  #               When :* (the default), the top-level Array shortcut is also in scope --
+  #               a bare Array is equivalent to { :* => [...] }.
+  #               For any other matcher key, only Hash processing applies (no Array shortcut).
+  def self.append_matcher_entries(config_entry, entries, matcher: :*)
+    # Normalize entries to an array for uniform handling below
+    _entries = Array(entries)
+
+    if matcher == :*
+      # Simple list at the top level is the shortcut form of the :* wildcard --
+      # it applies to all test executables, same as { :* => [...] }.
+      if config_entry.is_a?( Array )
+        config_entry.concat( _entries )
+
+      elsif config_entry.is_a?( Hash )
+        # If an all-tests wildcard matcher already exists...
+        if config_entry.key?( :* )
+          # If the matcher maps to a list, append to it.
+          if config_entry[:*].is_a?( Array )
+            config_entry[:*].concat( _entries )
+          # If the matcher maps to a single string,
+          # replace it with a list containing the original string plus the new entries.
+          else
+            config_entry[:*] = [config_entry[:*]] + _entries
+          end
+        # No all-tests wildcard matcher -- create one with the new entries.
+        else
+          config_entry[:*] = _entries
+        end
+      end
+      # Nil or other types: no-op (no else branch)
+
+    else
+      # A specific matcher key was given -- only Hash processing applies; no Array shortcut.
+      if config_entry.is_a?( Hash )
+        if config_entry.key?( matcher )
+          # If the matcher maps to a list, append to it.
+          if config_entry[matcher].is_a?( Array )
+            config_entry[matcher].concat( _entries )
+          # If the matcher maps to a single string,
+          # replace it with a list containing the original string plus the new entries.
+          else
+            config_entry[matcher] = [config_entry[matcher]] + _entries
+          end
+        # Matcher key absent -- add it with the new entries.
+        else
+          config_entry[matcher] = _entries
+        end
+      end
+      # Non-Hash with a non-:* matcher (Array, nil, etc.): no-op
+    end
   end
 
   ### Private ###
