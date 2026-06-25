@@ -58,9 +58,12 @@ temp_sensor/
     ├── Test*.c              # Unit and integration tests
     ├── adc/                 # ADC subsystem tests
     │   └── TestAdc*.c
-    └── support/             # Custom assertion helpers (not executed as tests)
-        ├── UnityHelper.c    # More assertion failure details than the default comparison
-        └── UnityHelper.h
+    ├── support/             # Custom assertion helpers (not executed as tests)
+    │   ├── UnityHelper.c    # More assertion failure details than the default comparison
+    │   └── UnityHelper.h
+    └── platform/            # Hardware register standin (not executed as tests)
+        ├── at91sam7s256.c   # Standin peripheral register struct instances
+        └── at91sam7s256.h   # Structs, base-address macros, and bit-mask constants
 ```
 
 ---
@@ -108,4 +111,136 @@ registers the helper with CMock:
 
 ```sh
 ceedling test:all --mixin=mixin/add_unity_helper.yml
+```
+
+---
+
+## Off-Platform Testing with a Hardware Register Standin
+
+### The Problem
+
+Embedded source files that configure hardware peripherals write directly to
+memory-mapped registers through vendor-defined symbols:
+
+```c
+/* AdcHardwareConfigurator.c */
+void Adc_Reset(void)
+{
+  AT91C_BASE_ADC->ADC_CR = AT91C_ADC_SWRST;
+}
+```
+
+`AT91C_BASE_ADC`, `AT91C_ADC_SWRST`, and the `ADC_CR` field all come from
+the chip vendor's SDK header (`at91sam7s256.h` for this imagined AT91SAM7S256 
+project). That header only exists in the embedded toolchain. These source files
+cannot compile on a developer's host machine without it. Further, and more 
+importantly, the underlying hardware does not exist apart from the target
+hardware or an emulator.
+
+### The Standin Approach
+
+A **platform standin** provides a host-compilable substitute for the vendor
+header. Two files in `test/platform/` cover everything the hardware source
+files need:
+
+**`test/platform/at91sam7s256.h`** defines:
+
+1. **Peripheral register structs** — Plain C `typedef struct` types with one
+   field per register used by this project (e.g. `AT91S_ADC`, `AT91S_TC`,
+   `AT91S_US`). Fields match the vendor register names exactly.
+
+2. **Global standin instances** — One `extern` instance per peripheral
+   (`AdcStandin`, `TimerStandin`, `UsartStandin`, …), defined in the
+   accompanying `.c` file and allocated in ordinary program memory.
+
+3. **Base-address macros** — The `AT91C_BASE_*` macros, which in the real
+   SDK expand to hardware addresses, are redefined here to point to the
+   corresponding standin instances:
+   ```c
+   #define AT91C_BASE_ADC  (&AdcStandin)
+   #define AT91C_BASE_TC0  (&TimerStandin)
+   ```
+
+4. **Bit-mask constants** — All `AT91C_*` register bit-field constants
+   (`AT91C_ADC_SWRST`, `AT91C_TC_CPCS`, `AT91C_US_TXRDY`, …) defined with
+   their real AT91SAM7S256 datasheet values.
+
+Each hardware source file adds `#include "at91sam7s256.h"` — exactly what it
+would include in a real embedded build where the vendor header lives on the
+toolchain's system include path. Ceedling's support path (`test/platform/`)
+makes this header resolvable during test builds.
+
+### What This Enables
+
+Production code runs on the host unchanged. A test calls the real
+hardware-layer function and then inspects the standin struct to verify the
+correct register bits were written:
+
+```c
+void testResetWritesSwrstBitToControlRegister(void)
+{
+  Adc_Reset();
+  TEST_ASSERT_EQUAL_UINT32(AT91C_ADC_SWRST, AdcStandin.ADC_CR);
+}
+```
+
+This catches logic bugs that mocks cannot: wrong bit positions, missing enable
+steps, off-by-one prescaler values, or incorrect bitmask combinations — all
+without touching real hardware.
+
+### The Role of setUp()
+
+Each standin test file's `setUp()` calls `memset()` to zero all standin structs
+before every test:
+
+```c
+void setUp(void)
+{
+  memset(&AdcStandin, 0, sizeof(AdcStandin));
+}
+```
+
+This guarantees a clean slate. If a test finds a non-zero register field, it
+was written there by the code under test during that test — not left over from
+a previous run or from C's zero-initialization of global storage.
+
+For read-dependent behavior (such as `Usart_PutChar`, which spins on
+`Usart_ReadyToTransmit()` before transmitting), the test sets the relevant
+standin field to a known value so the production code sees the expected
+hardware state:
+
+```c
+void testPutCharWritesByteToTransmitHoldingRegisterWhenReady(void)
+{
+  UsartStandin.US_CSR = AT91C_US_TXRDY;   /* make the ready-check pass */
+  Usart_PutChar('Z');
+  TEST_ASSERT_EQUAL_UINT32('Z', UsartStandin.US_THR);
+}
+```
+
+### Where This Fits
+
+A platform standin is not a replacement for on-hardware integration testing.
+It cannot exercise timing, DMA, real interrupt delivery, or silicon errata.
+What it does well:
+
+- **Register configuration logic** — verifies the exact bit patterns written
+  during peripheral initialization sequences.
+- **Status-flag branching** — exercises the code paths that read status
+  registers (e.g. `TC_SR & AT91C_TC_CPCS`) by pre-loading the standin field.
+- **Math and conversion code** — any calculation layered on top of a hardware
+  read (ADC counts → millivolts) is fully exercisable.
+
+Used alongside CMock-based unit tests for the higher architectural layers, the
+standin tests give you meaningful coverage of the hardware-touching code
+without requiring the target board to be present.
+
+### Running the Standin Tests
+
+```sh
+# Run only the platform standin tests
+ceedling test:pattern[PlatformStandin]
+
+# Run the full suite (existing tests are unaffected)
+ceedling test:all
 ```

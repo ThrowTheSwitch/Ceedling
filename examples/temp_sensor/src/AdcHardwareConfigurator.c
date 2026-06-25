@@ -8,6 +8,7 @@
 #include "Types.h"
 #include "AdcHardwareConfigurator.h"
 #include "ModelConfig.h"
+#include "at91sam7s256.h"
 
 void Adc_Reset(void)
 {

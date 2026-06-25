@@ -8,6 +8,7 @@
 #include "Types.h"
 #include "TimerInterruptConfigurator.h"
 #include "TimerInterruptHandler.h"
+#include "at91sam7s256.h"
 
 static inline void SetInterruptHandler(void);
 static inline void ConfigureInterruptSourceModeRegister(void);

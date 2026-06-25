@@ -83,16 +83,17 @@ ceedling_system_tests do
           @c.with_context do
             Dir.chdir "temp_sensor" do
               @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:all 2>&1`
-              expect(@output).to match(/TESTED:\s+51/)
-              expect(@output).to match(/PASSED:\s+51/)
+              # Validate full test suite results
+              expect(@output).to match(/TESTED:\s+86/)
+              expect(@output).to match(/PASSED:\s+86/)
 
+              # Partial (i.e. spot check) coverage reporting
               expect(@output).to match(/AdcConductor\.c \| Lines executed:/i)
               expect(@output).to match(/AdcHardware\.c \| Lines executed:/i)
               expect(@output).to match(/AdcModel\.c \| Lines executed:/i)
               expect(@output).to match(/Executor\.c \| Lines executed:/i)
               expect(@output).to match(/Main\.c \| Lines executed:/i)
               expect(@output).to match(/Model\.c \| Lines executed:/i)
-              # there are more, but this is a good place to stop.
 
               expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
             end
