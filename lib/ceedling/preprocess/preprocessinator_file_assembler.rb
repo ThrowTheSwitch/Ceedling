@@ -120,6 +120,29 @@ class PreprocessinatorFileAssembler
     return contents
   end
 
+  # Extract macro definitions and pragmas from a file using text scanning (fallback mode).
+  # Used to preserve #define macros and #pragma directives in partial file reconstruction
+  # when the directives-only preprocessor (-fdirectives-only) is not available.
+  # Mirrors the fallback branch of collect_mockable_header_file_contents.
+  def collect_macros_and_pragmas_fallback(source_filepath:, defines: [])
+    include_guard = @preprocessinator_reconstructor.extract_include_guard(
+      @file_wrapper.read( source_filepath, 2048 ).clean_encoding
+    )
+
+    pragmas = []
+    macro_defs = []
+
+    @file_wrapper.open( source_filepath, 'rb' ) do |file|
+      _contents = file.read.clean_encoding
+      _contents = _filter_conditionals( _contents, defines )
+      pragmas    = @preprocessinator_reconstructor.extract_pragmas( _contents )
+      macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
+    end
+
+    return pragmas + macro_defs
+  end
+
+
   def collect_file_contents_fallback(source_filepath:, defines: [])
     # Open in binary mode + clean encoding: source files may have non-ASCII bytes
     # in comments (e.g. © symbols) that raise encoding errors under locale-dependent
@@ -312,8 +335,14 @@ class PreprocessinatorFileAssembler
       # Blank line
       file << "\n" unless includes.empty?
 
-      # Add in any extras like test directive macros
-      extras.each { |ex| file << ex + "\n" }
+      # Add in any extras like test directive macros or preserved macro definitions
+      extras.each do |ex|
+        if ex.class == String
+          file << ex + "\n"
+        elsif ex.class == Array
+          ex.each { |line| file << line + "\n" }
+        end
+      end
 
       # Blank line
       file << "\n" unless extras.empty?
