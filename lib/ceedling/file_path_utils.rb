@@ -94,7 +94,7 @@ class FilePathUtils
 
   ######### Instance methods ##########
 
-  ### release ###
+  ### Release ###
   def form_release_build_cache_path(filepath)
     return File.join( @configurator.project_release_build_cache_path, File.basename(filepath) )
   end
@@ -117,12 +117,62 @@ class FilePathUtils
 
   ### Tests ###
 
-  def form_test_build_cache_path(filepath)
-    return File.join( @configurator.project_test_build_cache_path, File.basename(filepath) )
+  def form_test_build_path(name, context: nil)
+    form_build_context_path(BUILD_OUT_DIR, name: name, context: context)
   end
 
-  def form_test_dependencies_filepath(filepath)
-    return File.join( @configurator.project_test_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies) )
+  def form_test_object_filepath(filepath, name: nil, context: nil)
+    File.join(
+      form_build_context_path(BUILD_OUT_DIR, name: name, context: context),
+      File.basename(filepath).ext(@configurator.extension_object)
+    )
+  end
+
+  def form_test_results_path(name = nil, context: nil)
+    form_build_context_path(BUILD_RESULTS_DIR, context: context)
+  end
+
+  def form_test_dependencies_path(name, context: nil)
+    form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
+  end
+
+  def form_test_dependencies_filepath(filepath, name: nil, context: nil)
+    File.join(
+      form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context),
+      File.basename(filepath).ext(@configurator.extension_dependencies)
+    )
+  end
+
+  def form_test_mocks_path(name, context: nil)
+    form_named_path(@configurator.cmock_mock_path, name)
+  end
+
+  def form_test_partials_path(name, context: nil)
+    form_named_path(@configurator.project_test_partials_path, name)
+  end
+
+  def form_test_preprocess_includes_path(name, context: nil)
+    form_named_path(@configurator.project_test_preprocess_includes_path, name)
+  end
+
+  def form_test_preprocess_files_path(name, context: nil)
+    form_named_path(@configurator.project_test_preprocess_files_path, name)
+  end
+
+  def form_test_preprocess_files_full_expansion_path(name, context: nil)
+    form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_FULL_EXPANSION_DIR)
+  end
+
+  def form_test_preprocess_files_directives_only_path(name, context: nil)
+    form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_DIRECTIVES_ONLY_DIR)
+  end
+
+  def form_test_preprocess_files_raw_directives_only_path(name, context: nil)
+    form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_RAW_DIRECTIVES_ONLY_DIR)
+  end
+
+  def form_test_build_cache_path(filepath)
+    return File.join( @configurator.project_test_build_cache_path, File.basename(filepath) )
   end
 
   def form_pass_results_filepath(build_output_path, filepath)
@@ -218,6 +268,25 @@ class FilePathUtils
   def form_pass_results_filelist(path, files)
     list = @file_wrapper.instantiate_file_list(files)
     return list.pathmap("#{path}/%n#{@configurator.extension_testpass}")
+  end
+
+  ### Private ###
+
+  private
+
+  # Forms project_build_root/[context/]subdir[/name]; context and name are omitted when nil
+  def form_build_context_path(subdir, name: nil, context: nil)
+    parts = [@configurator.project_build_root]
+    parts << context.to_s if context
+    parts << subdir
+    parts << name if name
+    File.join( *parts )
+  end
+
+  # Forms base/name[/subdir]
+  def form_named_path(base, name, subdir: nil)
+    return File.join( base, name, subdir ) if subdir
+    File.join( base, name )
   end
 
 end

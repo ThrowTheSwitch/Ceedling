@@ -166,6 +166,10 @@ PREPROCESS_FULL_EXPANSION_DIR  = 'full_expansion'
 PREPROCESS_DIRECTIVES_ONLY_DIR = 'directives_only'
 PREPROCESS_RAW_DIRECTIVES_ONLY_DIR = 'directives_only/raw'
 
+BUILD_OUT_DIR          = 'out'
+BUILD_RESULTS_DIR      = 'results'
+BUILD_DEPENDENCIES_DIR = 'dependencies'
+
 NULL_FILE_PATH = '/dev/null'
 
 TESTS_BASE_PATH   = TEST_ROOT_NAME

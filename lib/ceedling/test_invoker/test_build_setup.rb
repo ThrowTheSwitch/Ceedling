@@ -38,18 +38,12 @@ class TestBuildSetup
   # Stage 1: Create per-test build/results/mock/partial directory structure
   # and populate the testables hash with initial entries.
   def stage_prepare_build_paths(state)
-    results_path = File.join( @configurator.project_build_root, state.context.to_s, 'results' )
+    results_path = @file_path_utils.form_test_results_path( context: state.context )
 
     @batchinator.exec(workload: :compile, things: state.tests) do |filepath|
       filepath = filepath.to_s
       key  = testable_symbolize( filepath )
       name = key.to_s
-      build_path    = File.join( @configurator.project_build_root, state.context.to_s, 'out', name )
-      mocks_path    = File.join( @configurator.cmock_mock_path, name )
-      partials_path = File.join( @configurator.project_test_partials_path, name )
-
-      preprocess_includes_path = File.join( @configurator.project_test_preprocess_includes_path, name )
-      preprocess_files_path    = File.join( @configurator.project_test_preprocess_files_path, name )
 
       state.lock.synchronize do
         state.testables[key] = Testable.new(
@@ -62,22 +56,32 @@ class TestBuildSetup
 
       testable = state.testables[key]
       paths = testable.paths
-      paths[:build]    = build_path
-      paths[:results]  = results_path
-      paths[:mocks]    = mocks_path    if @configurator.project_use_mocks
-      paths[:partials] = partials_path if @configurator.project_use_partials
+
+      # Assemble all needed testable build paths
+      paths[:build]        = @file_path_utils.form_test_build_path( name, context: state.context )
+      paths[:results]      = results_path
+      paths[:dependencies] = @file_path_utils.form_test_dependencies_path( name, context: state.context )
+
+      if @configurator.project_use_mocks
+        paths[:mocks] = @file_path_utils.form_test_mocks_path( name )
+      end
+
+      if @configurator.project_use_partials
+        paths[:partials] = @file_path_utils.form_test_partials_path( name )
+      end
 
       if @configurator.project_use_test_preprocessor != :none
         testable.preprocess[:includes]         = []
         testable.preprocess[:directives_only]  = { filepath: nil }
 
-        paths[:preprocess_incudes]                    = preprocess_includes_path
-        paths[:preprocess_files]                      = preprocess_files_path
-        paths[:preprocess_files_full_expansion]       = File.join( preprocess_files_path, PREPROCESS_FULL_EXPANSION_DIR )
-        paths[:preprocess_files_directives_only]      = File.join( preprocess_files_path, PREPROCESS_DIRECTIVES_ONLY_DIR )
-        paths[:preprocess_files_raw_directives_only]  = File.join( preprocess_files_path, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR )
+        paths[:preprocess_incudes]                    = @file_path_utils.form_test_preprocess_includes_path( name )
+        paths[:preprocess_files]                      = @file_path_utils.form_test_preprocess_files_path( name )
+        paths[:preprocess_files_full_expansion]       = @file_path_utils.form_test_preprocess_files_full_expansion_path( name )
+        paths[:preprocess_files_directives_only]      = @file_path_utils.form_test_preprocess_files_directives_only_path( name )
+        paths[:preprocess_files_raw_directives_only]  = @file_path_utils.form_test_preprocess_files_raw_directives_only_path( name )
       end
 
+      # Create all testable build paths
       testable.paths.each { |_, path| @file_wrapper.mkdir( path ) }
     end
 

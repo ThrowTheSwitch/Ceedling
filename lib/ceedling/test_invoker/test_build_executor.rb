@@ -564,7 +564,7 @@ class TestBuildExecutor
         flags:        flags,
         defines:      defines,
         list:         @file_path_utils.form_test_build_list_filepath( object ),
-        dependencies: @file_path_utils.form_test_dependencies_filepath( object )
+        dependencies: @file_path_utils.form_test_dependencies_filepath( object, name: test, context: context )
       }
 
       @generator.generate_object_file_c( **arg_hash )
@@ -582,7 +582,7 @@ class TestBuildExecutor
         flags:        flags,
         defines:      defines,
         list:         @file_path_utils.form_test_build_list_filepath( object ),
-        dependencies: @file_path_utils.form_test_dependencies_filepath( object )
+        dependencies: @file_path_utils.form_test_dependencies_filepath( object, name: test, context: context )
       }
 
       @generator.generate_object_file_asm( **arg_hash )
