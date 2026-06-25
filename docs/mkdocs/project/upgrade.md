@@ -37,12 +37,14 @@ features?
 The other choice, of course, is to update it. To do so, we open a command prompt and address ceedling 
 from *outside* the project. For example, let's say we have the following structure:
 
- - projects
-    - myproject
-        - project.yml
-        - src
-        - tgt
-        - vendor
+```
+projects/
+└── myproject/
+    ├── project.yml
+    ├── src/
+    ├── tgt/
+    └── vendor/
+```
 
 In this case, we'd want to be in the `projects` directory. At that point, we can ask Ceedling to
 update our project.
