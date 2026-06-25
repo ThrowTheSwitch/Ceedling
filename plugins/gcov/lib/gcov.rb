@@ -46,6 +46,9 @@ class Gcov < Plugin
     @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
     @test_invoker = @ceedling[:test_invoker]
+    @flaginator = @ceedling[:flaginator]
+    @defineinator = @ceedling[:defineinator]
+    @generator = @ceedling[:generator]
     @plugin_reportinator = @ceedling[:plugin_reportinator]
     @file_path_utils = @ceedling[:file_path_utils]
     @file_wrapper = @ceedling[:file_wrapper]
@@ -69,6 +72,43 @@ class Gcov < Plugin
   # No parameters enables the opportunity for latter mechanism
   def automatic_reporting_enabled?
     return (@project_config[:gcov_report_task] == false)
+  end
+
+
+  def process_untested_sources(sources:)
+    unless @project_config[:gcov_untested_sources]
+      msg = 'Skipping code coverage processing of untested sources'
+      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      return
+    end
+
+    msg = 'Processing Untested Sources'
+    msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
+    @loginator.log( msg )
+
+    tested_sources = []
+    @test_invoker.each_test_with_sources { |_, srcs| tested_sources.concat( srcs ) }
+    untested_sources = sources - tested_sources
+
+    if untested_sources.empty?
+      @loginator.log( 'No untested sources to process.' )
+      return
+    end
+
+    untested_sources.each do |filepath|
+      filename = File.basename(filepath)
+      @generator.generate_object_file_c(
+        tool:         TOOLS_GCOV_COMPILER,
+        module_name:  filename.ext(),
+        context:      GCOV_SYM,
+        source:       filepath,
+        object:       @file_path_utils.form_test_object_filepath( filepath, context:GCOV_SYM ),
+        search_paths: @configurator.collection_paths_include,
+        flags:        @flaginator.flag_down( context:GCOV_SYM, operation:OPERATION_COMPILE_SYM ),
+        defines:      @defineinator.defines( subkey:GCOV_SYM ),
+        dependencies: @file_path_utils.form_test_dependencies_filepath( filepath, context:GCOV_SYM )
+      )
+    end
   end
 
   def pre_compile_execute(arg_hash)

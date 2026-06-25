@@ -26,7 +26,11 @@ namespace GCOV_SYM do
 
   desc 'Run code coverage for all tests'
   task all: [:prepare] do
+    # Run tests with coverage
     @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS )
+
+    # Optionally compile untested sources with coverage for complete zero-coverage results in final report
+    @ceedling[:gcov].process_untested_sources( sources:COLLECTION_ALL_SOURCE )
   end
 
   desc 'Run single test w/ coverage ([*] test or source file name, no path).'
