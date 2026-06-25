@@ -10,6 +10,7 @@ require 'ceedling/constants'
 require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
 require 'ceedling/rake_app/rakefile_component_resolver'
+require 'ceedling/config/config_matchinator'
 require 'deep_merge'
 
 class Configurator
@@ -86,8 +87,10 @@ class Configurator
       @loginator.log( "Reverted :cmock ↳ :treat_inlines to :exclude because this CMock feature is superseded by Partials.", Verbosity::COMPLAIN, LogLabels::NOTICE )
     end
 
-    # If partials enabled, inject partials name prefix symbols to all test compilation
-    config[:defines][:test] << "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}"
+    # If partials enabled, inject partials name prefix symbol to all test compilation.
+    # Handle both the simple list and matcher hash config formats.
+    _partials_prefix_symbol = "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}"
+    ConfigMatchinator.append_matcher_entries( config[:defines][:test], _partials_prefix_symbol )
   end
 
 
@@ -274,6 +277,7 @@ class Configurator
     config.deep_merge( runtime_config )
   end
 
+  
   def populate_with_defaults( config_hash, defaults_hash )
     @loginator.lazy( Verbosity::OBNOXIOUS ) do 
       @reportinator.generate_progress( 'Populating project configuration with collected default values' )
