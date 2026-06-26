@@ -2971,7 +2971,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Modified Condition / Decision Coverage">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coverage-for-untested-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage for untested sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Coverage for untested sources">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4208,7 +4219,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Modified Condition / Decision Coverage">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coverage-for-untested-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage for untested sources
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Coverage for untested sources">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4406,13 +4428,41 @@ configuration file.</p>
 contains a minimum of GCC 14 you can enable MC/DC in coverage summaries.</p>
 <p>If your environment contains a minimum of GCC 14 and GCovr 8, you can enable MC/DC 
 in your generated coverage reports.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:plugins</span><span class="p">:</span>
+<p>NOTE: ReportGenerator does not support MC/DC reporting.</p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:plugins</span><span class="p">:</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcov</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nt">:gcov</span><span class="p">:</span>
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">:mcdc</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span>
 </code></pre></div>
+<strong>Default:</strong> <code>FALSE</code></p>
+<h2 id="coverage-for-untested-sources">Coverage for untested sources</h2>
+<p>When enabled, the GCov plugin will compile all source files in the project with
+coverage, not only those exercised with tests. This causes all source files to 
+appear in any generated reporting (untested source files with 0% coverage).</p>
+<p>NOTE: Successful compilation of source files may require certain symbols to be
+defined or certain flags to be set in compilation. Ceedling’s 
+<a href="../../../configuration/reference/defines/"><code>:defines</code></a>
+and 
+<a href="../../../configuration/reference/flags/"><code>:flags</code></a>
+matchers can provide these. For GCov tasks, symbols and flags are extracted from
+the <code>:test</code> context beneath the <code>:defines</code> and <code>:flags</code> configuration sections 
+by default. If you need something special for coverage builds, use the <code>:gcov</code> 
+context for these matchers instead.</p>
+<p>Notes:</p>
+<ul>
+<li>Versions of GCovr before 7.0 do not include the necessary options to produce 
+  0% coverage results for source files only compiled (but never executed.)</li>
+</ul>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcov</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="nt">:gcov</span><span class="p">:</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="nt">:untested_sources</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span>
+</code></pre></div>
+<strong>Default:</strong> <code>TRUE</code></p>
 <h3 id="reporting-utilities-installation">Reporting utilities installation</h3>
 <div class="admonition tip">
 <p class="admonition-title">Variants of the <code>madsciencelab</code> Docker images come with these tools preinstalled</p>
@@ -4421,11 +4471,11 @@ for running Ceedling.</p>
 </div>
 <p><a href="https://www.gcovr.com/">gcovr</a> is available on any platform supported by Python.</p>
 <p><code>gcovr</code> can be installed via pip like this:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="w"> </span>&gt;<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>gcovr
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w"> </span>&gt;<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>gcovr
 </code></pre></div>
 <p><a href="https://reportgenerator.io">ReportGenerator</a> is available on any platform supported by .Net.</p>
 <p><code>ReportGenerator</code> can be installed via .NET Core like so:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w"> </span>&gt;<span class="w"> </span>dotnet<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>dotnet-reportgenerator-globaltool
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="w"> </span>&gt;<span class="w"> </span>dotnet<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>dotnet-reportgenerator-globaltool
 </code></pre></div>
 <p>Either or both of <code>gcovr</code> or <code>ReportGenerator</code> may be used. Only one must 
 be installed for advanced report generation.</p>
@@ -4433,10 +4483,10 @@ be installed for advanced report generation.</p>
 <p>If reports are configured (see next sections) but no <code>:utilities:</code> subsection 
 exists, this plugin defaults to using <code>gcovr</code> for report generation.</p>
 <p>Otherwise, enable Gcovr and / or ReportGenerator to create coverage reports.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">:gcov</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">:utilities</span><span class="p">:</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcovr</span><span class="w">           </span><span class="c1"># Use `gcovr` to create reports (default if no :utilities set).</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReportGenerator</span><span class="w"> </span><span class="c1"># Use `ReportGenerator` to create reports.</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">:gcov</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">:utilities</span><span class="p">:</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcovr</span><span class="w">           </span><span class="c1"># Use `gcovr` to create reports (default if no :utilities set).</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReportGenerator</span><span class="w"> </span><span class="c1"># Use `ReportGenerator` to create reports.</span>
 </code></pre></div>
 <h3 id="automatic-and-manual-report-generation">Automatic and manual report generation</h3>
 <p>By default, if reports are specified, this plugin automatically generates 
@@ -4448,8 +4498,8 @@ It may be executed after <code>gcov:</code> tasks to generate the configured rep
 setting allows large or complex projects to execute potentially time intensive 
 report generation only when desired.</p>
 <p>Enabling the manual report generation task looks like this:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">:gcov</span><span class="p">:</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">:report_task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">:gcov</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">:report_task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span>
 </code></pre></div>
 <p><br/><br/></p>
 
