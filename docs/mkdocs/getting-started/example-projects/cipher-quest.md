@@ -39,4 +39,27 @@ Symbols needed by the release build can be provided by:
    mixin files, and the project README provides examples of enacting all 
    availble Mixin features.
 
+---
+
+Below is example help output produced by running the executable with no
+command line arguments. This executable was a result of a release build 
+with `CIPHER_ROT13` defined.
+
+```shell
+> build/release/cipher_quest.out
+
+Usage: cipher_quest <command> [args...]
+
+Core commands (always available):
+  reverse <text>             Reverse the characters
+  upper <text>               Convert to uppercase
+  lower <text>               Convert to lowercase
+  trim <text>                Strip leading/trailing whitespace
+  palindrome <text>          Simple palindrome check (exact characters)
+  wordcount <text>           Count words
+
+Cipher: ROT13
+  rot13 <text>               Encode or decode (ROT13 is its own inverse)
+```
+
 <br/><br/>
