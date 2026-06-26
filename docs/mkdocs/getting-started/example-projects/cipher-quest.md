@@ -13,14 +13,15 @@ exported with the example project.
 ceedling example cipher_quest [destination]
 ```
 
+After exporting, run `ceedling test:all` from the project root to execute the
+full test suite, or `ceedling release` to produce a release binary. Note that
+the release build requires configuration from you to provide needed symbols.
+
 ## About
 
 `cipher_quest` simulates a command line toolkit for encoding and decoding
 secret messages. Unlike the other example projects, it supports both a test
 build and a release build, demonstrating Ceedling’s dual build capabilities.
-
-After exporting, run `ceedling test:all` from the project root to execute the
-full test suite, or `ceedling release` to produce a release binary.
 
 ## Release builds
 
