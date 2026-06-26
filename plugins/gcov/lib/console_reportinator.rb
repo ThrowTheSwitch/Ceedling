@@ -6,8 +6,13 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'gcov_reportinator'
 
-class ConsoleReportinator
+class ConsoleReportinator < GcovReportinator
+
+  NAME = 'Gcov Console'
+
+  def name; NAME; end
 
   attr_reader :artifacts_path  # nil — console output only, no filesystem artifacts
 

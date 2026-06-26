@@ -10,6 +10,7 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'gcov_constants'
 require 'gcov_types'
+require 'gcov_reportinator'
 require 'console_reportinator'
 require 'gcovr_reportinator'
 require 'reportgenerator_reportinator'
@@ -218,8 +219,12 @@ class Gcov < Plugin
       # Create the artifacts output directory.
       @file_wrapper.mkdir( reportinator.artifacts_path ) if reportinator.artifacts_path
 
-      # Generate reports
-      reportinator.generate_reports( @configurator.project_config_hash )
+      # Generate reports; log any returned coverage summary at normal verbosity
+      summary = reportinator.generate_reports( @configurator.project_config_hash )
+      if summary && !summary.empty?
+        @loginator.log( @reportinator.generate_heading( "#{reportinator.name} Coverage Summary" ) )
+        @loginator.log( summary )
+      end
     end
   end
 

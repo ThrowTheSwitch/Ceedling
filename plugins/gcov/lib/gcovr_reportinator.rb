@@ -9,8 +9,13 @@ require 'reportinator_helper'
 require 'ceedling/exceptions'
 require 'ceedling/constants'
 require 'gcov_types'
+require 'gcov_reportinator'
 
-class GcovrReportinator
+class GcovrReportinator < GcovReportinator
+
+  NAME = 'Gcovr'
+
+  def name; NAME; end
 
   attr_reader :artifacts_path
 
@@ -45,6 +50,7 @@ class GcovrReportinator
   end
 
   # Generate the gcovr report(s) specified in the options.
+  # Returns a summary string (possibly empty) when :print_summary is enabled.
   def generate_reports(opts)
     # Get gcovr options from project configuration options
     gcovr_opts = collect_gcovr_opts(opts)
@@ -54,6 +60,8 @@ class GcovrReportinator
 
     # Build the common gcovr arguments.
     args_common = args_builder_common( gcovr_opts, @gcovr_version )
+
+    gcovr_summary = ''
 
     msg = @reportinator.generate_heading( "Running Gcovr Coverage Reports" )
     @loginator.log( msg )
@@ -69,14 +77,14 @@ class GcovrReportinator
 
       args += (_args = args_builder_sonarqube(opts, false))
       reports << "SonarQube" if not _args.empty?
-      
+
       args += (_args = args_builder_json(opts, true))
       reports << "JSON" if not _args.empty?
-      
+
       # As of gcovr version 4.2, the --html argument must appear last.
       args += (_args = args_builder_html(opts, false))
       reports << "HTML" if not _args.empty?
-      
+
       reports.each do |report|
         msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}/'")
         @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
@@ -92,7 +100,10 @@ class GcovrReportinator
       #
       # updated the args variable. In other case, no need to run GCOVR for current setup.
       if !(args == args_common)
-        run( gcovr_opts, args, exception_on_fail )
+        shell_result = run( gcovr_opts, args, exception_on_fail )
+        if gcovr_opts[:print_summary] && shell_result
+          gcovr_summary = extract_gcovr_summary( shell_result[:output] )
+        end
       end
 
     # gcovr version 4.1 and earlier supports HTML and Cobertura XML reports.
@@ -107,7 +118,10 @@ class GcovrReportinator
         @loginator.log( msg )
 
         # Generate the HTML report.
-        run( gcovr_opts, (args_common + args_html), exception_on_fail )
+        shell_result = run( gcovr_opts, (args_common + args_html), exception_on_fail )
+        if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
+          gcovr_summary = extract_gcovr_summary( shell_result[:output] )
+        end
       end
 
       if args_cobertura.length > 0
@@ -115,7 +129,10 @@ class GcovrReportinator
         @loginator.log( msg )
 
         # Generate the Cobertura XML report.
-        run( gcovr_opts, (args_common + args_cobertura), exception_on_fail )
+        shell_result = run( gcovr_opts, (args_common + args_cobertura), exception_on_fail )
+        if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
+          gcovr_summary = extract_gcovr_summary( shell_result[:output] )
+        end
       end
     end
 
@@ -126,6 +143,8 @@ class GcovrReportinator
 
     # White space log line
     @loginator.log( '' )
+
+    return gcovr_summary
   end
 
   ### Private ###
@@ -353,7 +372,7 @@ class GcovrReportinator
   end
 
 
-  # Run gcovr with the given arguments
+  # Run gcovr with the given arguments; returns shell_result (or nil on handled exception)
   def run(opts, args, boom)
     command = @tool_executor.build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], args)
 
@@ -368,6 +387,24 @@ class GcovrReportinator
     end
 
     @reportinator_helper.print_shell_result( shell_result )
+    return shell_result
+  end
+
+
+  # Extract the last contiguous block of lines containing '%' from gcovr stdout.
+  # gcovr --print-summary emits lines like "lines: 69.6% (80 out of 115)" — this
+  # locates that block generically without depending on exact line labels.
+  def extract_gcovr_summary(output)
+    return '' if output.nil? || output.empty?
+
+    lines = output.lines
+    last_pct_idx = lines.rindex { |l| l.include?('%') }
+    return '' if last_pct_idx.nil?
+
+    first_pct_idx = last_pct_idx
+    first_pct_idx -= 1 while first_pct_idx > 0 && lines[first_pct_idx - 1].include?('%')
+
+    lines[first_pct_idx..last_pct_idx].join('')
   end
 
 

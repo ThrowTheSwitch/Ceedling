@@ -9,8 +9,13 @@ require 'benchmark'
 require 'reportinator_helper'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'gcov_reportinator'
 
-class ReportGeneratorReportinator
+class ReportGeneratorReportinator < GcovReportinator
+
+  NAME = 'ReportGenerator'
+
+  def name; NAME; end
 
   attr_reader :artifacts_path
 
