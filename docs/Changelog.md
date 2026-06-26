@@ -21,12 +21,14 @@ With Partials, a test can now cause some functions in the source module under te
 
 💲 The Partials feature made possible thanks to a generous corporate sponsor via a [Ceedling Assist](https://www.thingamabyte.com/ceedling) engagement.
 
-### Two more example projects
+### Two more example projects plus expanded `temp_sensor` project
 
 `wondrous_forest` and `cipher_quest` join the existing `temp_sensor` project. All example projects now have [comprehensive documentation](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/example-projects/).
 
 1. The `wondrous_forest` test-only project demonstrates using [Partials](https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/) in sample code reasonably representative of real-world use.
 1. The `cipher_quest` project is both a release and test build project that demonstrates conditional compilation builds (`ifdef`) and using [Mixins](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/mixins) to control builds.
+
+The existing `temp_sensor` project has been expanded to more fully illustrate testing for embbeded development. It now shows a pure C approach to creating hardware access standins that allow testing of peripheral manipulation. The approach demonstrated divorces unit tests from any actual hardware dependence while preserving production C code as is.
 
 ### Documentation site
 
