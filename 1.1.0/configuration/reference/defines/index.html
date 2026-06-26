@@ -4579,10 +4579,12 @@ filename substring matchers.</p>
    full path).</li>
 <li>Regex (<code>/.../</code>) — Matches test file names against a regular expression.</li>
 </ol>
-<p>Notes:
-* Substring filename matching is case sensitive.
-* Wildcard matching is effectively a simplified form of regex. That is, multiple
-  approaches to matching can match the same filename.</p>
+<p>Notes:</p>
+<ul>
+<li>Substring filename matching is case sensitive.</li>
+<li>Wildcard matching is effectively a simplified form of regex. That is, multiple
+  approaches to matching can match the same filename.</li>
+</ul>
 <p>Symbols by matcher are cumulative. This means the symbols from multiple
 matchers can be applied to all compilation for any single test executable.</p>
 <p>Referencing the example above, here are the extra compilation symbols for a

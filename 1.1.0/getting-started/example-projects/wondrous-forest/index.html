@@ -4167,14 +4167,14 @@ exported with the example project.</p>
 <h2 id="exporting">Exporting</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ceedling<span class="w"> </span>example<span class="w"> </span>wondrous_forest<span class="w"> </span><span class="o">[</span>destination<span class="o">]</span>
 </code></pre></div>
+<p>After exporting, run <code>ceedling test:all</code> from the project root to execute the
+full test suite.</p>
 <h2 id="about">About</h2>
 <p><code>wondrous_forest</code> demonstrates Ceedling's <a href="../../../testing-guide/partials/">Partials</a>
 feature — the ability to test <code>static</code>, <code>inline</code>, and <code>static inline</code> C
 functions and <code>static</code> variables that are otherwise inaccessible under normal
 C linkage rules. Every major Partials pattern appears somewhere in the project,
 alongside traditional mock-based tests.</p>
-<p>After exporting, run <code>ceedling test:all</code> from the project root to execute the
-full test suite.</p>
 <h2 id="partials-patterns">Partials patterns</h2>
 <p>Each sensor module uses a different Partials pattern, making the project a
 comprehensive reference:</p>

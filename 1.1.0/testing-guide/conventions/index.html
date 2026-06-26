@@ -4727,14 +4727,16 @@ project configuration.</p>
 <ul>
 <li>The order of your <code>:paths</code> entries directly translates to the ordering
   of search paths.</li>
-<li>The logic of the ordering above is essentially that:</li>
+<li>The logic of the ordering above is essentially that:<ul>
 <li>Everything above (5) should have precedence to allow test-specific 
-     symbols, function signatures, etc. to be found before that of your 
-     source code under test. This is the necessary pattern for effective 
-     testing and test builds.</li>
+ symbols, function signatures, etc. to be found before that of your 
+ source code under test. This is the necessary pattern for effective 
+ testing and test builds.</li>
 <li>Everything below (5) is supporting symbols and function signatures
-     for your source code. Your source code should be processed before
-     these for effective builds generally.</li>
+ for your source code. Your source code should be processed before
+ these for effective builds generally.</li>
+</ul>
+</li>
 <li>(3) is a balancing act. It is entirely possible that test developers
   will choose to create common files of symbols and supporting code 
   necessary for unit tests and choose to organize it alongside their 
@@ -5011,14 +5013,13 @@ files so CMock can parse them.</p>
 </li>
 </ul>
 <p>Possible solutions to this problem include:</p>
-<ol>
-<li>Move symbols and macros in your header file that do not impact function 
-      signatures to another source header file that will not be filtered
-      by Ceedling's header file preprocessing.</li>
-<li>If (1) is not possible, you may duplicate the needed symbols and macros
-      in a header file that is only available in your test build search paths
-      and include it in your test file.</li>
-</ol>
+<div class="highlight"><pre><span></span><code>1. Move symbols and macros in your header file that do not impact function 
+  signatures to another source header file that will not be filtered
+  by Ceedling&#39;s header file preprocessing.
+1. If (1) is not possible, you may duplicate the needed symbols and macros
+  in a header file that is only available in your test build search paths
+  and include it in your test file.
+</code></pre></div>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Header file scanning will see this function signature but mistakenly mock the name of the macro</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kt">void</span><span class="w"> </span><span class="nf">FUNCTION_SIGNATURE_MAGIC</span><span class="p">(...);</span>
 </code></pre></div>

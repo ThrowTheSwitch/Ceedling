@@ -4216,21 +4216,16 @@ of updating for new tools if it's serving its purpose and you're unlikely to act
 features?</p>
 <p>The other choice, of course, is to update it. To do so, we open a command prompt and address ceedling 
 from <em>outside</em> the project. For example, let's say we have the following structure:</p>
-<ul>
-<li>projects<ul>
-<li>myproject<ul>
-<li>project.yml</li>
-<li>src</li>
-<li>tgt</li>
-<li>vendor</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>projects/
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>└── myproject/
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    ├── project.yml
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    ├── src/
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    ├── tgt/
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    └── vendor/
+</code></pre></div>
 <p>In this case, we'd want to be in the <code>projects</code> directory. At that point, we can ask Ceedling to
 update our project.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ceedling upgrade myproject
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>ceedling upgrade myproject
 </code></pre></div>
 <p>Ceedling will automatically look for your project yaml file and do its best to determine what needs
 to be updated. If installed locally, this will mean copying the latest copy of Unity, CMock, and

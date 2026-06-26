@@ -4629,11 +4629,13 @@
 <li>Create a Ruby file in your configured additional load path named <code>&lt;custom_report&gt;_tests_reporter.rb</code>. <code>&lt;custom_report&gt;</code> should be in lower case and use underscores if you wish to seperate words (i.e. snakecase).</li>
 <li>The Ruby code itself must subclass an existing plugin class, <code>TestsReporter</code>.</li>
 <li>Your new subclass must be named <code>&lt;CustomReport&gt;TestsReporter</code> where <code>&lt;CustomReport&gt;</code> is the camelcase version of your report name from (1).</li>
-<li>Fill out up to four methods in your custom <code>TestsReporter</code> subclass:</li>
+<li>Fill out up to four methods in your custom <code>TestsReporter</code> subclass:<ul>
 <li><code>setup()</code></li>
 <li><code>header()</code> (optional)</li>
 <li><code>body()</code></li>
 <li><code>footer()</code> (optional)</li>
+</ul>
+</li>
 </ol>
 <p>Overriding the default filename of your custom report happens just as it does for the built-in reports. In fact, apart from the custom load path, the built-in reports documented above use the same mechanisms as a custom report. These Ruby files can and should be used as references.</p>
 <p>You may access <code>:report_tests_log_factory</code> configuration for your custom report using a handy utility method documented in a later section.</p>

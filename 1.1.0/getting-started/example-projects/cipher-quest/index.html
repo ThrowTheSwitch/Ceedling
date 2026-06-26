@@ -4166,12 +4166,13 @@ exported with the example project.</p>
 <h2 id="exporting">Exporting</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ceedling<span class="w"> </span>example<span class="w"> </span>cipher_quest<span class="w"> </span><span class="o">[</span>destination<span class="o">]</span>
 </code></pre></div>
+<p>After exporting, run <code>ceedling test:all</code> from the project root to execute the
+full test suite, or <code>ceedling release</code> to produce a release binary. Note that
+the release build requires configuration from you to provide needed symbols.</p>
 <h2 id="about">About</h2>
 <p><code>cipher_quest</code> simulates a command line toolkit for encoding and decoding
 secret messages. Unlike the other example projects, it supports both a test
 build and a release build, demonstrating Ceedling’s dual build capabilities.</p>
-<p>After exporting, run <code>ceedling test:all</code> from the project root to execute the
-full test suite, or <code>ceedling release</code> to produce a release binary.</p>
 <h2 id="release-builds">Release builds</h2>
 <p>The release build requires symbol definitions not active in the default project
 configuration. That is, without specifying at least one symbol corresponding to

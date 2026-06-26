@@ -4588,12 +4588,14 @@ build places it’s built artifacts , and list that here. Finally, the output
 artifacts will be referenced to this location. You override this by specifying a <code>:artifact</code>
 path. In summary:</p>
 <ul>
-<li><code>:paths</code></li>
+<li><code>:paths</code><ul>
 <li><code>:fetch</code> -- where things are fetched to (defaults to <code>build/deps/depname/</code>)</li>
 <li><code>:source</code> -- where we trigger builds (defaults to <code>:fetch</code>)</li>
 <li><code>:build</code> -- where we have the produced build files (defaults to <code>&lt;:fetch&gt;/build</code>)</li>
 <li><code>:deploy</code> -- where any produced library files should be copied (defaults to same as release executable)</li>
 <li><code>:artifact</code> -- where output libraries can be found (defaults to <code>:build</code>)</li>
+</ul>
+</li>
 </ul>
 <p>If the dependency is directly included in your project (you've specified <code>:none</code> as the
 <code>:method</code> for fetching), then <code>:source</code> should be where your Ceedling can find the
@@ -4605,22 +4607,26 @@ include dirs, choose the highest level and make the rest relative from there. </
 for you... using some common methods of fetching source. This section contains only a
 couple of fields:</p>
 <ul>
-<li><code>:method</code> -- This is the method that this dependency is fetched.</li>
+<li><code>:method</code> -- This is the method that this dependency is fetched.<ul>
 <li><code>:none</code> -- This tells Ceedling that the code is already included in the project.</li>
 <li><code>:zip</code> -- This tells Ceedling that we want to unpack a zip file to our source path.</li>
 <li><code>:gzip</code> -- This tells Ceedling that we want to unpack a gzip file to our source path.</li>
 <li><code>:git</code> -- This tells Ceedling that we want to clone a git repo to our source path.</li>
 <li><code>:svn</code> -- This tells Ceedling that we want to checkout a subversion repo to our source path.</li>
 <li><code>:custom</code> -- This tells Ceedling that we want to use a custom command or commands to fetch the code.</li>
+</ul>
+</li>
 <li><code>:source</code> -- This is the path or url to fetch code when using the <code>:zip</code>, <code>:gzip</code> or <code>:git</code> method.</li>
 <li><code>:tag</code>/<code>:branch</code> -- This is the specific tag or branch that you wish to retrieve (<code>:git</code> only, optional).</li>
 <li><code>:hash</code> -- This is the specific SHA1 hash you want to fetch (<code>:git</code> only, optional and triggers a deep clone).</li>
 <li><code>:revision</code> -- This is the specific revision you want to fetch (<code>:svn</code> only, optional).</li>
 <li><code>:executable</code> -- This is a YAML list of commands to execute when using the <code>:custom</code> method</li>
 </ul>
-<p>Some notes:
-* The <code>:source</code> location for fetching a <code>:zip</code> or <code>:gzip</code> file is relative to the <code>:paths</code> ↳ <code>:source</code>
-folder. </p>
+<p>Some notes:</p>
+<ul>
+<li>The <code>:source</code> location for fetching a <code>:zip</code> or <code>:gzip</code> file is relative to the <code>:paths</code> ↳ <code>:source</code>
+folder. </li>
+</ul>
 <h2 id="environment-variables">Environment Variables</h2>
 <p>Many build systems support customization through environment variables. By specifying
 an array of environment variables, the Dependencies plugin will customize the shell environment 

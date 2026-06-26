@@ -4414,13 +4414,13 @@ test:foo.c</code> or <code>ceedling test:test_foo.c</code></p>
 <p><code>ceedling test:* --test-case=&lt;test_case_name&gt;</code>
     Execute individual test cases which match <code>test_case_name</code>.</p>
 <p>For instance, if you have a test file <em>test_gpio.c</em> containing the following 
-test cases (test cases are simply <code>void test_name(void)</code>:</p>
+test cases (test cases are simply <code>void test_name(void)</code>):</p>
 <ul>
 <li><code>test_gpio_start</code></li>
 <li><code>test_gpio_configure_proper</code></li>
 <li><code>test_gpio_configure_fail_pin_not_allowed</code></li>
 </ul>
-<p>… and you want to run only <em>configure</em> tests, you can call:</p>
+<p>… and you want to run only <code>configure</code> tests, you can call:</p>
 <p><code>ceedling test:gpio --test-case=configure</code></p>
 <p><strong>Test case matching notes</strong></p>
 <ul>
@@ -4433,13 +4433,13 @@ test cases (test cases are simply <code>void test_name(void)</code>:</p>
 <li>
 <p><code>ceedling test:* --exclude_test_case=&lt;test_case_name&gt;</code>
     Execute test cases which do not match <code>test_case_name</code>.</p>
-<p>For instance, if you have file test_gpio.c with defined 3 tests:</p>
+<p>For instance, if you have file <em>test_gpio.c</em> with 3 tests:</p>
 <ul>
 <li><code>test_gpio_start</code></li>
 <li><code>test_gpio_configure_proper</code></li>
 <li><code>test_gpio_configure_fail_pin_not_allowed</code></li>
 </ul>
-<p>… and you want to run only start tests, you can call:</p>
+<p>… and you want to run only <code>start</code> tests, you can call:</p>
 <p><code>ceedling test:gpio --exclude_test_case=configure</code></p>
 <p><strong>Test case exclusion matching notes</strong></p>
 <ul>

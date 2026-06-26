@@ -4540,10 +4540,12 @@ illustrate the basic ideas of test file name matching.</p>
    full path).</li>
 <li>Regex (<code>/.../</code>) — Matches test file names against a regular expression.</li>
 </ol>
-<p>Notes:
-* Substring filename matching is case sensitive.
-* Wildcard matching is effectively a simplified form of regex. That is, 
-  multiple approaches to matching can match the same filename.</p>
+<p>Notes:</p>
+<ul>
+<li>Substring filename matching is case sensitive.</li>
+<li>Wildcard matching is effectively a simplified form of regex. That is, 
+  multiple approaches to matching can match the same filename.</li>
+</ul>
 <p>Flags by matcher are cumulative. This means the flags from multiple matchers
 can be applied to all files processed by the named build operation for any
 single test executable.</p>

@@ -4174,8 +4174,8 @@ may be sufficient for your needs:</p>
 <h2 id="gcov"><code>gcov</code></h2>
 <p>The Gcov plugin is known to work with <code>gcov</code> packaged with GNU Compiler
 Collection 12 through at least 15.</p>
-<p>The maintainers of <code>gcov</code> introduced significant behavioral changes for version
-12. Previous versions of <code>gcov</code> had a simple exit code scheme with only a
+<p>The maintainers of <code>gcov</code> introduced significant behavioral changes for
+version 12. Previous versions of <code>gcov</code> had a simple exit code scheme with only a
 single non-zero exit code upon fatal errors. Since version 12 <code>gcov</code> emits a
 variety of exit codes even if the noted issue is a non-fatal error. The Gcov
 plugin's logic assumes version 12 behavior and processes failure messages and
