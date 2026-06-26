@@ -87,7 +87,7 @@ ceedling_system_tests do
               expect(@output).to match(/TESTED:\s+86/)
               expect(@output).to match(/PASSED:\s+86/)
 
-              # Partial (i.e. spot check) coverage reporting
+              # Incomplete (i.e. spot check) coverage reporting validation
               expect(@output).to match(/AdcConductor\.c \| Lines executed:/i)
               expect(@output).to match(/AdcHardware\.c \| Lines executed:/i)
               expect(@output).to match(/AdcModel\.c \| Lines executed:/i)
