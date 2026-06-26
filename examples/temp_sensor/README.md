@@ -1,22 +1,25 @@
 # Ceedling Temperature Sensor Project
 
 An imagined temperature sensor accessory with ADC, timer, and USART
-subsystems — firmware organized in embedded C layers.
+subsystems — firmware organized in C layers.
 
 This example project illustrates:
 
-- **CMock mocks** for isolating hardware and peripheral modules under test
-- **Custom Unity assertions** for project-specific data types, defined in `test/support/`
-- **Subdirectory test organization** with ADC tests grouped in their own subfolder
-- **Integration tests** alongside unit tests (`TestTimerIntegrated.c`, `TestUsartIntegrated.c`)
-- **Per-file symbol definitions** via the `:defines` matcher section in `project.yml`
-- **Per-file compiler flags** via the `:flags` section in `project.yml`
-- **Test preprocessor** enabled for all files (`:use_test_preprocessor: :all`)
+- **CMock mocks** for isolating hardware modules under test.
+- **Platform standin technique** to resolve peripheral access as simple memory access for 
+  test assertions (see [Testing with a Hardware Standin](#testing-with-a-hardware-standin)).
+- **Custom Unity assertions** for project-specific data types, defined in _test/support/_.
+- **Subdirectory test organization** with ADC tests grouped in their own subfolder.
+- **Integration tests** alongside unit tests 
+    - (`TestTimerIntegrated.c`, `TestUsartIntegrated.c`)
+- **Per-file symbol definitions** via the `:defines` matcher section in _project.yml_.
+- **Per-file compiler flags** via the `:flags` section in _project.yml_.
+- **Test preprocessor** enabled for all files (`:use_test_preprocessor: :all`).
 - **Optional add-ons** via mixins:
-    - `gcov` plugin coverage reporting
+    - `gcov` plugin coverage reporting.
     - Custom assertion activation for more detailed failure messages.
 
-This project implements the [Model-Conductor-Hardware design pattern][mocking-the-embedded-world]:
+In addition, this project implements the [Model-Conductor-Hardware design pattern][mocking-the-embedded-world]:
 
 * Model modules manage state and logic
 * Hardware modules abstract hardware interfaces
@@ -92,35 +95,12 @@ ceedling test:pattern[Integrated]
 
 ---
 
-## Optional Mixins
-
-### Coverage with gcov
-
-Collect and report test coverage (requires `gcov` and `gcovr`):
-
-```sh
-ceedling gcov:all --mixin=mixin/add_gcov.yml
-```
-
-### Custom Unity assertions
-
-The project defines a custom assertion for `EXAMPLE_STRUCT_T` in
-`test/support/UnityHelper.h`. It is conditionally compiled and activated
-by the `add_unity_helper` mixin, which adds the required define and
-registers the helper with CMock:
-
-```sh
-ceedling test:all --mixin=mixin/add_unity_helper.yml
-```
-
----
-
-## Off-Platform Testing with a Hardware Register Standin
+## Testing with a Hardware Standin
 
 ### The Problem
 
-Embedded source files that configure hardware peripherals write directly to
-memory-mapped registers through vendor-defined symbols:
+Embedded source files that configure hardware peripherals often write directly 
+to memory-mapped registers through vendor-defined symbols:
 
 ```c
 /* AdcHardwareConfigurator.c */
@@ -131,19 +111,25 @@ void Adc_Reset(void)
 ```
 
 `AT91C_BASE_ADC`, `AT91C_ADC_SWRST`, and the `ADC_CR` field all come from
-the chip vendor's SDK header (`at91sam7s256.h` for this imagined AT91SAM7S256 
-project). That header only exists in the embedded toolchain. These source files
-cannot compile on a developer's host machine without it. Further, and more 
+the chip vendor’s SDK (_at91sam7s256.h_ for this imagined AT91SAM7S256 
+project). These vendor source files are non-portable. Further, and more 
 importantly, the underlying hardware does not exist apart from the target
 hardware or an emulator.
 
 ### The Standin Approach
 
-A **platform standin** provides a host-compilable substitute for the vendor
-header. Two files in `test/platform/` cover everything the hardware source
-files need:
+A platform standin provides a host-compilable substitute for the vendor
+header. The magic of C is that it does not care what is behind a symbol
+so long as the defined symbol meets expectations
 
-**`test/platform/at91sam7s256.h`** defines:
+The platform standin approach simply recreates the symbols used to access
+hardware peripherals and points them at a generic block of memory. Reads
+and writes through those symbols to that memory can be tested.
+
+Two files in _test/platform/_ cover everything the `temp_sensor` hardware 
+source files need:
+
+**_test/platform/at91sam7s256.h_** declares:
 
 1. **Peripheral register structs** — Plain C `typedef struct` types with one
    field per register used by this project (e.g. `AT91S_ADC`, `AT91S_TC`,
@@ -165,10 +151,21 @@ files need:
    (`AT91C_ADC_SWRST`, `AT91C_TC_CPCS`, `AT91C_US_TXRDY`, …) defined with
    their real AT91SAM7S256 datasheet values.
 
+**_test/platform/at91sam7s256.c_** defines the global structs (i.e. memory)
+that the accessors in _test/platform/at91sam7s256.h_ point to.
+
 Each hardware source file adds `#include "at91sam7s256.h"` — exactly what it
-would include in a real embedded build where the vendor header lives on the
-toolchain's system include path. Ceedling's support path (`test/platform/`)
+would include in a real embedded build where the vendor header lives in the
+toolchain’s system include path. Ceedling’s support path (_test/platform/_)
 makes this header resolvable during test builds.
+
+By carefully segmenting include paths between release and test builds and
+selectively swapping in certain symbol definitions in a testing-only C source 
+file, we can cleanly create a portable hardware stand-in suitable for test purposes.
+
+NOTE: This technique only validates what is read and written to the stand-in
+peripherals. It cannot validate that the correct functionality is triggered.
+That requires on-hardware validation.
 
 ### What This Enables
 
@@ -184,13 +181,18 @@ void testResetWritesSwrstBitToControlRegister(void)
 }
 ```
 
-This catches logic bugs that mocks cannot: wrong bit positions, missing enable
-steps, off-by-one prescaler values, or incorrect bitmask combinations — all
-without touching real hardware.
+This catches logic bugs that mocking the hardware function interfaces cannot —
+all without touching real hardware:
+
+* Wrong bit positions
+* Missing enable steps
+* Off-by-one prescaler values
+* Incorrect bitmask combinations
+* Etc.
 
 ### The Role of setUp()
 
-Each standin test file's `setUp()` calls `memset()` to zero all standin structs
+Each standin test file’s `setUp()` calls `memset()` to zero all standin structs
 before every test:
 
 ```c
@@ -202,9 +204,9 @@ void setUp(void)
 
 This guarantees a clean slate. If a test finds a non-zero register field, it
 was written there by the code under test during that test — not left over from
-a previous run or from C's zero-initialization of global storage.
+a previous run or from C’s zero-initialization of global storage.
 
-For read-dependent behavior (such as `Usart_PutChar`, which spins on
+For read-dependent behavior (such as `Usart_PutChar()`, which spins on
 `Usart_ReadyToTransmit()` before transmitting), the test sets the relevant
 standin field to a known value so the production code sees the expected
 hardware state:
@@ -212,7 +214,7 @@ hardware state:
 ```c
 void testPutCharWritesByteToTransmitHoldingRegisterWhenReady(void)
 {
-  UsartStandin.US_CSR = AT91C_US_TXRDY;   /* make the ready-check pass */
+  UsartStandin.US_CSR = AT91C_US_TXRDY; // Make the ready-check pass
   Usart_PutChar('Z');
   TEST_ASSERT_EQUAL_UINT32('Z', UsartStandin.US_THR);
 }
@@ -240,7 +242,26 @@ without requiring the target board to be present.
 ```sh
 # Run only the platform standin tests
 ceedling test:pattern[PlatformStandin]
+```
+---
 
-# Run the full suite (existing tests are unaffected)
-ceedling test:all
+## Optional Mixins
+
+### Coverage with gcov
+
+Collect and report test coverage (requires `gcov` and `gcovr`):
+
+```sh
+ceedling gcov:all --mixin=mixin/add_gcov.yml
+```
+
+### Custom Unity assertions
+
+The project defines a custom assertion for `EXAMPLE_STRUCT_T` in
+`test/support/UnityHelper.h`. It is conditionally compiled and activated
+by the `add_unity_helper` mixin, which adds the required define and
+registers the helper with CMock:
+
+```sh
+ceedling test:all --mixin=mixin/add_unity_helper.yml
 ```
