@@ -19,6 +19,7 @@ class Gcov < Plugin
   # `Plugin` setup()
   def setup
     @result_list = []
+    @untested_sources = []
 
     @project_config = @ceedling[:configurator].project_config_hash
 
@@ -89,6 +90,8 @@ class Gcov < Plugin
     tested_sources = []
     @test_invoker.each_test_with_sources { |_, srcs| tested_sources.concat( srcs ) }
     untested_sources = sources - tested_sources
+
+    @untested_sources = untested_sources
 
     if untested_sources.empty?
       @loginator.log( 'No untested sources to process.' )
@@ -174,8 +177,9 @@ class Gcov < Plugin
       end
     end
 
-    # Print summary of coverage to console for each source file exercised by a test
-    @console_reportinator&.generate_reports( @project_config )
+    # Print summary of coverage to console for each source file exercised by a test,
+    # plus a final section for any source files not exercised by any test.
+    @console_reportinator&.generate_reports( @project_config, untested_sources: @untested_sources )
 
     # Run full coverage report generation
     generate_coverage_reports() if automatic_reporting_enabled?

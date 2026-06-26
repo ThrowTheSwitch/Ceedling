@@ -18,7 +18,7 @@ class ConsoleReportinator
     @tool_executor       = system_objects[:tool_executor]
   end
 
-  def generate_reports(opts)
+  def generate_reports(opts, untested_sources: [])
     banner = @plugin_reportinator.generate_banner( "#{GCOV_ROOT_NAME.upcase}: CODE COVERAGE SUMMARY" )
     @loginator.log( "\n" + banner )
 
@@ -34,11 +34,21 @@ class ConsoleReportinator
         log_coverage_report( test, source, results, gcov_source )
       end
     end
+
+    log_untested_sources_section( untested_sources ) unless untested_sources.empty?
   end
 
   ### Private ###
 
   private
+
+  def log_untested_sources_section(untested_sources)
+    @loginator.log( @plugin_reportinator.generate_heading("Untested Source Files") )
+
+    untested_sources.sort_by { |f| File.basename(f) }.each do |source|
+      @loginator.log( "#{File.basename(source)} | No tests executed — 0% coverage" )
+    end
+  end
 
   def remap_partial_sources(sources)
     # Remap sources: if Partial files are present, remove the original source file they replace.
