@@ -81,12 +81,13 @@ ceedling_system_tests do
         @c.with_context do
           Dir.chdir "temp_sensor" do
             @output = @c.ceedling_build_exec("test:path[adc]")
-            expect(@output).to match(/TESTED:\s+15/)
-            expect(@output).to match(/PASSED:\s+15/)
+            expect(@output).to match(/TESTED:\s+24/)
+            expect(@output).to match(/PASSED:\s+24/)
 
             expect(@output).to match(/AdcModel\.out/i)
             expect(@output).to match(/AdcHardware\.out/i)
             expect(@output).to match(/AdcConductor\.out/i)
+            expect(@output).to match(/AdcPlatformStandin\.out/i)
           end
         end
       end

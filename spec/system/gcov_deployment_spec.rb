@@ -129,12 +129,13 @@ ceedling_system_tests do
           @c.with_context do
             Dir.chdir "temp_sensor" do
               @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:path[adc] 2>&1`
-              expect(@output).to match(/TESTED:\s+15/)
-              expect(@output).to match(/PASSED:\s+15/)
+              expect(@output).to match(/TESTED:\s+24/)
+              expect(@output).to match(/PASSED:\s+24/)
 
               expect(@output).to match(/AdcConductor\.c \| Lines executed:/i)
               expect(@output).to match(/AdcHardware\.c \| Lines executed:/i)
               expect(@output).to match(/AdcModel\.c \| Lines executed:/i)
+              expect(@output).to match(/AdcPlatformStandin\.out/i)
             end
           end
         end
