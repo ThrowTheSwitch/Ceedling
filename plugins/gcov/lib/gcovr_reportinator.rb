@@ -50,98 +50,25 @@ class GcovrReportinator < GcovReportinator
   # Generate the gcovr report(s) specified in the options.
   # Returns a summary string (possibly empty) when :print_summary is enabled.
   def generate_reports(opts)
-    # Get gcovr options from project configuration options
-    gcovr_opts = collect_gcovr_opts(opts)
-
-    # Extract exception_on_fail setting
+    gcovr_opts        = collect_gcovr_opts(opts)
     exception_on_fail = !!gcovr_opts[:exception_on_fail]
+    args_common       = args_builder_common(gcovr_opts, @gcovr_version)
 
-    # Build the common gcovr arguments.
-    args_common = args_builder_common( gcovr_opts, @gcovr_version )
+    @loginator.log(@reportinator.generate_heading("Running Gcovr Coverage Reports"))
 
-    gcovr_summary = ''
-
-    msg = @reportinator.generate_heading( "Running Gcovr Coverage Reports" )
-    @loginator.log( msg )
-
-    # gcovr version 4.2 and later supports generating multiple reports with a single call.
-    if min_version?( @gcovr_version, 4, 2 )
-      reports = []
-
-      args = args_common
-
-      args += (_args = args_builder_cobertura(opts, false))
-      reports << "Cobertura XML" if not _args.empty?
-
-      args += (_args = args_builder_sonarqube(opts, false))
-      reports << "SonarQube" if not _args.empty?
-
-      args += (_args = args_builder_json(opts, true))
-      reports << "JSON" if not _args.empty?
-
-      # As of gcovr version 4.2, the --html argument must appear last.
-      args += (_args = args_builder_html(opts, false))
-      reports << "HTML" if not _args.empty?
-
-      reports.each do |report|
-        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}/'")
-        @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+    # gcovr 4.2+ can produce all report formats in one invocation;
+    # earlier versions require a separate call for each format.
+    gcovr_summary =
+      if min_version?(@gcovr_version, 4, 2)
+        generate_reports_modern(gcovr_opts, args_common, exception_on_fail, opts)
+      else
+        generate_reports_legacy(gcovr_opts, args_common, exception_on_fail, opts)
       end
 
-      # Generate the report(s).
-      # only if one of the previous done checks for:
-      #
-      # - args_builder_cobertura
-      # - args_builder_sonarqube
-      # - args_builder_json
-      # - args_builder_html
-      #
-      # updated the args variable. In other case, no need to run GCOVR for current setup.
-      if !(args == args_common)
-        shell_result = run_gcovr( gcovr_opts, args, exception_on_fail )
-        if gcovr_opts[:print_summary] && shell_result
-          gcovr_summary = extract_gcovr_summary( shell_result[:output] )
-        end
-      end
+    # Text report is always a standalone gcovr invocation regardless of version.
+    generate_text_report(opts, args_common, exception_on_fail) if report_enabled?(opts, ReportTypes::TEXT)
 
-    # gcovr version 4.1 and earlier supports HTML and Cobertura XML reports.
-    # It does not support SonarQube and JSON reports.
-    # Reports must also be generated separately.
-    else
-      args_cobertura = args_builder_cobertura(opts, true)
-      args_html = args_builder_html(opts, true)
-
-      if args_html.length > 0
-        msg = @reportinator.generate_progress("Generating an HTML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
-        @loginator.log( msg )
-
-        # Generate the HTML report.
-        shell_result = run_gcovr( gcovr_opts, (args_common + args_html), exception_on_fail )
-        if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
-          gcovr_summary = extract_gcovr_summary( shell_result[:output] )
-        end
-      end
-
-      if args_cobertura.length > 0
-        msg = @reportinator.generate_progress("Generating an Cobertura XML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
-        @loginator.log( msg )
-
-        # Generate the Cobertura XML report.
-        shell_result = run_gcovr( gcovr_opts, (args_common + args_cobertura), exception_on_fail )
-        if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
-          gcovr_summary = extract_gcovr_summary( shell_result[:output] )
-        end
-      end
-    end
-
-    # Determine if the gcovr text report is enabled. Defaults to disabled.
-    if report_enabled?(opts, ReportTypes::TEXT)
-      generate_text_report( opts, args_common, exception_on_fail )
-    end
-
-    # White space log line
-    @loginator.log( '' )
-
+    @loginator.log('')
     return gcovr_summary
   end
 
@@ -328,6 +255,73 @@ class GcovrReportinator < GcovReportinator
 
     # Generate the text report
     run_gcovr( gcovr_opts, (args_common + args_text), boom )
+  end
+
+
+  # gcovr 4.2+ supports all output formats in a single invocation.
+  # Accumulate per-format args and track which formats are active for progress logging.
+  # As required by gcovr 4.2, --html arguments must be appended last.
+  # Returns a summary string or '' when :print_summary is not set.
+  def generate_reports_modern(gcovr_opts, args_common, exception_on_fail, opts)
+    reports = []
+    args    = args_common
+
+    args += (_args = args_builder_cobertura(opts, false))
+    reports << "Cobertura XML" unless _args.empty?
+
+    args += (_args = args_builder_sonarqube(opts, false))
+    reports << "SonarQube" unless _args.empty?
+
+    args += (_args = args_builder_json(opts, true))
+    reports << "JSON" unless _args.empty?
+
+    # --html must be last (gcovr 4.2 requirement)
+    args += (_args = args_builder_html(opts, false))
+    reports << "HTML" unless _args.empty?
+
+    reports.each do |report|
+      @loginator.log(
+        @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}/'"),
+        Verbosity::NORMAL, LogLabels::NOTICE
+      )
+    end
+
+    # Skip the gcovr call entirely when no format added arguments.
+    return '' if args == args_common
+
+    shell_result = run_gcovr(gcovr_opts, args, exception_on_fail)
+    return extract_gcovr_summary(shell_result[:output]) if gcovr_opts[:print_summary] && shell_result
+
+    ''
+  end
+
+
+  # gcovr 4.1 and earlier support only HTML and Cobertura XML, and each must be
+  # generated with a separate gcovr call. SonarQube and JSON are unavailable.
+  # Returns a summary string (from the first run that produces one) or ''.
+  def generate_reports_legacy(gcovr_opts, args_common, exception_on_fail, opts)
+    gcovr_summary = ''
+
+    args_html      = args_builder_html(opts, true)
+    args_cobertura = args_builder_cobertura(opts, true)
+
+    if args_html.length > 0
+      @loginator.log(
+        @reportinator.generate_progress("Generating an HTML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
+      )
+      shell_result  = run_gcovr(gcovr_opts, args_common + args_html, exception_on_fail)
+      gcovr_summary = extract_gcovr_summary(shell_result[:output]) if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
+    end
+
+    if args_cobertura.length > 0
+      @loginator.log(
+        @reportinator.generate_progress("Generating a Cobertura XML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
+      )
+      shell_result  = run_gcovr(gcovr_opts, args_common + args_cobertura, exception_on_fail)
+      gcovr_summary = extract_gcovr_summary(shell_result[:output]) if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
+    end
+
+    gcovr_summary
   end
 
 
