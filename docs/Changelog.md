@@ -119,6 +119,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
    - Prevention of coverage corruption during `ReportGenerator` reporting runs.
 - #1144 Fixed flags for release build linking.
 - #1169 Fixed linking with :libraries ↳ :release.
+- #1112 Fixed test failures incorrectly returning exit code 0 when the stdout pretty printer plugin is disabled. (@corytodd)
 
 ## ⚠️ Changed
 
