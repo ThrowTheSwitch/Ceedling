@@ -5,7 +5,7 @@ Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg
 
 [_Changelog_](docs/Changelog.md) is receiving updates and revisions and will 
 soon be complete. _Release Notes_, _Breaking Changes_, and _Known Issues_ documents 
-will be revised and updated soon.
+will be revised and updated soon. See _Releases_ for the latest prerelease version.
 
 **New goodies:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
@@ -18,7 +18,7 @@ from the same source module in a single test file and enables testing of
 * The [GCov plugin][gcov-plugin]:
    * _Finally_ supports coverage reports for all sources.
    * Adds support for Modified Condition / Decision Coverage.
-* Mixins improvements including an option for [inline YAML at the command line][mixins-line-yaml].
+* Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
 
 [partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
 [example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/
@@ -432,7 +432,7 @@ If you are working with prerelease versions of Ceedling or some other off-the-be
 
 The steps are similar to the preceding with two changes:
 
-1. `gem install --local <ceedling .gem filepath>`
+1. `gem install --local <ceedling .gem filepath> --no-document`
 1. Any missing dependencies must be manually installed before installation of the local Ceedling gem will succeed. A local installation attempt will complain about any missing dependencies. Simply `gem install` them by name.
 
 [Ruby]: https://www.ruby-lang.org/
