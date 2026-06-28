@@ -26,7 +26,16 @@ namespace GCOV_SYM do
 
   desc 'Run code coverage for all tests'
   task all: [:prepare] do
+    # Run tests with coverage
     @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS )
+
+    # Optionally compile untested sources with coverage for complete source coverage results in the final report.
+    # This comes after the tests because it depends on the accrued knowledge of which source files have associated tests.
+    # From that knowledge we can filter all source files to compile with coverage only those without tests.
+    # Untested source files will appear in the final coverage results with 0% coverage.
+    # Because of how tests are executed and test suite results reported, the compilation happens after the former
+    # but before the latter.
+    @ceedling[:gcov].process_untested_sources( sources:COLLECTION_ALL_SOURCE )
   end
 
   desc 'Run single test w/ coverage ([*] test or source file name, no path).'

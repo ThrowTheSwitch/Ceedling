@@ -8,6 +8,7 @@
 #include "Types.h"
 #include "TimerConfigurator.h"
 #include "TimerInterruptConfigurator.h"
+#include "at91sam7s256.h"
 
 void Timer_EnablePeripheralClocks(void)
 {

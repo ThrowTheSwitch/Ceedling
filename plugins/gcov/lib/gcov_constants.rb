@@ -5,6 +5,9 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+EXTENSION_GCNO                  = '.gcno'.freeze
+EXTENSION_GCOV                  = '.gcov'.freeze
+
 GCOV_ROOT_NAME                  = 'gcov'.freeze
 GCOV_TASK_ROOT                  = GCOV_ROOT_NAME + ':'
 GCOV_SYM                        = GCOV_ROOT_NAME.to_sym
@@ -13,9 +16,9 @@ GCOV_REPORT_NAMESPACE           = 'report'.freeze
 GCOV_REPORT_NAMESPACE_SYM       = GCOV_REPORT_NAMESPACE.to_sym
 
 GCOV_BUILD_PATH                 = File.join(PROJECT_BUILD_ROOT, GCOV_ROOT_NAME)
-GCOV_BUILD_OUTPUT_PATH          = File.join(GCOV_BUILD_PATH, "out")
-GCOV_RESULTS_PATH               = File.join(GCOV_BUILD_PATH, "results")
-GCOV_DEPENDENCIES_PATH          = File.join(GCOV_BUILD_PATH, "dependencies")
+GCOV_BUILD_OUTPUT_PATH          = File.join(GCOV_BUILD_PATH, BUILD_OUT_DIR)
+GCOV_RESULTS_PATH               = File.join(GCOV_BUILD_PATH, BUILD_RESULTS_DIR)
+GCOV_DEPENDENCIES_PATH          = File.join(GCOV_BUILD_PATH, BUILD_DEPENDENCIES_DIR)
 GCOV_ARTIFACTS_PATH             = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, GCOV_ROOT_NAME)
 
 GCOV_REPORT_GENERATOR_ARTIFACTS_PATH  = File.join(GCOV_ARTIFACTS_PATH, "ReportGenerator")

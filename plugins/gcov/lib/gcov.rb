@@ -10,6 +10,7 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'gcov_constants'
 require 'gcov_types'
+require 'gcov_reportinator'
 require 'console_reportinator'
 require 'gcovr_reportinator'
 require 'reportgenerator_reportinator'
@@ -19,6 +20,7 @@ class Gcov < Plugin
   # `Plugin` setup()
   def setup
     @result_list = []
+    @untested_sources = []
 
     @project_config = @ceedling[:configurator].project_config_hash
 
@@ -46,6 +48,9 @@ class Gcov < Plugin
     @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
     @test_invoker = @ceedling[:test_invoker]
+    @flaginator = @ceedling[:flaginator]
+    @defineinator = @ceedling[:defineinator]
+    @generator = @ceedling[:generator]
     @plugin_reportinator = @ceedling[:plugin_reportinator]
     @file_path_utils = @ceedling[:file_path_utils]
     @file_wrapper = @ceedling[:file_wrapper]
@@ -69,6 +74,45 @@ class Gcov < Plugin
   # No parameters enables the opportunity for latter mechanism
   def automatic_reporting_enabled?
     return (@project_config[:gcov_report_task] == false)
+  end
+
+
+  def process_untested_sources(sources:)
+    unless @project_config[:gcov_untested_sources]
+      msg = 'Skipping code coverage processing of untested sources'
+      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      return
+    end
+
+    msg = 'Processing Untested Sources'
+    msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
+    @loginator.log( msg )
+
+    tested_sources = []
+    @test_invoker.each_test_with_sources { |_, srcs| tested_sources.concat( srcs ) }
+    untested_sources = sources - tested_sources
+
+    @untested_sources = untested_sources
+
+    if untested_sources.empty?
+      @loginator.log( 'No untested sources to process.' )
+      return
+    end
+
+    untested_sources.each do |filepath|
+      filename = File.basename(filepath)
+      @generator.generate_object_file_c(
+        tool:         TOOLS_GCOV_COMPILER,
+        module_name:  filename.ext(),
+        context:      GCOV_SYM,
+        source:       filepath,
+        object:       @file_path_utils.form_test_object_filepath( filepath, context:GCOV_SYM ),
+        search_paths: @configurator.collection_paths_include,
+        flags:        @flaginator.flag_down( context:GCOV_SYM, operation:OPERATION_COMPILE_SYM ),
+        defines:      @defineinator.defines( subkey:GCOV_SYM ),
+        dependencies: @file_path_utils.form_test_dependencies_filepath( filepath, context:GCOV_SYM )
+      )
+    end
   end
 
   def pre_compile_execute(arg_hash)
@@ -134,8 +178,9 @@ class Gcov < Plugin
       end
     end
 
-    # Print summary of coverage to console for each source file exercised by a test
-    @console_reportinator&.generate_reports( @project_config )
+    # Print summary of coverage to console for each source file exercised by a test,
+    # plus a final section for any source files not exercised by any test.
+    @console_reportinator&.generate_reports( @project_config, untested_sources: @untested_sources )
 
     # Run full coverage report generation
     generate_coverage_reports() if automatic_reporting_enabled?
@@ -174,8 +219,12 @@ class Gcov < Plugin
       # Create the artifacts output directory.
       @file_wrapper.mkdir( reportinator.artifacts_path ) if reportinator.artifacts_path
 
-      # Generate reports
-      reportinator.generate_reports( @configurator.project_config_hash )
+      # Generate reports; log any returned coverage summary at normal verbosity
+      summary = reportinator.generate_reports( @configurator.project_config_hash )
+      if summary && !summary.empty?
+        @loginator.log( @reportinator.generate_heading( "#{reportinator.name} Coverage Summary" ) )
+        @loginator.log( summary )
+      end
     end
   end
 

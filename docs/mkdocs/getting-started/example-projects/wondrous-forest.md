@@ -14,6 +14,9 @@ exported with the example project.
 ceedling example wondrous_forest [destination]
 ```
 
+After exporting, run `ceedling test:all` from the project root to execute the
+full test suite.
+
 ## About
 
 `wondrous_forest` demonstrates Ceedling's [Partials](../../testing-guide/partials/index.md)
@@ -21,9 +24,6 @@ feature — the ability to test `static`, `inline`, and `static inline` C
 functions and `static` variables that are otherwise inaccessible under normal
 C linkage rules. Every major Partials pattern appears somewhere in the project,
 alongside traditional mock-based tests.
-
-After exporting, run `ceedling test:all` from the project root to execute the
-full test suite.
 
 ## Partials patterns
 

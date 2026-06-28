@@ -5,12 +5,16 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'reportinator_helper'
 require 'ceedling/exceptions'
 require 'ceedling/constants'
 require 'gcov_types'
+require 'gcov_reportinator'
 
-class GcovrReportinator
+class GcovrReportinator < GcovReportinator
+
+  NAME = 'Gcovr'
+
+  def name; NAME; end
 
   attr_reader :artifacts_path
 
@@ -19,7 +23,6 @@ class GcovrReportinator
   def initialize(system_objects)
     @artifacts_path = GCOV_GCOVR_ARTIFACTS_PATH
     @ceedling = system_objects
-    @reportinator_helper = ReportinatorHelper.new(system_objects)
 
     # Validate the gcovr tool since it's used to generate reports
     @ceedling[:tool_validator].validate(
@@ -45,87 +48,28 @@ class GcovrReportinator
   end
 
   # Generate the gcovr report(s) specified in the options.
+  # Returns a summary string (possibly empty) when :print_summary is enabled.
   def generate_reports(opts)
-    # Get gcovr options from project configuration options
-    gcovr_opts = collect_gcovr_opts(opts)
-
-    # Extract exception_on_fail setting
+    gcovr_opts        = collect_gcovr_opts(opts)
     exception_on_fail = !!gcovr_opts[:exception_on_fail]
+    args_common       = args_builder_common(gcovr_opts, @gcovr_version)
 
-    # Build the common gcovr arguments.
-    args_common = args_builder_common( gcovr_opts, @gcovr_version )
+    @loginator.log(@reportinator.generate_heading("Running Gcovr Coverage Reports"))
 
-    msg = @reportinator.generate_heading( "Running Gcovr Coverage Reports" )
-    @loginator.log( msg )
-
-    # gcovr version 4.2 and later supports generating multiple reports with a single call.
-    if min_version?( @gcovr_version, 4, 2 )
-      reports = []
-
-      args = args_common
-
-      args += (_args = args_builder_cobertura(opts, false))
-      reports << "Cobertura XML" if not _args.empty?
-
-      args += (_args = args_builder_sonarqube(opts, false))
-      reports << "SonarQube" if not _args.empty?
-      
-      args += (_args = args_builder_json(opts, true))
-      reports << "JSON" if not _args.empty?
-      
-      # As of gcovr version 4.2, the --html argument must appear last.
-      args += (_args = args_builder_html(opts, false))
-      reports << "HTML" if not _args.empty?
-      
-      reports.each do |report|
-        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}/'")
-        @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+    # gcovr 4.2+ can produce all report formats in one invocation;
+    # earlier versions require a separate call for each format.
+    gcovr_summary =
+      if min_version?(@gcovr_version, 4, 2)
+        generate_reports_modern(gcovr_opts, args_common, exception_on_fail, opts)
+      else
+        generate_reports_legacy(gcovr_opts, args_common, exception_on_fail, opts)
       end
 
-      # Generate the report(s).
-      # only if one of the previous done checks for:
-      #
-      # - args_builder_cobertura
-      # - args_builder_sonarqube
-      # - args_builder_json
-      # - args_builder_html
-      #
-      # updated the args variable. In other case, no need to run GCOVR for current setup.
-      if !(args == args_common)
-        run( gcovr_opts, args, exception_on_fail )
-      end
+    # Text report is always a standalone gcovr invocation regardless of version.
+    generate_text_report(opts, args_common, exception_on_fail) if report_enabled?(opts, ReportTypes::TEXT)
 
-    # gcovr version 4.1 and earlier supports HTML and Cobertura XML reports.
-    # It does not support SonarQube and JSON reports.
-    # Reports must also be generated separately.
-    else
-      args_cobertura = args_builder_cobertura(opts, true)
-      args_html = args_builder_html(opts, true)
-
-      if args_html.length > 0
-        msg = @reportinator.generate_progress("Generating an HTML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
-        @loginator.log( msg )
-
-        # Generate the HTML report.
-        run( gcovr_opts, (args_common + args_html), exception_on_fail )
-      end
-
-      if args_cobertura.length > 0
-        msg = @reportinator.generate_progress("Generating an Cobertura XML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
-        @loginator.log( msg )
-
-        # Generate the Cobertura XML report.
-        run( gcovr_opts, (args_common + args_cobertura), exception_on_fail )
-      end
-    end
-
-    # Determine if the gcovr text report is enabled. Defaults to disabled.
-    if report_enabled?(opts, ReportTypes::TEXT)
-      generate_text_report( opts, args_common, exception_on_fail )
-    end
-
-    # White space log line
-    @loginator.log( '' )
+    @loginator.log('')
+    return gcovr_summary
   end
 
   ### Private ###
@@ -133,19 +77,19 @@ class GcovrReportinator
   private
 
   # Build the gcovr report generation common arguments.
+  # --root and --exclude are passed as positional args ${1} and ${2} to the tool executor
+  # and are not included in the string returned by this method.
   def args_builder_common(gcovr_opts, gcovr_version)
     args = ""
-    args += "--root \"#{gcovr_opts[:report_root]}\" " unless gcovr_opts[:report_root].nil?
     args += "--config \"#{gcovr_opts[:config_file]}\" " unless gcovr_opts[:config_file].nil?
 
     # When a config file is provided, defer all other options to it.
     # This prevents Ceedling from overriding config file values with its CLI arguments.
-    # Only :report_root is still applied because Ceedling may invoke gcovr from a
-    # different working directory than the project root.
+    # --root (${1}) is always passed; --exclude (${2}) is nil when a config file is present,
+    # so the tool executor omits those flags and the config file governs exclusions.
     return args if gcovr_opts[:config_file]
 
     args += "--filter \"#{gcovr_opts[:report_include]}\" " unless gcovr_opts[:report_include].nil?
-    Array(gcovr_opts[:report_exclude]).each { |pat| args += "--exclude \"#{pat}\" " }
     args += "--gcov-filter \"#{gcovr_opts[:gcov_filter]}\" " unless gcovr_opts[:gcov_filter].nil?
     args += "--gcov-exclude \"#{gcovr_opts[:gcov_exclude]}\" " unless gcovr_opts[:gcov_exclude].nil?
     args += "--exclude-directories \"#{gcovr_opts[:exclude_directories]}\" " unless gcovr_opts[:exclude_directories].nil?
@@ -310,21 +254,93 @@ class GcovrReportinator
     @loginator.log(msg, Verbosity::NORMAL)
 
     # Generate the text report
-    run( gcovr_opts, (args_common + args_text), boom )
+    run_gcovr( gcovr_opts, (args_common + args_text), boom )
+  end
+
+
+  # gcovr 4.2+ supports all output formats in a single invocation.
+  # Accumulate per-format args and track which formats are active for progress logging.
+  # As required by gcovr 4.2, --html arguments must be appended last.
+  # Returns a summary string or '' when :print_summary is not set.
+  def generate_reports_modern(gcovr_opts, args_common, exception_on_fail, opts)
+    reports = []
+    args    = args_common
+
+    args += (_args = args_builder_cobertura(opts, false))
+    reports << "Cobertura XML" unless _args.empty?
+
+    args += (_args = args_builder_sonarqube(opts, false))
+    reports << "SonarQube" unless _args.empty?
+
+    args += (_args = args_builder_json(opts, true))
+    reports << "JSON" unless _args.empty?
+
+    # --html must be last (gcovr 4.2 requirement)
+    args += (_args = args_builder_html(opts, false))
+    reports << "HTML" unless _args.empty?
+
+    reports.each do |report|
+      @loginator.log(
+        @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}/'"),
+        Verbosity::NORMAL, LogLabels::NOTICE
+      )
+    end
+
+    # Skip the gcovr call entirely when no format added arguments.
+    return '' if args == args_common
+
+    shell_result = run_gcovr(gcovr_opts, args, exception_on_fail)
+    return extract_gcovr_summary(shell_result[:output]) if gcovr_opts[:print_summary] && shell_result
+
+    ''
+  end
+
+
+  # gcovr 4.1 and earlier support only HTML and Cobertura XML, and each must be
+  # generated with a separate gcovr call. SonarQube and JSON are unavailable.
+  # Returns a summary string (from the first run that produces one) or ''.
+  def generate_reports_legacy(gcovr_opts, args_common, exception_on_fail, opts)
+    gcovr_summary = ''
+
+    args_html      = args_builder_html(opts, true)
+    args_cobertura = args_builder_cobertura(opts, true)
+
+    if args_html.length > 0
+      @loginator.log(
+        @reportinator.generate_progress("Generating an HTML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
+      )
+      shell_result  = run_gcovr(gcovr_opts, args_common + args_html, exception_on_fail)
+      gcovr_summary = extract_gcovr_summary(shell_result[:output]) if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
+    end
+
+    if args_cobertura.length > 0
+      @loginator.log(
+        @reportinator.generate_progress("Generating a Cobertura XML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
+      )
+      shell_result  = run_gcovr(gcovr_opts, args_common + args_cobertura, exception_on_fail)
+      gcovr_summary = extract_gcovr_summary(shell_result[:output]) if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
+    end
+
+    gcovr_summary
   end
 
 
   # Get the gcovr options from the project options.
   def collect_gcovr_opts(opts)
-    _opts = opts[GCOVR_SETTING_PREFIX.to_sym]
+    # dup prevents repeated calls from accumulating mutations on the shared opts hash.
+    # Each args_builder_* method calls this independently, so without dup every call
+    # would see the already-mutated :report_exclude from the previous call and nest it.
+    _opts = opts[GCOVR_SETTING_PREFIX.to_sym].dup
 
     # Only auto-generate --exclude patterns when no config file is specified.
     # A gcovr config file is authoritative; CLI args override it, so injecting
     # auto-excludes would silently defeat the config file.
     unless _opts[:config_file]
-      # Build array of --exclude patterns: user-provided string (if any) + auto-generated per-file patterns
+      # Build array of --exclude patterns: user-provided value (if any) + internally-generated per-file patterns.
+      # Splat via *Array() handles both a user-supplied string and a user-supplied array
+      # without introducing a nested element into the exclusions list.
       excludes = build_report_exclusions()
-      excludes.unshift( _opts[:report_exclude] ) if _opts[:report_exclude]
+      excludes.unshift( *Array(_opts[:report_exclude]) ) if _opts[:report_exclude]
       _opts[:report_exclude] = excludes unless excludes.empty?
     end
 
@@ -334,28 +350,38 @@ class GcovrReportinator
   end
 
 
-  # Build a combined Python regex for gcovr's `--exclude`` flag covering all
-  # non-production file categories: test files, mocks, partials, and framework.
-  def build_report_exclusions()
+  # Build a combined Python regex for gcovr's `--exclude` flag covering all
+  # non-production file categories: test files, support files, and generated/framework files.
+  def build_report_exclusions
+    data = build_exclusion_data
     patterns = []
 
-    test_prefix = @configurator.project_test_file_prefix
-    @configurator.collection_paths_test.each do |path|
+    data[:test_paths].each do |path|
       # Test files (e.g. test_foo.c)
-      patterns << ".*#{path}.*/#{test_prefix}.+\\#{@configurator.extension_source}$"      
+      patterns << ".*#{path}.*/#{data[:test_prefix]}.+\\#{data[:src_extension]}$"
+    end
+
+    # Support files (e.g. helpers, stubs, fixtures) — never production source
+    data[:support_paths].each do |path|
+      patterns << ".*#{path}/.+\\#{data[:src_extension]}$"
     end
 
     # Any generated files for tests or vendored framework C source files below the root of the build directory
-    build_root = @configurator.project_build_root
-    patterns << ".*#{build_root}/.+\\#{EXTENSION_CORE_SOURCE}$"
+    patterns << ".*#{data[:build_root]}/.+\\#{EXTENSION_CORE_SOURCE}$"
 
     return patterns
   end
 
 
-  # Run gcovr with the given arguments
-  def run(opts, args, boom)
-    command = @tool_executor.build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], args)
+  # Run gcovr with the given arguments; returns shell_result (or nil on handled exception).
+  # gcovr_opts[:report_root] → ${1} (--root); gcovr_opts[:report_exclude] → ${2} (--exclude, array).
+  def run_gcovr(gcovr_opts, args, boom)
+    command = @tool_executor.build_command_line(
+      TOOLS_GCOV_GCOVR_REPORT, [],
+      gcovr_opts[:report_root],    # ${1} --root
+      gcovr_opts[:report_exclude], # ${2} --exclude (array; expanded to one flag per entry)
+      args                         # ${3} remaining optional arguments
+    )
 
     shell_result = nil
 
@@ -363,11 +389,29 @@ class GcovrReportinator
       shell_result = @tool_executor.exec( command )
     rescue ShellException => ex
       result = ex.shell_result
-      @reportinator_helper.print_shell_result( result )
-      raise(ex) if gcovr_exec_exception?( opts, result[:exit_code], boom )
+      print_shell_result( result )
+      raise(ex) if gcovr_exec_exception?( gcovr_opts, result[:exit_code], boom )
     end
 
-    @reportinator_helper.print_shell_result( shell_result )
+    print_shell_result( shell_result )
+    return shell_result
+  end
+
+
+  # Extract the last contiguous block of lines containing '%' from gcovr stdout.
+  # gcovr --print-summary emits lines like "lines: 69.6% (80 out of 115)" — this
+  # locates that block generically without depending on exact line labels.
+  def extract_gcovr_summary(output)
+    return '' if output.nil? || output.empty?
+
+    lines = output.lines
+    last_pct_idx = lines.rindex { |l| l.include?('%') }
+    return '' if last_pct_idx.nil?
+
+    first_pct_idx = last_pct_idx
+    first_pct_idx -= 1 while first_pct_idx > 0 && lines[first_pct_idx - 1].include?('%')
+
+    lines[first_pct_idx..last_pct_idx].join('')
   end
 
 

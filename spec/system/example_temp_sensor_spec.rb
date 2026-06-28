@@ -46,8 +46,8 @@ ceedling_system_tests do
         @c.with_context do
           Dir.chdir "temp_sensor" do
             @output = @c.ceedling_build_exec("test:all")
-            expect(@output).to match(/TESTED:\s+51/)
-            expect(@output).to match(/PASSED:\s+51/)
+            expect(@output).to match(/TESTED:\s+86/)
+            expect(@output).to match(/PASSED:\s+86/)
           end
         end
       end
@@ -81,12 +81,13 @@ ceedling_system_tests do
         @c.with_context do
           Dir.chdir "temp_sensor" do
             @output = @c.ceedling_build_exec("test:path[adc]")
-            expect(@output).to match(/TESTED:\s+15/)
-            expect(@output).to match(/PASSED:\s+15/)
+            expect(@output).to match(/TESTED:\s+24/)
+            expect(@output).to match(/PASSED:\s+24/)
 
             expect(@output).to match(/AdcModel\.out/i)
             expect(@output).to match(/AdcHardware\.out/i)
             expect(@output).to match(/AdcConductor\.out/i)
+            expect(@output).to match(/AdcPlatformStandin\.out/i)
           end
         end
       end
@@ -98,6 +99,7 @@ ceedling_system_tests do
             expect(@output).to match(/TESTED:\s+2/)
             expect(@output).to match(/PASSED:\s+2/)
 
+            # Incomplete (i.e. spot check) of test executable builds
             expect(@output).to match(/AdcModel\.out/i)
             expect(@output).to match(/AdcHardware\.out/i)
             expect(@output).to match(/AdcConductor\.out/i)
@@ -110,8 +112,8 @@ ceedling_system_tests do
           Dir.chdir "temp_sensor" do
             @output = @c.ceedling_build_exec("test:all --verbosity=obnoxious --mixin=mixin/add_unity_helper.yml")
             expect(@output).to match(/Merging command line mixin using mixin\/add_unity_helper\.yml/)
-            expect(@output).to match(/TESTED:\s+51/)
-            expect(@output).to match(/PASSED:\s+51/)
+            expect(@output).to match(/TESTED:\s+86/)
+            expect(@output).to match(/PASSED:\s+86/)
           end
         end
       end
@@ -121,8 +123,8 @@ ceedling_system_tests do
           Dir.chdir "temp_sensor" do
             @output = @c.ceedling_build_exec("test:all --verbosity=obnoxious --mixin=add_unity_helper")
             expect(@output).to match(/Merging command line mixin using mixin\/add_unity_helper\.yml/)
-            expect(@output).to match(/TESTED:\s+51/)
-            expect(@output).to match(/PASSED:\s+51/)
+            expect(@output).to match(/TESTED:\s+86/)
+            expect(@output).to match(/PASSED:\s+86/)
           end
         end
       end
@@ -133,8 +135,8 @@ ceedling_system_tests do
           Dir.chdir "temp_sensor" do
             @output = @c.ceedling_build_exec("test:all --verbosity=obnoxious")
             expect(@output).to match(/Merging CEEDLING_MIXIN_1 mixin using mixin\/add_unity_helper\.yml/)
-            expect(@output).to match(/TESTED:\s+51/)
-            expect(@output).to match(/PASSED:\s+51/)
+            expect(@output).to match(/TESTED:\s+86/)
+            expect(@output).to match(/PASSED:\s+86/)
           end
         end
       end
@@ -154,6 +156,7 @@ ceedling_system_tests do
           Dir.chdir "temp_sensor" do
             @output = @c.ceedling_build_exec("files:header")
 
+            # Incomplete (i.e. spot check) of header files
             expect(@output).to match(/Header files:/i)
             expect(@output).to match(/src\/AdcModel\.h/i)
             expect(@output).to match(/src\/AdcHardware\.h/i)
@@ -172,6 +175,7 @@ ceedling_system_tests do
           Dir.chdir "temp_sensor" do
             @output = @c.ceedling_build_exec("files:source")
 
+            # Incomplete (i.e. spot check) of source files
             expect(@output).to match(/Source files:/i)
             expect(@output).to match(/src\/AdcModel\.c/i)
             expect(@output).to match(/src\/AdcHardware\.c/i)
@@ -192,6 +196,7 @@ ceedling_system_tests do
 
             expect(@output).to match(/Support files:/i)
             expect(@output).to match(/test\/support\/UnityHelper\.c/i)
+            expect(@output).to match(/test\/platform\/at91sam7s256\.c/i)
           end
         end
       end
@@ -201,6 +206,7 @@ ceedling_system_tests do
           Dir.chdir "temp_sensor" do
             @output = @c.ceedling_build_exec("files:test")
 
+            # Incomplete (i.e. spot check) of test files
             expect(@output).to match(/Test files:/i)
             expect(@output).to match(/test\/adc\/TestAdcModel\.c/i)
             expect(@output).to match(/test\/adc\/TestAdcHardware\.c/i)
@@ -240,6 +246,7 @@ ceedling_system_tests do
 
             expect(@output).to match(/Support paths:/i)
             expect(@output).to match(/test\/support/i)
+            expect(@output).to match(/test\/platform/i)
           end
         end
       end

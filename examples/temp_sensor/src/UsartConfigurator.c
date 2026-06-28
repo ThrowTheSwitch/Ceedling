@@ -7,6 +7,7 @@
 
 #include "Types.h"
 #include "UsartConfigurator.h"
+#include "at91sam7s256.h"
 
 void Usart_ConfigureUsartIO(void)
 {

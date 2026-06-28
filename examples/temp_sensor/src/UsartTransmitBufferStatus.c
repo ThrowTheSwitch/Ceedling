@@ -7,6 +7,7 @@
 
 #include "Types.h"
 #include "UsartTransmitBufferStatus.h"
+#include "at91sam7s256.h"
 
 bool Usart_ReadyToTransmit(void)
 {

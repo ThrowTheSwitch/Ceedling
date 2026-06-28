@@ -104,6 +104,8 @@
     - src/**
   :support:
     - test/support
+    # Standins for embedded hardware
+    - test/platform
   :libraries: []
 
 # You can even specify specific files to add or remove from your test

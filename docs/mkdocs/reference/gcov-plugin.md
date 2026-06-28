@@ -59,6 +59,21 @@ This feature is dependent on minimum tool versions.
 
 ---
 
+### `:untested_sources`
+
+Enable or disable coverage compilation for all untested source files.
+When enabled, coverage results will exist in the final report for all source
+files in the project (untested source files will be listed with 0% coverage.)
+
+**Default:** `TRUE`
+
+```yaml
+:gcov:
+  :untested_sources: TRUE
+```
+
+---
+
 ### `:utilities`
 
 List of report generation utilities to enable. Valid values are `gcovr` and

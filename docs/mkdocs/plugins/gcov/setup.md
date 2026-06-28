@@ -91,6 +91,8 @@ contains a minimum of GCC 14 you can enable MC/DC in coverage summaries.
 If your environment contains a minimum of GCC 14 and GCovr 8, you can enable MC/DC 
 in your generated coverage reports.
 
+NOTE: ReportGenerator does not support MC/DC reporting.
+
 ```yaml
 :plugins:
   :enabled:
@@ -99,6 +101,38 @@ in your generated coverage reports.
 :gcov:
   :mcdc: TRUE
 ```
+**Default:** `FALSE`
+
+## Coverage for untested sources
+
+When enabled, the GCov plugin will compile all source files in the project with
+coverage, not only those exercised with tests. This causes all source files to 
+appear in any generated reporting (untested source files with 0% coverage).
+
+NOTE: Successful compilation of source files may require certain symbols to be
+defined or certain flags to be set in compilation. Ceedling’s 
+[`:defines`](../../configuration/reference/defines.md)
+and 
+[`:flags`](../../configuration/reference/flags.md)
+matchers can provide these. For GCov tasks, symbols and flags are extracted from
+the `:test` context beneath the `:defines` and `:flags` configuration sections 
+by default. If you need something special for coverage builds, use the `:gcov` 
+context for these matchers instead.
+
+Notes:
+
+* Versions of GCovr before 7.0 do not include the necessary options to produce 
+  0% coverage results for source files only compiled (but never executed.)
+
+```yaml
+:plugins:
+  :enabled:
+    - gcov
+
+:gcov:
+  :untested_sources: TRUE
+```
+**Default:** `TRUE`
 
 ### Reporting utilities installation
 

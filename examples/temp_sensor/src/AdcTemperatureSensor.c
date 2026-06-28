@@ -7,6 +7,7 @@
 
 #include "Types.h"
 #include "AdcTemperatureSensor.h"
+#include "at91sam7s256.h"
 
 static inline uint32 ConvertAdcCountsToPicovolts(uint32 counts); 
 static inline uint16 ConvertPicovoltsToMillivolts(uint32 picovolts);

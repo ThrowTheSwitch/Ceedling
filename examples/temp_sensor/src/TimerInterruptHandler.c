@@ -8,6 +8,7 @@
 #include "Types.h"
 #include "TimerInterruptHandler.h"
 #include "TimerInterruptConfigurator.h"
+#include "at91sam7s256.h"
 
 static uint32 systemTime;
 

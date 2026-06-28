@@ -113,6 +113,29 @@ error: "cipher_quest: No feature defined. An agent needs tools. ..."
 
 To build a release binary, supply one or more feature symbols via a mixin.
 
+---
+
+Below is example help output produced by running the executable with no
+command line arguments. This executable was a result of a release build 
+with `CIPHER_ROT13` defined.
+
+```shell
+> build/release/cipher_quest.out
+
+Usage: cipher_quest <command> [args...]
+
+Core commands (always available):
+  reverse <text>             Reverse the characters
+  upper <text>               Convert to uppercase
+  lower <text>               Convert to lowercase
+  trim <text>                Strip leading/trailing whitespace
+  palindrome <text>          Simple palindrome check (exact characters)
+  wordcount <text>           Count words
+
+Cipher: ROT13
+  rot13 <text>               Encode or decode (ROT13 is its own inverse)
+```
+
 ### Using a mixin file (optional `@` sigil)
 
 ```sh
