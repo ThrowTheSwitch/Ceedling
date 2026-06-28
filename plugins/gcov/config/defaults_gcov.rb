@@ -83,7 +83,9 @@ DEFAULT_GCOV_GCOVR_REPORT_TOOL = {
   :name => 'default_gcov_gcovr_report'.freeze,
   :optional => true.freeze,
   :arguments => [
-    "${1}".freeze
+    "--root \"${1}\"".freeze,    # ${1}: project root path for gcovr coverage scanning
+    "--exclude \"${2}\"".freeze, # ${2}: exclusion pattern array (one --exclude flag per entry)
+    "${3}".freeze                # ${3}: remaining optional arguments string
     ].freeze
   }
 
@@ -93,7 +95,12 @@ DEFAULT_GCOV_REPORTGENERATOR_REPORT_TOOL = {
   :name => 'default_gcov_reportgenerator_report'.freeze,
   :optional => true.freeze,
   :arguments => [
-    "${1}".freeze
+    "\"-reports:${1}\"".freeze,      # ${1}: .gcov files glob beneath the gcov build output path
+    "\"-targetdir:${2}\"".freeze,    # ${2}: report artifacts output path
+    "\"-reporttypes:${3}\"".freeze,  # ${3}: semicolon-joined ReportGenerator report type names
+    "\"-sourcedirs:${4}\"".freeze,   # ${4}: semicolon-joined source directories (leading . included)
+    "\"-filefilters:${5}\"".freeze,  # ${5}: semicolon-joined file filter expressions
+    "${6}".freeze                    # ${6}: optional arguments (historydir, plugins, verbosity, etc.)
     ].freeze
   }
 

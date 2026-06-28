@@ -49,6 +49,7 @@ class GcovReportinator
   def build_exclusion_data
     {
       test_paths:    @configurator.collection_paths_test,
+      support_paths: @configurator.collection_paths_support,
       test_prefix:   @configurator.project_test_file_prefix,
       mock_prefix:   @configurator.cmock_mock_prefix,
       build_root:    @configurator.project_build_root,

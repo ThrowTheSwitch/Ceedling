@@ -94,55 +94,30 @@ class ReportGeneratorReportinator < GcovReportinator
 
   REPORT_GENERATOR_SETTING_PREFIX = "gcov_report_generator"
 
-  # Build the ReportGenerator arguments.
-  # Accepts pre-computed rg_opts to avoid a second collect_reportgenerator_opts call
-  # (which mutates opts in place and would duplicate file filter exclusions).
-  def args_builder(opts, rg_opts = nil)
-    rg_opts ||= collect_reportgenerator_opts(opts)
-    report_type_count = 0
+  # Map configured report types to ReportGenerator names, silently skipping unknowns.
+  # Returns an array used to build both the -reporttypes: value and the report count.
+  def build_report_types(opts)
+    opts[:gcov_reports].filter_map { |r| REPORT_TYPE_TO_REPORT_GENERATOR_REPORT_NAME[r.upcase] }
+  end
 
+
+  # Build the optional ${6} argument string for ReportGenerator.
+  # report_type_count drives the createSubdirectoryForAllReportTypes setting.
+  def build_optional_args(rg_opts, report_type_count)
     args = ""
-    args += "\"-reports:#{GCOV_BUILD_OUTPUT_PATH}/**/*#{EXTENSION_GCOV}\" "
-    args += "\"-targetdir:\"#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}\"\" "
-
-    # Build the report types argument.
-    args += "\"-reporttypes:"
-
-    for report_type in opts[:gcov_reports]
-      rg_report_type = REPORT_TYPE_TO_REPORT_GENERATOR_REPORT_NAME[report_type.upcase]
-      if !(rg_report_type.nil?)
-        args += rg_report_type + ";"
-        report_type_count = report_type_count + 1
-      end
-    end
-
-    # Removing trailing ';' after the last report type.
-    args = args.chomp(";")
-
-    # Append a space separator after the report type.
-    args += "\" "
-
-    # Build the source directories argument.
-    collapsed = FilePathUtils.collapse_to_common_parents(opts[:collection_paths_source])
-    args += "\"-sourcedirs:.;#{collapsed.join(';')}\" "
-
     args += "\"-historydir:#{rg_opts[:history_directory]}\" " unless rg_opts[:history_directory].nil?
     args += "\"-plugins:#{rg_opts[:plugins]}\" " unless rg_opts[:plugins].nil?
     args += "\"-assemblyfilters:#{rg_opts[:assembly_filters]}\" " unless rg_opts[:assembly_filters].nil?
     args += "\"-classfilters:#{rg_opts[:class_filters]}\" " unless rg_opts[:class_filters].nil?
-    args += "\"-filefilters:#{rg_opts[:file_filters]}\" " unless rg_opts[:file_filters].nil?
     args += "\"-verbosity:#{rg_opts[:verbosity]}\" " unless rg_opts[:verbosity].nil?
     args += "\"-tag:#{rg_opts[:tag]}\" " unless rg_opts[:tag].nil?
-    args += "\"settings:createSubdirectoryForAllReportTypes=true\" " unless report_type_count <= 1
+    args += "\"settings:createSubdirectoryForAllReportTypes=true\" " if report_type_count > 1
     args += "\"settings:numberOfReportsParsedInParallel=#{rg_opts[:num_parallel_threads]}\" " unless rg_opts[:num_parallel_threads].nil?
     args += "\"settings:numberOfReportsMergedInParallel=#{rg_opts[:num_parallel_threads]}\" " unless rg_opts[:num_parallel_threads].nil?
-
-    # Append custom arguments.
-    for custom_arg in rg_opts[:custom_args]
+    rg_opts[:custom_args].each do |custom_arg|
       args += "\"#{custom_arg}\" " unless custom_arg.nil? || custom_arg.empty?
     end
-
-    return args
+    args.strip
   end
 
 
@@ -254,11 +229,20 @@ class ReportGeneratorReportinator < GcovReportinator
       return nil
     end
 
-    # Build the command line arguments.
-    # Pass rg_opts (already computed above) so collect_reportgenerator_opts is not
-    # called a second time and does not append duplicate file filter exclusions.
-    args = args_builder(opts, rg_opts)
-    command = @tool_executor.build_command_line(TOOLS_GCOV_REPORTGENERATOR_REPORT, [], args)
+    report_type_names = build_report_types(opts)
+    collapsed = FilePathUtils.collapse_to_common_parents(opts[:collection_paths_source])
+
+    command = @tool_executor.build_command_line(
+      TOOLS_GCOV_REPORTGENERATOR_REPORT, [],
+      "#{GCOV_BUILD_OUTPUT_PATH}/**/*#{EXTENSION_GCOV}",      # ${1} -reports:
+      GCOV_REPORT_GENERATOR_ARTIFACTS_PATH,                   # ${2} -targetdir:
+      report_type_names.join(';'),                            # ${3} -reporttypes:
+      ".;#{collapsed.join(';')}",                             # ${4} -sourcedirs:
+      # Always non-nil: collect_reportgenerator_opts unconditionally populates 
+      # it with at least the build-root exclusion from build_filefilter_exclusions.
+      rg_opts[:file_filters],                                 # ${5} -filefilters: 
+      build_optional_args(rg_opts, report_type_names.length)  # ${6} optional args
+    )
 
     return @tool_executor.exec( command )
   end

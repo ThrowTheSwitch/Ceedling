@@ -98,7 +98,7 @@ class GcovrReportinator < GcovReportinator
       #
       # updated the args variable. In other case, no need to run GCOVR for current setup.
       if !(args == args_common)
-        shell_result = run( gcovr_opts, args, exception_on_fail )
+        shell_result = run_gcovr( gcovr_opts, args, exception_on_fail )
         if gcovr_opts[:print_summary] && shell_result
           gcovr_summary = extract_gcovr_summary( shell_result[:output] )
         end
@@ -116,7 +116,7 @@ class GcovrReportinator < GcovReportinator
         @loginator.log( msg )
 
         # Generate the HTML report.
-        shell_result = run( gcovr_opts, (args_common + args_html), exception_on_fail )
+        shell_result = run_gcovr( gcovr_opts, (args_common + args_html), exception_on_fail )
         if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
           gcovr_summary = extract_gcovr_summary( shell_result[:output] )
         end
@@ -127,7 +127,7 @@ class GcovrReportinator < GcovReportinator
         @loginator.log( msg )
 
         # Generate the Cobertura XML report.
-        shell_result = run( gcovr_opts, (args_common + args_cobertura), exception_on_fail )
+        shell_result = run_gcovr( gcovr_opts, (args_common + args_cobertura), exception_on_fail )
         if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
           gcovr_summary = extract_gcovr_summary( shell_result[:output] )
         end
@@ -150,19 +150,19 @@ class GcovrReportinator < GcovReportinator
   private
 
   # Build the gcovr report generation common arguments.
+  # --root and --exclude are passed as positional args ${1} and ${2} to the tool executor
+  # and are not included in the string returned by this method.
   def args_builder_common(gcovr_opts, gcovr_version)
     args = ""
-    args += "--root \"#{gcovr_opts[:report_root]}\" " unless gcovr_opts[:report_root].nil?
     args += "--config \"#{gcovr_opts[:config_file]}\" " unless gcovr_opts[:config_file].nil?
 
     # When a config file is provided, defer all other options to it.
     # This prevents Ceedling from overriding config file values with its CLI arguments.
-    # Only :report_root is still applied because Ceedling may invoke gcovr from a
-    # different working directory than the project root.
+    # --root (${1}) is always passed; --exclude (${2}) is nil when a config file is present,
+    # so the tool executor omits those flags and the config file governs exclusions.
     return args if gcovr_opts[:config_file]
 
     args += "--filter \"#{gcovr_opts[:report_include]}\" " unless gcovr_opts[:report_include].nil?
-    Array(gcovr_opts[:report_exclude]).each { |pat| args += "--exclude \"#{pat}\" " }
     args += "--gcov-filter \"#{gcovr_opts[:gcov_filter]}\" " unless gcovr_opts[:gcov_filter].nil?
     args += "--gcov-exclude \"#{gcovr_opts[:gcov_exclude]}\" " unless gcovr_opts[:gcov_exclude].nil?
     args += "--exclude-directories \"#{gcovr_opts[:exclude_directories]}\" " unless gcovr_opts[:exclude_directories].nil?
@@ -327,21 +327,26 @@ class GcovrReportinator < GcovReportinator
     @loginator.log(msg, Verbosity::NORMAL)
 
     # Generate the text report
-    run( gcovr_opts, (args_common + args_text), boom )
+    run_gcovr( gcovr_opts, (args_common + args_text), boom )
   end
 
 
   # Get the gcovr options from the project options.
   def collect_gcovr_opts(opts)
-    _opts = opts[GCOVR_SETTING_PREFIX.to_sym]
+    # dup prevents repeated calls from accumulating mutations on the shared opts hash.
+    # Each args_builder_* method calls this independently, so without dup every call
+    # would see the already-mutated :report_exclude from the previous call and nest it.
+    _opts = opts[GCOVR_SETTING_PREFIX.to_sym].dup
 
     # Only auto-generate --exclude patterns when no config file is specified.
     # A gcovr config file is authoritative; CLI args override it, so injecting
     # auto-excludes would silently defeat the config file.
     unless _opts[:config_file]
-      # Build array of --exclude patterns: user-provided string (if any) + auto-generated per-file patterns
+      # Build array of --exclude patterns: user-provided value (if any) + internally-generated per-file patterns.
+      # Splat via *Array() handles both a user-supplied string and a user-supplied array
+      # without introducing a nested element into the exclusions list.
       excludes = build_report_exclusions()
-      excludes.unshift( _opts[:report_exclude] ) if _opts[:report_exclude]
+      excludes.unshift( *Array(_opts[:report_exclude]) ) if _opts[:report_exclude]
       _opts[:report_exclude] = excludes unless excludes.empty?
     end
 
@@ -352,7 +357,7 @@ class GcovrReportinator < GcovReportinator
 
 
   # Build a combined Python regex for gcovr's `--exclude` flag covering all
-  # non-production file categories: test files and generated/framework files.
+  # non-production file categories: test files, support files, and generated/framework files.
   def build_report_exclusions
     data = build_exclusion_data
     patterns = []
@@ -362,16 +367,27 @@ class GcovrReportinator < GcovReportinator
       patterns << ".*#{path}.*/#{data[:test_prefix]}.+\\#{data[:src_extension]}$"
     end
 
+    # Support files (e.g. helpers, stubs, fixtures) — never production source
+    data[:support_paths].each do |path|
+      patterns << ".*#{path}/.+\\#{data[:src_extension]}$"
+    end
+
     # Any generated files for tests or vendored framework C source files below the root of the build directory
-    patterns << ".*#{data[:build_root]}/.+\\#{data[:src_extension]}$"
+    patterns << ".*#{data[:build_root]}/.+\\#{EXTENSION_CORE_SOURCE}$"
 
     return patterns
   end
 
 
-  # Run gcovr with the given arguments; returns shell_result (or nil on handled exception)
-  def run(opts, args, boom)
-    command = @tool_executor.build_command_line(TOOLS_GCOV_GCOVR_REPORT, [], args)
+  # Run gcovr with the given arguments; returns shell_result (or nil on handled exception).
+  # gcovr_opts[:report_root] → ${1} (--root); gcovr_opts[:report_exclude] → ${2} (--exclude, array).
+  def run_gcovr(gcovr_opts, args, boom)
+    command = @tool_executor.build_command_line(
+      TOOLS_GCOV_GCOVR_REPORT, [],
+      gcovr_opts[:report_root],    # ${1} --root
+      gcovr_opts[:report_exclude], # ${2} --exclude (array; expanded to one flag per entry)
+      args                         # ${3} remaining optional arguments
+    )
 
     shell_result = nil
 
@@ -380,7 +396,7 @@ class GcovrReportinator < GcovReportinator
     rescue ShellException => ex
       result = ex.shell_result
       print_shell_result( result )
-      raise(ex) if gcovr_exec_exception?( opts, result[:exit_code], boom )
+      raise(ex) if gcovr_exec_exception?( gcovr_opts, result[:exit_code], boom )
     end
 
     print_shell_result( shell_result )
