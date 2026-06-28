@@ -67,11 +67,12 @@ DEFAULT_GCOV_REPORT_TOOL = {
   :name => 'default_gcov_report'.freeze,
   :optional => true.freeze,
   :arguments => [
-    "-b".freeze,   # --branch-probabilities
-    "-c".freeze,   # --branch-counts
-    "-r".freeze,   # --relative-only
-    "-x".freeze,   # --hash-filenames
-    "${1}".freeze
+    "-b".freeze,            # --branch-probabilities
+    "-c".freeze,            # --branch-counts
+    "-r".freeze,            # --relative-only: skip files with absolute paths (excludes system headers)
+    "-s \"${2}\"".freeze,   # --source-prefix: strip project root so -r accepts project sources recorded with absolute paths
+    "-x".freeze,            # --hash-filenames: unique .gcov name per source path, no collision for same-basename files in different directories
+    "${1}".freeze           # .gcno filepath
     ].freeze
   }
 

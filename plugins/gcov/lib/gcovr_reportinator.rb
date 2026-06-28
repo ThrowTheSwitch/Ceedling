@@ -5,7 +5,6 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'reportinator_helper'
 require 'ceedling/exceptions'
 require 'ceedling/constants'
 require 'gcov_types'
@@ -24,7 +23,6 @@ class GcovrReportinator < GcovReportinator
   def initialize(system_objects)
     @artifacts_path = GCOV_GCOVR_ARTIFACTS_PATH
     @ceedling = system_objects
-    @reportinator_helper = ReportinatorHelper.new(system_objects)
 
     # Validate the gcovr tool since it's used to generate reports
     @ceedling[:tool_validator].validate(
@@ -353,20 +351,19 @@ class GcovrReportinator < GcovReportinator
   end
 
 
-  # Build a combined Python regex for gcovr's `--exclude`` flag covering all
-  # non-production file categories: test files, mocks, partials, and framework.
-  def build_report_exclusions()
+  # Build a combined Python regex for gcovr's `--exclude` flag covering all
+  # non-production file categories: test files and generated/framework files.
+  def build_report_exclusions
+    data = build_exclusion_data
     patterns = []
 
-    test_prefix = @configurator.project_test_file_prefix
-    @configurator.collection_paths_test.each do |path|
+    data[:test_paths].each do |path|
       # Test files (e.g. test_foo.c)
-      patterns << ".*#{path}.*/#{test_prefix}.+\\#{@configurator.extension_source}$"      
+      patterns << ".*#{path}.*/#{data[:test_prefix]}.+\\#{data[:src_extension]}$"
     end
 
     # Any generated files for tests or vendored framework C source files below the root of the build directory
-    build_root = @configurator.project_build_root
-    patterns << ".*#{build_root}/.+\\#{EXTENSION_CORE_SOURCE}$"
+    patterns << ".*#{data[:build_root]}/.+\\#{data[:src_extension]}$"
 
     return patterns
   end
@@ -382,11 +379,11 @@ class GcovrReportinator < GcovReportinator
       shell_result = @tool_executor.exec( command )
     rescue ShellException => ex
       result = ex.shell_result
-      @reportinator_helper.print_shell_result( result )
+      print_shell_result( result )
       raise(ex) if gcovr_exec_exception?( opts, result[:exit_code], boom )
     end
 
-    @reportinator_helper.print_shell_result( shell_result )
+    print_shell_result( shell_result )
     return shell_result
   end
 

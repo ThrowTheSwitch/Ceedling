@@ -6,9 +6,9 @@
 # =========================================================================
 
 require 'benchmark'
-require 'reportinator_helper'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/file_path_utils'
 require 'gcov_reportinator'
 
 class ReportGeneratorReportinator < GcovReportinator
@@ -22,7 +22,6 @@ class ReportGeneratorReportinator < GcovReportinator
   def initialize(system_objects)
     @artifacts_path = GCOV_REPORT_GENERATOR_ARTIFACTS_PATH
     @ceedling = system_objects
-    @reportinator_helper = ReportinatorHelper.new(system_objects)
 
     # Validate the `reportgenerator` tool since it's used to generate reports
     @ceedling[:tool_validator].validate( 
@@ -41,87 +40,30 @@ class ReportGeneratorReportinator < GcovReportinator
     @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
     @tool_executor = @ceedling[:tool_executor]
+    @configurator = @ceedling[:configurator]
   end
 
 
   # Generate the ReportGenerator report(s) specified in the options.
+  # Iterate coverage results using a listing of all .gcno files beneath GCOV_BUILD_OUTPUT_PATH.
   def generate_reports(opts)
     shell_result = nil
     total_time = Benchmark.realtime do
       rg_opts = collect_reportgenerator_opts(opts)
 
-      msg = @reportinator.generate_heading( "Running ReportGenerator Coverage Reports" )
-      @loginator.log( msg )
+      log_report_intentions(opts)
 
-      opts[:gcov_reports].each do |report|
-        msg = @reportinator.generate_progress("Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}/'")
-        @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
-      end
-
-      # Cleanup any existing .gcov files to avoid reporting old coverage results.
-      for gcov_file in Dir.glob("*.gcov")
-        File.delete(gcov_file)
-      end
-
-      gcno_exclude_str = ""
-
-      # Avoid running gcov on custom specified .gcno files.
-      for gcno_exclude_expression in rg_opts[:gcov_exclude]
-        if !(gcno_exclude_expression.nil?) && !(gcno_exclude_expression.empty?)
-          # We want to filter .gcno files, not .gcov files.
-          # We will generate .gcov files from .gcno files.
-          gcno_exclude_expression = gcno_exclude_expression.chomp("\\.gcov")
-          gcno_exclude_expression = gcno_exclude_expression.chomp(".gcov")
-          # The .gcno extension will be added later as we create the regex.
-          gcno_exclude_expression = gcno_exclude_expression.chomp("\\.gcno")
-          gcno_exclude_expression = gcno_exclude_expression.chomp(".gcno")
-          # Append the custom expression.
-          gcno_exclude_str += "|#{gcno_exclude_expression}"
-        end
-      end
-
-      gcno_exclude_regex = /(\/|\\)(#{gcno_exclude_str})\.gcno/
-
-      # Generate .gcov files by running gcov on gcov notes files (*.gcno).
-      for gcno_filepath in Dir.glob(File.join(GCOV_BUILD_PATH, "**", "*.gcno"))
-        if not (gcno_filepath =~ gcno_exclude_regex) # Skip path that matches exclude pattern
-          # Ensure there is a matching gcov data file.
-          if File.file?(gcno_filepath.gsub(".gcno", ".gcda"))
-            run_gcov("\"#{gcno_filepath}\"")
-          end
-        end
-      end
-
-      if Dir.glob("*.gcov").length > 0
-        # Build the command line arguments.
-        args = args_builder(opts)
-
-        # Generate the report(s).
-        begin
-          shell_result = run(args)
-        rescue ShellException => ex
-          shell_result = ex.shell_result
-          # Re-raise
-          raise ex
-        ensure
-          # Cleanup .gcov files.
-          for gcov_file in Dir.glob("*.gcov")
-            File.delete(gcov_file)
-          end          
-        end
-      else
-        @loginator.log( "No matching .gcno coverage files found", Verbosity::COMPLAIN )
-      end
-
+      gcno_exclude_regex = build_gcno_exclude_regex(rg_opts)
+      generate_gcov_files(gcno_exclude_regex)
+      shell_result = run_reportgenerator(opts, rg_opts)
     end
 
     if shell_result
       shell_result[:time] = total_time
-      @reportinator_helper.print_shell_result(shell_result)
+      print_shell_result(shell_result)
     end
 
-    # White space log line
-    @loginator.log( '' )
+    return nil
   end
 
 
@@ -153,12 +95,14 @@ class ReportGeneratorReportinator < GcovReportinator
   REPORT_GENERATOR_SETTING_PREFIX = "gcov_report_generator"
 
   # Build the ReportGenerator arguments.
-  def args_builder(opts)
-    rg_opts = collect_reportgenerator_opts(opts)
+  # Accepts pre-computed rg_opts to avoid a second collect_reportgenerator_opts call
+  # (which mutates opts in place and would duplicate file filter exclusions).
+  def args_builder(opts, rg_opts = nil)
+    rg_opts ||= collect_reportgenerator_opts(opts)
     report_type_count = 0
 
     args = ""
-    args += "\"-reports:*.gcov\" "
+    args += "\"-reports:#{GCOV_BUILD_OUTPUT_PATH}/**/*#{EXTENSION_GCOV}\" "
     args += "\"-targetdir:\"#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}\"\" "
 
     # Build the report types argument.
@@ -179,7 +123,8 @@ class ReportGeneratorReportinator < GcovReportinator
     args += "\" "
 
     # Build the source directories argument.
-    args += "\"-sourcedirs:.;#{opts[:collection_paths_source].join(';')}\" "
+    collapsed = FilePathUtils.collapse_to_common_parents(opts[:collection_paths_source])
+    args += "\"-sourcedirs:.;#{collapsed.join(';')}\" "
 
     args += "\"-historydir:#{rg_opts[:history_directory]}\" " unless rg_opts[:history_directory].nil?
     args += "\"-plugins:#{rg_opts[:plugins]}\" " unless rg_opts[:plugins].nil?
@@ -205,6 +150,13 @@ class ReportGeneratorReportinator < GcovReportinator
   def collect_reportgenerator_opts(opts)
     _opts = opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym]
 
+    # Auto-generate -filefilters: exclusion patterns for test paths and the build root.
+    # These exclude test files and all generated/framework files from coverage reports.
+    # User-provided :file_filters are placed first and take precedence.
+    auto_excludes = build_filefilter_exclusions
+    _opts[:file_filters] = ([_opts[:file_filters]] + auto_excludes)
+      .compact.join(';').then { |s| s.empty? ? nil : s }
+
     # Insert an exclusion for Ceedling Partials that will merge with any other exclusions
     if @configurator.project_use_partials
       partials_exclude = '-' + PARTIAL_FILENAME_PREFIX + '*'
@@ -215,19 +167,174 @@ class ReportGeneratorReportinator < GcovReportinator
   end
 
 
-  # Run ReportGenerator with the given arguments.
-  def run(args)
+  # Log the report generation heading and one NOTICE line per configured report type.
+  def log_report_intentions(opts)
+    @loginator.log( @reportinator.generate_heading("Running ReportGenerator Coverage Reports") )
+
+    opts[:gcov_reports].each do |report|
+      msg = @reportinator.generate_progress(
+        "Generating #{report} coverage report in '#{GCOV_REPORT_GENERATOR_ARTIFACTS_PATH}/'"
+      )
+      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+    end
+  end
+
+
+  # Build a Regexp that matches .gcno filepaths to be excluded from gcov processing,
+  # combining user-specified patterns with internally-generated ones.
+  # Returns nil when empty.
+  def build_gcno_exclude_regex(rg_opts)
+    gcno_exclusions = []
+
+    # Collect user-specified coverage results exclusions.
+    for gcno_exclude_expression in rg_opts[:gcov_exclude]
+      next if gcno_exclude_expression.nil? || gcno_exclude_expression.empty?
+      # Users may specify exclusion patterns ending in .gcov (matching gcov output files)
+      # or .gcno (matching the coverage notes files we iterate). Strip either suffix —
+      # both escaped regex form (\\.gcov) and plain (.gcov) — so the bare pattern remains.
+      gcno_exclude_expression = gcno_exclude_expression.chomp("\\#{EXTENSION_GCOV}").chomp(EXTENSION_GCOV)
+      # Strip any .gcno suffix as well; the regex built below appends \.gcno already,
+      # so including it in the pattern would double it and prevent any match.
+      gcno_exclude_expression = gcno_exclude_expression.chomp("\\#{EXTENSION_GCNO}").chomp(EXTENSION_GCNO)
+      gcno_exclusions << gcno_exclude_expression
+    end
+
+    # Auto-generated exclusions: test files, mocks, and test runners.
+    # These are never production source, so there's no need to run gcov on them.
+    gcno_exclusions += build_gcno_exclusions()
+
+    # Build a single regex from all exclusion patterns. (\/|\\\\) matches the path
+    # separator preceding the filename on both Unix and Windows, which prevents a
+    # fragment from accidentally matching mid-path. \.gcno anchors to the file extension.
+    # nil when the list is empty so callers can skip the regex check entirely.
+    gcno_exclusions.empty? ? nil :
+      Regexp.new("(\/|\\\\)(#{gcno_exclusions.join('|')})\\#{EXTENSION_GCNO}")
+  end
+
+
+  # Run gcov on every .gcno file found beneath GCOV_BUILD_OUTPUT_PATH, skipping those
+  # that match gcno_exclude_regex. Within each directory, non-partial source files are
+  # processed before their partial counterparts.
+  def generate_gcov_files(gcno_exclude_regex)
+    source_prefix = Dir.pwd + File::SEPARATOR
+
+    # Collect unique directories under GCOV_BUILD_OUTPUT_PATH that contain .gcno files.
+    # This covers both test-specific subdirs (tested sources) and the root dir itself
+    # (untested sources placed there by process_untested_sources).
+    # gcov handles a missing .gcda gracefully; it produces a .gcov with 0% coverage — 
+    # so no .gcda guard needed.
+    gcno_dirs = Dir.glob(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "*#{EXTENSION_GCNO}"))
+      .map { |f| File.dirname(f) }
+      .uniq
+      .sort
+
+    gcno_dirs.each do |gcno_dir|
+      gcno_files = Dir.glob(File.join(gcno_dir, "*#{EXTENSION_GCNO}"))
+        .reject { |f| gcno_exclude_regex && f =~ gcno_exclude_regex }
+        # Sort to process non-partial source files before their partial counterparts.
+        # Processing the coverage compiled version of the original source creates .gcov
+        # files for more than the partial does (primarily header files),
+        # but the .gcov file for the partial contains the correct coverage information.
+        # So, we must process the original source first and then overwrite some of it
+        # what it generates with partial .gcov generation.
+        .sort_by { |f| File.basename(f).start_with?(PARTIAL_FILENAME_PREFIX) ? 1 : 0 }
+
+      next if gcno_files.empty?
+
+      gcno_files.each { |gcno_filepath| run_gcov(gcno_filepath, source_prefix) }
+    end
+  end
+
+
+  # Run ReportGenerator if .gcov files are present. Returns the shell result, or nil
+  # with a complaint log if no .gcov files were produced by the gcov step.
+  def run_reportgenerator(opts, rg_opts)
+    unless Dir.glob(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "*#{EXTENSION_GCOV}")).length > 0
+      @loginator.log( "No matching .gcno coverage files found", Verbosity::COMPLAIN )
+      return nil
+    end
+
+    # Build the command line arguments.
+    # Pass rg_opts (already computed above) so collect_reportgenerator_opts is not
+    # called a second time and does not append duplicate file filter exclusions.
+    args = args_builder(opts, rg_opts)
     command = @tool_executor.build_command_line(TOOLS_GCOV_REPORTGENERATOR_REPORT, [], args)
 
     return @tool_executor.exec( command )
   end
 
 
-  # Run gcov with the given arguments.
-  def run_gcov(args)
-    command = @tool_executor.build_command_line(TOOLS_GCOV_REPORT, [], args)
+  # Build glob-wildcard exclusion strings for ReportGenerator's -filefilters: argument.
+  # Excludes test source paths and the build root (which contains all generated and
+  # framework files: mocks, test runners, Unity, CMock, etc.).
+  def build_filefilter_exclusions
+    data = build_exclusion_data
+    patterns = []
+    data[:test_paths].each do |path|
+      patterns << "-./#{path}/**/*"
+    end
+    patterns << "-./#{data[:build_root]}/**/*"
+    patterns
+  end
 
-    return @tool_executor.exec( command )
+
+  # Build filename-fragment patterns for the .gcno scan exclusion regex.
+  # Excludes test files, generated mocks, and test runners from gcov processing.
+  # The '.*' suffix handles source extensions embedded in .gcno filenames (e.g. test_foo.c.gcno).
+  def build_gcno_exclusions
+    data = build_exclusion_data
+    # Use [^\/\\]* (no path separators) rather than .* to match filenames only.
+    # Ceedling names build output dirs after test files (e.g. build/gcov/out/test_foo/),
+    # so .* would greedily match test_foo/bar.c and exclude ALL production sources.
+    [
+      "#{data[:test_prefix]}[^\\/\\\\]*",  # test_foo.gcno
+      "#{data[:mock_prefix]}[^\\/\\\\]*",  # MockBar.gcno
+      "[^\\/\\\\]*_runner[^\\/\\\\]*",     # test_foo_runner.gcno
+      File.basename(UNITY_C_FILE, '.*'),   # unity.gcno
+      File.basename(CMOCK_C_FILE, '.*')    # cmock.gcno
+    ]
+  end
+
+
+  # Run gcov on gcno_filepath (full path) from the unaltered working directory.
+  # source_prefix is the absolute project root — passed as -s to strip absolute #line
+  # directive paths to relative so gcov's -r filter accepts project sources while
+  # system headers (which don't match the prefix) remain excluded.
+  # gcov writes .gcov files into the CWD; this method moves each one to the same
+  # directory as the .gcno file so coverage data stays co-located with its build output.
+  # Non-fatal: gcov exits non-zero for a missing .gcda (untested source); continue execution.
+  def run_gcov(gcno_filepath, source_prefix)
+    command = @tool_executor.build_command_line(TOOLS_GCOV_REPORT, [], "\"#{gcno_filepath}\"", source_prefix)
+    command[:options][:boom] = false
+
+    shell_result = @tool_executor.exec( command )
+
+    if shell_result[:exit_code] != 0
+      @loginator.log(
+        "gcov could not process #{gcno_filepath} (exit #{shell_result[:exit_code]})",
+        Verbosity::COMPLAIN
+      )
+    end
+
+    # gcov logs each file it creates, e.g.: Creating 'a1b2c3d4.gcov'
+    # Scan for a space followed by any non-whitespace characters ending in EXTENSION_GCOV,
+    # then capture any non-whitespace character immediately after the extension.
+    # A space anchors the match to the start of the filename token in gcov's output.
+    # If a closing character follows the extension, it is assumed to be paired with an
+    # opening character directly before the filename; both are stripped, leaving only
+    # the bare filename (e.g. 'file.gcov' → file.gcov).
+    gcno_dir = File.dirname(gcno_filepath)
+
+    # Find filename in `gcov` output
+    shell_result[:output].scan(/ ([^\s]*#{Regexp.escape(EXTENSION_GCOV)})(\S?)/) do |gcov_token, closing_delim|
+      gcov_file = closing_delim.empty? ? gcov_token : gcov_token[1..]
+      dest = File.join(gcno_dir, File.basename(gcov_file))
+
+      # Move the generated file after extracting its filename from `gcov` output
+      File.rename(gcov_file, dest) if File.exist?(gcov_file) && gcov_file != dest
+    end
+
+    return shell_result
   end
 
 end

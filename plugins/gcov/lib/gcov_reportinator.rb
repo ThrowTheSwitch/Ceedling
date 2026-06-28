@@ -11,6 +11,8 @@
 #   - Define a NAME string constant and implement name() to return it.
 #   - Set @artifacts_path in initialize (nil for console-only reportinators)
 #     and expose it via attr_reader.
+#   - Set @configurator in initialize to access build_exclusion_data().
+#   - Set @loginator in initialize to access print_shell_result().
 #   - Implement generate_reports(opts) and return a summary string or nil.
 #
 class GcovReportinator
@@ -25,6 +27,33 @@ class GcovReportinator
 
   def generate_reports(opts)
     raise NotImplementedError.new("#{self.class} must implement generate_reports()")
+  end
+
+  protected
+
+  # Log the shell result timing and, at obnoxious verbosity, its raw output.
+  def print_shell_result(shell_result)
+    return if shell_result.nil?
+
+    @loginator.log( "Done in %.3f seconds." % shell_result[:time], Verbosity::NORMAL )
+
+    if shell_result[:output] && !shell_result[:output].empty?
+      @loginator.log( shell_result[:output], Verbosity::OBNOXIOUS )
+    end
+  end
+
+
+  # Returns raw exclusion data used by subclasses to build tool-specific filter arguments.
+  # GcovrReportinator formats these as Python regex patterns (--exclude).
+  # ReportGeneratorReportinator formats them as glob wildcards (-filefilters:).
+  def build_exclusion_data
+    {
+      test_paths:    @configurator.collection_paths_test,
+      test_prefix:   @configurator.project_test_file_prefix,
+      mock_prefix:   @configurator.cmock_mock_prefix,
+      build_root:    @configurator.project_build_root,
+      src_extension: @configurator.extension_source
+    }
   end
 
 end
