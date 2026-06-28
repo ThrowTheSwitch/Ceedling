@@ -198,6 +198,18 @@ describe GeneratorTestResults do
       expect(IO.read(@tmp_out_file)).to eq(IO.read('spec/support/test_example.pass'))
     end
 
+    it 'returns :results key containing parsed counts' do
+      result = @generate_test_results.process_and_write_results(
+        { :executable => 'test_example.out',
+          :output => NORMAL_OUTPUT,
+          :result_file => @tmp_out_file,
+          :test_file => 'some/place/test_example.c'
+        }
+      )
+      expect(result).to have_key(:results)
+      expect(result[:results][:counts]).to include(:failed => 0)
+    end
+
     it 'handles a normal test output with time' do
       @generate_test_results.process_and_write_results(
         { :executable => 'test_example.out',

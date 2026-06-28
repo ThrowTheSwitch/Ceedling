@@ -95,6 +95,8 @@ class PluginManager
   def post_test_fixture_execute(arg_hash)
     # Special arbitration: Raw test results are printed or taken over by plugins handling the job
     @loginator.log( arg_hash[:shell_result][:output] ) if @configurator.plugins_display_raw_test_results
+    # Core failure detection independent of any reporting plugin
+    register_build_failure( 'Unit test failures.' ) if arg_hash.dig(:results, :counts, :failed).to_i > 0
     execute_plugins(:post_test_fixture_execute, arg_hash)
   end
 
