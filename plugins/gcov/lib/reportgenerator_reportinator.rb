@@ -37,10 +37,14 @@ class ReportGeneratorReportinator < GcovReportinator
     )
 
     # Convenient instance variable references
-    @loginator = @ceedling[:loginator]
-    @reportinator = @ceedling[:reportinator]
+    @loginator     = @ceedling[:loginator]
+    @reportinator  = @ceedling[:reportinator]
     @tool_executor = @ceedling[:tool_executor]
-    @configurator = @ceedling[:configurator]
+    @configurator  = @ceedling[:configurator]
+    @batchinator   = @ceedling[:batchinator]
+
+    # Mutex that serializes each gcov subprocess + rename pair (see run_gcov).
+    @gcov_cwd_mutex = Mutex.new
   end
 
 
@@ -196,15 +200,17 @@ class ReportGeneratorReportinator < GcovReportinator
     # Collect unique directories under GCOV_BUILD_OUTPUT_PATH that contain .gcno files.
     # This covers both test-specific subdirs (tested sources) and the root dir itself
     # (untested sources placed there by process_untested_sources).
-    # gcov handles a missing .gcda gracefully; it produces a .gcov with 0% coverage — 
+    # gcov handles a missing .gcda gracefully; it produces a .gcov with 0% coverage —
     # so no .gcda guard needed.
     gcno_dirs = Dir.glob(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "*#{EXTENSION_GCNO}"))
       .map { |f| File.dirname(f) }
       .uniq
       .sort
 
-    gcno_dirs.each do |gcno_dir|
-      gcno_files = Dir.glob(File.join(gcno_dir, "*#{EXTENSION_GCNO}"))
+    # Pre-compute the sorted, filtered file list for each dir before dispatching.
+    # filter_map drops empty dirs so Batchinator never queues no-op work items.
+    work_items = gcno_dirs.filter_map do |gcno_dir|
+      files = Dir.glob(File.join(gcno_dir, "*#{EXTENSION_GCNO}"))
         .reject { |f| gcno_exclude_regex && f =~ gcno_exclude_regex }
         # Sort to process non-partial source files before their partial counterparts.
         # Processing the coverage compiled version of the original source creates .gcov
@@ -213,10 +219,13 @@ class ReportGeneratorReportinator < GcovReportinator
         # So, we must process the original source first and then overwrite some of it
         # what it generates with partial .gcov generation.
         .sort_by { |f| File.basename(f).start_with?(PARTIAL_FILENAME_PREFIX) ? 1 : 0 }
+      files.empty? ? nil : { gcno_dir: gcno_dir, gcno_files: files }
+    end
 
-      next if gcno_files.empty?
-
-      gcno_files.each { |gcno_filepath| run_gcov(gcno_filepath, source_prefix) }
+    # Process each dir's gcov work in parallel across the thread pool. Within each dir
+    # the sorted file list is walked sequentially, preserving partial/non-partial ordering.
+    @batchinator.exec(workload: :compile, things: work_items) do |item|
+      item[:gcno_files].each { |gcno_filepath| run_gcov(gcno_filepath, source_prefix) }
     end
   end
 
@@ -288,37 +297,51 @@ class ReportGeneratorReportinator < GcovReportinator
   # directory as the .gcno file so coverage data stays co-located with its build output.
   # Non-fatal: gcov exits non-zero for a missing .gcda (untested source); continue execution.
   def run_gcov(gcno_filepath, source_prefix)
-    command = @tool_executor.build_command_line(TOOLS_GCOV_REPORT, [], "\"#{gcno_filepath}\"", source_prefix)
-    command[:options][:boom] = false
+    # gcov must run in the same working directory used during compilation so it can
+    # locate the .gcda data files produced at test-fixture execution time. However,
+    # parallel test builds share source files (e.g. src/utils.c may be compiled into
+    # every test executable that includes it), so each test's build directory holds its
+    # own utils.c.gcno. When two threads call gcov concurrently on those files, both
+    # write the same hash-named .gcov to the shared CWD (gcov uses --hash-filenames / -x
+    # to derive output names from the source path, so identical source paths always
+    # produce the same output filename). The second write clobbers the first before the
+    # rename to each test's build sub-directory can complete, silently losing coverage
+    # data. Serializing the exec+rename pair with a mutex eliminates the race at the cost
+    # of sequentializing only this step; the per-dir glob/filter/sort work in
+    # generate_gcov_files still runs in parallel across the Batchinator thread pool.
+    @gcov_cwd_mutex.synchronize do
+      command = @tool_executor.build_command_line(TOOLS_GCOV_REPORT, [], "\"#{gcno_filepath}\"", source_prefix)
+      command[:options][:boom] = false
 
-    shell_result = @tool_executor.exec( command )
+      shell_result = @tool_executor.exec( command )
 
-    if shell_result[:exit_code] != 0
-      @loginator.log(
-        "gcov could not process #{gcno_filepath} (exit #{shell_result[:exit_code]})",
-        Verbosity::COMPLAIN
-      )
+      if shell_result[:exit_code] != 0
+        @loginator.log(
+          "gcov could not process #{gcno_filepath} (exit #{shell_result[:exit_code]})",
+          Verbosity::COMPLAIN
+        )
+      end
+
+      # gcov logs each file it creates, e.g.: Creating 'a1b2c3d4.gcov'
+      # Scan for a space followed by any non-whitespace characters ending in EXTENSION_GCOV,
+      # then capture any non-whitespace character immediately after the extension.
+      # A space anchors the match to the start of the filename token in gcov's output.
+      # If a closing character follows the extension, it is assumed to be paired with an
+      # opening character directly before the filename; both are stripped, leaving only
+      # the bare filename (e.g. 'file.gcov' → file.gcov).
+      gcno_dir = File.dirname(gcno_filepath)
+
+      # Find filename in `gcov` output
+      shell_result[:output].scan(/ ([^\s]*#{Regexp.escape(EXTENSION_GCOV)})(\S?)/) do |gcov_token, closing_delim|
+        gcov_file = closing_delim.empty? ? gcov_token : gcov_token[1..]
+        dest = File.join(gcno_dir, File.basename(gcov_file))
+
+        # Move the generated file after extracting its filename from `gcov` output
+        File.rename(gcov_file, dest) if File.exist?(gcov_file) && gcov_file != dest
+      end
+
+      return shell_result
     end
-
-    # gcov logs each file it creates, e.g.: Creating 'a1b2c3d4.gcov'
-    # Scan for a space followed by any non-whitespace characters ending in EXTENSION_GCOV,
-    # then capture any non-whitespace character immediately after the extension.
-    # A space anchors the match to the start of the filename token in gcov's output.
-    # If a closing character follows the extension, it is assumed to be paired with an
-    # opening character directly before the filename; both are stripped, leaving only
-    # the bare filename (e.g. 'file.gcov' → file.gcov).
-    gcno_dir = File.dirname(gcno_filepath)
-
-    # Find filename in `gcov` output
-    shell_result[:output].scan(/ ([^\s]*#{Regexp.escape(EXTENSION_GCOV)})(\S?)/) do |gcov_token, closing_delim|
-      gcov_file = closing_delim.empty? ? gcov_token : gcov_token[1..]
-      dest = File.join(gcno_dir, File.basename(gcov_file))
-
-      # Move the generated file after extracting its filename from `gcov` output
-      File.rename(gcov_file, dest) if File.exist?(gcov_file) && gcov_file != dest
-    end
-
-    return shell_result
   end
 
 end
