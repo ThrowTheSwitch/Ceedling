@@ -92,6 +92,38 @@ class FilePathUtils
     return path
   end
 
+  # Reduce a list of directory paths to the minimal ancestor set by removing any path
+  # that is already a descendant of another path in the list. This shortens command
+  # lines when a path list contains both a parent and a child directory.
+  #
+  # Examples:
+  #   ['src', 'src/platform', 'lib']   =>  ['src', 'lib']
+  #   ['a/b', 'a/c', 'a']             =>  ['a']
+  #   ['src', 'lib/core', 'lib/utils'] =>  ['src', 'lib/core', 'lib/utils']  (unchanged)
+  #
+  # Comparison uses forward-slash-normalized copies; returned paths preserve the original
+  # form supplied by the caller.
+  def self.collapse_to_common_parents(paths)
+    return paths if paths.nil? || paths.length <= 1
+
+    # Pair each original path with a normalized form used only for ancestry comparison.
+    # Normalize to forward slashes and strip any trailing separator.
+    pairs = paths.map { |p| [p, p.gsub('\\', '/').chomp('/')] }
+
+    # Sort shallowest-first so ancestors are always encountered before their descendants.
+    pairs.sort_by! { |_, normalized| normalized.count('/') }
+
+    kept = []
+    pairs.each do |original, normalized|
+      # Skip this path if any already-kept path is a proper ancestor of it.
+      next if kept.any? { |_, k| normalized.start_with?(k + '/') }
+      kept << [original, normalized]
+    end
+
+    kept.map { |original, _| original }
+  end
+
+
   ######### Instance methods ##########
 
   ### Release ###
