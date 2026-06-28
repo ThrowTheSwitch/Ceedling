@@ -11,14 +11,22 @@ will be revised and updated soon.
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
 from the same source module in a single test file and enables testing of 
 `static` and `inline` functions without modifying source code.
+* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
+* More and expanded [example projects][example-projects].
 * New stock plugins for [Valgrind memory checking][valgrind-plugin] and 
 [Cppcheck static analysis][cppcheck-plugin].
-* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
+* The [GCov plugin][gcov-plugin]:
+   * _Finally_ supports coverage reports for all sources.
+   * Adds support for Modified Condition / Decision Coverage.
+* Mixins improvements including an option for [inline YAML at the command line][mixins-line-yaml].
 
 [partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
+[example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/
+[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
 [valgrind-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/
 [cppcheck-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/
-[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
+[gcov-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/
+[mixins-inline-yaml]: https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins/?h=mixins#-mixin-command-line-flags
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 

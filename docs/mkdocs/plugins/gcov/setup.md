@@ -119,6 +119,11 @@ the `:test` context beneath the `:defines` and `:flags` configuration sections
 by default. If you need something special for coverage builds, use the `:gcov` 
 context for these matchers instead.
 
+Notes:
+
+* Versions of GCovr before 7.0 do not include the necessary options to produce 
+  0% coverage results for source files only compiled (but never executed.)
+
 ```yaml
 :plugins:
   :enabled:
