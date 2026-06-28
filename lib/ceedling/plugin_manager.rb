@@ -54,11 +54,13 @@ class PluginManager
   end
 
   def print_plugin_failures
-    if (@build_fail_registry.size > 0)
+    # Deduplicate: post_test_fixture_execute and reporting plugins may both register the same message
+    failures = @build_fail_registry.uniq
+    if (failures.size > 0)
       report = @reportinator.generate_banner('BUILD FAILURE SUMMARY')
 
-      @build_fail_registry.each do |failure|
-        report += "#{' - ' if (@build_fail_registry.size > 1)}#{failure}\n"
+      failures.each do |failure|
+        report += "#{' - ' if (failures.size > 1)}#{failure}\n"
       end
 
       report += "\n"
