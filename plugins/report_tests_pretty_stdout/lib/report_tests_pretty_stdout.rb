@@ -38,7 +38,7 @@ class ReportTestsPrettyStdout < Plugin
 
     results = @ceedling[:plugin_reportinator].assemble_test_results( @result_list )
     hash = {
-      :header => '',
+      :context => TEST_SYM,
       :results => results
     }
 
@@ -58,7 +58,7 @@ class ReportTestsPrettyStdout < Plugin
     )
 
     hash = {
-      :header => '',
+      :context => TEST_SYM,
       # Collect all existing test results (success or failing) in the filesystem,
       # limited to our test collection
       :results => @ceedling[:plugin_reportinator].assemble_test_results(

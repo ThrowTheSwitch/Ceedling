@@ -166,7 +166,7 @@ class Gcov < Plugin
       end
 
       hash = {
-        header: GCOV_ROOT_NAME.upcase,
+        context: GCOV_SYM,
         results: results
       }
 
@@ -198,7 +198,7 @@ class Gcov < Plugin
     )
 
     hash = {
-      header: GCOV_ROOT_NAME.upcase,
+      context: GCOV_SYM,
       # Collect all existing test results (success or failing) in the filesystem,
       # limited to our test collection
       :results => @plugin_reportinator.assemble_test_results(

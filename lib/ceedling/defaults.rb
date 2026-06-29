@@ -408,7 +408,7 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 % ignored        = hash[:results][:counts][:ignored]
 % failed         = hash[:results][:counts][:failed]
 % stdout_count   = hash[:results][:counts][:stdout]
-% header_prepend = ((hash[:header].length > 0) ? "#{hash[:header]}: " : '')
+% header_prepend = ((hash[:context] != TEST_SYM) ? "#{hash[:context].to_s.upcase}: " : '')
 % banner_width   = 25 + header_prepend.length # widest message
 
 % if (stdout_count > 0)

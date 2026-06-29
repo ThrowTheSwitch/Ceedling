@@ -77,7 +77,7 @@ class Bullseye < Plugin
     # test results
     results = @ceedling[:plugin_reportinator].assemble_test_results(@result_list)
     hash = {
-      :header => BULLSEYE_ROOT_NAME.upcase,
+      :context => BULLSEYE_ROOT_NAME.upcase,
       :results => results
     }
     
@@ -105,7 +105,7 @@ class Bullseye < Plugin
     # test results
     # get test results for only those tests in our configuration and of those only tests with results on disk
     hash = {
-      :header => BULLSEYE_ROOT_NAME.upcase,
+      :context => BULLSEYE_SYM,
       :results => @ceedling[:plugin_reportinator].assemble_test_results(result_list, {:boom => false})
     }
 
@@ -139,7 +139,7 @@ class Bullseye < Plugin
 
   def report_coverage_results_all(coverage)
     results = {
-      :header => BULLSEYE_ROOT_NAME.upcase,
+      :context => BULLSEYE_SYM,
       :coverage => {
         :functions => nil,
         :branches  => nil

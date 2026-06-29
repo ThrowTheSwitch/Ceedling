@@ -34,11 +34,11 @@ class ReportTestsGtestlikeStdout < Plugin
   # `Plugin` build step hook -- render a report immediately upon build completion (that invoked tests)
   def post_build()
     # Ensure a test task was invoked as part of the build
-    return if not (@ceedling[:rake_task_invoker].test_invoked?)
+    return if not (@ceedling[:rake_task_invoker].test_task_invoked?)
 
     results = @ceedling[:plugin_reportinator].assemble_test_results( @result_list )
     hash = {
-      :header => TEST_SYM.upcase(),
+      :context => TEST_SYM,
       :results => results
     }
 
@@ -54,7 +54,7 @@ class ReportTestsGtestlikeStdout < Plugin
     )
 
     hash = {
-      :header => TEST_SYM.upcase(),
+      :context => TEST_SYM,
       # Collect all existing test results (success or failing) in the filesystem,
       # limited to our test collection
       :results => @ceedling[:plugin_reportinator].assemble_test_results(

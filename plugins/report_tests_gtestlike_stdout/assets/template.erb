@@ -1,7 +1,6 @@
 % ignored        = hash[:results][:counts][:ignored]
 % failed         = hash[:results][:counts][:failed]
 % stdout_count   = hash[:results][:counts][:stdout]
-% name_banner    = (" #{hash[:header]}" + (' ' * (9 - hash[:header].length)))[0..9]
 % results = {}
 % hash[:results][:successes].each do |testresult|
 %   results[ testresult[:source][:file] ] = testresult[:collection]
@@ -27,8 +26,9 @@
 %   end
 % end
 
-[==========]
-[<%=name_banner%>]
+% if hash[:context] != TEST_SYM
+Running testing tasks: <%=hash[:context].to_s.upcase%>
+% end
 [==========] Running <%=hash[:results][:counts][:total].to_s%> tests from <%=results.length.to_s%> test cases.
 [----------] Global test environment set-up.
 % results.each_pair do |modulename, moduledetails|
