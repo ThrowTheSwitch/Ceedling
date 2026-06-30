@@ -101,7 +101,7 @@ class Partializer
 
     @loginator.log_list(
       _includes,
-      "Header includes to inject for testable Partial #{test}::#{name}",
+      "Header includes to inject for testable Partial #{test}::#{name}:",
       Verbosity::OBNOXIOUS
     ) if test
 
@@ -145,7 +145,7 @@ class Partializer
 
     @loginator.log_list(
       _includes,
-      "Source includes to inject for testable Partial #{test}::#{name}",
+      "Source includes to inject for testable Partial #{test}::#{name}:",
       Verbosity::OBNOXIOUS
     ) if test
 
@@ -171,7 +171,7 @@ class Partializer
 
     @loginator.log_list(
       _includes,
-      "Header includes to inject for mockable Partial #{test}::#{name}",
+      "Header includes to inject for mockable Partial #{test}::#{name}:",
       Verbosity::OBNOXIOUS
     ) if test
 
@@ -384,28 +384,28 @@ class Partializer
     _vars = contents.variable_declarations.map { |v| "`#{v.text}`" }
     @loginator.log_list(
       _vars,
-      "Variable declarations for Partial #{name}::#{module_name} from #{source}",
+      "Variable declarations for Partial #{name}::#{module_name} from #{source}:",
       Verbosity::OBNOXIOUS
     )
 
     _types = contents.type_definitions.map { |t| "`#{t.text}`" }
     @loginator.log_list(
       _types,
-      "Type definitions for Partial #{name}::#{module_name} from #{source}",
+      "Type definitions for Partial #{name}::#{module_name} from #{source}:",
       Verbosity::OBNOXIOUS
     )
 
     _macros = contents.macro_definitions.map { |m| "`#{m.text}`" }
     @loginator.log_list(
       _macros,
-      "Macro definitions for Partial #{name}::#{module_name} from #{source}",
+      "Macro definitions for Partial #{name}::#{module_name} from #{source}:",
       Verbosity::OBNOXIOUS
     )
 
     _aggregates = contents.aggregate_definitions.map { |a| "`#{a.text}`" }
     @loginator.log_list(
       _aggregates,
-      "Aggregate definitions (structs/unions/enums) for Partial #{name}::#{module_name} from #{source}",
+      "Aggregate definitions (structs/unions/enums) for Partial #{name}::#{module_name} from #{source}:",
       Verbosity::OBNOXIOUS
     )
   end
@@ -415,7 +415,7 @@ class Partializer
     _funcs = funcs.nil? ? [] : funcs.map { |f| "`#{f.signature}`" }
     @loginator.log_list(
       _funcs,
-      "Testable functions for Partial #{test}::#{partial}",
+      "Testable functions for Partial #{test}::#{partial}:",
       Verbosity::OBNOXIOUS
     )
   end
@@ -425,7 +425,7 @@ class Partializer
     _funcs = funcs.nil? ? [] : funcs.map { |f| "`#{f.signature}`" }
     @loginator.log_list(
       _funcs,
-      "Mockable functions for Partial #{test}::#{partial}",
+      "Mockable functions for Partial #{test}::#{partial}:",
       Verbosity::OBNOXIOUS
     )
   end

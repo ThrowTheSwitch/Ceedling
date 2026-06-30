@@ -132,7 +132,7 @@ class PartializerHelper
       end
     end
 
-    header = "Found functions at line numbers in #{filepath}"
+    header = "Found functions at line numbers in #{filepath}:"
     @loginator.log_list( @utils.format_line_number_list( funcs ), header, Verbosity::DEBUG )
   end
 
@@ -230,7 +230,7 @@ class PartializerHelper
       _decls_log = _decls.map { |d| "`#{d.original.strip}`" }
       @loginator.log_list(
         _decls_log,
-        "Function-scope static variables in #{func.name}() in #{file_type} to be promoted for Partial #{name}::#{module_name}",
+        "Function-scope static variables in #{func.name}() in #{file_type} to be promoted for Partial #{name}::#{module_name}:",
         Verbosity::OBNOXIOUS
       ) unless _decls_log.empty?
 
@@ -268,7 +268,7 @@ class PartializerHelper
 
     @loginator.log_list(
       updated.map { |n| "`#{n}`" },
-      "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}",
+      "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}:",
       Verbosity::DEBUG
     ) unless updated.empty?
   end

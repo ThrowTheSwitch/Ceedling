@@ -57,15 +57,8 @@ class PluginManager
     # Deduplicate: post_test_fixture_execute and reporting plugins may both register the same message
     failures = @build_fail_registry.uniq
     if (failures.size > 0)
-      report = @reportinator.generate_banner('BUILD FAILURE SUMMARY')
-
-      failures.each do |failure|
-        report += "#{' - ' if (failures.size > 1)}#{failure}\n"
-      end
-
-      report += "\n"
-
-      @loginator.log( report, Verbosity::ERRORS, LogLabels::NONE )
+      banner = @reportinator.generate_banner('BUILD FAILURE SUMMARY')
+      @loginator.log_list( failures, banner, Verbosity::ERRORS, LogLabels::NONE )
     end
   end
 

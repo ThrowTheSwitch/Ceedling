@@ -45,11 +45,8 @@ class ConfiguratorSetup
   end
 
   def build_directory_structure(flattened_config)
-    @loginator.lazy( Verbosity::DEBUG ) do 
-      "Build paths:" + flattened_config[:project_build_paths].map do |path| 
-        "\n - #{(path.nil? or path.empty?) ? '<empty>' : path}"
-      end.join()
-    end
+    _paths = flattened_config[:project_build_paths].map { |p| (p.nil? || p.empty?) ? '<empty>' : p }
+    @loginator.log_list( _paths, "Build paths:", Verbosity::DEBUG )
 
     flattened_config[:project_build_paths].each do |path|
       if path.nil? or path.empty?

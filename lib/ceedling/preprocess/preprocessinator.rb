@@ -112,7 +112,7 @@ class Preprocessinator
       )
     end
 
-    header = "Extracted user #includes from #{filepath}"
+    header = "Extracted user #includes from #{filepath}:"
     @loginator.log_list( includes, header, Verbosity::DEBUG )
 
     return includes
@@ -137,7 +137,7 @@ class Preprocessinator
       )
     end
 
-    header = "Extracted system #includes from #{filepath}"
+    header = "Extracted system #includes from #{filepath}:"
     @loginator.log_list( includes, header, Verbosity::DEBUG )
 
     return includes
@@ -192,7 +192,7 @@ class Preprocessinator
       
         includes = @includes_handler.load_includes_list( _filepath )
 
-        header = "Loaded existing #include list from #{_filepath}"
+        header = "Loaded existing #include list from #{_filepath}:"
         @loginator.log_list( includes, header, Verbosity::DEBUG )
       end
     end
@@ -246,7 +246,7 @@ class Preprocessinator
     # Extract includes & log progress and details   
     includes = preprocess_file_includes_common( **arg_hash )
 
-    header = "Discovered #includes for mockable header from #{filepath}"
+    header = "Discovered #includes for mockable header from #{filepath}:"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
 
     arg_hash = {
@@ -316,7 +316,7 @@ class Preprocessinator
     # Extract includes & log progress and details
     includes = preprocess_file_includes_common( **arg_hash )
 
-    header = "Discovered #includes for Partial header from #{filepath}"
+    header = "Discovered #includes for Partial header from #{filepath}:"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
 
     contents =
@@ -377,7 +377,7 @@ class Preprocessinator
     # Extract includes & log progress and info
     includes = preprocess_file_includes_common( **arg_hash )
 
-    header = "Discovered #includes for Partial source from #{filepath}"
+    header = "Discovered #includes for Partial source from #{filepath}:"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
 
     contents =

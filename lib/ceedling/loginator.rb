@@ -173,14 +173,18 @@ class Loginator
     @queue << item
   end
 
+  # Write a bulleted list to the log with an optional header.
+  #  - If the list is nil or empty, append "<none>" as a placeholder
+  #  - For a multiline header (e.g. a banner), "<none>" begins on its own line
+  #  - For a single-line header, "<none>" is appended inline after a space
   def log_list(list, header='', verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
-    msg = (header.nil? or header.empty?) ? '' : header + ':'
+    msg = (header.nil? or header.empty?) ? '' : header
 
     if list.nil? or list.empty?
-      msg += ' ' if !msg.empty?
-      msg += "<empty>"
+      msg += (msg.include?("\n") ? "\n" : ' ') if !msg.empty?
+      msg += "<none>"
     else
-      list.each { |item| msg += "\n - #{item}" }
+      list.each { |item| msg += "\n • #{item}" }
     end
 
     log(msg + "\n\n", verbosity, label, stream)

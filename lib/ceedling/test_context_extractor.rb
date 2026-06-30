@@ -440,7 +440,7 @@ class TestContextExtractor
   end
 
   def debug_log_list(message, filepath, list)
-    header = "#{message} in #{filepath}"
+    header = "#{message} in #{filepath}:"
     @loginator.log_list( list, header, Verbosity::DEBUG )
   end
 

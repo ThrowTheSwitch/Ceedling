@@ -296,7 +296,7 @@ class TestBuildSetup
         system: system_includes
       )
 
-      header = "Extracted reconciled #include list from #{filepath}"
+      header = "Extracted reconciled #include list from #{filepath}:"
       @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )
 
       @context_extractor.ingest_includes( filepath, all_includes )
