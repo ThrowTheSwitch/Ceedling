@@ -21,6 +21,7 @@ class ReportGeneratorReportinator < GcovReportinator
 
   def initialize(system_objects)
     @artifacts_path = GCOV_REPORT_GENERATOR_ARTIFACTS_PATH
+    @summary        = ''
     @ceedling = system_objects
 
     # Validate the `reportgenerator` tool since it's used to generate reports
@@ -64,10 +65,8 @@ class ReportGeneratorReportinator < GcovReportinator
 
     if shell_result
       shell_result[:time] = total_time
-      print_shell_result(shell_result)
+      print_shell_exec_time(shell_result)
     end
-
-    return nil
   end
 
 

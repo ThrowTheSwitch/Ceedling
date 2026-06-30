@@ -22,6 +22,7 @@ class GcovrReportinator < GcovReportinator
 
   def initialize(system_objects)
     @artifacts_path = GCOV_GCOVR_ARTIFACTS_PATH
+    @summary        = ''
     @ceedling = system_objects
 
     # Validate the gcovr tool since it's used to generate reports
@@ -48,7 +49,7 @@ class GcovrReportinator < GcovReportinator
   end
 
   # Generate the gcovr report(s) specified in the options.
-  # Returns a summary string (possibly empty) when :print_summary is enabled.
+  # Sets @summary when :print_summary is enabled; Gcov#generate_coverage_reports logs it.
   def generate_reports(opts)
     gcovr_opts        = collect_gcovr_opts(opts)
     exception_on_fail = !!gcovr_opts[:exception_on_fail]
@@ -58,18 +59,14 @@ class GcovrReportinator < GcovReportinator
 
     # gcovr 4.2+ can produce all report formats in one invocation;
     # earlier versions require a separate call for each format.
-    gcovr_summary =
-      if min_version?(@gcovr_version, 4, 2)
-        generate_reports_modern(gcovr_opts, args_common, exception_on_fail, opts)
-      else
-        generate_reports_legacy(gcovr_opts, args_common, exception_on_fail, opts)
-      end
+    if min_version?(@gcovr_version, 4, 2)
+      generate_reports_modern(gcovr_opts, args_common, exception_on_fail, opts)
+    else
+      generate_reports_legacy(gcovr_opts, args_common, exception_on_fail, opts)
+    end
 
     # Text report is always a standalone gcovr invocation regardless of version.
     generate_text_report(opts, args_common, exception_on_fail) if report_enabled?(opts, ReportTypes::TEXT)
-
-    @loginator.log('')
-    return gcovr_summary
   end
 
   ### Private ###
@@ -238,7 +235,8 @@ class GcovrReportinator < GcovReportinator
   end
 
 
-  # Generate a gcovr text report
+  # Generate a gcovr text report.
+  # @summary is set by run_gcovr when :print_summary is enabled.
   def generate_text_report(opts, args_common, boom)
     gcovr_opts = collect_gcovr_opts(opts)
     args_text = ""
@@ -253,7 +251,6 @@ class GcovrReportinator < GcovReportinator
     msg = @reportinator.generate_progress(message_text)
     @loginator.log(msg, Verbosity::NORMAL)
 
-    # Generate the text report
     run_gcovr( gcovr_opts, (args_common + args_text), boom )
   end
 
@@ -261,7 +258,7 @@ class GcovrReportinator < GcovReportinator
   # gcovr 4.2+ supports all output formats in a single invocation.
   # Accumulate per-format args and track which formats are active for progress logging.
   # As required by gcovr 4.2, --html arguments must be appended last.
-  # Returns a summary string or '' when :print_summary is not set.
+  # @summary is set by run_gcovr when :print_summary is enabled.
   def generate_reports_modern(gcovr_opts, args_common, exception_on_fail, opts)
     reports = []
     args    = args_common
@@ -287,21 +284,16 @@ class GcovrReportinator < GcovReportinator
     end
 
     # Skip the gcovr call entirely when no format added arguments.
-    return '' if args == args_common
+    return if args == args_common
 
-    shell_result = run_gcovr(gcovr_opts, args, exception_on_fail)
-    return extract_gcovr_summary(shell_result[:output]) if gcovr_opts[:print_summary] && shell_result
-
-    ''
+    run_gcovr(gcovr_opts, args, exception_on_fail)
   end
 
 
   # gcovr 4.1 and earlier support only HTML and Cobertura XML, and each must be
   # generated with a separate gcovr call. SonarQube and JSON are unavailable.
-  # Returns a summary string (from the first run that produces one) or ''.
+  # @summary is set by run_gcovr when :print_summary is enabled.
   def generate_reports_legacy(gcovr_opts, args_common, exception_on_fail, opts)
-    gcovr_summary = ''
-
     args_html      = args_builder_html(opts, true)
     args_cobertura = args_builder_cobertura(opts, true)
 
@@ -309,19 +301,15 @@ class GcovrReportinator < GcovReportinator
       @loginator.log(
         @reportinator.generate_progress("Generating an HTML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
       )
-      shell_result  = run_gcovr(gcovr_opts, args_common + args_html, exception_on_fail)
-      gcovr_summary = extract_gcovr_summary(shell_result[:output]) if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
+      run_gcovr(gcovr_opts, args_common + args_html, exception_on_fail)
     end
 
     if args_cobertura.length > 0
       @loginator.log(
         @reportinator.generate_progress("Generating a Cobertura XML coverage report in '#{GCOV_GCOVR_ARTIFACTS_PATH}'")
       )
-      shell_result  = run_gcovr(gcovr_opts, args_common + args_cobertura, exception_on_fail)
-      gcovr_summary = extract_gcovr_summary(shell_result[:output]) if gcovr_opts[:print_summary] && shell_result && gcovr_summary.empty?
+      run_gcovr(gcovr_opts, args_common + args_cobertura, exception_on_fail)
     end
-
-    gcovr_summary
   end
 
 
@@ -373,7 +361,13 @@ class GcovrReportinator < GcovReportinator
   end
 
 
-  # Run gcovr with the given arguments; returns shell_result (or nil on handled exception).
+  # Runs gcovr with the given arguments.
+  # Responsibilities:
+  #  - Builds and executes the gcovr command
+  #  - Prints raw shell output (success and failure)
+  #  - Saves --print-summary output to @summary; Gcov#generate_coverage_reports logs it
+  #  - Delegates exit-code interpretation to gcovr_exec_exception?
+  #  - Returns shell_result on success or non-fatal exception; raises on fatal exception
   # gcovr_opts[:report_root] → ${1} (--root); gcovr_opts[:report_exclude] → ${2} (--exclude, array).
   def run_gcovr(gcovr_opts, args, boom)
     command = @tool_executor.build_command_line(
@@ -384,17 +378,37 @@ class GcovrReportinator < GcovReportinator
     )
 
     shell_result = nil
+    exception    = nil
 
     begin
       shell_result = @tool_executor.exec( command )
     rescue ShellException => ex
-      result = ex.shell_result
-      print_shell_result( result )
-      raise(ex) if gcovr_exec_exception?( gcovr_opts, result[:exit_code], boom )
+      exception    = ex
+      shell_result = ex.shell_result
     end
 
-    print_shell_result( shell_result )
+    print_shell_exec_time( shell_result )
+    @summary = extract_gcovr_summary( shell_result[:stdout] ) if gcovr_opts[:print_summary]
+
+    raise( exception ) if exception && gcovr_exec_exception?( gcovr_opts, shell_result[:exit_code], boom, shell_result )
     return shell_result
+  end
+
+
+  # Returns the error message text from gcovr stderr, or nil if none found.
+  # Matches lines beginning with "error" or "(ERROR)" and extracts the trailing message.
+  def extract_gcovr_error_message(shell_result)
+    return nil if shell_result.nil?
+
+    stderr = shell_result[:stderr]
+    return nil if stderr.nil? || stderr.empty?
+
+    stderr.each_line do |line|
+      match = line.match( /^\(?error\S*\s+(.+)/i )
+      return match[1].strip.capitalize if match
+    end
+
+    nil
   end
 
 
@@ -442,13 +456,15 @@ class GcovrReportinator < GcovReportinator
   end
 
 
-  # Output to console a human-friendly message on certain coverage failure exit codes
+  # Output to console a human-friendly message on certain coverage failure exit codes.
+  # Prefers the actual gcovr error text from stderr; falls back to descriptive strings.
   # Perform the logic on whether to raise an exception
-  def gcovr_exec_exception?(opts, exitcode, boom)
-    
+  def gcovr_exec_exception?(opts, exitcode, boom, shell_result=nil)
+
     # Special handling of exit code 2 with --fail-under-line
     if ((exitcode & 2) == 2) and !opts[:fail_under_line].nil?
-      msg = "Line coverage is less than the configured gcovr minimum of #{opts[:fail_under_line]}%"
+      fallback = "Line coverage is less than the configured minimum of #{opts[:fail_under_line]}%"
+      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
       if boom
         raise CeedlingException.new(msg)
       else
@@ -460,7 +476,8 @@ class GcovrReportinator < GcovReportinator
 
     # Special handling of exit code 4 with --fail-under-branch
     if ((exitcode & 4) == 4) and !opts[:fail_under_branch].nil?
-      msg = "Branch coverage is less than the configured gcovr minimum of #{opts[:fail_under_branch]}%"
+      fallback = "Branch coverage is less than the configured minimum of #{opts[:fail_under_branch]}%"
+      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
       if boom
         raise CeedlingException.new(msg)
       else
@@ -472,7 +489,8 @@ class GcovrReportinator < GcovReportinator
 
     # Special handling of exit code 8 with --fail-under-decision
     if ((exitcode & 8) == 8) and !opts[:fail_under_decision].nil?
-      msg = "Decision coverage is less than the configured gcovr minimum of #{opts[:fail_under_decision]}%"
+      fallback = "Decision coverage is less than the configured minimum of #{opts[:fail_under_decision]}%"
+      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
       if boom
         raise CeedlingException.new(msg)
       else
@@ -484,7 +502,8 @@ class GcovrReportinator < GcovReportinator
 
     # Special handling of exit code 16 with --fail-under-function
     if ((exitcode & 16) == 16) and !opts[:fail_under_function].nil?
-      msg = "Function coverage is less than the configured gcovr minimum of #{opts[:fail_under_function]}%"
+      fallback = "Function coverage is less than the configured minimum of #{opts[:fail_under_function]}%"
+      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
       if boom
         raise CeedlingException.new(msg)
       else

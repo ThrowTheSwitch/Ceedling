@@ -12,8 +12,11 @@
 #   - Set @artifacts_path in initialize (nil for console-only reportinators)
 #     and expose it via attr_reader.
 #   - Set @configurator in initialize to access build_exclusion_data().
-#   - Set @loginator in initialize to access print_shell_result().
-#   - Implement generate_reports(opts) and return a summary string or nil.
+#   - Set @loginator in initialize to access print_shell_exec_time().
+#   - Initialize @summary = '' and set it during generate_reports() when the
+#     tool produces a coverage summary (e.g. gcovr --print-summary output).
+#     Gcov#generate_coverage_reports reads summary() and is the sole logging site.
+#   - Implement generate_reports(opts) as a void orchestrator.
 #
 class GcovReportinator
 
@@ -29,17 +32,17 @@ class GcovReportinator
     raise NotImplementedError.new("#{self.class} must implement generate_reports()")
   end
 
+  def summary
+    @summary || ''
+  end
+
   protected
 
-  # Log the shell result timing and, at obnoxious verbosity, its raw output.
-  def print_shell_result(shell_result)
+  # Log the shell result timing
+  def print_shell_exec_time(shell_result)
     return if shell_result.nil?
 
-    @loginator.log( "Done in %.3f seconds." % shell_result[:time], Verbosity::NORMAL )
-
-    if shell_result[:output] && !shell_result[:output].empty?
-      @loginator.log( shell_result[:output], Verbosity::OBNOXIOUS )
-    end
+    @loginator.log( "Done in %.2f seconds." % shell_result[:time], Verbosity::NORMAL )
   end
 
 

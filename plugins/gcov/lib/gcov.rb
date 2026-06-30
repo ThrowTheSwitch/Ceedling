@@ -215,17 +215,27 @@ class Gcov < Plugin
   def generate_coverage_reports()
     return if not @reports_enabled
 
+    exceptions = []
+
     @reportinators.each do |reportinator|
       # Create the artifacts output directory.
       @file_wrapper.mkdir( reportinator.artifacts_path ) if reportinator.artifacts_path
 
-      # Generate reports; log any returned coverage summary at normal verbosity
-      summary = reportinator.generate_reports( @configurator.project_config_hash )
-      if summary && !summary.empty?
+      begin
+        reportinator.generate_reports( @configurator.project_config_hash )
+      rescue => ex
+        exceptions << ex
+      end
+
+      # Log summary set by reportinator during report generation (single logging site)
+      unless reportinator.summary.empty?
         @loginator.log( @reportinator.generate_heading( "#{reportinator.name} Coverage Summary" ) )
-        @loginator.log( summary )
+        @loginator.log( reportinator.summary )
       end
     end
+
+    # Re-raise after all reports complete and all summaries logged
+    raise exceptions.first unless exceptions.empty?
   end
 
   ### Private ###
