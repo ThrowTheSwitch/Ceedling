@@ -116,6 +116,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
    - #1115 Fixed Gcov plugin for Gcovr configuration file handling.
    - #1161 Fixed “Found no coverage results” when system headers are processed by coverage.
    - #1170 GCovr summary not passed through to NORMAL logging at end of a GCov plugin build.
+   - #1081 Fixes for Gcovr summary cooperating with coverage threshold failures.
    - Prevention of coverage corruption during `ReportGenerator` reporting runs.
 - #1144 Fixed flags for release build linking.
 - #1169 Fixed linking with :libraries ↳ :release.
