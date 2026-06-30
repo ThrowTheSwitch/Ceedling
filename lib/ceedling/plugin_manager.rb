@@ -54,11 +54,13 @@ class PluginManager
   end
 
   def print_plugin_failures
-    if (@build_fail_registry.size > 0)
+    # Deduplicate: post_test_fixture_execute and reporting plugins may both register the same message
+    failures = @build_fail_registry.uniq
+    if (failures.size > 0)
       report = @reportinator.generate_banner('BUILD FAILURE SUMMARY')
 
-      @build_fail_registry.each do |failure|
-        report += "#{' - ' if (@build_fail_registry.size > 1)}#{failure}\n"
+      failures.each do |failure|
+        report += "#{' - ' if (failures.size > 1)}#{failure}\n"
       end
 
       report += "\n"
@@ -95,6 +97,8 @@ class PluginManager
   def post_test_fixture_execute(arg_hash)
     # Special arbitration: Raw test results are printed or taken over by plugins handling the job
     @loginator.log( arg_hash[:shell_result][:output] ) if @configurator.plugins_display_raw_test_results
+    # Core failure detection independent of any reporting plugin
+    register_build_failure( 'Unit test failures.' ) if arg_hash.dig(:results, :counts, :failed).to_i > 0
     execute_plugins(:post_test_fixture_execute, arg_hash)
   end
 

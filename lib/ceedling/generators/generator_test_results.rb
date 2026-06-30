@@ -171,7 +171,7 @@ class GeneratorTestResults
 
     @yaml_wrapper.dump(output_file, results)
 
-    return { :result_file => output_file, :result => results }
+    return { :result_file => output_file, :results => results }
   end
 
   # Filter list of test cases:
