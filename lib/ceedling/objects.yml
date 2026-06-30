@@ -113,6 +113,7 @@ configurator_validator:
 configurator_builder:
   compose:
     - file_path_collection_utils
+    - loginator
     - file_wrapper
     - system_wrapper
 

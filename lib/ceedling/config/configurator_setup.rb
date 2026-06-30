@@ -101,9 +101,13 @@ class ConfiguratorSetup
     flattened_config.merge!( @configurator_builder.collect_source_include_vendor_paths( flattened_config ) )
     flattened_config.merge!( @configurator_builder.collect_test_support_source_include_paths( flattened_config ) )
     flattened_config.merge!( @configurator_builder.collect_test_support_source_include_vendor_paths( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_tests( flattened_config ) )
+
+    # Collect tests: (1) To be merged (2) To filter out of sources (preventing accidental mixing of tests and source)
+    tests_collection, tests_list = @configurator_builder.collect_tests( flattened_config )
+    flattened_config.merge!( tests_collection )
+
     flattened_config.merge!( @configurator_builder.collect_assembly( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_source( flattened_config ) )
+    flattened_config.merge!( @configurator_builder.collect_source( flattened_config, tests_list ) )
     flattened_config.merge!( @configurator_builder.collect_headers( flattened_config ) )
     flattened_config.merge!( @configurator_builder.collect_release_build_input( flattened_config ) )
     flattened_config.merge!( @configurator_builder.collect_existing_test_build_input( flattened_config ) )

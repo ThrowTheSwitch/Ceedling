@@ -13,7 +13,7 @@ require 'ceedling/constants'       # for Verbosity constants class & base file p
 
 class ConfiguratorBuilder
 
-  constructor :file_path_collection_utils, :file_wrapper, :system_wrapper
+  constructor :file_path_collection_utils, :loginator, :file_wrapper, :system_wrapper
 
 
   def build_global_constant(elem, value)
@@ -337,10 +337,13 @@ class ConfiguratorBuilder
     # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
     all_tests.resolve()
 
-    return {
+    revised_list = @file_path_collection_utils.revise_filelist( all_tests, in_hash[:files_test] )
+    collection = {
       # Add / subtract files via :files ↳ :test
-      :collection_all_tests => @file_path_collection_utils.revise_filelist( all_tests, in_hash[:files_test] )
+      :collection_all_tests => revised_list
     }
+
+    return collection, revised_list
   end
 
 
@@ -370,7 +373,7 @@ class ConfiguratorBuilder
   end
 
 
-  def collect_source(in_hash)
+  def collect_source(in_hash, test_list)
     all_source = @file_wrapper.instantiate_file_list
 
     in_hash[:collection_paths_source].each do |path|
@@ -379,6 +382,16 @@ class ConfiguratorBuilder
 
     # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
     all_source.resolve()
+
+    # Identify any test files that accidentally landed in the source list due to path list overlap and remove them
+    mixed_in = test_list.select { |t| all_source.include?( t ) }
+    unless mixed_in.empty?
+      all_source.exclude( *mixed_in )
+      @loginator.log(
+        "Test file paths and source file paths overlap -- test files have been filtered out of the source file collection",
+        Verbosity::COMPLAIN
+      )
+    end
 
     return {
       # Add / subtract files via :files ↳ :source
