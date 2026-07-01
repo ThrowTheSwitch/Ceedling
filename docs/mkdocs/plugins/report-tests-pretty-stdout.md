@@ -50,7 +50,7 @@ IGNORED: 0
 ---------------------
 BUILD FAILURE SUMMARY
 ---------------------
-Unit test failures.
+ • Unit test failures.
 ```
 
 <br/><br/>
