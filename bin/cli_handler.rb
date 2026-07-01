@@ -301,7 +301,7 @@ class CliHandler
     ensure
       @helper.dump_yaml( config, filepath, sections )
 
-      @loginator.console( "\nDumped project configuration to #{filepath}\n", LogLabels::TITLE )      
+      @loginator.console( "Dumped project configuration to #{filepath}\n", LogLabels::TITLE )      
     end
   end
 
