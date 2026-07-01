@@ -9,7 +9,7 @@ require 'spec_helper'
 require 'rake'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 
 # Define Ceedling runtime path constants needed by cppcheck_constants.rb at
 # require time.  The `unless defined?` guard keeps them from being re-assigned
