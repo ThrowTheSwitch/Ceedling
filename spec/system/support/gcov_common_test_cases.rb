@@ -269,7 +269,7 @@ module GcovCommonTestCases
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         expect($?.exitstatus).to match(1) # Ceedling should exit with error because of failed test due to crash
         expect(output).to match(/crashed/i)
-        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/Unit test failures/)
         expect(File.exist?('./build/gcov/results/test_example_file_crash_sigsegv.fail'))
         output_rd = File.read('./build/gcov/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
@@ -303,7 +303,7 @@ module GcovCommonTestCases
         output = `bundle exec ruby -S ceedling gcov:all --exclude_test_case=test_add_numbers_adds_numbers 2>&1`
         expect($?.exitstatus).to match(1) # Ceedling should exit with error because of failed test due to crash
         expect(output).to match(/Test Case Crashed/i)
-        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/Unit test failures/)
         expect(File.exist?('./build/gcov/results/test_example_file_crash_sigsegv.fail'))
         output_rd = File.read('./build/gcov/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
