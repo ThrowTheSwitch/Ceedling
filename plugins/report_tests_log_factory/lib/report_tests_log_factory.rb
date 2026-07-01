@@ -52,34 +52,26 @@ class ReportTestsLogFactory < Plugin
 
   # `Plugin` build step hook -- process results into log files after test build completes
   def post_build
-    # Do nothing if no reports configured
+    # Do nothing if no reports configured or no results collected (e.g. not a test build)
     return if not @enabled
-
-    empty = false
-
-    @mutex.synchronize { empty = @results.empty? }
-
-    # Do nothing if no results were generated (e.g. not a test build)
-    return if empty
+    return if @results.empty?
 
     msg = @reportinator.generate_heading( "Running Test Suite Reports" )
     @loginator.log( msg )
 
-    @mutex.synchronize do
-      # For each configured reporter, generate a test suite report per test context
-      @results.each do |context, results_filepaths|
-        # Assemble results from all results filepaths collected
-        _results = @ceedling[:plugin_reportinator].assemble_test_results( results_filepaths )
+    # For each configured reporter, generate a test suite report per test context
+    @results.each do |context, results_filepaths|
+      # Assemble results from all results filepaths collected
+      _results = @ceedling[:plugin_reportinator].assemble_test_results( results_filepaths )
 
-        # Provide results to each Reporter
-        @reporters.each do |reporter|
-          filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
+      # Provide results to each Reporter
+      @reporters.each do |reporter|
+        filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
 
-          msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
-          @loginator.log( msg )
+        msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
+        @loginator.log( msg )
 
-          reporter.write( filepath: filepath, results: _results )
-        end
+        reporter.write( filepath: filepath, results: _results )
       end
     end
 

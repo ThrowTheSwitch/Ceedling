@@ -5,13 +5,14 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'erb'
 require 'ceedling/constants'
 require 'ceedling/defaults'
 require 'ceedling/exceptions'
 
 class PluginReportinator
   
-  constructor :plugin_reportinator_helper, :plugin_manager, :reportinator
+  constructor :plugin_reportinator_helper, :plugin_manager, :reportinator, :loginator
 
   def setup
     @test_results_template = nil
@@ -22,7 +23,8 @@ class PluginReportinator
   end
 
   def set_system_objects(system_objects)
-    @plugin_reportinator_helper.ceedling = system_objects
+    # Available for use inside ERB report rendering via binding()
+    @ceedling = system_objects
   end
   
   def fetch_results(results_path, test, options={:boom => false})
@@ -93,29 +95,19 @@ class PluginReportinator
     return aggregated_results
   end
       
-  def run_test_results_report(hash, verbosity=Verbosity::NORMAL, &block)
+  def run_test_results_report(hash, verbosity=Verbosity::NORMAL)
     if @test_results_template.nil?
       raise CeedlingException.new( "No test results report template has been set." )
     end
 
-    run_report(
-      @test_results_template,
-      hash,
-      verbosity,
-      &block
-    )
+    run_report( @test_results_template, hash, verbosity )
   end
   
   def run_report(template, hash=nil, verbosity=Verbosity::NORMAL)
-    failure = nil
-    failure = yield() if block_given?
-  
-    @plugin_manager.register_build_failure( failure )
-  
-    # Set verbosity to error level if there were failures
-    _verbosity = failure ? Verbosity::ERRORS : verbosity
+    output = ERB.new( template, trim_mode: "%<>" )
 
-    @plugin_reportinator_helper.run_report( template, hash, _verbosity )
+    # Run the report template and log result with no log level heading
+    @loginator.log( output.result(binding()), verbosity, LogLabels::NONE )
   end
   
   #

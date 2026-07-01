@@ -105,25 +105,19 @@ class ReportBuildWarningsLog < Plugin
     msg = @reportinator.generate_heading( "Running Warnings Report" )
     @loginator.log( msg )
 
-    empty = false
-
-    @mutex.synchronize { empty = warnings.empty? }
-
-    if empty
+    if warnings.empty?
       @loginator.log( "Build produced no warnings.\n" )
       return
     end
 
-    @mutex.synchronize do
-      warnings.each do |context, hash|
-        log_filepath = form_log_filepath( context, filename )
+    warnings.each do |context, hash|
+      log_filepath = form_log_filepath( context, filename )
 
-        msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
-        @loginator.log( msg )
+      msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
+      @loginator.log( msg )
 
-        File.open( log_filepath, 'w' ) do |f|
-          hash[:collection].each { |warning| f << warning }
-        end
+      File.open( log_filepath, 'w' ) do |f|
+        hash[:collection].each { |warning| f << warning }
       end
     end
 

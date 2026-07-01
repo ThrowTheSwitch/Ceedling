@@ -12,7 +12,7 @@ class PluginManager
   constructor :configurator, :plugin_manager_helper, :loginator, :reportinator, :system_wrapper
 
   def setup
-    @build_fail_registry = []
+    @build_fail_registry = {}
     @plugin_objects = [] # List so we can preserve order
   end
 
@@ -54,16 +54,38 @@ class PluginManager
   end
 
   def print_plugin_failures
-    # Deduplicate: post_test_fixture_execute and reporting plugins may both register the same message
-    failures = @build_fail_registry.uniq
-    if (failures.size > 0)
-      banner = @reportinator.generate_banner('BUILD FAILURE SUMMARY')
-      @loginator.log_list( failures, banner, Verbosity::ERRORS, LogLabels::NONE )
+    return if (@build_fail_registry.size == 0)
+    failures = []
+
+    banner = @reportinator.generate_banner(
+      @loginator.decorate( 'BUILD FAILURE SUMMARY', LogLabels::FAIL )
+    )
+
+    # If we only ran basic unit tests, there's no need to prefix the failure messages with the context.
+    if (@build_fail_registry.keys.size == 1 and @build_fail_registry.keys[0] == TEST_SYM)
+      @build_fail_registry.each do |context, messages|
+        messages.each {|message| failures << message}
+      end
+    # Otherwise, add the context to each message so the user knows the source of the failure.
+    else
+      @build_fail_registry.each do |context, messages|
+        messages.each {|message| failures << "[#{context.to_s.upcase}] #{message}"}
+      end
     end
+
+    @loginator.log_list( failures, "\n" + banner, Verbosity::ERRORS, LogLabels::NONE )
   end
 
-  def register_build_failure(message)
-    @build_fail_registry << message if (message and not message.empty?)
+  def register_build_failure(context, message)
+    return if (message.nil? or message.empty?)
+
+    _context = context.is_a?(Symbol) ? context : context.to_sym
+
+    # Create a new key/value with empty list if it doesn't exist
+    @build_fail_registry[_context] ||= []
+
+    list = @build_fail_registry[_context]
+    list << message if !list.include?( message )
   end
 
   #### execute all plugin methods ####
@@ -90,8 +112,10 @@ class PluginManager
   def post_test_fixture_execute(arg_hash)
     # Special arbitration: Raw test results are printed or taken over by plugins handling the job
     @loginator.log( arg_hash[:shell_result][:output] ) if @configurator.plugins_display_raw_test_results
+
     # Core failure detection independent of any reporting plugin
-    register_build_failure( 'Unit test failures.' ) if arg_hash.dig(:results, :counts, :failed).to_i > 0
+    register_build_failure( arg_hash[:context], 'Unit test failures' ) if arg_hash.dig(:results, :counts, :failed).to_i > 0
+
     execute_plugins(:post_test_fixture_execute, arg_hash)
   end
 

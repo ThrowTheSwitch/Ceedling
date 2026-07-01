@@ -55,6 +55,7 @@ class Gcov < Plugin
     @file_path_utils = @ceedling[:file_path_utils]
     @file_wrapper = @ceedling[:file_wrapper]
     @tool_executor = @ceedling[:tool_executor]
+    @plugin_manager = @ceedling[:plugin_manager]
 
     @mutex = Mutex.new()
 
@@ -158,24 +159,16 @@ class Gcov < Plugin
 
     # Only present plugin-based test results if raw test results disabled by a reporting plugin
     if !@configurator.plugins_display_raw_test_results
-      results = {}
-
-      # Assemble test results
-      @mutex.synchronize do
-        results = @plugin_reportinator.assemble_test_results( @result_list )
-      end
-
+      results = @plugin_reportinator.assemble_test_results( @result_list )
       hash = {
         context: GCOV_SYM,
         results: results
       }
 
+      verbosity = (results[:counts][:failed] > 0) ? Verbosity::ERRORS : Verbosity::NORMAL
+
       # Print unit test suite results
-      @plugin_reportinator.run_test_results_report( hash ) do
-        message = ''
-        message = 'Unit test failures.' if results[:counts][:failed] > 0
-        message
-      end
+      @plugin_reportinator.run_test_results_report( hash, verbosity )
     end
 
     # Print summary of coverage to console for each source file exercised by a test,
@@ -215,8 +208,6 @@ class Gcov < Plugin
   def generate_coverage_reports()
     return if not @reports_enabled
 
-    exceptions = []
-
     @reportinators.each do |reportinator|
       # Create the artifacts output directory.
       @file_wrapper.mkdir( reportinator.artifacts_path ) if reportinator.artifacts_path
@@ -224,7 +215,8 @@ class Gcov < Plugin
       begin
         reportinator.generate_reports( @configurator.project_config_hash )
       rescue => ex
-        exceptions << ex
+        # Register the exception as a build failure
+        @ceedling[:plugin_manager].register_build_failure( GCOV_SYM, ex.message )
       end
 
       # Log summary set by reportinator during report generation (single logging site)
@@ -233,9 +225,6 @@ class Gcov < Plugin
         @loginator.log( reportinator.summary )
       end
     end
-
-    # Re-raise after all reports complete and all summaries logged
-    raise exceptions.first unless exceptions.empty?
   end
 
   ### Private ###

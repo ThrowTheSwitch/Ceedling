@@ -7,8 +7,8 @@
 
 ---
 :valgrind:
-  # Halt the build if valgrind reports memory errors in any test binary
-  :halt_on_error: FALSE
+  # Register a build failure if valgrind reports memory errors in any test binary
+  :fail_build: TRUE
 
   # Valgrind flags (do not include --log-file or the ${1} executable token)
   :arguments:

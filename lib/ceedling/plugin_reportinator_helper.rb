@@ -5,17 +5,13 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'erb'
-require 'rubygems'
 require 'rake' # for ext()
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 
 class PluginReportinatorHelper
-  
-  attr_writer :ceedling
-  
-  constructor :configurator, :loginator, :yaml_wrapper, :file_wrapper
+    
+  constructor :configurator, :yaml_wrapper, :file_wrapper
   
   def fetch_results(results_path, options)
     # Create the results filepaths
@@ -72,13 +68,6 @@ class PluginReportinatorHelper
     aggregate[:counts][:ignored] += results[:counts][:ignored]
     aggregate[:counts][:stdout]  += results[:stdout].size
     aggregate[:total_time]       += results[:time]
-  end
-
-  def run_report(template, hash, verbosity)
-    output = ERB.new( template, trim_mode: "%<>" )
-
-    # Run the report template and log result with no log level heading
-    @loginator.log( output.result(binding()), verbosity, LogLabels::NONE )
   end
   
 end

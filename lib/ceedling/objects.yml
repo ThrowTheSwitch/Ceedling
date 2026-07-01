@@ -140,11 +140,11 @@ plugin_reportinator:
     - plugin_reportinator_helper
     - plugin_manager
     - reportinator
+    - loginator
 
 plugin_reportinator_helper:
   compose:
     - configurator
-    - loginator
     - yaml_wrapper
     - file_wrapper
 
