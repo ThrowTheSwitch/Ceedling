@@ -392,13 +392,13 @@ class Generator
       case @configurator.project_config_hash[:project_use_backtrace]
       # If we have the options and tools to learn more, dig into the details
       when :gdb
-        shell_result = 
-          @backtrace.do_gdb( filename, executable, shell_result, test_cases )
+        shell_result =
+          @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: context )
 
       # Simple test-case-by-test-case exercise
       when :simple
-        shell_result = 
-          @backtrace.do_simple( filename, executable, shell_result, test_cases )
+        shell_result =
+          @backtrace.do_simple( filename, executable, shell_result, test_cases, context: context )
 
       else # :none
         # Otherwise, call a crash a single failure so it shows up in the report

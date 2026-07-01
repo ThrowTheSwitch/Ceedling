@@ -48,6 +48,7 @@ ceedling_system_tests do
 
       test_case :run_valgrind_memory_error_suite_completes
       test_case :run_valgrind_memory_error_suite_halts
+      test_case :run_valgrind_memory_error_sigabrt_completes
     end
   end
 end

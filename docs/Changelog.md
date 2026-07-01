@@ -121,14 +121,19 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - #1144 Fixed flags for release build linking.
 - #1169 Fixed linking with :libraries ↳ :release.
 - #1112 Fixed (via PR #1171) test failures incorrectly returning exit code 0 when the stdout pretty printer plugin is disabled ([Cory Todd](https://github.com/corytodd)).
+- Restored build failure registration and final build failure summary. Replaced test build failures by exception with build failure registration.
 
 ## ⚠️ Changed
 
-- PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
-- Added warning logging if a Mixin contains mixins (nesting is not supported).
-- Mixins now merge list content according to mixin priority. In all cases but one, a higher priority mixin inserts its list content before the content of the existing list to which it is merging. In the case of `:tools` `:arguments` lists, insertion occurs at the end of the arguments list to enable the typical CLI convention of rightmost argument having the highest priority.
+- Mixins
+   - PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
+   - Added warning logging if a Mixin contains mixins (nesting is not supported).
+   - Mixins now merge list content according to mixin priority. In all cases but one, a higher priority mixin inserts its list content before the content of the existing list to which it is merging. In the case of `:tools` `:arguments` lists, insertion occurs at the end of the arguments list to enable the typical CLI convention of rightmost argument having the highest priority.
 - Significant refactoring and improvements to logging and parallel processing.
 - Streamlined preprocessing, eliminating redundant steps and reducing memory usage.
+- Expanded backtrace handling:
+   - Provides more and better crash details for `:simple` and `:gdb` options
+   - `:gdb` option captures a full log file from `gdb` output and provides that filepath in the test case crash report.
 - The GCov plugin now compiles all files with coverage (and filters out unneeded framework results) in order to meet the stricter coverage handling that began with GCC 14. This change is backwards and forwards compatible with virtually all versions of GCC and the GCov plugin’s supporting utilities.
 - Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
 - Fixes for typos and grammar in documentation and logging.

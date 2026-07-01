@@ -1,0 +1,366 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'spec_helper'
+require 'ceedling/generators/generator_test_results_backtrace'
+require 'ceedling/constants'
+
+# ── Representative gdb output constants ──────────────────────────────────────
+
+# From issue #1038: assert(0) crash → SIGABRT with glibc assertion message
+GDB_SIGABRT_ASSERT_OUTPUT = <<~GDB.freeze
+  [Thread debugging using libthread_db enabled]
+  Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+  test_lib.out: src/lib.c:5: asserting: Assertion `0' failed.
+
+  Program received signal SIGABRT, Aborted.
+  __GI_raise (sig=sig@entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50
+  50	../sysdeps/unix/sysv/linux/raise.c: No such file or directory.
+  #0  __GI_raise (sig=sig@entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50
+  #1  0x00007f8b2c3a7d22 in __GI_abort () at abort.c:79
+  #2  0x00007f8b2c3a7c96 in __assert_fail_base.cold () at assert.c:92
+  #3  0x00007f8b2c3b6f66 in __GI___assert_fail () at assert.c:101
+  #4  0x0000555555555175 in asserting () at src/lib.c:5
+  #5  0x000055555555519d in test_asserting () at test/test_lib.c:9
+  #6  0x0000555555555350 in run_test (func=0x55555555518a <test_asserting>, name=0x555555556004 "test_asserting", line_num=8) at build/test/runners/test_lib_runner.c:76
+GDB
+
+# Classic SIGSEGV from null pointer dereference
+GDB_SIGSEGV_OUTPUT = <<~GDB.freeze
+  [Thread debugging using libthread_db enabled]
+  Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+  Program received signal SIGSEGV, Segmentation fault.
+  0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
+  40	uint32_t i = *null_ptr;
+  #0  0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
+  #1  0x00005618066eb4de in run_test (func=0x5618066ea1e7 <testCrash>, name=0x5618066eb2e0 "testCrash", line_num=37) at build/test/runners/TestUsartModel_runner.c:76
+GDB
+
+# SIGBUS: bus error (alignment or bad address) — no source line in gdb output
+GDB_SIGBUS_OUTPUT = <<~GDB.freeze
+
+  Program received signal SIGBUS, Bus error.
+  0x0000555555555190 in testBusError () at test/test_widget.c:22
+  #0  0x0000555555555190 in testBusError () at test/test_widget.c:22
+  #1  run_test () at build/test/runners/test_widget_runner.c:76
+GDB
+
+# All frames unresolved — no debug symbols
+GDB_UNSYMBOLIZED_OUTPUT = <<~GDB.freeze
+  [Thread debugging using libthread_db enabled]
+
+  Program received signal SIGSEGV, Segmentation fault.
+  #0  ?? ()
+  #1  ?? ()
+GDB
+
+# No recognizable crash signal — gdb produced no useful output
+GDB_NO_SIGNAL_OUTPUT = <<~GDB.freeze
+  [Thread debugging using libthread_db enabled]
+  Inferior 1 (process 12345) exited with code 0139.
+GDB
+
+# ── Representative do_simple output constants ─────────────────────────────────
+
+# Running test_asserting alone — only stderr crash output, no Unity result line
+SIMPLE_ASSERT_CRASH_OUTPUT =
+  "test_lib.out: src/lib.c:5: asserting: Assertion `0' failed.\n" \
+  "Aborted (core dumped)\n"
+
+SIMPLE_PASS_OUTPUT   = "test_lib.c:3:test_empty:PASS\n"
+SIMPLE_FAIL_OUTPUT   = "test_lib.c:8:test_bad:FAIL: Expected 1 Was 2\n"
+SIMPLE_IGNORE_OUTPUT = "test_lib.c:12:test_skip:IGNORE\n"
+
+
+describe GeneratorTestResultsBacktrace do
+
+  before(:each) do
+    # Configurator's tool accessors are added dynamically, so instance_double
+    # cannot verify them against the class — use a plain double instead.
+    @configurator            = double('Configurator')
+    @tool_executor           = instance_double('ToolExecutor')
+    @generator_test_results  = instance_double('GeneratorTestResults')
+    @file_path_utils         = instance_double('FilePathUtils')
+    @file_wrapper            = instance_double('FileWrapper')
+
+    @backtrace = described_class.new({
+      :configurator           => @configurator,
+      :tool_executor          => @tool_executor,
+      :generator_test_results => @generator_test_results,
+      :file_path_utils        => @file_path_utils,
+      :file_wrapper           => @file_wrapper
+    })
+    @backtrace.setup()
+
+    # Standard stubs used by most tests
+    allow(@tool_executor).to receive(:build_command_line).and_return({ options: {} })
+    allow(@file_path_utils).to receive(:form_test_gdb_log) do |test, context:, name:|
+      "/build/logs/#{context}/#{test}/#{name}.gdb.log"
+    end
+    allow(@file_wrapper).to receive(:mkdir)
+    allow(@file_wrapper).to receive(:write)
+    allow(@generator_test_results).to receive(:regenerate_test_executable_stdout).and_return('regenerated')
+  end
+
+  # ── #do_gdb ────────────────────────────────────────────────────────────────
+
+  describe '#do_gdb' do
+    let(:filename)    { 'test_lib.c' }
+    let(:executable)  { 'build/test/out/test_lib/test_lib.out' }
+    let(:shell_result){ { exit_code: 1, output: '', time: 0.0 } }
+    let(:test_cases)  { [{ test: 'test_asserting', line_number: 8 }] }
+
+    before(:each) do
+      allow(@configurator).to receive(:project_build_tests_root).and_return('build/test')
+      allow(@configurator).to receive(:tools_test_backtrace_gdb).and_return({})
+    end
+
+    it 'handles a PASS test case and does not write a log' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: "test_lib.c:9:test_asserting:PASS\n", time: 0.1, exit_code: 0 })
+
+      expect(@file_wrapper).not_to receive(:write)
+
+      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+
+      expect(result[:exit_code]).to eq(0)
+    end
+
+    it 'handles an IGNORE test case and does not write a log' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: "test_lib.c:9:test_asserting:IGNORE\n", time: 0.1, exit_code: 0 })
+
+      expect(@file_wrapper).not_to receive(:write)
+
+      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+
+      expect(result[:exit_code]).to eq(0)
+    end
+
+    it 'handles a FAIL test case and does not write a log' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: "test_lib.c:9:test_asserting:FAIL: Expected 1 Was 2\n", time: 0.1, exit_code: 1 })
+
+      expect(@file_wrapper).not_to receive(:write)
+
+      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+
+      expect(result[:exit_code]).to eq(1)
+    end
+
+    it 'handles a SIGSEGV crash — writes log, includes signal label, backtick source line, and log path' do
+      test_cases_sigsegv = [{ test: 'testCrash', line_number: 37 }]
+      filename_sigsegv   = 'TestUsartModel.c'
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_SIGSEGV_OUTPUT, time: 0.5, exit_code: 139 })
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      expect(@file_wrapper).to receive(:write)
+        .with('/build/logs/test/TestUsartModel/testCrash.gdb.log', /=== testCrash ===/, 'a')
+
+      @backtrace.do_gdb( filename_sigsegv, executable, shell_result, test_cases_sigsegv, context: :test )
+
+      crash_line = expected_output_lines.first
+      expect(crash_line).to include('>> [SIGSEGV] Segmentation fault')
+      expect(crash_line).not_to include('testCrash() at TestUsartModel.c:40')
+      expect(crash_line).to include("#{NEWLINE_TOKEN}`uint32_t i = *null_ptr;`")
+      expect(crash_line).not_to include('(log: ')
+      expect(crash_line).to include('(/build/logs/test/TestUsartModel/testCrash.gdb.log)')
+    end
+
+    it 'handles a SIGABRT crash from assert() — shows assertion text, no source line (issue #1038)' do
+      test_cases_assert = [{ test: 'test_asserting', line_number: 8 }]
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_SIGABRT_ASSERT_OUTPUT, time: 0.3, exit_code: 134 })
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_gdb( filename, executable, shell_result, test_cases_assert, context: :test )
+
+      crash_line = expected_output_lines.first
+      expect(crash_line).to include('>> [SIGABRT]')
+      expect(crash_line).to include("Assertion '0' failed")
+      expect(crash_line).not_to include('Aborted')
+      expect(crash_line).not_to include('asserting() at lib.c:5')
+      expect(crash_line).not_to include('(log: ')
+      expect(crash_line).to include('(/build/logs/test/test_lib/test_asserting.gdb.log)')
+    end
+
+    it 'handles a crash with no identifiable signal — fallback message, log path without "log: " prefix' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1 })
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+
+      crash_line = expected_output_lines.first
+      expect(crash_line).not_to include(' >> ')
+      expect(crash_line).not_to include('(log: ')
+      expect(crash_line).to include('(/build/logs/test/test_lib/test_asserting.gdb.log)')
+    end
+  end
+
+  # ── #do_simple ─────────────────────────────────────────────────────────────
+
+  describe '#do_simple' do
+    let(:filename)    { 'test_lib.c' }
+    let(:executable)  { 'build/test/out/test_lib/test_lib.out' }
+    let(:shell_result){ { exit_code: 1, output: '', time: 0.0 } }
+    let(:test_cases)  { [{ test: 'test_empty', line_number: 3 }] }
+
+    before(:each) do
+      allow(@configurator).to receive(:tools_test_fixture_simple_backtrace).and_return({})
+    end
+
+    it 'handles a PASS test case' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: SIMPLE_PASS_OUTPUT, time: 0.05, exit_code: 0 })
+
+      result = @backtrace.do_simple( filename, executable, shell_result, test_cases, context: :test )
+
+      expect(result[:exit_code]).to eq(0)
+    end
+
+    it 'handles a FAIL test case with a message' do
+      test_cases_fail = [{ test: 'test_bad', line_number: 8 }]
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: SIMPLE_FAIL_OUTPUT, time: 0.05, exit_code: 1 })
+
+      result = @backtrace.do_simple( filename, executable, shell_result, test_cases_fail, context: :test )
+
+      expect(result[:exit_code]).to eq(1)
+    end
+
+    it 'handles an IGNORE test case' do
+      test_cases_ignore = [{ test: 'test_skip', line_number: 12 }]
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: SIMPLE_IGNORE_OUTPUT, time: 0.02, exit_code: 0 })
+
+      result = @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore, context: :test )
+
+      expect(result[:exit_code]).to eq(0)
+    end
+
+    it 'handles a crash and includes extra executable output in the failure message' do
+      test_cases_crash = [{ test: 'test_asserting', line_number: 8 }]
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134 })
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_crash, context: :test )
+
+      crash_line = expected_output_lines.first
+      expect(crash_line).to include(':FAIL: Test case crashed')
+      expect(crash_line).to include(' >> ')
+      expect(crash_line).to include("Assertion `0' failed")
+    end
+
+    it 'handles a crash with no extra output — no >> segment in the failure message' do
+      test_cases_crash = [{ test: 'test_asserting', line_number: 8 }]
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: "\n\n\n", time: 0.1, exit_code: 134 })
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_crash, context: :test )
+
+      crash_line = expected_output_lines.first
+      expect(crash_line).to include(':FAIL: Test case crashed')
+      expect(crash_line).not_to include(' >> ')
+    end
+  end
+
+  # ── private #format_signal_label ───────────────────────────────────────────
+
+  describe '#format_signal_label (private)' do
+    subject { |ex| @backtrace.send(:format_signal_label, ex.metadata[:output]) }
+
+    context 'with SIGSEGV', output: GDB_SIGSEGV_OUTPUT do
+      it 'returns bracketed signal name and description' do
+        expect(subject).to eq('[SIGSEGV] Segmentation fault')
+      end
+    end
+
+    context 'with SIGBUS', output: GDB_SIGBUS_OUTPUT do
+      it 'returns bracketed signal name and description' do
+        expect(subject).to eq('[SIGBUS] Bus error')
+      end
+    end
+
+    context 'with SIGABRT and assertion text (issue #1038)', output: GDB_SIGABRT_ASSERT_OUTPUT do
+      it 'substitutes assertion text for the bare signal description' do
+        expect(subject).to eq("[SIGABRT] Assertion '0' failed")
+      end
+
+      it 'does not include the bare "Aborted" description' do
+        expect(subject).not_to include('Aborted')
+      end
+    end
+
+    context 'with all ?? () frames (no debug symbols)', output: GDB_UNSYMBOLIZED_OUTPUT do
+      it 'still returns the signal label (crash site is not part of this method)' do
+        expect(subject).to eq('[SIGSEGV] Segmentation fault')
+      end
+    end
+
+    context 'with no signal line', output: GDB_NO_SIGNAL_OUTPUT do
+      it 'returns an empty string' do
+        expect(subject).to eq('')
+      end
+    end
+  end
+
+  # ── private #extract_source_line ───────────────────────────────────────────
+
+  describe '#extract_source_line (private)' do
+    it 'extracts the source line from SIGSEGV output' do
+      result = @backtrace.send(:extract_source_line, GDB_SIGSEGV_OUTPUT, 'testCrash', 'TestUsartModel.c')
+      expect(result).to eq('uint32_t i = *null_ptr;')
+    end
+
+    it 'returns nil for assertion crashes — description is already informative' do
+      result = @backtrace.send(:extract_source_line, GDB_SIGABRT_ASSERT_OUTPUT, 'test_asserting', 'test_lib.c')
+      expect(result).to be_nil
+    end
+
+    it 'returns nil when no source line follows the crash location (SIGBUS)' do
+      result = @backtrace.send(:extract_source_line, GDB_SIGBUS_OUTPUT, 'testBusError', 'test_widget.c')
+      expect(result).to be_nil
+    end
+  end
+
+end

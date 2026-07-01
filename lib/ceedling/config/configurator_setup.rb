@@ -79,11 +79,16 @@ class ConfiguratorSetup
       flattened_config[:project_build_vendor_cexception_path]
     ) if flattened_config[:project_use_exceptions]
 
-    # Copy backtrace debugging script into build/test directory structure
-    @file_wrapper.cp_r(
-      File.join( ceedling_lib_path, BACKTRACE_GDB_SCRIPT_FILE ),
-      flattened_config[:project_build_tests_root]
-    ) if flattened_config[:project_use_backtrace] == :gdb
+    # Copy backtrace debugging script into build/test directory structure.
+    # Ensure the destination exists first — it may not on a fresh build since
+    # Rake's :directories task runs later than this configuration-time setup.
+    if flattened_config[:project_use_backtrace] == :gdb
+      @file_wrapper.mkdir( flattened_config[:project_build_tests_root] )
+      @file_wrapper.cp_r(
+        File.join( ceedling_lib_path, BACKTRACE_GDB_SCRIPT_FILE ),
+        flattened_config[:project_build_tests_root]
+      )
+    end
 
     # Copy supporting partials code into build/vendor directory structure
     @file_wrapper.cp_r(

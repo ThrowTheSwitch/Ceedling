@@ -164,6 +164,16 @@ class FilePathUtils
     form_build_context_path(BUILD_RESULTS_DIR, context: context)
   end
 
+  # Forms the filepath for the gdb backtrace log for a given test case.
+  # Produces: <project_log_path>/<context>/<test>/<name>.gdb.log
+  def form_test_gdb_log(test, context:, name:)
+    parts = [@configurator.project_log_path]
+    parts << context.to_s
+    parts << test
+    parts << "#{name}.gdb.log"
+    File.join( *parts )
+  end
+
   def form_test_dependencies_path(name, context: nil)
     form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
   end

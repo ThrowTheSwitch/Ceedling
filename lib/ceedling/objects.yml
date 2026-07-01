@@ -246,6 +246,8 @@ generator_test_results_backtrace:
      - configurator
      - tool_executor
      - generator_test_results
+     - file_path_utils
+     - file_wrapper
 
 generator_test_results_sanity_checker:
   compose:

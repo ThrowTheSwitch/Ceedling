@@ -7,75 +7,17 @@
 
 class GeneratorTestResultsBacktrace
 
-  constructor :configurator, :tool_executor, :generator_test_results
+  constructor :configurator, :tool_executor, :generator_test_results, :file_path_utils, :file_wrapper
 
   def setup()
     @RESULTS_COLLECTOR = Struct.new( :passed, :failed, :ignored, :output, keyword_init:true )
   end
 
-  def do_simple(filename, executable, shell_result, test_cases)
-    # Clean stats tracker
-    test_case_results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
-
-    # Reset time
-    shell_result[:time] = 0
-
-    # Iterate on test cases
-    test_cases.each do |test_case|
-      # Build the test fixture to run with our test case of interest
-      command = @tool_executor.build_command_line(
-        @configurator.tools_test_fixture_simple_backtrace, [],
-        executable,
-        test_case[:test]
-      )
-      # Things are gonna go boom, so ignore booms to get output
-      command[:options][:boom] = false
-
-      crash_result = @tool_executor.exec( command )
-
-      # Sum execution time for each test case
-      # Note: Running tests serpatately increases total execution time)
-      shell_result[:time] += crash_result[:time].to_f()
-
-      # Process single test case stats
-      case crash_result[:output]
-      # Success test case
-      when /(^#{filename}.+:PASS\s*$)/
-        test_case_results[:passed]  += 1
-        test_output = $1 # Grab regex match
-
-      # Ignored test case
-      when /(^#{filename}.+:IGNORE\s*$)/
-        test_case_results[:ignored] += 1
-        test_output = $1 # Grab regex match
-
-      when /(^#{filename}.+:FAIL(:.+)?\s*$)/
-        test_case_results[:failed]  += 1
-        test_output = $1 # Grab regex match
-
-      else # Crash failure case
-        test_case_results[:failed]  += 1
-        test_output = "#{filename}}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed"
-      end
-
-      # Collect up real and stand-in test results output
-      test_case_results[:output] << test_output
-    end
-
-    # Reset shell result exit code and output
-    shell_result[:exit_code] = test_case_results[:failed]
-    shell_result[:output] =
-      @generator_test_results.regenerate_test_executable_stdout(
-        total:   test_cases.size(),
-        ignored: test_case_results[:ignored],
-        failed:  test_case_results[:failed],
-        output:  test_case_results[:output]
-      )
-
-    return shell_result
-  end
-
-  def do_gdb(filename, executable, shell_result, test_cases)
+  # Re-runs each test case under gdb to identify which ones crashed and why.
+  # Writes the full gdb transcript to a per-test-case log file and assembles a
+  # terse crash label (signal + description, optional source line in backticks)
+  # for each failing test case. Returns a modified shell_result with regenerated output.
+  def do_gdb(filename, executable, shell_result, test_cases, context:)
     gdb_script_filepath = File.join( @configurator.project_build_tests_root, BACKTRACE_GDB_SCRIPT_FILE )
 
     # Clean stats tracker
@@ -84,8 +26,14 @@ class GeneratorTestResultsBacktrace
     # Reset time
     shell_result[:time] = 0
 
+    test_name = File.basename( filename, '.*' )
+
     # Iterate on test cases
     test_cases.each do |test_case|
+      # Per-test-case log file: <log_path>/<context>/<test_name>/<test_case>.gdb.log
+      log_path = @file_path_utils.form_test_gdb_log( test_name, context: context, name: test_case[:test] )
+      @file_wrapper.mkdir( File.dirname( log_path ) )
+
       # Build the test fixture to run with our test case of interest
       command = @tool_executor.build_command_line(
         @configurator.tools_test_backtrace_gdb, [],
@@ -99,7 +47,7 @@ class GeneratorTestResultsBacktrace
       crash_result = @tool_executor.exec( command )
 
       # Sum execution time for each test case
-      # Note: Running tests serpatately increases total execution time)
+      # Note: Running tests separately increases total execution time
       shell_result[:time] += crash_result[:time].to_f()
 
       test_output = ''
@@ -123,6 +71,9 @@ class GeneratorTestResultsBacktrace
       else # Crash failure case
         test_case_results[:failed]  += 1
 
+        # Append full gdb output for this test case to the log
+        @file_wrapper.write( log_path, "=== #{test_case[:test]} ===\n#{crash_result[:output]}\n", 'a' )
+
         # Collect file_name and line in which crash occurred
         matched = crash_result[:output].match( /#{test_case[:test]}\s*\(\)\sat.+#{filename}:(\d+)\n/ )
 
@@ -131,19 +82,30 @@ class GeneratorTestResultsBacktrace
           # Line number
           line_number = matched[1]
 
-          # Filter the `gdb` $stdout report to find most important lines of text
-          crash_report = filter_gdb_test_report( crash_result[:output], test_case[:test], filename )
+          # Build terse signal label: "[SIGNAL] Description"
+          signal_label = format_signal_label( crash_result[:output] )
 
-          # Unity’s test executable output is line oriented.
-          # Multi-line output is not possible (it looks like random `printf()` statements to the results parser)
+          # Extract the offending source line (nil for assertion crashes or when unavailable)
+          source_line = extract_source_line( crash_result[:output], test_case[:test], filename )
+
+          # Unity's test executable output is line oriented.
+          # Multi-line output is not possible (it looks like random `printf()` statements to the results parser).
           # "Encode" newlines in multiline string to be handled by the test results parser.
-          test_output = crash_report.gsub( "\n", NEWLINE_TOKEN )
+          crash_detail = source_line ? "#{NEWLINE_TOKEN}`#{source_line}`" : ''
 
-          test_output = "#{filename}:#{line_number}:#{test_case[:test]}:FAIL: Test case crashed >> #{test_output}"
+          # Log path appears on its own encoded line so the results parser treats it separately
+          test_output =
+            "#{filename}:#{line_number}:#{test_case[:test]}:FAIL: Test case crashed" \
+            " >> #{signal_label}" \
+            "#{crash_detail}" \
+            "#{NEWLINE_TOKEN}(#{log_path})"
 
         # Otherwise communicate that `gdb` failed to produce a usable report
         else
-          test_output = "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed (no usable `gdb` report)"
+          test_output =
+            "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: " \
+            "Test case crashed (failed to extract `gdb` report)" \
+            "#{NEWLINE_TOKEN}(#{log_path})"
         end
       end
 
@@ -163,53 +125,122 @@ class GeneratorTestResultsBacktrace
     return shell_result
   end
 
+  # Re-runs each test case individually to determine which ones crashed.
+  # For crash cases, captures any extra output from the test binary (e.g.
+  # assertion messages on stderr) and includes it in the failure report.
+  # Returns a modified shell_result with regenerated output.
+  def do_simple(filename, executable, shell_result, test_cases, context:)
+    # Clean stats tracker
+    test_case_results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
+
+    # Reset time
+    shell_result[:time] = 0
+
+    # Iterate on test cases
+    test_cases.each do |test_case|
+      # Build the test fixture to run with our test case of interest
+      command = @tool_executor.build_command_line(
+        @configurator.tools_test_fixture_simple_backtrace, [],
+        executable,
+        test_case[:test]
+      )
+      # Things are gonna go boom, so ignore booms to get output
+      command[:options][:boom] = false
+
+      crash_result = @tool_executor.exec( command )
+
+      # Sum execution time for each test case
+      # Note: Running tests separately increases total execution time
+      shell_result[:time] += crash_result[:time].to_f()
+
+      # Process single test case stats
+      case crash_result[:output]
+      # Success test case
+      when /(^#{filename}.+:PASS\s*$)/
+        test_case_results[:passed]  += 1
+        test_output = $1 # Grab regex match
+
+      # Ignored test case
+      when /(^#{filename}.+:IGNORE\s*$)/
+        test_case_results[:ignored] += 1
+        test_output = $1 # Grab regex match
+
+      when /(^#{filename}.+:FAIL(:.+)?\s*$)/
+        test_case_results[:failed]  += 1
+        test_output = $1 # Grab regex match
+
+      else # Crash failure case
+        test_case_results[:failed]  += 1
+
+        # Collect any non-result, non-blank lines (e.g. assertion messages on stderr)
+        extra = extract_simple_crash_output( crash_result[:output], filename )
+        test_output = "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed"
+        test_output += " >> #{extra.join(NEWLINE_TOKEN)}" unless extra.empty?
+      end
+
+      # Collect up real and stand-in test results output
+      test_case_results[:output] << test_output
+    end
+
+    # Reset shell result exit code and output
+    shell_result[:exit_code] = test_case_results[:failed]
+    shell_result[:output] =
+      @generator_test_results.regenerate_test_executable_stdout(
+        total:   test_cases.size(),
+        ignored: test_case_results[:ignored],
+        failed:  test_case_results[:failed],
+        output:  test_case_results[:output]
+      )
+
+    return shell_result
+  end
+
   ### Private ###
   private
 
-  def filter_gdb_test_report(report, test_case, filename)
-    #       Sample `gdb` backtrace output
-    #       =============================
-    #       [Thread debugging using libthread_db enabled]
-    #       Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
-    #
-    # [1] > Program received signal SIGSEGV, Segmentation fault.
-    #       0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
-    # [2] > 40    uint32_t i = *null_ptr;
-    #       #0  0x0000555999f661fb in testCrash () at test/TestUsartModel.c:40
-    #       #1  0x0000555999f674de in run_test (func=0x555999f661e7 <testCrash>, name=0x555999f6b2e0 "testCrash", line_num=37) at build/test/runners/TestUsartModel_runner.c:76
-    #       #2  0x0000555999f6766b in main (argc=3, argv=0x7fff917e2c98) at build/test/runners/TestUsartModel_runner.c:117
+  # Builds a terse signal label from gdb output: "[SIGNAL] Description".
+  # For SIGABRT, substitutes glibc assertion text when present — more
+  # informative than the bare "Aborted" signal description.
+  # Returns empty string if no signal line is found in output.
+  def format_signal_label(output)
+    m = output.match( /Program received signal (\w+), (.+)\./ )
+    return '' unless m
 
-    lines = report.split( "\n" )
+    description = m[2].strip
 
-    # Safe defaults to extract entire report
-    report_start_index = 0                # [1]
-    report_end_index   = (lines.size()-1) # [2]
-
-    # Find line preceding last `<test_case> () at <filename>`, [2];
-    # it is the offending line of code.
-    # We don't need the rest of the call trace -- it's just from the runner 
-    # up to the crashed test case.
-    lines.each_with_index do |line, index|
-      if line =~ /#{test_case}.+at.+#{filename}/
-        report_end_index = (index - 1) unless (index == 0)
-      end
+    # Prefer glibc's assertion message over the bare signal description
+    # when present — "Assertion 'x > 0' failed" is more informative than "Aborted"
+    if (a = output.match( /\S+:\d+: \S+: Assertion `(.+)' failed\./ ))
+      description = "Assertion '#{a[1]}' failed"
     end
 
-    # Work up from [2] to find top line of the containing text block, [1].
-    # Go until we find a blank line; then increment index back down a line.
-    # This lops off any unneeded preamble.
-    report_end_index.downto(0).to_a().each do |index|
-      if lines[index].empty?
-        # Look for a blank line and adjust index to next line of text
-        report_start_index = (index + 1)
-        break
-      end
+    return "[#{m[1]}] #{description}"
+  end
+
+  # Extracts the offending source line from gdb output.
+  # Looks for a `<line_num>\t<code>` line immediately following the
+  # crash location line (`test_case() at filename:line`).
+  # Returns nil for assertion crashes (description is already informative)
+  # and nil when no source line is available in the gdb output.
+  def extract_source_line(output, test_case, filename)
+    # Assertion crashes: description is already informative — no source line needed
+    return nil if output.match?( /\S+:\d+: \S+: Assertion `.+' failed\./ )
+
+    # Find <line_num>\t<code> immediately following test_case() at filename:line
+    m = output.match( /#{Regexp.escape(test_case)}.+#{Regexp.escape(filename)}:\d+\n(\d+)\t(.+)/ )
+    return m ? m[2].strip : nil
+  end
+
+  # Extracts lines from do_simple crash output that are not Unity test result
+  # lines (PASS/FAIL/IGNORE) and not blank. These are typically stderr output
+  # from the crashed test binary — assertion messages, abort text, etc.
+  def extract_simple_crash_output(output, filename)
+    output.lines.filter_map do |line|
+      line = line.strip
+      next if line.empty?
+      next if line =~ /^#{filename}.+:(PASS|FAIL|IGNORE)/
+      line
     end
-
-    length = (report_end_index - report_start_index) + 1
-
-    # Reconstitute the report from the extracted lines
-    return lines[report_start_index, length].join( "\n" )
   end
 
 end

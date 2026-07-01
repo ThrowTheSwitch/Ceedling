@@ -662,110 +662,216 @@ module CommonSystemTestCases
   end
 
 
-  def project_fail_because_of_crash_without_report
+  # Validates that a crash with :use_backtrace => :none reports "Test Executable Crashed"
+  # in Ceedling output and returns a failing exit code.
+  # Uses a SIGSEGV (null-pointer dereference) crash.
+  def crash_none_reports_executable_crashed
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :none }})
 
         output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
-        expect(output).to match(/Unit test failures./)
+        expect(output).to match(/Unit test failures/)
         expect(!File.exist?('./build/test/results/test_add.fail'))
       end
     end
   end
 
-  def project_fail_because_of_crash_with_report
+  # Validates that a crash with :use_backtrace => :none writes a .fail results file
+  # containing the crashed test case name and crash location.
+  # Uses a SIGSEGV (null-pointer dereference) crash.
+  def crash_none_writes_fail_results_file
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :none }})
 
         output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
-        expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/test/results/test_example_file_crash.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_crash.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
+        expect(output).to match(/Unit test failures/)
+        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
       end
     end
   end
 
-  def backtrace_all_crash_test_cases_and_report
+  # Validates that :use_backtrace => :gdb runs all test cases, identifies the crashing
+  # one (SIGSEGV from null-pointer dereference), writes a gdb log file, and includes
+  # a log path reference in Ceedling output.
+  def crash_gdb_sigsegv_all_test_cases
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
         output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
-        expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/test/results/test_example_file_crash.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_crash.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
+        expect(output).to match(/Unit test failures/)
+        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(output_rd).to match(/Test case crashed/)
+        expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
+        log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        expect(File.exist?(log_path)).to be(true)
+        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
       end
     end
   end
 
-  def backtrace_crash_targets_test_case_filter
+  # Validates that :use_backtrace => :gdb respects --test_case filter, running only
+  # the named crashing test case (SIGSEGV) and writing a gdb log for it.
+  def crash_gdb_sigsegv_targets_test_case_filter
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
         output = @c.ceedling_build_exec("test:all --test_case=test_add_numbers_will_fail")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
-        expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/test/results/test_example_file_crash.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_crash.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
+        expect(output).to match(/Unit test failures/)
+        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(output_rd).to match(/Test case crashed/)
+        expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
+        log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        expect(File.exist?(log_path)).to be(true)
+        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
       end
     end
   end
 
-  def backtrace_crash_excludes_test_case_filter
+  # Validates that :use_backtrace => :gdb respects --exclude_test_case filter, running
+  # only the crashing test case (SIGSEGV) after the passing one is excluded, and writing a gdb log.
+  def crash_gdb_sigsegv_excludes_test_case_filter
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
         output = @c.ceedling_build_exec("test:all --exclude_test_case=add_numbers_adds_numbers")
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
-        expect(output).to match(/Unit test failures./)
-        expect(File.exist?('./build/test/results/test_example_file_crash.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_crash.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash.c\:14/ )
+        expect(output).to match(/Unit test failures/)
+        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
+        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(output_rd).to match(/Test case crashed/)
+        expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
+        expect(output).to match(/IGNORED:\s+0/)
+        log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        expect(File.exist?(log_path)).to be(true)
+        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
+      end
+    end
+  end
+
+  # Validates that :use_backtrace => :gdb handles a SIGABRT crash from assert(0),
+  # surfacing the assertion expression (not bare "Aborted") in the crash summary,
+  # writing a gdb log containing the raw gdb output, and including a log path reference
+  # in Ceedling output. This is the core gdb-mode regression test for issue #1038.
+  def crash_gdb_sigabrt_assert_failure
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_crash_assert.c"), 'test/'
+
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(1)
+        expect(output).to match(/Test Case Crashed/i)
+        expect(output).to match(/Unit test failures/)
+        expect(output).to match(/SIGABRT/i)
+        expect(output).to match(/Assertion/i)
+        log_path = './build/logs/test/test_example_file_crash_assert/test_add_numbers_triggers_assert.gdb.log'
+        expect(File.exist?(log_path)).to be(true)
+        expect(File.read(log_path)).to match(/SIGABRT|Aborted/i)
+        expect(output).to match(/test_add_numbers_triggers_assert\.gdb\.log/)
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  # Validates that :use_backtrace => :simple runs each test case individually,
+  # identifies the crashing one (SIGSEGV from null-pointer dereference), and reports
+  # it as a per-test-case failure rather than a whole-executable crash.
+  def crash_simple_sigsegv_all_test_cases
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :simple }})
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(1)
+        expect(output).to match(/Test Case Crashed/i)
+        expect(output).to match(/Unit test failures/)
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
+        expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  # Validates that :use_backtrace => :simple captures the glibc assertion message written
+  # to stderr before SIGABRT and includes it in the Ceedling crash report output.
+  # This is the core simple-mode regression test for issue #1038.
+  def crash_simple_sigabrt_assert_failure
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_crash_assert.c"), 'test/'
+
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :simple }})
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(1)
+        expect(output).to match(/Test Case Crashed/i)
+        expect(output).to match(/Unit test failures/)
+        # glibc assertion diagnostic written to stderr must appear in Ceedling output
+        expect(output).to match(/Assertion.*failed/i)
+        expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
       end
