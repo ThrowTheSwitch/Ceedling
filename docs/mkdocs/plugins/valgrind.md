@@ -24,9 +24,9 @@ The plugin provides two invocation modes mirroring standard `test:` tasks.
 The plugin triggers standard `test` task builds but hands each test fixture
 executable off to Valgrind along with configurable arguments.
 
-By default the build continues after Valgrind errors so that all log files are
-produced. The optional `:halt_on_error:` setting stops the build after the first
-test binary whose Valgrind log reports memory errors.
+By default the build runs all test binaries to completion and is marked as
+failed if any Valgrind memory errors are found. The optional `:fail_build:`
+setting can be set to `false` to log errors without failing the build.
 
 ## Installation & set up
 
@@ -70,9 +70,9 @@ project configuration:
 ## Configuration
 
 The plugin ships with sensible defaults that enable full leak checking. By
-default the build continues after Valgrind errors so that every test binary
-runs and produces a log file. Use `:halt_on_error:` to stop early on the
-first test fixture executable in the suite with memory errors.
+default the build runs all test binaries to completion and is marked as failed
+if any memory errors are found. Set `:fail_build: false` to log errors without
+failing the build.
 
 You can change the Valgrind configuration in your project configuration 
 under an optional `:valgrind` section.
@@ -102,21 +102,19 @@ defaults, redefine the argument list in your project configuration:
     - "--show-leak-kinds=all"
 ```
 
-### `:halt_on_error:`
+### `:fail_build:`
 
-When `false` (the default), the build runs all test binaries to completion.
-Memory errors appear in the per-binary log files but do not stop the build.
-This is often the right choice for an initial analysis run; you get the full
-picture of which binaries have problems.
+When `true` (the default), any memory errors are logged immediately after 
+running a test executable. After all test binaries complete execution, if 
+any memory errors were found across the run, the build is marked as failed 
+with a total count of memory errors and test files processed.
 
-When `true`, the plugin reads the Valgrind log after each test binary finishes
-and checks the `ERROR SUMMARY` line. If the error count is greater than zero,
-Ceedling raises a build error and halts before running any subsequent test
-fixture executables. Valgrind logs created to that point will remain.
+When `false`, memory errors are still logged per test binary but the build is
+not marked as failed.
 
 ```yaml
 :valgrind:
-  :halt_on_error: true
+  :fail_build: false
 ```
 
 !!! note "Detection uses log parsing, not Valgrind’s exit code"
