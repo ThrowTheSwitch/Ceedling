@@ -178,7 +178,7 @@ class Loginator
   #  - For a multiline header (e.g. a banner), "<none>" begins on its own line
   #  - For a single-line header, "<none>" is appended inline after a space
   def log_list(list, header='', verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
-    msg = (header.nil? or header.empty?) ? '' : header
+    msg = (header.nil? or header.empty?) ? '' : header.rstrip
 
     if list.nil? or list.empty?
       msg += (msg.include?("\n") ? "\n" : ' ') if !msg.empty?
