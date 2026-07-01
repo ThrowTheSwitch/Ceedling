@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 
 require 'cppcheck_constants'
 require 'cppcheck_reports'

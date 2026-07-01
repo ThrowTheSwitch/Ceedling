@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 require 'ceedling/exceptions'
 
 BEEP_ROOT_NAME = 'beep'.freeze

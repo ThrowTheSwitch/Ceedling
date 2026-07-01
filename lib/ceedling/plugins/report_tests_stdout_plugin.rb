@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 require 'ceedling/defaults'
 
 # Base class for stdout test-results reporting plugins.

@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 require 'fff_mock_generator'
 
 class Fff < Plugin

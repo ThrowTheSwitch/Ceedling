@@ -6,7 +6,7 @@
 # =========================================================================
 
 
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 
 class ReportBuildWarningsLog < Plugin

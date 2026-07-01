@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 require 'fileutils'
 require 'ceedling/constants'
 require 'valgrind_constants'

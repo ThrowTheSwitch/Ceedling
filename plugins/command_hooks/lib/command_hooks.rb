@@ -7,7 +7,7 @@
 
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 
 COMMAND_HOOKS_ROOT_NAME = 'command_hooks'.freeze
 COMMAND_HOOKS_SYM       = COMMAND_HOOKS_ROOT_NAME.to_sym
