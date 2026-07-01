@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/constants'
-require 'ceedling/plugin_manager'
+require 'ceedling/plugins/plugin_manager'
 
 describe PluginManager do
   before(:each) do
@@ -28,19 +28,19 @@ describe PluginManager do
 
   describe '#post_test_fixture_execute' do
     it 'registers a build failure when tests fail' do
-      arg_hash = { :shell_result => { :output => '' }, :results => { :counts => { :failed => 1 } } }
+      arg_hash = { :context => TEST_SYM, :shell_result => { :output => '' }, :results => { :counts => { :failed => 1 } } }
       @pm.post_test_fixture_execute(arg_hash)
       expect(@pm.plugins_failed?).to be(true)
     end
 
     it 'does not register a build failure when all tests pass' do
-      arg_hash = { :shell_result => { :output => '' }, :results => { :counts => { :failed => 0 } } }
+      arg_hash = { :context => TEST_SYM, :shell_result => { :output => '' }, :results => { :counts => { :failed => 0 } } }
       @pm.post_test_fixture_execute(arg_hash)
       expect(@pm.plugins_failed?).to be(false)
     end
 
     it 'does not register a build failure when result counts are absent' do
-      arg_hash = { :shell_result => { :output => '' }, :results => {} }
+      arg_hash = { :context => TEST_SYM, :shell_result => { :output => '' }, :results => {} }
       @pm.post_test_fixture_execute(arg_hash)
       expect(@pm.plugins_failed?).to be(false)
     end
