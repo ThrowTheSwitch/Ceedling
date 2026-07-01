@@ -22,7 +22,7 @@ An incomplete `Plugin` subclass follows to illustrate the basics.
 
 ```ruby
 # whiz_bang/lib/whiz_bang.rb
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 
 class WhizBang < Plugin
   def setup
