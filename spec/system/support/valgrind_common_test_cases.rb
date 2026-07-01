@@ -56,7 +56,11 @@ module ValgrindCommonTestCases
     end
   end
 
-  def run_valgrind_memory_error_suite_completes
+  # Validates that the default `:fail_build: true` behavior:
+  # the suite runs to completion, a per-test error is logged, and Valgrind
+  # registers a build failure with an aggregate memory error count.
+  # Uses a SIGSEGV (null-pointer dereference) crash, which produces Valgrind memory errors.
+  def run_valgrind_memory_error_fail_build_enabled
     @c.with_context do
       Dir.chdir @proj_name do
         prep_project_yml_for_valgrind
@@ -66,36 +70,13 @@ module ValgrindCommonTestCases
 
         output = @c.ceedling_build_exec("valgrind:all")
 
-        expect(@c.last_exit_status).to eq(1) # Crash → test failure
+        expect(@c.last_exit_status).to eq(1) # Crash + Valgrind build failure
         # Ceedling crash detection
         expect(output).to match(/test_example_file_crash_sigsegv.+crashed/i)
-        # Absence of Valgrind build halting exception
-        expect(output).not_to match(/Valgrind detected.*memory error/i)
-        expect(output).to match(/Wrote 1 Valgrind report/i)
-        expect(File.exist?('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to eq(true)
-        expect(File.size('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to be > 0
-        # Expected memory error(s) detected by Valgrind
-        expect(File.read('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
-      end
-    end
-  end
-
-  def run_valgrind_memory_error_suite_halts
-    @c.with_context do
-      Dir.chdir @proj_name do
-        prep_project_yml_for_valgrind
-        @c.merge_project_yml_for_test({ :valgrind => { :halt_on_error => true } })
-        FileUtils.cp test_asset_path("example_file.h"), 'src/'
-        FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
-
-        output = @c.ceedling_build_exec("valgrind:all")
-
-        expect(@c.last_exit_status).to eq(1) # Build halted by plugin
-        # Ceedling crash detection
-        expect(output).to match(/test_example_file_crash_sigsegv.+crashed/i)
-        # Valgrind build halting exception
+        # Per-test Valgrind memory error log (always fires when errors found)
         expect(output).to match(/Valgrind detected.*memory error/i)
+        # Aggregate build failure registered by Valgrind plugin
+        expect(output).to match(/Valgrind detected.*memory error.*across/i)
         expect(output).to match(/Wrote 1 Valgrind report/i)
         expect(File.exist?('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to eq(true)
         expect(File.size('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to be > 0
@@ -105,29 +86,33 @@ module ValgrindCommonTestCases
     end
   end
 
-  # Validates that the valgrind plugin handles a SIGABRT crash from assert(0) gracefully:
-  # the suite completes without a plugin exception, the Ceedling crash report is written,
-  # the valgrind log is written, and Valgrind reports no memory access errors
-  # (assert aborts via signal, not a memory fault).
-  def run_valgrind_memory_error_sigabrt_completes
+  # Validates that `:fail_build: false` suppresses the Valgrind aggregate build failure:
+  # the suite runs to completion, the per-test error is still logged, but no Valgrind
+  # build failure is registered. The build still fails due to the test case crash.
+  # Uses a SIGSEGV (null-pointer dereference) crash, which produces Valgrind memory errors.
+  def run_valgrind_memory_error_fail_build_disabled
     @c.with_context do
       Dir.chdir @proj_name do
         prep_project_yml_for_valgrind
+        @c.merge_project_yml_for_test({ :valgrind => { :fail_build => false } })
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_assert.c"), 'test/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
 
         output = @c.ceedling_build_exec("valgrind:all")
 
-        expect(@c.last_exit_status).to eq(1) # Crash → test failure
-        expect(output).to match(/test_example_file_crash_assert.+crashed/i)
-        # assert(0) aborts via signal — no memory access violation, so no halt
-        expect(output).not_to match(/Valgrind detected.*memory error/i)
+        expect(@c.last_exit_status).to eq(1) # Crash causes failure even without Valgrind build failure
+        # Ceedling crash detection
+        expect(output).to match(/test_example_file_crash_sigsegv.+crashed/i)
+        # Per-test Valgrind error log still fires (independent of :fail_build)
+        expect(output).to match(/Valgrind detected.*memory error/i)
+        # No aggregate Valgrind build failure registered
+        expect(output).not_to match(/Valgrind detected.*memory error.*across/i)
         expect(output).to match(/Wrote 1 Valgrind report/i)
-        expect(File.exist?('build/artifacts/valgrind/test_example_file_crash_assert.log')).to eq(true)
-        expect(File.size('build/artifacts/valgrind/test_example_file_crash_assert.log')).to be > 0
-        # assert(0) aborts without a memory access violation — 0 errors expected
-        expect(File.read('build/artifacts/valgrind/test_example_file_crash_assert.log')).to match(/ERROR SUMMARY:\s+0/)
+        expect(File.exist?('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to be > 0
+        # Expected memory error(s) detected by Valgrind
+        expect(File.read('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
       end
     end
   end
