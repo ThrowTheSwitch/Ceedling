@@ -65,6 +65,38 @@ GDB_NO_SIGNAL_OUTPUT = <<~GDB.freeze
   Inferior 1 (process 12345) exited with code 0139.
 GDB
 
+# Windows SIGSEGV — Thread N prefix, space-padded source line, DLL frames
+# Single-quoted heredoc: backslashes in Windows paths are literal, not escape sequences
+GDB_WINDOWS_SIGSEGV_OUTPUT = <<~'GDB'.freeze
+  Thread 2 received signal SIGSEGV, Segmentation fault.
+  [Switching to Thread 8412.0x21c8]
+  0x00007ff62b14115d in testCrash () at test/TestUsartModel.c:40
+  40         uint32_t i = *null_ptr;
+
+  #0  0x00007ff62b14115d in testCrash () at test/TestUsartModel.c:40
+  #1  0x00007ff62b1418fa in run_test (func=0x7ff62b141xxx <testCrash>, name=0x7ff62b147000 "testCrash", line_num=37) at build/test/runners/TestUsartModel_runner.c:76
+  #2  0x00007ff8b49e7034 in KERNEL32!BaseThreadInitThunk () from C:\Windows\System32\kernel32.dll
+  #3  0x00007ff8b5cc26a1 in ntdll!RtlUserThreadStart () from C:\Windows\System32\ntdll.dll
+GDB
+
+# Windows assert(0) — signal ?, DLL abort frames, assertion text at end of output
+# Single-quoted heredoc: backslashes in Windows paths are literal, not escape sequences
+GDB_WINDOWS_ASSERT_OUTPUT = <<~'GDB'.freeze
+  Thread 1 received signal ?, Unknown signal.
+  0x00007ff938364aee in ucrtbase!abort () from C:\Windows\System32\ucrtbase.dll
+  #0  0x00007ff938364aee in ucrtbase!abort () from C:\Windows\System32\ucrtbase.dll
+  #1  0x00007ff938320fb9 in ucrtbase!_isctype_l () from C:\Windows\System32\ucrtbase.dll
+  #2  0x00007ff938382b01 in ucrtbase!_assert () from C:\Windows\System32\ucrtbase.dll
+  #3  0x00007ff691745367 in _assert (message=0x7ff691747026 "0", file=0x7ff691747000 "test/test_example_file_crash_assert.c", line=24)
+  #4  0x00007ff691741523 in test_add_numbers_triggers_assert () at test/test_example_file_crash_assert.c:24
+  #5  0x00007ff691741675 in run_test (func=0x7ff6917414ff <test_add_numbers_triggers_assert>, name=0x7ff6917470d8 "test_add_numbers_triggers_assert", line_num=20) at build/test/runners/test_example_file_crash_assert_runner.c:77
+  #6  0x00007ff6917418ce in main (argc=3, argv=0x8000e0) at build/test/runners/test_example_file_crash_assert_runner.c:123
+  Kill the program being debugged? (y or n) [answered Y; input not from terminal]
+  [Inferior 1 (process 8364) killed]
+  Assertion failed: 0, file test/test_example_file_crash_assert.c, line 24
+  gdb: unknown target exception 0xc0000409 at 0x7ff938364aee
+GDB
+
 # ── Representative do_simple output constants ─────────────────────────────────
 
 # Running test_asserting alone — only stderr crash output, no Unity result line
@@ -340,6 +372,22 @@ describe GeneratorTestResultsBacktrace do
     context 'with no signal line', output: GDB_NO_SIGNAL_OUTPUT do
       it 'returns an empty string' do
         expect(subject).to eq('')
+      end
+    end
+
+    context 'with Windows SIGSEGV (Thread N prefix)', output: GDB_WINDOWS_SIGSEGV_OUTPUT do
+      it 'handles Thread N signal line and returns bracketed signal name and description' do
+        expect(subject).to eq('[SIGSEGV] Segmentation fault')
+      end
+    end
+
+    context 'with Windows assert(0) — unknown signal (?), assertion text at end of output', output: GDB_WINDOWS_ASSERT_OUTPUT do
+      it 'substitutes SIGABRT for ? and extracts Windows assertion text' do
+        expect(subject).to eq("[SIGABRT] Assertion '0' failed")
+      end
+
+      it 'does not include "Unknown signal" in the label' do
+        expect(subject).not_to include('Unknown signal')
       end
     end
   end

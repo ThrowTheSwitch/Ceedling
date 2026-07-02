@@ -199,35 +199,54 @@ class GeneratorTestResultsBacktrace
   private
 
   # Builds a terse signal label from gdb output: "[SIGNAL] Description".
-  # For SIGABRT, substitutes glibc assertion text when present — more
-  # informative than the bare "Aborted" signal description.
+  # Handles both Linux ("Program received signal") and Windows ("Thread N received signal").
+  # For assertion crashes, substitutes informative assertion text over the bare signal
+  # description — handles both Linux glibc and Windows MSVC/MinGW assertion formats.
   # Returns empty string if no signal line is found in output.
   def format_signal_label(output)
-    m = output.match( /Program received signal (\w+), (.+)\./ )
+    # Match Linux ("Program received signal") and Windows ("Thread N received signal")
+    m = output.match( /(?:Program|Thread \d+) received signal (\?|\w+), (.+)\./ )
     return '' unless m
 
+    signal      = m[1]
     description = m[2].strip
 
-    # Prefer glibc's assertion message over the bare signal description
-    # when present — "Assertion 'x > 0' failed" is more informative than "Aborted"
+    # Linux glibc assertion text — more informative than bare "Aborted"
+    # e.g. "src/lib.c:5: func: Assertion `0' failed."
     if (a = output.match( /\S+:\d+: \S+: Assertion `(.+)' failed\./ ))
       description = "Assertion '#{a[1]}' failed"
+      signal = 'SIGABRT' if signal == '?'
     end
 
-    return "[#{m[1]}] #{description}"
+    # Windows MSVC/MinGW assertion text — appears at end of gdb output
+    # e.g. "Assertion failed: 0, file test/file.c, line 24"
+    if (a = output.match( /Assertion failed: (.+?), file / ))
+      description = "Assertion '#{a[1]}' failed"
+      signal = 'SIGABRT' if signal == '?'
+    end
+
+    return "[#{signal}] #{description}"
   end
 
   # Extracts the offending source line from gdb output.
-  # Looks for a `<line_num>\t<code>` line immediately following the
+  # Looks for a `<line_num><whitespace><code>` line immediately following the
   # crash location line (`test_case() at filename:line`).
   # Returns nil for assertion crashes (description is already informative)
   # and nil when no source line is available in the gdb output.
+  #
+  # Handles both Linux (tab separator, LF endings) and Windows
+  # (space separator, optional CRLF endings) gdb output formats.
   def extract_source_line(output, test_case, filename)
     # Assertion crashes: description is already informative — no source line needed
+    # Linux glibc format: "file:line: func: Assertion `expr' failed."
     return nil if output.match?( /\S+:\d+: \S+: Assertion `.+' failed\./ )
+    # Windows MSVC/MinGW format: "Assertion failed: expr, file file, line N"
+    return nil if output.match?( /Assertion failed:.+, file / )
 
-    # Find <line_num>\t<code> immediately following test_case() at filename:line
-    m = output.match( /#{Regexp.escape(test_case)}.+#{Regexp.escape(filename)}:\d+\n(\d+)\t(.+)/ )
+    # Find source line immediately following the crash location line.
+    # Linux gdb uses TAB; Windows gdb uses spaces — accept either.
+    # CRLF line endings on Windows handled via \r?\n.
+    m = output.match( /#{Regexp.escape(test_case)}.+#{Regexp.escape(filename)}:\d+\r?\n(\d+)[ \t]+(.+)/ )
     return m ? m[2].strip : nil
   end
 
