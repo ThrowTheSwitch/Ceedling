@@ -100,12 +100,22 @@ class GeneratorTestResultsBacktrace
             "#{crash_detail}" \
             "#{NEWLINE_TOKEN}(#{log_path})"
 
-        # Otherwise communicate that `gdb` failed to produce a usable report
+        # Try to extract a useful label even when no crash location frame was found.
+        # A brief Windows assertion failure may report only the assertion text without frames.
         else
-          test_output =
-            "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: " \
-            "Test case crashed (failed to extract `gdb` report)" \
-            "#{NEWLINE_TOKEN}(#{log_path})"
+          label = format_signal_label( crash_result[:output] )
+
+          if !label.empty?
+            test_output =
+              "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed" \
+              " >> #{label}" \
+              "#{NEWLINE_TOKEN}(#{log_path})"
+          else
+            test_output =
+              "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: " \
+              "Test case crashed (failed to extract `gdb` report)" \
+              "#{NEWLINE_TOKEN}(#{log_path})"
+          end
         end
       end
 
@@ -198,34 +208,49 @@ class GeneratorTestResultsBacktrace
   ### Private ###
   private
 
-  # Builds a terse signal label from gdb output: "[SIGNAL] Description".
+  # Builds a terse crash label from gdb output.
+  # Rules:
+  #   - Named signal explicitly in output → "[SIGNAL] Description"
+  #   - Unknown signal (?) or no signal line → description only, no brackets
+  #   - Assertion text always preferred over bare signal description
+  #   - "Unknown signal" alone is not surfaced — returns '' when nothing useful is found
   # Handles both Linux ("Program received signal") and Windows ("Thread N received signal").
-  # For assertion crashes, substitutes informative assertion text over the bare signal
-  # description — handles both Linux glibc and Windows MSVC/MinGW assertion formats.
-  # Returns empty string if no signal line is found in output.
   def format_signal_label(output)
-    # Match Linux ("Program received signal") and Windows ("Thread N received signal")
+    # Match both Linux ("Program received signal") and Windows ("Thread N received signal")
     m = output.match( /(?:Program|Thread \d+) received signal (\?|\w+), (.+)\./ )
-    return '' unless m
 
-    signal      = m[1]
-    description = m[2].strip
+    signal      = m ? m[1] : nil
+    description = m ? m[2].strip : nil
 
     # Linux glibc assertion text — more informative than bare "Aborted"
     # e.g. "src/lib.c:5: func: Assertion `0' failed."
     if (a = output.match( /\S+:\d+: \S+: Assertion `(.+)' failed\./ ))
       description = "Assertion '#{a[1]}' failed"
-      signal = 'SIGABRT' if signal == '?'
+      signal = nil if signal == '?'  # Don't claim SIGABRT if signal wasn't explicitly named
     end
 
     # Windows MSVC/MinGW assertion text — appears at end of gdb output
     # e.g. "Assertion failed: 0, file test/file.c, line 24"
     if (a = output.match( /Assertion failed: (.+?), file / ))
       description = "Assertion '#{a[1]}' failed"
-      signal = 'SIGABRT' if signal == '?'
+      signal = nil if signal == '?'  # Don't claim SIGABRT if signal wasn't explicitly named
     end
 
-    return "[#{signal}] #{description}"
+    # Nothing useful found in this gdb output
+    return '' if description.nil?
+
+    # Unknown signal (?) with no assertion: include Windows exception code if present,
+    # otherwise "Unknown signal" alone is not useful — fall back to failed-to-extract
+    if signal == '?'
+      if (e = output.match( /gdb: unknown target exception (0x[0-9a-fA-F]+)/ ))
+        return "Windows exception #{e[1]}"  # No brackets — signal name is unknown
+      else
+        return ''
+      end
+    end
+
+    # Named signal: bracketed format. No signal line: description only, no brackets.
+    return signal ? "[#{signal}] #{description}" : description
   end
 
   # Extracts the offending source line from gdb output.

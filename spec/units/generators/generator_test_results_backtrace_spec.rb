@@ -79,6 +79,14 @@ GDB_WINDOWS_SIGSEGV_OUTPUT = <<~'GDB'.freeze
   #3  0x00007ff8b5cc26a1 in ntdll!RtlUserThreadStart () from C:\Windows\System32\ntdll.dll
 GDB
 
+# Minimal Windows assert-only gdb output — no signal line, no backtrace frames
+GDB_WINDOWS_ASSERT_BRIEF_OUTPUT = <<~'GDB'.freeze
+  [New Thread 4168.0xa14]
+  [Thread 4168.0xa14 exited with code 3]
+  [Inferior 1 (process 4168) exited with code 03]
+  Assertion failed: 0, file test/test_example_file_crash_assert.c, line 24
+GDB
+
 # Windows assert(0) — signal ?, DLL abort frames, assertion text at end of output
 # Single-quoted heredoc: backslashes in Windows paths are literal, not escape sequences
 GDB_WINDOWS_ASSERT_OUTPUT = <<~'GDB'.freeze
@@ -382,12 +390,44 @@ describe GeneratorTestResultsBacktrace do
     end
 
     context 'with Windows assert(0) — unknown signal (?), assertion text at end of output', output: GDB_WINDOWS_ASSERT_OUTPUT do
-      it 'substitutes SIGABRT for ? and extracts Windows assertion text' do
-        expect(subject).to eq("[SIGABRT] Assertion '0' failed")
+      it 'shows assertion text without brackets or SIGABRT claim' do
+        expect(subject).to eq("Assertion '0' failed")
       end
 
       it 'does not include "Unknown signal" in the label' do
         expect(subject).not_to include('Unknown signal')
+      end
+
+      it 'does not claim SIGABRT when signal was not explicitly named' do
+        expect(subject).not_to include('SIGABRT')
+      end
+    end
+
+    context 'with brief Windows assert — no signal line, only assertion text at end' do
+      it 'returns assertion text with no brackets and no SIGABRT claim' do
+        result = @backtrace.send(:format_signal_label, GDB_WINDOWS_ASSERT_BRIEF_OUTPUT)
+        expect(result).to eq("Assertion '0' failed")
+      end
+
+      it 'does not include SIGABRT' do
+        result = @backtrace.send(:format_signal_label, GDB_WINDOWS_ASSERT_BRIEF_OUTPUT)
+        expect(result).not_to include('SIGABRT')
+      end
+    end
+
+    context 'with Windows unknown signal (?) and exception code, no assertion' do
+      it 'returns the exception code without brackets' do
+        output = "Thread 1 received signal ?, Unknown signal.\ngdb: unknown target exception 0xc0000005\n"
+        result = @backtrace.send(:format_signal_label, output)
+        expect(result).to eq('Windows exception 0xc0000005')
+      end
+    end
+
+    context 'with Windows unknown signal (?) and no assertion or exception code' do
+      it 'returns empty string — Unknown signal alone is not useful' do
+        output = "Thread 1 received signal ?, Unknown signal.\n"
+        result = @backtrace.send(:format_signal_label, output)
+        expect(result).to eq('')
       end
     end
   end
@@ -408,6 +448,44 @@ describe GeneratorTestResultsBacktrace do
     it 'returns nil when no source line follows the crash location (SIGBUS)' do
       result = @backtrace.send(:extract_source_line, GDB_SIGBUS_OUTPUT, 'testBusError', 'test_widget.c')
       expect(result).to be_nil
+    end
+
+    it 'returns nil for brief Windows assert-only output' do
+      result = @backtrace.send(:extract_source_line, GDB_WINDOWS_ASSERT_BRIEF_OUTPUT, 'test_add_numbers_triggers_assert', 'test_example_file_crash_assert.c')
+      expect(result).to be_nil
+    end
+  end
+
+  # ── private #format_signal_label (Windows brief form) → #do_gdb ──────────
+
+  describe '#do_gdb with brief Windows assert (no crash frame)' do
+    let(:filename_assert)   { 'test_example_file_crash_assert.c' }
+    let(:test_cases_assert) { [{ test: 'test_add_numbers_triggers_assert', line_number: 20 }] }
+    let(:executable)        { 'build/test/out/test_example_file_crash_assert/test_example_file_crash_assert.out' }
+    let(:shell_result)      { { exit_code: 1, output: '', time: 0.0 } }
+
+    before(:each) do
+      allow(@configurator).to receive(:project_build_tests_root).and_return('build/test')
+      allow(@configurator).to receive(:tools_test_backtrace_gdb).and_return({})
+    end
+
+    it 'uses assertion label and metadata line number when no crash location frame is found' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_WINDOWS_ASSERT_BRIEF_OUTPUT, time: 0.1, exit_code: 3 })
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_gdb( filename_assert, executable, shell_result, test_cases_assert, context: :test )
+
+      crash_line = expected_output_lines.first
+      expect(crash_line).to include(">> Assertion '0' failed")
+      expect(crash_line).not_to include('failed to extract')
+      expect(crash_line).not_to include('SIGABRT')
+      expect(crash_line).to include(':20:')  # metadata line number used
     end
   end
 
