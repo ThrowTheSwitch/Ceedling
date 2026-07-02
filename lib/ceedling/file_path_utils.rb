@@ -29,6 +29,7 @@ class FilePathUtils
   # Standardize path to use '/' path separator & have no trailing path separator
   def self.standardize(path)
     if path.is_a? String
+      path = path.dup if path.frozen?
       path.strip!
       path.gsub!(/\\/, '/')
       path.chomp!('/')
@@ -37,11 +38,11 @@ class FilePathUtils
   end
 
   def self.os_executable_ext(executable)
-    return executable.ext('.exe') if SystemWrapper.windows?
+    return executable.ext( EXTENSION_WIN_EXE ) if SystemWrapper.windows?
     return executable
   end
 
-  # Extract path from between optional aggregation modifiers 
+  # Extract path from between optional aggregation modifiers
   # and up to last path separator before glob specifiers.
   # Examples:
   #  - '+:foo/bar/baz/'       => 'foo/bar/baz'
@@ -49,7 +50,10 @@ class FilePathUtils
   #  - 'foo/bar/baz/'         => 'foo/bar/baz'
   #  - 'foo/bar/baz/file.x'   => 'foo/bar/baz/file.x'
   #  - 'foo/bar/baz/file*.x'  => 'foo/bar/baz'
+  # NOTE: Input is assumed to use forward slashes; backslash paths must be normalized by caller.
   def self.no_decorators(path)
+    return '' if path.nil?
+
     path = self.no_aggregation_decorators(path)
 
     # Find first occurrence of glob specifier: *, ?, {, }, [, ]
@@ -59,34 +63,42 @@ class FilePathUtils
     return '' if find_index == 0
 
     # If path contains no glob, clean it up and return whole path
-    return path.chomp('/') if (find_index.nil?)
+    return path.chomp('/') if find_index.nil?
 
     # Extract up to first glob specifier
     path = path[0..(find_index-1)]
 
-    # Keep everything from start of path string up to and 
-    # including final path separator before glob character
+    # Keep everything up to and including the final path separator before the glob.
+    # Three cases for the separator position:
+    #   nil  — no separator at all (e.g. 'src*.c'): no usable directory prefix
+    #   0    — separator is at position 0 (e.g. '/*.c'): root directory
+    #   else — separator somewhere in the middle: slice off the trailing segment
     find_index = path.rindex('/')
-    return path[0..(find_index-1)] if (not find_index.nil?)
-
-    # Otherwise, return empty string
-    # (Not enough of a usable path exists free of glob operators)
-    return ''
+    return '' if find_index.nil?
+    return '/' if find_index == 0
+    return path[0..(find_index-1)]
   end
 
-  # Return whether the given path is to be aggregated (no aggregation modifier defaults to same as +:)
+  # Return whether the given path is to be aggregated (no aggregation modifier defaults to same as +:).
+  # nil is treated as an additive (non-excluding) path.
   def self.add_path?(path)
+    return true if path.nil?
     return !path.strip.start_with?('-:')
   end
 
-  # Get path (and glob) lopping off optional +: / -: prefixed aggregation modifiers
+  # Get path (and glob) stripping optional +: / -: prefixed aggregation modifiers.
+  # Strip surrounding whitespace before the regex so a decorator preceded by whitespace
+  # (e.g. '  -:foo') is handled consistently with add_path?, which also strips first.
   def self.no_aggregation_decorators(path)
-    return path.sub(/^(\+|-):/, '').strip()
+    return '' if path.nil?
+    return path.strip.sub(/^(\+|-):/, '').strip()
   end
 
-  # To recurse through all subdirectories, the RUby glob is <dir>/**/**, but our paths use
+  # To recurse through all subdirectories, the Ruby glob is <dir>/**/**, but our paths use
   # convenience convention of only <dir>/** at tail end of a path.
+  # Paths with ** at non-tail positions (e.g. foo/**/bar) are left unchanged by design.
   def self.reform_subdirectory_glob(path)
+    return '' if path.nil?
     return path if path.end_with?( '/**/**' )
     return path + '/**' if path.end_with?( '/**' )
     return path
