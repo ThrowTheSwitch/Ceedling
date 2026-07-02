@@ -279,6 +279,15 @@ line of code triggering the crash. If this option is enabled, but `gdb` is
 not available to Ceedling, project configuration validation will terminate
 with an error at startup.
 
+With `gdb` in use, Ceedling will provide a brief crash summary from details
+extracted from the `gdb` report. Ceedling will attempt to surface in the 
+summary the offending line of code or failing `assert()` from the report.
+
+The full `gdb` report is captured to a log file, and the log filepath is 
+provided in the crash summary. The log filepath will comprise the containing 
+test executable as a subdirectory and the name of the crashing test case 
+function as the filename.
+
 Sample Ceedling run output with backtrace `:gdb`:
 
 ```
