@@ -249,6 +249,7 @@ class Loginator
 
     # Write directly to stdout — no queue, no verbosity check, no text labels
     $stdout.print( sanitize( insert_prepend(prepend, message), @decorators ) )
+    $stdout.flush()
   end
 
 
