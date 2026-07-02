@@ -79,6 +79,32 @@ class ReportTestsLogFactory < Plugin
   @loginator.log( '' )
   end
 
+  # `Plugin` summary hook -- generate reports from existing results in the build directory
+  def summary
+    return if not @enabled
+
+    result_list = @ceedling[:file_path_utils].form_pass_results_filelist(
+      PROJECT_TEST_RESULTS_PATH,
+      COLLECTION_ALL_TESTS
+    )
+
+    _results = @ceedling[:plugin_reportinator].assemble_test_results( result_list, {boom: false} )
+
+    msg = @reportinator.generate_heading( "Running Test Suite Reports" )
+    @loginator.log( msg )
+
+    @reporters.each do |reporter|
+      filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, TEST_SYM.to_s, reporter.filename )
+
+      msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
+      @loginator.log( msg )
+
+      reporter.write( filepath: filepath, results: _results )
+    end
+
+    @loginator.log( '' )
+  end
+
   ### Private
 
   private
