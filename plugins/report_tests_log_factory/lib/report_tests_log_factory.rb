@@ -135,10 +135,15 @@ class ReportTestsLogFactory < Plugin
       reporter = eval( "#{_reporter}.new(handle: :#{report})" )
 
       # Inject configuration
-      reporter.config = config[report.to_sym] 
-      
+      reporter.config = config[report.to_sym]
+
       # Inject utilty object
       reporter.config_walkinator = @ceedling[:config_walkinator]
+
+      # Resolve and inject the display name used in report titles/headers.
+      # Expands to "Ceedling Test Suite: <name>" when a project name is configured.
+      raw = @ceedling[:configurator].project_name.to_s.strip
+      reporter.report_name = raw.empty? ? "Ceedling Test Suite" : "Ceedling Test Suite: #{raw}"
 
       # Perform Reporter sublcass set up
       reporter.setup()

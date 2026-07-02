@@ -232,7 +232,7 @@ class HtmlTestsReporter < TestsReporter
     timestamp = Time.now.utc.strftime( "%B %d, %Y  %H:%M:%S UTC" )
     stream.puts <<~HTML
       <table class="summary">
-        <thead><tr><th colspan="4">Ceedling Test Suite</th></tr></thead>
+        <thead><tr><th colspan="4">#{@report_name}</th></tr></thead>
         <tbody>
           <tr><td>Total</td><td>#{counts[:total]}</td><td rowspan="4" class="chart-cell">#{chart}</td><td rowspan="4" class="pct-cell"><div class="pct-label">Passing</div><div class="pct-value">#{pct}</div></td></tr>
           <tr><td>Passed</td><td>#{passed}</td></tr>

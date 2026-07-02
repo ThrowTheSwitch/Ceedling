@@ -17,7 +17,7 @@ class CppunitTestsReporter < TestsReporter
   # CppUnit XML header
   def header(results:, stream:)
     stream.puts( '<?xml version="1.0" encoding="utf-8" ?>' )
-    stream.puts( "<TestRun>" )
+    stream.puts( "<TestRun name=\"#{@report_name}\">" )
   end
 
   # CppUnit XML test list contents

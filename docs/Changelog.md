@@ -137,8 +137,11 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - The GCov plugin now compiles all files with coverage (and filters out unneeded framework results) in order to meet the stricter coverage handling that began with GCC 14. This change is backwards and forwards compatible with virtually all versions of GCC and the GCov plugin’s supporting utilities.
 - Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
 - Fixes for typos and grammar in documentation and logging.
-- Improved the design of the [`report_tests_log_factory` plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/report-tests-log-factory/)’s HTML report option.
-   ![](mkdocs/plugins/sample_html_report.png)
+- [`report_tests_log_factory` plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/report-tests-log-factory/)
+   - All generated reports incorporate `:project` ↳ `:name` from your configuration, if available.
+   - Reports are regenerated from existing test results with `ceedling summary` without rebuilding/re-running any tests.
+   - Improved the design of the [`report_tests_log_factory` plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/report-tests-log-factory/)’s HTML report option.
+      ![](mkdocs/plugins/sample_html_report.png)
 
 ## 👋 Removed
 

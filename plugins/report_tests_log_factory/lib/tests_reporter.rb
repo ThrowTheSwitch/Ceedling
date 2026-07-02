@@ -13,6 +13,9 @@ class TestsReporter
   # Setup value injection
   attr_writer :config
 
+  # Report name (e.g. "Ceedling Test Suite" or "Ceedling Test Suite: <project>")
+  attr_writer :report_name
+
   # Publicly accessible filename for the resulting report
   attr_reader :filename
 

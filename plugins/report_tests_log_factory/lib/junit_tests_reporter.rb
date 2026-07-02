@@ -16,7 +16,8 @@ class JunitTestsReporter < TestsReporter
   def header(results:, stream:)
     stream.puts( '<?xml version="1.0" encoding="utf-8" ?>' )
     stream.puts(
-      '<testsuites tests="%d" '    % results[:counts][:total] +
+      '<testsuites name="%s" '     % @report_name +
+                  'tests="%d" '    % results[:counts][:total] +
                   'failures="%d" ' % results[:counts][:failed] +
                   'time="%.3f">'   % results[:total_time]
     )

@@ -16,12 +16,13 @@ class JsonTestsReporter < TestsReporter
 
   def body(results:, stream:)
     hash = {
+      "Name"         => @report_name,
       "FailedTests"  => write_failures( results[:failures] ),
       "PassedTests"  => write_tests( results[:successes] ),
       "IgnoredTests" => write_tests( results[:ignores] ),
       "Summary"      => write_statistics( results[:counts] )
     }
-    
+
     stream << JSON.pretty_generate(hash)
   end
 
