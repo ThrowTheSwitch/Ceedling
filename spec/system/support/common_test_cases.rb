@@ -821,9 +821,10 @@ module CommonSystemTestCases
         expect(output).to match(/Assertion/i)
         log_path = './build/logs/test/test_example_file_crash_assert/test_add_numbers_triggers_assert.gdb.log'
         expect(File.exist?(log_path)).to be(true)
-        # Windwos gdb output for an assertion failure does not seem to cite the signal "SIGABRT".
-        # Linux & Windows both use some form of "abort" or "aborted" in the report.
-        expect(File.read(log_path)).to match(/SIGABRT|Abort/i)
+        # Windwos gdb output for an assertion failure can be quite different from Linux.
+        # Windows gdb reports do not seem to cite the signal "SIGABRT" and may be quite brief, 
+        # only citing an assertion failure.
+        expect(File.read(log_path)).to match(/SIGABRT|abort|assert/i)
         expect(output).to match(/test_add_numbers_triggers_assert\.gdb\.log/)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
