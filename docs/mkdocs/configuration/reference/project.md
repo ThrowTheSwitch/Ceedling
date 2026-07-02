@@ -262,7 +262,7 @@ FAILED TEST SUMMARY
 -------------------
 [test/TestUsartModel.c]
   Test: testCrash
-  At line (37): "Test case crashed"
+  At line (37): "Test case crashed >> Segmentation fault (core dumped)"
 
 -----------------------
 ❌ OVERALL TEST SUMMARY
@@ -292,9 +292,9 @@ FAILED TEST SUMMARY
 -------------------
 [test/TestUsartModel.c]
   Test: testCrash
-  At line (40): "Test case crashed >> Program received signal SIGSEGV, Segmentation fault.
-                0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
-                40    uint32_t i = *nullptr;"
+  At line (40): "Test case crashed >> [SIGSEGV] Segmentation fault
+                `uint32_t i = *null_ptr;`
+                (build/logs/test/TestUsartModel/testCrash.gdb.log)"
 
 -----------------------
 ❌ OVERALL TEST SUMMARY
