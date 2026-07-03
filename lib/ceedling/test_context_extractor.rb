@@ -347,7 +347,7 @@ class TestContextExtractor
     # Look for TEST_SOURCE_FILE("<*>") statement
     results = line.scan(PATTERNS::TEST_SOURCE_FILE)
     results.each do |result|
-      source_extras << FilePathUtils.standardize( result[0] )
+      source_extras << FilePathUtils.standardize_in_place( result[0] )
     end
 
     return source_extras
@@ -359,7 +359,7 @@ class TestContextExtractor
     # Look for TEST_INCLUDE_PATH("<*>") statements
     results = line.scan(PATTERNS::TEST_INCLUDE_PATH)
     results.each do |result|
-      include_paths << FilePathUtils.standardize( result[0] )
+      include_paths << FilePathUtils.standardize_in_place( result[0] )
     end
 
     return include_paths

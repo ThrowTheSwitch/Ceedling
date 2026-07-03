@@ -26,10 +26,11 @@ class FilePathUtils
 
   ######### Class methods ##########
 
-  # Standardize path to use '/' path separator & have no trailing path separator
-  def self.standardize(path)
+  # Standardize path to use '/' separator & have no trailing separator. Mutates in place.
+  # Frozen strings are a programming error at the call site — raises CeedlingException.
+  def self.standardize_in_place(path)
     if path.is_a? String
-      path = path.dup if path.frozen?
+      raise CeedlingException.new("Attempted to standardize path in frozen string ⏩️ #{path.inspect}") if path.frozen?
       path.strip!
       path.gsub!(/\\/, '/')
       path.chomp!('/')

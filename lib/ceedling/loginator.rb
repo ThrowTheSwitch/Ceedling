@@ -88,11 +88,11 @@ class Loginator
                 logfile( sanitize( file_msg, false ), extract_stream_name( stream ) )
               end
         
-              # Only output to console when message reaches current verbosity level
-              if !stream.nil? && (@verbosinator.should_output?( verbosity ))
+              # Output to console -- desired verbosity was checked at enqueueing
+              if !stream.nil?
                 # Add labels and fun characters
                 console_msg = format( message, verbosity, label, @decorators )
-        
+
                 # Write to output stream after optionally removing any problematic characters
                 stream.print( sanitize( console_msg, @decorators ) )
               end

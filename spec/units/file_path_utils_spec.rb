@@ -54,36 +54,35 @@ describe FilePathUtils do
   end
 
 
-  describe '.standardize' do
+  describe '.standardize_in_place' do
 
     it 'strips leading and trailing whitespace' do
-      expect( FilePathUtils.standardize( '  foo/bar  ' ) ).to eq( 'foo/bar' )
+      expect( FilePathUtils.standardize_in_place( '  foo/bar  ' ) ).to eq( 'foo/bar' )
     end
 
     it 'converts backslashes to forward slashes' do
-      expect( FilePathUtils.standardize( 'foo\\bar\\baz' ) ).to eq( 'foo/bar/baz' )
+      expect( FilePathUtils.standardize_in_place( 'foo\\bar\\baz' ) ).to eq( 'foo/bar/baz' )
     end
 
     it 'removes a trailing forward slash' do
-      expect( FilePathUtils.standardize( 'foo/bar/' ) ).to eq( 'foo/bar' )
+      expect( FilePathUtils.standardize_in_place( 'foo/bar/' ) ).to eq( 'foo/bar' )
     end
 
     it 'applies all three normalizations together' do
-      expect( FilePathUtils.standardize( '  foo\\bar\\' ) ).to eq( 'foo/bar' )
+      expect( FilePathUtils.standardize_in_place( '  foo\\bar\\' ) ).to eq( 'foo/bar' )
     end
 
     it 'returns an already-clean path unchanged' do
-      expect( FilePathUtils.standardize( 'foo/bar/baz' ) ).to eq( 'foo/bar/baz' )
+      expect( FilePathUtils.standardize_in_place( 'foo/bar/baz' ) ).to eq( 'foo/bar/baz' )
     end
 
     it 'returns nil unchanged for a nil argument' do
-      expect( FilePathUtils.standardize( nil ) ).to be_nil
+      expect( FilePathUtils.standardize_in_place( nil ) ).to be_nil
     end
 
-    it 'does not raise on a frozen string' do
+    it 'raises CeedlingException on a frozen string' do
       frozen = 'foo\\bar\\'.freeze
-      expect { FilePathUtils.standardize( frozen ) }.not_to raise_error
-      expect( FilePathUtils.standardize( frozen ) ).to eq( 'foo/bar' )
+      expect { FilePathUtils.standardize_in_place( frozen ) }.to raise_error( CeedlingException )
     end
 
   end

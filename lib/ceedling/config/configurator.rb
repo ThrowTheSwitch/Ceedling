@@ -218,7 +218,7 @@ class Configurator
     # (String replacement and standardization require DI objects not available in bin/ scope.)
     config[:plugins][:load_paths].each do |path|
       path.replace( @system_wrapper.module_eval( path ) ) if (path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
-      FilePathUtils::standardize( path )
+      FilePathUtils::standardize_in_place( path )
     end
 
     # Delegate list construction to the shared helper (user paths first, built-in last).
@@ -672,13 +672,13 @@ class Configurator
       )
     end
 
-    paths.flatten.each { |path| FilePathUtils::standardize( path ) }
+    paths.flatten.each { |path| FilePathUtils::standardize_in_place( path ) }
 
     config[:paths].each_pair do |collection, paths|
       # Flatten to handle single strings or nested arrays; reject nils (non-String passthrough
       # from standardize) and empty strings left after stripping whitespace-only entries.
       config[:paths][collection] = [paths].flatten
-        .map    { |path| FilePathUtils::standardize( path ) }
+        .map    { |path| FilePathUtils::standardize_in_place( path ) }
         .reject { |path| path.nil? || (path.is_a?( String ) && path.empty?) }
     end
 
@@ -686,16 +686,16 @@ class Configurator
       # Same sanitization as :paths — replace array to remove any nil or empty entries
       # produced by standardize on non-String or whitespace-only values.
       config[:files][collection] = [files].flatten
-        .map    { |path| FilePathUtils::standardize( path ) }
+        .map    { |path| FilePathUtils::standardize_in_place( path ) }
         .reject { |path| path.nil? || (path.is_a?( String ) && path.empty?) }
     end
 
-    config[:tools].each_pair { |_, config| FilePathUtils::standardize( config[:executable] ) if (config.include? :executable) }
+    config[:tools].each_pair { |_, config| FilePathUtils::standardize_in_place( config[:executable] ) if (config.include? :executable) }
 
     # All other paths at secondary hash key level processed by convention (`_path`):
     # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are standardized
     config.each_pair do |_, child|
-      collect_path_list( child ).each { |path| FilePathUtils::standardize( path ) }
+      collect_path_list( child ).each { |path| FilePathUtils::standardize_in_place( path ) }
     end
   end
 
