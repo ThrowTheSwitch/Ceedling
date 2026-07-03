@@ -15,7 +15,7 @@ require 'versionator' # Outisde DIY context
 
 class CliHelper
 
-  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :system_wrapper
+  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :reportinator, :system_wrapper
 
   def setup
     # Aliases
@@ -23,12 +23,17 @@ class CliHelper
     @registry = @rake_task_registry
   end
 
+  # For simple CLI commands needing immediate logging with no verbosity management
+  def console_project_name(config)
+    banner = project_name_banner( config )
+    @loginator.console( banner ) if banner
+  end
+
+  
+  # For CLI commands needing logging with verbosity management
   def log_project_name(config)
-    name, _ = @config_walkinator.fetch_value( :project, :name, hash:config )
-
-    return if name.nil? || name.empty?
-
-    @loginator.console( "#{name.upcase}\n\n", LogLabels::TITLE )
+    banner = project_name_banner( config )
+    @loginator.log( "\n" + banner ) if banner
   end
 
   def manufacture_app_version(app_cfg)
@@ -597,6 +602,18 @@ class CliHelper
       )
       @actions._chmod( launch, 0755 )
     end
+  end
+
+
+  private
+
+  def project_name_banner(config)
+    name, _ = @config_walkinator.fetch_value( :project, :name, hash:config )
+    return nil if name.nil? || name.empty?
+
+    @reportinator.generate_banner(
+      @loginator.decorate( name.upcase, LogLabels::TITLE )
+    )
   end
 
 end
