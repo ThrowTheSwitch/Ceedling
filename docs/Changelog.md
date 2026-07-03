@@ -94,34 +94,38 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - #1014 Line Continuations not working in test name.
 - #1024 Fixed bug in options-handling for warnings log report.
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
-- Mixins
-   - #1128 Command line mixin precedence.
-   - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
-- Multiple fixes and improvements to `#include`s handling and preprocessing plus these issues & PRs:
-   - PR #1126 Fix for race condition in cache handling of `#include` listings in YAML files.
-   - #1015 Probing toolchain for presence of preprocessor directives-only ability.
-   - #1085 Fix relative `#include` path handling that broke test build convention.
-   - #358 Mocks with relative path in `#include` directive.
-   - PR #1056 Fix for extracting `#include` directive filenames that contain dashes.
-   - #1127 Fixes to path handling in `#include` directives.
-   - #1158 Fixes for `#include` filtering in test runner generation.
 - Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
 - #1120 Fixed (by removal) an overly “helpful” holdover from Ceedling’s earliest days causing certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
 - #1162 Fixes to Partials handling for file encoding / multi-byte characters (e.g. ©) in comment blocks.
 - #1160 Proper handling of locales and file encoding.
 - #1135 Fixed test fixture results handling to properly process Unity’s colored output when enabled.
 - #1114 Fixed `:default_tasks` handling.
-- GCov plugin
-   - `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
-   - #1115 Fixed Gcov plugin for Gcovr configuration file handling.
-   - #1161 Fixed “Found no coverage results” when system headers are processed by coverage.
-   - #1170 GCovr summary not passed through to NORMAL logging at end of a GCov plugin build.
-   - #1081 Fixes for Gcovr summary cooperating with coverage threshold failures.
-   - Prevention of coverage corruption during `ReportGenerator` reporting runs.
 - #1144 Fixed flags for release build linking.
 - #1169 Fixed linking with :libraries ↳ :release.
 - #1112 Fixed (via PR #1171) test failures incorrectly returning exit code 0 when the stdout pretty printer plugin is disabled ([Cory Todd](https://github.com/corytodd)).
 - Restored build failure registration and final build failure summary. Replaced test build failures by exception with build failure registration.
+
+### Mixins
+- #1128 Command line mixin precedence.
+- Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
+
+### `#include`s handling and preprocessing:
+- Extensive improvements throughout.
+- PR #1126 Fix for race condition in cache handling of `#include` listings in YAML files.
+- #1015 Probing toolchain for presence of preprocessor directives-only ability.
+- #1085 Fix relative `#include` path handling that broke test build convention.
+- #358 Mocks with relative path in `#include` directive.
+- PR #1056 Fix for extracting `#include` directive filenames that contain dashes.
+- #1127 Fixes to path handling in `#include` directives.
+- #1158 Fixes for `#include` filtering in test runner generation.
+
+### GCov plugin
+- `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
+- #1115 Fixed Gcov plugin for Gcovr configuration file handling.
+- #1161 Fixed “Found no coverage results” when system headers are processed by coverage.
+- #1170 GCovr summary not passed through to NORMAL logging at end of a GCov plugin build.
+- #1081 Fixes for Gcovr summary cooperating with coverage threshold failures.
+- Prevention of coverage corruption during `ReportGenerator` reporting runs.
 
 ## ⚠️ Changed
 

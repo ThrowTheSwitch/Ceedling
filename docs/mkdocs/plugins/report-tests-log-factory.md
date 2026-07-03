@@ -308,7 +308,7 @@ This plugin creates an adhoc HTML page in a single file.
 
 ![](sample_html_report.png)
 
-## Creating Your Own Custom Report
+## Creating a Custom Report
 
 Creating your own report requires three steps:
 
@@ -332,7 +332,7 @@ Configuration steps, (1) and (3) above, are documented by example below. Convent
     - fancy_shmancy         # Your custom report must follow naming rules (below)
 ```
 
-### Custom `TestsReporter` Ruby code
+### Custom `TestsReporter` code
 
 To create a custom report, here's what you gotta do:
 
