@@ -382,5 +382,30 @@ describe GeneratorTestResults do
       result = @generate_test_results.filter_test_cases(test_cases)
       expect(result.map { |tc| tc[:test] }).to eq(['test_process_valid'])
     end
+
+    it 'supports regex syntax in --test_case for intentional pattern matching' do
+      # Users may intentionally provide regex syntax to match multiple cases at once.
+      # e.g. 'process_(valid|error)' selects both process variants.
+      allow(@configurator).to receive(:include_test_case).and_return('process_(valid|error)')
+      allow(@configurator).to receive(:exclude_test_case).and_return('')
+      result = @generate_test_results.filter_test_cases(test_cases)
+      expect(result.map { |tc| tc[:test] }).to eq(['test_process_valid', 'test_process_error'])
+    end
+
+    it 'raises CeedlingException when --test_case contains an invalid regex' do
+      # An invalid regex raises RegexpError at match time; the fix wraps this in a
+      # CeedlingException with a descriptive message.
+      allow(@configurator).to receive(:include_test_case).and_return('(*invalid')
+      allow(@configurator).to receive(:exclude_test_case).and_return('')
+      expect { @generate_test_results.filter_test_cases(test_cases) }
+        .to raise_error(CeedlingException, /Invalid --test_case regex/)
+    end
+
+    it 'raises CeedlingException when --exclude_test_case contains an invalid regex' do
+      allow(@configurator).to receive(:include_test_case).and_return('')
+      allow(@configurator).to receive(:exclude_test_case).and_return('(*invalid')
+      expect { @generate_test_results.filter_test_cases(test_cases) }
+        .to raise_error(CeedlingException, /Invalid --exclude_test_case regex/)
+    end
   end
 end

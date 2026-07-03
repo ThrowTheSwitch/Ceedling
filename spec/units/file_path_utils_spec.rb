@@ -219,4 +219,56 @@ describe FilePathUtils do
 
   end
 
+
+  # ---------------------------------------------------------------------------
+  # Instance-method tests
+  # ---------------------------------------------------------------------------
+
+  describe '#form_test_filepath_from_runner' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      # TEST_RUNNER_FILE_SUFFIX is a global constant created at runtime by
+      # ConfiguratorBuilder from the project config.  Set it for these tests.
+      @suffix_was_defined = Object.const_defined?(:TEST_RUNNER_FILE_SUFFIX)
+      @original_suffix    = @suffix_was_defined ? TEST_RUNNER_FILE_SUFFIX : nil
+      Object.send(:remove_const, :TEST_RUNNER_FILE_SUFFIX) if @suffix_was_defined
+      Object.const_set(:TEST_RUNNER_FILE_SUFFIX, '_runner')
+    end
+
+    after(:each) do
+      Object.send(:remove_const, :TEST_RUNNER_FILE_SUFFIX) if Object.const_defined?(:TEST_RUNNER_FILE_SUFFIX)
+      Object.const_set(:TEST_RUNNER_FILE_SUFFIX, @original_suffix) if @suffix_was_defined
+    end
+
+    it 'strips the runner suffix from a top-level runner filepath' do
+      expect( @fpu.form_test_filepath_from_runner('test_foo_runner.c') ).to eq('test_foo.c')
+    end
+
+    it 'strips the runner suffix from a nested runner filepath' do
+      expect( @fpu.form_test_filepath_from_runner('build/test/runners/test_bar_runner.c') )
+        .to eq('build/test/runners/test_bar.c')
+    end
+
+    it 'does not alter a filepath that does not contain the runner suffix' do
+      expect( @fpu.form_test_filepath_from_runner('test_foo.c') ).to eq('test_foo.c')
+    end
+
+    it 'treats a dot in the suffix as a literal character, not a regex wildcard' do
+      # Unescaped suffix '_test.runner' creates regex /_test.runner/ where '.' matches any char.
+      # That regex incorrectly strips '_test_runner' (underscore instead of dot).
+      # With Regexp.escape the dot is literal, so '_test_runner' is NOT matched.
+      Object.send(:remove_const, :TEST_RUNNER_FILE_SUFFIX)
+      Object.const_set(:TEST_RUNNER_FILE_SUFFIX, '_test.runner')
+
+      expect( @fpu.form_test_filepath_from_runner('build/test_foo_test_runner.c') )
+        .to eq('build/test_foo_test_runner.c')   # no match → unchanged
+    end
+  end
+
 end

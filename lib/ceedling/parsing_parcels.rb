@@ -81,11 +81,13 @@ class ParsingParcels
 
     # Block comments inside a C string are valid C, but we remove to simplify other parsing.
     # No code we care about will be inside a C string.
-    # Note that we're not attempting the complex case of multiline string enclosed comment blocks
-    _line.gsub!(/"\s*\/\*.*"/, '')
+    # Note that we're not attempting the complex case of multiline string enclosed comment blocks.
+    # [^"]* prevents the match from crossing string boundaries on a line with multiple strings.
+    _line.gsub!(/"[^"]*\/\*[^"]*"/, '')
 
-    # Remove single-line block comments
-    _line.gsub!(/\/\*.*\*\//, '')
+    # Remove single-line block comments. .*? (non-greedy) removes each comment pair independently,
+    # preserving any code between adjacent comments like /* a */ code /* b */.
+    _line.gsub!(/\/\*.*?\*\//, '')
 
     # Handle beginning of any remaining multiline comment block
     if _line.include?( '/*' )

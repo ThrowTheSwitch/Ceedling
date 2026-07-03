@@ -45,6 +45,49 @@ describe ParsingParcels do
       expect( got ).to eq expected
     end
 
+    it "removes a single inline block comment, preserving surrounding code" do
+      file_contents = "int x = /* init */ 0;\n"
+      got = []
+
+      @parsing_parcels.code_lines( StringIO.new( file_contents ) ) do |line|
+        line.strip!
+        got << line if !line.empty?
+      end
+
+      expect( got ).to eq( ['int x =  0;'] )
+    end
+
+    it "removes adjacent inline block comments independently, preserving the code between them" do
+      # Greedy /\/\*.*\*\// collapses both comments plus the code between them.
+      # Non-greedy /\/\*.*?\*\// removes each comment individually, preserving the expression.
+      file_contents = "int x = /* foo */ 1 + /* bar */ 2;\n"
+      got = []
+
+      @parsing_parcels.code_lines( StringIO.new( file_contents ) ) do |line|
+        line.strip!
+        got << line if !line.empty?
+      end
+
+      # Greedy (current bug): 'int x =  2;'  — the '1 + ' between the two comments is eaten
+      expect( got ).to eq( ['int x =  1 +  2;'] )
+    end
+
+    it "strips only the string that contains a block comment opener, leaving other strings intact" do
+      # Greedy /"\s*\/\*.*"/ extends from the opening-comment string all the way to the
+      # last double-quote on the line, removing the variable declaration between them.
+      # The corrected pattern uses [^"] to stay within string boundaries.
+      file_contents = "char *a = \"/* \", *b = \"end_\";\n"
+      got = []
+
+      @parsing_parcels.code_lines( StringIO.new( file_contents ) ) do |line|
+        line.strip!
+        got << line if !line.empty?
+      end
+
+      # Greedy (current bug): 'char *a = ;'  — '*b = "end_"' is swallowed by the greedy match
+      expect( got ).to eq( ['char *a = , *b = "end_";'] )
+    end
+
     it "should treat continuations as a single line" do
       file_contents = "// TEST_SOURCE_FILE(\"foo.c\") \\  \nTEST_SOURCE_FILE(\"bar.c\")\nSome text⛔️ \\\nMore text\n"
       got = []

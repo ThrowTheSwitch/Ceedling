@@ -71,7 +71,7 @@ class FileFinder
 
     # Generated test runners
     if (!release) and
-       (source_file =~ /^#{@configurator.project_test_file_prefix}.+#{@configurator.test_runner_file_suffix}$/)
+       (source_file =~ /^#{Regexp.escape(@configurator.project_test_file_prefix)}.+#{Regexp.escape(@configurator.test_runner_file_suffix)}$/)
       _source_file = source_file + EXTENSION_CORE_SOURCE
       found_file =
         @file_finder_helper.find_file_in_collection(

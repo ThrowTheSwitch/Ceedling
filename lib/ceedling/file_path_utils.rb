@@ -243,7 +243,7 @@ class FilePathUtils
   end
 
   def form_test_filepath_from_runner(filepath)
-    return filepath.sub(/#{TEST_RUNNER_FILE_SUFFIX}/, '')
+    return filepath.sub(/#{Regexp.escape(TEST_RUNNER_FILE_SUFFIX)}/, '')
   end
 
   def form_test_executable_filepath(build_output_path, filepath)
