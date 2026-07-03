@@ -7,14 +7,6 @@
 
 require 'require_all'
 require 'constructor'
-require 'simplecov'
-
-SimpleCov.start do
-  track_files "{bin,lib,plugins}/**/*.rb"
-  add_filter "/spec/"
-  add_filter "/config/"
-  add_filter "/vendor/"
-end
 
 RSpec.configure do |config|
   config.raise_errors_for_deprecations!
