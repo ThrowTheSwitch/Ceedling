@@ -3177,10 +3177,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#halt_on_error" class="md-nav__link">
+  <a href="#fail_build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :halt_on_error:
+        :fail_build:
       
     </span>
   </a>
@@ -4249,10 +4249,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#halt_on_error" class="md-nav__link">
+  <a href="#fail_build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :halt_on_error:
+        :fail_build:
       
     </span>
   </a>
@@ -4415,9 +4415,9 @@ building and then running test executables under Valgrind’s Memcheck tool.</p>
 </ul>
 <p>The plugin triggers standard <code>test</code> task builds but hands each test fixture
 executable off to Valgrind along with configurable arguments.</p>
-<p>By default the build continues after Valgrind errors so that all log files are
-produced. The optional <code>:halt_on_error:</code> setting stops the build after the first
-test binary whose Valgrind log reports memory errors.</p>
+<p>By default the build runs all test binaries to completion and is marked as
+failed if any Valgrind memory errors are found. The optional <code>:fail_build:</code>
+setting can be set to <code>false</code> to log errors without failing the build.</p>
 <h2 id="installation-set-up">Installation &amp; set up</h2>
 <h3 id="installation">Installation</h3>
 <p>You have at least 3 options for getting the <code>valgrind</code> tool working on your
@@ -4442,9 +4442,9 @@ project configuration:</p>
 </code></pre></div>
 <h2 id="configuration">Configuration</h2>
 <p>The plugin ships with sensible defaults that enable full leak checking. By
-default the build continues after Valgrind errors so that every test binary
-runs and produces a log file. Use <code>:halt_on_error:</code> to stop early on the
-first test fixture executable in the suite with memory errors.</p>
+default the build runs all test binaries to completion and is marked as failed
+if any memory errors are found. Set <code>:fail_build: false</code> to log errors without
+failing the build.</p>
 <p>You can change the Valgrind configuration in your project configuration 
 under an optional <code>:valgrind</code> section.</p>
 <h3 id="default-configuration">Default configuration</h3>
@@ -4466,17 +4466,15 @@ defaults, redefine the argument list in your project configuration:</p>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--leak-check=full&quot;</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;--show-leak-kinds=all&quot;</span>
 </code></pre></div>
-<h3 id="halt_on_error"><code>:halt_on_error:</code></h3>
-<p>When <code>false</code> (the default), the build runs all test binaries to completion.
-Memory errors appear in the per-binary log files but do not stop the build.
-This is often the right choice for an initial analysis run; you get the full
-picture of which binaries have problems.</p>
-<p>When <code>true</code>, the plugin reads the Valgrind log after each test binary finishes
-and checks the <code>ERROR SUMMARY</code> line. If the error count is greater than zero,
-Ceedling raises a build error and halts before running any subsequent test
-fixture executables. Valgrind logs created to that point will remain.</p>
+<h3 id="fail_build"><code>:fail_build:</code></h3>
+<p>When <code>true</code> (the default), any memory errors are logged immediately after 
+running a test executable. After all test binaries complete execution, if 
+any memory errors were found across the run, the build is marked as failed 
+with a total count of memory errors and test files processed.</p>
+<p>When <code>false</code>, memory errors are still logged per test binary but the build is
+not marked as failed.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:valgrind</span><span class="p">:</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:halt_on_error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:fail_build</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Detection uses log parsing, not Valgrind’s exit code</p>

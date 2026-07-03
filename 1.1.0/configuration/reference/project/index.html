@@ -4523,7 +4523,7 @@ your source code.</p>
 <p>This option allows Ceedling to work with test files that contain tricky
 conditional compilation statements (e.g. <code>#ifdef</code>) as well as mockable header
 files containing conditional preprocessor directives and/or macros.</p>
-<p>See the <a href="../../../testing-guide/conventions/#ceedling-preprocessing-behavior-for-your-tests">documentation on test preprocessing</a> for more.</p>
+<p>See the <a href="../../../testing-guide/conventions/#test-preprocessing">documentation on test preprocessing</a> for more.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>With any preprocessing enabled, the <code>gcc</code> &amp; <code>cpp</code> tools must exist in an
@@ -4653,7 +4653,7 @@ the default option and is described above.</p>
 <a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>-------------------
 <a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>[test/TestUsartModel.c]
 <a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>  Test: testCrash
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  At line (37): &quot;Test case crashed&quot;
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  At line (37): &quot;Test case crashed &gt;&gt; Segmentation fault (core dumped)&quot;
 <a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
 <a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>-----------------------
 <a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>❌ OVERALL TEST SUMMARY
@@ -4668,6 +4668,13 @@ the default option and is described above.</p>
 line of code triggering the crash. If this option is enabled, but <code>gdb</code> is
 not available to Ceedling, project configuration validation will terminate
 with an error at startup.</p>
+<p>With <code>gdb</code> in use, Ceedling will provide a brief crash summary from details
+extracted from the <code>gdb</code> report. Ceedling will attempt to surface in the 
+summary the offending line of code or failing <code>assert()</code> from the report.</p>
+<p>The full <code>gdb</code> report is captured to a log file, and the log filepath is 
+provided in the crash summary. The log filepath will comprise the containing 
+test executable as a subdirectory and the name of the crashing test case 
+function as the filename.</p>
 <p>Sample Ceedling run output with backtrace <code>:gdb</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>👟 Executing
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>------------
@@ -4679,9 +4686,9 @@ with an error at startup.</p>
 <a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>-------------------
 <a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>[test/TestUsartModel.c]
 <a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  Test: testCrash
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  At line (40): &quot;Test case crashed &gt;&gt; Program received signal SIGSEGV, Segmentation fault.
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>                0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>                40    uint32_t i = *nullptr;&quot;
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  At line (40): &quot;Test case crashed &gt;&gt; [SIGSEGV] Segmentation fault
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>                `uint32_t i = *null_ptr;`
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>                (build/logs/test/TestUsartModel/testCrash.gdb.log)&quot;
 <a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
 <a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>-----------------------
 <a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>❌ OVERALL TEST SUMMARY

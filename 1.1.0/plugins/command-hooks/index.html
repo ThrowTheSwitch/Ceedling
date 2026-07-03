@@ -3338,10 +3338,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pre_release" class="md-nav__link">
+  <a href="#pre_test_build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :pre_release
+        :pre_test_build
       
     </span>
   </a>
@@ -3349,10 +3349,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post_release" class="md-nav__link">
+  <a href="#post_test_build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :post_release
+        :post_test_build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pre_release_build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :pre_release_build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post_release_build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :post_release_build
       
     </span>
   </a>
@@ -4507,10 +4529,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pre_release" class="md-nav__link">
+  <a href="#pre_test_build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :pre_release
+        :pre_test_build
       
     </span>
   </a>
@@ -4518,10 +4540,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#post_release" class="md-nav__link">
+  <a href="#post_test_build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :post_release
+        :post_test_build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pre_release_build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :pre_release_build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post_release_build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :post_release_build
       
     </span>
   </a>
@@ -4776,8 +4820,8 @@
 <p>If multiple tools are needed, they must be organized as entries in a YAML list.</p>
 <p>See the commented examples below.</p>
 <h3 id="tool-definitions">Tool definitions</h3>
-<p>Each Ceedling tool requires an <code>:executable</code> string and an optional <code>:arguments</code> list. See <em><a href="../../configuration/">CeedlingPacket</a></em> documentation for project configuration <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#tools-configuring-command-line-tools-used-for-build-steps"><code>:tools</code></a> entries to understand how to craft your argument list and other tool options.</p>
-<p>At present, this plugin passes at most one runtime parameter for use in a hook's tool argument list. If available, this parameter can be referenced with a Ceedling tool argument expansion identifier <code>${1}</code>. That is, wherever you place <code>${1}</code> in your tool argument list, <code>${1}</code> will expand in the command line Ceedling constructs with the parameter this plugin provides for that build step hook. The list of build steps hooks below document any single parameters they provide at execution.</p>
+<p>Each Ceedling tool requires an <code>:executable</code> string and an optional <code>:arguments</code> list. See the <a href="../../configuration/reference/tools/"><code>:tools</code> configuration reference</a> to understand how to craft your argument list and other tool options.</p>
+<p>This plugin passes one or two runtime parameters for use in a hook's tool argument list depending on the hook. These parameters are referenced with Ceedling tool argument expansion identifiers <code>${1}</code>, <code>${2}</code>, etc. Wherever you place <code>${1}</code> or <code>${2}</code> in your tool argument list, they expand in the command line Ceedling constructs with the parameters this plugin provides for that build step hook. The list of build step hooks below documents which parameters are available for each hook.</p>
 <h3 id="hook-logging">Hook logging</h3>
 <p>In addition to the standard Ceedling tool definition elements, a hook configuration entry may optionally include a <code>:logging</code> setting.</p>
 <p><code>:logging</code> may be set to <code>TRUE</code> or <code>FALSE</code>. An omitted setting is equivalent to <code>FALSE</code>.</p>
@@ -4823,39 +4867,55 @@
 <p>As an example, consider a Ceedling project with ten test files and seventeen mocks. The command line <code>ceedling test:all</code> would trigger:</p>
 <ul>
 <li>1 occurrence of the <code>:pre_build</code> hook.</li>
+<li>1 occurrence of the <code>:pre_test_build</code> hook.</li>
 <li>10 occurrences of the <code>:pre_test</code> and <code>:post_test</code> hooks.</li>
 <li>17 occurrences of the <code>:pre_mock_generate</code> and <code>:post_mock_generate</code> hooks.</li>
 <li>10 occurrences of the <code>:pre_test_runner_generate</code> and <code>:post_test_runner_generate</code> hooks.</li>
 <li>27(+) occurrences of the <code>:pre_compile</code> and <code>:post_compile</code> hooks. These hooks would be called 27 times for test file and mock file compilation. A test suite build will also include compilation of the source files under tests, Unity's source, CMock's source, and generated test runner C files -- easily more than another two dozen compilation hook calls.</li>
 <li>10 occurrences of the <code>:pre_link</code> and <code>:post_link</code> hooks for test executable creation.</li>
-<li>10 occurences of the <code>:pre_test_fixture_execute</code> and <code>:post_test_fixture_execute</code> hooks for running test executables and gathering the results of the tests cases they contain.</li>
-<li>1 occurence of the <code>:post_build</code> hook unless a build error occurred (<code>:post_error</code> would be called isntead).</li>
+<li>10 occurrences of the <code>:pre_test_fixture_execute</code> and <code>:post_test_fixture_execute</code> hooks for running test executables and gathering the results of the tests cases they contain.</li>
+<li>1 occurrence of the <code>:post_test_build</code> hook.</li>
+<li>1 occurrence of the <code>:post_build</code> hook unless a build error occurred (<code>:post_error</code> would be called instead).</li>
 </ul>
 <h3 id="pre_build"><code>:pre_build</code></h3>
 <p>Called once just before Ceedling executes any tasks.</p>
-<p>No parameters are provided for a tool's argument list when the hook is called.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding <code>post_build</code> value can be used to compute the total build duration.</p>
 <h3 id="post_build"><code>:post_build</code></h3>
-<p>Called once just before Ceedling terminates.</p>
-<p>No parameters are provided for a tool's argument list when the hook is called.</p>
+<p>Called once just before Ceedling terminates after a successful build.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding <code>pre_build</code> value can be used to compute the total build duration.</p>
 <h3 id="post_error"><code>:post_error</code></h3>
 <p>Called once just after any build failure and just before Ceedling terminates.</p>
-<p>No parameters are provided for a tool's argument list when the hook is called.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is a floating-point stopwatch value in seconds at the moment the error is handled.</p>
 <h3 id="pre_test"><code>:pre_test</code></h3>
 <p>Called just before each test begins its build pipeline and just after all context for that build has been gathered.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
 <h3 id="post_test"><code>:post_test</code></h3>
 <p>Called just after each test completes its build and execution.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
-<h3 id="pre_release"><code>:pre_release</code></h3>
+<h3 id="pre_test_build"><code>:pre_test_build</code></h3>
+<p>Called once just before the full test build pipeline begins (before any individual test's configure, preprocess, compile, link, or execute steps).</p>
+<p>Two parameters are available to a tool when the hook is called:</p>
+<ul>
+<li><code>${1}</code> — the build context as a string (e.g. <code>"test"</code>, <code>"gcov"</code>).</li>
+<li><code>${2}</code> — a floating-point stopwatch value in seconds. This value and the corresponding <code>post_test_build</code> value can be used to compute the total test build duration.</li>
+</ul>
+<h3 id="post_test_build"><code>:post_test_build</code></h3>
+<p>Called once just after the full test build pipeline completes or terminates (including on error).</p>
+<p>Two parameters are available to a tool when the hook is called:</p>
+<ul>
+<li><code>${1}</code> — the build context as a string (e.g. <code>"test"</code>, <code>"gcov"</code>).</li>
+<li><code>${2}</code> — a floating-point stopwatch value in seconds. This value and the corresponding <code>pre_test_build</code> value can be used to compute the total test build duration.</li>
+</ul>
+<h3 id="pre_release_build"><code>:pre_release_build</code></h3>
 <p>Called once just before a release build begins.</p>
-<p>No parameters are provided for a tool's argument list when the hook is called.</p>
-<h3 id="post_release"><code>:post_release</code></h3>
-<p>Called once just after a release build finishes.</p>
-<p>No parameters are provided for a tool's argument list when the hook is called.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding <code>post_release_build</code> value can be used to compute the total release build duration.</p>
+<h3 id="post_release_build"><code>:post_release_build</code></h3>
+<p>Called once just after a release build finishes or terminates (including on error).</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding <code>pre_release_build</code> value can be used to compute the total release build duration.</p>
 <h3 id="pre_mock_preprocess"><code>:pre_mock_preprocess</code></h3>
 <p>If mocks are enabled and preprocessing is in use, this is called just before each header file to be mocked is preprocessed.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the filepath of the header file to be mocked.</p>
-<p>See <em><a href="../../configuration/">CeedlingPacket</a></em> for details on how Ceedling preprocessing operates.</p>
+<p>See <a href="../../testing-guide/conventions/#test-preprocessing"><em>Conventions &amp; Behaviors</em></a> for details on how Ceedling preprocessing operates.</p>
 <h3 id="post_mock_preprocess"><code>:post_mock_preprocess</code></h3>
 <p>If mocks are enabled and preprocessing is in use, this is called just after each header file to be mocked is preprocessed.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the filepath of the header file to be mocked.</p>
@@ -4868,11 +4928,11 @@
 <h3 id="pre_test_preprocess"><code>:pre_test_preprocess</code></h3>
 <p>If preprocessing is in use, this is called just before each test file is preprocessed before runner generation.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
-<p>See <em><a href="../../configuration/">CeedlingPacket</a></em> for details on how Ceedling preprocessing operates.</p>
+<p>See <a href="../../testing-guide/conventions/#test-preprocessing"><em>Conventions &amp; Behaviors</em></a> for details on how Ceedling preprocessing operates.</p>
 <h3 id="post_test_preprocess"><code>:post_test_preprocess</code></h3>
 <p>If preprocessing is in use, this is called just after each test file is preprocessed.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
-<p>See <em><a href="../../configuration/">CeedlingPacket</a></em> for details on how Ceedling preprocessing operates.</p>
+<p>See <a href="../../testing-guide/conventions/#test-preprocessing"><em>Conventions &amp; Behaviors</em></a> for details on how Ceedling preprocessing operates.</p>
 <h3 id="pre_runner_generate"><code>:pre_runner_generate</code></h3>
 <p>Called just before each test file is processed by test runner generation.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>

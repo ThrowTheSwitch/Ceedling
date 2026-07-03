@@ -4099,10 +4099,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#plugin-hook-methods-pre_release-and-post_release" class="md-nav__link">
+  <a href="#plugin-hook-methods-pre_test_buildcontext-timestamp_s-and-post_test_buildcontext-timestamp_s" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Plugin hook methods pre_release() and post_release()
+        Plugin hook methods pre_test_build(context, timestamp_s) and post_test_build(context, timestamp_s)
       
     </span>
   </a>
@@ -4110,10 +4110,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#plugin-hook-methods-pre_build-and-post_build" class="md-nav__link">
+  <a href="#plugin-hook-methods-pre_release_buildtimestamp_s-and-post_release_buildtimestamp_s" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Plugin hook methods pre_build and post_build
+        Plugin hook methods pre_release_build(timestamp_s) and post_release_build(timestamp_s)
       
     </span>
   </a>
@@ -4121,10 +4121,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#plugin-hook-methods-post_error" class="md-nav__link">
+  <a href="#plugin-hook-methods-pre_buildtimestamp_s-and-post_buildtimestamp_s" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Plugin hook methods post_error()
+        Plugin hook methods pre_build(timestamp_s) and post_build(timestamp_s)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin-hook-method-post_errortimestamp_s" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plugin hook method post_error(timestamp_s)
       
     </span>
   </a>
@@ -4414,10 +4425,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#plugin-hook-methods-pre_release-and-post_release" class="md-nav__link">
+  <a href="#plugin-hook-methods-pre_test_buildcontext-timestamp_s-and-post_test_buildcontext-timestamp_s" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Plugin hook methods pre_release() and post_release()
+        Plugin hook methods pre_test_build(context, timestamp_s) and post_test_build(context, timestamp_s)
       
     </span>
   </a>
@@ -4425,10 +4436,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#plugin-hook-methods-pre_build-and-post_build" class="md-nav__link">
+  <a href="#plugin-hook-methods-pre_release_buildtimestamp_s-and-post_release_buildtimestamp_s" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Plugin hook methods pre_build and post_build
+        Plugin hook methods pre_release_build(timestamp_s) and post_release_build(timestamp_s)
       
     </span>
   </a>
@@ -4436,10 +4447,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#plugin-hook-methods-post_error" class="md-nav__link">
+  <a href="#plugin-hook-methods-pre_buildtimestamp_s-and-post_buildtimestamp_s" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Plugin hook methods post_error()
+        Plugin hook methods pre_build(timestamp_s) and post_build(timestamp_s)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin-hook-method-post_errortimestamp_s" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plugin hook method post_error(timestamp_s)
       
     </span>
   </a>
@@ -4579,7 +4601,7 @@ of predefined Ceedling build steps.</p>
 <h2 id="example-plugin-subclass">Example <code>Plugin</code> subclass</h2>
 <p>An incomplete <code>Plugin</code> subclass follows to illustrate the basics.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># whiz_bang/lib/whiz_bang.rb</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">require</span><span class="w"> </span><span class="s1">&#39;ceedling/plugin&#39;</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">require</span><span class="w"> </span><span class="s1">&#39;ceedling/plugins/plugin&#39;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">WhizBang</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="no">Plugin</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="k">def</span><span class="w"> </span><span class="nf">setup</span>
@@ -4674,7 +4696,7 @@ preprocessing pipeline with toolchains other than GCC.</p>
 </div>
 <h2 id="plugin-hook-methods-pre_mock_preprocessarg_hash-and-post_mock_preprocessarg_hash"><code>Plugin</code> hook methods <code>pre_mock_preprocess(arg_hash)</code> and <code>post_mock_preprocess(arg_hash)</code></h2>
 <p>These methods are called before and after execution of preprocessing for header
-files to be mocked (see <a href="../../../testing-guide/conventions/#ceedling-preprocessing-behavior-for-your-tests">Conventions &amp; Behaviors</a> for preprocessing details). If a
+files to be mocked (see <a href="../../../testing-guide/conventions/#test-preprocessing">Conventions &amp; Behaviors</a> for preprocessing details). If a
 project does not enable preprocessing or a build does not include tests, these
 are not called. This pair of methods is called a number of times equal to the
 number of mocks in a test build.</p>
@@ -4696,7 +4718,7 @@ number of mocks in a test build.</p>
 </code></pre></div>
 <h2 id="plugin-hook-methods-pre_test_preprocessarg_hash-and-post_test_preprocessarg_hash"><code>Plugin</code> hook methods <code>pre_test_preprocess(arg_hash)</code> and <code>post_test_preprocess(arg_hash)</code></h2>
 <p>These methods are called before and after execution of test file preprocessing
-(see <a href="../../../testing-guide/conventions/#ceedling-preprocessing-behavior-for-your-tests">Conventions &amp; Behaviors</a> for preprocessing details). If a project does not
+(see <a href="../../../testing-guide/conventions/#test-preprocessing">Conventions &amp; Behaviors</a> for preprocessing details). If a project does not
 enable preprocessing or a build does not include tests, these are not called.
 This pair of methods is called a number of times equal to the number of test
 files in a test build.</p>
@@ -4841,16 +4863,39 @@ test executable).</p>
 test file — i.e. configure, preprocess, compile, link, run, get results, etc.
 This pair of methods is called for each test file in a test build.</p>
 <p>The argument <code>test</code> corresponds to the path of the test C file being processed.</p>
-<h2 id="plugin-hook-methods-pre_release-and-post_release"><code>Plugin</code> hook methods <code>pre_release()</code> and <code>post_release()</code></h2>
+<h2 id="plugin-hook-methods-pre_test_buildcontext-timestamp_s-and-post_test_buildcontext-timestamp_s"><code>Plugin</code> hook methods <code>pre_test_build(context, timestamp_s)</code> and <code>post_test_build(context, timestamp_s)</code></h2>
+<p>These methods are called before and after the full test build pipeline — i.e.
+all steps needed to configure, preprocess, compile, link, execute, and collect
+results for every test file in the build. <code>post_test_build</code> is called at all
+termination points, including early exit due to a build error.</p>
+<p>The argument <code>context</code> is the build context symbol (e.g. <code>:test</code>, <code>:gcov</code>) that
+was passed to <code>TestInvoker#setup_and_invoke</code>. This lets a plugin respond
+differently depending on which kind of build triggered the pipeline.</p>
+<p>The argument <code>timestamp_s</code> is a floating-point stopwatch value in seconds
+(from <code>SystemWrapper.time_stopwatch_s</code>). Compare the <code>pre_test_build</code> and
+<code>post_test_build</code> timestamps to compute the total test build duration using
+<code>Reportinator.generate_duration_string</code>.</p>
+<h2 id="plugin-hook-methods-pre_release_buildtimestamp_s-and-post_release_buildtimestamp_s"><code>Plugin</code> hook methods <code>pre_release_build(timestamp_s)</code> and <code>post_release_build(timestamp_s)</code></h2>
 <p>These methods are called before and after performing all steps needed to run the
-release task — i.e. configure, preprocess, compile, link, etc.</p>
-<h2 id="plugin-hook-methods-pre_build-and-post_build"><code>Plugin</code> hook methods <code>pre_build</code> and <code>post_build</code></h2>
-<p>These methods are called before and after executing any ceedling task — e.g:
+release task — i.e. configure, preprocess, compile, link, etc. <code>post_release_build</code>
+is called at all termination points, including early exit due to a build error.</p>
+<p>The argument <code>timestamp_s</code> is a floating-point stopwatch value in seconds
+(from <code>SystemWrapper.time_stopwatch_s</code>). Compare the <code>pre_release_build</code> and
+<code>post_release_build</code> timestamps to compute the total release build duration using
+<code>Reportinator.generate_duration_string</code>.</p>
+<h2 id="plugin-hook-methods-pre_buildtimestamp_s-and-post_buildtimestamp_s"><code>Plugin</code> hook methods <code>pre_build(timestamp_s)</code> and <code>post_build(timestamp_s)</code></h2>
+<p>These methods are called before and after executing any Ceedling task — e.g.
 test, release, coverage, etc.</p>
-<h2 id="plugin-hook-methods-post_error"><code>Plugin</code> hook methods <code>post_error()</code></h2>
+<p>The argument <code>timestamp_s</code> is a floating-point stopwatch value in seconds
+(from <code>SystemWrapper.time_stopwatch_s</code>). Compare the <code>pre_build</code> and
+<code>post_build</code> timestamps to compute the total build duration using
+<code>Reportinator.generate_duration_string</code>.</p>
+<h2 id="plugin-hook-method-post_errortimestamp_s"><code>Plugin</code> hook method <code>post_error(timestamp_s)</code></h2>
 <p>This method is called at the conclusion of a Ceedling build that encounters any
 error that halts the build process. To be clear, a test build with failing test
 cases is not a build error.</p>
+<p>The argument <code>timestamp_s</code> is a floating-point stopwatch value in seconds
+(from <code>SystemWrapper.time_stopwatch_s</code>) at the moment the error is handled.</p>
 <h2 id="plugin-hook-methods-summary"><code>Plugin</code> hook methods <code>summary()</code></h2>
 <p>This method is called when invoking the summary task, <code>ceedling summary</code>. This
 method facilitates logging the results of the last build without running the
