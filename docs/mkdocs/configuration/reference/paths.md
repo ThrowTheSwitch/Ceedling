@@ -142,7 +142,7 @@ file search paths:
 * [Configuring Your Header File Search Paths][header-file-search-paths]
 * [`TEST_INCLUDE_PATH(...)` build directive macro][test-include-path-macro]
 
-[header-file-search-paths]: ../../testing-guide/conventions.md#search-paths-for-test-builds
+[header-file-search-paths]: ../../testing-guide/conventions.md#test-build-search-paths
 [test-include-path-macro]: ../../testing-guide/build-directives.md#test_include_path
 
 This set of paths specifies the locations of your header files. If your header

@@ -129,7 +129,7 @@ higher-priority mixins are merged last, the last write wins.
     example, include search paths added by a command line mixin will be
     searched before those in an environment variable mixin, which will be
     searched before those in the project configuration file. See the
-    section [Search Paths for Test Builds](../testing-guide/conventions.md#search-paths-for-test-builds)
+    section [Test build search paths](../testing-guide/conventions.md#test-build-search-paths)
     for more.
 
 ## Mixins Example

@@ -38,11 +38,11 @@ See the commented examples below.
 
 ### Tool definitions
 
-Each Ceedling tool requires an `:executable` string and an optional `:arguments` list. See _[CeedlingPacket][ceedling-packet]_ documentation for project configuration [`:tools`][tools-doc] entries to understand how to craft your argument list and other tool options.
+Each Ceedling tool requires an `:executable` string and an optional `:arguments` list. See the [`:tools` configuration reference][tools-doc] to understand how to craft your argument list and other tool options.
 
-At present, this plugin passes at most one runtime parameter for use in a hook's tool argument list. If available, this parameter can be referenced with a Ceedling tool argument expansion identifier `${1}`. That is, wherever you place `${1}` in your tool argument list, `${1}` will expand in the command line Ceedling constructs with the parameter this plugin provides for that build step hook. The list of build steps hooks below document any single parameters they provide at execution.
+This plugin passes one or two runtime parameters for use in a hook's tool argument list depending on the hook. These parameters are referenced with Ceedling tool argument expansion identifiers `${1}`, `${2}`, etc. Wherever you place `${1}` or `${2}` in your tool argument list, they expand in the command line Ceedling constructs with the parameters this plugin provides for that build step hook. The list of build step hooks below documents which parameters are available for each hook.
 
-[tools-doc]: https://github.com/ThrowTheSwitch/Ceedling/blob/test/ceedling_0_32_rc/docs/CeedlingPacket.md#tools-configuring-command-line-tools-used-for-build-steps
+[tools-doc]: ../configuration/reference/tools.md
 
 ### Hook logging
 
@@ -98,31 +98,33 @@ Some hooks are called for every file-related operation for which the hook is nam
 As an example, consider a Ceedling project with ten test files and seventeen mocks. The command line `ceedling test:all` would trigger:
 
 * 1 occurrence of the `:pre_build` hook.
+* 1 occurrence of the `:pre_test_build` hook.
 * 10 occurrences of the `:pre_test` and `:post_test` hooks.
 * 17 occurrences of the `:pre_mock_generate` and `:post_mock_generate` hooks.
 * 10 occurrences of the `:pre_test_runner_generate` and `:post_test_runner_generate` hooks.
 * 27(+) occurrences of the `:pre_compile` and `:post_compile` hooks. These hooks would be called 27 times for test file and mock file compilation. A test suite build will also include compilation of the source files under tests, Unity's source, CMock's source, and generated test runner C files -- easily more than another two dozen compilation hook calls.
 * 10 occurrences of the `:pre_link` and `:post_link` hooks for test executable creation.
-* 10 occurences of the `:pre_test_fixture_execute` and `:post_test_fixture_execute` hooks for running test executables and gathering the results of the tests cases they contain.
-* 1 occurence of the `:post_build` hook unless a build error occurred (`:post_error` would be called isntead).
+* 10 occurrences of the `:pre_test_fixture_execute` and `:post_test_fixture_execute` hooks for running test executables and gathering the results of the tests cases they contain.
+* 1 occurrence of the `:post_test_build` hook.
+* 1 occurrence of the `:post_build` hook unless a build error occurred (`:post_error` would be called instead).
 
 ### `:pre_build`
 
 Called once just before Ceedling executes any tasks.
 
-No parameters are provided for a tool's argument list when the hook is called.
+The parameter available to a tool (`${1}`) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding `post_build` value can be used to compute the total build duration.
 
 ### `:post_build`
 
-Called once just before Ceedling terminates.
+Called once just before Ceedling terminates after a successful build.
 
-No parameters are provided for a tool's argument list when the hook is called.
+The parameter available to a tool (`${1}`) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding `pre_build` value can be used to compute the total build duration.
 
 ### `:post_error`
 
 Called once just after any build failure and just before Ceedling terminates.
 
-No parameters are provided for a tool's argument list when the hook is called.
+The parameter available to a tool (`${1}`) when the hook is called is a floating-point stopwatch value in seconds at the moment the error is handled.
 
 ### `:pre_test`
 
@@ -136,17 +138,35 @@ Called just after each test completes its build and execution.
 
 The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
 
-### `:pre_release`
+### `:pre_test_build`
+
+Called once just before the full test build pipeline begins (before any individual test's configure, preprocess, compile, link, or execute steps).
+
+Two parameters are available to a tool when the hook is called:
+
+* `${1}` — the build context as a string (e.g. `"test"`, `"gcov"`).
+* `${2}` — a floating-point stopwatch value in seconds. This value and the corresponding `post_test_build` value can be used to compute the total test build duration.
+
+### `:post_test_build`
+
+Called once just after the full test build pipeline completes or terminates (including on error).
+
+Two parameters are available to a tool when the hook is called:
+
+* `${1}` — the build context as a string (e.g. `"test"`, `"gcov"`).
+* `${2}` — a floating-point stopwatch value in seconds. This value and the corresponding `pre_test_build` value can be used to compute the total test build duration.
+
+### `:pre_release_build`
 
 Called once just before a release build begins.
 
-No parameters are provided for a tool's argument list when the hook is called.
+The parameter available to a tool (`${1}`) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding `post_release_build` value can be used to compute the total release build duration.
 
-### `:post_release`
+### `:post_release_build`
 
-Called once just after a release build finishes.
+Called once just after a release build finishes or terminates (including on error).
 
-No parameters are provided for a tool's argument list when the hook is called.
+The parameter available to a tool (`${1}`) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding `pre_release_build` value can be used to compute the total release build duration.
 
 ### `:pre_mock_preprocess`
 
@@ -154,9 +174,9 @@ If mocks are enabled and preprocessing is in use, this is called just before eac
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the header file to be mocked.
 
-See _[CeedlingPacket][ceedling-packet]_ for details on how Ceedling preprocessing operates.
+See [_Conventions & Behaviors_][preprocessing] for details on how Ceedling preprocessing operates.
 
-[ceedling-packet]: ../configuration/index.md
+[preprocessing]: ../testing-guide/conventions.md#test-preprocessing
 
 ### `:post_mock_preprocess`
 
@@ -182,7 +202,7 @@ If preprocessing is in use, this is called just before each test file is preproc
 
 The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
 
-See _[CeedlingPacket][ceedling-packet]_ for details on how Ceedling preprocessing operates.
+See [_Conventions & Behaviors_][preprocessing] for details on how Ceedling preprocessing operates.
 
 ### `:post_test_preprocess`
 
@@ -190,7 +210,7 @@ If preprocessing is in use, this is called just after each test file is preproce
 
 The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
 
-See _[CeedlingPacket][ceedling-packet]_ for details on how Ceedling preprocessing operates.
+See [_Conventions & Behaviors_][preprocessing] for details on how Ceedling preprocessing operates.
 
 ### `:pre_runner_generate`
 

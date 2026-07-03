@@ -15,8 +15,6 @@ This plugin generates one or more of up to four available test suite report form
 
 This plugin generates reports after test builds, storing them in your project `artifacts/` build path. It also regenerates reports when `ceedling summary` is executed, building reports from the test results already present.
 
-Each report is populated with a name, using `:project` ↳ `:name` from your configuration if set.
-
 With a limited amount of Ruby code, you can also create your own report without creating an entire Ceedling plugin.
 
 ## _User Beware_
@@ -74,6 +72,10 @@ To change the output filename, specify it with the `:filename` key beneath the r
 ```
 
 ## Built-in Reports
+
+Each report is populated with a name, using `:project` ↳ `:name` from your configuration if set.
+
+Those reports that support build time or test suite execution time “stopwatch” values include them.
 
 ### Execution duration values
 

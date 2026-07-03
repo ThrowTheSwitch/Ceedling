@@ -99,7 +99,7 @@ See the [documentation on test preprocessing][test-preprocessing] for more.
     With any preprocessing enabled, the `gcc` & `cpp` tools must exist in an
     accessible system search path.
 
-[test-preprocessing]: ../../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests
+[test-preprocessing]: ../../testing-guide/conventions.md#test-preprocessing
 
 * `:none` disables preprocessing.
 * `:all` enables preprocessing for all mockable header files and test C files.
