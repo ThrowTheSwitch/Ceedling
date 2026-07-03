@@ -8,11 +8,15 @@
 require 'ceedling/plugins/plugin'
 
 class ReportTestsLogFactory < Plugin
-  
+
+  DEFAULT_REPORT_NAME = "Ceedling Test Suite"
+
+  TestBuild = Struct.new( :results_filepaths, :start_time_s, :end_time_s )
+
   # `Plugin` setup()
   def setup
-    # Hash: Context => Array of test executable results files
-    @results = {}
+    # Hash: Context symbol => TestBuild struct
+    @build_results = {}
     
     # Get our test suite reports' configuration
     config = @ceedling[:setupinator].config_hash
@@ -33,6 +37,13 @@ class ReportTestsLogFactory < Plugin
     @reportinator = @ceedling[:reportinator]
   end
 
+  def pre_test_build(context, timestamp_s)
+    return if not @enabled
+
+    # Initialize a TestBuild entry for this test context
+    @build_results[context] = TestBuild.new( [], timestamp_s, nil )
+  end
+
   # `Plugin` build step hook -- collect context:results_filepath after test fixture runs
   def post_test_fixture_execute(arg_hash)
     # Do nothing if no reports configured
@@ -42,40 +53,56 @@ class ReportTestsLogFactory < Plugin
     context = arg_hash[:context]
 
     @mutex.synchronize do
-      # Create an empty array if context does not already exist as a key
-      @results[context] = [] if @results[context].nil?
+      # Create a TestBuild entry if pre_test_build did not fire for this context.
+      # `ceedling summary` will not fire pre_test_build.
+      @build_results[context] ||= TestBuild.new( [], nil, nil )
+      @build_results[context].results_filepaths << arg_hash[:result_file]
+    end
+  end
 
-      # Add results filepath to array at context key
-      @results[context] << arg_hash[:result_file]
+  def post_test_build(context, timestamp_s)
+    return if not @enabled
+
+    @mutex.synchronize do
+      @build_results[context].end_time_s = timestamp_s if @build_results[context]
     end
   end
 
   # `Plugin` build step hook -- process results into log files after test build completes
-  def post_build
+  def post_build(_timestamp_s)
     # Do nothing if no reports configured or no results collected (e.g. not a test build)
     return if not @enabled
-    return if @results.empty?
+    return if @build_results.empty?
 
     msg = @reportinator.generate_heading( "Running Test Suite Reports" )
     @loginator.log( msg )
 
     # For each configured reporter, generate a test suite report per test context
-    @results.each do |context, results_filepaths|
+    @build_results.each do |context, test_build|
       # Assemble results from all results filepaths collected
-      _results = @ceedling[:plugin_reportinator].assemble_test_results( results_filepaths )
+      _results = @ceedling[:plugin_reportinator].assemble_test_results( test_build.results_filepaths )
 
       # Provide results to each Reporter
       @reporters.each do |reporter|
         filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
+        name = generate_report_name( context )
 
         msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
         @loginator.log( msg )
 
-        reporter.write( filepath: filepath, results: _results )
+        start_s    = test_build.start_time_s
+        end_s      = test_build.end_time_s
+        duration_s = (start_s && end_s) ? (end_s - start_s) : nil
+        reporter.write(
+          name: name,
+          filepath: filepath,
+          results: _results,
+          duration_s: duration_s
+        )
       end
     end
 
-  # White space at command line after progress messages
+  # White space at command line after all progress messages
   @loginator.log( '' )
   end
 
@@ -99,7 +126,11 @@ class ReportTestsLogFactory < Plugin
       msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
       @loginator.log( msg )
 
-      reporter.write( filepath: filepath, results: _results )
+      reporter.write(
+        name: DEFAULT_REPORT_NAME,
+        filepath: filepath,
+        results: _results
+      )
     end
 
     @loginator.log( '' )
@@ -108,6 +139,23 @@ class ReportTestsLogFactory < Plugin
   ### Private
 
   private
+
+  def generate_report_name(context)
+      # Resolve and inject the display name used in report titles/headers.
+
+      # Start with project name from configuration
+      _name = @ceedling[:configurator].project_name.to_s.strip
+
+      # Default to a generic name if project name is empty
+      name = _name.empty? ? DEFAULT_REPORT_NAME : _name
+
+      # Prepend name with context if not the default test context (TEST_SYM)
+      if context != TEST_SYM
+        name = "[#{context.to_s.upcase}] #{name}"
+      end
+
+      return name
+  end
 
   def load_reporters(reports, config)
     reporters = []
@@ -139,11 +187,6 @@ class ReportTestsLogFactory < Plugin
 
       # Inject utilty object
       reporter.config_walkinator = @ceedling[:config_walkinator]
-
-      # Resolve and inject the display name used in report titles/headers.
-      # Expands to "Ceedling Test Suite: <name>" when a project name is configured.
-      raw = @ceedling[:configurator].project_name.to_s.strip
-      reporter.report_name = raw.empty? ? "Ceedling Test Suite" : "Ceedling Test Suite: #{raw}"
 
       # Perform Reporter sublcass set up
       reporter.setup()

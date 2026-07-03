@@ -42,7 +42,7 @@ class ReportTestsStdoutPlugin < Plugin
   end
 
   # `Plugin` build step hook -- render a report immediately upon build completion (that invoked tests)
-  def post_build
+  def post_build(_timestamp_s)
     # Ensure a test task was invoked as part of the build
     return if not @rake_task_invoker.test_task_invoked?
 

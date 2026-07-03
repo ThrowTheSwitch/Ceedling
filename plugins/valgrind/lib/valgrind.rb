@@ -37,10 +37,9 @@ class Valgrind < Plugin
   end
 
   def pre_test_fixture_execute(arg_hash)
-    return unless @rake_task_invoker.invoked?( /^#{VALGRIND_ROOT_NAME}/ )
+    return unless arg_hash[:context] == VALGRIND_SYM
 
     @mutex.synchronize do
-      arg_hash[:context] = VALGRIND_SYM
       @tests_processed += 1
     end
 
@@ -64,7 +63,7 @@ class Valgrind < Plugin
   end
 
   def post_test_fixture_execute(arg_hash)
-    return unless @rake_task_invoker.invoked?( /^#{VALGRIND_ROOT_NAME}(:|$)/ )
+    return unless arg_hash[:context] == VALGRIND_SYM
 
     result_file = arg_hash[:result_file]
 
@@ -89,7 +88,7 @@ class Valgrind < Plugin
     end
   end
 
-  def post_build
+  def post_build(_timestamp_s)
     return unless @rake_task_invoker.invoked?( /^#{VALGRIND_ROOT_NAME}(:|$)/ )
 
     # Only present plugin-based test results if raw test results disabled by a reporting plugin

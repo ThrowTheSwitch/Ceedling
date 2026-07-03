@@ -42,7 +42,7 @@ class GcovReportinator
   def print_shell_exec_time(shell_result)
     return if shell_result.nil?
 
-    @loginator.log( "Done in %.2f seconds." % shell_result[:time], Verbosity::NORMAL )
+    @loginator.log( "Done in #{Reportinator.generate_duration_string( shell_result[:time] )}.", Verbosity::NORMAL )
   end
 
 

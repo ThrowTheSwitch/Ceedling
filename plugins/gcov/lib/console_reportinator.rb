@@ -51,7 +51,7 @@ class ConsoleReportinator < GcovReportinator
     @loginator.log( @plugin_reportinator.generate_heading("Untested Source Files") )
 
     untested_sources.sort_by { |f| File.basename(f) }.each do |source|
-      @loginator.log( "#{File.basename(source)} | No tests executed — 0% coverage" )
+      @loginator.log( "#{File.basename(source)} | No tests executed: 0% coverage" )
     end
   end
 

@@ -55,8 +55,8 @@ class Beep < Plugin
     ) if tools[:on_error] != :bell
   end
 
-  # `Plugin` build step hook  
-  def post_build
+  # `Plugin` build step hook
+  def post_build(_timestamp_s)
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_done],
       # No additional arguments
@@ -71,7 +71,7 @@ class Beep < Plugin
   end
   
   # `Plugin` build step hook
-  def post_error
+  def post_error(_timestamp_s)
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_error],
       # No additional arguments

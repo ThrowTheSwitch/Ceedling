@@ -122,12 +122,15 @@ class PluginManager
   def pre_test(test); execute_plugins(:pre_test, test); end
   def post_test(test); execute_plugins(:post_test, test); end
 
-  def pre_release; execute_plugins(:pre_release); end
-  def post_release; execute_plugins(:post_release); end
+  def pre_test_build(context, timestamp_s); execute_plugins(:pre_test_build, context, timestamp_s); end
+  def post_test_build(context, timestamp_s); execute_plugins(:post_test_build, context, timestamp_s); end
 
-  def pre_build; execute_plugins(:pre_build); end
-  def post_build; execute_plugins(:post_build); end
-  def post_error; execute_plugins(:post_error); end
+  def pre_release_build(timestamp_s); execute_plugins(:pre_release_build, timestamp_s); end
+  def post_release_build(timestamp_s); execute_plugins(:post_release_build, timestamp_s); end
+
+  def pre_build(timestamp_s); execute_plugins(:pre_build, timestamp_s); end
+  def post_build(timestamp_s); execute_plugins(:post_build, timestamp_s); end
+  def post_error(timestamp_s); execute_plugins(:post_error, timestamp_s); end
 
   def summary; execute_plugins(:summary); end
 

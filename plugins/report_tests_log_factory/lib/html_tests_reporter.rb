@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'tests_reporter'
+require 'ceedling/reportinator'
 
 class HtmlTestsReporter < TestsReporter
 
@@ -13,7 +14,7 @@ class HtmlTestsReporter < TestsReporter
     super( default_filename: 'tests_report.html' )
   end
 
-  def header(results:, stream:)
+  def header(stream:, name:, results:, duration_s:)
     stream.puts <<~HTML
       <!DOCTYPE html>
       <html lang="en">
@@ -21,7 +22,7 @@ class HtmlTestsReporter < TestsReporter
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta http-equiv="X-UA-Compatible" content="ie=edge">
-      <title>Ceedling Test Suite Report</title>
+      <title>#{name == 'Ceedling Test Suite' ? 'Ceedling Test Suite Report' : "Ceedling Test Suite: #{name}"}</title>
       <style>
 
       /* Global baseline: sans-serif font, border-box sizing, and a slight
@@ -53,6 +54,9 @@ class HtmlTestsReporter < TestsReporter
       /* Tighter vertical padding for summary body rows than the global default. */
       table.summary tbody td { padding: 4px 15px; }
 
+      /* Extra top padding on the first body row to separate it from the header bar. */
+      table.summary tbody tr:first-child td { padding-top: 10px; }
+
       /* Ring chart cell: vertically centered, horizontally centered SVG. */
       table.summary td.chart-cell { vertical-align: middle; text-align: center; }
 
@@ -60,13 +64,13 @@ class HtmlTestsReporter < TestsReporter
       table.summary td.pct-cell { vertical-align: middle; text-align: center; padding: 8px 20px; }
 
       /* "Passing" label above the large percentage number. */
-      table.summary .pct-label { font-size: 0.9em; color: #777777; }
+      table.summary .pct-label { font-size: 1.0em; color: #777777; }
 
       /* Large, bold pass percentage. */
       table.summary .pct-value { font-size: 2.4em; font-weight: bold; color: #333333; line-height: 1.1; }
 
       /* Timestamp footer row: small, muted, centered across all columns. */
-      table.summary td.datetime-row { font-size: 0.9em; color: #777777; text-align: center; padding: 3px 15px; }
+      table.summary td.datetime-row { font-size: 0.9em; color: #777777; text-align: center; padding: 8px 15px; }
 
       /* --- Table title rows ---------------------------------------------- */
 
@@ -80,6 +84,13 @@ class HtmlTestsReporter < TestsReporter
       table.failed  thead tr:first-child { background-color: #c0392b; }
       table.success thead tr:first-child { background-color: #27ae60; }
       table.ignored thead tr:first-child { background-color: #e67e22; }
+
+      /* Bottom accent line matching each table's header color. border-bottom is
+         defeated by border-collapse:collapse, so box-shadow is used instead. */
+      table.summary { box-shadow: 0 0 22px rgba(0,0,0,0.2), 0 2px 0 0 #555555; }
+      table.failed  { box-shadow: 0 0 22px rgba(0,0,0,0.2), 0 2px 0 0 #c0392b; }
+      table.success { box-shadow: 0 0 22px rgba(0,0,0,0.2), 0 2px 0 0 #27ae60; }
+      table.ignored { box-shadow: 0 0 22px rgba(0,0,0,0.2), 0 2px 0 0 #e67e22; }
 
       /* --- Cell padding defaults ----------------------------------------- */
 
@@ -148,14 +159,14 @@ class HtmlTestsReporter < TestsReporter
     HTML
   end
 
-  def body(results:, stream:)
-    write_summary(results[:counts], stream)
+  def body(stream:, name:, results:, duration_s:)
+    write_summary(name, results[:counts], duration_s, stream)
     write_failures(results[:failures], stream)
     write_ignores(results[:ignores], stream)
     write_successes(results[:successes], stream)
   end
 
-  def footer(results:, stream:)
+  def footer(stream:, name:, results:, duration_s:)
     stream.puts <<~HTML
       </body>
       </html>
@@ -225,20 +236,28 @@ class HtmlTestsReporter < TestsReporter
   # a ring chart, a pass percentage, and a UTC timestamp.
   # The chart and percentage cells use rowspan="4" to span all four count rows,
   # and the timestamp row uses colspan="4" to span all columns.
-  def write_summary(counts, stream)
+  def write_summary(name, counts, duration_s, stream)
     passed    = counts[:total] - counts[:ignored] - counts[:failed]
     chart     = ring_chart_svg( passed, counts[:failed], counts[:ignored] )
     pct       = counts[:total] > 0 ? ("%.1f%%" % (passed.to_f / counts[:total] * 100)) : "—"
-    timestamp = Time.now.utc.strftime( "%B %d, %Y  %H:%M:%S UTC" )
+    timestamp = Time.now.utc.strftime( "%B %d, %Y %H:%M:%S UTC" )
+    duration  = duration_s.nil? ? nil : Reportinator.generate_duration_string( duration_s, precision: 0, abbreviate: true )
     stream.puts <<~HTML
       <table class="summary">
-        <thead><tr><th colspan="4">#{@report_name}</th></tr></thead>
+        <thead><tr><th colspan="4">#{name}</th></tr></thead>
         <tbody>
-          <tr><td>Total</td><td>#{counts[:total]}</td><td rowspan="4" class="chart-cell">#{chart}</td><td rowspan="4" class="pct-cell"><div class="pct-label">Passing</div><div class="pct-value">#{pct}</div></td></tr>
+          <tr>
+            <td>Total</td><td>#{counts[:total]}</td>
+            <td rowspan="4" class="chart-cell">#{chart}</td>
+            <td rowspan="4" class="pct-cell">
+              <div class="pct-label">Passing</div>
+              <div class="pct-value">#{pct}</div>
+            </td>
+          </tr>
           <tr><td>Passed</td><td>#{passed}</td></tr>
           <tr><td>Failed</td><td>#{counts[:failed]}</td></tr>
           <tr><td>Ignored</td><td>#{counts[:ignored]}</td></tr>
-          <tr><td colspan="4" class="datetime-row">#{timestamp}</td></tr>
+          <tr><td colspan="4" class="datetime-row">#{[duration, timestamp].compact.join(' ⏱️ ')}</td></tr>
         </tbody>
       </table>
     HTML

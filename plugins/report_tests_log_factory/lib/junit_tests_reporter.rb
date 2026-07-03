@@ -13,17 +13,17 @@ class JunitTestsReporter < TestsReporter
     super( default_filename: 'junit_tests_report.xml' )
   end
 
-  def header(results:, stream:)
+  def header(stream:, name:, results:, duration_s:)
     stream.puts( '<?xml version="1.0" encoding="utf-8" ?>' )
     stream.puts(
-      '<testsuites name="%s" '     % @report_name +
+      '<testsuites name="%s" '     % name +
                   'tests="%d" '    % results[:counts][:total] +
                   'failures="%d" ' % results[:counts][:failed] +
                   'time="%.3f">'   % results[:total_time]
     )
   end
 
-  def body(results:, stream:)
+  def body(stream:, name:, results:, duration_s:)
     suites = reorganize_results( results )
 
     suites.each do |suite|
@@ -31,7 +31,7 @@ class JunitTestsReporter < TestsReporter
     end
   end
 
-  def footer(results:, stream:)
+  def footer(stream:, name:, results:, duration_s:)
     stream.puts( '</testsuites>' )
   end
 

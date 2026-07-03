@@ -37,6 +37,9 @@ class TestInvoker
   # -------------------------------------------------------------------------
 
   def setup_and_invoke(tests:, context: TEST_SYM, options: {})
+    timestamp_s = SystemWrapper.time_stopwatch_s()
+    @plugin_manager.pre_test_build( context, timestamp_s )
+
     @state = PipelineState.new(
       tests:            tests,
       testables:        {},
@@ -55,6 +58,8 @@ class TestInvoker
       @application.register_build_failure
       @loginator.log( ex.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
       @loginator.log_debug_backtrace( ex )
+    ensure
+      @plugin_manager.post_test_build( context, SystemWrapper.time_stopwatch_s() )
     end
   end
 

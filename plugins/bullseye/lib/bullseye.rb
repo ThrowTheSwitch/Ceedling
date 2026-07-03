@@ -71,7 +71,7 @@ class Bullseye < Plugin
     end
   end
 
-  def post_build
+  def post_build(_timestamp_s)
     return if (not @ceedling[:rake_task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
 
     # test results

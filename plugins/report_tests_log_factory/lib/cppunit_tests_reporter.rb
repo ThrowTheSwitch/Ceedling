@@ -15,13 +15,13 @@ class CppunitTestsReporter < TestsReporter
   end
   
   # CppUnit XML header
-  def header(results:, stream:)
+  def header(stream:, name:, results:, duration_s:)
     stream.puts( '<?xml version="1.0" encoding="utf-8" ?>' )
-    stream.puts( "<TestRun name=\"#{@report_name}\">" )
+    stream.puts( "<TestRun name=\"#{name}\">" )
   end
 
   # CppUnit XML test list contents
-  def body(results:, stream:)
+  def body(stream:, name:, results:, duration_s:)
     @test_counter = 1
     write_failures( results[:failures], stream )
     write_tests( results[:successes], stream, 'SuccessfulTests' )
@@ -30,7 +30,7 @@ class CppunitTestsReporter < TestsReporter
   end
 
   # CppUnit XML footer
-  def footer(results:, stream:)
+  def footer(stream:, name:, results:, duration_s:)
     stream.puts( "</TestRun>" )
   end
 
