@@ -132,6 +132,7 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
 ```json
 {
   "Name": "Ceedling Test Suite",
+  "BuildDuration": 123.4,
   "FailedTests": [
     {
       "file": "test/TestUsartModel.c",
