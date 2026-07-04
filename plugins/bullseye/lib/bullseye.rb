@@ -72,7 +72,7 @@ class Bullseye < Plugin
   end
 
   def post_build(_timestamp_s)
-    return if (not @ceedling[:rake_task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
+    return if (not @ceedling[:rake_invocation_tracker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
 
     # test results
     results = @ceedling[:plugin_reportinator].assemble_test_results(@result_list)
@@ -89,7 +89,7 @@ class Bullseye < Plugin
     
     # coverage results
     return if (verify_coverage_file() == false)
-    if (@ceedling[:rake_task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
+    if (@ceedling[:rake_invocation_tracker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
       command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC, [])
       shell_result = @ceedling[:tool_executor].exec( command )
       report_coverage_results_all(shell_result[:output])
@@ -197,7 +197,7 @@ end
 # end blocks always executed following rake run
 END {
   # cache our input configurations to use in comparison upon next execution
-  if (@ceedling[:rake_task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
+  if (@ceedling[:rake_invocation_tracker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
     @ceedling[BULLSEYE_SYM].enableBullseye(false)
   end
 }

@@ -31,7 +31,7 @@ class Valgrind < Plugin
     @configurator        = @ceedling[:configurator]
     @loginator           = @ceedling[:loginator]
     @reportinator        = @ceedling[:reportinator]
-    @rake_task_invoker   = @ceedling[:rake_task_invoker]
+    @rake_invocation_tracker   = @ceedling[:rake_invocation_tracker]
     @plugin_manager      = @ceedling[:plugin_manager]
     @plugin_reportinator = @ceedling[:plugin_reportinator]
   end
@@ -89,7 +89,7 @@ class Valgrind < Plugin
   end
 
   def post_build(_timestamp_s)
-    return unless @rake_task_invoker.invoked?( /^#{VALGRIND_ROOT_NAME}(:|$)/ )
+    return unless @rake_invocation_tracker.invoked?( /^#{VALGRIND_ROOT_NAME}(:|$)/ )
 
     # Only present plugin-based test results if raw test results disabled by a reporting plugin
     if !@configurator.plugins_display_raw_test_results
