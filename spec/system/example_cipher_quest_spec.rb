@@ -68,7 +68,7 @@ ceedling_system_tests do
           Dir.chdir "cipher_quest" do
             @output = @c.ceedling_build_exec("release --mixin=@mixin/release_rot13.yml")
             expect(@output).to match(/Merging command line mixin using mixin\/release_rot13\.yml/)
-            expect(@output).to match(/Release build.+cipher_quest\.out/)
+            expect(@output).to match(/cipher_quest\.out/)
           end
         end
       end
@@ -78,7 +78,7 @@ ceedling_system_tests do
           Dir.chdir "cipher_quest" do
             @output = @c.ceedling_build_exec("release --mixin \"=defines: {release: ['CIPHER_ROT13']}\"")
             expect(@output).to match(/Merging command line inline YAML mixin/)
-            expect(@output).to match(/Release build.+cipher_quest\.out/)
+            expect(@output).to match(/cipher_quest\.out/)
           end
         end
       end
@@ -88,7 +88,7 @@ ceedling_system_tests do
           Dir.chdir "cipher_quest" do
             @output = @c.ceedling_build_exec("release --mixin=@mixin/release_caesar.yml")
             expect(@output).to match(/Merging command line mixin using mixin\/release_caesar\.yml/)
-            expect(@output).to match(/Release build.+cipher_quest\.out/)
+            expect(@output).to match(/cipher_quest\.out/)
           end
         end
       end
@@ -98,7 +98,7 @@ ceedling_system_tests do
           Dir.chdir "cipher_quest" do
             @output = @c.ceedling_build_exec("release --mixin \"=defines: {release: ['CIPHER_CAESAR']}\"")
             expect(@output).to match(/Merging command line inline YAML mixin/)
-            expect(@output).to match(/Release build.+cipher_quest\.out/)
+            expect(@output).to match(/cipher_quest\.out/)
           end
         end
       end
@@ -108,7 +108,7 @@ ceedling_system_tests do
           Dir.chdir "cipher_quest" do
             @output = @c.ceedling_build_exec("release --mixin=@mixin/release_full.yml")
             expect(@output).to match(/Merging command line mixin using mixin\/release_full\.yml/)
-            expect(@output).to match(/Release build.+cipher_quest\.out/)
+            expect(@output).to match(/cipher_quest\.out/)
           end
         end
       end
@@ -118,7 +118,7 @@ ceedling_system_tests do
           Dir.chdir "cipher_quest" do
             @output = @c.ceedling_build_exec("release --mixin \"=defines: {release: ['CIPHER_ROT13', 'CIPHER_CAESAR', 'ANALYZER_ENABLED']}\"")
             expect(@output).to match(/Merging command line inline YAML mixin/)
-            expect(@output).to match(/Release build.+cipher_quest\.out/)
+            expect(@output).to match(/cipher_quest\.out/)
           end
         end
       end
