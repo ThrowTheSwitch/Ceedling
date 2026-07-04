@@ -22,7 +22,7 @@ class ReportTestsStdoutPlugin < Plugin
     @configurator        = @ceedling[:configurator]
     @plugin_reportinator = @ceedling[:plugin_reportinator]
     @file_path_utils     = @ceedling[:file_path_utils]
-    @rake_task_invoker   = @ceedling[:rake_task_invoker]
+    @rake_invocation_tracker   = @ceedling[:rake_invocation_tracker]
 
     # Set the report template (subclass supplies via load_template)
     @plugin_reportinator.register_test_results_template( load_template() )
@@ -44,7 +44,7 @@ class ReportTestsStdoutPlugin < Plugin
   # `Plugin` build step hook -- render a report immediately upon build completion (that invoked tests)
   def post_build(_timestamp_s)
     # Ensure a test task was invoked as part of the build
-    return if not @rake_task_invoker.test_task_invoked?
+    return if not @rake_invocation_tracker.test_task_invoked?
 
     return if @configurator.plugins_display_raw_test_results
 

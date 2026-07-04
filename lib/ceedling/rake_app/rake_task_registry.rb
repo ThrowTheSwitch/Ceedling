@@ -52,7 +52,7 @@ class RakeTaskRegistry
   end
 
   # Returns all registered namespace strings that carry the given tag.
-  # Used by RakeTaskInvoker to build dynamic regex patterns for invocation checks.
+  # Used by RakeInvocationTracker to build dynamic regex patterns for invocation checks.
   def namespaces_for_tag(tag)
     @namespace_tags.select { |_, tags| tags.include?( tag ) }.keys
   end

@@ -9,26 +9,19 @@ require 'ceedling/constants'
 require 'ceedling/file_path_utils'
 
 
-desc "Build release target."
-task RELEASE_SYM => [:prepare] do
-  header = "Release build '#{File.basename( PROJECT_RELEASE_BUILD_TARGET )}'"
-
-  banner = @ceedling[:reportinator].generate_banner( header )
-
-  @ceedling[:loginator].log( banner )
-  
+desc "Build release target"
+task RELEASE_SYM => [:prepare] do  
   begin
     timestamp_s = SystemWrapper.time_stopwatch_s()
     @ceedling[:plugin_manager].pre_release_build( timestamp_s )
 
-    core_objects  = []
-    extra_objects = @ceedling[:file_path_utils].form_release_build_objects_filelist( COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS )
+    objects = @ceedling[:release_invoker].collect_release_build_objects()
 
-    core_objects.concat( @ceedling[:release_invoker].setup_and_invoke_objects( COLLECTION_RELEASE_BUILD_INPUT ) )
+    @ceedling[:release_invoker].setup_and_invoke_objects( objects )
 
-    file( PROJECT_RELEASE_BUILD_TARGET => (core_objects + extra_objects) )
+    file( PROJECT_RELEASE_BUILD_TARGET => (objects) )
 
-    Rake::Task[PROJECT_RELEASE_BUILD_TARGET].invoke()
+    @ceedling[:release_invoker].setup_and_invoke_binary( PROJECT_RELEASE_BUILD_TARGET )
 
   rescue StandardError => ex
     @ceedling[:application].register_build_failure
