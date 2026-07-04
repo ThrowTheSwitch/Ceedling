@@ -131,11 +131,13 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 
 - Significant refactoring and improvements to logging and parallel processing.
 - Streamlined preprocessing, eliminating redundant steps and reducing memory usage.
-- Expanded backtrace handling:
-   - Provides more and better crash details for `:simple` and `:gdb` options.
-   - `:gdb` option captures a full log file from `gdb` output and provides that filepath in the test case crash report.
 - Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
+- Release build logging now matches test build logging.
 - Fixes for typos and grammar in documentation and logging.
+
+### Expanded [Backtrace handling](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/reference/project/#use_backtrace)
+- Provides more and better crash details for `:simple` and `:gdb` options.
+- `:gdb` option captures a full log file from `gdb` output and provides that filepath in the test case crash report.
 
 ### Mixins
 - PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
