@@ -758,28 +758,10 @@ class ConfiguratorSetup
     return ( (missing_plugins.size > 0) ? false : true )
   end
 
+  # Hook for any warnings about configuration combinations that are legal but likely
+  # unintentional or surprising.
   def warnings_for_problematic_configs(config)
-    warning_for_parameterized_tests_with_preprocessing( config )
-  end
-
-  ### Private
-
-  private
-
-  def warning_for_parameterized_tests_with_preprocessing(config)
-    # Unity parameterized tests incompatible with Ceedling test file preprocessing
-    test_preprocessing = 
-      (config[:project][:use_test_preprocessor] == :tests) ||
-      (config[:project][:use_test_preprocessor] == :all)
-
-    if ((config[:unity][:use_param_tests] == true) and test_preprocessing)
-      setting_sym = config[:project][:use_test_preprocessor]
-      msg = "Unity's parameterized test macros are enabled [:unity ↳ :use_param_tests] " \
-            "but are incompatible with Ceedling's preprocessing of test files " \
-            "[:project ↳ :use_test_preprocessor => :#{setting_sym}]. See docs for more. " \
-            "Compilation of your test cases will probably fail."
-      @loginator.log( msg, Verbosity::COMPLAIN )
-    end
+    # Empty
   end
 
 end

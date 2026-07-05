@@ -72,7 +72,7 @@ ceedling_system_tests do
 
     describe "Unity features" do
       test_case :test_project_unity_parameterized_test_cases
-      #test_case :test_project_preprocessed_unity_parameterized_test_cases
+      test_case :test_project_preprocessed_unity_parameterized_test_cases
       test_case :test_project_with_unity_exec_time
     end
 

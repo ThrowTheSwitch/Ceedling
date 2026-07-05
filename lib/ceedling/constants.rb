@@ -93,6 +93,16 @@ class PATTERNS
   TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
   TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
 
+  # Unity's TEST_CASE()/TEST_RANGE()/TEST_MATRIX() are positional marker macros.
+  # Unity's runner generator only honors one when it sits (whitespace only in between) 
+  # directly ahead of the `void test_Foo(...)` it configures.
+  # Captures one or more stacked calls (group 1) plus the name of the function they 
+  # immediately precede (group 2). So, callers can re-associate the macro text with its 
+  # function after preprocessing has separated them.
+  # The non-greedy `\(.*?\)` shares Unity's own limitation of not handling nested parens
+  # in macro arguments (see generate_test_runner.rb's identical fragment) -- parity, not a gap.
+  TEST_CASE_DIRECTIVE = /((?:[ \t]*(?:TEST_CASE|TEST_RANGE|TEST_MATRIX)\s*\(.*?\)\s*)+)void\s+(\w+)\s*\(/m
+
   PARTIAL_IMPL_FILENAME = /\A#{PARTIAL_FILENAME_PREFIX}.+_impl#{Regexp.escape(EXTENSION_CORE_SOURCE)}\z/
 end
 

@@ -261,26 +261,12 @@ The sections that follow flesh out the details of the bulleted list above.
 
 #### Preprocessing gotchas
 
-**_IMPORTANT:_ As of Ceedling 1.0.0, Ceedling's test preprocessing feature 
-has a limitation that affects Unity features triggered by the following macros.**
+##### `TEST_INCLUDE_PATH()` incompatibe with `#ifdef`
 
-* `TEST_CASE()`
-* `TEST_RANGE()`
-
-`TEST_CASE()` and `TEST_RANGE()` are Unity macros that are positional in a file 
-in relation to the test case functions they modify. While Ceedling's test file
-preprocessing can preserve these macro calls, their position cannot be preserved.
-
-That is, Ceedling's preprocessing and these Unity features are not presently 
-compatible. Note that it _is_ possible to enable preprocessing for mockable 
-header files apart from enabling it for test files. See the documentation for
-`:project` ↳ `:use_test_preprocessing`. This can allow test preprocessing in the 
-common cases of sophtisticate mockable headers while Unity's `TEST_CASE()` and 
-`TEST_RANGE()` are utilized in a test file untouched by preprocessing.
-
-**_IMPORTANT:_ The following new build directive macro `TEST_INCLUDE_PATH()` 
-available in Ceedling 1.0.0 is incompatible with enclosing conditional 
-compilation C preprocessing statements:**
+!!! note
+    The build directive macro `TEST_INCLUDE_PATH()`, available as of Ceedling 
+    1.0.0, is incompatible with enclosing conditional compilation C preprocessing 
+    statements.
 
 Wrapping `TEST_INCLUDE_PATH()` in conditional compilation statements 
 (e.g. `#ifdef`) will not behave as you expect. This macro is used as a marker
@@ -301,7 +287,7 @@ plain text looking for this macro at the beginning of a test build.
 
 * `TEST_SOURCE_FILE()` _can_ be placed within conditional compilation
   C preprocessing statements.
-* `TEST_INCLUDE_PATH()` & `TEST_SOURCE_FILE()` can be "hidden" from Ceedling's
+* `TEST_INCLUDE_PATH()` & `TEST_SOURCE_FILE()` can be “hidden” from Ceedling's
   text scanning with traditional C comments.
 
 ### Test file preprocessing

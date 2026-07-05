@@ -299,7 +299,12 @@ module CommonSystemTestCases
     end
   end
 
-  # NOTE: This is not supported in this release, therefore is not getting called.
+  # assets/test_example_with_parameterized_tests.c declares 3 TEST_CASE values,
+  # TEST_RANGE([5,100,5]) (20 values), and TEST_RANGE([10,100,10],[5,10,5]) (10*2=20 values)
+  # for a total of 43 expanded test invocations. Asserting the exact counts (rather than
+  # the file's usual loose `\d` match) matters here specifically. A broken positional
+  # association would silently degrade to 3 un-parameterized tests (one per declared
+  # function) and a loose digit match would still pass.
   def test_project_preprocessed_unity_parameterized_test_cases
     @c.with_context do
       Dir.chdir @proj_name do
@@ -310,11 +315,11 @@ module CommonSystemTestCases
         @c.merge_project_yml_for_test(settings)
 
         output = @c.ceedling_build_exec
-        expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
-        expect(output).to match(/TESTED:\s+\d/)
-        expect(output).to match(/PASSED:\s+\d/)
-        expect(output).to match(/FAILED:\s+\d/)
-        expect(output).to match(/IGNORED:\s+\d/)
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/TESTED:\s+43/)
+        expect(output).to match(/PASSED:\s+43/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+0/)
       end
     end
   end

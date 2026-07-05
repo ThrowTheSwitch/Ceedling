@@ -44,11 +44,6 @@ void test_should_handle_divisible_by_5_for_parameterized_test_range(int num) {
 
 See Unity documentation for more on parameterized test cases.
 
-!!! warning "Parameterized tests incompatible with preprocessing"
-    Unity’s parameterized tests are currently incompatible with Ceedling’s 
-    preprocessing features enabled for test files. See more in
-    [Ceedling’s preprocessing documentation](../../testing-guide/conventions.md#preprocessing-gotchas).
-
 **Default**: false
 
 <br/><br/>

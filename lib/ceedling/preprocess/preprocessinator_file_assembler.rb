@@ -249,6 +249,8 @@ class PreprocessinatorFileAssembler
     contents = []
     # TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
     test_directives = []
+    # TEST_CASE() / TEST_RANGE() / TEST_MATRIX(), paired with the test function name each precedes
+    test_case_directives = []
 
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
 
@@ -288,6 +290,12 @@ class PreprocessinatorFileAssembler
 
         # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
         test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
+
+        # Extract TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls paired with the test function
+        # they immediately precede -- these vanish from `contents` above because they're real
+        # (empty-expanding) Unity macros erased by full preprocessor expansion, so we must
+        # recover them from this macro-preserving text instead.
+        test_case_directives = @preprocessinator_reconstructor.extract_test_case_directives( _contents )
       end
     else
       @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
@@ -296,8 +304,20 @@ class PreprocessinatorFileAssembler
 
         # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
         test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
+
+        # Extract TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls paired with the test function
+        # they immediately precede (see comment in the fallback branch above)
+        test_case_directives = @preprocessinator_reconstructor.extract_test_case_directives( _contents )
       end
     end
+
+    # Reinsert TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls immediately ahead of their test
+    # function in `contents` -- full expansion erased them in place with no trace (not even a
+    # blank line), so position must be recovered by matching on the function name they modify.
+    contents = @preprocessinator_reconstructor.splice_test_case_directives(
+      contents: contents,
+      directives: test_case_directives
+    )
 
     return contents, test_directives
   end

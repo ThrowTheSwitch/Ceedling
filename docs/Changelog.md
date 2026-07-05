@@ -80,6 +80,9 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 #### Fallback preprocessing
 When your toolchain’s preprocessor lacks certain features, Ceedling still attempts to extract information and code from C files through fallback text processing. This fallback processing has been improved in a handful of ways, most notably implementing simple conditional compilation (`#ifdef`) processing.
 
+#### Restored support for `TEST_CASE`, `TEST_RANGE`, and `TEST_MATRIX`
+Ceedling 1.0.0 temporarily lost the ability to handle Unity’s parameterized test case features when test preprocessing was enabled. This has been restored.
+
 ### Project configuration
 
 #### `:project` ↳ `:name`
@@ -109,7 +112,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - #1128 Command line mixin precedence.
 - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
 
-### `#include`s handling and preprocessing:
+### `#include`s handling and preprocessing
 - Extensive improvements throughout.
 - PR #1126 Fix for race condition in cache handling of `#include` listings in YAML files.
 - #1015 Probing toolchain for presence of preprocessor directives-only ability.
