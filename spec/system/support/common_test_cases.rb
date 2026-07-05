@@ -308,7 +308,13 @@ module CommonSystemTestCases
   def test_project_preprocessed_unity_parameterized_test_cases
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
+        # Short destination filename: Ceedling's directives-only preprocessing path
+        # repeats the test module name twice (.../preprocess/files/<name>/directives_only/raw/<name>.c).
+        # Combined with an already-deep Windows CI temp project path, the asset's original
+        # long filename pushed the full absolute path past Windows' 260-char MAX_PATH limit,
+        # causing gcc.exe to fail opening its own output file with a spurious
+        # "No such file or directory". Keeping the copied filename short avoids that.
+        FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/test_ptc.c'
         settings = { :project => { :use_test_preprocessor => :all },
                      :unity => { :use_param_tests => true }
                    }
