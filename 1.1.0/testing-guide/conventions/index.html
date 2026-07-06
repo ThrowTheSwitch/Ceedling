@@ -4879,24 +4879,13 @@ files. The feature is only truly needed if your project meets the conditions
 above.</strong></p>
 <p>The sections that follow flesh out the details of the bulleted list above.</p>
 <h4 id="preprocessing-gotchas">Preprocessing gotchas</h4>
-<p><strong><em>IMPORTANT:</em> As of Ceedling 1.0.0, Ceedling's test preprocessing feature 
-has a limitation that affects Unity features triggered by the following macros.</strong></p>
-<ul>
-<li><code>TEST_CASE()</code></li>
-<li><code>TEST_RANGE()</code></li>
-</ul>
-<p><code>TEST_CASE()</code> and <code>TEST_RANGE()</code> are Unity macros that are positional in a file 
-in relation to the test case functions they modify. While Ceedling's test file
-preprocessing can preserve these macro calls, their position cannot be preserved.</p>
-<p>That is, Ceedling's preprocessing and these Unity features are not presently 
-compatible. Note that it <em>is</em> possible to enable preprocessing for mockable 
-header files apart from enabling it for test files. See the documentation for
-<code>:project</code> ↳ <code>:use_test_preprocessing</code>. This can allow test preprocessing in the 
-common cases of sophtisticate mockable headers while Unity's <code>TEST_CASE()</code> and 
-<code>TEST_RANGE()</code> are utilized in a test file untouched by preprocessing.</p>
-<p><strong><em>IMPORTANT:</em> The following new build directive macro <code>TEST_INCLUDE_PATH()</code> 
-available in Ceedling 1.0.0 is incompatible with enclosing conditional 
-compilation C preprocessing statements:</strong></p>
+<h5 id="test_include_path-incompatibe-with-ifdef"><code>TEST_INCLUDE_PATH()</code> incompatibe with <code>#ifdef</code></h5>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The build directive macro <code>TEST_INCLUDE_PATH()</code>, available as of Ceedling 
+1.0.0, is incompatible with enclosing conditional compilation C preprocessing 
+statements.</p>
+</div>
 <p>Wrapping <code>TEST_INCLUDE_PATH()</code> in conditional compilation statements 
 (e.g. <code>#ifdef</code>) will not behave as you expect. This macro is used as a marker
 for advanced abilities discovered by Ceedling parsing a test file as plain text.
@@ -4914,7 +4903,7 @@ plain text looking for this macro at the beginning of a test build.</p>
 <ul>
 <li><code>TEST_SOURCE_FILE()</code> <em>can</em> be placed within conditional compilation
   C preprocessing statements.</li>
-<li><code>TEST_INCLUDE_PATH()</code> &amp; <code>TEST_SOURCE_FILE()</code> can be "hidden" from Ceedling's
+<li><code>TEST_INCLUDE_PATH()</code> &amp; <code>TEST_SOURCE_FILE()</code> can be “hidden” from Ceedling's
   text scanning with traditional C comments.</li>
 </ul>
 <h3 id="test-file-preprocessing">Test file preprocessing</h3>
