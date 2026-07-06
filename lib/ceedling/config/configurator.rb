@@ -353,7 +353,10 @@ class Configurator
 
     # Force command line argument option for any backtrace option
     if use_backtrace != :none
-      config[:test_runner][:cmdline_args] = true
+      if config[:test_runner][:cmdline_args] == false
+        config[:test_runner][:cmdline_args] = true
+        @loginator.log( "Enabled :test_runner ↳ :cmdline_args because :project ↳ :use_backtrace is enabled.", Verbosity::COMPLAIN, LogLabels::NOTICE )
+      end
     end
 
     # Copy CMock options used by test runner generation

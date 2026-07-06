@@ -206,14 +206,24 @@ class CliHelper
       raise CeedlingException.new( "Test case filters are only applicable to test tasks. No test tasks were specified." )
     end
 
+    already_enabled = false
+
     # Add test runner configuration setting necessary to use test case filters
     value, _ = @config_walkinator.fetch_value( :test_runner, hash:config )
     if value.nil?
       # If no :test_runner section, create the whole thing
       config[:test_runner] = {:cmdline_args => true}
+      already_enabled = false
     else
-      # If a :test_runner section, just set :cmdlne_args
+      # If a :test_runner section, just set :cmdline_args
+      already_enabled = (value[:cmdline_args] == true)
       value[:cmdline_args] = true
+    end
+
+    # Only log if we actually changed something.
+    # No need to notify the user that we enabled a setting that was already enabled.
+    unless already_enabled
+      @loginator.log( "Enabled :test_runner ↳ :cmdline_args because test case filters are in use.", Verbosity::COMPLAIN, LogLabels::NOTICE )
     end
   end
 
