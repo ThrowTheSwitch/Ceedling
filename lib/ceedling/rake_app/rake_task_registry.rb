@@ -5,6 +5,41 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+# Tracks which Rake task namespaces are associated with which semantic tags
+# (:test, :release, :build) so bin/ CLI code and other components can ask, e.g.
+# "does invoking this task run tests?" without waiting for Rake to load
+# .rake files and build real task objects.
+#
+# The unit of registration is the root namespace (e.g. 'test', 'gcov'), not the
+# full task name. This handles all Rake task name forms uniformly:
+#   - Explicitly named tasks  (test:all)
+#   - Rule-synthesized tasks  (test:foo_file)
+#   - Bare top-level aliases  (test)
+# All share the same root namespace and are therefore all covered once that
+# namespace is registered.
+#
+# Namespaces are discovered by scanning .rake files as text for marker regexes
+# (see register_tasks) rather than via Rake's task inspection API, because Rake
+# tasks don't exist as objects until their .rake files are loaded. Namespace
+# identification is needed before loading .rake files, so bin/ CLI code and 
+# other components can determine whether the user's requested tasks include tests
+# or other build domains.
+#
+# Registration happens in two passes over the Ceedling lifecycle:
+#
+#   Pass 1 — Early, from bin/cli_helper.rb before .rake files are loaded.
+#     constants.rb is already required, so stock constants (TEST_SYM, RELEASE_SYM,
+#     UTILS_SYM) resolve correctly via Object.const_get. Plugin-specific constants
+#     (GCOV_SYM, VALGRIND_SYM, BULLSEYE_SYM, etc.) are defined in plugin lib/ files
+#     that have not been loaded yet, causing Object.const_get to raise NameError.
+#
+#   Pass 2 — After .rake files are loaded in rakefile.rb.
+#     All plugin lib/ paths have been added to $LOAD_PATH and all constants are
+#     defined. Object.const_get succeeds. The registry is cleared and rebuilt.
+#
+# Unresolvable constants (NameError in Pass 1) are handled by the _SYM convention
+# fallback in find_enclosing_namespace.
+
 class RakeTaskRegistry
 
   # Semantic tag constants — used as keys in the namespace_tags registry
@@ -26,7 +61,6 @@ class RakeTaskRegistry
   #   @ceedling[:release_invoker].setup_and_invoke_objects(
 
   MARKER_TEST_TASKS_SETUP_AND_INVOKE = /\[\s*:test_invoker\s*\]\.setup_and_invoke/
-  MARKER_TEST_TASKS_RAKE_INVOKE      = /test:.+\.invoke/
   MARKER_RELEASE_TASKS               = /\[\s*:release_invoker\s*\]\.setup_and_invoke_objects/
 
   def initialize
@@ -67,19 +101,8 @@ class RakeTaskRegistry
     end
   end
 
-  # Scan .rake files as text to identify Rake namespaces (and lone task aliases)
-  # that invoke the test pipeline. Text scanning is used instead of Rake's task
-  # inspection API because Rake tasks don't exist as objects until their .rake
-  # files are loaded — but we need namespace identification before that, so
-  # bin/ CLI code can determine whether the user's requested tasks include tests.
-  #
-  # The unit of registration is the root namespace (e.g. 'test', 'gcov'), not the
-  # full task name. This handles all Rake task name forms uniformly:
-  #   - Explicitly named tasks  (test:all)
-  #   - Rule-synthesized tasks  (test:foo_file)
-  #   - Bare top-level aliases  (test)
-  # All share the same root namespace and are therefore all covered once that
-  # namespace is registered.
+  # Scans .rake files as text to identify Rake namespaces that call certain marker
+  # code, registering each namespace's root with the given tags.
   #
   # Algorithm per file:
   #   1. Skip the file if no marker regex matches the full content (fast pre-check).
@@ -88,24 +111,15 @@ class RakeTaskRegistry
   #   3. Resolve the namespace identifier to a string (see find_enclosing_namespace).
   #   4. Register the namespace string with the provided tags.
   #
-  # This method is called twice in the Ceedling lifecycle:
-  #
-  #   Pass 1 — Early, from bin/cli_helper.rb before .rake files are loaded.
-  #     constants.rb is already required, so stock constants (TEST_SYM, RELEASE_SYM,
-  #     UTILS_SYM) resolve correctly via Object.const_get. Plugin-specific constants
-  #     (GCOV_SYM, VALGRIND_SYM, BULLSEYE_SYM, etc.) are defined in plugin lib/ files
-  #     that have not been loaded yet, causing Object.const_get to raise NameError.
-  #
-  #   Pass 2 — After .rake files are loaded in rakefile.rb.
-  #     All plugin lib/ paths have been added to $LOAD_PATH and all constants are
-  #     defined. Object.const_get succeeds. The registry is cleared and rebuilt.
-  #
-  # Unresolvable constants (NameError in Pass 1) are handled by the _SYM convention
-  # fallback in find_enclosing_namespace.
+  # Called once per pass (see class comment) — Pass 2 clears and rebuilds the
+  # registry so it doesn't accumulate stale Pass 1 entries.
   def register_tasks(rakefile_paths, markers:, tags:)
     rakefile_paths.each do |filepath|
       begin
-        content = File.read( filepath )
+        # Force valid UTF-8: transcode BOM-prefixed files correctly and replace
+        # any invalid/undefined byte sequences so regex matching below can't
+        # raise on files containing arbitrary unicode content.
+        content = File.read( filepath, encoding: 'bom|utf-8', invalid: :replace, undef: :replace, replace: '' )
       rescue
         next  # Skip unreadable files without failing
       end
@@ -137,7 +151,6 @@ class RakeTaskRegistry
       rakefile_paths, 
       markers: [
         MARKER_TEST_TASKS_SETUP_AND_INVOKE,
-        MARKER_TEST_TASKS_RAKE_INVOKE
         ],
       tags: TAGS_TEST
     )
