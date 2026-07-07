@@ -70,6 +70,7 @@ rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
     map_file,
     lib_args,
     lib_paths )
+    
   @ceedling[:release_invoker].artifactinate( bin_file.name, map_file, @ceedling[:configurator].release_build_artifacts )
 end
 

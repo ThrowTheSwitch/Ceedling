@@ -299,22 +299,33 @@ module CommonSystemTestCases
     end
   end
 
-  # NOTE: This is not supported in this release, therefore is not getting called.
+  # assets/test_example_with_parameterized_tests.c declares 3 TEST_CASE values,
+  # TEST_RANGE([5,100,5]) (20 values), and TEST_RANGE([10,100,10],[5,10,5]) (10*2=20 values)
+  # for a total of 43 expanded test invocations. Asserting the exact counts (rather than
+  # the file's usual loose `\d` match) matters here specifically. A broken positional
+  # association would silently degrade to 3 un-parameterized tests (one per declared
+  # function) and a loose digit match would still pass.
   def test_project_preprocessed_unity_parameterized_test_cases
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/'
+        # Short destination filename: Ceedling's directives-only preprocessing path
+        # repeats the test module name twice (.../preprocess/files/<name>/directives_only/raw/<name>.c).
+        # Combined with an already-deep Windows CI temp project path, the asset's original
+        # long filename pushed the full absolute path past Windows' 260-char MAX_PATH limit,
+        # causing gcc.exe to fail opening its own output file with a spurious
+        # "No such file or directory". Keeping the copied filename short avoids that.
+        FileUtils.cp test_asset_path("test_example_with_parameterized_tests.c"), 'test/test_ptc.c'
         settings = { :project => { :use_test_preprocessor => :all },
                      :unity => { :use_param_tests => true }
                    }
         @c.merge_project_yml_for_test(settings)
 
         output = @c.ceedling_build_exec
-        expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
-        expect(output).to match(/TESTED:\s+\d/)
-        expect(output).to match(/PASSED:\s+\d/)
-        expect(output).to match(/FAILED:\s+\d/)
-        expect(output).to match(/IGNORED:\s+\d/)
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/TESTED:\s+43/)
+        expect(output).to match(/PASSED:\s+43/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).to match(/IGNORED:\s+0/)
       end
     end
   end
@@ -821,7 +832,10 @@ module CommonSystemTestCases
         expect(output).to match(/Assertion/i)
         log_path = './build/logs/test/test_example_file_crash_assert/test_add_numbers_triggers_assert.gdb.log'
         expect(File.exist?(log_path)).to be(true)
-        expect(File.read(log_path)).to match(/SIGABRT|Aborted/i)
+        # Windwos gdb output for an assertion failure can be quite different from Linux.
+        # Windows gdb reports do not seem to cite the signal "SIGABRT" and may be quite brief, 
+        # only citing an assertion failure.
+        expect(File.read(log_path)).to match(/SIGABRT|abort|assert/i)
         expect(output).to match(/test_add_numbers_triggers_assert\.gdb\.log/)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)

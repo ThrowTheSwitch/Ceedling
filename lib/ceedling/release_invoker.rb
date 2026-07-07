@@ -10,13 +10,49 @@ require 'ceedling/constants'
 
 class ReleaseInvoker
 
-  constructor :configurator, :release_invoker_helper, :dependinator, :rake_task_invoker, :file_path_utils, :file_wrapper
+  constructor :configurator, :batchinator, :reportinator, :loginator, :rake_wrapper, :file_path_utils, :file_wrapper
 
+  def collect_release_build_objects()
+    objects = []
+
+    @batchinator.build_step( "Determining Objects to be Built", heading: false ) do
+      objects.concat(
+        @file_path_utils.form_release_build_objects_filelist(
+          @configurator.collection_release_build_input
+        )
+      )
+
+      objects.concat(
+        @file_path_utils.form_release_build_objects_filelist(
+          @configurator.collection_release_artifact_extra_link_objects
+        )
+      )
+    end
+
+    return objects    
+  end
 
   def setup_and_invoke_objects( files )
     objects = @file_path_utils.form_release_build_objects_filelist( files )
-    @rake_task_invoker.invoke_release_objects( objects )
+
+    @batchinator.build_step( "Building Objects" ) do
+      @batchinator.exec(workload: :compile, things: objects) do |object|
+        @rake_wrapper[object].invoke
+      end    
+    end
+
     return objects
+  end
+
+  def setup_and_invoke_binary( filepath )
+    @batchinator.build_step( "Building Binary" ) do
+      @rake_wrapper[filepath].invoke
+    end
+
+    banner = @reportinator.generate_banner(
+      @loginator.decorate( File.basename( filepath ), LogLabels::TITLE )
+    )
+    @loginator.log( "\n" + banner + "\n" )
   end
 
   def artifactinate( *files )

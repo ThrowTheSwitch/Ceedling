@@ -31,16 +31,15 @@ class Valgrind < Plugin
     @configurator        = @ceedling[:configurator]
     @loginator           = @ceedling[:loginator]
     @reportinator        = @ceedling[:reportinator]
-    @rake_task_invoker   = @ceedling[:rake_task_invoker]
+    @rake_invocation_tracker   = @ceedling[:rake_invocation_tracker]
     @plugin_manager      = @ceedling[:plugin_manager]
     @plugin_reportinator = @ceedling[:plugin_reportinator]
   end
 
   def pre_test_fixture_execute(arg_hash)
-    return unless @rake_task_invoker.invoked?( /^#{VALGRIND_ROOT_NAME}/ )
+    return unless arg_hash[:context] == VALGRIND_SYM
 
     @mutex.synchronize do
-      arg_hash[:context] = VALGRIND_SYM
       @tests_processed += 1
     end
 
@@ -64,7 +63,7 @@ class Valgrind < Plugin
   end
 
   def post_test_fixture_execute(arg_hash)
-    return unless @rake_task_invoker.invoked?( /^#{VALGRIND_ROOT_NAME}(:|$)/ )
+    return unless arg_hash[:context] == VALGRIND_SYM
 
     result_file = arg_hash[:result_file]
 
@@ -89,8 +88,8 @@ class Valgrind < Plugin
     end
   end
 
-  def post_build
-    return unless @rake_task_invoker.invoked?( /^#{VALGRIND_ROOT_NAME}(:|$)/ )
+  def post_build(_timestamp_s)
+    return unless @rake_invocation_tracker.invoked?( /^#{VALGRIND_ROOT_NAME}(:|$)/ )
 
     # Only present plugin-based test results if raw test results disabled by a reporting plugin
     if !@configurator.plugins_display_raw_test_results

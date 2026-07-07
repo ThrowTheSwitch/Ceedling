@@ -23,13 +23,16 @@ class FilePathCollectionUtils
 
   # Build up a directory path list from one or more strings or arrays of (+:/-:) simple paths & globs
   def collect_paths(paths)
+    # Nil input (e.g. unconfigured section) is treated as an empty list
+    return [] if paths.nil?
+
     plus  = Set.new # All real, expanded directory paths to add
     minus = Set.new # All real, expanded paths to exclude
-    
+
     # Iterate each path possibly decorated with aggregation modifiers and/or containing glob characters
     paths.each do |path|
       dirs = [] # Working list for evaluated directory paths
-    
+
       # Get path stripped of any +:/-: aggregation modifier
       _path = FilePathUtils.no_aggregation_decorators( path )
 
@@ -45,12 +48,15 @@ class FilePathCollectionUtils
         # Previous validation has already made warnings about filepaths in the list
         dirs << entry if @file_wrapper.directory?(entry)
       end
-      
+
       # For recursive directory glob at end of a path, collect parent directories too.
       # Ceedling's recursive glob convention includes parent directories (unlike Ruby's glob).
-      if path.end_with?('/**') or path.end_with?('/*')
+      # Use _path (decorator-stripped) so the suffix check is not sensitive to +:/-: prefix format.
+      # path.end_with? also works today (decorators are always prefixes, never suffixes),
+      # but _path expresses the correct intent and removes the implicit coupling.
+      if _path.end_with?('/**') or _path.end_with?('/*')
         parents = []
-        
+
         dirs.each {|dir| parents << File.join(dir, '..')}
 
         # Handle edge case of subdirectory glob but no subdirectories and therefore no parents
@@ -75,11 +81,12 @@ class FilePathCollectionUtils
       end
     end
 
-    # Use Set subtraction operator to remove any excluded paths
-    paths = (plus - minus).to_a
-    paths.map! {|path| shortest_path_from_working(path) }
+    # Collect the final set as an array and convert each absolute path to the shortest
+    # relative form from the working directory.
+    result = (plus - minus).to_a
+    result.map! {|path| shortest_path_from_working(path) }
 
-    return paths
+    return result
   end
 
 
@@ -88,24 +95,28 @@ class FilePathCollectionUtils
   # So, we rebuild the FileList ourselves and return it.
   # TODO: Replace FileList with our own, better version.
   def revise_filelist(list, revisions)
-    plus  = Set.new # All real, expanded directory paths to add
-    minus = Set.new # All real, expanded paths to exclude
-    
-    # Build base plus set for revised path
+    # Nil list produces an empty FileList; nil revisions leaves the list unchanged
+    return FileList.new([]) if list.nil?
+    revisions ||= []
+
+    plus  = Set.new # All real, expanded file paths to add
+    minus = Set.new # All real, expanded file paths to exclude
+
+    # Build base plus set: expand all existing list entries to absolute paths
     list.each do |path|
-      # Start with expanding all list entries to absolute paths
       plus << File.expand_path( path )
     end
 
     revisions.each do |revision|
       # Include or exclude revisions in file list
       path = FilePathUtils.no_aggregation_decorators( revision )
-      
+
       # Working list of revisions
       filepaths = []
 
-      # Expand path by pattern as needed and add only filepaths to working list
-      @file_wrapper.directory_listing( path ).each do |entry|
+      # Expand path by pattern as needed and add only filepaths to working list.
+      # Sort for deterministic ordering — see collect_paths and Github Issue #860
+      @file_wrapper.directory_listing( path ).sort.each do |entry|
         filepaths << File.expand_path( entry ) if !@file_wrapper.directory?( entry )
       end
 
@@ -117,11 +128,12 @@ class FilePathCollectionUtils
       end
     end
 
-    # Use Set subtraction operator to remove any excluded paths
-    paths = (plus - minus).to_a
-    paths.map! {|path| shortest_path_from_working(path) }
+    # Collect the final set as an array and convert each absolute path to the shortest
+    # relative form from the working directory.
+    result_paths = (plus - minus).to_a
+    result_paths.map! {|path| shortest_path_from_working(path) }
 
-    result = FileList.new( paths )
+    result = FileList.new( result_paths )
     result.resolve()  # Force expansion to prevent race conditions in threaded context
     return result
   end
@@ -132,7 +144,7 @@ class FilePathCollectionUtils
       (Pathname.new( path ).relative_path_from( @working_dir_path )).to_s
     rescue StandardError
       # If we can't form a relative path between these paths, use the absolute
-      path 
+      path
     end
   end
 

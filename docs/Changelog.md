@@ -80,6 +80,9 @@ Preprocessing support now properly distinguishes and handles system includes (`#
 #### Fallback preprocessing
 When your toolchain’s preprocessor lacks certain features, Ceedling still attempts to extract information and code from C files through fallback text processing. This fallback processing has been improved in a handful of ways, most notably implementing simple conditional compilation (`#ifdef`) processing.
 
+#### Restored support for `TEST_CASE`, `TEST_RANGE`, and `TEST_MATRIX`
+Ceedling 1.0.0 temporarily lost the ability to handle Unity’s parameterized test case features when test preprocessing was enabled. This has been restored.
+
 ### Project configuration
 
 #### `:project` ↳ `:name`
@@ -94,49 +97,69 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - #1014 Line Continuations not working in test name.
 - #1024 Fixed bug in options-handling for warnings log report.
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
-- Mixins
-   - #1128 Command line mixin precedence.
-   - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
-- Multiple fixes and improvements to `#include`s handling and preprocessing plus these issues & PRs:
-   - PR #1126 Fix for race condition in cache handling of `#include` listings in YAML files.
-   - #1015 Probing toolchain for presence of preprocessor directives-only ability.
-   - #1085 Fix relative `#include` path handling that broke test build convention.
-   - #358 Mocks with relative path in `#include` directive.
-   - PR #1056 Fix for extracting `#include` directive filenames that contain dashes.
-   - #1127 Fixes to path handling in `#include` directives.
-   - #1158 Fixes for `#include` filtering in test runner generation.
 - Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
 - #1120 Fixed (by removal) an overly “helpful” holdover from Ceedling’s earliest days causing certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
 - #1162 Fixes to Partials handling for file encoding / multi-byte characters (e.g. ©) in comment blocks.
 - #1160 Proper handling of locales and file encoding.
 - #1135 Fixed test fixture results handling to properly process Unity’s colored output when enabled.
 - #1114 Fixed `:default_tasks` handling.
-- GCov plugin
-   - `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
-   - #1115 Fixed Gcov plugin for Gcovr configuration file handling.
-   - #1161 Fixed “Found no coverage results” when system headers are processed by coverage.
-   - #1170 GCovr summary not passed through to NORMAL logging at end of a GCov plugin build.
-   - #1081 Fixes for Gcovr summary cooperating with coverage threshold failures.
-   - Prevention of coverage corruption during `ReportGenerator` reporting runs.
 - #1144 Fixed flags for release build linking.
 - #1169 Fixed linking with :libraries ↳ :release.
 - #1112 Fixed (via PR #1171) test failures incorrectly returning exit code 0 when the stdout pretty printer plugin is disabled ([Cory Todd](https://github.com/corytodd)).
 - Restored build failure registration and final build failure summary. Replaced test build failures by exception with build failure registration.
 
+### Mixins
+- #1128 Command line mixin precedence.
+- Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
+
+### `#include`s handling and preprocessing
+- Extensive improvements throughout.
+- PR #1126 Fix for race condition in cache handling of `#include` listings in YAML files.
+- #1015 Probing toolchain for presence of preprocessor directives-only ability.
+- #1085 Fix relative `#include` path handling that broke test build convention.
+- #358 Mocks with relative path in `#include` directive.
+- PR #1056 Fix for extracting `#include` directive filenames that contain dashes.
+- #1127 Fixes to path handling in `#include` directives.
+- #1158 Fixes for `#include` filtering in test runner generation.
+
+### GCov plugin
+- `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
+- #1115 Fixed Gcov plugin for Gcovr configuration file handling.
+- #1161 Fixed “Found no coverage results” when system headers are processed by coverage.
+- #1170 GCovr summary not passed through to NORMAL logging at end of a GCov plugin build.
+- #1081 Fixes for Gcovr summary cooperating with coverage threshold failures.
+- Prevention of coverage corruption during `ReportGenerator` reporting runs.
+
 ## ⚠️ Changed
 
-- Mixins
-   - PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
-   - Added warning logging if a Mixin contains mixins (nesting is not supported).
-   - Mixins now merge list content according to mixin priority. In all cases but one, a higher priority mixin inserts its list content before the content of the existing list to which it is merging. In the case of `:tools` `:arguments` lists, insertion occurs at the end of the arguments list to enable the typical CLI convention of rightmost argument having the highest priority.
 - Significant refactoring and improvements to logging and parallel processing.
 - Streamlined preprocessing, eliminating redundant steps and reducing memory usage.
-- Expanded backtrace handling:
-   - Provides more and better crash details for `:simple` and `:gdb` options
-   - `:gdb` option captures a full log file from `gdb` output and provides that filepath in the test case crash report.
-- The GCov plugin now compiles all files with coverage (and filters out unneeded framework results) in order to meet the stricter coverage handling that began with GCC 14. This change is backwards and forwards compatible with virtually all versions of GCC and the GCov plugin’s supporting utilities.
 - Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
+- Release build logging now matches test build logging.
 - Fixes for typos and grammar in documentation and logging.
+
+### Expanded [Backtrace handling](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/reference/project/#use_backtrace)
+- Provides more and better crash details for `:simple` and `:gdb` options.
+- `:gdb` option captures a full log file from `gdb` output and provides that filepath in the test case crash report.
+
+### Mixins
+- PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
+- Added warning logging if a Mixin contains mixins (nesting is not supported).
+- Mixins now merge list content according to mixin priority. In all cases but one, a higher priority mixin inserts its list content before the content of the existing list to which it is merging. In the case of `:tools` `:arguments` lists, insertion occurs at the end of the arguments list to enable the typical CLI convention of rightmost argument having the highest priority.
+
+### Plugins
+- The GCov plugin now compiles all files with coverage (and filters out unneeded framework results) in order to meet the stricter coverage handling that began with GCC 14. This change is backwards and forwards compatible with virtually all versions of GCC and the GCov plugin’s supporting utilities.
+- Expanded plugin hook events & updated all plugins accordingly:
+   - `pre_test_build` & `post_test_build` hooks.
+   - `pre/post_release` hooks renamed to `pre_release_build` & `post_release_build`.
+   - Build event hooks include stopwatch values in seconds (floating point) as arguments.
+   - Test build steps include a new context argument that exposes event origination (e.g. `test`, `gcov`, etc.).
+- [`command_hooks` plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/command-hooks/) updated with new hooks and arguments.
+- [`report_tests_log_factory` plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/report-tests-log-factory/)
+   - All generated reports incorporate `:project` ↳ `:name` from your configuration, if available.
+   - Incorporated new test build time tracking in reports that support it.
+   - Improved the design of the HTML report option.
+      ![](mkdocs/plugins/sample_html_report.png)
 
 ## 👋 Removed
 

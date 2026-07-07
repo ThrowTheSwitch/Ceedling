@@ -153,7 +153,7 @@ class Gcov < Plugin
   end
 
   # `Plugin` build step hook
-  def post_build
+  def post_build(_timestamp_s)
     # Do nothing unless a gcov: task was on the command line
     return unless @cli_gcov_task
 

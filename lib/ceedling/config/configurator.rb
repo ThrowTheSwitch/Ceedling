@@ -218,7 +218,7 @@ class Configurator
     # (String replacement and standardization require DI objects not available in bin/ scope.)
     config[:plugins][:load_paths].each do |path|
       path.replace( @system_wrapper.module_eval( path ) ) if (path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
-      FilePathUtils::standardize( path )
+      FilePathUtils::standardize_in_place( path )
     end
 
     # Delegate list construction to the shared helper (user paths first, built-in last).
@@ -353,7 +353,10 @@ class Configurator
 
     # Force command line argument option for any backtrace option
     if use_backtrace != :none
-      config[:test_runner][:cmdline_args] = true
+      if config[:test_runner][:cmdline_args] == false
+        config[:test_runner][:cmdline_args] = true
+        @loginator.log( "Enabled :test_runner ↳ :cmdline_args because :project ↳ :use_backtrace is enabled.", Verbosity::COMPLAIN, LogLabels::NOTICE )
+      end
     end
 
     # Copy CMock options used by test runner generation
@@ -658,28 +661,44 @@ class Configurator
       @reportinator.generate_progress( 'Standardizing all paths' )
     end
 
-    # Individual paths that don't follow `_path` convention processed here
-    paths = [
-      config[:project][:build_root],
-      config[:release_build][:artifacts]
-    ]
-
-    paths.flatten.each { |path| FilePathUtils::standardize( path ) }
-
-    config[:paths].each_pair do |collection, paths|
-      # Ensure that list is an array (i.e. handle case of list being a single string,
-      # or a multidimensional array)
-      config[:paths][collection] = [paths].flatten.map{|path| FilePathUtils::standardize( path )}
+    # :project ↳ :build_root and :release_build ↳ :artifacts are individual paths
+    # that don't follow the _path/_paths key convention — handle them explicitly.
+    # :release_build may be absent in minimal configs; guard prevents NoMethodError.
+    paths = [config[:project][:build_root]]
+    if config[:release_build]
+      paths << config[:release_build][:artifacts]
+    else
+      @loginator.log(
+        ":release_build section absent from config ➡️ skipping :artifacts path standardization.",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
     end
 
-    config[:files].each_pair { |_, files| files.each{ |path| FilePathUtils::standardize( path ) } }
+    paths.flatten.each { |path| FilePathUtils::standardize_in_place( path ) }
 
-    config[:tools].each_pair { |_, config| FilePathUtils::standardize( config[:executable] ) if (config.include? :executable) }
+    config[:paths].each_pair do |collection, paths|
+      # Flatten to handle single strings or nested arrays; reject nils (non-String passthrough
+      # from standardize) and empty strings left after stripping whitespace-only entries.
+      config[:paths][collection] = [paths].flatten
+        .map    { |path| FilePathUtils::standardize_in_place( path ) }
+        .reject { |path| path.nil? || (path.is_a?( String ) && path.empty?) }
+    end
+
+    config[:files].each_pair do |collection, files|
+      # Same sanitization as :paths — replace array to remove any nil or empty entries
+      # produced by standardize on non-String or whitespace-only values.
+      config[:files][collection] = [files].flatten
+        .map    { |path| FilePathUtils::standardize_in_place( path ) }
+        .reject { |path| path.nil? || (path.is_a?( String ) && path.empty?) }
+    end
+
+    config[:tools].each_pair { |_, config| FilePathUtils::standardize_in_place( config[:executable] ) if (config.include? :executable) }
 
     # All other paths at secondary hash key level processed by convention (`_path`):
     # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are standardized
     config.each_pair do |_, child|
-      collect_path_list( child ).each { |path| FilePathUtils::standardize( path ) }
+      collect_path_list( child ).each { |path| FilePathUtils::standardize_in_place( path ) }
     end
   end
 

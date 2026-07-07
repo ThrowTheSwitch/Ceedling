@@ -101,7 +101,7 @@ is necessary for every test executable build. That path can come from a `:paths`
 ↳ `:include` entry in your project configuration or by using `TEST_INCLUDE_PATH()` 
 in a test file.
 
-Please see [Configuring Your Header File Search Paths](conventions.md#search-paths-for-test-builds)
+Please see [Configuring Your Header File Search Paths](conventions.md#test-build-search-paths)
 for an overview of Ceedling's options and conventions for header file search paths.
 
 ### `TEST_INCLUDE_PATH()` Usage

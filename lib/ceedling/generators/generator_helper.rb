@@ -33,15 +33,17 @@ class GeneratorHelper
       crash = true
     end
 
-    # Negative lookahead regex that checks all lines in test STDERR output.
-    # (?m) enables multiline mode.
-    # Matches only a line with a 'segfault' variant that does not begin with the test code filename.
-    # Processing STDERR and ignoring lines that look like test case results helps limit false positives.
-    segfault_pattern = 'Seg.*fault'
-    regex = /\A(?!(?m).*^#{Regexp.escape(test_filename)}.*$).*(?:#{segfault_pattern})/mi
-  
-    if shell_result[:stderr].match?(regex)
-      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do 
+    # Scan STDERR line by line for a segfault variant that is not attributed to the test file.
+    # A line starting with test_filename is a Unity-reported test-case result, not an OS crash.
+    # Checking each line individually avoids false negatives when attributed and bare segfault
+    # lines coexist in the same stderr output.
+    segfault_pattern = /Seg.*fault/i
+    bare_segfault = shell_result[:stderr].each_line.any? do |line|
+      line.match?(segfault_pattern) && !line.start_with?(test_filename)
+    end
+
+    if bare_segfault
+      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do
         "#{runner} STDERR reports segmentation fault"
       end
       crash = true

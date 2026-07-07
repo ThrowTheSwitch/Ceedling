@@ -127,6 +127,82 @@ class PreprocessinatorReconstructor
   end
 
 
+  # Extract TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls paired with the name of the test
+  # function each stack of calls immediately precedes.
+  #
+  # Unlike `extract_test_directive_macro_calls` above, this cannot be built on top of
+  # `extract_tokens_by_regex_list()`. That helper (via `@parsing_parcels.code_lines`) hands
+  # the regex one physical/continuation-joined line at a time, so a pattern spanning
+  # "TEST_CASE(...)\nvoid test_Foo(" could never match -- and that split-across-two-lines
+  # layout is the overwhelmingly common real-world case (each macro call is a line of its
+  # own, the function signature is the next line down). So we scan the whole string in one
+  # pass instead, letting `PATTERNS::TEST_CASE_DIRECTIVE`'s `/m` flag see across line breaks.
+  #
+  # `file_contents` is expected to already have had comments stripped and #if/#ifdef/#include
+  # directives (and their line markers) resolved away -- true of both callers in
+  # PreprocessinatorFileAssembler#collect_test_file_contents: the non-fallback path reads
+  # the directives-only GCC output (already comment-stripped in place by
+  # PreprocessinatorCommentStripper before this ever runs, and already stripped of line
+  # markers by `_scan_expansion_for_file` above), and the fallback path reads text already
+  # run through `@parsing_parcels.code_lines` (which strips comments) plus conditional
+  # filtering. So there's nothing here to confuse the adjacency test between a macro call
+  # and the function signature that follows it.
+  def extract_test_case_directives(file_contents)
+    pairs = []
+
+    file_contents.scan( PATTERNS::TEST_CASE_DIRECTIVE ) do |directive, function|
+      pairs << { function: function, directive: directive.strip.split( "\n" ).map( &:rstrip ) }
+    end
+
+    return pairs
+  end
+
+
+  # Reinsert TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls (extracted above from a
+  # macro-preserving preprocessor pass) into `contents` (built from a *fully expanded*
+  # preprocessor pass, where these macros -- real Unity macros that `#define` to nothing --
+  # have already vanished without a trace) immediately ahead of the matching test function's
+  # line. `contents` is a scanning artifact only (never compiled), so reinserting this raw,
+  # unexpanded macro text back into it is safe: Unity's own runner generator is the only
+  # consumer, and it only cares that the text is there, immediately before the function.
+  #
+  # A single cursor walks `contents` forward as each directive is placed, rather than
+  # independently searching the whole array per directive. Two reasons: it mirrors the
+  # existing precedent for this exact original-order correlation problem elsewhere in
+  # Ceedling (GeneratorTestRunner#parse_test_file's line-number remap, and Unity's own
+  # find_tests() line-number lookup), and it avoids ever misattributing a directive to an
+  # earlier stray match of the same function name (e.g. a forward declaration) instead of
+  # the real definition that follows it in file order.
+  def splice_test_case_directives(contents:, directives:)
+    cursor = 0
+
+    directives.each do |pair|
+      function_regex = /^\s*void\s+#{Regexp.escape(pair[:function])}\s*\(/
+
+      # Search forward from the cursor only. If the function isn't found -- e.g. it was
+      # compiled out by an inactive #ifdef branch, resolved identically in both the source
+      # this directive came from and in `contents` itself -- there's nothing to attach the
+      # directive to, and dropping it silently is correct: an orphaned directive is inert.
+      index = nil
+      contents[cursor..-1].each_with_index do |line, offset|
+        if line =~ function_regex
+          index = cursor + offset
+          break
+        end
+      end
+      next if index.nil?
+
+      contents.insert( index, *pair[:directive] )
+
+      # Advance past the directive lines just inserted and the function line itself so the
+      # next directive's search starts after this one, preserving file order.
+      cursor = index + pair[:directive].size + 1
+    end
+
+    return contents
+  end
+
+
   # Extract all pragmas as a list from a file as string
   def extract_pragmas(file_contents)
     return extract_multiline_directives( file_contents, 'pragma' )

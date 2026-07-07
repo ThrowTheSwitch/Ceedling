@@ -10,10 +10,11 @@ require 'open3'
 
 class SystemWrapper
 
-  # static method for use in defaults
+  # Memoized: host_os is fixed for the process lifetime.
+  # Guard against nil? rather than ||= so false (non-Windows) is cached correctly.
   def self.windows?
-    return ((RbConfig::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false) if defined?(RbConfig)
-    return ((Config::CONFIG['host_os'] =~ /mswin|mingw/) ? true : false)
+    return @windows unless @windows.nil?
+    @windows = (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|msys|ucrt/i) ? true : false
   end
 
   def self.time_stopwatch_s

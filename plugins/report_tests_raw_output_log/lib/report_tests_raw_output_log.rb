@@ -42,13 +42,13 @@ class ReportTestsRawOutputLog < Plugin
   end
 
   # `Plugin` build step hook
-  def post_build()
+  def post_build(_timestamp_s)
     # Write collected raw output to log(s)
     write_logs( @raw_output )
   end
 
   # `Plugin` build step hook
-  def post_error()
+  def post_error(_timestamp_s)
     # Write collected raw output to log(s)
     write_logs( @raw_output )
   end

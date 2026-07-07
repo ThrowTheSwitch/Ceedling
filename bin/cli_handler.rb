@@ -276,7 +276,7 @@ class CliHandler
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
-    @cli_helper.log_project_name( config )
+    @cli_helper.console_project_name( config )
 
     # Exception handling to ensure we dump the configuration regardless of config validation errors
     begin
@@ -301,7 +301,7 @@ class CliHandler
     ensure
       @helper.dump_yaml( config, filepath, sections )
 
-      @loginator.console( "Dumped project configuration to #{filepath}\n", LogLabels::TITLE )      
+      @loginator.console( "\nDumped project configuration to #{filepath}\n", LogLabels::TITLE )      
     end
   end
 
@@ -344,7 +344,7 @@ class CliHandler
 
     _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
-    @cli_helper.log_project_name( config )
+    @cli_helper.console_project_name( config )
 
     # Save references
     app_cfg.set_project_config( config )
@@ -386,7 +386,7 @@ class CliHandler
       output << "\n"
     end
 
-    @loginator.console( "#{output}\n", LogLabels::TITLE )
+    @loginator.console( "\n#{output}\n", LogLabels::TITLE )
   end
 
 

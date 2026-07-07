@@ -343,21 +343,51 @@ This pair of methods is called for each test file in a test build.
 
 The argument `test` corresponds to the path of the test C file being processed.
 
-## `Plugin` hook methods `pre_release()` and `post_release()`
+## `Plugin` hook methods `pre_test_build(context, timestamp_s)` and `post_test_build(context, timestamp_s)`
+
+These methods are called before and after the full test build pipeline — i.e.
+all steps needed to configure, preprocess, compile, link, execute, and collect
+results for every test file in the build. `post_test_build` is called at all
+termination points, including early exit due to a build error.
+
+The argument `context` is the build context symbol (e.g. `:test`, `:gcov`) that
+was passed to `TestInvoker#setup_and_invoke`. This lets a plugin respond
+differently depending on which kind of build triggered the pipeline.
+
+The argument `timestamp_s` is a floating-point stopwatch value in seconds
+(from `SystemWrapper.time_stopwatch_s`). Compare the `pre_test_build` and
+`post_test_build` timestamps to compute the total test build duration using
+`Reportinator.generate_duration_string`.
+
+## `Plugin` hook methods `pre_release_build(timestamp_s)` and `post_release_build(timestamp_s)`
 
 These methods are called before and after performing all steps needed to run the
-release task — i.e. configure, preprocess, compile, link, etc.
+release task — i.e. configure, preprocess, compile, link, etc. `post_release_build`
+is called at all termination points, including early exit due to a build error.
 
-## `Plugin` hook methods `pre_build` and `post_build`
+The argument `timestamp_s` is a floating-point stopwatch value in seconds
+(from `SystemWrapper.time_stopwatch_s`). Compare the `pre_release_build` and
+`post_release_build` timestamps to compute the total release build duration using
+`Reportinator.generate_duration_string`.
 
-These methods are called before and after executing any ceedling task — e.g:
+## `Plugin` hook methods `pre_build(timestamp_s)` and `post_build(timestamp_s)`
+
+These methods are called before and after executing any Ceedling task — e.g.
 test, release, coverage, etc.
 
-## `Plugin` hook methods `post_error()`
+The argument `timestamp_s` is a floating-point stopwatch value in seconds
+(from `SystemWrapper.time_stopwatch_s`). Compare the `pre_build` and
+`post_build` timestamps to compute the total build duration using
+`Reportinator.generate_duration_string`.
+
+## `Plugin` hook method `post_error(timestamp_s)`
 
 This method is called at the conclusion of a Ceedling build that encounters any
 error that halts the build process. To be clear, a test build with failing test
 cases is not a build error.
+
+The argument `timestamp_s` is a floating-point stopwatch value in seconds
+(from `SystemWrapper.time_stopwatch_s`) at the moment the error is handled.
 
 ## `Plugin` hook methods `summary()`
 
@@ -478,6 +508,6 @@ hash/array Ruby code with comments and with some edits to reduce line length.
 }
 ```
 
-[preprocessing]: ../../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests
+[preprocessing]: ../../testing-guide/conventions.md#test-preprocessing
 
 <br/><br/>

@@ -88,13 +88,19 @@ class Loginator
                 logfile( sanitize( file_msg, false ), extract_stream_name( stream ) )
               end
         
-              # Only output to console when message reaches current verbosity level
-              if !stream.nil? && (@verbosinator.should_output?( verbosity ))
+              # Output to console -- desired verbosity was checked at enqueueing
+              if !stream.nil?
                 # Add labels and fun characters
                 console_msg = format( message, verbosity, label, @decorators )
-        
+
                 # Write to output stream after optionally removing any problematic characters
                 stream.print( sanitize( console_msg, @decorators ) )
+
+                # Flush immediately.
+                # Required on Windows where $stdout connected to a pipe is fully buffered.
+                # Without an explicit flush, messages sit in Ruby's IO buffer and can be lost
+                # when the process exits before the C runtime drains the buffer.
+                stream.flush
               end
             end
           rescue ThreadError
@@ -249,6 +255,10 @@ class Loginator
 
     # Write directly to stdout — no queue, no verbosity check, no text labels
     $stdout.print( sanitize( insert_prepend(prepend, message), @decorators ) )
+
+    # Flush immediately.
+    # Required on Windows where $stdout connected to a pipe is fully buffered
+    $stdout.flush()
   end
 
 

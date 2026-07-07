@@ -74,13 +74,13 @@ class ReportBuildWarningsLog < Plugin
   end
 
   # `Plugin` build step hook
-  def post_build()
+  def post_build(_timestamp_s)
     # Write collected warnings to log(s)
     write_logs( @warnings, @log_filename )
   end
 
   # `Plugin` build step hook
-  def post_error()
+  def post_error(_timestamp_s)
     # Write collected warnings to log(s)
     write_logs( @warnings, @log_filename )
   end

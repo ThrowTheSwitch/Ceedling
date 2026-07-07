@@ -29,7 +29,7 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
   return if !defined?(PROJECT_VERBOSITY)
   return if (PROJECT_VERBOSITY < Verbosity::NORMAL)
 
-  duration = Reportinator.generate_duration( start_time_s: start_time_s, end_time_s: end_time_s )
+  duration = Reportinator.generate_duration_from_interval( start_time_s: start_time_s, end_time_s: end_time_s )
 
   return if duration.empty?
 
@@ -93,7 +93,7 @@ begin
   start_time = SystemWrapper.time_stopwatch_s()
 
   # Tell all our plugins we're about to do something
-  @ceedling[:plugin_manager].pre_build if CEEDLING_APPCFG.build_tasks?
+  @ceedling[:plugin_manager].pre_build( start_time ) if CEEDLING_APPCFG.build_tasks?
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
@@ -122,12 +122,12 @@ END {
     # Tell all our plugins the build is done and process results
     begin
       if CEEDLING_APPCFG.build_tasks?
-        @ceedling[:plugin_manager].post_build
+        @ceedling[:plugin_manager].post_build( SystemWrapper.time_stopwatch_s() )
         @ceedling[:plugin_manager].print_plugin_failures
       end
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )
-      test_failures_handler() if @ceedling[:rake_task_invoker].test_build_invoked?
+      test_failures_handler() if @ceedling[:rake_invocation_tracker].test_build_invoked?
     rescue => ex
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )
@@ -142,7 +142,7 @@ END {
     msg = "Ceedling could not complete operations because of errors"
     @ceedling[:loginator].log( msg, Verbosity::ERRORS, LogLabels::TITLE )
     begin
-      @ceedling[:plugin_manager].post_error if CEEDLING_APPCFG.build_tasks?
+      @ceedling[:plugin_manager].post_error( SystemWrapper.time_stopwatch_s() ) if CEEDLING_APPCFG.build_tasks?
     rescue => ex
       boom_handler( @ceedling[:loginator], ex)
     ensure

@@ -164,14 +164,14 @@ ceedling_system_tests do
   end
 
   # =========================================================================
-  describe 'Mixin loading :: merge ORDER per documentation' do
+  describe 'Mixin loading :: merge order' do
     before do
       @c.with_context do
         @c.ceedling_appcmd_exec('example temp_sensor')
       end
     end
 
-    it 'logs merge order as [config, env, cmdline] per documentation' do
+    it 'logs merge order as [config, env, cmdline]' do
       @c.with_context do
         Dir.chdir @proj_name do
           File.write('mixin/ordering_config.yml',   ORDERING_MIXIN_CONFIG)

@@ -25,6 +25,7 @@ namespace VALGRIND_SYM do
   task :all => [:prepare] do
     @ceedling[:test_invoker].setup_and_invoke(
       tests: COLLECTION_ALL_TESTS,
+      context: VALGRIND_SYM,
       options: { :force_run => true, :build_only => false }.merge(TOOL_COLLECTION_TEST_TASKS)
     )
   end
@@ -44,6 +45,7 @@ namespace VALGRIND_SYM do
     if !matches.empty?
       @ceedling[:test_invoker].setup_and_invoke(
         tests: matches,
+        context: VALGRIND_SYM,
         options: { :force_run => false }.merge(TOOL_COLLECTION_TEST_TASKS)
       )
     else
@@ -58,6 +60,7 @@ namespace VALGRIND_SYM do
     if !matches.empty?
       @ceedling[:test_invoker].setup_and_invoke(
         tests: matches,
+        context: VALGRIND_SYM,
         options: { :force_run => false }.merge(TOOL_COLLECTION_TEST_TASKS)
       )
     else
@@ -78,6 +81,7 @@ rule(/^#{VALGRIND_TASK_ROOT}\S+$/ => [
   @ceedling[:rake_wrapper][:prepare].invoke
   @ceedling[:test_invoker].setup_and_invoke(
     tests: [test.source],
+    context: VALGRIND_SYM,
     options: { :force_run => true, :build_only => false }.merge(TOOL_COLLECTION_TEST_TASKS)
   )
 end

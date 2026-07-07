@@ -19,6 +19,8 @@ from the same source module in a single test file and enables testing of
    * _Finally_ supports coverage reports for all sources.
    * Adds support for Modified Condition / Decision Coverage.
 * Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
+* Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases
+  (support was temporarily removed with 1.0.0).
 
 [partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
 [example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/

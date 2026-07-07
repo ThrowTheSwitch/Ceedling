@@ -1,8 +1,8 @@
-# Important Conventions & Behaviors
+# Conventions & Behaviors
 
 **How to get things done and understand what's happening during builds**
 
-## Directory Structure, Filenames & Extensions
+## Directory structure & filenames
 
 Much of Ceedling's functionality is driven by collecting files
 matching certain patterns inside the paths it's configured
@@ -17,7 +17,7 @@ within source directories, or tests and source directories
 can be wholly separated at the top of your project's directory
 tree.
 
-## Search Paths for Test Builds
+## Test build search paths
 
 Test builds in C are fairly complex. Each test file becomes a test
 executable. Each test executable needs generated runner code and 
@@ -98,7 +98,7 @@ _**Notes:**_
   order of any Mixins. Paths specified with Mixins will be added to 
   path lists in your project configuration in the order of merging.
 
-## Search Paths for Release Builds
+## Release build search paths
 
 Unlike test builds, release builds are relatively straightforward. Each
 source file is compiled into an object file. All object files are linked.
@@ -108,7 +108,7 @@ and can handle linking in libraries as well.
 Search paths for release builds are configured with `:paths` ↳ `:include` 
 in your project configuration. That's about all there is to it.
 
-## Conventions for Source Files & Binary Release Artifacts
+## Source files & release artifacts
 
 Your binary release artifact results from the compilation and
 linking of all source files Ceedling finds in the specified source
@@ -118,12 +118,12 @@ both be recognized - only one or the other. See the configuration
 options and defaults in the documentation for the `:extension`
 sections of your configuration file (found in the [configuration reference](../configuration/index.md)).
 
-## Conventions for Test Files & Executable Test Fixtures
+## Test files & fixtures
 
 Ceedling builds each individual test file with its accompanying
 source file(s) into a single, monolithic test fixture executable.
 
-### Test File Naming Convention
+### Test file naming
 
 Ceedling recognizes test files by a naming convention — a (configurable)
 prefix such as "`test_`" at the beginning of the file name with the same 
@@ -138,7 +138,7 @@ or `testing_MyAwesomeCode.C` could each be valid test file
 names. Note, however, that Ceedling can recognize only one test
 file naming convention per project.
 
-### Conventions for Source and Mock Files to Be Compiled & Linked
+### Source & mock files to compile and link
 
 Ceedling knows what files to compile and link into each individual
 test executable by way of the `#include` list contained in each
@@ -166,7 +166,7 @@ That was a lot of information and many clauses in a very few
 sentences; the commented example test file code that follows in a 
 bit will make it clearer.
 
-### Convention for Test Case Functions + Test Runner Generation
+### Test case functions & runner generation
 
 By naming your test functions according to convention, Ceedling
 will extract and collect into a generated test runner C file the 
@@ -188,9 +188,9 @@ A test case function signature must have these elements:
 In other words, a test function signature should look like this: 
 `void test<any_name_you_like>(void)`.
 
-## Ceedling preprocessing behavior for your tests
+## Test preprocessing
 
-### Preprocessing feature background and overview
+### Background and overview
 
 Ceedling and CMock are advanced tools that both perform fairly sophisticated
 parsing.
@@ -231,7 +231,7 @@ own tools in this highly specialized capacity.**
 
 [project-settings]: ../configuration/reference/project.md
 
-### Ceedling preprocessing limitations and gotchas
+### Limitations & gotchas
 
 #### Preprocessing limitations cheatsheet
 
@@ -261,26 +261,12 @@ The sections that follow flesh out the details of the bulleted list above.
 
 #### Preprocessing gotchas
 
-**_IMPORTANT:_ As of Ceedling 1.0.0, Ceedling's test preprocessing feature 
-has a limitation that affects Unity features triggered by the following macros.**
+##### `TEST_INCLUDE_PATH()` incompatibe with `#ifdef`
 
-* `TEST_CASE()`
-* `TEST_RANGE()`
-
-`TEST_CASE()` and `TEST_RANGE()` are Unity macros that are positional in a file 
-in relation to the test case functions they modify. While Ceedling's test file
-preprocessing can preserve these macro calls, their position cannot be preserved.
-
-That is, Ceedling's preprocessing and these Unity features are not presently 
-compatible. Note that it _is_ possible to enable preprocessing for mockable 
-header files apart from enabling it for test files. See the documentation for
-`:project` ↳ `:use_test_preprocessing`. This can allow test preprocessing in the 
-common cases of sophtisticate mockable headers while Unity's `TEST_CASE()` and 
-`TEST_RANGE()` are utilized in a test file untouched by preprocessing.
-
-**_IMPORTANT:_ The following new build directive macro `TEST_INCLUDE_PATH()` 
-available in Ceedling 1.0.0 is incompatible with enclosing conditional 
-compilation C preprocessing statements:**
+!!! note
+    The build directive macro `TEST_INCLUDE_PATH()`, available as of Ceedling 
+    1.0.0, is incompatible with enclosing conditional compilation C preprocessing 
+    statements.
 
 Wrapping `TEST_INCLUDE_PATH()` in conditional compilation statements 
 (e.g. `#ifdef`) will not behave as you expect. This macro is used as a marker
@@ -301,10 +287,10 @@ plain text looking for this macro at the beginning of a test build.
 
 * `TEST_SOURCE_FILE()` _can_ be placed within conditional compilation
   C preprocessing statements.
-* `TEST_INCLUDE_PATH()` & `TEST_SOURCE_FILE()` can be "hidden" from Ceedling's
+* `TEST_INCLUDE_PATH()` & `TEST_SOURCE_FILE()` can be “hidden” from Ceedling's
   text scanning with traditional C comments.
 
-### Preprocessing of your test files
+### Test file preprocessing
 
 When preprocessing is enabled for test files, Ceedling will expand preprocessor
 statements in test files before extracting `#include` conventions and test case 
@@ -374,7 +360,7 @@ void test_some_test_case(void) {
 }
 ```
 
-### Preprocessing of mockable header files
+### Header file preprocessing
 
 When preprocessing is enabled for mocking, Ceedling will expand preprocessor 
 statements in header files before generating mocks from them. CMock requires
@@ -438,9 +424,9 @@ unsigned int someFunction(void);
 INLINE_MAGIC RETURN_TYPE_MAGIC someFunction(PARAMETER_MAGIC);
 ```
 
-## Execution time (duration) reporting in Ceedling operations & test suites
+## Duration reporting
 
-### Ceedling's logged run times
+### Logged run times
 
 Ceedling logs two execution times for every project run.
 
@@ -459,7 +445,7 @@ you specify at the command line.
 Ceedling operations completed in 1.03 seconds
 ```
 
-### Ceedling test suite and Unity test executable run durations
+### Test suite & executable durations
 
 A test suite comprises one or more Unity test executables (see 
 [Anatomy of a Test Suite](test-suite-anatomy.md)). Ceedling times indvidual Unity 
@@ -484,7 +470,7 @@ multi-threading tends to introduce context switching and processor scheduling
 overhead, the run duration of a test executable may be reported as longer than
 a in a comparable single-threaded build.
 
-### Unity test case run times
+### Test case run times
 
 Individual test case exection time tracking is specifically a [Unity] feature 
 (see its documentation for more details). If enabled and if your platform 
@@ -509,13 +495,13 @@ _NOTE:_ Most test cases are quite short, and most computers are quite fast. As
  range. Unity would require special rigging that is inconsistently available
  across platforms to measure test case durations at a finer resolution.
 
-## The Magic of Dependency Tracking
+## Dependency tracking
 
 Previous versions of Ceedling used features of Rake to offer
-various kinds of smart rebuilds--that is, only regenerating files, 
+various kinds of smart rebuilds — that is, only regenerating files, 
 recompiling code files, or relinking executables when changes within 
 the project had occurred since the last build. Optional Ceedling 
-features discovered "deep dependencies" such that, for example, a 
+features discovered “deep dependencies” such that, for example, a 
 change in a header file several nested layers deep in `#include` 
 statements would cause all the correct test executables to be 
 updated and run.
@@ -526,7 +512,7 @@ Ceedling undergoes a major overhaul.
 
 Please see the [Release Notes](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md).
 
-### Notes on (Not So) Smart Rebuids
+### (Not so) smart rebuilds
 
 * New features that are a part of the Ceedling overhaul can 
   significantly speed up test suite execution and release builds 
@@ -537,7 +523,7 @@ Please see the [Release Notes](https://github.com/ThrowTheSwitch/Ceedling/blob/m
 * When smart rebuilds return, they will further speed up builds as
   will other planned optimizations.
 
-## Ceedling's Build Output (Files, That Is)
+## Build output
 
 Ceedling requires a top-level build directory for all the stuff
 that it, the accompanying test tools, and your toolchain generate.
@@ -563,7 +549,7 @@ This directory structure was chosen specifically because it
 tends to work nicely with Continuous Integration setups that
 recognize and list build artifacts for retrieval / download.
 
-## Build _Errors_ vs. Test _Failures_. Oh, and Exit Codes.
+## Build errors, test failures
 
 ### Errors vs. Failures
 
@@ -610,7 +596,7 @@ rig up some kind of logging monitor that scans Ceedling's test
 summary report sent to `$stdout` and/or a log file. Otherwise, you
 could have a successful build but failing tests.
 
-### Notes on Unity Test Executable Exit Codes
+### Test executable exit codes
 
 Ceedling works by collecting multiple Unity test executables together 
 into a test suite (more here: [Anatomy of a Test Suite](test-suite-anatomy.md)).

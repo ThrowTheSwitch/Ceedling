@@ -5,9 +5,9 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-class RakeTaskInvoker
+class RakeInvocationTracker
 
-  constructor :rake_task_registry, :batchinator, :rake_utils, :rake_wrapper
+  constructor :rake_task_registry, :rake_utils
 
   # Post-execution lookup: returns true if any registered test namespace was invoked.
   def test_build_invoked?
@@ -34,19 +34,6 @@ class RakeTaskInvoker
   # Post-execution lookup: returns true if the matching the given regex was invoked.
   def invoked?(regex)
     return @rake_utils.task_invoked?(regex)
-  end
-
-  def invoke_test_objects(test:, objects:)
-    @batchinator.exec(workload: :compile, things: objects) do |object|
-      # Encode context with concatenated compilation target: <test name>+<object file>
-      @rake_wrapper["#{test}+#{object}"].invoke
-    end
-  end
-
-  def invoke_release_objects(objects)
-    @batchinator.exec(workload: :compile, things: objects) do |object|
-      @rake_wrapper[object].invoke
-    end
   end
 
 end

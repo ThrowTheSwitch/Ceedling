@@ -102,7 +102,7 @@ must be enabled for this matching to have any effect. (See `:project` ↳
 Preprocessing here refers to handling macros, conditional includes, etc. in
 header files that are mocked and in complex test files before runners are
 generated from them. (See more about the
-[Ceedling preprocessing](../../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests)
+[Ceedling preprocessing](../../testing-guide/conventions.md#test-preprocessing)
 feature.)
 
 Like the `:test` context, compilation symbols may be represented in a simple

@@ -99,7 +99,7 @@ See the [documentation on test preprocessing][test-preprocessing] for more.
     With any preprocessing enabled, the `gcc` & `cpp` tools must exist in an
     accessible system search path.
 
-[test-preprocessing]: ../../testing-guide/conventions.md#ceedling-preprocessing-behavior-for-your-tests
+[test-preprocessing]: ../../testing-guide/conventions.md#test-preprocessing
 
 * `:none` disables preprocessing.
 * `:all` enables preprocessing for all mockable header files and test C files.
@@ -262,7 +262,7 @@ FAILED TEST SUMMARY
 -------------------
 [test/TestUsartModel.c]
   Test: testCrash
-  At line (37): "Test case crashed"
+  At line (37): "Test case crashed >> Segmentation fault (core dumped)"
 
 -----------------------
 ❌ OVERALL TEST SUMMARY
@@ -279,6 +279,15 @@ line of code triggering the crash. If this option is enabled, but `gdb` is
 not available to Ceedling, project configuration validation will terminate
 with an error at startup.
 
+With `gdb` in use, Ceedling will provide a brief crash summary from details
+extracted from the `gdb` report. Ceedling will attempt to surface in the 
+summary the offending line of code or failing `assert()` from the report.
+
+The full `gdb` report is captured to a log file, and the log filepath is 
+provided in the crash summary. The log filepath will comprise the containing 
+test executable as a subdirectory and the name of the crashing test case 
+function as the filename.
+
 Sample Ceedling run output with backtrace `:gdb`:
 
 ```
@@ -292,9 +301,9 @@ FAILED TEST SUMMARY
 -------------------
 [test/TestUsartModel.c]
   Test: testCrash
-  At line (40): "Test case crashed >> Program received signal SIGSEGV, Segmentation fault.
-                0x00005618066ea1fb in testCrash () at test/TestUsartModel.c:40
-                40    uint32_t i = *nullptr;"
+  At line (40): "Test case crashed >> [SIGSEGV] Segmentation fault
+                `uint32_t i = *null_ptr;`
+                (build/logs/test/TestUsartModel/testCrash.gdb.log)"
 
 -----------------------
 ❌ OVERALL TEST SUMMARY

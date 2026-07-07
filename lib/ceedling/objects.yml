@@ -187,12 +187,10 @@ include_pathinator:
 
 rake_task_registry:
 
-rake_task_invoker:
+rake_invocation_tracker:
   compose:
     - rake_task_registry
-    - batchinator
     - rake_utils
-    - rake_wrapper
 
 config_matchinator:
   compose:
@@ -441,16 +439,11 @@ test_build_executor:
 release_invoker:
   compose:
     - configurator
-    - release_invoker_helper
-    - dependinator
-    - rake_task_invoker
+    - batchinator
+    - reportinator
+    - loginator
+    - rake_wrapper
     - file_path_utils
     - file_wrapper
-
-release_invoker_helper:
-  compose:
-    - configurator
-    - dependinator
-    - rake_task_invoker
 
 erb_wrapper:

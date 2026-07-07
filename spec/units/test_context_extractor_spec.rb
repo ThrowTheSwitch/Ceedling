@@ -37,9 +37,9 @@ describe TestContextExtractor do
     @include_factory = IncludeFactory.new( {:configurator => @configurator} )
     @file_path_utils = FilePathUtils.new( {:configurator => @configurator, :file_wrapper => @file_wrapper } )
 
-    code_text               = CExtractorCodeText.new
+    code_text                 = CExtractorCodeText.new
     c_extractor_preprocessing = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
-    partializer_config = PartializerConfig.new({ c_extractor_preprocessing: c_extractor_preprocessing })
+    partializer_config        = PartializerConfig.new({ c_extractor_preprocessing: c_extractor_preprocessing })
 
     # Provide configurations
     mock_prefix = 'mock_'

@@ -35,7 +35,7 @@ REMOVE_FILE_PROC = Proc.new { |fn| rm_r fn rescue nil }
 desc "Delete all build artifacts and temporary products."
 task(:clean) do
   # because :clean is a prerequisite for :clobber, intelligently display the progress message
-  if (not @ceedling[:rake_task_invoker].invoked?(/^clobber$/))
+  if (not @ceedling[:rake_invocation_tracker].invoked?(/^clobber$/))
     @ceedling[:loginator].console(
       "\nCleaning build artifacts...\n" +
       "(For large projects, this task may take a long time to complete)\n\n",

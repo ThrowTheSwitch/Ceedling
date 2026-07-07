@@ -184,12 +184,20 @@ class GeneratorTestResults
 
     # Filter tests which contain test_case_name passed by `--test_case` argument
     if !@configurator.include_test_case.empty?
-      _test_cases.delete_if { |i| !(i[:test] =~ /#{@configurator.include_test_case}/) }
+      begin
+        _test_cases.delete_if { |i| !(i[:test] =~ /#{@configurator.include_test_case}/) }
+      rescue RegexpError => e
+        raise CeedlingException.new( "Invalid --test_case regex '#{@configurator.include_test_case}': #{e.message}" )
+      end
     end
 
     # Filter tests which contain test_case_name passed by `--exclude_test_case` argument
     if !@configurator.exclude_test_case.empty?
-      _test_cases.delete_if { |i| i[:test] =~ /#{@configurator.exclude_test_case}/ }
+      begin
+        _test_cases.delete_if { |i| i[:test] =~ /#{@configurator.exclude_test_case}/ }
+      rescue RegexpError => e
+        raise CeedlingException.new( "Invalid --exclude_test_case regex '#{@configurator.exclude_test_case}': #{e.message}" )
+      end
     end
 
     return _test_cases

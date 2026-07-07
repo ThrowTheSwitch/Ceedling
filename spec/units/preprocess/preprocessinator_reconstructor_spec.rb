@@ -379,6 +379,150 @@ describe PreprocessinatorReconstructor do
     end
   end
 
+  context "#extract_test_case_directives" do
+    it "should pair a single directive macro with the test function on the following line" do
+      file_text = <<~FILE_TEXT
+        TEST_CASE(1, 2, 5)
+        void test_demoParamFunction(int a, int b, int c) {
+          TEST_ASSERT_GREATER_THAN_INT(a + b, c);
+        }
+      FILE_TEXT
+
+      expected = [
+        { function: 'test_demoParamFunction', directive: ['TEST_CASE(1, 2, 5)'] }
+      ]
+
+      expect( @extractor.extract_test_case_directives( file_text ) ).to eq expected
+    end
+
+    it "should pair a stack of multiple directive macros with the single function they precede" do
+      file_text = <<~FILE_TEXT
+        TEST_CASE(25)
+        TEST_CASE(125)
+        TEST_RANGE([5, 100, 5])
+        void test_should_handle_divisible_by_5(int num) {
+          TEST_ASSERT_EQUAL(0, num % 5);
+        }
+
+        TEST_MATRIX([1, 2], [3, 4])
+        void test_matrix_example(int a, int b) {
+        }
+      FILE_TEXT
+
+      expected = [
+        {
+          function: 'test_should_handle_divisible_by_5',
+          directive: ['TEST_CASE(25)', 'TEST_CASE(125)', 'TEST_RANGE([5, 100, 5])']
+        },
+        { function: 'test_matrix_example', directive: ['TEST_MATRIX([1, 2], [3, 4])'] }
+      ]
+
+      expect( @extractor.extract_test_case_directives( file_text ) ).to eq expected
+    end
+
+    it "should omit a function with no preceding directive macro from the results" do
+      file_text = <<~FILE_TEXT
+        void test_plain_function(void) {
+        }
+
+        TEST_CASE(1)
+        void test_with_case(int a) {
+        }
+      FILE_TEXT
+
+      expected = [
+        { function: 'test_with_case', directive: ['TEST_CASE(1)'] }
+      ]
+
+      expect( @extractor.extract_test_case_directives( file_text ) ).to eq expected
+    end
+
+    it "should return an empty array when no directive macros are present" do
+      file_text = <<~FILE_TEXT
+        void setUp(void) {}
+        void test_plain(void) {}
+      FILE_TEXT
+
+      expect( @extractor.extract_test_case_directives( file_text ) ).to eq []
+    end
+  end
+
+  context "#splice_test_case_directives" do
+    it "should reinsert a directive immediately ahead of its matching function line" do
+      contents = [
+        'void setUp(void)',
+        '{',
+        '}',
+        'void test_demoParamFunction(int a, int b, int c)',
+        '{',
+        '}'
+      ]
+
+      directives = [
+        { function: 'test_demoParamFunction', directive: ['TEST_CASE(1, 2, 5)'] }
+      ]
+
+      expected = [
+        'void setUp(void)',
+        '{',
+        '}',
+        'TEST_CASE(1, 2, 5)',
+        'void test_demoParamFunction(int a, int b, int c)',
+        '{',
+        '}'
+      ]
+
+      expect( @extractor.splice_test_case_directives( contents: contents, directives: directives ) ).to eq expected
+    end
+
+    it "should place each directive ahead of its own function in forward file order" do
+      contents = [
+        'void test_A(int a)',
+        '{',
+        '}',
+        'void test_B(int a, int b)',
+        '{',
+        '}'
+      ]
+
+      directives = [
+        { function: 'test_A', directive: ['TEST_CASE(1)'] },
+        { function: 'test_B', directive: ['TEST_RANGE([1, 5, 1])'] }
+      ]
+
+      expected = [
+        'TEST_CASE(1)',
+        'void test_A(int a)',
+        '{',
+        '}',
+        'TEST_RANGE([1, 5, 1])',
+        'void test_B(int a, int b)',
+        '{',
+        '}'
+      ]
+
+      expect( @extractor.splice_test_case_directives( contents: contents, directives: directives ) ).to eq expected
+    end
+
+    it "should silently skip a directive whose function is absent from contents" do
+      contents = [
+        'void setUp(void)',
+        '{',
+        '}'
+      ]
+
+      directives = [
+        { function: 'test_missing', directive: ['TEST_CASE(1)'] }
+      ]
+
+      expect {
+        @extractor.splice_test_case_directives( contents: contents, directives: directives )
+      }.not_to raise_error
+
+      expect( @extractor.splice_test_case_directives( contents: contents, directives: directives ) ).to eq contents
+    end
+  end
+
   context "#extract_pragmas" do
     it "should extract any and all pragmas from file text" do
       file_text = <<~FILE_TEXT

@@ -13,7 +13,7 @@ This plugin generates one or more of up to four available test suite report form
 1. CppUnit XML
 1. HTML
 
-This plugin generates reports after test builds, storing them in your project `artifacts/` build path.
+This plugin generates reports after test builds, storing them in your project `artifacts/` build path. It also regenerates reports when `ceedling summary` is executed, building reports from the test results already present.
 
 With a limited amount of Ruby code, you can also create your own report without creating an entire Ceedling plugin.
 
@@ -73,6 +73,10 @@ To change the output filename, specify it with the `:filename` key beneath the r
 
 ## Built-in Reports
 
+Each report is populated with a name, using `:project` ↳ `:name` from your configuration if set.
+
+Those reports that support build time or test suite execution time “stopwatch” values include them.
+
 ### Execution duration values
 
 Some test reporting formats include the execution time (duration) for aspects of a test suite run. Various granularities exist from the total time for all tests to the time of each suite (per the relevant defition of a suite) to the time required to run individual test cases. See _CeedlingPacket_ for the details on time duration values.
@@ -95,7 +99,7 @@ _Note:_ Most test cases are quite short, and most computers are quite fast. As s
 
 [JSON] is “a lightweight data-interchange format.” JSON serializes common data structures into a human readable form. The format has several pros, including the ability for entirely different programming languages to ingest JSON and recreate these data structures. As such, this makes JSON a good report generation option as the result can be easily programmatically manipulated and put to use.
 
-Something like XML is a general purpose structure for, well, structuring data. XML has enough formality that XML formats can be validated with general purpose tools plus much more. JSON is much more flexible but rather tied to the data it encodes. Small changes to a data structure can have big impacts.
+Something like XML is a general purpose structure for, well, structuring data. XML has enough formality that XML formats can be validated with general purpose tools plus much more. JSON is much more flexible but is rather tied to the data it encodes. Small changes to a data structure can have big impacts.
 
 The JSON this plugin generates uses an ad hoc set of data structures following no standard — though any other test framework outputting test results in JSON may look fairly similar.
 
@@ -127,6 +131,8 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
 
 ```json
 {
+  "Name": "Ceedling Test Suite",
+  "BuildDuration": 123.4,
   "FailedTests": [
     {
       "file": "test/TestUsartModel.c",
@@ -195,7 +201,7 @@ In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ bec
 
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
-<testsuites tests="4" failures="1" time="0.331">
+<testsuites name="Ceedling Test Suite" tests="4" failures="1" time="0.331">
   <testsuite name="test/TestUsartModel" tests="4" failures="1" skipped="1" errors="0" time="0.331">
     <testcase name="testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting" time="0.000"/>
     <testcase name="testShouldReturnErrorMessageUponInvalidTemperatureValue" time="0.000"/>
@@ -243,7 +249,7 @@ In mapping a Ceedling test suite to CppUnit convetions, a CppUnit test name is t
 
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
-<TestRun>
+<TestRun name="Ceedling Test Suite">
   <FailedTests>
     <Test id="1">
       <Name>test/TestUsartModel.c::testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately</Name>
@@ -302,7 +308,7 @@ This plugin creates an adhoc HTML page in a single file.
 
 ![](sample_html_report.png)
 
-## Creating Your Own Custom Report
+## Creating a Custom Report
 
 Creating your own report requires three steps:
 
@@ -326,7 +332,7 @@ Configuration steps, (1) and (3) above, are documented by example below. Convent
     - fancy_shmancy         # Your custom report must follow naming rules (below)
 ```
 
-### Custom `TestsReporter` Ruby code
+### Custom `TestsReporter` code
 
 To create a custom report, here's what you gotta do:
 

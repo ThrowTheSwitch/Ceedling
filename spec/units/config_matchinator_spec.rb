@@ -348,6 +348,19 @@ describe ConfigMatchinator do
         hash = { :"Comms*Model" => ['HIT'] }
         expect(@cm.matches?(hash: hash, filepath: 'test_Something', section: :defines, context: :test)).to eq([])
       end
+
+      it 'matches a filepath ending exactly with a glob extension' do
+        hash = { :"*.c" => ['HIT'] }
+        expect(@cm.matches?(hash: hash, filepath: 'test_foo.c',     section: :defines, context: :test)).to eq(['HIT'])
+        expect(@cm.matches?(hash: hash, filepath: 'src/test_foo.c', section: :defines, context: :test)).to eq(['HIT'])
+      end
+
+      it 'matches a filepath whose prefix satisfies the glob' do
+        hash = { :"test_*" => ['HIT'] }
+        expect(@cm.matches?(hash: hash, filepath: 'test_Module',   section: :defines, context: :test)).to eq(['HIT'])
+        expect(@cm.matches?(hash: hash, filepath: 'test_Foo_Bar',  section: :defines, context: :test)).to eq(['HIT'])
+      end
+
     end
 
     context 'substring matcher' do
