@@ -101,8 +101,10 @@ class MixinStandardizer
     # Promote mixin value list to all-matches matcher hash
     if config_value.is_a?(Hash) && mixin_value.is_a?(Array)
       # Ensure all-matches matcher key is a symbol and not a string
-      config_value[:*] = value if value = config_value.delete( '*' )
-        
+      if (deleted = config_value.delete( '*' ))
+        config_value[:*] = deleted
+      end
+
       # Replace the value of a simple array list with a matcher hash that stores the original list
       mixin_parent[key] = {:* => mixin_value}
       return true, 'Converted mixin list to matcher hash to facilitate merging with configuration'
@@ -111,7 +113,9 @@ class MixinStandardizer
     # Promote config value list to all-matches matcher hash
     if config_value.is_a?(Array) && mixin_value.is_a?(Hash)
       # Ensure all-matches matcher key is a symbol and not a string
-      mixin_value[:*] = value if value = mixin_value.delete( '*' )
+      if (deleted = mixin_value.delete( '*' ))
+        mixin_value[:*] = deleted
+      end
 
       # Replace the value of a simple array list with a matcher hash that stores the original list
       config_parent[key] = {:* => config_value}

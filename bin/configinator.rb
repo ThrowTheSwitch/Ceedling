@@ -12,7 +12,7 @@ class Configinator
 
   constructor :config_walkinator, :projectinator, :mixinator
 
-  def loadinate(builtin_mixins:, filepath:nil, mixins:[], env:{}, silent:false)
+  def loadinate(builtin_mixins:, builtin_load_paths:[], filepath:nil, mixins:[], env:{}, silent:false)
     # Aliases for clarity
     cmdline_filepath = filepath
     cmdline_mixins = mixins || []
@@ -28,6 +28,8 @@ class Configinator
 
     # Remove any silly redundancies
     cfg_enabled_mixins.uniq!
+    # Append built-in load paths (e.g. unity/targets) after user-configured paths so user paths win
+    cfg_load_paths += builtin_load_paths
     # Use absolute path to ensure proper deduplication
     cfg_load_paths.uniq! { |path| File.expand_path(path) }
 

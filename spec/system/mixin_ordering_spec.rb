@@ -417,6 +417,47 @@ ceedling_system_tests do
   end
 
   # =========================================================================
+  describe 'Mixin loading :: built-in load paths (unity/targets)' do
+    before do
+      @c.with_context do
+        @c.ceedling_appcmd_exec('example temp_sensor')
+      end
+    end
+
+    it 'loads gcc_64 by name via --mixin from built-in unity/targets load path' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          dump_file = 'dump_gcc64_cmdline.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file} --mixin gcc_64")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      # :defines ↳ :test may be a plain Array or a matcher Hash ({:* => [...]}) depending on
+      # whether the project config already uses the matcher format; flatten either way
+      defines_test = @dump_config.dig(:defines, :test)
+      defines_list = defines_test.is_a?(Hash) ? defines_test.values.flatten : Array(defines_test)
+      expect(defines_list).to include('UNITY_SUPPORT_64')
+    end
+
+    it 'loads gcc_64 by name via config :enabled from built-in unity/targets load path' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          @c.merge_project_yml_for_test({mixins: {enabled: ['gcc_64']}})
+
+          dump_file = 'dump_gcc64_config.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file}")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      # :defines ↳ :test may be a plain Array or a matcher Hash ({:* => [...]}) depending on
+      # whether the project config already uses the matcher format; flatten either way
+      defines_test = @dump_config.dig(:defines, :test)
+      defines_list = defines_test.is_a?(Hash) ? defines_test.values.flatten : Array(defines_test)
+      expect(defines_list).to include('UNITY_SUPPORT_64')
+    end
+  end
+
+  # =========================================================================
   describe 'Mixin loading :: error handling' do
     before do
       @c.with_context do
