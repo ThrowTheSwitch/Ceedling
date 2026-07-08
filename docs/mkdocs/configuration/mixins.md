@@ -12,7 +12,10 @@ modify it for any number of reasons. Some example scenarios:
   maintained by you external to your locally cloned repository.
 * Ceedling’s default `gcc` tools do not work for your project needs. You
   would like the complex tooling configurations you most often need to
-  be maintained separately and shared among projects.
+  be maintained separately and shared among projects. Ceedling includes
+  a collection of ready-made toolchain target mixins (e.g. `clang`,
+  `iar_arm`) that can be selected by name without any extra
+  configuration — see [Built-in toolchain targets](#built-in-toolchain-targets).
 
 Mixins allow you to merge configuration with your project configuration
 just after the base project file is loaded. The merge is so low-level
@@ -396,24 +399,29 @@ found among mixin paths specified in the base configuration file
 Later entries (on the right side of a command line) win on conflicts,
 so the content of `ci_overrides.yml` has the highest priority.
 
-#### Error behavior
+Simple mixin names are resolved by searching load paths in this order:
 
-Simple mixin names require mixin load paths to search. A default 
-mixin load path always points to within Ceedling itself (for 
-built-in mixins). User-specified load paths must be added through 
-the `:mixins` section of the base project file. See the
-[documentation for the `:mixins` section of your project 
-configuration][mixins-config-section] for more details.
+1. User-configured `:load_paths` from the base project file (if any)
+1. The directory containing the base project file
+1. Ceedling's built-in Unity toolchain targets
+
+User-specified load paths are configured through the `:mixins` section
+of the base project file. See the [documentation for the `:mixins`
+section of your project configuration][mixins-config-section] for
+more details. See [Built-in toolchain targets](#built-in-toolchain-targets)
+for details on what names are available without any load path configuration.
 
 Filepaths may be relative (to the working directory) or absolute.
 
-If the `--mixin` filename or filepath does not exist, Ceedling 
-terminates with an error. If Ceedling cannot find a mixin name in 
-any load paths, it terminates with an error. If an inline YAML 
-string cannot be parsed or does not evaluate to a Hash, Ceedling 
-terminates with an error.
-
 [mixins-config-section]: #base-configuration-mixins-entries
+
+#### Error behavior
+
+If the `--mixin` filename or filepath does not exist, Ceedling
+terminates with an error. If Ceedling cannot find a mixin name in
+any load paths, it terminates with an error. If an inline YAML
+string cannot be parsed or does not evaluate to a Hash, Ceedling
+terminates with an error.
 
 ### Environment variables
 
@@ -476,8 +484,20 @@ Each subsection is optional.
     Both mixin names in the `:enabled` list (above) and on the command
     line via `--mixin` flag use this list of load paths for searches.
 
+    If a mixin name is not found in any user-configured load path,
+    Ceedling automatically searches two additional locations in order:
+
+    1. **Project directory** — the directory containing your base project
+       configuration file. This lets you drop a YAML file alongside
+       _project.yml_ and reference it by name with no extra configuration.
+    1. **Built-in toolchain targets** — Ceedling's bundled Unity `targets/`
+       folder. See [Built-in toolchain targets](#built-in-toolchain-targets).
+
+    User-configured load paths always take priority over these fallbacks.
+    The project directory takes priority over the built-in targets.
+
     Load paths entries support [inline Ruby string expansion][inline-ruby-string-expansion].
-    
+
     **Default**: `[]`
 
 Example `:mixins` YAML blurb:
@@ -504,5 +524,84 @@ Relating the above example to command line `--mixin` flag handling:
   it resides in the base configuration and has the lowest priority).
 
 [inline-ruby-string-expansion]: project-file.md#inline-ruby-string-expansion
+
+## Built-in toolchain targets
+
+Ceedling bundles a set of ready-made toolchain target mixins sourced from
+Unity's `targets/` folder. Each file configures the compiler, linker,
+output extensions, and Unity-specific compilation symbols for a particular
+toolchain or target environment.
+
+Because the Unity targets folder is a default mixin load path (searched
+after the project directory), you can activate any of these by name
+alone — no `:load_paths` configuration required:
+
+```sh
+ceedling build test:all --mixin clang
+```
+
+Or via the project configuration:
+
+```yaml
+:mixins:
+  :enabled:
+    - clang
+```
+
+### Available built-in targets
+
+| Mixin name      | Toolchain / target |
+|-----------------|--------------------|
+| `clang`         | Clang local host configuration with common warnings and errors enabled   |
+| `gcc`           | GCC local host configuration with common warnings and errors enabled     |
+| `hitech_picc18` | HI-TECH PICC-18 (PIC18)                                                  |
+| `iar_arm`       | IAR ARM configuration that likely requires customization for your target |
+
+### Using a built-in target as a starting point
+
+A built-in target mixin sets only the toolchain-specific knobs. Your
+project configuration (or other mixins) supplies everything else —
+source paths, plugins, test file patterns, and so on. This means you
+can use a built-in target as a drop-in starting point and layer your
+own settings on top without duplicating the full tool configuration.
+
+For example, a minimal project targeting a GCC host build might
+look like:
+
+```yaml
+# project.yml
+:project:
+  :build_root: build/
+
+:paths:
+  :test:
+    - test/**
+  :source:
+    - src/**
+
+:plugins:
+  :enabled:
+    - report_tests_pretty_stdout
+
+:mixins:
+  :enabled:
+    - gcc   # Pulls in compiler, linker, and Unity symbol config for GCC
+```
+
+If your project needs a tweak — say, an extra compiler flag or a different
+optimization level — merge an additional mixin after the built-in target:
+
+```sh
+ceedling build test:all --mixin clang --mixin "=tools: {test_compiler: {arguments: ['-O0']}}"
+```
+
+Because command line mixins are merged last, the extra argument is appended
+after the built-in target's argument list and takes effect.
+
+!!! tip "Override a built-in target for a single project"
+    Drop a YAML file with the same name as a built-in target (e.g.
+    `gcc.yml`) into your project directory. Ceedling searches the
+    project directory before the built-in targets folder, so your local
+    file silently takes precedence — no `:load_paths` entry required.
 
 <br/><br/>

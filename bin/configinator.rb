@@ -28,8 +28,9 @@ class Configinator
 
     # Remove any silly redundancies
     cfg_enabled_mixins.uniq!
-    # Append built-in load paths (e.g. unity/targets) after user-configured paths so user paths win
-    cfg_load_paths += builtin_load_paths
+    # Append project directory then built-in load paths so precedence is:
+    #   user :load_paths → project directory → unity/targets
+    cfg_load_paths += [File.dirname(project_filepath)] + builtin_load_paths
     # Use absolute path to ensure proper deduplication
     cfg_load_paths.uniq! { |path| File.expand_path(path) }
 
