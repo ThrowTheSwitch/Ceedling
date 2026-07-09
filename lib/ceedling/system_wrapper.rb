@@ -36,10 +36,6 @@ class SystemWrapper
     return SystemWrapper.windows?
   end
 
-  def module_eval(string)
-    return Object.module_eval("\"" + string + "\"")
-  end
-
   def eval(string)
     return eval(string)
   end

@@ -8,6 +8,8 @@
 require 'spec_helper'
 require 'projectinator'
 require 'ceedling/constants'
+require 'ceedling/ruby_expandinator'
+require 'ceedling/exceptions'
 
 describe Projectinator do
   before(:each) do
@@ -28,12 +30,19 @@ describe Projectinator do
 
     @system_wrapper = double('system_wrapper')
 
+    # Default pass-through stub mirrors RubyExpandinator#expand's real behavior for
+    # strings without a `#{...}` pattern (the common case in these specs). Individual
+    # tests override with a tighter `.with(...)` expectation where expansion matters.
+    @ruby_expandinator = double('ruby_expandinator')
+    allow(@ruby_expandinator).to receive(:expand) { |s, source:| s }
+
     @projectinator = described_class.new({
       :file_wrapper   => @file_wrapper,
       :path_validator => @path_validator,
       :yaml_wrapper   => @yaml_wrapper,
       :loginator      => @loginator,
-      :system_wrapper => @system_wrapper
+      :system_wrapper => @system_wrapper,
+      :ruby_expandinator => @ruby_expandinator
     })
   end
 
@@ -54,7 +63,6 @@ describe Projectinator do
           :enabled => ['mixin_a', 'path/to/mixin_b.yml']
         }
       }
-      allow(@system_wrapper).to receive(:module_eval)
 
       enabled, load_paths = @projectinator.extract_mixins(config: config)
 
@@ -68,7 +76,6 @@ describe Projectinator do
           :load_paths => ['support/mixins', 'vendor/mixins']
         }
       }
-      allow(@system_wrapper).to receive(:module_eval)
 
       enabled, load_paths = @projectinator.extract_mixins(config: config)
 
@@ -83,7 +90,6 @@ describe Projectinator do
           :load_paths => ['support/mixins']
         }
       }
-      allow(@system_wrapper).to receive(:module_eval)
 
       enabled, load_paths = @projectinator.extract_mixins(config: config)
 
@@ -96,7 +102,6 @@ describe Projectinator do
         :project => {:build_root => 'build'},
         :mixins  => {:enabled => ['mixin_a'], :load_paths => ['support']}
       }
-      allow(@system_wrapper).to receive(:module_eval)
 
       @projectinator.extract_mixins(config: config)
 
@@ -111,8 +116,8 @@ describe Projectinator do
           :load_paths => []
         }
       }
-      allow(@system_wrapper).to receive(:module_eval)
-        .with('#{ENV["MIXIN_NAME"]}')
+      allow(@ruby_expandinator).to receive(:expand)
+        .with('#{ENV["MIXIN_NAME"]}', source: ':mixins ↳ :enabled')
         .and_return('resolved_mixin_name')
 
       enabled, _ = @projectinator.extract_mixins(config: config)
@@ -127,8 +132,8 @@ describe Projectinator do
           :load_paths => ['#{File.join(Dir.pwd, "mixins")}']
         }
       }
-      allow(@system_wrapper).to receive(:module_eval)
-        .with('#{File.join(Dir.pwd, "mixins")}')
+      allow(@ruby_expandinator).to receive(:expand)
+        .with('#{File.join(Dir.pwd, "mixins")}', source: ':mixins ↳ :load_paths')
         .and_return('/project/mixins')
 
       _, load_paths = @projectinator.extract_mixins(config: config)
@@ -136,7 +141,7 @@ describe Projectinator do
       expect(load_paths).to eq(['/project/mixins'])
     end
 
-    it 'does not call module_eval for entries without inline Ruby tokens' do
+    it 'leaves entries without inline Ruby tokens unchanged' do
       config = {
         :mixins => {
           :enabled    => ['plain_mixin'],
@@ -144,9 +149,27 @@ describe Projectinator do
         }
       }
 
-      expect(@system_wrapper).not_to receive(:module_eval)
+      enabled, load_paths = @projectinator.extract_mixins(config: config)
 
-      @projectinator.extract_mixins(config: config)
+      expect(enabled).to eq(['plain_mixin'])
+      expect(load_paths).to eq(['plain/path'])
+    end
+
+    it 'raises CeedlingException when an entry contains inline Ruby and the feature is disabled' do
+      real_ruby_expandinator = RubyExpandinator.new # disabled by default
+      projectinator = described_class.new({
+        :file_wrapper   => @file_wrapper,
+        :path_validator => @path_validator,
+        :yaml_wrapper   => @yaml_wrapper,
+        :loginator      => @loginator,
+        :system_wrapper => @system_wrapper,
+        :ruby_expandinator => real_ruby_expandinator
+      })
+      config = { :mixins => { :enabled => ['#{ENV["MIXIN_NAME"]}'], :load_paths => [] } }
+
+      expect {
+        projectinator.extract_mixins(config: config)
+      }.to raise_error(CeedlingException, /:mixins/)
     end
   end
 

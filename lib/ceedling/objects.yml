@@ -17,6 +17,8 @@ rake_wrapper:
 
 yaml_wrapper:
 
+ruby_expandinator:
+
 system_wrapper:
 
 config_walkinator:
@@ -61,6 +63,7 @@ tool_executor:
     - loginator
     - verbosinator
     - system_wrapper
+    - ruby_expandinator
 
 tool_executor_helper:
   compose:
@@ -75,6 +78,7 @@ tool_validator:
     - loginator
     - system_wrapper
     - reportinator
+    - ruby_expandinator
 
 configurator:
   compose:
@@ -86,6 +90,7 @@ configurator:
     - system_wrapper
     - loginator
     - reportinator
+    - ruby_expandinator
 
 configurator_setup:
   compose:

@@ -18,7 +18,7 @@ class Configurator
   attr_reader :project_config_hash, :programmatic_plugins, :rake_plugins
   attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case
 
-  constructor :configurator_setup, :configurator_builder, :configurator_plugins, :config_walkinator, :yaml_wrapper, :system_wrapper, :loginator, :reportinator
+  constructor :configurator_setup, :configurator_builder, :configurator_plugins, :config_walkinator, :yaml_wrapper, :system_wrapper, :loginator, :reportinator, :ruby_expandinator
 
   def setup()
     # Cmock config reference to provide to CMock for mock generation
@@ -217,7 +217,7 @@ class Configurator
     # So, perform path magic here as discrete step.
     # (String replacement and standardization require DI objects not available in bin/ scope.)
     config[:plugins][:load_paths].each do |path|
-      path.replace( @system_wrapper.module_eval( path ) ) if (path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+      path.replace( @ruby_expandinator.expand( path, source: ":plugins ↳ :load_paths" ) )
       FilePathUtils::standardize_in_place( path )
     end
 
@@ -600,8 +600,8 @@ class Configurator
       # Process value array
       items.each do |item|
         # Process each item for Ruby string replacement
-        if item.is_a? String and item =~ PATTERNS::RUBY_STRING_REPLACEMENT
-          item.replace( @system_wrapper.module_eval( item ) )
+        if item.is_a? String
+          item.replace( @ruby_expandinator.expand( item, source: ":environment ↳ #{key}" ) )
         end
       end
 
@@ -627,24 +627,24 @@ class Configurator
       @reportinator.generate_progress( 'Processing path entries and expanding any string replacements' )
     end
 
-    eval_path_entries( config[:project][:build_root] )
-    eval_path_entries( config[:release_build][:artifacts] )
+    eval_path_entries( config[:project][:build_root], source: ":project ↳ :build_root" )
+    eval_path_entries( config[:release_build][:artifacts], source: ":release_build ↳ :artifacts" )
 
     config[:paths].each_pair do |entry, paths|
       # :paths sub-entries (e.g. :test) could be a single string -> make array
       reform_path_entries_as_lists( config[:paths], entry, paths )
-      eval_path_entries( paths )
+      eval_path_entries( paths, source: ":paths ↳ #{entry}" )
     end
 
     config[:files].each_pair do |entry, files|
       # :files sub-entries (e.g. :test) could be a single string -> make array
       reform_path_entries_as_lists( config[:files], entry, files )
-      eval_path_entries( files )
+      eval_path_entries( files, source: ":files ↳ #{entry}" )
     end
 
     # All other paths at secondary hash key level processed by convention (`_path`):
     # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are evaluated
-    config.each_pair { |_, child| eval_path_entries( collect_path_list( child ) ) }
+    config.each_pair { |key, child| eval_path_entries( collect_path_list( child ), source: ":#{key} ↳ a *_path/*_paths entry" ) }
   end
 
 
@@ -655,7 +655,7 @@ class Configurator
     end
 
     # Descend down to array of command line flags strings regardless of depth in config block
-    traverse_hash_eval_string_arrays( config[:flags] )
+    traverse_hash_eval_string_arrays( config[:flags], source: ":flags" )
   end
 
 
@@ -666,7 +666,7 @@ class Configurator
     end
 
     # Descend down to array of #define strings regardless of depth in config block
-    traverse_hash_eval_string_arrays( config[:defines] )
+    traverse_hash_eval_string_arrays( config[:defines], source: ":defines" )
   end
 
 
@@ -857,7 +857,7 @@ class Configurator
   end
 
 
-  def eval_path_entries( container )
+  def eval_path_entries( container, source: )
     paths = []
 
     case(container)
@@ -868,14 +868,14 @@ class Configurator
     end
 
     paths.each do |path|
-      path.replace( @system_wrapper.module_eval( path ) ) if (path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+      path.replace( @ruby_expandinator.expand( path, source: source ) )
     end
   end
 
 
   # Traverse configuration tree recursively to find terminal leaf nodes that are a list of strings;
   # expand in place any string with the Ruby string replacement pattern.
-  def traverse_hash_eval_string_arrays(config)
+  def traverse_hash_eval_string_arrays(config, source:)
     case config
 
     when Array
@@ -883,13 +883,13 @@ class Configurator
       if config.all? { |item| item.is_a?( String ) }
         # Expand in place each string item in the array
         config.each do |item|
-          item.replace( @system_wrapper.module_eval( item ) ) if (item =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+          item.replace( @ruby_expandinator.expand( item, source: source ) )
         end
       end
 
     when Hash
       # Recurse
-      config.each_value { |value| traverse_hash_eval_string_arrays( value ) }
+      config.each_value { |value| traverse_hash_eval_string_arrays( value, source: source ) }
     end
   end
 

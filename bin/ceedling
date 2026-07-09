@@ -85,6 +85,7 @@ begin
     :loginator,
     :file_wrapper,
     :yaml_wrapper,
+    :ruby_expandinator,
     :config_walkinator,
     :system_wrapper,
     :verbosinator

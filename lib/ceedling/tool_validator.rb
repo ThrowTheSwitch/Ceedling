@@ -13,7 +13,7 @@ require 'ceedling/file_path_utils'  # For glob handling class methods
 
 class ToolValidator
   
-  constructor :file_wrapper, :loginator, :system_wrapper, :reportinator
+  constructor :file_wrapper, :loginator, :system_wrapper, :reportinator, :ruby_expandinator
 
   def validate(tool:, name:nil, extension:EXTENSION_EXECUTABLE, respect_optional:false, boom:false)
     # Redefine name with name inside tool hash if it's not provided
@@ -53,10 +53,26 @@ class ToolValidator
     # If tool is optional and we're respecting that, don't bother to check if executable is legit
     return true if tool[:optional] and respect_optional
 
-    # Skip everything if we've got an argument replacement pattern or Ruby string replacement in :executable
+    # Skip everything if we've got an argument replacement pattern in :executable
     # (Allow executable to be validated by shell at run time)
     return true if (executable =~ PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
-    return true if (executable =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+
+    # Skip shell-time validation for Ruby string replacement in :executable, but fail
+    # fast here (rather than deferring to tool_executor.rb's later expansion attempt)
+    # if the feature isn't enabled -- no reason to let the build proceed further only
+    # to blow up when this tool is actually invoked.
+    if (executable =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+      begin
+        @ruby_expandinator.check!( executable, source: "tool '#{name}' :executable" )
+      rescue CeedlingException => e
+        if !boom
+          @loginator.log( e.message, Verbosity::ERRORS )
+          return false
+        end
+        raise
+      end
+      return true
+    end
 
     # Extract the executable (including optional filepath) apart from any additional arguments
     # Be mindful of legal quote enclosures (e.g. `"Code Cruncher" foo bar`)
