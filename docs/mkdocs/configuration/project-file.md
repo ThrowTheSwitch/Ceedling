@@ -94,22 +94,21 @@ for this. A few highlights from that reference page:
 ### Inline Ruby string expansion
 
 Ceedling is able to execute inline Ruby string substitution code within the
-entries of certain project file configuration elements.
+entries of certain project file configuration elements. For instance,
+a commonly needed expansion is that of referencing an environment variable.
+Inline Ruby string expansion supports this. See the example below.
 
-In some cases, this evaluation may occurs when elements of the project 
+In some cases, this evaluation may occur when elements of the project 
 configuration are loaded and processed into a data structure for use by the 
 Ceedling application (e.g. path handling). In other cases, this evaluation
 occurs each time a project configuration element is referenced (e.g. tools).
 
-_Notes:_
-
-* One good option for validating and troubleshooting inline Ruby string 
-  exapnsion is use of `ceedling dumpconfig` at the command line. This application
-  command causes your project configuration to be processed and written to a 
-  YAML file with any inline Ruby string expansions, well, expanded along with 
-  defaults set, plugin actions applied, etc.
-* A commonly needed expansion is that of referencing an environment variable.
-  Inline Ruby string expansion supports this. See the example below.
+!!! note
+    One good option for validating and troubleshooting inline Ruby string 
+    exapnsion is the use of `ceedling dumpconfig` at the command line. This 
+    application command causes your project configuration to be processed and 
+    written to a YAML file with any inline Ruby string expansions, well, 
+    expanded along with defaults set, plugin actions applied, etc.
 
 #### Ruby string expansion syntax
 
