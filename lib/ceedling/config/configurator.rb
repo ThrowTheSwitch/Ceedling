@@ -246,9 +246,16 @@ class Configurator
 
     # Load base configuration values (defaults) from YAML
     plugin_yml_defaults.each do |plugin, defaults|
-      _defaults = @yaml_wrapper.load( defaults )
+      _defaults = begin
+        @yaml_wrapper.load( defaults )
+      rescue YamlLoadException => e
+        raise YamlLoadException.new(
+          reason: e.reason, source: e.source, original_error: e.original_error,
+          message: "Could not load default configuration for plugin '#{plugin}' ⏩️ #{e.message}"
+        )
+      end
 
-      @loginator.lazy( Verbosity::DEBUG ) do 
+      @loginator.lazy( Verbosity::DEBUG ) do
         " - #{plugin} >> " + _defaults.to_s()
       end
 
@@ -538,7 +545,14 @@ class Configurator
 
     # Merge plugin configuration values (like Ceedling project file)
     @configurator_plugins.config_plugins.each do |hash|
-      _config = @yaml_wrapper.load( hash[:path] )
+      _config = begin
+        @yaml_wrapper.load( hash[:path] )
+      rescue YamlLoadException => e
+        raise YamlLoadException.new(
+          reason: e.reason, source: e.source, original_error: e.original_error,
+          message: "Could not load configuration from plugin '#{hash[:plugin]}' ⏩️ #{e.message}"
+        )
+      end
 
       @loginator.lazy( Verbosity::OBNOXIOUS ) do
         @reportinator.generate_progress( "Merging configuration from plugin #{hash[:plugin]}" )

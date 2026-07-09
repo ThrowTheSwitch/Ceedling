@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/exceptions'
+
 class Mixinator
 
   constructor :mixin_standardizer, :merginator, :path_validator, :yaml_wrapper, :loginator
@@ -42,7 +44,7 @@ class Mixinator
       end
 
       begin
-        parsed = @yaml_wrapper.load_string( str )
+        parsed = @yaml_wrapper.load_string( str, source_label: label )
 
         # A Ceedling configuration must be a Hash at the top level; arrays and scalars
         # cannot be merged into config and indicate a user error in the YAML string
@@ -53,9 +55,9 @@ class Mixinator
           )
           validated = false
         end
-      rescue => e
-        # YAML parse failure: surface the parser message so the user can fix their string
-        @loginator.log( "#{label} parse error ⏩️ #{e.message}", Verbosity::ERRORS )
+      rescue YamlLoadException => e
+        # YAML load failure: e.message already identifies the label and the underlying problem
+        @loginator.log( e.message, Verbosity::ERRORS )
         validated = false
       end
     end
@@ -167,12 +169,26 @@ class Mixinator
       # YAML string in the filepath slot (named for the common case; dual-purposed here).
       if source == 'command line (inline)'
         # Inline YAML: parse the string directly instead of reading a file
-        _mixin = @yaml_wrapper.load_string( filepath )
+        begin
+          _mixin = @yaml_wrapper.load_string( filepath, source_label: 'command line inline YAML mixin' )
+        rescue YamlLoadException => e
+          raise YamlLoadException.new(
+            reason: e.reason, source: e.source, original_error: e.original_error,
+            message: "Command line inline YAML mixin failed to load ⏩️ #{e.message}"
+          )
+        end
         @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging command line inline YAML mixin" }
 
       # Load mixin from filepath if it is a filepath
       elsif @path_validator.filepath?( filepath )
-        _mixin = @yaml_wrapper.load( filepath )
+        begin
+          _mixin = @yaml_wrapper.load( filepath )
+        rescue YamlLoadException => e
+          raise YamlLoadException.new(
+            reason: e.reason, source: e.source, original_error: e.original_error,
+            message: "Mixin '#{filepath}' from #{source} failed to load ⏩️ #{e.message}"
+          )
+        end
 
         # Log what filepath we used for this mixin
         @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging #{'(empty) ' if _mixin.nil?}#{source} mixin using #{filepath}" }

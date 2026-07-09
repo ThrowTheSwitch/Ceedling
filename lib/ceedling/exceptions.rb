@@ -13,6 +13,22 @@ class CeedlingException < RuntimeError
 end
 
 
+class YamlLoadException < CeedlingException
+
+  attr_reader :reason, :source, :original_error
+
+  # reason: :syntax (malformed YAML), :unsafe (Psych safe_load rejected a disallowed type),
+  #         :incompatible (installed Psych's safe_load interface doesn't support a required
+  #         feature/argument), :not_found (source file doesn't exist)
+  def initialize(reason:, source:, original_error:, message:)
+    @reason         = reason
+    @source         = source
+    @original_error = original_error
+    super( message )
+  end
+end
+
+
 class ShellException < CeedlingException
 
   attr_reader :shell_result

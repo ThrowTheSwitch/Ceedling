@@ -38,20 +38,51 @@ describe YamlWrapper do
       expect(result["defaults"][:timeout]).to eq(30)
     end
 
-    it 'round-trips a nested Hash with symbol keys, mirroring cache and test-result usage' do
+    it 'round-trips a nested Hash with symbol keys, mirroring test-result usage' do
       structure = { source: { file: 'foo.c', dirname: '.', basename: 'foo.c' }, time: 0.006512 }
       dumped = YAML.dump(structure)
 
       expect(@yaml_wrapper.load_string(dumped)).to eq(structure)
     end
 
-    it 'refuses to instantiate arbitrary Ruby objects' do
+    # Test for protection against security vulnerabilities in YAML deserialization.
+    it 'refuses to instantiate arbitrary Ruby objects and reports it as :unsafe' do
       yaml = "--- !ruby/object:OpenStruct {}\n"
 
-      expect { @yaml_wrapper.load_string(yaml) }.to raise_error(Psych::Exception)
+      expect { @yaml_wrapper.load_string(yaml) }.to raise_error(YamlLoadException) do |e|
+        expect(e.reason).to eq(:unsafe)
+        expect(e.message).to match(/not permitted by safe YAML loading/i)
+      end
+    end
+
+    it 'reports malformed YAML content as :syntax' do
+      yaml = "a: [1, 2\n" # unterminated flow sequence
+
+      expect { @yaml_wrapper.load_string(yaml) }.to raise_error(YamlLoadException) do |e|
+        expect(e.reason).to eq(:syntax)
+        expect(e.message).to match(/malformed yaml content/i)
+      end
+    end
+
+    it 'embeds the source_label in the underlying Psych message' do
+      yaml = "a: [1, 2\n"
+
+      expect { @yaml_wrapper.load_string(yaml, source_label: 'my_project.yml') }.to raise_error(YamlLoadException) do |e|
+        expect(e.message).to include('my_project.yml')
+      end
     end
   end
 
+  describe '#load' do
+    it 'reports a missing file as :not_found' do
+      expect { @yaml_wrapper.load('/no/such/file.yml') }.to raise_error(YamlLoadException) do |e|
+        expect(e.reason).to eq(:not_found)
+        expect(e.message).to match(/could not find yaml file/i)
+      end
+    end
+  end
+
+  # Test cacheing of Psych version probe that determines calling interface for safe_load.
   describe '.psych_safe_load_uses_keywords?' do
     def reset_memoized_psych_check
       if described_class.instance_variable_defined?(:@psych_safe_load_uses_keywords)

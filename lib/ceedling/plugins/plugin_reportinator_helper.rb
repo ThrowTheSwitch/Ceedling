@@ -36,21 +36,28 @@ class PluginReportinatorHelper
       end
     end
 
-    # Handle if both files exists and return the newer results
-    if pass_exists and fail_exists
-      if @file_wrapper.newer?( pass_path, fail_path )
-        return @yaml_wrapper.load( pass_path )
-      else
-        return @yaml_wrapper.load( fail_path )
+    begin
+      # Handle if both files exists and return the newer results
+      if pass_exists and fail_exists
+        if @file_wrapper.newer?( pass_path, fail_path )
+          return @yaml_wrapper.load( pass_path )
+        else
+          return @yaml_wrapper.load( fail_path )
+        end
       end
+
+      # Return success results
+      return @yaml_wrapper.load(pass_path) if pass_exists
+
+      # Return fail results
+      return @yaml_wrapper.load(fail_path) if fail_exists
+    rescue YamlLoadException => e
+      raise YamlLoadException.new(
+        reason: e.reason, source: e.source, original_error: e.original_error,
+        message: "Generated test results file is corrupted or unreadable ⏩️ #{e.message}"
+      )
     end
 
-    # Return success results
-    return @yaml_wrapper.load(pass_path) if pass_exists
-
-    # Return fail results
-    return @yaml_wrapper.load(fail_path) if fail_exists
-    
     # Safety fall-through (flow control should never get here)
     return {}
   end

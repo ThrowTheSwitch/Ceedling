@@ -5,13 +5,24 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/exceptions'
+
 class CacheinatorHelper
 
   constructor :file_wrapper, :yaml_wrapper
-  
+
   def diff_cached_config?(cached_filepath, hash)
     return false if ( not @file_wrapper.exist?(cached_filepath) )
-    return true if (@yaml_wrapper.load(cached_filepath) != hash)
+
+    begin
+      return true if (@yaml_wrapper.load(cached_filepath) != hash)
+    rescue YamlLoadException => e
+      raise YamlLoadException.new(
+        reason: e.reason, source: e.source, original_error: e.original_error,
+        message: "Cached build configuration is corrupted or unreadable ⏩️ #{e.message}"
+      )
+    end
+
     return false
   end
 
@@ -25,7 +36,15 @@ class CacheinatorHelper
       return changed_defines
     end
 
-    dependencies = @yaml_wrapper.load(cached_filepath)
+    dependencies = begin
+      @yaml_wrapper.load(cached_filepath)
+    rescue YamlLoadException => e
+      raise YamlLoadException.new(
+        reason: e.reason, source: e.source, original_error: e.original_error,
+        message: "Cached dependency-defines data is corrupted or unreadable ⏩️ #{e.message}"
+      )
+    end
+
     common_dependencies = current_dependencies.select { |file, defines| dependencies.has_key?(file) }
 
     if dependencies.values_at(*common_dependencies.keys) != common_dependencies.values

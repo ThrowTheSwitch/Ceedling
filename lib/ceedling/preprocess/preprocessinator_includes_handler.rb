@@ -9,6 +9,7 @@ require 'ceedling/includes/includes'
 require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
 require 'ceedling/preprocess/preprocessinator_line_marker_includes_extractor'
 require 'ceedling/preprocess/c_preprocessor_conditionals'
+require 'ceedling/exceptions'
 
 class PreprocessinatorIncludesHandler
 
@@ -193,10 +194,17 @@ class PreprocessinatorIncludesHandler
   end
 
   def load_includes_list(filepath)
-    return Includes.from_hashes(
-      # Note: It's possible empty YAML content returns nil so ensure empty list
-      @yaml_wrapper.load( filepath ) || []
-    )
+    loaded = begin
+      @yaml_wrapper.load( filepath )
+    rescue YamlLoadException => e
+      raise YamlLoadException.new(
+        reason: e.reason, source: e.source, original_error: e.original_error,
+        message: "Cached #include list is corrupted or unreadable ⏩️ #{e.message}"
+      )
+    end
+
+    # Note: It's possible empty YAML content returns nil so ensure empty list
+    return Includes.from_hashes( loaded || [] )
   end
 
   ### Private ###

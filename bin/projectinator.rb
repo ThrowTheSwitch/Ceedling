@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants' # From Ceedling application
+require 'ceedling/exceptions'
 
 class Projectinator
 
@@ -231,14 +232,20 @@ class Projectinator
       end
 
       return config
-    rescue Errno::ENOENT
-      # Handle special case of user-provided blank filepath
-      filepath = filepath.empty?() ? '<none>' : filepath
-      raise "Could not find project filepath #{filepath} #{method}"
-
-    rescue StandardError => e
-      # Catch-all error handling
-      raise "Error loading project filepath #{filepath} #{method}: #{e.message}"
+    rescue YamlLoadException => e
+      if e.reason == :not_found
+        # Handle special case of user-provided blank filepath
+        _filepath = filepath.empty?() ? '<none>' : filepath
+        raise YamlLoadException.new(
+          reason: e.reason, source: e.source, original_error: e.original_error,
+          message: "Could not find project filepath #{_filepath} #{method}"
+        )
+      else
+        raise YamlLoadException.new(
+          reason: e.reason, source: e.source, original_error: e.original_error,
+          message: "Error loading project filepath #{filepath} #{method} ⏩️ #{e.message}"
+        )
+      end
     end
 
   end
