@@ -6,13 +6,14 @@
 # =========================================================================
 
 require 'yaml'
-require 'erb'
+# require 'erb'
 
 
 class YamlWrapper
 
   def load(filepath)
-    source = ERB.new(File.read(filepath)).result
+    # source = ERB.new(File.read(filepath)).result
+    source = File.read(filepath)
     begin
       return YAML.load(source, aliases: true)
     rescue ArgumentError
