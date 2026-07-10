@@ -161,6 +161,10 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
    - Improved the design of the HTML report option.
       ![](mkdocs/plugins/sample_html_report.png)
 
+### Security
+- Migrated all YAML processing to use safe loading. Safe loading constrains YAML deserialization to data structures such as hashes and lists. Unsafe loading is capable of deserializing arbitrary Ruby objects that could be used maliciously by a bad actor polluting a YAML file loaded by Ceedling.
+- [Inline Ruby string expansion](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/project-file/#inline-ruby-string-expansion) available in project configuration handling is now disabled by default. It can only be enabled via a Ceedling command line flag `--ruby-replacement`.
+
 ## 👋 Removed
 
 - _CeedlingPacket.md_ user manual (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).

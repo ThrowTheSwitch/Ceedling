@@ -19,6 +19,7 @@ class Cppcheck < Plugin
     @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
     @system_wrapper = @ceedling[:system_wrapper]
+    @ruby_expandinator = @ceedling[:ruby_expandinator]
     @tool_executor = @ceedling[:tool_executor]
     @tool_validator = @ceedling[:tool_validator]
     
@@ -84,15 +85,11 @@ class Cppcheck < Plugin
   def traverse_config_eval_strings(config)
     case config
       when String
-        if (config =~ PATTERNS::RUBY_STRING_REPLACEMENT)
-          config.replace(@system_wrapper.module_eval(config))
-        end
+        config.replace(@ruby_expandinator.expand(config, source: "cppcheck plugin configuration"))
       when Array
         if config.all? {|item| item.is_a?(String)}
           config.each do |item|
-            if (item =~ PATTERNS::RUBY_STRING_REPLACEMENT)
-              item.replace(@system_wrapper.module_eval(item))
-            end
+            item.replace(@ruby_expandinator.expand(item, source: "cppcheck plugin configuration"))
           end
         end
       when Hash

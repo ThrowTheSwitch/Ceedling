@@ -11,7 +11,7 @@ require 'benchmark'
 
 class ToolExecutor
 
-  constructor :configurator, :tool_executor_helper, :loginator, :verbosinator, :system_wrapper
+  constructor :configurator, :tool_executor_helper, :loginator, :verbosinator, :system_wrapper, :ruby_expandinator
 
   # build up a command line from yaml provided config
 
@@ -171,9 +171,7 @@ class ToolExecutor
     end
 
     # Handle inline ruby string substitution
-    if (build_string =~ PATTERNS::RUBY_STRING_REPLACEMENT)
-      build_string.replace(@system_wrapper.module_eval(build_string))
-    end
+    build_string.replace(@ruby_expandinator.expand(build_string, source: "tool '#{tool_name}'"))
 
     return build_string.strip
   end
@@ -200,7 +198,7 @@ class ToolExecutor
     expansion.each do |item|
       # String eval substitution
       if (item =~ PATTERNS::RUBY_STRING_REPLACEMENT)
-        elements << @system_wrapper.module_eval(item)
+        elements << @ruby_expandinator.expand(item, source: "tool '#{tool_name}'")
       # Global constants
       elsif (@system_wrapper.constants_include?(item))
         const = Object.const_get(item)

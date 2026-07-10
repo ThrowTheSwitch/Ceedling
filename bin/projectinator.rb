@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants' # From Ceedling application
+require 'ceedling/exceptions'
 
 class Projectinator
 
@@ -13,7 +14,7 @@ class Projectinator
   DEFAULT_PROJECT_FILEPATH = './' + DEFAULT_PROJECT_FILENAME
   DEFAULT_YAML_FILE_EXTENSION = '.yml'
 
-  constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator, :system_wrapper
+  constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator, :system_wrapper, :ruby_expandinator
 
   # Discovers project file path and loads configuration.
   # Precendence of attempts:
@@ -111,11 +112,11 @@ class Projectinator
 
     # Handle any inline Ruby string expansion
     load_paths.each do |load_path|
-      load_path.replace( @system_wrapper.module_eval( load_path ) ) if (load_path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+      load_path.replace( @ruby_expandinator.expand( load_path, source: ":mixins ↳ :load_paths" ) )
     end
 
     enabled.each do |mixin|
-      mixin.replace( @system_wrapper.module_eval( mixin ) ) if (mixin =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+      mixin.replace( @ruby_expandinator.expand( mixin, source: ":mixins ↳ :enabled" ) )
     end
 
     # Remove the :mixins section of the configuration
@@ -231,14 +232,20 @@ class Projectinator
       end
 
       return config
-    rescue Errno::ENOENT
-      # Handle special case of user-provided blank filepath
-      filepath = filepath.empty?() ? '<none>' : filepath
-      raise "Could not find project filepath #{filepath} #{method}"
-
-    rescue StandardError => e
-      # Catch-all error handling
-      raise "Error loading project filepath #{filepath} #{method}: #{e.message}"
+    rescue YamlLoadException => e
+      if e.reason == :not_found
+        # Handle special case of user-provided blank filepath
+        _filepath = filepath.empty?() ? '<none>' : filepath
+        raise YamlLoadException.new(
+          reason: e.reason, source: e.source, original_error: e.original_error,
+          message: "Could not find project filepath #{_filepath} #{method}"
+        )
+      else
+        raise YamlLoadException.new(
+          reason: e.reason, source: e.source, original_error: e.original_error,
+          message: "Error loading project filepath #{filepath} #{method} ⏩️ #{e.message}"
+        )
+      end
     end
 
   end

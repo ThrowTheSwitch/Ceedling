@@ -136,7 +136,8 @@ describe GeneratorTestResults do
       :yaml_wrapper         => nil,
       :system_wrapper       => nil,
       :loginator            => @loginator,
-      :reportinator         => @reportinator
+      :reportinator         => @reportinator,
+      :ruby_expandinator    => nil
     })
 
     @yaml_wrapper = YamlWrapper.new

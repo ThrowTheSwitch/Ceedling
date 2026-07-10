@@ -14,6 +14,8 @@ file_wrapper:
 
 yaml_wrapper:
 
+ruby_expandinator:
+
 config_walkinator:
 
 system_wrapper:
@@ -58,6 +60,7 @@ cli_helper:
     - loginator
     - reportinator
     - system_wrapper
+    - ruby_expandinator
 
 path_validator:
   compose:
@@ -87,6 +90,7 @@ projectinator:
     - yaml_wrapper
     - loginator
     - system_wrapper
+    - ruby_expandinator
 
 configinator:
   compose:
