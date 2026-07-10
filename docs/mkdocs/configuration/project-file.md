@@ -84,8 +84,8 @@ for this. A few highlights from that reference page:
   of Ceedling itself is skewed towards supporting testing, though
   Ceedling can, of course, build your binary release artifact
   as well. Note that some complex binary release builds are beyond
-  Ceedling's abilities. See the [`dependencies`](../plugins/dependencies.md) plugin for
-  extending release build abilities.
+  Ceedling's abilities. See the [`dependencies`](../plugins/dependencies.md)
+  plugin for extending release build abilities.
 
 [MinGW]: http://www.mingw.org/
 
@@ -103,16 +103,27 @@ configuration are loaded and processed into a data structure for use by the
 Ceedling application (e.g. path handling). In other cases, this evaluation
 occurs each time a project configuration element is referenced (e.g. tools).
 
+!!! warning "Disabled by default for security"
+    Inline Ruby string expansion executes arbitrary Ruby code from a
+    project configuration, Mixins, and/or plugin config — so it's
+    **disabled by default**.
+
+    Enable it with `--ruby-replacement` for any [application command](../getting-started/command-line.md#ceedling-application-commands) 
+    that loads project configuration (`build`, `check`, `dumpconfig`,
+    `environment`, `help`).
+    **Only enable Ruby string expansion for configurations you trust.**
+
 !!! note
     One good option for validating and troubleshooting inline Ruby string 
-    exapnsion is the use of `ceedling dumpconfig` at the command line. This 
-    application command causes your project configuration to be processed and 
-    written to a YAML file with any inline Ruby string expansions, well, 
-    expanded along with defaults set, plugin actions applied, etc.
+    expansion is the use of `ceedling dumpconfig --ruby-replacement` at the 
+    command line. This application command causes your project configuration 
+    to be processed and written to a YAML file with any inline Ruby string 
+    expansions, well, expanded along with defaults set, plugin actions 
+    applied, etc.
 
 #### Ruby string expansion syntax
 
-To exapnd the string result of Ruby code within a configuration value string, 
+To expand the string result of Ruby code within a configuration value string, 
 wrap the Ruby code in the substitution pattern `#{…}`.
 
 Inline Ruby string expansion may constitute the entirety of a configuration 

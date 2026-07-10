@@ -100,7 +100,9 @@ briefly list and explain the available application commands.
       environment from within Ceedling and through the `:environment`
       section of your configuration. This is especially helpful in 
       verifying the evaluation of any string replacement expressions in
-      your `:environment` config entries.
+      your `:environment` config entries. (Requires the `--ruby-replacement`
+      flag if any [inline Ruby string expansion][inline-ruby-string-expansion]
+      is present — see linked section for details.)
     * All existing Ceedling-related environment variables set before you
       ran Ceedling from the command line.
 
@@ -349,5 +351,7 @@ deleting generated files.
 In general, it’s best not to add to source control any Ceedling generated 
 directories below the root of your top-level project build directory. That is, 
 leave anything Ceedling & its accompanying tools generate out of source control.
+
+[inline-ruby-string-expansion]: ../configuration/project-file.md#inline-ruby-string-expansion
 
 <br/><br/>
