@@ -5422,6 +5422,19 @@ This feature is dependent on minimum tool versions.</p>
 </code></pre></div>
 <hr />
 <h3 id="untested_sources"><code>:untested_sources</code></h3>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Successful compilation of untested source files may require certain symbols 
+to be defined, certain flags to be set, or entire code stand-ins for platform 
+code. Ceedling’s 
+<a href="../../configuration/reference/defines/"><code>:defines</code></a>
+and 
+<a href="../../configuration/reference/flags/"><code>:flags</code></a>
+matchers can provide these. For GCov tasks, symbols and flags are extracted from
+the <code>:test</code> context beneath the <code>:defines</code> and <code>:flags</code> configuration sections 
+by default. If you need something special for coverage builds, use the <code>:gcov</code> 
+context for these matchers instead.</p>
+</div>
 <p>Enable or disable coverage compilation for all untested source files.
 When enabled, coverage results will exist in the final report for all source
 files in the project (untested source files will be listed with 0% coverage.)</p>

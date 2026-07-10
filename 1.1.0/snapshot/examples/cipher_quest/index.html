@@ -4153,24 +4153,43 @@ a descriptive error:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>error: &quot;cipher_quest: No feature defined. An agent needs tools. ...&quot;
 </code></pre></div>
 <p>To build a release binary, supply one or more feature symbols via a mixin.</p>
+<hr />
+<p>Below is example help output produced by running the executable with no
+command line arguments. This executable was a result of a release build 
+with <code>CIPHER_ROT13</code> defined.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>&gt;<span class="w"> </span>build/release/cipher_quest.out
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>Usage:<span class="w"> </span>cipher_quest<span class="w"> </span>&lt;command&gt;<span class="w"> </span><span class="o">[</span>args...<span class="o">]</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>Core<span class="w"> </span>commands<span class="w"> </span><span class="o">(</span>always<span class="w"> </span>available<span class="o">)</span>:
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">  </span>reverse<span class="w"> </span>&lt;text&gt;<span class="w">             </span>Reverse<span class="w"> </span>the<span class="w"> </span>characters
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">  </span>upper<span class="w"> </span>&lt;text&gt;<span class="w">               </span>Convert<span class="w"> </span>to<span class="w"> </span>uppercase
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">  </span>lower<span class="w"> </span>&lt;text&gt;<span class="w">               </span>Convert<span class="w"> </span>to<span class="w"> </span>lowercase
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">  </span>trim<span class="w"> </span>&lt;text&gt;<span class="w">                </span>Strip<span class="w"> </span>leading/trailing<span class="w"> </span>whitespace
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">  </span>palindrome<span class="w"> </span>&lt;text&gt;<span class="w">          </span>Simple<span class="w"> </span>palindrome<span class="w"> </span>check<span class="w"> </span><span class="o">(</span>exact<span class="w"> </span>characters<span class="o">)</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">  </span>wordcount<span class="w"> </span>&lt;text&gt;<span class="w">           </span>Count<span class="w"> </span>words
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>Cipher:<span class="w"> </span>ROT13
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">  </span>rot13<span class="w"> </span>&lt;text&gt;<span class="w">               </span>Encode<span class="w"> </span>or<span class="w"> </span>decode<span class="w"> </span><span class="o">(</span>ROT13<span class="w"> </span>is<span class="w"> </span>its<span class="w"> </span>own<span class="w"> </span>inverse<span class="o">)</span>
+</code></pre></div>
 <h3 id="using-a-mixin-file-optional-sigil">Using a mixin file (optional <code>@</code> sigil)</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># ROT13 variant</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>@mixin/release_rot13.yml
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Caesar cipher variant</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>@mixin/release_caesar.yml
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># Analysis variant</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>@mixin/release_analyze.yml
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># Full-featured: All capabilities enabled</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>@mixin/release_full.yml
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># ROT13 variant</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>@mixin/release_rot13.yml
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># Caesar cipher variant</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>@mixin/release_caesar.yml
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># Analysis variant</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>@mixin/release_analyze.yml
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># Full-featured: All capabilities enabled</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>@mixin/release_full.yml
 </code></pre></div>
 <p>Mixin files are simple YAML fragments that merge into the project
 configuration. For example, <code>mixin/release_rot13.yml</code> contains:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">:defines</span><span class="p">:</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">:release</span><span class="p">:</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CIPHER_ROT13</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">:defines</span><span class="p">:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">:release</span><span class="p">:</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CIPHER_ROT13</span>
 </code></pre></div>
 <p>Ceedling deep-merges this with <code>project.yml</code>, adding <code>CIPHER_ROT13</code> to the
 release compilation flags without modifying the base project file.</p>
@@ -4178,35 +4197,35 @@ release compilation flags without modifying the base project file.</p>
 <p>Rather than referencing a file, YAML can be supplied directly on the command
 line using the <code>=</code> sigil prefix. Quote the value to protect YAML special
 characters (colons, brackets, spaces) from shell interpretation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># ROT13 variant</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="w"> </span><span class="s2">&quot;=defines: {release: [CIPHER_ROT13]}&quot;</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Caesar cipher variant</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="w"> </span><span class="s2">&quot;=defines: {release: [CIPHER_CAESAR]}&quot;</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># All features enabled</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="w"> </span><span class="s2">&quot;=defines: {release: [CIPHER_ROT13, CIPHER_CAESAR, ANALYZER_ENABLED]}&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># ROT13 variant</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="w"> </span><span class="s2">&quot;=defines: {release: [CIPHER_ROT13]}&quot;</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># Caesar cipher variant</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="w"> </span><span class="s2">&quot;=defines: {release: [CIPHER_CAESAR]}&quot;</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># All features enabled</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="w"> </span><span class="s2">&quot;=defines: {release: [CIPHER_ROT13, CIPHER_CAESAR, ANALYZER_ENABLED]}&quot;</span>
 </code></pre></div>
 <p>Multiple <code>--mixin</code> values can be combined and are processed left-to-right:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="w"> </span>@mixin/release_rot13.yml<span class="w"> </span>--mixin<span class="w"> </span><span class="s2">&quot;=project: {build_root: ci_build}&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="w"> </span>@mixin/release_rot13.yml<span class="w"> </span>--mixin<span class="w"> </span><span class="s2">&quot;=project: {build_root: ci_build}&quot;</span>
 </code></pre></div>
 <hr />
 <h2 id="example-session">Example Session</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Build and run with ROT13 enabled</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>mixin/release_rot13.yml
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>./build/release/cipher_quest.out<span class="w"> </span>rot13<span class="w"> </span><span class="s2">&quot;Attack at dawn&quot;</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># =&gt; Nggnpx ng qnja</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>./build/release/cipher_quest.out<span class="w"> </span>rot13<span class="w"> </span><span class="s2">&quot;Nggnpx ng qnja&quot;</span>
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># =&gt; Attack at dawn</span>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1"># Build with all features and try the analyzer</span>
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>mixin/release_full.yml
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>./build/release/cipher_quest.out<span class="w"> </span>ispalindrome<span class="w"> </span><span class="s2">&quot;A man a plan a canal Panama&quot;</span>
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="c1"># =&gt; Yes, it is a palindrome.</span>
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>./build/release/cipher_quest.out<span class="w"> </span>caesar<span class="w"> </span><span class="m">13</span><span class="w"> </span><span class="s2">&quot;Hello, World!&quot;</span>
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="c1"># =&gt; Uryyb, Jbeyq!</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Build and run with ROT13 enabled</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>mixin/release_rot13.yml
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>./build/release/cipher_quest.out<span class="w"> </span>rot13<span class="w"> </span><span class="s2">&quot;Attack at dawn&quot;</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># =&gt; Nggnpx ng qnja</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>./build/release/cipher_quest.out<span class="w"> </span>rot13<span class="w"> </span><span class="s2">&quot;Nggnpx ng qnja&quot;</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># =&gt; Attack at dawn</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="c1"># Build with all features and try the analyzer</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>ceedling<span class="w"> </span>release<span class="w"> </span>--mixin<span class="o">=</span>mixin/release_full.yml
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>./build/release/cipher_quest.out<span class="w"> </span>ispalindrome<span class="w"> </span><span class="s2">&quot;A man a plan a canal Panama&quot;</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="c1"># =&gt; Yes, it is a palindrome.</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>./build/release/cipher_quest.out<span class="w"> </span>caesar<span class="w"> </span><span class="m">13</span><span class="w"> </span><span class="s2">&quot;Hello, World!&quot;</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="c1"># =&gt; Uryyb, Jbeyq!</span>
 </code></pre></div>
 
 

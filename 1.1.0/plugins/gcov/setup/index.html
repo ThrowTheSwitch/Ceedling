@@ -4378,22 +4378,24 @@ dependency plays out in two different ways. In both cases, the report
 generation utilities ingest <code>gcov</code>’s output to produce their artifacts. As
 such, <code>gcov</code> must be available in your environment if using report generation.</p>
 <ol>
-<li><code>gcovr</code> calls <code>gcov</code> directly.</li>
-</ol>
+<li>
+<p><code>gcovr</code> calls <code>gcov</code> directly.</p>
 <p>Because it calls <code>gcov</code> directly, you are limited as to the
-   advanced Ceedling features you can employ to modify <code>gcov</code>’s execution.
-   However, with a configuration option (see below) you can instruct <code>gcovr</code>
-   to call something other than <code>gcov</code> (e.g. a script that intercepts and
-   modifies how <code>gcovr</code> calls out to <code>gcov</code>).</p>
+advanced Ceedling features you can employ to modify <code>gcov</code>’s execution.
+However, with a configuration option (see below) you can instruct <code>gcovr</code>
+to call something other than <code>gcov</code> (e.g. a script that intercepts and
+modifies how <code>gcovr</code> calls out to <code>gcov</code>).</p>
 <p><code>gcovr</code> instructs <code>gcov</code> to generate <code>.gcov</code> files that it processes and
-   discards. A <code>gcovr</code> option documented below will retain the <code>.gcov</code> files.</p>
-<ol>
-<li><code>reportgenerator</code> expects the existence of <code>.gcov</code> files to do its work.
-   This Ceedling plugin calls <code>gcov</code> appropriately to generate the <code>.gcov</code> 
-   files <code>reportgenerator</code> needs before then calling the report utility. </li>
-</ol>
+discards. A <code>gcovr</code> option documented below will retain the <code>.gcov</code> files.</p>
+</li>
+<li>
+<p><code>reportgenerator</code> expects the existence of <code>.gcov</code> files to do its work.</p>
+<p>This Ceedling plugin calls <code>gcov</code> appropriately to generate the <code>.gcov</code> 
+files <code>reportgenerator</code> needs before then calling the report utility. </p>
 <p>You can use Ceedling’s features to modify how <code>gcov</code> is run before 
-   <code>reportgenerator</code>.</p>
+<code>reportgenerator</code>.</p>
+</li>
+</ol>
 <h2 id="enable-this-plugin">Enable this plugin</h2>
 <p>To use this plugin it must be enabled in your Ceedling project file:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:plugins</span><span class="p">:</span>
@@ -4441,8 +4443,11 @@ in your generated coverage reports.</p>
 <p>When enabled, the GCov plugin will compile all source files in the project with
 coverage, not only those exercised with tests. This causes all source files to 
 appear in any generated reporting (untested source files with 0% coverage).</p>
-<p>NOTE: Successful compilation of source files may require certain symbols to be
-defined or certain flags to be set in compilation. Ceedling’s 
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Successful compilation of untested source files may require certain symbols 
+to be defined, certain flags to be set, or entire code stand-ins for platform 
+code. Ceedling’s 
 <a href="../../../configuration/reference/defines/"><code>:defines</code></a>
 and 
 <a href="../../../configuration/reference/flags/"><code>:flags</code></a>
@@ -4450,6 +4455,7 @@ matchers can provide these. For GCov tasks, symbols and flags are extracted from
 the <code>:test</code> context beneath the <code>:defines</code> and <code>:flags</code> configuration sections 
 by default. If you need something special for coverage builds, use the <code>:gcov</code> 
 context for these matchers instead.</p>
+</div>
 <p>Notes:</p>
 <ul>
 <li>Versions of GCovr before 7.0 do not include the necessary options to produce 

@@ -329,10 +329,8 @@
 #   :post_test_fixture_execute:
 #   :pre_test:
 #   :post_test:
-#   :pre_test_build:
-#   :post_test_build:
-#   :pre_release_build:
-#   :post_release_build:
+#   :pre_release:
+#   :post_release:
 #   :pre_build:
 #   :post_build:
 #   :post_error:
