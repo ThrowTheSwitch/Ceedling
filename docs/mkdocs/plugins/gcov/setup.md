@@ -27,21 +27,22 @@ such, `gcov` must be available in your environment if using report generation.
 
 1. `gcovr` calls `gcov` directly.
 
-   Because it calls `gcov` directly, you are limited as to the
-   advanced Ceedling features you can employ to modify `gcov`’s execution.
-   However, with a configuration option (see below) you can instruct `gcovr`
-   to call something other than `gcov` (e.g. a script that intercepts and
-   modifies how `gcovr` calls out to `gcov`).
+    Because it calls `gcov` directly, you are limited as to the
+    advanced Ceedling features you can employ to modify `gcov`’s execution.
+    However, with a configuration option (see below) you can instruct `gcovr`
+    to call something other than `gcov` (e.g. a script that intercepts and
+    modifies how `gcovr` calls out to `gcov`).
 
-   `gcovr` instructs `gcov` to generate `.gcov` files that it processes and
-   discards. A `gcovr` option documented below will retain the `.gcov` files.
+    `gcovr` instructs `gcov` to generate `.gcov` files that it processes and
+    discards. A `gcovr` option documented below will retain the `.gcov` files.
 
 2. `reportgenerator` expects the existence of `.gcov` files to do its work.
-   This Ceedling plugin calls `gcov` appropriately to generate the `.gcov` 
-   files `reportgenerator` needs before then calling the report utility. 
 
-   You can use Ceedling’s features to modify how `gcov` is run before 
-   `reportgenerator`.
+    This Ceedling plugin calls `gcov` appropriately to generate the `.gcov` 
+    files `reportgenerator` needs before then calling the report utility. 
+
+    You can use Ceedling’s features to modify how `gcov` is run before 
+    `reportgenerator`.
 
 ## Enable this plugin
 
@@ -109,15 +110,21 @@ When enabled, the GCov plugin will compile all source files in the project with
 coverage, not only those exercised with tests. This causes all source files to 
 appear in any generated reporting (untested source files with 0% coverage).
 
-NOTE: Successful compilation of source files may require certain symbols to be
-defined or certain flags to be set in compilation. Ceedling’s 
-[`:defines`](../../configuration/reference/defines.md)
-and 
-[`:flags`](../../configuration/reference/flags.md)
-matchers can provide these. For GCov tasks, symbols and flags are extracted from
-the `:test` context beneath the `:defines` and `:flags` configuration sections 
-by default. If you need something special for coverage builds, use the `:gcov` 
-context for these matchers instead.
+!!! warning
+    **Compiling all untested sources for 0% coverage reporting will likely require additional work.**
+
+    Successful compilation of untested source files may require certain symbols 
+    to be defined, certain flags to be set, or entire stand-in shims for platform 
+    headers and code.
+    
+    Ceedling’s 
+    [`:defines`](../../configuration/reference/defines.md)
+    and 
+    [`:flags`](../../configuration/reference/flags.md)
+    matchers can provide these. For GCov tasks, symbols and flags are extracted from
+    the `:test` context beneath the `:defines` and `:flags` configuration sections 
+    by default. If you need something special for coverage builds, use the `:gcov` 
+    context for these matchers instead.
 
 Notes:
 

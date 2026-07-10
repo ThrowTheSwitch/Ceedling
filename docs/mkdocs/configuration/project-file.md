@@ -93,6 +93,16 @@ for this. A few highlights from that reference page:
 
 ### Inline Ruby string expansion
 
+!!! warning "Disabled by default for security"
+    Inline Ruby string expansion executes arbitrary Ruby code from a
+    project configuration, Mixins, and/or plugin config — so it's
+    **disabled by default**.
+
+    Enable it with `--ruby-replacement` for any [application command](../getting-started/command-line.md#application-commands) 
+    that loads project configuration (`build`, `check`, `dumpconfig`,
+    `environment`, `help`).
+    **Only enable Ruby string expansion for configurations you trust.**
+
 Ceedling is able to execute inline Ruby string substitution code within the
 entries of certain project file configuration elements. For instance,
 a commonly needed expansion is that of referencing an environment variable.
@@ -102,16 +112,6 @@ In some cases, this evaluation may occur when elements of the project
 configuration are loaded and processed into a data structure for use by the 
 Ceedling application (e.g. path handling). In other cases, this evaluation
 occurs each time a project configuration element is referenced (e.g. tools).
-
-!!! warning "Disabled by default for security"
-    Inline Ruby string expansion executes arbitrary Ruby code from a
-    project configuration, Mixins, and/or plugin config — so it's
-    **disabled by default**.
-
-    Enable it with `--ruby-replacement` for any [application command](../getting-started/command-line.md#ceedling-application-commands) 
-    that loads project configuration (`build`, `check`, `dumpconfig`,
-    `environment`, `help`).
-    **Only enable Ruby string expansion for configurations you trust.**
 
 !!! note
     One good option for validating and troubleshooting inline Ruby string 

@@ -61,6 +61,22 @@ This feature is dependent on minimum tool versions.
 
 ### `:untested_sources`
 
+!!! warning
+    **Compiling all untested sources for 0% coverage reporting will likely require additional work.**
+
+    Successful compilation of untested source files may require certain symbols 
+    to be defined, certain flags to be set, or entire stand-in shims for platform 
+    headers and code.
+    
+    Ceedling’s 
+    [`:defines`](../configuration/reference/defines.md)
+    and 
+    [`:flags`](../configuration/reference/flags.md)
+    matchers can provide these. For GCov tasks, symbols and flags are extracted from
+    the `:test` context beneath the `:defines` and `:flags` configuration sections 
+    by default. If you need something special for coverage builds, use the `:gcov` 
+    context for these matchers instead.
+
 Enable or disable coverage compilation for all untested source files.
 When enabled, coverage results will exist in the final report for all source
 files in the project (untested source files will be listed with 0% coverage.)

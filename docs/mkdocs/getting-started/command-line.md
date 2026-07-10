@@ -28,6 +28,15 @@ In the case of running builds, both come into play at the command line.
 The two classes of command line arguments are clearly labelled in the
 summary of all commands provided by `ceedling help`.
 
+!!! note "Documentation convention"
+    The `*` used in the headings below is a stand-in for documentation 
+    purposes. It signifies either:
+
+    - Freeform text provided by the user at the command line (e.g. a filename
+      or matching pattern).
+    - A variant of the command itself (e.g. naming a subsection beneath `:paths`
+      in your project configuration.)
+
 ## Quick command line example
 
 To exercise the Ceedling command line quickly, follow these steps after 
@@ -39,136 +48,227 @@ To exercise the Ceedling command line quickly, follow these steps after
    argument is an application command.
 1. Change directories into the new _temp_sensor/_ directory.
 1. Execute `ceedling test:all` in your terminal. The `test:all` is a
-   build task executed by the default (and omitted) `build` application
-   command.
+   build task executed by the default `build` application command
+   (`build` is an optional keyword for this command line).
 1. Take a look at the build and test suite console output as well as 
    the _project.yml_ file in the root of the example project.
 
-## Ceedling application commands
+## Application commands
 
 Ceedling provides robust command line help for application commands.
 Execute `ceedling help` for a summary view of all application commands.
 Execute `ceedling help <command>` for detailed help.
 
-_NOTE:_ Because the built-in command line help is thorough, we will only 
-briefly list and explain the available application commands.
+Because the built-in command line help is thorough, the following sections
+do not provide exhaustive details.
 
-* `ceedling [no arguments]`:
+### `ceedling [no arguments]`
 
-    Runs the default build tasks. Unless set in the project file, Ceedling 
-    uses a default task of `test:all`. To override this behavior, set your 
-    own default tasks in the project file (see later section). 
+Runs the default build tasks. Unless set in the project file, Ceedling 
+uses a default task of `test:all`. To override this behavior, set your 
+own default tasks in the project file (see later section).
 
-    ---
+_No parameters._
 
-* `ceedling <tasks...>`:
+---
 
-    Runs the named tasks (e.g. `ceedling test:all`). Various option flags exist 
-    to control project configuration loading, verbosity levels, logging, test 
-    task filters, etc.
+### `ceedling <tasks...>`
 
-    See [next section](#ceedling-build-plugin-tasks) to understand the build & 
-    plugin tasks this application command is able to execute. Run 
-    `ceedling help build` to understand all the command line flags that work 
-    with build & plugin tasks.
+Runs the named tasks (e.g. `ceedling test:all`). Various option flags exist 
+to control project configuration loading, verbosity levels, logging, test 
+task filters, etc.
 
-    ---
+See [next section](#build-plugin-tasks) to understand the build & 
+plugin tasks this application command is able to execute. Parameters are 
+the same as those for `ceedling build`, below.
 
-* `ceedling build <tasks...>`:
+---
 
-    `build` is an optional alias for the preceding (i.e. `ceedling test:all` 
-    is equivalent to `ceedling build test:all`). The command actually executed
-    is `ceedling build` under-the-hood. To maintain Ceedling’s historical
-    command line convention, special rigging causes the `build` application
-    command to be optional.
+### `ceedling build [TASKS...]`
 
-    ---
+`build` is an optional alias for the preceding (i.e. `ceedling test:all` 
+is equivalent to `ceedling build test:all`). The command actually executed
+is `ceedling build` under-the-hood. To maintain Ceedling’s historical
+command line convention, special rigging causes the `build` application
+command to be optional.
 
-* `ceedling dumpconfig`:
+`TASKS` are zero or more build operations created from your project 
+configuration. If no tasks are provided, built-in default tasks or your 
+`:project` ↳ `:default_tasks` will be executed.
 
-    Process project configuration and write final result to a YAML file. 
-    Various option flags exist to control project configuration loading,
-    configuration manipulation, and configuration sub-section extraction.
+| Flag | Alias | Description | Default |
+|---|---|---|---|
+| `--project` | `-p` | Loads the filepath as your base project configuration | none |
+| `--mixin` | `-m` | Merges the configuration mixin by name, filepath, or inline YAML (`=` sigil). Repeatable. | `[]` |
+| `--verbosity` | `-v` | Sets logging level | `normal` |
+| `--log` | | Enable logging to `<build path>/logs/ceedling.log` | unset |
+| `--logfile` | `-l` | Enables logging to specified filepath (supersedes `--log`) | `''` (none) |
+| `--graceful-fail` | | Force exit code of 0 for unit test failures | unset |
+| `--test-case` | | Filter for individual unit test names | `''` (none) |
+| `--exclude-test-case` | | Prevent matched unit test names from running | `''` (none) |
+| `--ruby-replacement` | | Enables inline Ruby string expansion (`#{...}`) in project configuration | `false` (disabled) |
 
-    ---
+---
 
-* `ceedling environment`:
+### `ceedling dumpconfig FILEPATH [SECTIONS...]`
 
-    Lists project related environment variables:
+Process project configuration and write final result to a YAML file.
 
-    * All environment variable names and string values added to your 
-      environment from within Ceedling and through the `:environment`
-      section of your configuration. This is especially helpful in 
-      verifying the evaluation of any string replacement expressions in
-      your `:environment` config entries. (Requires the `--ruby-replacement`
-      flag if any [inline Ruby string expansion][inline-ruby-string-expansion]
-      is present — see linked section for details.)
-    * All existing Ceedling-related environment variables set before you
-      ran Ceedling from the command line.
+`FILEPATH` is a required path to a destination YAML file. A nonexistent 
+path will be created.
 
-    ---
+`SECTIONS` is an optional config “path” that extracts a portion of a 
+configuration. The top-level YAML container will be the path’s last 
+element. Example: `ceedling dumpconfig my/path/config.yml tools test_compiler`.
 
-* `ceedling example`:
+| Flag | Alias | Description | Default |
+|---|---|---|---|
+| `--project` | `-p` | Loads the filepath as your base project configuration | none |
+| `--mixin` | `-m` | Merges the configuration mixin by name, filepath, or inline YAML (`=` sigil). Repeatable. | `[]` |
+| `--app` | | Runs Ceedling application and its config manipulations | `true` |
+| `--ruby-replacement` | | Enables inline Ruby string expansion (`#{...}`) in project configuration | `false` (disabled) |
 
-    Extracts an example project from within Ceedling to your local 
-    filesystem. The available examples are listed with 
-    `ceedling examples`. Various option flags control whether the example
-    contains vendored Ceedling and/or a documentation bundle.
+---
 
-    ---
+### `ceedling check`
 
-* `ceedling examples`:
+Loads and processes your project configuration with full logging — the 
+same loading, merging, manipulation, and validation a real build would 
+perform — but executes no build tasks and writes no files. Useful for 
+confirming a configuration is well-formed.
 
-    Lists the available examples within Ceedling. To extract an example,
-    use `ceedling example`.
+| Flag | Alias | Description | Default |
+|---|---|---|---|
+| `--project` | `-p` | Loads the filepath as your base project configuration | none |
+| `--mixin` | `-m` | Merges the configuration mixin by name, filepath, or inline YAML (`=` sigil). Repeatable. | `[]` |
+| `--ruby-replacement` | | Enables inline Ruby string expansion (`#{...}`) in project configuration | `false` (disabled) |
 
-    ---
+---
 
-* `ceedling help`:
+### `ceedling environment`
 
-    Displays summary help for all application commands and detailed help 
-    for each command. `ceedling help` also loads your project 
-    configuration (if available) and lists all build tasks from it. 
-    Various option flags control what project configuration is loaded.
+Lists project related environment variables:
 
-    ---
+* All environment variable names and string values added to your 
+  environment from within Ceedling and through the `:environment`
+  section of your configuration. This is especially helpful in 
+  verifying the evaluation of any string replacement expressions in
+  your `:environment` config entries. (Requires the `--ruby-replacement`
+  flag if any [inline Ruby string expansion][inline-ruby-string-expansion]
+  is present — see linked section for details.)
+* All existing Ceedling-related environment variables set before you
+  ran Ceedling from the command line.
 
-* `ceedling new`:
+| Flag | Alias | Description | Default |
+|---|---|---|---|
+| `--project` | `-p` | Loads the filepath as your base project configuration | none |
+| `--mixin` | `-m` | Merges the configuration mixin by name, filepath, or inline YAML (`=` sigil). Repeatable. | `[]` |
+| `--ruby-replacement` | | Enables inline Ruby string expansion (`#{...}`) in project configuration | `false` (disabled) |
 
-    Creates a new project structure. Various option flags control whether 
-    the new project contains vendored Ceedling, a documentation bundle,
-    and/or a starter project configuration file.
+---
 
-    ---
+### `ceedling example NAME [DEST]`
 
-* `ceedling upgrade`:
+Extracts an example project from within Ceedling to your local 
+filesystem. The available examples are listed with `ceedling examples`.
 
-    Upgrade vendored installation of Ceedling for an existing project 
-    along with any locally installed documentation bundles.
+`NAME` is required to specify the example to extract and becomes the 
+containing directory for the extracted project. `DEST` is an optional 
+containing directory path (default is your working directory).
 
-    ---
+| Flag | Alias | Description | Default |
+|---|---|---|---|
+| `--local` | | Install Ceedling plus supporting tools to vendor/ | `false` |
+| `--docs` | | Copy all documentation to docs/ subdirectory of project | `false` |
 
-* `ceedling version`:
+---
 
-    Displays version information for Ceedling and its components. Version output for Ceedling includes the Git Commit short SHA in Ceedling’s build identifier and Ceedling’s path of origin.
-    
-    ```
-    🌱 Welcome to Ceedling!
-    
-      Ceedling => #.#.#-<Short SHA>
-      ----------------------
-      <Ceedling install path>
-    
-      Build Frameworks
-      ----------------------
-          CMock => #.#.#
-          Unity => #.#.#
-      CException => #.#.#
-    ```
-    
-    If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling’s automated build in CI.
+### `ceedling examples`
 
-## Ceedling build & plugin tasks
+Lists the available examples within Ceedling. To extract an example,
+use `ceedling example`.
+
+_No parameters._
+
+---
+
+### `ceedling help [COMMAND]`
+
+Displays summary help for all application commands and detailed help 
+for each command. `ceedling help` also loads your project 
+configuration (if available) and lists all build tasks from it. 
+`COMMAND` is optional and produces detailed help for a specific 
+application command.
+
+| Flag | Alias | Description | Default |
+|---|---|---|---|
+| `--project` | `-p` | Loads the filepath as your base project configuration | none |
+| `--mixin` | `-m` | Merges the configuration mixin by name, filepath, or inline YAML (`=` sigil). Repeatable. | `[]` |
+| `--ruby-replacement` | | Enables inline Ruby string expansion (`#{...}`) in project configuration | `false` (disabled) |
+
+---
+
+### `ceedling new [DEST]`
+
+Creates a new project structure. `DEST` is an optional root path for the 
+new project (default is your working directory).
+
+| Flag | Alias | Description | Default |
+|---|---|---|---|
+| `--local` | | Install Ceedling plus supporting tools to vendor/ | `false` |
+| `--docs` | | Copy all documentation to docs/ subdirectory of project | `false` |
+| `--configs` | | Install starter project file in project root | `true` |
+| `--force` | | Ignore any existing project and recreate destination | `false` |
+| `--gitsupport` | | Create .gitignore / .gitkeep files for convenience | `false` |
+
+---
+
+### `ceedling upgrade PATH`
+
+Upgrade vendored installation of Ceedling for an existing project 
+along with any locally installed documentation bundles. `PATH` is 
+required and should be the root of the project to upgrade.
+
+| Flag | Alias | Description | Default |
+|---|---|---|---|
+| `--project` | | Project filename used in the project-existence check | `project.yml` |
+
+---
+
+### `ceedling docs [DEST]`
+
+Exports the Ceedling documentation bundle to the filesystem. `DEST` is 
+an optional destination path (default is your working directory).
+
+_No parameters._
+
+---
+
+### `ceedling version`
+
+Displays version information for Ceedling and its components. Version output for Ceedling includes the Git Commit short SHA in Ceedling’s build identifier and Ceedling’s path of origin.
+
+```
+🌱 Welcome to Ceedling!
+
+  Ceedling => #.#.#-<Short SHA>
+  ----------------------
+  <Ceedling install path>
+
+  Build Frameworks
+  ----------------------
+       CMock => #.#.#
+       Unity => #.#.#
+  CException => #.#.#
+```
+
+If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling’s automated build in CI.
+
+_No parameters._
+
+---
+
+## Build & plugin tasks
 
 Build task are loaded from your project configuration. Unlike 
 application commands that are fixed, build tasks vary depending on your
@@ -177,158 +277,178 @@ project configuration and the files within your project structure.
 Ultimately, build & plugin tasks are executed by the `build` application
 command (but the `build` keyword can be omitted — see above).
 
-* `ceedling paths:*`:
+### `ceedling paths:*`
 
-    List all paths collected from `:paths` entries in your YAML config
-    file where `*` is the name of any section contained in `:paths`. This
-    task is helpful in verifying the expansion of path wildcards / globs
-    specified in the `:paths` section of your config file.
+Variants:
 
-    ---
-
-* `ceedling files:assembly`
 * `ceedling files:header`
 * `ceedling files:source`
 * `ceedling files:support`
 * `ceedling files:test`
 
-    List all files and file counts collected from the relevant search
-    paths specified by the `:paths` entries of your YAML config file. The
-    `files:assembly` task will only be available if assembly support is
-    enabled in the `:release_build` or `:test_build` sections of your 
-    configuration file.
+List all paths collected from `:paths` entries in your project configuration
+where `*` is the name of any section contained in `:paths`.
 
-    ---
+This task is helpful in verifying the expansion of path wildcards / globs
+specified in the `:paths` section of your configuration.
 
-* `ceedling test:all`:
+---
 
-    Run all unit tests.
+### `ceedling files:*`
 
-    ---
+Variants:
 
-* `ceedling test:build_only`:
+* `ceedling files:header`
+* `ceedling files:source`
+* `ceedling files:support`
+* `ceedling files:test`
+* `ceedling files:assembly`
 
-    Build the entire test suite but do not execute it. This is a simple 
-    validation of code and configuration via your toolchain.
+List all files and file counts collected from the relevant search
+paths specified by the `:paths` entries of your project configuration.
 
-    ---
+The `files:assembly` task will only be available if assembly support is
+enabled in the `:release_build` or `:test_build` sections of your 
+configuration file.
 
-* `ceedling test:*`:
+---
 
-    Execute the named test file or the named source file that has an
-    accompanying test. No path. Examples: `ceedling test:foo`, `ceedling 
-    test:foo.c` or `ceedling test:test_foo.c`
+### `ceedling test:all`
 
-    ---
+Run all unit tests.
 
-* `ceedling test:* --test-case=<test_case_name> `
-    Execute individual test cases which match `test_case_name`.
+---
 
-    For instance, if you have a test file _test_gpio.c_ containing the following 
-    test cases (test cases are simply `void test_name(void)`):
+### `ceedling test:build_only`
 
-    - `test_gpio_start`
-    - `test_gpio_configure_proper`
-    - `test_gpio_configure_fail_pin_not_allowed`
+Build the entire test suite but do not execute it. This is a simple 
+validation of code and configuration via your toolchain.
 
-    … and you want to run only `configure` tests, you can call:
+---
 
-      `ceedling test:gpio --test-case=configure`
+### `ceedling test:*`
 
-    **Test case matching notes**
+Execute the named test file or the named source file that has an
+accompanying test. No path. Examples: `ceedling test:foo`, `ceedling 
+test:foo.c` or `ceedling test:test_foo.c`
 
-    * Test case matching is on sub-strings. `--test_case=configure` matches on
-      the test cases including the word _configure_, naturally. 
-      `--test-case=gpio` would match all three test cases.
+---
 
-    ---
+### `ceedling test:* --test-case=<test_case_name>`
 
-* `ceedling test:* --exclude_test_case=<test_case_name> `
-    Execute test cases which do not match `test_case_name`.
+Execute individual test cases which match `test_case_name`.
 
-    For instance, if you have file _test_gpio.c_ with 3 tests:
+For instance, if you have a test file _test_gpio.c_ containing the following 
+test cases (test cases are simply `void test_name(void)`):
 
-    - `test_gpio_start`
-    - `test_gpio_configure_proper`
-    - `test_gpio_configure_fail_pin_not_allowed`
+- `test_gpio_start`
+- `test_gpio_configure_proper`
+- `test_gpio_configure_fail_pin_not_allowed`
 
-    … and you want to run only `start` tests, you can call:
+… and you want to run only `configure` tests, you can call:
 
-      `ceedling test:gpio --exclude_test_case=configure`
+  `ceedling test:gpio --test-case=configure`
 
-    **Test case exclusion matching notes**
+**Test case matching notes**
 
-    * Exclude matching follows the same sub-string logic as discussed in the
-      preceding section.
+* Test case matching is on sub-strings. `--test_case=configure` matches on
+  the test cases including the word _configure_, naturally. 
+  `--test-case=gpio` would match all three test cases.
 
-    ---
+---
 
-* `ceedling test:pattern[*]`:
+### `ceedling test:* --exclude_test_case=<test_case_name>`
 
-    Execute any tests whose name and/or path match the regular expression
-    pattern (case sensitive). Example: `ceedling "test:pattern[(I|i)nit]"` 
-    will execute all tests named for initialization testing.
+Execute test cases which do not match `test_case_name`.
 
-    _NOTE:_ Quotes are likely necessary around the regex characters or 
+For instance, if you have file _test_gpio.c_ with 3 tests:
+
+- `test_gpio_start`
+- `test_gpio_configure_proper`
+- `test_gpio_configure_fail_pin_not_allowed`
+
+… and you want to run only `start` tests, you can call:
+
+  `ceedling test:gpio --exclude_test_case=configure`
+
+**Test case exclusion matching notes**
+
+* Exclude matching follows the same sub-string logic as discussed in the
+  preceding section.
+
+---
+
+### `ceedling test:pattern[*]`
+
+Execute any tests whose name and/or path match the regular expression
+pattern between the brackets (case sensitive).
+
+Example: `ceedling "test:pattern[(I|i)nit]"` will execute all tests named for 
+initialization testing.
+
+!!! note
+    Quotes are likely necessary around the regex characters or 
     entire task to distinguish characters from shell command line operators.
 
-    ---
+---
 
-* `ceedling test:path[*]`:
+### `ceedling test:path[*]`
 
-    Execute any tests whose path contains the given string (case
-    sensitive). Example: `ceedling test:path[foo/bar]` will execute all tests
-    whose path contains foo/bar. _Notes:_
+Execute any tests whose path contains the given string (case
+sensitive). Example: `ceedling test:path[foo/bar]` will execute all tests
+whose path contains foo/bar. _Notes:_
 
-    1. Both directory separator characters `/` and `\` are valid.
-    1. Quotes may be necessary around the task to distinguish the parameter’s
-      characters from shell command line operators.
+1. Both directory separator characters `/` and `\` are valid.
+1. Quotes may be necessary around the task to distinguish the parameter’s
+   characters from shell command line operators.
 
-    ---
+---
 
-* `ceedling release`:
+### `ceedling release`
 
-    Build all source into a release artifact (if the release build option
-    is configured).
+Build all source into a release artifact (if the release build option
+is configured).
 
-    ---
+---
 
-* `ceedling release:compile:*`:
+### `ceedling release:compile:*`
 
-    Sometimes you just need to compile a single file dagnabit. Example:
-    `ceedling release:compile:foo.c`
+Sometimes you just need to compile a single file dagnabit. Example:
+`ceedling release:compile:foo.c`
 
-    ---
+---
 
-* `ceedling release:assemble:*`:
+### `ceedling release:assemble:*`
 
-    Sometimes you just need to assemble a single file doggonit. Example:
-    `ceedling release:assemble:foo.s`
+Sometimes you just need to assemble a single file doggonit. Example:
+`ceedling release:assemble:foo.s`
 
-    ---
+---
 
-* `ceedling summary`:
+### `ceedling summary`
 
-    If plugins are enabled, this task will execute the summary method of
-    any plugins supporting it. This task is intended to provide a quick
-    roundup of build artifact metrics without re-running any part of the
-    build.
+If plugins are enabled, this task will execute the summary method of
+any plugins supporting it. This task is intended to provide a quick
+roundup of build artifact metrics without re-running any part of the
+build.
 
-    ---
+---
 
-* `ceedling clean`:
+### `ceedling clean`
 
-    Deletes all toolchain binary artifacts (object files, executables),
-    test results, and any temporary files. Clean produces no output at the
-    command line unless verbosity has been set to an appreciable level.
+Deletes all toolchain binary artifacts (object files, executables),
+test results, and any temporary files. Clean produces no output at the
+command line unless verbosity has been set to an appreciable level.
 
-    ---
+---
 
-* `ceedling clobber`:
+### `ceedling clobber`
 
-    Extends clean task’s behavior to also remove generated files: test
-    runners, mocks, preprocessor output. Clobber produces no output at the
-    command line unless verbosity has been set to an appreciable level.
+Extends clean task’s behavior to also remove generated files: test
+runners, mocks, preprocessor output. Clobber produces no output at the
+command line unless verbosity has been set to an appreciable level.
+
+---
 
 ## Command line extra credit
 
