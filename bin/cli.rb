@@ -143,10 +143,8 @@ module CeedlingTasks
     See documentation for complete details.
     \x5> --mixin my_compiler --mixin my/path/mixin.yml --mixin \"=defines: {release: ['MY_SYMBOL']}\""
 
-  LONGDOC_RUBY_REPLACEMENT_FLAG = "`--ruby-replacement` enables inline Ruby code execution
-    (`\#{...}`) embedded in project configuration values. This is disabled by default because
-    it executes arbitrary Ruby sourced from YAML content. Only enable it for configuration
-    you trust."
+  LONGDOC_RUBY_REPLACEMENT_FLAG = "`--ruby-replacement` enables inline Ruby code expansion
+    (`\#{...}`) in project configuration values. Disabled by default for security."
 
   # Intentionally disallowed Linux/Unix/Windows filename characters to minimize the chance
   # of mistakenly filtering various string-base flags missing a parmeter
