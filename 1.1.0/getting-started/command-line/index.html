@@ -4303,7 +4303,9 @@ configuration manipulation, and configuration sub-section extraction.</p>
   environment from within Ceedling and through the <code>:environment</code>
   section of your configuration. This is especially helpful in 
   verifying the evaluation of any string replacement expressions in
-  your <code>:environment</code> config entries.</li>
+  your <code>:environment</code> config entries. (Requires the <code>--ruby-replacement</code>
+  flag if any <a href="../../configuration/project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>
+  is present — see linked section for details.)</li>
 <li>All existing Ceedling-related environment variables set before you
   ran Ceedling from the command line.</li>
 </ul>
