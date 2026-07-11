@@ -397,7 +397,7 @@ module GcovCommonTestCases
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         expect($?.exitstatus).to match(0)
         # Immediate warning-level filepath listing (no compilation attempted).
-        expect(output).to match(/will NOT appear in the coverage report/)
+        expect(output).to match(/Untested.+not.+coverage report/)
         expect(output).to match(/uncovered_example_file\.c/)
         expect(output).not_to match(/Compiling with coverage.*uncovered_example_file/)
         # Post-build console summary still lists it (basename-keyed).
@@ -425,7 +425,7 @@ module GcovCommonTestCases
 
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         expect($?.exitstatus).not_to eq(0) # Fail-fast: compile failure fails the build
-        expect(output).to match(/outside of its normal test suite build failed/)
+        expect(output).to match(/Compiling.+with coverage failed/)
         expect(output).to match(/:untested_sources.*':compile'/)
         expect(output).to match(/Switch :gcov ↳ :untested_sources to ':list'/)
         expect(output).to match(/Switch :gcov ↳ :untested_sources to ':ignore'/)
