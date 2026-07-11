@@ -68,7 +68,9 @@ _NOTE:_ The `ReportGenerator` tool does not support extracting MC/DC even if tho
 
 This feature addition resolves a longstanding feature request for coverage reporting (#329 and others).
 
-The Gcov plugin now includes an option (defaults to enabled) that causes all source files in the project that have not been exercised by unit tests to also be compiled with coverage. Doing so causes all source files to appear in the final coverage report; those untouched by unit tests are represented with 0% coverage.
+The Gcov plugin now includes an `:untested_sources` option that controls how source files not exercised by any test are handled in coverage reporting — from full omission (`:ignore`), to a warning-level filepath listing of files not present in the coverage report (`:warning`), to full compile-for-0%-coverage (`:compile`). The default is `:warning`.
+
+When `:compile` is active, a `gcov:untested_sources` task is available for iterating coverage compilation for untested sources without needing to re-run an entire `gcov:` test suite build each time. Untested sources can require defines, flags, and platform headers & symbols not present in a test suite configuration.
 
 See the [GCov plugin documentation](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/setup#coverage-for-untested-sources) for more details on the new `:untested_sources` option.
 

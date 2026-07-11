@@ -107,3 +107,24 @@ namespace GCOV_REPORT_NAMESPACE_SYM do
 end
 end
 
+# Only defined when :untested_sources is ':compile' — lets a user iterate on getting
+# untested-source coverage compilation working (symbols/flags/platform stand-ins, per
+# the setup docs) without paying for or triggering a full gcov: test suite run each time.
+if @ceedling[GCOV_SYM].untested_sources_compile_enabled?
+namespace GCOV_SYM do
+
+  desc 'Compile all untested source files with coverage'
+  task :untested_sources => [:prepare] do
+    # sources_only: true — populate the tested-sources mapping (which sources each test
+    # references) without compiling, linking, or executing any test.
+    @ceedling[:test_invoker].setup_and_invoke(
+      tests: COLLECTION_ALL_TESTS,
+      context: GCOV_SYM,
+      options: { sources_only: true }
+    )
+    @ceedling[:gcov].process_untested_sources( sources: COLLECTION_ALL_SOURCE, guidance: false )
+  end
+
+end
+end
+

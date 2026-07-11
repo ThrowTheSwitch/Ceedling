@@ -362,4 +362,96 @@ module GcovCommonTestCases
       end
     end
   end
+
+  def project_with_gcov_untested_sources_ignore
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        add_gcov_option("untested_sources", ":ignore")
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        # Untested — no test references this source file.
+        FileUtils.cp test_asset_path("uncovered_example_file.c"), 'src/'
+
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        expect($?.exitstatus).to match(0)
+        expect(output).not_to match(/Untested Source Files/)
+        expect(output).not_to match(/Processing Untested Sources/)
+        expect(output).not_to match(/uncovered_example_file/)
+      end
+    end
+  end
+
+  def project_with_gcov_untested_sources_list
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        add_gcov_option("untested_sources", ":list")
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        # Untested — no test references this source file.
+        FileUtils.cp test_asset_path("uncovered_example_file.c"), 'src/'
+
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        expect($?.exitstatus).to match(0)
+        # Immediate warning-level filepath listing (no compilation attempted).
+        expect(output).to match(/Untested.+not.+coverage report/)
+        expect(output).to match(/uncovered_example_file\.c/)
+        expect(output).not_to match(/Compiling with coverage.*uncovered_example_file/)
+        # Post-build console summary still lists it (basename-keyed).
+        expect(output).to match(/Untested Source Files/)
+        expect(output).to match(/uncovered_example_file\.c \| No tests executed: 0% coverage/)
+      end
+    end
+  end
+
+  def project_with_gcov_untested_sources_compile_failure
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        add_gcov_option("untested_sources", ":compile")
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        # Untested source with a syntax error — fails to compile regardless of
+        # any :defines/:flags, deliberately triggering the guidance notice.
+        File.write('src/broken_uncovered_file.c', <<~C)
+          int broken_uncovered_function(int a, int b) {
+            return a + b // Missing semicolon and closing brace: guaranteed compile error.
+        C
+
+        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        expect($?.exitstatus).not_to eq(0) # Fail-fast: compile failure fails the build
+        expect(output).to match(/Compiling.+with coverage failed/)
+        expect(output).to match(/:untested_sources.*:compile/)
+        # Avoid unicode character matching in log matching, since some shells may not support them.
+        expect(output).to match(/Switch :gcov.+:untested_sources to :list/)
+        expect(output).to match(/Switch :gcov.+:untested_sources to :ignore/)
+      end
+    end
+  end
+
+  def project_with_gcov_untested_sources_standalone_task
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        add_gcov_option("untested_sources", ":compile")
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        # Untested — no test references this source file.
+        FileUtils.cp test_asset_path("uncovered_example_file.c"), 'src/'
+
+        # Run the standalone task directly — no prior `gcov:all` in this invocation,
+        # so no test fixture is ever built or executed.
+        output = `bundle exec ruby -S ceedling gcov:untested_sources 2>&1`
+        expect($?.exitstatus).to match(0)
+        expect(output).not_to match(/TESTED:\s+\d/) # No test build/run occurred
+        expect(File.exist?('build/gcov/out/uncovered_example_file.o')).to eq true
+      end
+    end
+  end
 end

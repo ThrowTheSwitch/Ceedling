@@ -24,6 +24,9 @@ class Gcov < Plugin
 
     @project_config = @ceedling[:configurator].project_config_hash
 
+    # Check for a valid :untested_sources configuration value
+    validate_untested_sources( @project_config )
+
     # Are any reports enabled?
     @reports_enabled = reports_enabled?( @project_config[:gcov_reports] )
     @cli_gcov_task = false
@@ -77,42 +80,88 @@ class Gcov < Plugin
     return (@project_config[:gcov_report_task] == false)
   end
 
+  # Called within class and also externally by plugin Rakefile to conditionally
+  # create the standalone `gcov:untested_sources` task
+  def untested_sources_compile_enabled?
+    return (@project_config[:gcov_untested_sources] == GCOV_UNTESTED_SOURCES_COMPILE)
+  end
 
-  def process_untested_sources(sources:)
-    unless @project_config[:gcov_untested_sources]
-      msg = 'Skipping code coverage processing of untested sources'
-      @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+
+  # guidance: — log actionable notice text when a `:compile` mode compilation fails.
+  # Left `true` for a full build reached through plugin hooks (`gcov:all`, etc.), where
+  # a failure may be unexpected. Set `false` by the standalone `gcov:untested_sources`
+  # task, whose entire purpose is iterating on these failures directly at the compiler's
+  # own error output, without Ceedling's added narrative repeating each run.
+  def process_untested_sources(sources:, guidance: true)
+    mode = @project_config[:gcov_untested_sources]
+
+    case mode
+    when GCOV_UNTESTED_SOURCES_IGNORE
+      # Disabled entirely — no heading, no listing, no compilation, no log line at all.
       return
-    end
 
-    msg = 'Processing Untested Sources'
-    msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
-    @loginator.log( msg )
+    when GCOV_UNTESTED_SOURCES_LIST
+      msg = 'Processing Untested Sources'
+      msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
+      @loginator.log( msg )
 
-    tested_sources = []
-    @test_invoker.each_test_with_sources { |_, srcs| tested_sources.concat( srcs ) }
-    untested_sources = sources - tested_sources
+      untested_sources = collect_untested_sources( sources )
+      # Retained for post_build's console reportinator, which still prints its own
+      # (basename-keyed) "Untested Source Files" section from this same list.
+      @untested_sources = untested_sources
 
-    @untested_sources = untested_sources
+      if untested_sources.empty?
+        @loginator.log( 'No untested sources to process.' )
+        return
+      end
 
-    if untested_sources.empty?
-      @loginator.log( 'No untested sources to process.' )
-      return
-    end
+      # Full filepaths (not basenames)
+      header = "Untested source files not in the coverage report (:untested_sources is :list):"
+      @loginator.log_list( untested_sources.sort, header, Verbosity::COMPLAIN, LogLabels::WARNING )
 
-    untested_sources.each do |filepath|
-      filename = File.basename(filepath)
-      @generator.generate_object_file_c(
-        tool:         TOOLS_GCOV_COMPILER,
-        module_name:  filename.ext(),
-        context:      GCOV_SYM,
-        source:       filepath,
-        object:       @file_path_utils.form_test_object_filepath( filepath, context:GCOV_SYM ),
-        search_paths: @configurator.collection_paths_include,
-        flags:        @flaginator.flag_down( context:GCOV_SYM, operation:OPERATION_COMPILE_SYM ),
-        defines:      @defineinator.defines( subkey:GCOV_SYM ),
-        dependencies: @file_path_utils.form_test_dependencies_filepath( filepath, context:GCOV_SYM )
-      )
+    when GCOV_UNTESTED_SOURCES_COMPILE
+      msg = 'Processing Untested Sources'
+      msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
+      @loginator.log( msg )
+
+      untested_sources = collect_untested_sources( sources )
+      @untested_sources = untested_sources
+
+      if untested_sources.empty?
+        @loginator.log( 'No untested sources to process.' )
+        return
+      end
+
+      untested_sources.each do |filepath|
+        filename = File.basename(filepath)
+        begin
+          @generator.generate_object_file_c(
+            tool:         TOOLS_GCOV_COMPILER,
+            module_name:  filename.ext(),
+            context:      GCOV_SYM,
+            source:       filepath,
+            object:       @file_path_utils.form_test_object_filepath( filepath, context:GCOV_SYM ),
+            search_paths: @configurator.collection_paths_include,
+            flags:        @flaginator.flag_down( context:GCOV_SYM, operation:OPERATION_COMPILE_SYM ),
+            defines:      @defineinator.defines( subkey:GCOV_SYM ),
+            dependencies: @file_path_utils.form_test_dependencies_filepath( filepath, context:GCOV_SYM )
+          )
+        rescue ShellException => ex
+          # Log actionable guidance then re-raise immediately (omitted when `guidance` is false)
+          if guidance
+            notice = "Compiling untested '#{filename}' with coverage failed.\n" \
+                     "NOTE: Compilation of an untested source for coverage (:gcov ↳ :untested_sources ➡️ :compile) " \
+                     "may require defines, flags, or platform symbols & headers not present in the test suite build.\n" \
+                     "OPTIONS:\n" \
+                     "  1) Provide needed compilation essentials using Ceedling features and/or code stand-ins.\n" \
+                     "  2) Switch :gcov ↳ :untested_sources to :list to log untested files without compiling them.\n" \
+                     "  3) Switch :gcov ↳ :untested_sources to :ignore to disable this feature entirely.\n" \
+                     "See Gcov plugin docs for more explanation and recommendations.\n\n"
+            @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
+          end
+          raise ex
+        end
+      end
     end
   end
 
@@ -241,6 +290,26 @@ class Gcov < Plugin
 
   def utility_enabled?(opts, utility_name)
     return opts.map(&:upcase).include?( utility_name.upcase )
+  end
+
+  # Fail fast at plugin setup if :untested_sources holds anything other than a
+  # recognized mode symbol (e.g. a leftover TRUE/FALSE from before this option
+  # became an enum, or a typo'd symbol).
+  def validate_untested_sources(config)
+    value = config[:gcov_untested_sources]
+    if not GCOV_UNTESTED_SOURCES_OPTIONS.include?( value )
+      options = GCOV_UNTESTED_SOURCES_OPTIONS.map{ |opt| "':#{opt}'" }.join(', ')
+      msg = "Plugin configuration :gcov ↳ :untested_sources ➡️ `#{value.inspect}` is not a recognized option {#{options}}."
+      raise CeedlingException.new(msg)
+    end
+  end
+
+  # All project sources minus every source any test references — works whether that
+  # mapping came from a full test build (gcov:all) or a sources-only pass (gcov:untested_sources).
+  def collect_untested_sources(sources)
+    tested_sources = []
+    @test_invoker.each_test_with_sources { |_, srcs| tested_sources.concat( srcs ) }
+    return sources - tested_sources
   end
 
   def build_reportinators(config, enabled)
