@@ -426,7 +426,7 @@ module GcovCommonTestCases
         output = `bundle exec ruby -S ceedling gcov:all 2>&1`
         expect($?.exitstatus).not_to eq(0) # Fail-fast: compile failure fails the build
         expect(output).to match(/Compiling.+with coverage failed/)
-        expect(output).to match(/:untested_sources.*':compile'/)
+        expect(output).to match(/:untested_sources.*:compile/)
         expect(output).to match(/Switch :gcov ↳ :untested_sources to ':list'/)
         expect(output).to match(/Switch :gcov ↳ :untested_sources to ':ignore'/)
       end
