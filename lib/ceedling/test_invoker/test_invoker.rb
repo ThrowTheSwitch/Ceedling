@@ -36,6 +36,23 @@ class TestInvoker
   # Public API
   # -------------------------------------------------------------------------
 
+  # Run the test-build pipeline for the given tests.
+  #
+  # options: — free-form hash forwarded to every pipeline stage as `state.options`.
+  # Recognized keys (stages not listed read nothing from `options`):
+  #   :build_only   — Boolean. Skip stage 17 (Executing) only. Compile and link
+  #                   test executables but do not run them.
+  #   :sources_only — Boolean. Skip stages 15-17 (Building Objects, Building Test
+  #                   Executables, Executing). Runs only context-extraction/metadata
+  #                   stages 1-14, enough to populate each testable's `.sources` —
+  #                   i.e. no compiler, linker, or test fixture is invoked.
+  #   :test_linker  — Tool config for stage 16 (Building Test Executables). Ignored
+  #                   when :sources_only or :build_only skips that stage.
+  #   :test_fixture — Tool config for stage 17 (Executing). Ignored when :sources_only
+  #                   or :build_only skips that stage.
+  # Other keys occasionally merged in by callers (e.g. :test_compiler, :force_run) are
+  # currently not read by any pipeline stage; tool selection for compiling is instead
+  # resolved per-context via the `pre_compile_execute` plugin hook.
   def setup_and_invoke(tests:, context: TEST_SYM, options: {})
     timestamp_s = SystemWrapper.time_stopwatch_s()
     @plugin_manager.pre_test_build( context, timestamp_s )
@@ -98,7 +115,8 @@ class TestInvoker
     use_partials      = -> (s) { @configurator.project_use_partials }
     use_mocks         = -> (s) { @configurator.project_use_mocks }
     use_mocks_preproc = -> (s) { @configurator.project_use_mocks && @configurator.project_use_test_preprocessor_mocks }
-    not_build_only    = -> (s) { !s.options[:build_only] }
+    not_build_only    = -> (s) { !s.options[:build_only] }   # skip stage 17 only
+    not_sources_only  = -> (s) { !s.options[:sources_only] } # skip stages 15-17
 
     [
       # Stage 1
@@ -199,19 +217,22 @@ class TestInvoker
             body: ->(s) { @test_build_planner.stage_flatten_objects_list(s) }
       ),
 
-      # Stage 15
+      # Stage 15 — skipped under :sources_only (no object compilation needed to
+      # determine which sources a test references).
       stage("Building Objects",
+            condition: not_sources_only,
             body: ->(s) { @test_build_executor.stage_build_objects(s) }
       ),
 
-      # Stage 16
+      # Stage 16 — skipped under :sources_only (no linking needed either).
       stage("Building Test Executables",
+            condition: not_sources_only,
             body: ->(s) { @test_build_executor.stage_build_executables(s) }
       ),
 
-      # Stage 17
+      # Stage 17 — skipped under :build_only or :sources_only.
       stage("Executing",
-            condition: not_build_only,
+            condition: ->(s) { not_build_only.call(s) && not_sources_only.call(s) },
             body: ->(s) { @test_build_executor.stage_execute(s) }
       ),
     ]

@@ -84,7 +84,7 @@ To generate reports:
 
 The next sections explain each of these steps.
 
-## Modified Condition / Decision Coverage
+### Modified Condition / Decision Coverage
 
 As of version 14, the GNU Compiler Collection supports MC/DC. If your environment
 contains a minimum of GCC 14 you can enable MC/DC in coverage summaries.
@@ -104,14 +104,35 @@ NOTE: ReportGenerator does not support MC/DC reporting.
 ```
 **Default:** `FALSE`
 
-## Coverage for untested sources
+### Coverage for untested sources
 
-When enabled, the GCov plugin will compile all source files in the project with
-coverage, not only those exercised with tests. This causes all source files to 
-appear in any generated reporting (untested source files with 0% coverage).
+This setting controls how the GCov plugin handles project source files that
+are not exercised by any test. It takes one of three values:
+
+* `:ignore` — Untested source files are not processed at all. Nothing is
+  logged, nothing is compiled, and these files are simply absent from the
+  coverage report.
+* `:list` — Untested source files are not compiled with coverage, but their
+  filepaths are logged as a warning so you know which files will not appear
+  in the coverage report.
+* `:compile` — All untested source files are compiled with coverage so they
+  appear in the final report with 0% coverage (since no test exercises
+  them). This causes all source files to appear in any generated reporting.
+  If a source file fails to compile, Ceedling logs guidance at the console,
+  and the build fails.
+
+```yaml
+:plugins:
+  :enabled:
+    - gcov
+
+:gcov:
+  :untested_sources: :list
+```
+**Default:** `:list`
 
 !!! warning
-    **Compiling all untested sources for 0% coverage reporting will likely require additional work.**
+    **Compiling all untested sources for 0% coverage reporting (`:compile`) will likely require additional work.**
 
     Successful compilation of untested source files may require certain symbols 
     to be defined, certain flags to be set, or entire stand-in shims for platform 
@@ -129,17 +150,22 @@ appear in any generated reporting (untested source files with 0% coverage).
 Notes:
 
 * Versions of GCovr before 7.0 do not include the necessary options to produce 
-  0% coverage results for source files only compiled (but never executed.)
+  0% coverage results for source files only compiled (but never executed).
 
-```yaml
-:plugins:
-  :enabled:
-    - gcov
+---
 
-:gcov:
-  :untested_sources: TRUE
+When `:untested_sources` is `:compile`, an additional `gcov:untested_sources`
+build task becomes available:
+
+```shell
+ > ceedling gcov:untested_sources
 ```
-**Default:** `TRUE`
+
+This task exists to let you work through the compilation problems described
+in the warning above — missing symbols, flags, or platform header/code
+stand-ins — by re-running just the untested-source compilation step
+directly. No test suite build is needed while iterating on source compilation 
+fixes.
 
 ### Reporting utilities installation
 
