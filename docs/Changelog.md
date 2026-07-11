@@ -68,7 +68,7 @@ _NOTE:_ The `ReportGenerator` tool does not support extracting MC/DC even if tho
 
 This feature addition resolves a longstanding feature request for coverage reporting (#329 and others).
 
-The Gcov plugin now includes an `:untested_sources` option that controls how source files not exercised by any test are handled in coverage reporting — from full omission (`:ignore`), to a warning-level filepath listing of files not present in the coverage report (`:warning`), to full compile-for-0%-coverage (`:compile`). The default is `:warning`.
+The Gcov plugin now includes an `:untested_sources` option that controls how source files not exercised by any test are handled in coverage reporting — from full omission (`:ignore`), to a warning-level filepath listing of files not present in the coverage report (`:list`), to full compile-for-0%-coverage (`:compile`). The default is `:list`.
 
 When `:compile` is active, a `gcov:untested_sources` task is available for iterating coverage compilation for untested sources without needing to re-run an entire `gcov:` test suite build each time. Untested sources can require defines, flags, and platform headers & symbols not present in a test suite configuration.
 
