@@ -427,8 +427,9 @@ module GcovCommonTestCases
         expect($?.exitstatus).not_to eq(0) # Fail-fast: compile failure fails the build
         expect(output).to match(/Compiling.+with coverage failed/)
         expect(output).to match(/:untested_sources.*:compile/)
-        expect(output).to match(/Switch :gcov ↳ :untested_sources to :list/)
-        expect(output).to match(/Switch :gcov ↳ :untested_sources to :ignore/)
+        # Avoid unicode character matching in log matching, since some shells may not support them.
+        expect(output).to match(/Switch :gcov.+:untested_sources to :list/)
+        expect(output).to match(/Switch :gcov.+:untested_sources to :ignore/)
       end
     end
   end
