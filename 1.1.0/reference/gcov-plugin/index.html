@@ -4404,6 +4404,8 @@
       
         
       
+        
+      
     
     
     
@@ -4464,6 +4466,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../development/workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -4490,7 +4520,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4512,14 +4542,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_10_2" id="__nav_10_2_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_3" id="__nav_10_3_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10_2">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5424,9 +5454,10 @@ This feature is dependent on minimum tool versions.</p>
 <h3 id="untested_sources"><code>:untested_sources</code></h3>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
+<p><strong>Compiling all untested sources for 0% coverage reporting (<code>:compile</code>) will likely require additional work.</strong></p>
 <p>Successful compilation of untested source files may require certain symbols 
 to be defined, certain flags to be set, or entire stand-in shims for platform 
-code.</p>
+headers and code.</p>
 <p>Ceedling’s 
 <a href="../../configuration/reference/defines/"><code>:defines</code></a>
 and 
@@ -5436,13 +5467,22 @@ the <code>:test</code> context beneath the <code>:defines</code> and <code>:flag
 by default. If you need something special for coverage builds, use the <code>:gcov</code> 
 context for these matchers instead.</p>
 </div>
-<p>Enable or disable coverage compilation for all untested source files.
-When enabled, coverage results will exist in the final report for all source
-files in the project (untested source files will be listed with 0% coverage.)</p>
-<p><strong>Default:</strong> <code>TRUE</code></p>
+<p>Controls handling of source files not exercised by any test. Valid values:</p>
+<ul>
+<li><code>:ignore</code> — Skip untested sources entirely (no logging, no compilation).</li>
+<li><code>:list</code> — Log the filepaths of untested sources as a warning; do not compile them.</li>
+<li><code>:compile</code> — Compile all untested sources with coverage so they appear in
+  the report at 0% coverage. On compilation failure, Ceedling logs
+  guidance and fails the build.</li>
+</ul>
+<p><strong>Default:</strong> <code>:list</code></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:gcov</span><span class="p">:</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:untested_sources</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:untested_sources</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:list</span>
 </code></pre></div>
+<p>When <code>:untested_sources</code> is set to <code>:compile</code>, a <code>gcov:untested_sources</code> task is
+also available, letting you re-run just the untested-source compilation step
+on its own — without a full <code>gcov:</code> test suite run — while iterating on source
+compilation fixes.</p>
 <hr />
 <h3 id="utilities"><code>:utilities</code></h3>
 <p>List of report generation utilities to enable. Valid values are <code>gcovr</code> and
