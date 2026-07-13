@@ -140,6 +140,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
 - Release build logging now matches test build logging.
 - Fixes for typos and grammar in documentation and logging.
+- Added documentation / commented sample in example _project.yml_ for CMock `:treat_inlines` inline function patterns option (PR #1096).
 
 ### Expanded [Backtrace handling](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/reference/project/#use_backtrace)
 - Provides more and better crash details for `:simple` and `:gdb` options.
