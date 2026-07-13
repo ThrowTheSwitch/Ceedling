@@ -3,9 +3,15 @@
 ## Versioned Release Artifacts
 Ceedling releases are available as:
 
-* [Repository build artifacts](https://github.com/ThrowTheSwitch/Ceedling/releases) (Ruby .gem files)
-* [Ruby gems](https://rubygems.org/gems/ceedling) for installation by the `gem` tool
-* [Docker images](https://hub.docker.com/r/throwtheswitch/madsciencelab) with the `ceedling` tool ready to run from the command line.
+* [Repository build artifacts](https://github.com/ThrowTheSwitch/Ceedling/releases) (downloadable 
+  Ruby .gem files).
+* [Ruby gems](https://rubygems.org/gems/ceedling) for installation from the RubyGems registry by 
+  the `gem` command line tool.
+* [Docker images](https://hub.docker.com/r/throwtheswitch/madsciencelab) with the `ceedling` tool 
+  ready to run from the command line.
+
+Ceedling is known to be compatible with Ruby 3.0 – 3.4. It is ready for use with Ruby 3.5 but has 
+had little real world use with Ruby 3.5.
 
 ## History
 
