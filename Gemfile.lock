@@ -2,12 +2,14 @@ GEM
   remote: http://rubygems.org/
   specs:
     benchmark (0.5.0)
+    cgi (0.5.2)
     constructor (2.0.0)
     deep_merge (1.2.2)
     diff-lcs (1.6.2)
     diy (1.1.2)
       constructor (>= 1.0.0)
-    erb (2.2.0)
+    erb (4.0.3.1)
+      cgi (>= 0.3.3)
     parallel (1.28.0)
     rake (13.2.1)
     require_all (3.0.0)
@@ -34,7 +36,6 @@ PLATFORMS
   arm64-darwin
   ruby
   x64-mingw-ucrt
-  x64-mingw32
   x86_64-darwin
   x86_64-linux
 
