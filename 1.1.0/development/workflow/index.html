@@ -3863,6 +3863,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#managing-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing dependencies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing dependencies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-change-gemfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to change Gemfile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choosing-version-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing version constraints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#after-changing-gemfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After changing Gemfile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-your-environment-without-installing-anything" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking your environment without installing anything
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-commands-against-ceedlings-bundler-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running commands against Ceedling’s Bundler environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#running-self-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4145,6 +4217,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#managing-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing dependencies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing dependencies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-change-gemfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to change Gemfile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choosing-version-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing version constraints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#after-changing-gemfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After changing Gemfile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-your-environment-without-installing-anything" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking your environment without installing anything
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-commands-against-ceedlings-bundler-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running commands against Ceedling’s Bundler environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#running-self-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4294,25 +4438,135 @@ experimenting with project builds and running self-tests is simple.</p>
 <li>Run experiment projects you map into the container (e.g. at <em>/home/dev/project</em>).</li>
 <li>Run the self-test suite. Navigate to the gem installation path discovered in (2) above. From this location, follow the instructions in the section that immediately follows.</li>
 </ol>
+<h2 id="managing-dependencies">Managing dependencies</h2>
+<p>Two files declare Ceedling’s Ruby dependencies.</p>
+<ul>
+<li><strong><code>ceedling.gemspec</code></strong> is part of the Ceedling gem publication process —
+  it declares the runtime dependencies that ship with every published
+  <code>ceedling</code> gem, installed via <code>gem install ceedling</code> regardless of
+  Bundler.</li>
+<li><strong><code>Gemfile</code></strong> declares dependencies for the development/contributor
+  environment — running the self-test suite, generating docs, and so on.
+  It duplicates <code>ceedling.gemspec</code>’s runtime dependencies by hand rather
+  than using Bundler’s <code>gemspec</code> directive, and it adds development/test-only
+  tools that real users never need.</li>
+</ul>
+<p>Because <code>Gemfile</code> duplicates rather than references <code>ceedling.gemspec</code>,
+keeping the two in sync for any shared runtime dependency is a manual step.</p>
+<h3 id="when-to-change-gemfile">When to change <code>Gemfile</code></h3>
+<ul>
+<li><strong>Adding or changing a runtime dependency</strong> — a dependency real Ceedling
+  users and developers both need:</li>
+<li>Add or update it in <code>ceedling.gemspec</code>.</li>
+<li>Mirror the same entry into <code>Gemfile</code>’s <code># Ceedling dependencies</code> section
+     so the development/contributor Bundler environment matches what real
+     users get.</li>
+<li><strong>Adding, removing, or updating a development/test-only tool</strong> (e.g. an
+  RSpec helper) — change only <code>Gemfile</code>, under <code># Testing tools</code>. These have
+  no bearing on the published gem’s dependencies and don’t belong in
+  <code>ceedling.gemspec</code>.</li>
+</ul>
+<h3 id="choosing-version-constraints">Choosing version constraints</h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+</div>
+<p>Runtime dependency constraints declared in <code>ceedling.gemspec</code> and their
+   mirrored <code>Gemfile</code> entries should always match exactly.</p>
+<p>This repository favors conservative version constraints.</p>
+<ul>
+<li><code>~&gt; X.Y</code>, the pessimistic operator, for most dependencies — it allows
+  patch/minor updates within a major version and blocks the next major
+  version, where a breaking change is more likely.</li>
+<li>An explicit range (<code>&gt;= X</code>, <code>&lt; Y</code>) where a specific known-incompatible
+  upper bound exists.</li>
+<li>An open floor (<code>&gt;= X</code>) only where no meaningful upper bound is known or
+  necessary, and a specific minimum version is what actually provides
+  required functionality.</li>
+</ul>
+<p>When adding or changing a constraint, prefer the loosest bound that still
+guarantees the API or behavior Ceedling’s code actually depends on — check
+the calling code for what’s used (specific method signatures, keyword
+arguments, etc.) rather than defaulting to "pin to whatever’s newest."</p>
+<p>A floor stricter than functionally necessary can force otherwise-unneeded
+work at install time — fetching and building a newer version of a
+dependency when an already-available version will do.</p>
+<h3 id="after-changing-gemfile">After changing <code>Gemfile</code></h3>
+<p>Whenever you change <code>Gemfile</code>, regenerate <code>Gemfile.lock</code> with:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="w"> </span>&gt;<span class="w"> </span>bundle<span class="w"> </span>install<span class="w"> </span>--prefer-local
+</code></pre></div>
+<p>Two choices in that exact command are worth understanding:</p>
+<ul>
+<li><strong><code>--prefer-local</code></strong> — prefers an already-installed gem, including Ruby’s
+  own default gems, over fetching a newer gem, as long every <code>Gemfile</code> 
+  constraint is respected.</li>
+<li><strong><code>bundle install</code>, not <code>bundle update</code></strong> — resolve only what changed,
+  leaving everything else in <code>Gemfile.lock</code> locked as-is. A bare 
+  <code>bundle update</code> re-resolves the entire dependency graph
+  to the newest versions satisfying all constraints, which can bump many
+  unrelated transitive dependencies at once and produce a large,
+  hard-to-review <code>Gemfile.lock</code> diff.</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+</div>
+<p>For a deliberate, targeted bump of one specific gem, use 
+   <code>bundle update &lt;gem name&gt;</code> instead of <code>bundle update</code>.</p>
+<p><code>Gemfile</code> must sometimes declare gems that also ship as Ruby’s own built-in
+default gems to deal with Ruby’s own package management across multiple
+supported Ruby language versions (e.g. a default gem is kicked out of Ruby’s 
+core). Without <code>--prefer-local</code>, Bundler resolves to the newest
+version satisfying the constraint from <code>rubygems.org</code> regardless — even
+when Ruby’s built-in version already satisfies it — forcing an unnecessary
+fetch-and-compile of a standalone copy. If that gem itself depends on
+something with a native C extension, this also then requires a full C
+toolchain and Ruby’s development headers, which aren’t guaranteed to be
+present on every system, particularly slim/minimal Docker images.</p>
+<p>Commit the resulting <code>Gemfile.lock</code> changes alongside your <code>Gemfile</code> edit.</p>
+<p><strong>Note:</strong> <code>--prefer-local</code> is install-time-only — as of this writing
+there’s no persistent <code>bundle config</code> equivalent. So, the <code>--prefer-local</code> 
+flag must be passed explicitly every time.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+</div>
+<p>If you'd rather not remember the <code>--prefer-local</code>, add a shell alias, 
+   e.g. in <code>~/.bashrc</code> / <code>~/.zshrc</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">alias</span><span class="w"> </span>bundle-install-local<span class="o">=</span><span class="s2">&quot;bundle install --prefer-local&quot;</span>
+</code></pre></div>
+<h3 id="checking-your-environment-without-installing-anything">Checking your environment without installing anything</h3>
+<p>To confirm your currently-installed gems still satisfy <code>Gemfile</code> /
+<code>Gemfile.lock</code> without triggering any installs or fetches:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="w"> </span>&gt;<span class="w"> </span>bundle<span class="w"> </span>check
+</code></pre></div>
+<h3 id="running-commands-against-ceedlings-bundler-environment">Running commands against Ceedling’s Bundler environment</h3>
+<p>Any Ruby-based development command that depends on the gems declared in
+<code>Gemfile</code> (running specs, Rake tasks, etc.) should run through Bundler’s
+managed environment so the exact versions recorded in <code>Gemfile.lock</code> are
+what actually get loaded, rather than whatever happens to be installed
+globally on your system.</p>
+<p><code>rake spec</code> and other Rake tasks in this repo already do this 
+automatically; if you ever invoke an RSpec or Ruby command directly 
+instead of through a Rake task, prefix it with <code>bundle exec</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="w"> </span>&gt;<span class="w"> </span>bundle<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>rspec<span class="w"> </span>spec/some_spec.rb
+</code></pre></div>
 <h2 id="running-self-tests">Running self-tests</h2>
 <p>Ceedling uses <a href="https://rspec.info">RSpec</a> for its tests.</p>
 <p>To execute tests you may run the following from the root of your local 
 Ceedling repository. This test suite build option balances test coverage
 with suite execution time.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>spec
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>spec
 </code></pre></div>
 <p>To run individual test files (Ceedling’s Ruby-based tests, that is) and 
 perform other tasks, use the available Rake tasks. From the root of your 
 local Ceedling repo, list those task like this:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>-T
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>-T
 </code></pre></div>
 <h2 id="documentation">Documentation</h2>
-<p>Ceedling's documentation is built with <a href="https://www.mkdocs.org">MkDocs</a> + <a href="https://squidfunk.github.io/mkdocs-material/">Material theme</a> and versioned
+<p>Ceedling’s documentation is built with <a href="https://www.mkdocs.org">MkDocs</a> + <a href="https://squidfunk.github.io/mkdocs-material/">Material theme</a> and versioned
 with <a href="https://github.com/jimporter/mike">mike</a>. All Markdown source lives under <code>docs/mkdocs/</code>. The public site 
 configuration is in <code>mkdocs.yml</code> while the local site bundle configuration is in
 <code>mkdocs.local.yml</code>.</p>
 <p><strong>First-time setup</strong> (installs MkDocs, Material, and mike into the container):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>docs:install
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>docs:install
 </code></pre></div>
 <p><strong>Available Rake tasks:</strong></p>
 <table>
