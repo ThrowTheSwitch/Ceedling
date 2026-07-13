@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -14,11 +14,17 @@ file_wrapper:
 
 yaml_wrapper:
 
+ruby_expandinator:
+
 config_walkinator:
 
 system_wrapper:
 
 verbosinator:
+
+reportinator:
+
+rake_task_registry:
 
 loginator:
   compose:
@@ -40,6 +46,7 @@ cli_handler:
     - projectinator
     - cli_helper
     - path_validator
+    - rake_task_registry
     - actions_wrapper
     - loginator
 
@@ -49,8 +56,11 @@ cli_helper:
     - config_walkinator
     - path_validator
     - actions_wrapper
+    - rake_task_registry
     - loginator
+    - reportinator
     - system_wrapper
+    - ruby_expandinator
 
 path_validator:
   compose:
@@ -59,9 +69,19 @@ path_validator:
 
 mixinator:
   compose:
+    - mixin_standardizer
+    - merginator
     - path_validator
     - yaml_wrapper
     - loginator
+
+mixin_standardizer:
+  compose:
+    - reportinator
+
+merginator:
+  compose:
+    - reportinator
 
 projectinator:
   compose:
@@ -70,6 +90,7 @@ projectinator:
     - yaml_wrapper
     - loginator
     - system_wrapper
+    - ruby_expandinator
 
 configinator:
   compose:

@@ -1,11 +1,11 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 require 'fff_mock_generator'
 
 class Fff < Plugin
@@ -85,6 +85,11 @@ class FffCMockWrapper
 end
 
 # Switch out the CMock with FFF Mock Generator
-require "cmock"
-RealCMock = CMock
-CMock = FffCMockWrapper
+if !self.class.const_defined?(:RealCMock)
+  if !self.class.const_defined?(:CMock)
+    require "cmock"
+    RealCMock = CMock
+  end
+  self.class.send(:remove_const, :CMock)
+  CMock = FffCMockWrapper
+end

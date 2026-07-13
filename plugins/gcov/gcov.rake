@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -26,7 +26,16 @@ namespace GCOV_SYM do
 
   desc 'Run code coverage for all tests'
   task all: [:prepare] do
+    # Run tests with coverage
     @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS )
+
+    # Optionally compile untested sources with coverage for complete source coverage results in the final report.
+    # This comes after the tests because it depends on the accrued knowledge of which source files have associated tests.
+    # From that knowledge we can filter all source files to compile with coverage only those without tests.
+    # Untested source files will appear in the final coverage results with 0% coverage.
+    # Because of how tests are executed and test suite results reported, the compilation happens after the former
+    # but before the latter.
+    @ceedling[:gcov].process_untested_sources( sources:COLLECTION_ALL_SOURCE )
   end
 
   desc 'Run single test w/ coverage ([*] test or source file name, no path).'
@@ -93,6 +102,27 @@ namespace GCOV_REPORT_NAMESPACE_SYM do
   desc "Generate reports from coverage results (Note: a #{GCOV_SYM}: task must be executed first)"
   task GCOV_SYM do
     @ceedling[:gcov].generate_coverage_reports()
+  end
+
+end
+end
+
+# Only defined when :untested_sources is ':compile' — lets a user iterate on getting
+# untested-source coverage compilation working (symbols/flags/platform stand-ins, per
+# the setup docs) without paying for or triggering a full gcov: test suite run each time.
+if @ceedling[GCOV_SYM].untested_sources_compile_enabled?
+namespace GCOV_SYM do
+
+  desc 'Compile all untested source files with coverage'
+  task :untested_sources => [:prepare] do
+    # sources_only: true — populate the tested-sources mapping (which sources each test
+    # references) without compiling, linking, or executing any test.
+    @ceedling[:test_invoker].setup_and_invoke(
+      tests: COLLECTION_ALL_TESTS,
+      context: GCOV_SYM,
+      options: { sources_only: true }
+    )
+    @ceedling[:gcov].process_untested_sources( sources: COLLECTION_ALL_SOURCE, guidance: false )
   end
 
 end

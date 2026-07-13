@@ -1,9 +1,12 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
+
+EXTENSION_GCNO                  = '.gcno'.freeze
+EXTENSION_GCOV                  = '.gcov'.freeze
 
 GCOV_ROOT_NAME                  = 'gcov'.freeze
 GCOV_TASK_ROOT                  = GCOV_ROOT_NAME + ':'
@@ -13,9 +16,9 @@ GCOV_REPORT_NAMESPACE           = 'report'.freeze
 GCOV_REPORT_NAMESPACE_SYM       = GCOV_REPORT_NAMESPACE.to_sym
 
 GCOV_BUILD_PATH                 = File.join(PROJECT_BUILD_ROOT, GCOV_ROOT_NAME)
-GCOV_BUILD_OUTPUT_PATH          = File.join(GCOV_BUILD_PATH, "out")
-GCOV_RESULTS_PATH               = File.join(GCOV_BUILD_PATH, "results")
-GCOV_DEPENDENCIES_PATH          = File.join(GCOV_BUILD_PATH, "dependencies")
+GCOV_BUILD_OUTPUT_PATH          = File.join(GCOV_BUILD_PATH, BUILD_OUT_DIR)
+GCOV_RESULTS_PATH               = File.join(GCOV_BUILD_PATH, BUILD_RESULTS_DIR)
+GCOV_DEPENDENCIES_PATH          = File.join(GCOV_BUILD_PATH, BUILD_DEPENDENCIES_DIR)
 GCOV_ARTIFACTS_PATH             = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, GCOV_ROOT_NAME)
 
 GCOV_REPORT_GENERATOR_ARTIFACTS_PATH  = File.join(GCOV_ARTIFACTS_PATH, "ReportGenerator")
@@ -37,6 +40,15 @@ TOOL_COLLECTION_GCOV_TASKS = {
 GCOV_UTILITY_NAME_GCOVR = "gcovr"
 GCOV_UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
 GCOV_UTILITY_NAMES = [GCOV_UTILITY_NAME_GCOVR, GCOV_UTILITY_NAME_REPORT_GENERATOR]
+
+# Untested Sources Processing Modes
+# :ignore  — Skip untested sources entirely (no logging, no compilation).
+# :list    — Log untested source filepaths as a warning; do not compile them.
+# :compile — Compile all untested sources with coverage instrumentation.
+GCOV_UNTESTED_SOURCES_IGNORE  = :ignore
+GCOV_UNTESTED_SOURCES_LIST    = :list
+GCOV_UNTESTED_SOURCES_COMPILE = :compile
+GCOV_UNTESTED_SOURCES_OPTIONS = [GCOV_UNTESTED_SOURCES_IGNORE, GCOV_UNTESTED_SOURCES_LIST, GCOV_UNTESTED_SOURCES_COMPILE]
 
 # Report Types
 class ReportTypes

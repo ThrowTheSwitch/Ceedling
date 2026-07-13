@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -57,7 +57,7 @@ class Setupinator
     @loginator.set_logfile( app_cfg[:log_filepath] )
     @configurator.project_logging = @loginator.project_logging
 
-    log_step( 'Validating configuration contains minimum required sections', heading:false )
+    log_step( 'Validating configuration contains minimum required sections', heading: false )
 
     # Complain early about anything essential that's missing
     @configurator.validate_essential( config_hash )
@@ -65,11 +65,17 @@ class Setupinator
     # Merge any needed runtime settings into user configuration
     @configurator.merge_ceedling_runtime_config( config_hash, CEEDLING_RUNTIME_CONFIG.deep_clone )
 
+    if config_hash[:project][:use_partials]
+      log_step( 'Processing Partials configuration', heading: false, verbosity: Verbosity::NORMAL )
+      # Set configuration settings derived from enabling partials
+      @configurator.set_partials_derived_config( config_hash )
+    end
+
     ##
     ## 2. Handle basic configuration
     ##
 
-    log_step( 'Base configuration handling', heading:false )
+    log_step( 'Base configuration handling', heading: false )
 
     # Evaluate environment vars before plugin configurations that might reference with inline Ruby string expansion
     @configurator.eval_environment_variables( config_hash )
@@ -133,6 +139,12 @@ class Setupinator
     # Fill out any missing tool config value
     @configurator.populate_tools_config( config_hash )
 
+    # Probe whether the configured C preprocessor supports -fdirectives-only output.
+    # Must run after tool configs are populated (executable name resolved) and before
+    # build() flattens the config ➡️ the new key is picked up by accessor generation.
+    log_step( 'Probing directives-only preprocessor support', heading: false )
+    @configurator.resolve_directives_only_preprocessing( config_hash, @ceedling[:tool_executor] )
+
     # From any tool definition shortcuts:
     #  - Redefine executable if set
     #  - Add arguments from tool definition shortcuts if set
@@ -146,7 +158,7 @@ class Setupinator
     ## 6. Validate configuration
     ##
 
-    log_step( 'Validating final project configuration', heading:false )
+    log_step( 'Validating final project configuration', heading: false )
 
     @configurator.validate_final( config_hash, app_cfg )
 
@@ -185,14 +197,14 @@ class Setupinator
 private
 
   # Neaten up a build step with progress message and some scope encapsulation
-  def log_step(msg, heading:true)
-    if heading
-      msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
-    else # Progress message
-      msg = "\n" + @reportinator.generate_progress( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+  def log_step(msg, heading: true, verbosity: Verbosity::OBNOXIOUS )
+    @loginator.lazy( verbosity ) do 
+      if heading
+        @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+      else # Progress message
+        "\n" + @reportinator.generate_progress( @loginator.decorate( msg, LogLabels::CONSTRUCT ) )
+      end
     end
-
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
   end
 
 

@@ -1,12 +1,14 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
 ---
 :project:
+  :name: "Example Project"
+
   # how to use ceedling. If you're not sure, leave this as `gem` and `?`
   :which_ceedling: gem
   :ceedling_version: '?'
@@ -14,9 +16,7 @@
   # optional features. If you don't need them, keep them turned off for performance
   :use_mocks: TRUE
   :use_test_preprocessor: :none  # options are :none, :mocks, :tests, or :all
-  :use_deep_preprocessor: :none  # options are :none, :mocks, :tests, or :all
   :use_backtrace: :simple        # options are :none, :simple, or :gdb
-  :use_decorators: :auto         # decorate Ceedling's output text. options are :auto, :all, or :none
 
   # tweak the way ceedling handles automatic tasks
   :build_root: build
@@ -57,11 +57,12 @@
     #- beep                           # beeps when finished, so you don't waste time waiting for ceedling
     - module_generator                # handy for quickly creating source, header, and test templates
     #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
+    #- cppcheck                       # static analysis using cppcheck. Requires cppcheck to be installed
+    #- valgrind                       # memory analysis using valgrind. Requires valgrind to be installed (Linux only)
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
     #- compile_commands_json_db       # generate a compile_commands.json file
     #- dependencies                   # automatically fetch 3rd party libraries, etc.
-    #- subprojects                    # managing builds and test for static libraries
     #- fake_function_framework        # use FFF instead of CMock
 
     # Report options (You'll want to choose one stdout option, but may choose multiple stored options if desired)
@@ -91,7 +92,6 @@
   :executable: .out
   #:testpass: .pass
   #:testfail: .fail
-  #:subprojects: .a
 
 # This is where Ceedling should look for your source and test files.
 # see documentation for the many options for specifying this.
@@ -142,7 +142,7 @@
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:
-  # Core conffiguration
+  # Core configuration
   :plugins:                        # What plugins should be used by CMock?
     - :ignore
     - :callback
@@ -166,10 +166,10 @@
      - __stdcall
      - __cdecl
      - __fastcall
-  :treat_externs:  :exclude        # the options being :include or :exclude
-  :treat_inlines:  :exclude        # the options being :include or :exclude
-  #:inline_function_patterns:       # When treat_inlines is include this setting overrides the default patterns: "static inline", "inline static", "inline"
-  #  - INLINE       # Indicates that the INLINE keyword should be used to detect inline functions
+  :treat_externs:  :exclude        # Options being :include or :exclude
+  :treat_inlines:  :exclude        # Options being :include or :exclude
+  #:inline_function_patterns:      # When :treat_inlines is :include this list overrides default patterns: ["static inline", "inline static", "inline"]
+  #  - INLINE                      # Indicates `INLINE` (a macro) should be used to recognize inline functions
 
   # Type handling configuration
   #:unity_helper_path: ''          # specify a string of where to find a unity_helper.h file to discover custom type assertions
@@ -270,6 +270,16 @@
     # :html_absolute_paths: TRUE
     # :html_encoding: UTF-8
 
+# :cppcheck:
+#   :reports:
+#     - text     # plain text report (default)
+#     # - xml    # XML report for tool integration
+#     # - sarif  # SARIF report for GitHub/VS Code integration
+#     # - html   # HTML report (requires cppcheck-htmlreport)
+#   :enable_checks: []
+#   :platform: ''
+#   :standard: ''
+
 # :module_generator:
 #   :naming: :snake #options: :bumpy, :camel, :caps, or :snake
 #   :includes:
@@ -303,16 +313,6 @@
 #           - lib/wolfssl.so
 #         :includes:
 #           - include/**
-
-# :subprojects:  
-#   :paths:
-#    - :name: libprojectA
-#      :source:
-#        - ./subprojectA/source
-#      :include:
-#        - ./subprojectA/include
-#      :build_root: ./subprojectA/build
-#      :defines: []
 
 # :command_hooks:
 #   :pre_mock_preprocess:

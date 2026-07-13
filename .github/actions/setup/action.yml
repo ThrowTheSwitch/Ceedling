@@ -1,0 +1,32 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# Internal composite action — not intended to be triggered directly.
+# Called as the first step in the tests-linux and tests-windows jobs in ci.yml.
+
+name: 'Ruby Test Environment Setup'
+description: 'Cache bundle dependencies, checkout repo, and set up Ruby'
+
+inputs:
+  ruby:
+    description: 'Ruby version'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/cache@v4
+      with:
+        path: vendor/bundle
+        key: bundle-use-ruby-${{ runner.os }}-${{ inputs.ruby }}-${{ hashFiles('**/Gemfile.lock') }}
+        restore-keys: |
+          bundle-use-ruby-${{ runner.os }}-${{ inputs.ruby }}-
+
+    - name: Set Up Ruby with Version Matrix
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ inputs.ruby }}

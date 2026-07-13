@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -14,14 +14,16 @@ class JsonTestsReporter < TestsReporter
     super( default_filename: 'tests_report.json' )
   end
 
-  def body(results:, stream:)
+  def body(stream:, name:, results:, duration_s:)
     hash = {
-      "FailedTests"  => write_failures( results[:failures] ),
-      "PassedTests"  => write_tests( results[:successes] ),
-      "IgnoredTests" => write_tests( results[:ignores] ),
-      "Summary"      => write_statistics( results[:counts] )
+      "Name"          => name,
+      "BuildDuration" => duration_s,
+      "FailedTests"   => write_failures( results[:failures] ),
+      "PassedTests"   => write_tests( results[:successes] ),
+      "IgnoredTests"  => write_tests( results[:ignores] ),
+      "Summary"       => write_statistics( results[:counts] )
     }
-    
+
     stream << JSON.pretty_generate(hash)
   end
 

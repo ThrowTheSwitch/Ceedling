@@ -1,11 +1,11 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 require 'ceedling/exceptions'
 
 BEEP_ROOT_NAME = 'beep'.freeze
@@ -55,10 +55,11 @@ class Beep < Plugin
     ) if tools[:on_error] != :bell
   end
 
-  # `Plugin` build step hook  
-  def post_build
+  # `Plugin` build step hook
+  def post_build(_timestamp_s)
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_done],
+      # No additional arguments
       [],
       # Only used by tools with `${1}` replacement argument
       'ceedling build done'
@@ -70,9 +71,10 @@ class Beep < Plugin
   end
   
   # `Plugin` build step hook
-  def post_error
+  def post_error(_timestamp_s)
     command = @ceedling[:tool_executor].build_command_line(
       @tools[:beep_on_error],
+      # No additional arguments
       [],
       # Only used by tools with `${1}` replacement argument
       'ceedling build error'

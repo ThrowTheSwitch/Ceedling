@@ -1,7 +1,7 @@
 /* =========================================================================
     Ceedling - Test-Centered Build System for C
     ThrowTheSwitch.org
-    Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+    Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
     SPDX-License-Identifier: MIT
 ========================================================================= */
 
@@ -10,6 +10,10 @@
 
 #include <math.h>
 
+// Include a type definition for `bool`.
+// This also ensures compatibility with C23 and later that recognize `bool` as a keyword.
+#include <stdbool.h>
+
 // Application Type Definitions
 typedef unsigned int uint32;
 typedef int int32;
@@ -17,7 +21,6 @@ typedef unsigned short uint16;
 typedef short int16;
 typedef unsigned char uint8;
 typedef char int8;
-typedef char bool;
 
 // Application Special Value Definitions
 #ifndef TRUE

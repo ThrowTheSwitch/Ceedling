@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -59,16 +59,18 @@ rule(/#{PROJECT_RELEASE_BUILD_TARGET}/) do |bin_file|
   lib_args  = @ceedling[:release_invoker].convert_libraries_to_arguments(libraries)
   lib_paths = @ceedling[:release_invoker].get_library_paths_to_arguments()
   map_file  = @ceedling[:configurator].project_release_build_map
+  flags     = @ceedling[:flaginator].flag_down( context:RELEASE_SYM, operation:OPERATION_LINK_SYM )
 
   @ceedling[:generator].generate_executable_file(
     tool,
     RELEASE_SYM,
     objects,
-    [], # Flags
+    flags,
     bin_file.name,
     map_file,
     lib_args,
     lib_paths )
+    
   @ceedling[:release_invoker].artifactinate( bin_file.name, map_file, @ceedling[:configurator].release_build_artifacts )
 end
 

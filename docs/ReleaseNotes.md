@@ -1,17 +1,48 @@
 # 🌱 Ceedling Release Notes
 
-These release notes are complemented by two other documents:
+These release notes are complemented by three other documents:
 
 1. 🪵 **[Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
 1. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
+1. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
 
 ---
+
+# 1.1.0 — July 2026
+
+## New features and improvements
+
+1.1.0 adds several significant new features plus a number of bug fixes and other improvements. See [Changelog](Changelog.md) for a full list of new features, bug fixes, and improvements.
+
+The incomplete list of goodies:
+
+* A [Partial][partials-docs] allows a test to mix mocked and real functions from the same source module in a single test file and enables testing of `static` and `inline` functions without modifying source code.
+* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
+* More and expanded [example projects][example-projects].
+* New stock plugins for [Valgrind memory checking][valgrind-plugin] and [Cppcheck static analysis][cppcheck-plugin].
+* The [GCov plugin][gcov-plugin]:
+   * _Finally_ supports coverage reports for all sources.
+   * Adds support for Modified Condition / Decision Coverage.
+* Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
+* Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases (support was temporarily removed with 1.0.0).
+
+[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
+[example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/
+[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
+[valgrind-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/
+[cppcheck-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/
+[gcov-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/
+[mixins-inline-yaml]: https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins/?h=mixins#-mixin-command-line-flags
+
+## Ruby version support
+
+Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4. Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5. To avoid Ruby version and installatione environment complications, [consider using the readymade MadScienceLab Docker images](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
 
 # 1.0.1 - January 30, 2025
 
 This is a collection of bugfixes found after the 1.0.0 release. If you are upgrading from a pre-1.0 release of Ceedling, we highly recommend reading the `1.0.0` release notes as well!
 
-See [Changelog](Changelog.md) for a full list of bugfixes and improvements.
+See [Changelog](Changelog.md) for a full list of bug fixes and improvements.
 
 The most significant issues addressed with this release are problems with preprocessor handling, particularly when discovering which header files are required for each test. If you were running into similar problems with `1.0.0`, we highly recommend this upgrade.
 
@@ -321,13 +352,6 @@ There’s more to be done, but Ceedling’s documentation is more complete and a
 - **Test suite plugin runs 🏃🏻.** Because build steps are run to completion across all the tests you specify at the command line (e.g. all the mocks for your tests are generated at one time) you may need to adjust how you depend on build steps.
 
 Together, these changes may cause you to think that Ceedling is running steps out of order or duplicating work. While bugs are always possible, more than likely, the output you see and the build ordering is expected.
-
-## 🩼 Known Issues
-
-1. The new internal pipeline that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. The speed gains due to parallelization help make up for this. Future releases will concentrate on optimizing away duplication of build steps.
-1. While header file search paths are now customizable per executable, this currently only applies to the search paths the compiler uses. Distinguishing test files or header files of the same name in different directories for test runner and mock generation respectively continues to rely on educated guesses in Ceedling code.
-1. Any path for a C file specified with `TEST_SOURCE_FILE(...)` is in relation to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, many of your `TEST_SOURCE_FILE(...)` calls may need to be updated. A more flexible and dynamic approach to path handling will come in a future update.
-1. Ceedling’s many test preprocessing improvements are not presently able to preserve Unity’s special `TEST_CASE()` and `TEST_RANGE()` features. However, preprocessing of test files is much less frequently needed than preprocessing of mockable header files. Test preprocessing can now be configured to enable only one or the other. As such, these advanced Unity features can still be used in even sophisticated projects.
 
 ## 📚 Background Knowledge
 

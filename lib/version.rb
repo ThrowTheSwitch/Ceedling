@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -15,7 +15,7 @@
 module Ceedling
   module Version
     # Convenience constants for gem building, etc.
-    GEM = '1.0.2'
+    GEM = '1.1.0'
     TAG = GEM
 
     # If run as a script print Ceedling's version to $stdout

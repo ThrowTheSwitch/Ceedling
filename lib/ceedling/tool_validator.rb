@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -13,7 +13,7 @@ require 'ceedling/file_path_utils'  # For glob handling class methods
 
 class ToolValidator
   
-  constructor :file_wrapper, :loginator, :system_wrapper, :reportinator
+  constructor :file_wrapper, :loginator, :system_wrapper, :reportinator, :ruby_expandinator
 
   def validate(tool:, name:nil, extension:EXTENSION_EXECUTABLE, respect_optional:false, boom:false)
     # Redefine name with name inside tool hash if it's not provided
@@ -53,10 +53,26 @@ class ToolValidator
     # If tool is optional and we're respecting that, don't bother to check if executable is legit
     return true if tool[:optional] and respect_optional
 
-    # Skip everything if we've got an argument replacement pattern or Ruby string replacement in :executable
+    # Skip everything if we've got an argument replacement pattern in :executable
     # (Allow executable to be validated by shell at run time)
     return true if (executable =~ PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
-    return true if (executable =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+
+    # Skip shell-time validation for Ruby string replacement in :executable, but fail
+    # fast here (rather than deferring to tool_executor.rb's later expansion attempt)
+    # if the feature isn't enabled -- no reason to let the build proceed further only
+    # to blow up when this tool is actually invoked.
+    if (executable =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+      begin
+        @ruby_expandinator.check!( executable, source: "tool '#{name}' :executable" )
+      rescue CeedlingException => e
+        if !boom
+          @loginator.log( e.message, Verbosity::ERRORS )
+          return false
+        end
+        raise
+      end
+      return true
+    end
 
     # Extract the executable (including optional filepath) apart from any additional arguments
     # Be mindful of legal quote enclosures (e.g. `"Code Cruncher" foo bar`)
@@ -103,7 +119,7 @@ class ToolValidator
     end
 
     if !exists
-      error = "#{name} ↳ :executable => `#{executable}` " + error
+      error = "#{name} ↳ :executable ➡️ `#{executable}` " + error
     end
 
     # Raise exception if executable can't be found and boom is set
@@ -130,7 +146,7 @@ class ToolValidator
     if redirect.class == Symbol
       if not StdErrRedirect.constants.map{|constant| constant.to_s}.include?( redirect.to_s.upcase )
         options = StdErrRedirect.constants.map{|constant| ':' + constant.to_s.downcase}.join(', ')
-        error = "#{name} ↳ :stderr_redirect => :#{redirect} is not a recognized option {#{options}}"
+        error = "#{name} ↳ :stderr_redirect ➡️ :#{redirect} is not a recognized option {#{options}}"
 
         # Raise exception if requested
         raise CeedlingException.new( error ) if boom

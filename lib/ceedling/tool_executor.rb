@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -11,7 +11,7 @@ require 'benchmark'
 
 class ToolExecutor
 
-  constructor :configurator, :tool_executor_helper, :loginator, :verbosinator, :system_wrapper
+  constructor :configurator, :tool_executor_helper, :loginator, :verbosinator, :system_wrapper, :ruby_expandinator
 
   # build up a command line from yaml provided config
 
@@ -38,14 +38,13 @@ class ToolExecutor
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     # Log command as is
-    @loginator.log( "Command: #{command}", Verbosity::DEBUG )
+    @loginator.lazy( Verbosity::DEBUG ) { "> Command: #{command}\n\n" }
 
     # Update executable after any expansion
     command[:executable] = executable
 
     return command
   end
-
 
   # shell out, execute command, and return response
   def exec(command, args=[])
@@ -61,18 +60,23 @@ class ToolExecutor
       @tool_executor_helper.stderr_redirect_cmdline_append( options ),
       ].flatten.compact.join(' ')
 
-    shell_result = {}
+    shell_result = {
+      :output => '',
+      :stdout => '',
+      :stderr => '',
+      :exit_code => 0
+    }
 
     # Wrap system level tool execution in exception handling
     begin
-      time = Benchmark.realtime do
+      time = Benchmark.realtime do 
         shell_result = @system_wrapper.shell_capture3( command:command_line, boom:options[:boom] )
       end
       shell_result[:time] = time
 
     # Ultimately, re-raise the exception as ShellException populated with the exception message
     rescue => error
-      raise ShellException.new( name:pretty_tool_name( command ), message: error.message )
+      raise ShellException.new( name:pretty_tool_name( command ), message: "#{command_line}\n#{error.message}" )
 
     # Be sure to log what we can
     ensure
@@ -88,7 +92,7 @@ class ToolExecutor
     # Go boom if exit code is not 0 and that code means a fatal error
     # (Sometimes we don't want a non-0 exit code to cause an exception as the exit code may not mean a build-ending failure)
     if ((shell_result[:exit_code] != 0) and options[:boom])
-      raise ShellException.new( shell_result:shell_result, name:pretty_tool_name( command ) )
+      raise ShellException.new( shell_result:shell_result, name:pretty_tool_name( command ), message: "Executed Command: #{command_line}" )
     end
 
     return shell_result
@@ -127,18 +131,26 @@ class ToolExecutor
   end
 
 
-  # handle simple text string argument & argument array string replacement operators
+  # Handle simple text string argument & argument array string replacement operators
   def expandify_element(tool_name, element, *args)
     match = //
     to_process = nil
     args_index = 0
 
-    # handle ${#} input replacement
+    # Handle ${#} input replacement
     if (element =~ PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
+      # Convert argument numbering from configuration 1-indexed to array 0-indexed
       args_index = ($2.to_i - 1)
 
-      if (args.nil? or args[args_index].nil?)
-        error = "Tool '#{tool_name}' expected valid argument data to accompany replacement operator #{$1}."
+      args_size = args.nil? ? 0 : args.size()
+
+      if (args_size == 0)
+        error = "Command building for tool '#{tool_name}' expects argument data but was provided none."
+        raise CeedlingException.new( error )
+      end
+
+      if (args_index >= args_size)
+        error = "Command building for tool '#{tool_name}' was provided only #{args_size} arguments but references a replacement operator #{$1}."
         raise CeedlingException.new( error )
       end
 
@@ -146,22 +158,20 @@ class ToolExecutor
       to_process = args[args_index]
     end
 
-    # simple string argument: replace escaped '\$' and strip
+    # Simple string argument: replace escaped '\$' and strip
     element.sub!(/\\\$/, '$')
     element.strip!
 
     build_string = ''
 
-    # handle array or anything else passed into method to be expanded in place of replacement operators
+    # Handle array or anything else passed into method to be expanded in place of replacement operators
     case (to_process)
       when Array then to_process.each {|value| build_string.concat( "#{element.sub(match, value.to_s)} " ) } if (to_process.size > 0)
       else build_string.concat( element.sub(match, to_process.to_s) )
     end
 
-    # handle inline ruby string substitution
-    if (build_string =~ PATTERNS::RUBY_STRING_REPLACEMENT)
-      build_string.replace(@system_wrapper.module_eval(build_string))
-    end
+    # Handle inline ruby string substitution
+    build_string.replace(@ruby_expandinator.expand(build_string, source: "tool '#{tool_name}'"))
 
     return build_string.strip
   end
@@ -188,7 +198,7 @@ class ToolExecutor
     expansion.each do |item|
       # String eval substitution
       if (item =~ PATTERNS::RUBY_STRING_REPLACEMENT)
-        elements << @system_wrapper.module_eval(item)
+        elements << @ruby_expandinator.expand(item, source: "tool '#{tool_name}'")
       # Global constants
       elsif (@system_wrapper.constants_include?(item))
         const = Object.const_get(item)

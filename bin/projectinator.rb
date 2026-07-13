@@ -1,11 +1,12 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
 require 'ceedling/constants' # From Ceedling application
+require 'ceedling/exceptions'
 
 class Projectinator
 
@@ -13,7 +14,7 @@ class Projectinator
   DEFAULT_PROJECT_FILEPATH = './' + DEFAULT_PROJECT_FILENAME
   DEFAULT_YAML_FILE_EXTENSION = '.yml'
 
-  constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator, :system_wrapper
+  constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator, :system_wrapper, :ruby_expandinator
 
   # Discovers project file path and loads configuration.
   # Precendence of attempts:
@@ -29,6 +30,7 @@ class Projectinator
       @path_validator.standardize_paths( filepath )
       _filepath = File.expand_path( filepath )
       config = load_and_log( _filepath, 'from command line argument', silent )
+      config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
       return _filepath, config
 
     # Next priority: environment variable
@@ -37,11 +39,12 @@ class Projectinator
       filepath = env[PROJECT_FILEPATH_ENV_VAR].dup()
       @path_validator.standardize_paths( filepath )
       _filepath = File.expand_path( filepath )
-      config = load_and_log( 
+      config = load_and_log(
         _filepath,
         "from environment variable `#{PROJECT_FILEPATH_ENV_VAR}`",
         silent
       )
+      config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
       return _filepath, config
 
     # Final option: default filepath
@@ -49,10 +52,10 @@ class Projectinator
       filepath = DEFAULT_PROJECT_FILEPATH
       _filepath = File.expand_path( filepath )
       config = load_and_log( _filepath, "from working directory", silent )
+      config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
       return _filepath, config
 
-    # If no user provided filepath and the default filepath does not exist,
-    # we have a big problem
+    # If no user-provided filepath and the default filepath does not exist, we have a big problem
     else
       raise "No project filepath provided and default #{DEFAULT_PROJECT_FILEPATH} not found"
     end
@@ -109,11 +112,11 @@ class Projectinator
 
     # Handle any inline Ruby string expansion
     load_paths.each do |load_path|
-      load_path.replace( @system_wrapper.module_eval( load_path ) ) if (load_path =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+      load_path.replace( @ruby_expandinator.expand( load_path, source: ":mixins ↳ :load_paths" ) )
     end
 
     enabled.each do |mixin|
-      mixin.replace( @system_wrapper.module_eval( mixin ) ) if (mixin =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+      mixin.replace( @ruby_expandinator.expand( mixin, source: ":mixins ↳ :enabled" ) )
     end
 
     # Remove the :mixins section of the configuration
@@ -221,22 +224,28 @@ class Projectinator
 
       # Log what the heck we loaded
       if !silent
-        msg  = "Loaded #{'(empty) ' if config.empty?}project configuration #{method}.\n"
-        msg += " > Using: #{filepath}\n"
-        msg += " > Working directory: #{Dir.pwd()}"
-
-        @loginator.log( msg, Verbosity::NORMAL, LogLabels::CONSTRUCT )
+        @loginator.lazy( Verbosity::NORMAL, LogLabels::CONSTRUCT ) do 
+          "Loaded #{'(empty) ' if config.empty?}project configuration #{method}.\n" +
+          " > Using: #{filepath}\n" +
+          " > Working directory: #{Dir.pwd()}"
+        end
       end
 
       return config
-    rescue Errno::ENOENT
-      # Handle special case of user-provided blank filepath
-      filepath = filepath.empty?() ? '<none>' : filepath
-      raise "Could not find project filepath #{filepath} #{method}"
-
-    rescue StandardError => e
-      # Catch-all error handling
-      raise "Error loading project filepath #{filepath} #{method}: #{e.message}"
+    rescue YamlLoadException => e
+      if e.reason == :not_found
+        # Handle special case of user-provided blank filepath
+        _filepath = filepath.empty?() ? '<none>' : filepath
+        raise YamlLoadException.new(
+          reason: e.reason, source: e.source, original_error: e.original_error,
+          message: "Could not find project filepath #{_filepath} #{method}"
+        )
+      else
+        raise YamlLoadException.new(
+          reason: e.reason, source: e.source, original_error: e.original_error,
+          message: "Error loading project filepath #{filepath} #{method} ⏩️ #{e.message}"
+        )
+      end
     end
 
   end

@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -10,6 +10,10 @@ require 'fileutils'
 # Add Unity and CMock's Ruby code paths to $LOAD_PATH for runner generation and mocking
 $LOAD_PATH.unshift( File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'unity/auto') )
 $LOAD_PATH.unshift( File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'cmock/lib') )
+# Add all subdirectories beneath ceedling_lib_path to $LOAD_PATH to support DIY construction
+Dir.glob(File.join(CEEDLING_APPCFG[:ceedling_lib_path], '**/')).each do |dir|
+  $LOAD_PATH.unshift(dir)
+end
 
 require 'rake'
 
@@ -25,12 +29,11 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
   return if !defined?(PROJECT_VERBOSITY)
   return if (PROJECT_VERBOSITY < Verbosity::NORMAL)
 
-  duration = Reportinator.generate_duration( start_time_s: start_time_s, end_time_s: end_time_s )
+  duration = Reportinator.generate_duration_from_interval( start_time_s: start_time_s, end_time_s: end_time_s )
 
   return if duration.empty?
 
-  @ceedling[:loginator].log() # Blank line
-  @ceedling[:loginator].log( "Ceedling #{run} completed in #{duration}", Verbosity::NORMAL)
+  @ceedling[:loginator].log( "\nCeedling #{run} completed in #{duration}", Verbosity::NORMAL)
 end
 
 start_time = nil # Outside scope of exception handling
@@ -90,10 +93,15 @@ begin
   start_time = SystemWrapper.time_stopwatch_s()
 
   # Tell all our plugins we're about to do something
-  @ceedling[:plugin_manager].pre_build if CEEDLING_APPCFG.build_tasks?
+  @ceedling[:plugin_manager].pre_build( start_time ) if CEEDLING_APPCFG.build_tasks?
 
   # load rakefile component files (*.rake)
   PROJECT_RAKEFILE_COMPONENT_FILES.each { |component| load(component) }
+
+  # Re-scan loaded .rake files with all constants now resolvable (Pass 2).
+  # The same RakeTaskRegistry instance built in bin/ is reused via CEEDLING_HANDOFF_OBJECTS.
+  @ceedling[:rake_task_registry].register_test_tasks( PROJECT_RAKEFILE_COMPONENT_FILES )
+  @ceedling[:rake_task_registry].register_release_tasks( PROJECT_RAKEFILE_COMPONENT_FILES )
 rescue StandardError => ex
   boom_handler( @ceedling[:loginator], ex )
   exit(1)
@@ -114,12 +122,12 @@ END {
     # Tell all our plugins the build is done and process results
     begin
       if CEEDLING_APPCFG.build_tasks?
-        @ceedling[:plugin_manager].post_build
+        @ceedling[:plugin_manager].post_build( SystemWrapper.time_stopwatch_s() )
         @ceedling[:plugin_manager].print_plugin_failures
       end
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )
-      test_failures_handler() if (@ceedling[:task_invoker].test_invoked? || @ceedling[:task_invoker].invoked?(/^gcov:/))
+      test_failures_handler() if @ceedling[:rake_invocation_tracker].test_build_invoked?
     rescue => ex
       ops_done = SystemWrapper.time_stopwatch_s()
       log_runtime( 'operations', start_time, ops_done, CEEDLING_APPCFG.build_tasks? )
@@ -134,7 +142,7 @@ END {
     msg = "Ceedling could not complete operations because of errors"
     @ceedling[:loginator].log( msg, Verbosity::ERRORS, LogLabels::TITLE )
     begin
-      @ceedling[:plugin_manager].post_error if CEEDLING_APPCFG.build_tasks?
+      @ceedling[:plugin_manager].post_error( SystemWrapper.time_stopwatch_s() ) if CEEDLING_APPCFG.build_tasks?
     rescue => ex
       boom_handler( @ceedling[:loginator], ex)
     ensure

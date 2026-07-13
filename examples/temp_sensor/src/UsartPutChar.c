@@ -1,13 +1,14 @@
 /* =========================================================================
     Ceedling - Test-Centered Build System for C
     ThrowTheSwitch.org
-    Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+    Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
     SPDX-License-Identifier: MIT
 ========================================================================= */
 
 #include "Types.h"
 #include "UsartPutChar.h"
 #include "UsartTransmitBufferStatus.h"
+#include "at91sam7s256.h"
 #ifdef SIMULATE
 #include <stdio.h>
 #endif

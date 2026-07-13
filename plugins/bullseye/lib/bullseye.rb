@@ -1,11 +1,11 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 
@@ -71,13 +71,13 @@ class Bullseye < Plugin
     end
   end
 
-  def post_build
-    return if (not @ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
+  def post_build(_timestamp_s)
+    return if (not @ceedling[:rake_invocation_tracker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
 
     # test results
     results = @ceedling[:plugin_reportinator].assemble_test_results(@result_list)
     hash = {
-      :header => BULLSEYE_ROOT_NAME.upcase,
+      :context => BULLSEYE_ROOT_NAME.upcase,
       :results => results
     }
     
@@ -89,7 +89,7 @@ class Bullseye < Plugin
     
     # coverage results
     return if (verify_coverage_file() == false)
-    if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
+    if (@ceedling[:rake_invocation_tracker].invoked?(/^#{BULLSEYE_TASK_ROOT}(all|delta)/))
       command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC, [])
       shell_result = @ceedling[:tool_executor].exec( command )
       report_coverage_results_all(shell_result[:output])
@@ -105,7 +105,7 @@ class Bullseye < Plugin
     # test results
     # get test results for only those tests in our configuration and of those only tests with results on disk
     hash = {
-      :header => BULLSEYE_ROOT_NAME.upcase,
+      :context => BULLSEYE_SYM,
       :results => @ceedling[:plugin_reportinator].assemble_test_results(result_list, {:boom => false})
     }
 
@@ -139,7 +139,7 @@ class Bullseye < Plugin
 
   def report_coverage_results_all(coverage)
     results = {
-      :header => BULLSEYE_ROOT_NAME.upcase,
+      :context => BULLSEYE_SYM,
       :coverage => {
         :functions => nil,
         :branches  => nil
@@ -197,7 +197,7 @@ end
 # end blocks always executed following rake run
 END {
   # cache our input configurations to use in comparison upon next execution
-  if (@ceedling[:task_invoker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
+  if (@ceedling[:rake_invocation_tracker].invoked?(/^#{BULLSEYE_TASK_ROOT}/))
     @ceedling[BULLSEYE_SYM].enableBullseye(false)
   end
 }

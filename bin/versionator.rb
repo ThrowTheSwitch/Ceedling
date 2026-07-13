@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -71,7 +71,7 @@ class Versionator
           end
         end
       rescue
-        raise CeedlingException.new( "Could not collect version information for vendor component: #{filename}" )
+        raise CeedlingException.new( "Could not collect version information for vendor component ⏩️ #{filename}" )
       end
 
       # Splat version and evaluate it to create Versionator object accessor

@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -38,8 +38,17 @@ class Loginator
 
     @replace = {
       # Problematic characters pattern => Simple characters
-      /↳/ => '>>', # Config sub-entry notation
-      /•/ => '*',  # Bulleted lists
+
+      # Config sub-entry notation
+      /↳/ => '>>',
+      # Bulleted lists
+      /•/ => '*',
+      # Triangle
+      /▶️/ => '>',
+      # Right arrow
+      /➡️/ => '->',
+      # Double right arrow
+      /⏩️/ => '>>',
     }
 
     @project_logging = false
@@ -79,13 +88,19 @@ class Loginator
                 logfile( sanitize( file_msg, false ), extract_stream_name( stream ) )
               end
         
-              # Only output to console when message reaches current verbosity level
-              if !stream.nil? && (@verbosinator.should_output?( verbosity ))
+              # Output to console -- desired verbosity was checked at enqueueing
+              if !stream.nil?
                 # Add labels and fun characters
                 console_msg = format( message, verbosity, label, @decorators )
-        
+
                 # Write to output stream after optionally removing any problematic characters
                 stream.print( sanitize( console_msg, @decorators ) )
+
+                # Flush immediately.
+                # Required on Windows where $stdout connected to a pipe is fully buffered.
+                # Without an explicit flush, messages sit in Ruby's IO buffer and can be lost
+                # when the process exits before the C runtime drains the buffer.
+                stream.flush
               end
             end
           rescue ThreadError
@@ -121,6 +136,7 @@ class Loginator
   # Write the given string to an optional log file and to the console
   #  - Logging statements to a file are always at the highest verbosity
   #  - Console logging is controlled by the verbosity level
+  #  - Ensure at least one newline at the end of each message but collapse multiple newlines as two (for extra whitespace)
   #
   # For default label of LogLabels::AUTO
   #  - If verbosity ERRORS, add ERROR: heading
@@ -150,6 +166,56 @@ class Loginator
     # Flatten if needed
     message = message.flatten.join("\n") if (message.class == Array)
 
+    # Ensure at least one newline but no more than two newlines at the end
+    message = message.rstrip + (message.rstrip != message.chomp ? "\n\n" : "\n")
+
+    # Add item to the queue
+    item = {
+      :message => message,
+      :verbosity => verbosity,
+      :label => label,
+      :stream => stream
+    }
+    @queue << item
+  end
+
+  # Write a bulleted list to the log with an optional header.
+  #  - If the list is nil or empty, append "<none>" as a placeholder
+  #  - For a multiline header (e.g. a banner), "<none>" begins on its own line
+  #  - For a single-line header, "<none>" is appended inline after a space
+  def log_list(list, header='', verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil)
+    msg = (header.nil? or header.empty?) ? '' : header.rstrip
+
+    if list.nil? or list.empty?
+      msg += (msg.include?("\n") ? "\n" : ' ') if !msg.empty?
+      msg += "<none>"
+    else
+      list.each { |item| msg += "\n • #{item}" }
+    end
+
+    log(msg + "\n\n", verbosity, label, stream)
+  end
+
+  # This is a version of the log function which performs lazy evaluation of the message itself.
+  # The purpose of this version is to improve performance by only building strings that are needed
+  # by the current log level
+  def lazy(verbosity=Verbosity::NORMAL, label=LogLabels::AUTO, stream=nil, &block)
+    # No sense posting if our verbosity is too low and we're not logging
+    return unless (@project_logging || @verbosinator.should_output?( verbosity ) )
+
+    # we've decided we need to actually use this string, so figure it out!
+    message = if block_given?
+      yield block
+    else
+      "\n"
+    end
+
+    # Choose appropriate console stream
+    stream = get_stream( verbosity, stream )
+
+    # Flatten if needed
+    message = message.flatten.join("\n") if (message.class == Array)
+
     # Message contatenated with "\n" (unless it aready ends with a newline)
     message += "\n" unless message.end_with?( "\n" )
 
@@ -163,14 +229,36 @@ class Loginator
     @queue << item
   end
 
-
   def log_debug_backtrace(exception)
-      log( "\nDebug Backtrace ==>", Verbosity::DEBUG )
-      
       # Send backtrace to debug logging, formatted almost identically to how Ruby does it.
       # Don't log the exception message itself in the first `log()` call as it will already be logged elsewhere
-      log( "#{exception.backtrace.first}: (#{exception.class})", Verbosity::DEBUG )
-      log( exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n"),                  Verbosity::DEBUG )
+    lazy( Verbosity::DEBUG ) do
+      "\nDebug Backtrace ==>\n#{exception.backtrace.first}: (#{exception.class})" +
+      exception.backtrace.drop(1).map{|s| "\t#{s}"}.join("\n")
+    end
+  end
+
+
+  # Write directly to $stdout, bypassing the queue and all verbosity filtering.
+  # Applies emoji decorators (if enabled) but never text labels (INFO:, WARNING:, etc.).
+  # Applies the same character stripping as log() when decorators are disabled.
+  def console(message="\n", label=LogLabels::AUTO)
+    # Flatten if needed
+    message = message.flatten.join("\n") if (message.class == Array)
+
+    # Ensure at least one newline but no more than two newlines at the end
+    message = message.rstrip + (message.rstrip != message.chomp ? "\n\n" : "\n")
+
+    # Add emoji decorator if enabled; skip AUTO (no verbosity context) and NONE
+    prepend = ''
+    prepend = decorate( '', label ) if @decorators && label != LogLabels::AUTO && label != LogLabels::NONE
+
+    # Write directly to stdout — no queue, no verbosity check, no text labels
+    $stdout.print( sanitize( insert_prepend(prepend, message), @decorators ) )
+
+    # Flush immediately.
+    # Required on Windows where $stdout connected to a pipe is fully buffered
+    $stdout.flush()
   end
 
 
@@ -200,6 +288,12 @@ class Loginator
       prepend = '❌ '
     when LogLabels::TITLE
       prepend = '🌱 '
+    when LogLabels::DOCUMENTATION
+      prepend = '📝 '
+    when LogLabels::COMMERCIAL
+      prepend = '💼 '
+    when LogLabels::REQUEST
+      prepend = '🙏 '
     end
 
     return prepend + str
@@ -219,6 +313,12 @@ class Loginator
   ### Private ###
 
   private
+
+  def insert_prepend(prepend, string)
+    leading, rest = string.match(/\A(\n*)(.*)\z/m).captures
+    return leading + prepend + rest
+  end
+
 
   def get_stream(verbosity, stream)
     # If no stream has been specified, choose one based on the verbosity level of the prompt
@@ -278,7 +378,7 @@ class Loginator
     # Otherwise no headings for decorator-only messages
     end
 
-    return prepend + string
+    return insert_prepend( prepend, string )
   end
 
 

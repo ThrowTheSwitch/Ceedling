@@ -1,0 +1,86 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+:project:
+  :name: "Wondrous Forest"
+  :which_ceedling: gem
+  :ceedling_version: '?'
+
+  :use_partials: TRUE
+  :use_mocks: TRUE
+  :use_test_preprocessor: :all
+
+  :build_root: build
+  :test_file_prefix: Test
+  :default_tasks:
+    - test:all
+
+  :test_threads: 8
+  :compile_threads: 8
+
+  :release_build: FALSE
+
+:test_build:
+  :use_assembly: FALSE
+
+:release_build:
+  :output: ForestMonitor.out
+  :use_assembly: FALSE
+  :artifacts: []
+
+:plugins:
+  :load_paths: []
+  :enabled:
+    - module_generator
+    - report_tests_pretty_stdout
+
+:extension:
+  :executable: .out
+
+:paths:
+  :test:
+    - +:test/**
+  :source:
+    - src/**
+  :include:
+    - src/**
+  :libraries: []
+
+:defines:
+  :test:
+    - TEST
+
+:flags:
+  :test:
+    :compile:
+      '*':
+        - '-std=c99'
+
+:cmock:
+  :mock_prefix: Mock
+  :when_no_prototypes: :warn
+  :enforce_strict_ordering: TRUE
+  :plugins:
+    - :ignore
+    - :callback
+  :treat_as:
+    uint8:    HEX8
+    uint16:   HEX16
+    uint32:   UINT32
+    int8:     INT8
+    bool:     UINT8
+
+:libraries:
+  :placement: :end
+  :flag: "-l${1}"
+  :path_flag: "-L ${1}"
+  :system:
+    - m
+  :test: []
+  :release: []
+...

@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -10,13 +10,49 @@ require 'ceedling/constants'
 
 class ReleaseInvoker
 
-  constructor :configurator, :release_invoker_helper, :dependinator, :task_invoker, :file_path_utils, :file_wrapper
+  constructor :configurator, :batchinator, :reportinator, :loginator, :rake_wrapper, :file_path_utils, :file_wrapper
 
+  def collect_release_build_objects()
+    objects = []
+
+    @batchinator.build_step( "Determining Objects to be Built", heading: false ) do
+      objects.concat(
+        @file_path_utils.form_release_build_objects_filelist(
+          @configurator.collection_release_build_input
+        )
+      )
+
+      objects.concat(
+        @file_path_utils.form_release_build_objects_filelist(
+          @configurator.collection_release_artifact_extra_link_objects
+        )
+      )
+    end
+
+    return objects    
+  end
 
   def setup_and_invoke_objects( files )
     objects = @file_path_utils.form_release_build_objects_filelist( files )
-    @task_invoker.invoke_release_objects( objects )
+
+    @batchinator.build_step( "Building Objects" ) do
+      @batchinator.exec(workload: :compile, things: objects) do |object|
+        @rake_wrapper[object].invoke
+      end    
+    end
+
     return objects
+  end
+
+  def setup_and_invoke_binary( filepath )
+    @batchinator.build_step( "Building Binary" ) do
+      @rake_wrapper[filepath].invoke
+    end
+
+    banner = @reportinator.generate_banner(
+      @loginator.decorate( File.basename( filepath ), LogLabels::TITLE )
+    )
+    @loginator.log( "\n" + banner + "\n" )
   end
 
   def artifactinate( *files )
@@ -26,10 +62,18 @@ class ReleaseInvoker
   end
 
   def convert_libraries_to_arguments(libraries)
-    args = ((libraries || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
+    args =
+      (libraries || []) + 
+      ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : []) +
+      ((defined? LIBRARIES_RELEASE) ? LIBRARIES_RELEASE : [])
+
+    args.flatten!
+    args.compact!
+
     if (defined? LIBRARIES_FLAG)
       args.map! {|v| LIBRARIES_FLAG.gsub(/\$\{1\}/, v) }
     end
+
     return args
   end
 

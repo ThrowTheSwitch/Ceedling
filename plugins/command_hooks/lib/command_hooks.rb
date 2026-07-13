@@ -1,13 +1,13 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'ceedling/plugin'
+require 'ceedling/plugins/plugin'
 
 COMMAND_HOOKS_ROOT_NAME = 'command_hooks'.freeze
 COMMAND_HOOKS_SYM       = COMMAND_HOOKS_ROOT_NAME.to_sym
@@ -29,8 +29,10 @@ COMMAND_HOOKS_LIST = [
   :post_test_fixture_execute,
   :pre_test,
   :post_test,
-  :pre_release,
-  :post_release,
+  :pre_test_build,
+  :post_test_build,
+  :pre_release_build,
+  :post_release_build,
   :pre_build,
   :post_build,
   :post_error,
@@ -79,27 +81,29 @@ class CommandHooks < Plugin
     end
   end
 
-  def pre_mock_preprocess(arg_hash);       run_hook( :pre_mock_preprocess,       arg_hash[:header_file] ); end
-  def post_mock_preprocess(arg_hash);      run_hook( :post_mock_preprocess,      arg_hash[:header_file] ); end
-  def pre_test_preprocess(arg_hash);       run_hook( :pre_test_preprocess,       arg_hash[:test_file]   ); end
-  def post_test_preprocess(arg_hash);      run_hook( :post_test_preprocess,      arg_hash[:test_file]   ); end
-  def pre_mock_generate(arg_hash);         run_hook( :pre_mock_generate,         arg_hash[:header_file] ); end
-  def post_mock_generate(arg_hash);        run_hook( :post_mock_generate,        arg_hash[:header_file] ); end
-  def pre_runner_generate(arg_hash);       run_hook( :pre_runner_generate,       arg_hash[:source]      ); end
-  def post_runner_generate(arg_hash);      run_hook( :post_runner_generate,      arg_hash[:runner_file] ); end
-  def pre_compile_execute(arg_hash);       run_hook( :pre_compile_execute,       arg_hash[:source_file] ); end
-  def post_compile_execute(arg_hash);      run_hook( :post_compile_execute,      arg_hash[:object_file] ); end
-  def pre_link_execute(arg_hash);          run_hook( :pre_link_execute,          arg_hash[:executable]  ); end
-  def post_link_execute(arg_hash);         run_hook( :post_link_execute,         arg_hash[:executable]  ); end
-  def pre_test_fixture_execute(arg_hash);  run_hook( :pre_test_fixture_execute,  arg_hash[:executable]  ); end
-  def post_test_fixture_execute(arg_hash); run_hook( :post_test_fixture_execute, arg_hash[:executable]  ); end
-  def pre_test(test);                      run_hook( :pre_test,                  test                   ); end
-  def post_test(test);                     run_hook( :post_test,                 test                   ); end
-  def pre_release;                         run_hook( :pre_release                                       ); end
-  def post_release;                        run_hook( :post_release                                      ); end
-  def pre_build;                           run_hook( :pre_build                                         ); end
-  def post_build;                          run_hook( :post_build                                        ); end
-  def post_error;                          run_hook( :post_error                                        ); end
+  def pre_mock_preprocess(arg_hash);           run_hook( :pre_mock_preprocess,       arg_hash[:header_file] ); end
+  def post_mock_preprocess(arg_hash);          run_hook( :post_mock_preprocess,      arg_hash[:header_file] ); end
+  def pre_test_preprocess(arg_hash);           run_hook( :pre_test_preprocess,       arg_hash[:test_file]   ); end
+  def post_test_preprocess(arg_hash);          run_hook( :post_test_preprocess,      arg_hash[:test_file]   ); end
+  def pre_mock_generate(arg_hash);             run_hook( :pre_mock_generate,         arg_hash[:header_file] ); end
+  def post_mock_generate(arg_hash);            run_hook( :post_mock_generate,        arg_hash[:header_file] ); end
+  def pre_runner_generate(arg_hash);           run_hook( :pre_runner_generate,       arg_hash[:source]      ); end
+  def post_runner_generate(arg_hash);          run_hook( :post_runner_generate,      arg_hash[:runner_file] ); end
+  def pre_compile_execute(arg_hash);           run_hook( :pre_compile_execute,       arg_hash[:source_file] ); end
+  def post_compile_execute(arg_hash);          run_hook( :post_compile_execute,      arg_hash[:object_file] ); end
+  def pre_link_execute(arg_hash);              run_hook( :pre_link_execute,          arg_hash[:executable]  ); end
+  def post_link_execute(arg_hash);             run_hook( :post_link_execute,         arg_hash[:executable]  ); end
+  def pre_test_fixture_execute(arg_hash);      run_hook( :pre_test_fixture_execute,  arg_hash[:executable]  ); end
+  def post_test_fixture_execute(arg_hash);     run_hook( :post_test_fixture_execute, arg_hash[:executable]  ); end
+  def pre_test(test);                          run_hook( :pre_test,                  test ); end
+  def post_test(test);                         run_hook( :post_test,                 test ); end
+  def pre_test_build(context, timestamp_s);    run_hook( :pre_test_build,            context.to_s, timestamp_s.to_s ); end
+  def post_test_build(context, timestamp_s);   run_hook( :post_test_build,           context.to_s, timestamp_s.to_s ); end
+  def pre_release_build(timestamp_s);          run_hook( :pre_release_build,         timestamp_s.to_s ); end
+  def post_release_build(timestamp_s);         run_hook( :post_release_build,        timestamp_s.to_s ); end
+  def pre_build(timestamp_s);                  run_hook( :pre_build,                 timestamp_s.to_s ); end
+  def post_build(timestamp_s);                 run_hook( :post_build,                timestamp_s.to_s ); end
+  def post_error(timestamp_s);                 run_hook( :post_error,                timestamp_s.to_s ); end
 
   ### Private
 
@@ -167,24 +171,24 @@ class CommandHooks < Plugin
   #
   # :args:
   #   - which_hook: Name of the hook to run
-  #   - name: Name of file
+  #   - args: Zero or more substitution values available as ${1}, ${2}, ... in tool argument lists
   #
-  def run_hook(which_hook, name="")
+  def run_hook(which_hook, *args)
     if (@config[which_hook])
       msg = "Running Command Hook :#{which_hook}"
       msg = @reportinator.generate_progress( msg )
       @loginator.log( msg )
-      
+
       # Single tool config
       if (@config[which_hook].is_a? Hash)
-        run_hook_step( which_hook, @config[which_hook], name )
-      
+        run_hook_step( which_hook, @config[which_hook], *args )
+
       # Multiple tool configs
       elsif (@config[which_hook].is_a? Array)
         @config[which_hook].each do |hook|
-          run_hook_step( which_hook, hook, name )
+          run_hook_step( which_hook, hook, *args )
         end
-      
+
       # Tool config is bad
       else
         msg = "The tool config for Command Hook #{which_hook} was poorly formed and not run"
@@ -194,19 +198,20 @@ class CommandHooks < Plugin
   end
 
   ##
-  # Run a hook if its available.
+  # Run a hook step (single tool execution).
   #
   # :args:
-  #   - hook: Name of the hook to run
-  #   - name: Name of file (default: "")
+  #   - which_hook: Name of the hook to run
+  #   - hook: Tool configuration hash for this step
+  #   - args: Zero or more substitution values available as ${1}, ${2}, ... in tool argument lists
   #
   # :return:
   #    shell_result.
   #
-  def run_hook_step(which_hook, hook, name="")
+  def run_hook_step(which_hook, hook, *args)
     if (hook[:executable])
-      # Handle argument replacemant ({$1}), and get commandline
-      cmd = @ceedling[:tool_executor].build_command_line( hook, [], name )
+      # Handle argument replacement (${1}, ${2}, ...) and get commandline
+      cmd = @ceedling[:tool_executor].build_command_line( hook, [], *args )
       shell_result = @ceedling[:tool_executor].exec( cmd )
 
       # If hook logging is enabled

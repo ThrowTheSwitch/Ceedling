@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -31,23 +31,23 @@ class TestsReporter
   end
 
   # Write report contents to file
-  def write(filepath:, results:)
+  def write(name:, filepath:, results:, duration_s:nil)
     File.open( filepath, 'w' ) do |f|
-      header( results: results, stream: f )
-      body( results: results, stream: f )
-      footer( results: results, stream: f )
+      header( stream: f, name: name, results: results, duration_s: duration_s )
+      body( stream: f, name: name, results: results, duration_s: duration_s )
+      footer( stream: f, name: name, results: results, duration_s: duration_s )
     end
   end
 
-  def header(results:, stream:)
+  def header(stream:, name:, results:, duration_s:)
     # Override in subclass to do something
   end
 
-  def body(results:, stream:)
+  def body(stream:, name:, results:, duration_s:)
     # Override in subclass to do something
   end
 
-  def footer(results:, stream:)
+  def footer(stream:, name:, results:, duration_s:)
     # Override in subclass to do something
   end
 

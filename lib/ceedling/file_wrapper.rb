@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -13,6 +13,13 @@ require 'ceedling/constants'
 
 
 class FileWrapper
+
+  def self.generate_include_guard(name)
+    # abc-XYZ.h --> _ABC_XYZ_H_
+    base = File.basename(name, '.*') # Remove any extension
+    guard = '__' + CEEDLING_GENERATED + '_' + base.gsub(/\W/, '_').upcase + '_H__'
+    return guard
+  end
 
   def get_expanded_path(path)
     return File.expand_path(path)
@@ -99,6 +106,12 @@ class FileWrapper
 
   def touch(filepath, options={})
     FileUtils.touch(filepath, **options)
+  end
+
+  def write_blank_file(filepath)
+    File.open(filepath, 'w') do |file|
+      file.write("// Ceedling intentionally blank file\n\n")
+    end
   end
 
   def write(filepath, contents, flags='w')

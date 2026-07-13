@@ -21,8 +21,11 @@ CEEDLING_APPCFG = CeedlingAppConfig.new()
 # Add load paths for `require 'ceedling/*'` statements in bin/ code
 $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_base_path] )
 
-require 'constructor'  # Assumed installed via Ceedling gem dependencies
+# Assumed installed via Ceedling gem dependencies
+require 'constructor'
+# Commonly needed modules
 require 'ceedling/constants'
+require 'ceedling/array_patches' # intersect?() + overlap?()
 
 # Centralized exception handler for:
 #  1. Bootloader (bin/)
@@ -56,8 +59,14 @@ begin
   #  4. Perform object construction + dependency injection from bin/objects.yml
   #  5. Remove all paths added to $LOAD_PATH
   #     (Main application will restore certain paths -- possibly updated by :which_ceedling)
-  $LOAD_PATH.unshift( 
+  $LOAD_PATH.unshift(
+    # lib/ceedling for base of any require statements
     CEEDLING_APPCFG[:ceedling_lib_path],
+    # Add lib/ceedling/config to load configuration handling utils
+    File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'config' ),
+    # Add lib/ceedling/rake_app to load Rake application handling code
+    File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'rake_app' ),
+    # DIY vendored path
     diy_vendor_path
   )
 
@@ -71,9 +80,12 @@ begin
   # This prevents double instantiation and preserves object state in handoff
   handoff_objects = {}
   handoff = [
+    :rake_task_registry,
+    :reportinator,
     :loginator,
     :file_wrapper,
     :yaml_wrapper,
+    :ruby_expandinator,
     :config_walkinator,
     :system_wrapper,
     :verbosinator
@@ -88,7 +100,6 @@ begin
   require 'cli'
   
   # Remove all load paths we've relied on (main application will set up load paths again)
-  $LOAD_PATH.delete( ceedling_bin_path )
   $LOAD_PATH.delete( CEEDLING_APPCFG[:ceedling_lib_path] )
   $LOAD_PATH.delete( diy_vendor_path )
 

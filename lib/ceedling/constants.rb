@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -26,18 +26,21 @@ VERBOSITY_OPTIONS = {
 
 # Label + decorator options for logging
 class LogLabels
-  NONE       =  0  # Override logic and settings with no label and no decoration
-  AUTO       =  1  # Default labeling and decorators
-  NOTICE     =  2  # decorator + 'NOTICE:'
-  WARNING    =  3  # decorator + 'WARNING:'
-  ERROR      =  4  # decorator + 'ERROR:'
-  EXCEPTION  =  5  # decorator + 'EXCEPTION:'
-  CONSTRUCT  =  6  # decorator only
-  RUN        =  7  # decorator only
-  CRASH      =  8  # decorator only
-  PASS       =  9  # decorator only
-  FAIL       = 10  # decorator only
-  TITLE      = 11  # decorator only
+  NONE          =  0  # Override logic and settings with no label and no decoration
+  AUTO          =  1  # Default labeling and decorators
+  NOTICE        =  2  # decorator + 'NOTICE:'
+  WARNING       =  3  # decorator + 'WARNING:'
+  ERROR         =  4  # decorator + 'ERROR:'
+  EXCEPTION     =  5  # decorator + 'EXCEPTION:'
+  CONSTRUCT     =  6  # decorator only
+  RUN           =  7  # decorator only
+  CRASH         =  8  # decorator only
+  PASS          =  9  # decorator only
+  FAIL          = 10  # decorator only
+  TITLE         = 11  # decorator only
+  DOCUMENTATION = 12  # decorator only
+  COMMERCIAL    = 13  # decorator only
+  REQUEST       = 14  # decorator only
 
   # Verbosity levels ERRORS – DEBUG default to certain labels or lack thereof
   # The above label constants are available to override Loginator's default AUTO level as needed
@@ -65,13 +68,42 @@ class StdErrRedirect
   TCSH = :tcsh
 end
 
+EXTENSION_WIN_EXE     = '.exe'
+EXTENSION_NONWIN_EXE  = '.out'
+
+# Vendor frameworks, generated mocks, generated runners are always .c files
+EXTENSION_CORE_HEADER = '.h'
+EXTENSION_CORE_SOURCE = '.c'
+
+CEEDLING_HEADER_FILENAME = 'ceedling.h'
+CEEDLING_HEADER_FILEPATH = CEEDLING_HEADER_FILENAME # lib/ceedling/
+PARTIAL_FILENAME_PREFIX  = 'ceedling_partial_'
+
 class PATTERNS
   GLOB = /[\*\?\{\}\[\]]/
+
   RUBY_STRING_REPLACEMENT = /#\{.+\}/
   TOOL_EXECUTOR_ARGUMENT_REPLACEMENT = /(\$\{(\d+)\})/
+
   TEST_STDOUT_STATISTICS  = /\n-+\s*(\d+)\s+Tests\s+(\d+)\s+Failures\s+(\d+)\s+Ignored\s+(OK|FAIL)\s*/i
+
+  USER_INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+\"\s*([\/\w\.\-]+)\s*\"/
+  SYSTEM_INCLUDE_DIRECTIVE_FILENAME = /#\s*include\s+<\s*([\/\w\.\-]+)\s*>/
+
   TEST_SOURCE_FILE  = /TEST_SOURCE_FILE\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
   TEST_INCLUDE_PATH = /TEST_INCLUDE_PATH\s*\(\s*\"\s*([^"]+)\s*\"\s*\)/
+
+  # Unity's TEST_CASE()/TEST_RANGE()/TEST_MATRIX() are positional marker macros.
+  # Unity's runner generator only honors one when it sits (whitespace only in between) 
+  # directly ahead of the `void test_Foo(...)` it configures.
+  # Captures one or more stacked calls (group 1) plus the name of the function they 
+  # immediately precede (group 2). So, callers can re-associate the macro text with its 
+  # function after preprocessing has separated them.
+  # The non-greedy `\(.*?\)` shares Unity's own limitation of not handling nested parens
+  # in macro arguments (see generate_test_runner.rb's identical fragment) -- parity, not a gap.
+  TEST_CASE_DIRECTIVE = /((?:[ \t]*(?:TEST_CASE|TEST_RANGE|TEST_MATRIX)\s*\(.*?\)\s*)+)void\s+(\w+)\s*\(/m
+
+  PARTIAL_IMPL_FILENAME = /\A#{PARTIAL_FILENAME_PREFIX}.+_impl#{Regexp.escape(EXTENSION_CORE_SOURCE)}\z/
 end
 
 GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
@@ -79,15 +111,18 @@ GIT_COMMIT_SHA_FILENAME = 'GIT_COMMIT_SHA'
 # Escaped newline literal (literally double-slash-n) for "encoding" multiline strings as single string
 NEWLINE_TOKEN = '\\n'
 
+MIXIN_SIGIL_INLINE_YAML = '='
+MIXIN_SIGIL_FILEPATH    = '@'
+
 DEFAULT_PROJECT_FILENAME = 'project.yml'
 DEFAULT_BUILD_LOGS_PATH = 'logs'
 
+DOCS_SITE_LOCAL_PATH = 'site-local'
+
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
 
-EXTENSION_WIN_EXE     = '.exe'
-EXTENSION_NONWIN_EXE  = '.out'
-# Vendor frameworks, generated mocks, generated runners are always .c files
-EXTENSION_CORE_SOURCE = '.c' 
+# String used in generated include guards
+CEEDLING_GENERATED = 'CEEDLING_GENERATED'
 
 PREPROCESS_SYM = :preprocess
 
@@ -136,15 +171,21 @@ OPERATION_COMPILE_SYM     = :compile    unless defined?(OPERATION_COMPILE_SYM)
 OPERATION_ASSEMBLE_SYM    = :assemble   unless defined?(OPERATION_ASSEMBLE_SYM)
 OPERATION_LINK_SYM        = :link       unless defined?(OPERATION_LINK_SYM)
 
+PREPROCESS_STANDINS_DIR  = 'standins'
 PREPROCESS_FULL_EXPANSION_DIR  = 'full_expansion'
 PREPROCESS_DIRECTIVES_ONLY_DIR = 'directives_only'
+PREPROCESS_RAW_DIRECTIVES_ONLY_DIR = 'directives_only/raw'
+
+BUILD_OUT_DIR          = 'out'
+BUILD_RESULTS_DIR      = 'results'
+BUILD_DEPENDENCIES_DIR = 'dependencies'
 
 NULL_FILE_PATH = '/dev/null'
 
 TESTS_BASE_PATH   = TEST_ROOT_NAME
 RELEASE_BASE_PATH = RELEASE_ROOT_NAME
 
-VENDORS_FILES = %w(unity UnityHelper cmock CException).freeze
+VENDORS_FILES = %w(unity UnityHelper cmock CException ceedling).freeze
 
 # Ruby Here
 UNITY_TEST_RESULTS_TEMPLATE = <<~UNITY_TEST_RESULTS

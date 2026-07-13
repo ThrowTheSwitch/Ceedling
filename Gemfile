@@ -20,5 +20,11 @@ gem "diy", "~> 1.1"
 gem "constructor", "~> 2"
 gem "thor", "~> 1.3"
 gem "deep_merge", "~> 1.2"
+
+# `erb` & `benchmark` have been removed from the default gems in some Ruby versions Ceedling supports.
+# These must be declared explicitly for plain `gem install` (non-Bundler) users to successfully span supported Ruby versions.
+gem "erb", ">= 2.2"
+gem "benchmark", ">= 0.3"
+
 gem "unicode-display_width", "~> 3.1"
-gem "erb", "~> 4.0"
+gem "parallel", "~> 1.26"

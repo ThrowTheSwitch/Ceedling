@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -116,7 +116,6 @@ end
 module CeedlingTasks
 
   VERBOSITY_NORMAL = 'normal'
-  VERBOSITY_DEBUG = 'debug'
 
   DOC_LOCAL_FLAG = "Install Ceedling plus supporting tools to vendor/"
 
@@ -124,19 +123,28 @@ module CeedlingTasks
 
   DOC_PROJECT_FLAG = "Loads the filepath as your base project configuration"
 
-  DOC_MIXIN_FLAG = "Merges the configuration mixin by name or filepath."
+  DOC_MIXIN_FLAG = "Merges the configuration mixin by name, filepath, or inline YAML (= sigil)."
 
-  LONGDOC_LOCAL_FLAG = "`--local` copies Ceedling and its dependencies to a vendor/ 
-    subdirectory in the root of the project. It also installs a 
-    platform-appropriate executable script `ceedling` at the root of the 
+  DOC_RUBY_REPLACEMENT_FLAG = "Enables inline Ruby string expansion (\#{...}) in project configuration"
+
+  LONGDOC_LOCAL_FLAG = "`--local` copies Ceedling and its dependencies to a vendor/
+    subdirectory in the root of the project. It also installs a
+    platform-appropriate executable script `ceedling` at the root of the
     project."
 
-  LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This 
-    flag may be repeated for multiple mixins. A simple mixin name initiates a 
-    lookup from within mixin load paths in your project file and among built-in 
-    mixins. A filepath and/or filename (with extension) will instead merge the 
-    specified YAML file. See documentation for complete details.
-    \x5> --mixin my_compiler --mixin my/path/mixin.yml"
+  LONGDOC_MIXIN_FLAG = "`--mixin` merges the specified configuration mixin. This
+    flag may be repeated for multiple mixins and is processed left-to-right
+    (rightmost is final merge).
+    Three forms are accepted:
+    \x5 1. A simple name for a lookup within configured mixin load paths.
+    \x5 2. A filepath (with extension or path separator) loads and merges the
+    specified YAML file.
+    \x5 3. Inline YAML merged directly (denoted by `=` sigil prefix).
+    See documentation for complete details.
+    \x5> --mixin my_compiler --mixin my/path/mixin.yml --mixin \"=defines: {release: ['MY_SYMBOL']}\""
+
+  LONGDOC_RUBY_REPLACEMENT_FLAG = "`--ruby-replacement` enables inline Ruby code expansion
+    (`\#{...}`) in project configuration values. Disabled by default for security."
 
   # Intentionally disallowed Linux/Unix/Windows filename characters to minimize the chance
   # of mistakenly filtering various string-base flags missing a parmeter
@@ -170,22 +178,25 @@ module CeedlingTasks
     desc "help [COMMAND]", "Describe available commands and list build operations"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
+    method_option :ruby_replacement, :type => :boolean, :default => false, :desc => DOC_RUBY_REPLACEMENT_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
-      `ceedling help` provides summary help for all available application commands 
+      `ceedling help` provides summary help for all available application commands
       and build tasks.
 
       COMMAND is optional and will produce detailed help for a specific application command --
       not a build or plugin task, however.
 
-      `ceedling help` also lists the available build operations from loading your 
-      project configuration. Optionally, a project filepath and/or mixins may be 
+      `ceedling help` also lists the available build operations from loading your
+      project configuration. Optionally, a project filepath and/or mixins may be
       provided to load a different project configuration than the default.
 
       Notes on Optional Flags:
 
       • #{LONGDOC_MIXIN_FLAG}
+
+      • #{LONGDOC_RUBY_REPLACEMENT_FLAG}
       LONGDESC
     ) )
     def help(command=nil)
@@ -201,14 +212,13 @@ module CeedlingTasks
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
-      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
-
+      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
       # Call application help with block to execute Thor's built-in help in the help logic
       @handler.app_help( ENV, @app_cfg, _options, command ) { |command| super(command) }
     end
 
-
-    desc "new NAME [DEST]", "Create a new project structure at optional DEST path"
+ 
+    desc "new [DEST]", "Create a new project structure at optional DEST path (default is current directory)"
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
     method_option :configs, :type => :boolean, :default => true, :desc => "Install starter project file in project root"
@@ -219,10 +229,8 @@ module CeedlingTasks
       <<-LONGDESC
       `ceedling new` creates a new project structure.
 
-      NAME is required and will be the containing directory for the new project.
-
-      DEST is an optional directory path for the new project (e.g. <DEST>/<name>).
-      The default is your working directory. Nonexistent paths will be created.
+      DEST is an optional root path for the new project (e.g. <DEST>/project.yml).
+      The default is your working directory. Non-existent paths will be created.
 
       Notes on Optional Flags:
 
@@ -232,16 +240,16 @@ module CeedlingTasks
       new project.
       LONGDESC
     ) )
-    def new(name, dest=nil)
+    def new(dest=nil)
       require 'version' # lib/version.rb for TAG constant
 
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
       _dest = dest.dup() if !dest.nil?
 
-      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
 
-      @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, name, _dest )
+      @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, _dest )
     end
 
     desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project at PATH"
@@ -283,7 +291,7 @@ module CeedlingTasks
       _options[:project] = options[:project].dup()
       _path = path.dup()
 
-      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
 
       @handler.upgrade_project( ENV, @app_cfg, _options, _path )
     end
@@ -304,6 +312,7 @@ module CeedlingTasks
                   :desc => "Filter for individual unit test names"
     method_option :exclude_test_case, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT,
                   :desc => "Prevent matched unit test names from running"
+    method_option :ruby_replacement, :type => :boolean, :default => false, :desc => DOC_RUBY_REPLACEMENT_FLAG
     # Include for consistency with other commands (override --verbosity)
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
@@ -315,18 +324,20 @@ module CeedlingTasks
       \x5    > ceedling build test:all
 
       TASKS are zero or more build operations created from your project configuration.
-      If no tasks are provided, built-in default tasks or your :project ↳ 
+      If no tasks are provided, built-in default tasks or your :project ↳
       :default_tasks will be executed.
 
       Notes on Optional Flags:
 
       • #{LONGDOC_MIXIN_FLAG}
 
-      • `--test-case` and its inverse `--exclude-test-case` set test case name 
+      • `--test-case` and its inverse `--exclude-test-case` set test case name
       matchers to run only a subset of the unit test suite. See docs for full details.
 
       • `If --log and --logfile are both specified, --logfile will set the log file path.
       If --no-log and --logfile are both specified, no logging will occur.
+
+      • #{LONGDOC_RUBY_REPLACEMENT_FLAG}
       LONGDESC
     ) )
     def build(*tasks)
@@ -365,7 +376,7 @@ module CeedlingTasks
       _options[:project] = options[:project].dup() if !options[:project].nil?
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
-      _options[:verbosity] = VERBOSITY_DEBUG if options[:debug]
+      _options[:verbosity] = Verbosity::DEBUG if options[:debug]
       _options[:logfile] = options[:logfile].dup()
 
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )
@@ -377,6 +388,7 @@ module CeedlingTasks
                   :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :app, :type => :boolean, :default => true, :desc => "Runs Ceedling application and its config manipulations"
+    method_option :ruby_replacement, :type => :boolean, :default => false, :desc => DOC_RUBY_REPLACEMENT_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
@@ -385,8 +397,8 @@ module CeedlingTasks
 
       FILEPATH is a required path to a destination YAML file. A nonexistent path will be created.
 
-      SECTIONS is an optional config “path” that extracts a portion of a configuration. The 
-      top-level YAML container will be the path’s last element. 
+      SECTIONS is an optional config “path” that extracts a portion of a configuration. The
+      top-level YAML container will be the path’s last element.
       The following example will produce config.yml containing ':test_compiler: {...}'.
       \x5> ceedling dumpconfig my/path/config.yml tools test_compiler
 
@@ -394,9 +406,11 @@ module CeedlingTasks
 
       • #{LONGDOC_MIXIN_FLAG}
 
-      • `--app` loads various settings, merges defaults, loads plugin config changes, and validates 
-      the configuration. Disabling it dumps project config after any mixins but before any 
+      • `--app` loads various settings, merges defaults, loads plugin config changes, and validates
+      the configuration. Disabling it dumps project config after any mixins but before any
       application manipulations.
+
+      • #{LONGDOC_RUBY_REPLACEMENT_FLAG}
       LONGDESC
     ) )
     def dumpconfig(filepath, *sections)
@@ -413,9 +427,49 @@ module CeedlingTasks
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
       _filepath = filepath.dup()
 
-      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
 
       @handler.dumpconfig( ENV, @app_cfg, _options, _filepath, sections )
+    end
+
+
+    desc "check", "Process project configuration with full logging"
+    method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
+    method_option :ruby_replacement, :type => :boolean, :default => false, :desc => DOC_RUBY_REPLACEMENT_FLAG
+    method_option :debug, :type => :boolean, :default => false, :hide => true
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling check` loads and processes your project configuration with full
+      logging — the same loading, merging, manipulation, and validation a real
+      build would perform — but executes no build tasks and writes no files.
+
+      Use `check` to confirm a configuration is well-formed and to see all startup
+      logging, including which project file and Mixins were loaded and in what order.
+
+      Notes on Optional Flags:
+
+      • #{LONGDOC_MIXIN_FLAG}
+
+      • #{LONGDOC_RUBY_REPLACEMENT_FLAG}
+      LONGDESC
+    ) )
+    def check()
+      @handler.validate_string_param(
+        options[:project],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--project is missing a required filepath parameter"
+      )
+
+      # Get unfrozen copies so we can add / modify
+      _options = options.dup()
+      _options[:project] = options[:project].dup() if !options[:project].nil?
+      _options[:mixin] = []
+      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
+
+      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::NORMAL
+
+      @handler.check( ENV, @app_cfg, _options )
     end
 
 
@@ -423,6 +477,7 @@ module CeedlingTasks
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
                   :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
+    method_option :ruby_replacement, :type => :boolean, :default => false, :desc => DOC_RUBY_REPLACEMENT_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
@@ -431,6 +486,8 @@ module CeedlingTasks
       Notes on Optional Flags:
 
       • #{LONGDOC_MIXIN_FLAG}
+
+      • #{LONGDOC_RUBY_REPLACEMENT_FLAG}
       LONGDESC
     ) )
     def environment()
@@ -446,7 +503,7 @@ module CeedlingTasks
       _options[:mixin] = []
       options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
-      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
 
       @handler.environment( ENV, @app_cfg, _options )
     end
@@ -466,7 +523,7 @@ module CeedlingTasks
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
 
-      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : nil
 
       @handler.list_examples( ENV, @app_cfg, _options )
     end
@@ -501,9 +558,24 @@ module CeedlingTasks
       _options = options.dup()
       _dest = dest.dup() if !dest.nil?
 
-      _options[:verbosity] = options[:debug] ? VERBOSITY_DEBUG : nil
+      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : nil
 
       @handler.create_example( ENV, @app_cfg, _options, name, _dest )
+    end
+
+
+    desc "docs [DEST]", "Export documentation at optional destination (default is current directory)"
+    long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
+      <<-LONGDESC
+      `ceedling docs` exports the Ceedling documentation bundle to the filesystem.
+
+      DEST is an optional destination path (e.g. <DEST>/).
+      The default is your working directory. A nonexistent path will be created.
+      LONGDESC
+    ) )
+    def docs(dest=nil)
+      _dest = dest.dup() if !dest.nil?
+      @handler.docs( @app_cfg, _dest )
     end
 
 

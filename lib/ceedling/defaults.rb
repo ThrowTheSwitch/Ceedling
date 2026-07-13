@@ -1,7 +1,7 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-25 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
@@ -73,15 +73,19 @@ DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
     ].freeze
   }
 
-DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
+
+# Extracts all dependencies as make-style rules.
+# We use this to extract a bare list includes (user + system) from files.
+DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_shallow_includes_preprocessor'.freeze,
+  :name => 'default_test_bare_includes_preprocessor'.freeze,
   :optional => false.freeze,
   :arguments => [
     '-E'.freeze,             # Run only through preprocessor stage with its output
-    '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
+    '-M'.freeze,             # Output make rule of dependencies including system includes
     '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
     '-MP'.freeze,            # Create make "phony" rules for each include dependency
+    "-I\"${4}\"".freeze,     # Per-test shallow includes essential search paths (e.g. Ceedling vendor path)
     "-D\"${2}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
     '-nostdinc'.freeze,      # Ignore standard include paths
@@ -90,24 +94,8 @@ DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL = {
     ].freeze
   }
 
-DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL = {
-  :executable => FilePathUtils.os_executable_ext('gcc').freeze,
-  :name => 'default_test_nested_includes_preprocessor'.freeze,
-  :optional => false.freeze,
-  :arguments => [
-    '-E'.freeze,             # Run only through preprocessor stage with its output
-    '-MM'.freeze,            # Output make rule + suppress header files found in system header directories
-    '-MG'.freeze,            # Assume missing header files are generated files (do not discard)
-    '-H'.freeze,             # Also output #include list with depth
-    "-I\"${2}\"".freeze,     # Per-test executable search paths
-    "-D\"${3}\"".freeze,     # Per-test executable defines
-    "-DGNU_COMPILER".freeze, # OSX clang
-    '-nostdinc'.freeze,      # Ignore standard include paths
-    "-x c".freeze,           # Force C language
-    "\"${1}\"".freeze
-    ].freeze
-  }
-
+# Fully expands a given file through the preprocessor
+# Processes #ifdefs, expands macros, etc.
 DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_file_full_preprocessor'.freeze,
@@ -117,13 +105,14 @@ DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL = {
     "-I\"${4}\"".freeze,     # Per-test executable search paths
     "-D\"${3}\"".freeze,     # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    # '-nostdinc'.freeze,    # disabled temporarily due to stdio access violations on OSX
     "-x c".freeze,           # Force C language
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
     ].freeze
   }
 
+# Expands a given file through the preprocessor, preserving directives (macros, includes, etc.).
+# Can be used to extract includes (differentiating system and user indludes) and non-code directives.
 DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
   :name => 'default_test_file_directives_only_preprocessor'.freeze,
@@ -133,20 +122,12 @@ DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL = {
     "-I\"${4}\"".freeze, # Per-test executable search paths
     "-D\"${3}\"".freeze, # Per-test executable defines
     "-DGNU_COMPILER".freeze, # OSX clang
-    # '-nostdinc'.freeze, # disabled temporarily due to stdio access violations on OSX
     "-x c".freeze,           # Force C language
     "-fdirectives-only",     # Only preprocess directives
     "\"${1}\"".freeze,
     "-o \"${2}\"".freeze
     ].freeze
   }
-
-# Disable the -MD flag for OSX LLVM Clang, since unsupported
-if RUBY_PLATFORM =~ /darwin/ && `gcc --version 2> /dev/null` =~ /Apple LLVM version .* \(clang/m # OSX w/LLVM Clang
-  MD_FLAG = '' # Clang doesn't support the -MD flag
-else
-  MD_FLAG = '-MD'
-end
 
 DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
   :executable => FilePathUtils.os_executable_ext('gcc').freeze,
@@ -161,12 +142,11 @@ DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL = {
     "-DGNU_COMPILER".freeze,
     "-MT \"${3}\"".freeze,
     '-MM'.freeze,
-    MD_FLAG.freeze,
+    '-MD'.freeze,
     '-MG'.freeze,
     "-MF \"${2}\"".freeze,
     "-x c".freeze, # Force C language
     "-c \"${1}\"".freeze,
-    # '-nostdinc'.freeze,
     ].freeze
   }
 
@@ -249,10 +229,12 @@ DEFAULT_TOOLS_TEST_ASSEMBLER = {
 
 DEFAULT_TOOLS_TEST_PREPROCESSORS = {
   :tools => {
-    :test_shallow_includes_preprocessor      => DEFAULT_TEST_SHALLOW_INCLUDES_PREPROCESSOR_TOOL,
-    :test_nested_includes_preprocessor       => DEFAULT_TEST_NESTED_INCLUDES_PREPROCESSOR_TOOL,
-    :test_file_full_preprocessor             => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
-    :test_file_directives_only_preprocessor  => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
+    # Extracts include directives as make-style depenedencies
+    :test_bare_includes_preprocessor  => DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL,
+    # Fully expands a given file through the preprocessor
+    :test_file_full_preprocessor              => DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL,
+    # Expands a given file through the preprocessor, preserving directives (macros, includes, etc.)
+    :test_file_directives_only_preprocessor   => DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL,
     }
   }
 
@@ -281,12 +263,13 @@ DEFAULT_RELEASE_TARGET_NAME = 'project'
 DEFAULT_CEEDLING_PROJECT_CONFIG = {
   :project => {
     # :build_root must be set by user
+    :name => '',
     :use_mocks => true,
     :use_exceptions => false,
+    :use_partials => false,
+    :use_test_preprocessor => :none,
     :compile_threads => 1,
     :test_threads => 1,
-    :use_test_preprocessor => :none,
-    :use_deep_preprocessor => :none,
     :test_file_prefix => 'test_',
     :release_build => false,
     :use_backtrace => :simple
@@ -299,8 +282,12 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     },
 
   :test_build => {
-    :use_assembly => false
-    },
+    :use_assembly => false,
+    # Force fallback text-based preprocessing regardless of preprocessor capability.
+    # Primarily useful for testing the fallback path and for toolchains that report
+    # false support for -fdirectives-only. Default: false (use preprocessor when available).
+    :preprocess_force_fallback => false,
+  },
 
   # Unlike other top-level entries, :environment is an array (of hashes) to preserve order
   :environment => [],
@@ -421,7 +408,7 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 % ignored        = hash[:results][:counts][:ignored]
 % failed         = hash[:results][:counts][:failed]
 % stdout_count   = hash[:results][:counts][:stdout]
-% header_prepend = ((hash[:header].length > 0) ? "#{hash[:header]}: " : '')
+% header_prepend = ((hash[:context] != TEST_SYM) ? "#{hash[:context].to_s.upcase}: " : '')
 % banner_width   = 25 + header_prepend.length # widest message
 
 % if (stdout_count > 0)
