@@ -4469,9 +4469,9 @@ keeping the two in sync for any shared runtime dependency is a manual step.</p>
 <h3 id="choosing-version-constraints">Choosing version constraints</h3>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-</div>
 <p>Runtime dependency constraints declared in <code>ceedling.gemspec</code> and their
-   mirrored <code>Gemfile</code> entries should always match exactly.</p>
+mirrored <code>Gemfile</code> entries should always match exactly.</p>
+</div>
 <p>This repository favors conservative version constraints.</p>
 <ul>
 <li><code>~&gt; X.Y</code>, the pessimistic operator, for most dependencies — it allows
@@ -4508,9 +4508,9 @@ dependency when an already-available version will do.</p>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-</div>
 <p>For a deliberate, targeted bump of one specific gem, use 
-   <code>bundle update &lt;gem name&gt;</code> instead of <code>bundle update</code>.</p>
+<code>bundle update &lt;gem name&gt;</code> instead of <code>bundle update</code>.</p>
+</div>
 <p><code>Gemfile</code> must sometimes declare gems that also ship as Ruby’s own built-in
 default gems to deal with Ruby’s own package management across multiple
 supported Ruby language versions (e.g. a default gem is kicked out of Ruby’s 
@@ -4527,11 +4527,11 @@ there’s no persistent <code>bundle config</code> equivalent. So, the <code>--p
 flag must be passed explicitly every time.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-</div>
 <p>If you'd rather not remember the <code>--prefer-local</code>, add a shell alias, 
-   e.g. in <code>~/.bashrc</code> / <code>~/.zshrc</code>:</p>
+e.g. in <code>~/.bashrc</code> / <code>~/.zshrc</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">alias</span><span class="w"> </span>bundle-install-local<span class="o">=</span><span class="s2">&quot;bundle install --prefer-local&quot;</span>
 </code></pre></div>
+</div>
 <h3 id="checking-your-environment-without-installing-anything">Checking your environment without installing anything</h3>
 <p>To confirm your currently-installed gems still satisfy <code>Gemfile</code> /
 <code>Gemfile.lock</code> without triggering any installs or fetches:</p>
