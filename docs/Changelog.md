@@ -2,10 +2,11 @@
 
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-This changelog is complemented by two other documents:
+This changelog is complemented by three other documents:
 
-1. 🔊 **[Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
+1. 🔊 **[Release Notes](ReleaseNotes.md)** for announcements, education, and acknowledgements.
 1. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
+1. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
 
 ---
 
@@ -197,7 +198,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 
 ### Parallel execution of build steps
 
-As was explained in the _[Highlights](#-Highlights)_, Ceedling can now run its internal tasks in parallel and take full advantage of your build system’s resources. Even lacking various optimizations (see _[Known Issues](#-Known-Issues)_) builds are now often quite speedy.
+As was explained in the _[Highlights](#-Highlights)_, Ceedling can now run its internal tasks in parallel and take full advantage of your build system’s resources. Even lacking various optimizations (see _[Known Issues](KnownIssues.md)_) builds are now often quite speedy.
 
 Enabling this speedup requires either or both of two simple configuration settings. See Ceedling’s [documentation](CeedlingPacket.md) for `:project` ↳ `:compile_threads` and `:project` ↳ `:test_threads`.
 

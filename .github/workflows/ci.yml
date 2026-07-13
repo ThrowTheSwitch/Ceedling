@@ -69,7 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
+        ruby: ['3.0', '3.1', '3.2', '3.3', '3.4', '3.5']
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
@@ -177,6 +177,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Ruby 3.5 not available on Windows runners [July 2026]
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
@@ -243,8 +244,8 @@ jobs:
   # Job: macOS test suite
   # Targets Apple Clang (the gcc alias on macOS resolves to Xcode's LLVM-based Clang).
   # Homebrew GCC is effectively covered by the Linux job, so no compiler matrix is needed.
-  # Ruby matrix starts at 3.1: macos-latest runs on Apple Silicon (ARM64), and
-  # ruby/setup-ruby has no pre-built binary for Ruby 3.0 on ARM64 (would compile from source).
+  # Ruby matrix starts at 3.1: macos-latest runs on Apple Silicon (ARM64), and ruby/setup-ruby
+  # has no pre-built binary for Ruby 3.0 on ARM64.
   # Note for the future: Ruby 3.1 will itself be dropped starting with macOS 26.
   tests-macos:
     name: "macOS Test Suite"
@@ -253,7 +254,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.1', '3.2', '3.3', '3.4']
+        ruby: ['3.1', '3.2', '3.3', '3.4', '3.5']
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
