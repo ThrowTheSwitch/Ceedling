@@ -103,8 +103,8 @@ keeping the two in sync for any shared runtime dependency is a manual step.
 ### Choosing version constraints
 
 !!! note
-   Runtime dependency constraints declared in `ceedling.gemspec` and their
-   mirrored `Gemfile` entries should always match exactly.
+    Runtime dependency constraints declared in `ceedling.gemspec` and their
+    mirrored `Gemfile` entries should always match exactly.
 
 This repository favors conservative version constraints.
 
@@ -147,8 +147,8 @@ Two choices in that exact command are worth understanding:
   hard-to-review `Gemfile.lock` diff.
 
 !!! tip
-   For a deliberate, targeted bump of one specific gem, use 
-   `bundle update <gem name>` instead of `bundle update`.
+    For a deliberate, targeted bump of one specific gem, use 
+    `bundle update <gem name>` instead of `bundle update`.
 
 `Gemfile` must sometimes declare gems that also ship as Ruby’s own built-in
 default gems to deal with Ruby’s own package management across multiple
@@ -168,12 +168,12 @@ there’s no persistent `bundle config` equivalent. So, the `--prefer-local`
 flag must be passed explicitly every time.
 
 !!! tip
-   If you'd rather not remember the `--prefer-local`, add a shell alias, 
-   e.g. in `~/.bashrc` / `~/.zshrc`:
+    If you'd rather not remember the `--prefer-local`, add a shell alias, 
+    e.g. in `~/.bashrc` / `~/.zshrc`:
 
-   ```shell
-   alias bundle-install-local="bundle install --prefer-local"
-   ```
+    ```shell
+    alias bundle-install-local="bundle install --prefer-local"
+    ```
 
 ### Checking your environment without installing anything
 
