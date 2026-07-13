@@ -4,8 +4,9 @@ Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg
 **Ceedling 1.1.0** is nearing release.
 
 [_Changelog_](docs/Changelog.md) is receiving updates and revisions and will 
-soon be complete. _Release Notes_, _Breaking Changes_, and _Known Issues_ documents 
-will be revised and updated soon. See _Releases_ for the latest prerelease version.
+soon be complete. [_Release Notes_][release-notes], [_Breaking Changes_][breaking-changes], and 
+[_Known Issues_][known-issues] documents will be revised and updated soon. See _Releases_ for 
+the latest prerelease version.
 
 **New goodies:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
@@ -404,7 +405,7 @@ The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedl
 ## Ceedling docs
 
 * **_[Ceedling’s documentation site][ceedling-docs-site]_** contains everything you need to know to run Ceedling. It also references and links to the documentation of the projects, _Unity_ and _CMock_, that Ceedling weaves together into your test and release builds.
-* **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a variety of guides and much more.
+* **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, **[Known Issues][known-issues]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a number of guides (PDFs).
 * The **[Plugins section][ceedling-docs-plugins]** of Ceedling’s documentation lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
 
 _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustrating project configuration option changes for new releases in the form of a Ceedling project YAML configuration file. This may be especially useful to those already familiar with the tool wanting to update to the latest and greatest as quickly as possible.
@@ -426,6 +427,7 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 [release-notes]: docs/ReleaseNotes.md
 [breaking-changes]: docs/BreakingChanges.md
 [changelog]: docs/Changelog.md
+[known-issues]: docs/KnownIssues.md
 [TTS]: https://throwtheswitch.org
 [library]: http://www.throwtheswitch.org/library
 [running-options]: http://www.throwtheswitch.org/build/which

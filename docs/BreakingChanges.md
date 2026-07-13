@@ -1,9 +1,10 @@
 # 🌱 Ceedling Breaking Changes
 
-These breaking changes are complemented by two other documents:
+These breaking changes are complemented by three other documents:
 
-1. 🔊 **[Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
+1. 🔊 **[Release Notes](ReleaseNotes.md)** for announcements, education, and acknowledgements.
 1. 🪵 **[Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
+1. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
 
 ---
 
