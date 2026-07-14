@@ -327,7 +327,8 @@ class TestContextExtractor
     unity_test_runner_generator = GeneratorTestRunner.new(
       config: @configurator.get_runner_config,
       test_file_contents: test_content,
-      preprocessed_file_contents: input_content
+      preprocessed_file_contents: input_content,
+      parsing_parcels: @parsing_parcels
     )
 
     ingest_test_runner_details(

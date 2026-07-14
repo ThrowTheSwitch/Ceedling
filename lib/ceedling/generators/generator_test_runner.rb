@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'generate_test_runner' # Unity's test runner generator
+require 'ceedling/parsing_parcels'
 
 class GeneratorTestRunner
 
@@ -16,9 +17,10 @@ class GeneratorTestRunner
   # It is instantiated on demand for each test file processed in a build.
   #
 
-  def initialize(config:, test_file_contents:, preprocessed_file_contents: nil)
+  def initialize(config:, test_file_contents:, preprocessed_file_contents: nil, parsing_parcels:)
     @unity_runner_generator = UnityTestRunnerGenerator.new( config )
-    
+    @parsing_parcels = parsing_parcels
+
     # Reduced information set
     @test_cases = []
 
@@ -47,39 +49,49 @@ class GeneratorTestRunner
   def parse_test_file(test_file_contents, preprocessed_file_contents)
     # If there's a preprocessed file, align test case line numbers with original file contents
     if (!preprocessed_file_contents.nil?)
-      # Save the test case structure to be used in generation
-      @test_cases_internal = @unity_runner_generator.find_tests( preprocessed_file_contents )
-      
-      # Configure the runner generator around `setUp()` and `tearDown()`
-      @unity_runner_generator.find_setup_and_teardown( preprocessed_file_contents )
+      @test_cases_internal = extract_test_cases( preprocessed_file_contents )
 
       # Modify line numbers to match the original, non-preprocessed file
-      source_lines = test_file_contents.split("\n")
-      source_index = 0;
-      @test_cases_internal.size.times do |i|
-        source_lines[source_index..-1].each_with_index do |line, index|
-          if (line =~ /#{@test_cases_internal[i][:test]}/)
-            source_index += index
-            @test_cases_internal[i][:line_number] = source_index + 1
-            break
-          end
-        end
-      end
+      remap_line_numbers!( @test_cases_internal, test_file_contents )
 
     # Just look for the test cases within the original test file
     else
-      # Save the test case structure to be used in generation
-      @test_cases_internal = @unity_runner_generator.find_tests( test_file_contents )
-
-      # Configure the runner generator around `setUp()` and `tearDown()`
-      @unity_runner_generator.find_setup_and_teardown( test_file_contents )
+      @test_cases_internal = extract_test_cases( test_file_contents )
     end
 
-    # Unity's `find_tests()` produces an array of hashes with the following keys...
+    # Unity's runner generator `find_tests()` produces an array of hashes with the following keys...
     # { test:, args:, call:, params:, line_number: }
 
     # For external use of test case names and line numbers, keep only those pieces of info
     @test_cases = @test_cases_internal.map {|hash| hash.slice( :test, :line_number )}
+  end
+
+  def extract_test_cases(source_contents)
+    # Save the test case structure to be used in generation
+    test_cases = @unity_runner_generator.find_tests( source_contents )
+
+    # Configure the runner generator around `setUp()` and `tearDown()`
+    @unity_runner_generator.find_setup_and_teardown( source_contents )
+
+    return test_cases
+  end
+
+  def remap_line_numbers!(test_cases, original_file_contents)
+    remaining = test_cases.dup
+
+    # Use `ParsingParcels` to walk the original, non-preprocessed source line by line.
+    # This sanitizes encoding oddities (rather than raising mid-match, unpredictably by
+    # platform default encoding) and strips comments (rather than false-matching a test
+    # name that merely appears inside a comment).
+    @parsing_parcels.code_lines_with_num( original_file_contents ) do |line, line_num|
+      break if remaining.empty?
+
+      next_case = remaining.first
+      if (line =~ /#{next_case[:test]}/)
+        next_case[:line_number] = line_num
+        remaining.shift
+      end
+    end
   end
 
 end
