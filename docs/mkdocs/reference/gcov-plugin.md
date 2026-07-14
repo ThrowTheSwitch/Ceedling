@@ -61,16 +61,41 @@ This feature is dependent on minimum tool versions.
 
 ### `:untested_sources`
 
-Enable or disable coverage compilation for all untested source files.
-When enabled, coverage results will exist in the final report for all source
-files in the project (untested source files will be listed with 0% coverage.)
+!!! warning
+    **Compiling all untested sources for 0% coverage reporting (`:compile`) will likely require additional work.**
 
-**Default:** `TRUE`
+    Successful compilation of untested source files may require certain symbols 
+    to be defined, certain flags to be set, or entire stand-in shims for platform 
+    headers and code.
+    
+    Ceedling’s 
+    [`:defines`](../configuration/reference/defines.md)
+    and 
+    [`:flags`](../configuration/reference/flags.md)
+    matchers can provide these. For GCov tasks, symbols and flags are extracted from
+    the `:test` context beneath the `:defines` and `:flags` configuration sections 
+    by default. If you need something special for coverage builds, use the `:gcov` 
+    context for these matchers instead.
+
+Controls handling of source files not exercised by any test. Valid values:
+
+* `:ignore` — Skip untested sources entirely (no logging, no compilation).
+* `:list` — Log the filepaths of untested sources as a warning; do not compile them.
+* `:compile` — Compile all untested sources with coverage so they appear in
+  the report at 0% coverage. On compilation failure, Ceedling logs
+  guidance and fails the build.
+
+**Default:** `:list`
 
 ```yaml
 :gcov:
-  :untested_sources: TRUE
+  :untested_sources: :list
 ```
+
+When `:untested_sources` is set to `:compile`, a `gcov:untested_sources` task is
+also available, letting you re-run just the untested-source compilation step
+on its own — without a full `gcov:` test suite run — while iterating on source
+compilation fixes.
 
 ---
 

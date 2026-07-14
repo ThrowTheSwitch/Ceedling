@@ -2,10 +2,11 @@
 
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-This changelog is complemented by two other documents:
+This changelog is complemented by three other documents:
 
-1. 🔊 **[Release Notes](ReleaseNotes.md)** for announcements, education, acknowledgements, and known issues.
+1. 🔊 **[Release Notes](ReleaseNotes.md)** for announcements, education, and acknowledgements.
 1. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
+1. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
 
 ---
 
@@ -68,7 +69,9 @@ _NOTE:_ The `ReportGenerator` tool does not support extracting MC/DC even if tho
 
 This feature addition resolves a longstanding feature request for coverage reporting (#329 and others).
 
-The Gcov plugin now includes an option (defaults to enabled) that causes all source files in the project that have not been exercised by unit tests to also be compiled with coverage. Doing so causes all source files to appear in the final coverage report; those untouched by unit tests are represented with 0% coverage.
+The Gcov plugin now includes an `:untested_sources` option that controls how source files not exercised by any test are handled in coverage reporting — from full omission (`:ignore`), to a warning-level filepath listing of files not present in the coverage report (`:list`), to full compile-for-0%-coverage (`:compile`). The default is `:list`.
+
+When `:compile` is active, a `gcov:untested_sources` task is available for iterating coverage compilation for untested sources without needing to re-run an entire `gcov:` test suite build each time. Untested sources can require defines, flags, and platform headers & symbols not present in a test suite configuration.
 
 See the [GCov plugin documentation](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/setup#coverage-for-untested-sources) for more details on the new `:untested_sources` option.
 
@@ -137,6 +140,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
 - Release build logging now matches test build logging.
 - Fixes for typos and grammar in documentation and logging.
+- Added documentation / commented sample in example _project.yml_ for CMock `:treat_inlines` inline function patterns option (PR #1096).
 
 ### Expanded [Backtrace handling](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/reference/project/#use_backtrace)
 - Provides more and better crash details for `:simple` and `:gdb` options.
@@ -160,6 +164,10 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
    - Incorporated new test build time tracking in reports that support it.
    - Improved the design of the HTML report option.
       ![](mkdocs/plugins/sample_html_report.png)
+
+### Security
+- Migrated all YAML processing to use safe loading. Safe loading constrains YAML deserialization to data structures such as hashes and lists. Unsafe loading is capable of deserializing arbitrary Ruby objects that could be used maliciously by a bad actor polluting a YAML file loaded by Ceedling.
+- [Inline Ruby string expansion](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/project-file/#inline-ruby-string-expansion) available in project configuration handling is now disabled by default. It can only be enabled via a Ceedling command line flag `--ruby-replacement`.
 
 ## 👋 Removed
 
@@ -191,7 +199,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 
 ### Parallel execution of build steps
 
-As was explained in the _[Highlights](#-Highlights)_, Ceedling can now run its internal tasks in parallel and take full advantage of your build system’s resources. Even lacking various optimizations (see _[Known Issues](#-Known-Issues)_) builds are now often quite speedy.
+As was explained in the _[Highlights](#-Highlights)_, Ceedling can now run its internal tasks in parallel and take full advantage of your build system’s resources. Even lacking various optimizations (see _[Known Issues](KnownIssues.md)_) builds are now often quite speedy.
 
 Enabling this speedup requires either or both of two simple configuration settings. See Ceedling’s [documentation](CeedlingPacket.md) for `:project` ↳ `:compile_threads` and `:project` ↳ `:test_threads`.
 

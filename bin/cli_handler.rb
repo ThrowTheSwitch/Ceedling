@@ -42,6 +42,7 @@ class CliHandler
   # Thor application help + Rake help (if available)
   def app_help(env, app_cfg, options, command, &thor_help)
     verbosity = @helper.set_verbosity( options[:verbosity] )
+    @helper.set_ruby_replacement( options[:ruby_replacement] )
 
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
@@ -180,6 +181,7 @@ class CliHandler
     # But, we may change verbosity just before processing the project configuration and running tasks (at bottom)
     _verbosity = options[:verbosity]
     @helper.set_verbosity( _verbosity, override: false )
+    @helper.set_ruby_replacement( options[:ruby_replacement] )
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *@helper.process_mixin_filepaths(options[:mixin]) )
 
@@ -271,6 +273,7 @@ class CliHandler
 
   def dumpconfig(env, app_cfg, options, filepath, sections)
     @helper.set_verbosity( options[:verbosity] )
+    @helper.set_ruby_replacement( options[:ruby_replacement] )
 
     @path_validator.standardize_paths( filepath, options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
@@ -309,6 +312,7 @@ class CliHandler
   def check(env, app_cfg, options)
     # Force obnoxious (or debug) verbosity, overriding any prior verbosity state
     @helper.set_verbosity( options[:verbosity] )
+    @helper.set_ruby_replacement( options[:ruby_replacement] )
 
     @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
@@ -339,6 +343,7 @@ class CliHandler
 
   def environment(env, app_cfg, options)
     @helper.set_verbosity( options[:verbosity] )
+    @helper.set_ruby_replacement( options[:ruby_replacement] )
 
     @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 

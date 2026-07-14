@@ -15,7 +15,7 @@ require 'versionator' # Outisde DIY context
 
 class CliHelper
 
-  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :reportinator, :system_wrapper
+  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :reportinator, :system_wrapper, :ruby_expandinator
 
   def setup
     # Aliases
@@ -294,6 +294,13 @@ class CliHelper
 
     # Return filename/filepath
     return filepath
+  end
+
+
+  # Enables inline Ruby string expansion (security-sensitive) if requested at the command
+  # line. One-directional: never disables an already-enabled feature.
+  def set_ruby_replacement(enabled)
+    @ruby_expandinator.enable! if enabled
   end
 
 

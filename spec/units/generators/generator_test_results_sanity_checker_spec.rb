@@ -23,7 +23,8 @@ describe GeneratorTestResultsSanityChecker do
       :yaml_wrapper => nil,
       :system_wrapper => nil,
       :loginator => @loginator,
-      :reportinator => nil
+      :reportinator => nil,
+      :ruby_expandinator => nil
     })
 
     @sanity_checker = described_class.new({:configurator => @configurator, :loginator => @loginator})

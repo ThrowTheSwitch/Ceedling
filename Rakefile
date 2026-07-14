@@ -193,13 +193,13 @@ namespace :docs do
 
   namespace :deploy do
     desc "Deploy 'dev' version to Github Pages"
-    task :dev do
+    task :dev => [:snapshot] do
       venv_sh "mike deploy --push dev"
     end
 
     desc "Deploy a release version to Github Pages (usage: rake docs:deploy:release[1.1.0])"
-    task :release, [:version] do |t, args|
-      version = args[:version] || raise("Version required: rake docs:deploy:release[1.1.0]")
+    task :release, [:version] => [:snapshot] do |t, args|
+      version = args[:version] || raise("Version required: rake docs:deploy:release[#.#.#]")
       venv_sh "mike deploy --push #{version} latest"
     end
   end

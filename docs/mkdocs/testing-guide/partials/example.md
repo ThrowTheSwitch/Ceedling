@@ -42,7 +42,7 @@ int Sensor_ReadCelsius(void)
 !!! tip
     Ceedling comes with example projects. The example project `wondrous_forest`
     demonstrates the use of Partials in realistic code.
-    Use [`ceedling example`](../../getting-started/command-line.md#ceedling-application-commands)
+    Use [`ceedling example`](../../getting-started/command-line.md#application-commands)
     to export the `wondrous_forest` project.
 
 You as a test author want to:

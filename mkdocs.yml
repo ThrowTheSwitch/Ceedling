@@ -194,6 +194,7 @@ nav:
   - Help: help.md
   - Development:
     - development/index.md
+    - Development Workflow: development/workflow.md
     - Plugin Development:
       - development/plugins/index.md
       - Configuration Plugin: development/plugins/configuration.md

@@ -40,6 +40,10 @@ ceedling_system_tests do
       # test_case :project_with_gcov_success_because_of_ignore_uncovered_list
       # test_case :project_with_gcov_success_because_of_ignore_uncovered_list_with_globs
       test_case :project_with_gcov_compile_error
+      test_case :project_with_gcov_untested_sources_ignore
+      test_case :project_with_gcov_untested_sources_list
+      test_case :project_with_gcov_untested_sources_compile_failure
+      test_case :project_with_gcov_untested_sources_standalone_task
       test_case :help_tasks_include_gcov
       test_case :create_html_report
       test_case :create_html_report_with_gcovr_config_file_overrides_default

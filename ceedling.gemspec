@@ -39,11 +39,23 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
   
   s.required_ruby_version = ">= 3.0.0"
   
-  s.add_dependency "thor", "~> 1.3"
+  # Used for both development and runtime
   s.add_dependency "rake", ">= 12", "< 14"
-  s.add_dependency "deep_merge", "~> 1.2"
+
   s.add_dependency "diy", "~> 1.1"
   s.add_dependency "constructor", "~> 2"
+  s.add_dependency "thor", "~> 1.3"
+  s.add_dependency "deep_merge", "~> 1.2"
+
+  # `erb` is no longer a default gem on some Ruby versions Ceedling supports;
+  # it must be declared explicitly for plain `gem install` (non-Bundler) users.
+  # >= 2.2: minimum `erb` version supporting what Ceedling uses. A loose floor lets
+  # Ruby's own built-in `erb` satisfy this on any Ruby that still bundles one,
+  # avoiding an unnecessary fetch + native-compile of standalone `erb`/`cgi` gems.
+  s.add_dependency "erb", ">= 2.2"
+  # `benchmark` is no longer part of the default gems with Ruby 3.5
+  s.add_dependency "benchmark", ">= 0.3"
+
   s.add_dependency "unicode-display_width", "~> 3.1"
   s.add_dependency "parallel", "~> 1.26"
 

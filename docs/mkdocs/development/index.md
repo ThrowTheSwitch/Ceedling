@@ -24,6 +24,13 @@
 
 <div class="grid cards" markdown>
 
+-   :material-hammer-wrench: **[Ceedling Dev Workflow][dev-workflow]**
+
+    ---
+
+    Install Ceedling for development, run the self-test suite, work with
+    the documentation tooling, and understand code layout.
+
 -   :material-puzzle-edit: **[Plugin Development Guide][plugin-dev]**
 
     ---
@@ -38,5 +45,6 @@
 [plugin-dev]:       plugins/index.md
 [code-of-conduct]:  https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CODE_OF_CONDUCT.md
 [contributing]:     https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CONTRIBUTING.md
+[dev-workflow]:     workflow.md
 
 <br/><br/>

@@ -10,6 +10,7 @@ require 'tmpdir'
 require 'mixinator'
 require 'path_validator'
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 describe Mixinator do
   before(:each) do
@@ -155,9 +156,12 @@ describe Mixinator do
 
     it 'raises and logs a parse error for invalid YAML' do
       allow(@yaml_wrapper).to receive(:load_string)
-        .and_raise(StandardError, 'did not find expected key')
+        .and_raise(YamlLoadException.new(
+          reason: :syntax, source: 'Inline YAML mixin #1', original_error: nil,
+          message: 'Malformed YAML content in Inline YAML mixin #1 ⏩️ did not find expected key'
+        ))
       expect(@loginator).to receive(:log).with(
-        /parse error/i,
+        /malformed yaml content/i,
         anything
       )
       expect {
@@ -167,10 +171,13 @@ describe Mixinator do
 
     it 'accumulates all errors across multiple strings before raising' do
       # Both invalid strings must be reported; error count == 2 log calls
-      allow(@yaml_wrapper).to receive(:load_string).with('- array_not_hash')
+      allow(@yaml_wrapper).to receive(:load_string).with('- array_not_hash', source_label: anything)
         .and_return(['array_not_hash'])
-      allow(@yaml_wrapper).to receive(:load_string).with('{{{ broken')
-        .and_raise(StandardError, 'did not find expected key')
+      allow(@yaml_wrapper).to receive(:load_string).with('{{{ broken', source_label: anything)
+        .and_raise(YamlLoadException.new(
+          reason: :syntax, source: 'Inline YAML mixin #2', original_error: nil,
+          message: 'Malformed YAML content in Inline YAML mixin #2 ⏩️ did not find expected key'
+        ))
       expect(@loginator).to receive(:log).with(anything, anything).twice
       expect {
         @mixinator.validate_cmdline_yaml_strings(['- array_not_hash', '{{{ broken'])
@@ -515,7 +522,7 @@ describe Mixinator do
       mixin_content = {:defines => {:release => ['MY_SYM']}}
 
       # Must call load_string (not load) for the inline YAML case
-      expect(@yaml_wrapper).to receive(:load_string).with(yaml_string).and_return(mixin_content)
+      expect(@yaml_wrapper).to receive(:load_string).with(yaml_string, source_label: anything).and_return(mixin_content)
       expect(@yaml_wrapper).not_to receive(:load)
 
       expect(@merginator).to receive(:merge).with(

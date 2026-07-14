@@ -4,8 +4,9 @@ Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg
 **Ceedling 1.1.0** is nearing release.
 
 [_Changelog_](docs/Changelog.md) is receiving updates and revisions and will 
-soon be complete. _Release Notes_, _Breaking Changes_, and _Known Issues_ documents 
-will be revised and updated soon. See _Releases_ for the latest prerelease version.
+soon be complete. [_Release Notes_][release-notes], [_Breaking Changes_][breaking-changes], and 
+[_Known Issues_][known-issues] documents will be revised and updated soon. See _Releases_ for 
+the latest prerelease version.
 
 **New goodies:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
@@ -19,8 +20,8 @@ from the same source module in a single test file and enables testing of
    * _Finally_ supports coverage reports for all sources.
    * Adds support for Modified Condition / Decision Coverage.
 * Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
-* Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases
-  (support was temporarily removed with 1.0.0).
+* Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases (support was temporarily removed with 1.0.0).
+* Incorporates the latest versions of [CMock], [Unity], and [CException].
 
 [partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
 [example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/
@@ -97,10 +98,41 @@ library builds & dependency management, and more.
 [Unity]: https://github.com/throwtheswitch/unity
 [xUnit]: https://en.wikipedia.org/wiki/XUnit
 [CMock]: https://github.com/throwtheswitch/cmock
+[CException]: https://github.com/throwtheswitch/cexception
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
 [FFF-plugin]: https://throwtheswitch.github.io/Ceedling/latest/plugins/fff/
+
+<br/>
+
+# 📦 Releases
+
+Ceedling release numbering follows [SemVer convention](https://semver.org). See the [_Getting Started_](#-getting-started) section for installation details.
+
+## Official releases
+Releases have a version number `#.#.#`.
+
+Official releases are available as:
+
+1. A prepackaged Ruby Gem available through the public [RubyGems registry](https://rubygems.org/gems/ceedling).
+1. Ready-to-run [Docker images](https://hub.docker.com/u/throwtheswitch).
+
+The latest `<major>.<minor>` version is officially supported with limited support for earlier minor releases.
+
+All official releases are retained historically.
+
+## Prereleases
+Prerelease versions include `pre` in their version numbering. Prereleases are only available as downloadable .gem files attached to [release listings](https://github.com/throwtheswitch/ceedling/releases). These require local installation steps including some basic dependencies installation.
+
+Prereleases are ephemeral and unsupported. Particularly in the case of significant bugs or considerable new development, earlier prereleases will be pulled. Prereleases should not be relied upon in production systems or automated tooling.
+
+At an official release, all prior prereleases will be pulled.
+
+## Bug fix patch releases
+Bug fix patches `<major>.<minor>.<patch>` are official releases and can be relied upon for production systems or automated tooling.
+
+In rare cases of fatal flaws, severe security vulnerabilities, etc. a patch release may be pulled.
 
 <br/>
 
@@ -373,7 +405,7 @@ The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedl
 ## Ceedling docs
 
 * **_[Ceedling’s documentation site][ceedling-docs-site]_** contains everything you need to know to run Ceedling. It also references and links to the documentation of the projects, _Unity_ and _CMock_, that Ceedling weaves together into your test and release builds.
-* **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a variety of guides and much more.
+* **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, **[Known Issues][known-issues]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a number of guides (PDFs).
 * The **[Plugins section][ceedling-docs-plugins]** of Ceedling’s documentation lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
 
 _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustrating project configuration option changes for new releases in the form of a Ceedling project YAML configuration file. This may be especially useful to those already familiar with the tool wanting to update to the latest and greatest as quickly as possible.
@@ -395,6 +427,7 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 [release-notes]: docs/ReleaseNotes.md
 [breaking-changes]: docs/BreakingChanges.md
 [changelog]: docs/Changelog.md
+[known-issues]: docs/KnownIssues.md
 [TTS]: https://throwtheswitch.org
 [library]: http://www.throwtheswitch.org/library
 [running-options]: http://www.throwtheswitch.org/build/which
@@ -435,7 +468,7 @@ If you are working with prerelease versions of Ceedling or some other off-the-be
 The steps are similar to the preceding with two changes:
 
 1. `gem install --local <ceedling .gem filepath> --no-document`
-1. Any missing dependencies must be manually installed before installation of the local Ceedling gem will succeed. A local installation attempt will complain about any missing dependencies. Simply `gem install` them by name.
+1. Any missing dependencies must be manually installed before installation of the local Ceedling gem will succeed. A local installation attempt will complain about any missing dependencies. Simply run `gem install` for each of them by name from the error.
 
 [Ruby]: https://www.ruby-lang.org/
 
@@ -669,156 +702,15 @@ You can enable this by adding `--gitsupport` to your `new` call.
 
 # 💻 Contributing to Ceedling Development
 
-## Alternate installation options for Ceedling development
+Interested in contributing to Ceedling itself? Please review the
+**[ThrowTheSwitch coding standard][coding-standard]** and the
+**[Ceedling pull request checklist][pr-checklist]** before submitting a
+contribution.
 
-### Alternate local installation for development
+For development installation options, running the self-test suite, working
+with the documentation tooling, code layout, etc., see
+the **[Ceedling development workflow][ceedling-dev-workflow]** guide.
 
-After installing Ruby…
-
-```shell
- > git clone --recursive https://github.com/throwtheswitch/ceedling.git
- > cd ceedling
- > git submodule update --init --recursive
- > bundle install
-```
-
-The Ceedling repository incorporates its supporting frameworks and some
-plugins via Git submodules. A simple clone may not pull in the latest
-and greatest.
-
-The `bundle` tool ensures you have all needed Ruby gems installed. If 
-Bundler isn’t installed on your system or you run into problems, you 
-might have to install it:
-
-```shell
- > sudo gem install bundler
-```
-
-If you run into trouble running bundler and get messages like _can’t 
-find gem bundler (>= 0.a) with executable bundle 
-(Gem::GemNotFoundException)_, you may need to install a different 
-version of Bundler. For this please reference the version in the 
-Gemfile.lock.
-
-```shell
- > sudo gem install bundler -v <version in Gemfile.lock>
-```
-
-### Alternate Docker image usage for development
-
-As an alternative to local installation of Ceedling, nearly all development 
-tasks can be accomplished with the _MadScienceLab_ Docker images.
-
-When running an existing image as a development container, one merely needs 
-to map a volume from your local Ceedling code repository to Ceedling’s 
-installation location within the container. With that accomplished, 
-experimenting with project builds and running self-tests is simple.
-
-1. Start your target Docker container from your host system terminal:
-
-   ```shell
-   > docker run -it --rm throwtheswitch/<image>:<tag>
-   ```
-1. Look up and note Ceedling’s installation path (listed in `version` output) from within the container command line:
-
-   ```shell
-   ~/project > ceedling version
-
-
-   ```
-1. Exit the container.
-1. Restart the container from your host system with the Ceedling installation
-   volume mapping from (2) and any other command line options you need:
-
-   ```shell
-   > docker run -it --rm -v /my/local/ceedling/repo:<container installation path> -v /my/local/experiment/path:/home/dev/project throwtheswitch/<image>:<tag>
-   ```
-
-For development tasks, from the container shell you can:
-
-1. Run experiment projects you map into the container (e.g. at _/home/dev/project_).
-1. Run the self-test suite. Navigate to the gem installation path discovered in (2) above. From this location, follow the instructions in the section that immediately follows.
-
-## Running Ceedling’s self-tests
-
-Ceedling uses [RSpec] for its tests.
-
-To execute tests you may run the following from the root of your local 
-Ceedling repository. This test suite build option balances test coverage
-with suite execution time.
-
-```shell
- > rake spec
-```
-
-To run individual test files (Ceedling’s Ruby-based tests, that is) and 
-perform other tasks, use the available Rake tasks. From the root of your 
-local Ceedling repo, list those task like this:
-
-```shell
- > rake -T
-```
-
-[RSpec]: https://rspec.info
-
-## Working with Documentation
-
-Ceedling's documentation is built with [MkDocs] + [Material theme] and versioned
-with [mike]. All Markdown source lives under `docs/mkdocs/`. The public site 
-configuration is in `mkdocs.yml` while the local site bundle configuration is in
-`mkdocs.local.yml`.
-
-**First-time setup** (installs MkDocs, Material, and mike into the container):
-
-```shell
- > rake docs:install
-```
-
-**Available Rake tasks:**
-
-| Task | Description |
-|---|---|
-| `rake docs:install` | Install Python documentation tooling |
-| `rake docs:build:local` | Build the site for local filesystem navigation in strict mode — fails on broken links or warnings |
-| `rake docs:build:web` | Build the site to be served in strict mode — fails on broken links or warnings |
-| `rake docs:serve` | Serve plain MkDocs site locally on port 8000 |
-| `rake docs:deploy` | Deploy `dev` version to local `gh-pages` branch (no remote push) |
-| `rake docs:preview` | Browse mike-versioned site locally on port 8000 |
-
-**Browser preview in VS Code:** When `mkdocs serve` or `mike serve` binds to 
-port 8000, VS Code detects it and shows a notification. The **Ports** panel also
-provides an **Open in Browser** button.
-
-**Hosted site:** [https://throwtheswitch.github.io/Ceedling/](https://throwtheswitch.github.io/Ceedling/)
-
-[MkDocs]: https://www.mkdocs.org
-[Material theme]: https://squidfunk.github.io/mkdocs-material/
-[mike]: https://github.com/jimporter/mike
-
-## Working in `bin/` vs. `lib/`
-
-Most of Ceedling’s functionality is contained in the application code residing 
-in `lib/`. Ceedling’s command line handling, startup configuration, project
-file loading, and mixin handling are contained in a “bootloader” in `bin/`.
-The code in `bin/` is the source of the `ceedling` command line tool and 
-launches the application from `lib/`.
-
-Depending on what you’re working on you may need to run Ceedling using
-a specialized approach.
-
-If you are only working in `lib/`, you can:
-
-1. Run Ceedling using the `ceedling` command line utility you already have 
-   installed. The code in `bin/` will run from your locally installed gem or 
-   from within your Docker container and launch the Ceedling application for 
-   you.
-1. Modify a project file by setting a path value for `:project` ↳ `:which_ceedling` 
-   that points to the local copy of Ceedling you cloned from the Git repository.
-
-If you are working in `bin/`, running `ceedling` at the command line will not
-call your modified code. Instead, you must execute the path to the executable
-`ceedling` in the `bin/` folder of the local Ceedling repository you are 
-working on.
-
-
-
+[coding-standard]: docs/ThrowTheSwitchCodingStandard.md
+[pr-checklist]: docs/CeedlingPullRequestChecklist.md
+[ceedling-dev-workflow]: https://throwtheswitch.github.io/Ceedling/latest/development/workflow/

@@ -22,6 +22,7 @@ $: << File.expand_path('../../../../plugins/cppcheck/lib', __FILE__)
 require 'cppcheck_constants'
 require 'cppcheck_reports'
 require 'cppcheck'
+require 'ceedling/ruby_expandinator'
 
 # The END block at the bottom of cppcheck.rb runs after RSpec finishes and
 # accesses the top-level @ceedling variable.  Set a minimal stub so it does
@@ -37,13 +38,14 @@ def _task_invoker_stub.invoked?(_); false; end
 # Build a Cppcheck instance without running Plugin#initialize / setup so that
 # unit tests can exercise individual private methods in isolation.
 def build_cppcheck(config:, loginator: nil, system_wrapper: nil,
-                   file_wrapper: nil, file_path_collection_utils: nil)
+                   file_wrapper: nil, file_path_collection_utils: nil, ruby_expandinator: nil)
   instance = Cppcheck.allocate
   instance.instance_variable_set(:@config,                    config)
   instance.instance_variable_set(:@loginator,                 loginator)
   instance.instance_variable_set(:@system_wrapper,            system_wrapper)
   instance.instance_variable_set(:@file_wrapper,              file_wrapper)
   instance.instance_variable_set(:@file_path_collection_utils, file_path_collection_utils)
+  instance.instance_variable_set(:@ruby_expandinator,         ruby_expandinator)
   instance
 end
 
@@ -64,6 +66,14 @@ describe Cppcheck do
   let(:system_wrapper)             { double('system_wrapper') }
   let(:file_wrapper)               { double('file_wrapper') }
   let(:file_path_collection_utils) { double('file_path_collection_utils') }
+  # Default pass-through stub mirrors RubyExpandinator#expand's real behavior for
+  # strings without a `#{...}` pattern. Individual tests override with a tighter
+  # `.with(...)` expectation where expansion matters.
+  let(:ruby_expandinator) do
+    d = double('ruby_expandinator')
+    allow(d).to receive(:expand) { |s, source:| s }
+    d
+  end
 
   # Stub the two runtime constants that come from Ceedling's configurator.
   before(:each) do
@@ -256,41 +266,56 @@ describe Cppcheck do
 
   # -------------------------------------------------------------------------
   describe '#traverse_config_eval_strings' do
-    it 'replaces Ruby interpolation patterns in a string via system_wrapper' do
-      allow(system_wrapper).to receive(:module_eval).with('#{ENV["HOME"]}').and_return('/home/user')
-      cppcheck = build_cppcheck(config: {}, system_wrapper: system_wrapper)
+    it 'replaces Ruby interpolation patterns in a string via ruby_expandinator' do
+      allow(ruby_expandinator).to receive(:expand)
+        .with('#{ENV["HOME"]}', source: 'cppcheck plugin configuration')
+        .and_return('/home/user')
+      cppcheck = build_cppcheck(config: {}, ruby_expandinator: ruby_expandinator)
       value = '#{ENV["HOME"]}'
       cppcheck.send(:traverse_config_eval_strings, value)
       expect(value).to eq('/home/user')
     end
 
     it 'leaves a plain string unchanged' do
-      cppcheck = build_cppcheck(config: {}, system_wrapper: system_wrapper)
+      cppcheck = build_cppcheck(config: {}, ruby_expandinator: ruby_expandinator)
       value = 'no interpolation here'
       cppcheck.send(:traverse_config_eval_strings, value)
       expect(value).to eq('no interpolation here')
     end
 
     it 'evaluates strings with interpolation patterns in an array' do
-      allow(system_wrapper).to receive(:module_eval).with('#{foo}').and_return('evaluated')
-      cppcheck = build_cppcheck(config: {}, system_wrapper: system_wrapper)
+      allow(ruby_expandinator).to receive(:expand)
+        .with('#{foo}', source: 'cppcheck plugin configuration')
+        .and_return('evaluated')
+      cppcheck = build_cppcheck(config: {}, ruby_expandinator: ruby_expandinator)
       arr = ['plain', '#{foo}']
       cppcheck.send(:traverse_config_eval_strings, arr)
       expect(arr).to eq(['plain', 'evaluated'])
     end
 
     it 'recurses into hash values' do
-      allow(system_wrapper).to receive(:module_eval).with('#{bar}').and_return('result')
-      cppcheck = build_cppcheck(config: {}, system_wrapper: system_wrapper)
+      allow(ruby_expandinator).to receive(:expand)
+        .with('#{bar}', source: 'cppcheck plugin configuration')
+        .and_return('result')
+      cppcheck = build_cppcheck(config: {}, ruby_expandinator: ruby_expandinator)
       config = { key: '#{bar}' }
       cppcheck.send(:traverse_config_eval_strings, config)
       expect(config[:key]).to eq('result')
     end
 
-    it 'does not call module_eval on non-string array elements' do
-      expect(system_wrapper).not_to receive(:module_eval)
-      cppcheck = build_cppcheck(config: {}, system_wrapper: system_wrapper)
+    it 'does not call expand on non-string array elements' do
+      expect(ruby_expandinator).not_to receive(:expand)
+      cppcheck = build_cppcheck(config: {}, ruby_expandinator: ruby_expandinator)
       cppcheck.send(:traverse_config_eval_strings, [1, 2, :sym])
+    end
+
+    it 'raises CeedlingException when a value contains inline Ruby and the feature is disabled' do
+      real_ruby_expandinator = RubyExpandinator.new # disabled by default
+      cppcheck = build_cppcheck(config: {}, ruby_expandinator: real_ruby_expandinator)
+
+      expect {
+        cppcheck.send(:traverse_config_eval_strings, '#{1+1}')
+      }.to raise_error(CeedlingException, /cppcheck/)
     end
   end
 
