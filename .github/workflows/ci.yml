@@ -390,6 +390,78 @@ jobs:
           if-no-files-found: ignore
 
 
+  # Job: Default-encoding stress test against example projects
+  # Forces Ruby's default external encoding to US-ASCII (via LC_ALL=C) and exports +
+  # fully tests example projects with differing preprocessing configurations, catching
+  # regressions in Ceedling's handling of non-ASCII source content under a non-UTF-8
+  # platform default encoding.
+  # Note: No generate-docs dependency needed — system tests use a path-based Bundler
+  # deployment (deploy_gem) that does not require a gem build.
+  tests-linux-encoding-stress:
+    name: "Linux Encoding Stress Test (C/POSIX)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-3.3-
+
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
+        run: |
+          sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      # LC_ALL/LANG=C (POSIX) is the stress pick: it's always available (no locale-gen
+      # needed, unlike the ja_JP.UTF-8 job above) and it's the locale under which Ruby's
+      # Encoding.default_external resolves to US-ASCII rather than UTF-8 on Linux. That's
+      # the actual condition under test — source files here are UTF-8, but the platform
+      # default encoding is 7-bit ASCII, which is what surfaces bugs in code that reads
+      # or scans file content without accounting for the platform's default encoding.
+      # These env vars set the job-level default before RSpec boots; the spec itself
+      # additionally re-asserts them per-invocation since SystemContext#with_context
+      # otherwise forces en_US.UTF-8 ahead of each nested Ceedling call.
+      - name: Run Example Projects Under C/POSIX Default Encoding Stress
+        env:
+          LC_ALL: C
+          LANG: C
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: |
+          rake spec:system:debug:encoding_stress
+
+      # Passing project directories are deleted immediately by done!; passing logs are never written.
+      # This step is retained as a safety net in case of any leftover pass artifacts.
+      - name: Remove passing system test artifacts before upload
+        if: failure()
+        shell: bash
+        run: |
+          rm -rf systests/proj/pass || true
+          rm -f systests/systest.pass.*.log || true
+
+      # Upload system test failure logs and temp project directories on test job failure
+      - name: Upload system test failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: systest-failures-encoding-stress-ruby-3.3
+          path: systests/
+          if-no-files-found: ignore
+
+
   # Job: Build the Ceedling gem once all tests pass
   # Verifies a clean gem build is possible; the built gem is uploaded as a
   # downloadable workflow artifact. No release is created here.
@@ -400,6 +472,7 @@ jobs:
       - tests-windows
       - tests-macos
       - tests-linux-locale
+      - tests-linux-encoding-stress
     runs-on: ubuntu-latest
 
     steps:

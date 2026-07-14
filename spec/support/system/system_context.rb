@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'fileutils'
+require 'ceedling/encodinator'
 require_relative 'gem_dir_layout'
 
 class SystemContext
@@ -218,7 +219,13 @@ class SystemContext
 
     @last_cmd         = cmd
     @last_exit_status = status.exitstatus
-    @raw_output       = stdout + stderr
+    # Captured subprocess output carries whatever raw bytes the child process wrote; under
+    # a non-UTF-8 default external encoding those bytes are read back tagged with that
+    # encoding regardless of their actual content, so any project source content the
+    # subprocess echoes (verbose logging, compiler output, etc.) can make later regex
+    # matching against this string raise. Sanitize once here, the same way Ceedling itself
+    # sanitizes file content it scans.
+    @raw_output       = (stdout + stderr).clean_encoding
     @console_summary  = compose_failure_report(stdout, stderr)
 
     SystemTestOutput.new(@raw_output)
@@ -232,7 +239,7 @@ class SystemContext
 
     @last_cmd         = cmd
     @last_exit_status = status.exitstatus
-    @raw_output       = stdout + stderr
+    @raw_output       = (stdout + stderr).clean_encoding
     @console_summary  = compose_failure_report(stdout, stderr)
 
     SystemTestOutput.new(@raw_output)

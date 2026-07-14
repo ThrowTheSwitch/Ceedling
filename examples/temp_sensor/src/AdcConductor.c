@@ -10,6 +10,10 @@
 #include "AdcModel.h"
 #include "AdcHardware.h"
 
+//
+// Unicode characters in comment block: ©️ © →
+//
+
 void AdcConductor_Init(void)
 {
   AdcHardware_Init();

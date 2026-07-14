@@ -10,6 +10,10 @@
 #include "MockExecutor.h"
 #include "Main.h"
 
+//
+// Unicode characters in comment block: ©️ © →
+//
+
 void setUp(void)
 {
 }

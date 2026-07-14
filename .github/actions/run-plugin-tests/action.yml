@@ -25,27 +25,27 @@ runs:
 
     # Build & Install Ceedling Gem
     # Plugin test suites require the installed gem
-    - name: Build and Install Ceedling Gem
+    - name: Build and install Ceedling gem
       shell: bash
       run: |
         gem build ceedling.gemspec
         gem install --local ceedling-*.gem
 
-    - name: "Run Tests on Ceedling Plugin: FFF"
+    - name: "Run tests on Ceedling plugin: FFF"
       shell: bash
       run: |
         cd plugins/fff
         rake
         cd ../..
 
-    - name: "Run Tests on Ceedling Plugin: Module Generator"
+    - name: "Run tests on Ceedling plugin: Module Generator"
       shell: bash
       run: |
         cd plugins/module_generator
         rake
         cd ../..
 
-    - name: "Run Tests on Ceedling Plugin: Dependencies"
+    - name: "Run tests on Ceedling plugin: Dependencies"
       shell: bash
       run: |
         cd plugins/dependencies
