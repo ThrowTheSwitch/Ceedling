@@ -99,11 +99,15 @@ end
 ##
 
 task :default => ['specs:all']
-task :ci      => :default
+task :ci      => [:no_color, :default]
 
 ##
 ## Documentation tasks
 ##
+
+task :no_color do 
+  #doesn't do anything at the moment. will remove color from output for CI
+end
 
 # Docs tasks Python virtual environment activate / deactivate wrapper
 # This wrapper skips venv actions if no venv is in use (such as in CI)

@@ -417,6 +417,97 @@ ceedling_system_tests do
   end
 
   # =========================================================================
+  describe 'Mixin loading :: project directory as default load path' do
+    before do
+      @c.with_context do
+        @c.ceedling_appcmd_exec('example temp_sensor')
+      end
+    end
+
+    after do
+      # Remove any mixin files written into the project directory so they don't
+      # bleed into subsequent describe blocks (ceedling example does not clean extras)
+      @c.with_context do
+        Dir.chdir @proj_name do
+          FileUtils.rm_f('no_stdlib.yml')
+          FileUtils.rm_f('project_mixin.yml')
+        end
+      end
+    end
+
+    it 'loads a mixin by name from the project directory without configuring :load_paths' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          File.write('project_mixin.yml', ":project:\n  :build_root: from_project_dir\n")
+
+          dump_file = 'dump_project_dir_mixin.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file} --mixin project_mixin")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      expect(@dump_config.dig(:project, :build_root)).to eq('from_project_dir')
+    end
+
+    it 'project directory mixin takes priority over unity/targets for the same name' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          # Place a no_stdlib.yml in the project dir with a unique marker to shadow unity/targets/no_stdlib.yml
+          File.write('no_stdlib.yml', ":defines:\n  :test:\n    - PROJECT_DIR_GCC64_WINS\n")
+
+          dump_file = 'dump_project_dir_wins.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file} --mixin no_stdlib")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      defines_test = @dump_config.dig(:defines, :test)
+      defines_list = defines_test.is_a?(Hash) ? defines_test.values.flatten : Array(defines_test)
+      expect(defines_list).to include('PROJECT_DIR_GCC64_WINS')
+      expect(defines_list).not_to include('UNITY_EXCLUDE_STDINT_H')
+    end
+  end
+
+  # =========================================================================
+  describe 'Mixin loading :: built-in load paths (unity/targets)' do
+    before do
+      @c.with_context do
+        @c.ceedling_appcmd_exec('example temp_sensor')
+      end
+    end
+
+    it 'loads no_stdlib by name via --mixin from built-in unity/targets load path' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          dump_file = 'dump_gcc64_cmdline.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file} --mixin no_stdlib")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      # :defines ↳ :test may be a plain Array or a matcher Hash ({:* => [...]}) depending on
+      # whether the project config already uses the matcher format; flatten either way
+      defines_test = @dump_config.dig(:defines, :test)
+      defines_list = defines_test.is_a?(Hash) ? defines_test.values.flatten : Array(defines_test)
+      expect(defines_list).to include('UNITY_EXCLUDE_STDINT_H')
+    end
+
+    it 'loads no_stdlib by name via config :enabled from built-in unity/targets load path' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          @c.merge_project_yml_for_test({mixins: {enabled: ['no_stdlib']}})
+
+          dump_file = 'dump_gcc64_config.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file}")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      # :defines ↳ :test may be a plain Array or a matcher Hash ({:* => [...]}) depending on
+      # whether the project config already uses the matcher format; flatten either way
+      defines_test = @dump_config.dig(:defines, :test)
+      defines_list = defines_test.is_a?(Hash) ? defines_test.values.flatten : Array(defines_test)
+      expect(defines_list).to include('UNITY_EXCLUDE_STDINT_H')
+    end
+  end
+
+  # =========================================================================
   describe 'Mixin loading :: error handling' do
     before do
       @c.with_context do

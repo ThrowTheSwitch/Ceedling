@@ -185,7 +185,7 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *@helper.process_mixin_filepaths(options[:mixin]) )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
@@ -277,7 +277,7 @@ class CliHandler
 
     @path_validator.standardize_paths( filepath, options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.console_project_name( config )
 
@@ -316,7 +316,7 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
@@ -347,7 +347,7 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.console_project_name( config )
 
@@ -551,6 +551,7 @@ class CliHandler
     _, config = 
       @configinator.loadinate(
         builtin_mixins:BUILTIN_MIXINS,
+        builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS,
         filepath: filepath,
         mixins: mixins,
         env: env,
