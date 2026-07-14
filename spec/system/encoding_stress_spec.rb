@@ -31,6 +31,16 @@ ceedling_system_tests do
     skip "Default-encoding stress testing is only supported on Linux" unless RUBY_PLATFORM.include?('linux')
   end
 
+  # spec/system/**/*_spec.rb files are swept by two things: this file's own dedicated
+  # `spec:system:debug:encoding_stress` rake task (invoked by the tests-linux-encoding-stress
+  # CI job with LC_ALL=C set), and the blanket `specs:system` task that every other CI job
+  # also runs. This file is only meaningful under the former -- explicitly opt in rather than
+  # inferring intent from the ambient encoding, since runner images vary in what a "C" locale
+  # resolves to (see the canary below).
+  before :all do
+    skip "Only meaningful when run via the dedicated encoding-stress rake task (LC_ALL=C)" unless ENV['LC_ALL'] == 'C'
+  end
+
   # with_context forces LC_ALL/LANG/LANGUAGE to en_US.UTF-8; override to the stress
   # locale immediately before each Ceedling invocation so Ceedling's own Ruby process
   # runs under a non-UTF-8 default external encoding, not just any spawned subprocess.
@@ -51,9 +61,13 @@ ceedling_system_tests do
       # ambient LC_ALL/LANG at that time (the CI job sets LC_ALL=C/LANG=C before `rake`
       # runs) and does not change if ENV is mutated afterward -- so this reflects the
       # actual condition every other case in this file runs under.
-      expect(Encoding.default_external.name).to eq('US-ASCII'),
+      # Assert non-UTF-8 rather than a specific codeset name: different distros/glibc
+      # versions can spell a POSIX/'C' locale's codeset differently (US-ASCII,
+      # ANSI_X3.4-1968, etc.), and pinning to one exact string is itself a source of
+      # false failures across runner images.
+      expect(Encoding.default_external.name).not_to eq('UTF-8'),
         "Expected the '#{ENCODING_STRESS_LOCALE}' locale to resolve Ruby's default " \
-        "external encoding to US-ASCII on this platform, but got " \
+        "external encoding to something other than UTF-8 on this platform, but got " \
         "#{Encoding.default_external.name.inspect}. If Ruby or this runner image " \
         "changed how default_external is derived from LC_ALL, the rest of this file's " \
         "passes may be false positives."
