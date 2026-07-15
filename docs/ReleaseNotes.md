@@ -8,7 +8,7 @@ These release notes are complemented by three other documents:
 
 ---
 
-# 1.1.0 — July 2026
+# 1.1.0 — Prerelease
 
 ## 👀 Highlights
 
@@ -26,6 +26,7 @@ The incomplete list of goodies:
 * Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
 * Test preprocessing has undergone significant improvements (again) and is faster, more robust, and handles more testing needs.
 * Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases (support was temporarily removed with 1.0.0).
+* Helpful logging at start up flagging automatic configuration changes or problematic combinations of settings.
 
 [partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
 [example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/
@@ -37,7 +38,7 @@ The incomplete list of goodies:
 
 ## 🔢 Ruby version support
 
-Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4 on Linux, Windows, and macOS.
+Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4 on Linux, Windows, and macOS. Ruby 2.x support was removed with 1.1.0.
 
 Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world.
 

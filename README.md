@@ -3,10 +3,10 @@ Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg
 
 **Ceedling 1.1.0** is nearing release.
 
-[_Changelog_](docs/Changelog.md) is receiving updates and revisions and will 
-soon be complete. [_Release Notes_][release-notes], [_Breaking Changes_][breaking-changes], and 
-[_Known Issues_][known-issues] documents will be revised and updated soon. See _Releases_ for 
-the latest prerelease version.
+[_Changelog_](docs/Changelog.md) is up to date. [_Release Notes_][release-notes], 
+[_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues] are nearly 
+completed. See [_Releases_](https://github.com/ThrowTheSwitch/Ceedling/releases) 
+for the latest prerelease version.
 
 **New goodies:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
