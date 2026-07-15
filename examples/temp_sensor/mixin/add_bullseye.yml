@@ -1,0 +1,19 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+
+# Enable bullseye plugin
+:plugins:
+  :enabled:
+    - bullseye
+
+# Add -bullseye to the plugins list to make use of the bullseye plugin.
+# You will need a working Bullseye Coverage installation and license to make it work.
+# For more information on these options, see docs in plugins/bullseye
+
+...

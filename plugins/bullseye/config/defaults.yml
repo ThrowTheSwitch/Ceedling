@@ -8,59 +8,8 @@
 ---
 
 :bullseye:
-  :auto_license: TRUE
-:plugins:
-  :bullseye_lib_path: []
-:paths:
-  :bullseye_toolchain_include: []
-
-# TODO: Restore :tools once Bullseye plugin has been updated for Ceedling >= 1.0.0
-# :tools:
-#   :bullseye_instrumentation:
-#     :executable: covc
-#     :optional: true
-#     :arguments:
-#       - '--file $': ENVIRONMENT_COVFILE
-#       - -q
-#       - ${1}
-#   :bullseye_compiler:
-#     :executable: gcc
-#     :arguments:
-#       - -g
-#       - -I"$": COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR
-#       - -I"$": COLLECTION_PATHS_BULLSEYE_TOOLCHAIN_INCLUDE
-#       - -D$: COLLECTION_DEFINES_TEST_AND_VENDOR
-#       - -DBULLSEYE_COMPILER
-#       - -c "${1}"
-#       - -o "${2}"
-#   :bullseye_linker:
-#     :executable: gcc
-#     :arguments:
-#       - ${1}
-#       - -o ${2}
-#       - -L$: PLUGINS_BULLSEYE_LIB_PATH
-#       - -lcov
-#   :bullseye_fixture:
-#     :executable: ${1}
-#   :bullseye_report_covsrc:
-#     :executable: covsrc
-#     :optional: true
-#     :arguments:
-#       - '--file $': ENVIRONMENT_COVFILE
-#       - -q
-#       - -w140
-#   :bullseye_report_covfn:
-#     :executable: covfn
-#     :optional: true
-#     :arguments:
-#       - '--file $': ENVIRONMENT_COVFILE
-#       - --width 120
-#       - --no-source
-#       - '"${1}"'
-#   :bullseye_browser:
-#     :executable: CoverageBrowser
-#     :optional: TRUE
-#     :arguments:
-#       - '"$"': ENVIRONMENT_COVFILE
+  :summaries: TRUE           # Enable covsrc totals banner + per-source covfn dump to console after tests
+  :report_task: FALSE        # Disable dedicated report generation task (this enables automatic report generation)
+  :untested_sources: :list   # :ignore (skip entirely), :list (log filepaths not in report), :compile (compile all for 0% coverage)
 
 ...

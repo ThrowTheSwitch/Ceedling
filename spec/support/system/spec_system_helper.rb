@@ -185,6 +185,10 @@ def valgrind_available?
   tool_available?('valgrind --version 2>&1')
 end
 
+def bullseye_available?
+  tool_available?('covc --version 2>&1')
+end
+
 RSpec.shared_context "requires gdb" do
   before :all do
     @gdb_available = gdb_available?
@@ -202,5 +206,15 @@ RSpec.shared_context "requires valgrind" do
 
   before do
     skip "valgrind is not installed or not in PATH" unless @valgrind_available
+  end
+end
+
+RSpec.shared_context "requires bullseye" do
+  before :all do
+    @bullseye_available = bullseye_available?
+  end
+
+  before do
+    skip "Bullseye (covc) is not installed, licensed, or not in PATH" unless @bullseye_available
   end
 end

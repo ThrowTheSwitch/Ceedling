@@ -12,97 +12,39 @@ directory(BULLSEYE_DEPENDENCIES_PATH)
 
 CLEAN.include(File.join(BULLSEYE_BUILD_OUTPUT_PATH, '*'))
 CLEAN.include(File.join(BULLSEYE_RESULTS_PATH, '*'))
+CLEAN.include(File.join(BULLSEYE_ARTIFACTS_PATH, '**/*'))
 CLEAN.include(File.join(BULLSEYE_DEPENDENCIES_PATH, '*'))
+CLEAN.include(BULLSEYE_COVFILE_PATH)
 
 CLOBBER.include(File.join(BULLSEYE_BUILD_PATH, '**/*'))
-PLUGINS_BULLSEYE_LIB_PATH = 'C:\\tools\\BullseyeCoverage\\lib' if not defined?(PLUGINS_BULLSEYE_LIB_PATH)
+CLOBBER.include(BULLSEYE_COVFILE_PATH)
 
-rule(/#{BULLSEYE_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_OBJECT}$/ => [
-       proc do |task_name|
-         @ceedling[:file_finder].find_build_input_file(filepath: task_name, context: BULLSEYE_SYM)
-       end
-     ]) do |object|
+task directories: [BULLSEYE_BUILD_OUTPUT_PATH, BULLSEYE_RESULTS_PATH, BULLSEYE_DEPENDENCIES_PATH, BULLSEYE_ARTIFACTS_PATH]
 
-  if File.basename(object.source) =~ /^(#{PROJECT_TEST_FILE_PREFIX}|#{CMOCK_MOCK_PREFIX}|#{BULLSEYE_IGNORE_SOURCES.join('|')})/i
-    @ceedling[:generator].generate_object_file(
-      TOOLS_BULLSEYE_COMPILER,
-      OPERATION_COMPILE_SYM,
-      BULLSEYE_SYM,
-      object.source,
-      object.name,
-      @ceedling[:file_path_utils].form_test_build_list_filepath(object.name)
-    )
-  else
-    @ceedling[BULLSEYE_SYM].generate_coverage_object_file(object.source, object.name)
-  end
-
-end
-
-rule(/#{BULLSEYE_BUILD_OUTPUT_PATH}\/#{'.+\\'+EXTENSION_EXECUTABLE}$/) do |bin_file|
-  lib_args = @ceedling[:test_invoker].convert_libraries_to_arguments()
-  lib_paths = @ceedling[:test_invoker].get_library_paths_to_arguments()
-  @ceedling[:generator].generate_executable_file(
-    TOOLS_BULLSEYE_LINKER,
-    BULLSEYE_SYM,
-    bin_file.prerequisites,
-    bin_file.name,
-    @ceedling[:file_path_utils].form_test_build_map_filepath(bin_file.name),
-    lib_args,
-    lib_paths
-  )
-end
-
-rule(/#{BULLSEYE_RESULTS_PATH}\/#{'.+\\'+EXTENSION_TESTPASS}$/ => [
-       proc do |task_name|
-         @ceedling[:file_path_utils].form_test_executable_filepath(task_name)
-       end
-     ]) do |test_result|
-  @ceedling[:generator].generate_test_results(TOOLS_BULLSEYE_FIXTURE, BULLSEYE_SYM, test_result.source, test_result.name)
-end
-
-rule(/#{BULLSEYE_DEPENDENCIES_PATH}\/#{'.+\\'+EXTENSION_DEPENDENCIES}$/ => [
-       proc do |task_name|
-         @ceedling[:file_finder].find_build_input_file(filepath: task_name, context: BULLSEYE_SYM)
-       end
-     ]) do |dep|
-  @ceedling[:generator].generate_dependencies_file(
-    TOOLS_TEST_DEPENDENCIES_GENERATOR,
-    BULLSEYE_SYM,
-    dep.source,
-    File.join(BULLSEYE_BUILD_OUTPUT_PATH, File.basename(dep.source).ext(EXTENSION_OBJECT) ),
-    dep.name
-  )
-end
-
-task :directories => [BULLSEYE_BUILD_OUTPUT_PATH, BULLSEYE_RESULTS_PATH, BULLSEYE_DEPENDENCIES_PATH, BULLSEYE_ARTIFACTS_PATH]
-
+# No object compilation, linking, test execution, or dependency-file Rake rules are
+# defined here. Ceedling's core build pipeline already compiles and links every test
+# build for any context passed to `setup_and_invoke`; `Bullseye`'s `pre_compile_execute`/
+# `pre_link_execute` hooks (see `lib/bullseye.rb`) swap in Bullseye's own tools and
+# coverage defines for the `bullseye:` context as that pipeline runs.
 namespace BULLSEYE_SYM do
-
-  TOOL_COLLECTION_BULLSEYE_TASKS = {
-    :context        => BULLSEYE_SYM,
-    :test_compiler  => TOOLS_BULLSEYE_COMPILER,
-    :test_assembler => TOOLS_TEST_ASSEMBLER,
-    :test_linker    => TOOLS_BULLSEYE_LINKER,
-    :test_fixture   => TOOLS_BULLSEYE_FIXTURE
-  }
-
-  task source_coverage: COLLECTION_ALL_SOURCE.pathmap("#{BULLSEYE_BUILD_OUTPUT_PATH}/%n#{@ceedling[:configurator].extension_object}")
 
   desc 'Run code coverage for all tests'
   task all: [:prepare] do
-    @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
-    @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, TOOL_COLLECTION_BULLSEYE_TASKS)
-    @ceedling[:configurator].restore_config
+    # Run tests with coverage
+    @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:BULLSEYE_SYM, options:TOOL_COLLECTION_BULLSEYE_TASKS )
+
+    # Optionally compile untested sources with coverage for complete source coverage results in the final report.
+    # This comes after the tests because it depends on the accrued knowledge of which source files have associated tests.
+    @ceedling[:bullseye].process_untested_sources( sources:COLLECTION_ALL_SOURCE )
   end
 
-  desc "Run single test w/ coverage ([*] real test or source file name, no path)."
+  desc 'Run single test w/ coverage ([*] test or source file name, no path).'
   task :* do
-    message = "\nOops! '#{BULLSEYE_ROOT_NAME}:*' isn't a real task. " +
-              "Use a real test or source file name (no path) in place of the wildcard.\n" +
-              "Example: rake #{BULLSEYE_ROOT_NAME}:foo.c\n\n"
+    message = "Oops! '#{BULLSEYE_ROOT_NAME}:*' isn't a real task. " \
+              "Use a real test or source file name (no path) in place of the wildcard.\n" \
+              "Example: `ceedling #{BULLSEYE_ROOT_NAME}:foo.c`"
 
-    @ceedling[:loginator].log( message )
+    @ceedling[:loginator].log( message, Verbosity::ERRORS )
   end
 
   desc 'Run tests by matching regular expression pattern.'
@@ -114,10 +56,7 @@ namespace BULLSEYE_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
-      @ceedling[BULLSEYE_SYM].enableBullseye(true)
-      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
-      @ceedling[:configurator].restore_config
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:BULLSEYE_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS) )
     else
       @ceedling[:loginator].log("\nFound no tests matching pattern /#{args.regex}/.")
     end
@@ -132,26 +71,15 @@ namespace BULLSEYE_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
-      @ceedling[BULLSEYE_SYM].enableBullseye(true)
-      @ceedling[:test_invoker].setup_and_invoke(matches, { force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
-      @ceedling[:configurator].restore_config
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:BULLSEYE_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_BULLSEYE_TASKS) )
     else
-      @ceedling[:loginator].log("\nFound no tests including the given path or path component.")
+      @ceedling[:loginator].log( 'Found no tests including the given path or path component', Verbosity::ERRORS )
     end
   end
 
-  desc 'Run code coverage for changed files'
-  task delta: [:prepare] do
-    @ceedling[:configurator].replace_flattened_config(@ceedling[BULLSEYE_SYM].config)
-    @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke(COLLECTION_ALL_TESTS, {:force_run => false}.merge(TOOL_COLLECTION_BULLSEYE_TASKS))
-    @ceedling[:configurator].restore_config
-  end
-
   # Use a rule to increase efficiency for large projects
-  rule(/^#{BULLSEYE_TASK_ROOT}\S+$/ => [ # Bullseye test tasks by regex
-      proc do |task_name|
+  rule(/^#{BULLSEYE_TASK_ROOT}\S+$/ => [ # bullseye test tasks by regex
+     proc do |task_name|
         # Yield clean test name => Strip the task string, remove Rake test task prefix, and remove any code file extension
         test = task_name.strip().sub(/^#{BULLSEYE_TASK_ROOT}/, '').chomp( EXTENSION_SOURCE )
 
@@ -160,13 +88,41 @@ namespace BULLSEYE_SYM do
 
         # Provide the filepath for the target test task back to the Rake task
         @ceedling[:file_finder].find_test_file_from_name( test )
-      end
-  ]) do |test|
+     end
+   ]) do |test|
     @ceedling[:rake_wrapper][:prepare].invoke
-    @ceedling[BULLSEYE_SYM].enableBullseye(true)
-    @ceedling[:test_invoker].setup_and_invoke( [test.source], TOOL_COLLECTION_BULLSEYE_TASKS )
+    @ceedling[:test_invoker].setup_and_invoke( tests:[test.source], context:BULLSEYE_SYM, options:TOOL_COLLECTION_BULLSEYE_TASKS )
   end
 
+  # Only defined when :untested_sources is ':compile' — lets a user iterate on getting
+  # untested-source coverage compilation working without paying for a full bullseye:
+  # test suite run each time.
+  if @ceedling[BULLSEYE_SYM].untested_sources_compile_enabled?
+    desc 'Compile all untested source files with coverage'
+    task :untested_sources => [:prepare] do
+      # sources_only: true — populate the tested-sources mapping (which sources each test
+      # references) without compiling, linking, or executing any test.
+      @ceedling[:test_invoker].setup_and_invoke(
+        tests: COLLECTION_ALL_TESTS,
+        context: BULLSEYE_SYM,
+        options: { sources_only: true }
+      )
+      @ceedling[:bullseye].process_untested_sources( sources: COLLECTION_ALL_SOURCE, guidance: false )
+    end
+  end
+
+end
+
+# If bullseye config enables dedicated report generation task, create the task
+if not @ceedling[BULLSEYE_SYM].automatic_html_reporting_enabled?
+namespace BULLSEYE_REPORT_NAMESPACE_SYM do
+
+  desc "Generate HTML coverage report (Note: a #{BULLSEYE_SYM}: task must be executed first)"
+  task BULLSEYE_SYM do
+    @ceedling[:bullseye].generate_html_report()
+  end
+
+end
 end
 
 namespace UTILS_SYM do
