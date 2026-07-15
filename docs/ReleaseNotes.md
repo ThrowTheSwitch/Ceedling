@@ -27,6 +27,8 @@ The incomplete list of goodies:
 * Test preprocessing has undergone significant improvements (again) and is faster, more robust, and handles more testing needs.
 * Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases (support was temporarily removed with 1.0.0).
 * Helpful logging at start up flagging automatic configuration changes or problematic combinations of settings.
+* Integrates latest [Unity](https://github.com/ThrowTheSwitch/Unity) ([2.7.0](https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityChangeLog.md)).
+* Integrates latest [CMock](https://github.com/ThrowTheSwitch/CMock) ([2.7.0](https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMockChangeLog.md)).
 
 [partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
 [example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/

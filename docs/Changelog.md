@@ -141,6 +141,8 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - Release build logging now matches test build logging.
 - Fixes for typos and grammar in documentation and logging.
 - Added documentation / commented sample in example _project.yml_ for CMock `:treat_inlines` inline function patterns option (PR #1096).
+- Integrates latest [Unity](https://github.com/ThrowTheSwitch/Unity) ([2.7.0](https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityChangeLog.md)).
+- Integrates latest [CMock](https://github.com/ThrowTheSwitch/CMock) ([2.7.0](https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMockChangeLog.md)).
 
 ### Expanded [Backtrace handling](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/reference/project/#use_backtrace)
 - Provides more and better crash details for `:simple` and `:gdb` options.
