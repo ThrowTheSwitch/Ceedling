@@ -66,8 +66,10 @@ The following is not a complete project configuration. But, for those already fa
   :enabled:
     # (See config blurb below)
     - gcov
+
     # New Valgrind plugin to run test suites with memory checking and reporting
     - valgrind
+    
     # New Cppcheck static analysis reporting plugin
     - cppcheck
 
