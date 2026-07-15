@@ -8,6 +8,14 @@ These breaking changes are complemented by three other documents:
 
 ---
 
+# [1.1.0] — 2026-07-01
+
+## `--ruby-replacement` CLI flag to enable configuration inline Ruby string expansion
+
+As a security precaution, [inline Ruby string expansion][inline-ruby-string-expansion] within project configuration strings is now disabled by default. The feature still exists and functions, but it must be specifically enabled by the user at the command line.
+
+[inline-ruby-string-expansion]: https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/project-file/#inline-ruby-string-expansion
+
 # [1.0.0] — 2025-01-01
 
 ## Explicit `:paths` ↳ `:include` entries in the project file

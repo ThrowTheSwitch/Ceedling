@@ -10,7 +10,7 @@ These release notes are complemented by three other documents:
 
 # 1.1.0 — July 2026
 
-## New features and improvements
+## 👀 Highlights
 
 1.1.0 adds several significant new features plus a number of bug fixes and other improvements. See [Changelog](Changelog.md) for a full list of new features, bug fixes, and improvements.
 
@@ -24,6 +24,7 @@ The incomplete list of goodies:
    * _Finally_ supports coverage reports for all sources.
    * Adds support for Modified Condition / Decision Coverage.
 * Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
+* Test preprocessing has undergone significant improvements (again) and is faster, more robust, and handles more testing needs.
 * Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases (support was temporarily removed with 1.0.0).
 
 [partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
@@ -34,9 +35,55 @@ The incomplete list of goodies:
 [gcov-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/
 [mixins-inline-yaml]: https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins/?h=mixins#-mixin-command-line-flags
 
-## Ruby version support
+## 🔢 Ruby version support
 
-Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4. Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5. To avoid Ruby version and installatione environment complications, [consider using the readymade MadScienceLab Docker images](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
+Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4 on Linux, Windows, and macOS.
+
+Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world.
+
+To avoid Ruby version and installatione environment complications, consider using [the readymade MadScienceLab Docker images](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
+
+## 📖 Project Configuration Cheatsheet for 1.1.0 Changes
+
+The following is not a complete project configuration. But, for those already familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling through the lens of a project configuration. To be clear, more has changed than what is referenced in this YAML blurb (see the Changelog).
+
+```yaml
+:project:
+  # When TRUE enables a significant new set of testing abilities (see Partials documentation).
+  # Because this feature depends on test preprocessing and uses mocking, it automatically
+  # enables those settings, overriding any user settings disabling them.
+  :use_partials: FALSE
+
+:test_build:
+  # This configuration option is primarily to enable internal prepocessing fallback handling
+  # measures when certain toolchain preprocessing features are unavailable.
+  # This option is unlikely to be needed in real-world use but in rare edge cases it could 
+  # ovverride a false positive when toolchain preprocessing features are probed.
+  :preprocess_force_fallback: FALSE
+
+:plugins:
+  :enabled:
+    # (See config blurb below)
+    - gcov
+    # New Valgrind plugin to run test suites with memory checking and reporting
+    - valgrind
+    # New Cppcheck static analysis reporting plugin
+    - cppcheck
+
+:gcov:
+  # The Gcov plugin now supports Modified Condition / Decision Coverage reporting.
+  # These abilities require GCC 14+ and optionally GCovr 8.6+.
+  :mcdc: FALSE
+
+  # The Gcov plugin now offers options for processing coverage for all sources in the project.
+  # Untested sources can be optionally compiled with coverage for 0% coverage entries in the final report.
+  # - :warn (default) logs all untested sources that are not in a coverage report.
+  # - :ignore entirely omits any handling of untested sources.
+  # - :compile attempts to compile all untested sources for coverage tracking.
+  #   Note: Compilation may require additional defines, flags, and stand-in headers/symbols.
+  :untested_sources: :warn
+
+```
 
 # 1.0.1 - January 30, 2025
 
