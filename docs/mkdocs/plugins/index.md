@@ -124,7 +124,7 @@ for how to enable built-in plugins and load custom plugins in your project.
     and .Net-based [ReportGenerator] to produce coverage reports in a
     variety of formats.
 
--   :material-percent: **[`bullseye`](bullseye.md)**
+-   :material-percent: **[`bullseye`](bullseye/index.md)**
 
     ---
 

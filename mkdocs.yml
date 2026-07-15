@@ -172,7 +172,15 @@ nav:
       - Advanced & Troubleshooting: plugins/gcov/troubleshooting.md
     - Cppcheck (Static Analysis): plugins/cppcheck.md
     - Valgrind (Memory Analysis): plugins/valgrind.md
-    - Bullseye (Coverage): plugins/bullseye.md
+    - Bullseye (Coverage):
+      - plugins/bullseye/index.md
+      - Overview: plugins/bullseye/overview.md
+      - Licensing: plugins/bullseye/licensing.md
+      - Tool Versions: plugins/bullseye/tool-versions.md
+      - Set Up & Configuration: plugins/bullseye/setup.md
+      - Example Usage: plugins/bullseye/examples.md
+      - Reporting: plugins/bullseye/reporting.md
+      - Advanced & Troubleshooting: plugins/bullseye/troubleshooting.md
     - FFF (Fake Functions): plugins/fff.md
     - Command Hooks: plugins/command-hooks.md
     - Compile Commands JSON DB: plugins/compile-commands-json-db.md
