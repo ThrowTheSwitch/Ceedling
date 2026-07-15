@@ -1850,6 +1850,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#built-in-toolchain-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in toolchain targets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in toolchain targets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-built-in-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available built-in targets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-a-built-in-target-as-a-starting-point" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using a built-in target as a starting point
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4355,6 +4394,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#built-in-toolchain-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in toolchain targets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Built-in toolchain targets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#available-built-in-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available built-in targets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-a-built-in-target-as-a-starting-point" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using a built-in target as a starting point
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4436,7 +4514,10 @@ modify it for any number of reasons. Some example scenarios:</p>
   maintained by you external to your locally cloned repository.</li>
 <li>Ceedling’s default <code>gcc</code> tools do not work for your project needs. You
   would like the complex tooling configurations you most often need to
-  be maintained separately and shared among projects.</li>
+  be maintained separately and shared among projects. Ceedling includes
+  a collection of ready-made toolchain target mixins (e.g. <code>clang</code>,
+  <code>iar_arm</code>) that can be selected by name without any extra
+  configuration — see <a href="#built-in-toolchain-targets">Built-in toolchain targets</a>.</li>
 </ul>
 <p>Mixins allow you to merge configuration with your project configuration
 just after the base project file is loaded. The merge is so low-level
@@ -4758,18 +4839,23 @@ found among mixin paths specified in the base configuration file
 (not shown).</p>
 <p>Later entries (on the right side of a command line) win on conflicts,
 so the content of <code>ci_overrides.yml</code> has the highest priority.</p>
-<h4 id="error-behavior">Error behavior</h4>
-<p>Simple mixin names require mixin load paths to search. A default 
-mixin load path always points to within Ceedling itself (for 
-built-in mixins). User-specified load paths must be added through 
-the <code>:mixins</code> section of the base project file. See the
-<a href="#base-configuration-mixins-entries">documentation for the <code>:mixins</code> section of your project 
-configuration</a> for more details.</p>
+<p>Simple mixin names are resolved by searching load paths in this order:</p>
+<ol>
+<li>User-configured <code>:load_paths</code> from the base project file (if any)</li>
+<li>The directory containing the base project file</li>
+<li>Ceedling's built-in Unity toolchain targets</li>
+</ol>
+<p>User-specified load paths are configured through the <code>:mixins</code> section
+of the base project file. See the <a href="#base-configuration-mixins-entries">documentation for the <code>:mixins</code>
+section of your project configuration</a> for
+more details. See <a href="#built-in-toolchain-targets">Built-in toolchain targets</a>
+for details on what names are available without any load path configuration.</p>
 <p>Filepaths may be relative (to the working directory) or absolute.</p>
-<p>If the <code>--mixin</code> filename or filepath does not exist, Ceedling 
-terminates with an error. If Ceedling cannot find a mixin name in 
-any load paths, it terminates with an error. If an inline YAML 
-string cannot be parsed or does not evaluate to a Hash, Ceedling 
+<h4 id="error-behavior">Error behavior</h4>
+<p>If the <code>--mixin</code> filename or filepath does not exist, Ceedling
+terminates with an error. If Ceedling cannot find a mixin name in
+any load paths, it terminates with an error. If an inline YAML
+string cannot be parsed or does not evaluate to a Hash, Ceedling
 terminates with an error.</p>
 <h3 id="environment-variables">Environment variables</h3>
 <p>Mixins can also be loaded through environment variables. Ceedling
@@ -4822,6 +4908,17 @@ lookups in the mixin load paths instead of <em>.yml</em>.</p>
 <p>Searches start in the path at the top of the list.</p>
 <p>Both mixin names in the <code>:enabled</code> list (above) and on the command
 line via <code>--mixin</code> flag use this list of load paths for searches.</p>
+<p>If a mixin name is not found in any user-configured load path,
+Ceedling automatically searches two additional locations in order:</p>
+<ol>
+<li><strong>Project directory</strong> — the directory containing your base project
+   configuration file. This lets you drop a YAML file alongside
+   <em>project.yml</em> and reference it by name with no extra configuration.</li>
+<li><strong>Built-in toolchain targets</strong> — Ceedling's bundled Unity <code>targets/</code>
+   folder. See <a href="#built-in-toolchain-targets">Built-in toolchain targets</a>.</li>
+</ol>
+<p>User-configured load paths always take priority over these fallbacks.
+The project directory takes priority over the built-in targets.</p>
 <p>Load paths entries support <a href="../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>.</p>
 <p><strong>Default</strong>: <code>[]</code></p>
 </li>
@@ -4846,6 +4943,87 @@ line via <code>--mixin</code> flag use this list of load paths for searches.</p>
   have the highest priority. The <code>:enabled</code> list is merged <strong>first</strong> (because
   it resides in the base configuration and has the lowest priority).</li>
 </ul>
+<h2 id="built-in-toolchain-targets">Built-in toolchain targets</h2>
+<p>Ceedling bundles a set of ready-made toolchain target mixins sourced from
+Unity's <code>targets/</code> folder. Each file configures the compiler, linker,
+output extensions, and Unity-specific compilation symbols for a particular
+toolchain or target environment.</p>
+<p>Because the Unity targets folder is a default mixin load path (searched
+after the project directory), you can activate any of these by name
+alone — no <code>:load_paths</code> configuration required:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ceedling<span class="w"> </span>build<span class="w"> </span>test:all<span class="w"> </span>--mixin<span class="w"> </span>clang
+</code></pre></div>
+<p>Or via the project configuration:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">:mixins</span><span class="p">:</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">clang</span>
+</code></pre></div>
+<h3 id="available-built-in-targets">Available built-in targets</h3>
+<table>
+<thead>
+<tr>
+<th>Mixin name</th>
+<th>Toolchain / target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>clang</code></td>
+<td>Clang local host configuration with common warnings and errors enabled</td>
+</tr>
+<tr>
+<td><code>gcc</code></td>
+<td>GCC local host configuration with common warnings and errors enabled</td>
+</tr>
+<tr>
+<td><code>hitech_picc18</code></td>
+<td>HI-TECH PICC-18 (PIC18)</td>
+</tr>
+<tr>
+<td><code>iar_arm</code></td>
+<td>IAR ARM configuration that likely requires customization for your target</td>
+</tr>
+</tbody>
+</table>
+<h3 id="using-a-built-in-target-as-a-starting-point">Using a built-in target as a starting point</h3>
+<p>A built-in target mixin sets only the toolchain-specific knobs. Your
+project configuration (or other mixins) supplies everything else —
+source paths, plugins, test file patterns, and so on. This means you
+can use a built-in target as a drop-in starting point and layer your
+own settings on top without duplicating the full tool configuration.</p>
+<p>For example, a minimal project targeting a GCC host build might
+look like:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># project.yml</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="nt">:project</span><span class="p">:</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span><span class="nt">:build_root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">build/</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="nt">:paths</span><span class="p">:</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">  </span><span class="nt">:test</span><span class="p">:</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">test/**</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">  </span><span class="nt">:source</span><span class="p">:</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src/**</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_pretty_stdout</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="nt">:mixins</span><span class="p">:</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcc</span><span class="w">   </span><span class="c1"># Pulls in compiler, linker, and Unity symbol config for GCC</span>
+</code></pre></div>
+<p>If your project needs a tweak — say, an extra compiler flag or a different
+optimization level — merge an additional mixin after the built-in target:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>ceedling<span class="w"> </span>build<span class="w"> </span>test:all<span class="w"> </span>--mixin<span class="w"> </span>clang<span class="w"> </span>--mixin<span class="w"> </span><span class="s2">&quot;=tools: {test_compiler: {arguments: [&#39;-O0&#39;]}}&quot;</span>
+</code></pre></div>
+<p>Because command line mixins are merged last, the extra argument is appended
+after the built-in target's argument list and takes effect.</p>
+<div class="admonition tip">
+<p class="admonition-title">Override a built-in target for a single project</p>
+<p>Drop a YAML file with the same name as a built-in target (e.g.
+<code>gcc.yml</code>) into your project directory. Ceedling searches the
+project directory before the built-in targets folder, so your local
+file silently takes precedence — no <code>:load_paths</code> entry required.</p>
+</div>
 <p><br/><br/></p>
 
 
