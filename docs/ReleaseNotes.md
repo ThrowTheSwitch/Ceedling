@@ -3,8 +3,8 @@
 These release notes are complemented by three other documents:
 
 1. 🪵 **[Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
-1. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
-1. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
+2. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
+3. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
 
 ---
 
@@ -42,7 +42,7 @@ Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4 on 
 
 Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world.
 
-To avoid Ruby version and installatione environment complications, consider using [the readymade MadScienceLab Docker images](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
+To avoid Ruby version and installation environment complications, consider using [the readymade MadScienceLab Docker images](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
 
 ## 📖 Project Configuration Cheatsheet for 1.1.0 Changes
 
@@ -87,6 +87,40 @@ The following is not a complete project configuration. But, for those already fa
   :untested_sources: :warn
 
 ```
+
+## 📣 Shout-outs and Special Thank-You’s
+
+### Sponsors
+
+  - [ThingamaByte, LLC](https://thingamabyte.com) - For continuing to nurture these projects and community with so much of their time.
+  - [Infineon Technologies AG](https://www.infineon.com/) - For sponsoring the long-awaited 'Partials" features.
+
+### Major Code/Doc Contributors
+
+These individuals contributed significant features, bugfixes, and improvements.
+
+  - Michael Karlesky
+  - Mark VanderVoord
+  - Roland Stahn
+  - Alejandro Rosso
+  - Ross Smyth
+  - burakutkuc
+  - ml-physec
+  - Cory Todd
+  - Gavin Dunlap
+  - Dariqq
+  - James Browning
+  - David Beitey
+  - savashn
+  - bal-stan
+  - aditya
+  - Marquez, Humberto
+
+### Also, thanks for your contributions!
+
+Artem Sharipov, Christer Fletcher, Costas Akrivoulis, Crt Mori, Dominik Loidolt, Ivan Kravets, Jacques Boivin, 
+James Raphael Tiovalen, Joshua Stone, Kiran Phalak, Lucas Saavedra Vaz, Matt Sullivan, Matthew Biddlestone, 
+Michael Dwan, Peter Backeman, Roland Marchand, pikammmmm, yahyayozo
 
 # 1.0.1 - January 30, 2025
 
@@ -317,18 +351,18 @@ Ever wanted to smoosh in some extra configuration selectively? Let’s say you h
 All such features have been superseded by _Mixins_. Mixins are simply additional YAML that gets merged into you base project configuration. However, Mixins provide several key improvements over previous features:
 
 1. Mixins can be as little or as much configuration as you want. You could push all your configuration into mixins with a base project file including nothing but a `:mixins` section.
-1. Mixins can be specified in your project configuration, via environment variables, and from the command line. A clear order of precedence controls the order of merging. Any conflicts or duplicates are automatically resolved.
-1. Logging makes clear what proejct file and mixins are loaded and merged at startup.
-1. Like built-in plugins, Ceedling will soon come with built-in mixins available for common build scenarios.
+2. Mixins can be specified in your project configuration, via environment variables, and from the command line. A clear order of precedence controls the order of merging. Any conflicts or duplicates are automatically resolved.
+3. Logging makes clear what proejct file and mixins are loaded and merged at startup.
+4. Like built-in plugins, Ceedling will soon come with built-in mixins available for common build scenarios.
 
 #### A proper command line
 
 Until this release, Ceedling depended on Rake for most of its command line handling. Rake’s task conventions provide poor command line handling abilities. The core problems with Rake command line handling include:
 
 1. Only brief, limited help statements.
-1. No optional flags to modify a task — verbosity, logging, etc. were their own tasks.
-1. Complex/limited parameterization (e.g. `verbosity[3]` instead of `--verbosity normal`).
-1. Tasks are order-dependent. So, for example, `test:all verbosity[5]` changes verbosity after the tests are run.
+2. No optional flags to modify a task — verbosity, logging, etc. were their own tasks.
+3. Complex/limited parameterization (e.g. `verbosity[3]` instead of `--verbosity normal`).
+4. Tasks are order-dependent. So, for example, `test:all verbosity[5]` changes verbosity after the tests are run.
 
 Ceedling now offers a full command line interface with rich help, useful order-independent option flags, and more.
 
@@ -342,7 +376,7 @@ Try `ceedling help` and then `ceedling help <command>` to get started.
 * The `build` keyword is assumed by Ceedling. That is, it’s optional. `ceedling test:all` is the same as `ceedling build test:all`. The `build` keyword handling tells the Ceedling application to execute the named build task dynamically generated from your project configuration. 
 * In the transition to remove Rake from Ceedling, two categories of command line interactions now exist. Note this distinction in the `help` headings.
    1. **Application Commands** — `help`, `build`, `new`, `upgrade`, `environment`, `examples`, `example`, `dumpconfig`, and `version`. These have full help via `ceedling help <command>` and a variety of useful command line switches that conform to typical command line conventions.
-   1. **Build & Plugin Tasks** — Operations dynamically generated from your project configuration. These have only summary help (listed in `ceedling help`) and work just as they previously did. Common command line tasks including `ceedling test:all` and `ceedling release` are in this category.
+   2. **Build & Plugin Tasks** — Operations dynamically generated from your project configuration. These have only summary help (listed in `ceedling help`) and work just as they previously did. Common command line tasks including `ceedling test:all` and `ceedling release` are in this category.
 
 ### Medium Deal Highlights 🥈
 
