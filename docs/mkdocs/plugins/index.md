@@ -164,7 +164,7 @@ important issues:
     and .Net-based [ReportGenerator] to produce coverage reports in a
     variety of formats.
 
--   :material-percent: **[`bullseye`](bullseye.md)**
+-   :material-percent: **[`bullseye`](bullseye/index.md)**
 
     ---
 

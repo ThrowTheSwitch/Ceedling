@@ -1,0 +1,15 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+
+:bullseye:
+  :summaries: TRUE           # Enable covsrc totals banner + per-source covfn dump to console after tests
+  :report_task: FALSE        # Disable dedicated report generation task (this enables automatic report generation)
+  :untested_sources: :list   # :ignore (skip entirely), :list (log filepaths not in report), :compile (compile all for 0% coverage)
+
+...
