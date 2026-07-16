@@ -17,24 +17,26 @@ Gem::Specification.new do |s|
   s.authors     = ["Mark VanderVoord", "Michael Karlesky", "Greg Williams"]
   s.email       = ["mark@vandervoord.net", "michael@karlesky.net", "barney.williams@gmail.com"]
   s.homepage    = "https://throwtheswitch.org/ceedling"
-  s.summary     = "Ceedling is a build automation tool for C unit tests and releases. It's a member of the ThrowTheSwitch.org family of tools. It's built upon Unity and CMock."
+  s.summary     = "Ceedling is a build automation tool for C unit tests and releases. It is a member of the ThrowTheSwitch.org family of tools, built upon Unity, CMock, and CException."
   s.description = <<-DESC
-Ceedling is a build automation tool that helps you create and run C unit test suites.
+Ceedling is a build automation tool for C projects. It is especially adept at building and executing unit test suites — even for tricky embedded systems.
 
-Ceedling provides two core functions: 
-  [1] It packages up several tools including the C unit test framework Unity, the mock generation tool CMock, and other features. 
-  [2] It simplifies tool configuration for embedded or native C toolchains and automates the running and reporting of tests.
+Ceedling provides three core functions:
+  [1] It packages up several tools including the C unit test framework Unity, the mock generation tool CMock, and other complementary frameworks and libraries.
+  [2] It simplifies configuration for C toolchains.
+  [3] It automates the running and reporting of test suites as well as release builds.
 
-Ceedling projects are created with a YAML configuration file. A variety of conventions within the tool simplify generating mocks from C files and assembling suites of unit test functions.
+Ceedling projects start with a YAML configuration file. A variety of conventions simplify assembling suites of unit test functions and producing release builds.
   DESC
   s.licenses    = ['MIT']
 
   s.metadata = {
     "homepage_uri"      => s.homepage,
     "bug_tracker_uri"   => "https://github.com/ThrowTheSwitch/Ceedling/issues",
-    "documentation_uri" => "https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md",
-    "mailing_list_uri"  => "https://groups.google.com/forum/#!categories/throwtheswitch/ceedling",
-    "source_code_uri"   => "https://github.com/ThrowTheSwitch/Ceedling"
+    "documentation_uri" => "https://throwtheswitch.github.io/Ceedling/",
+    "mailing_list_uri"  => "https://throwtheswitch.discourse.group",
+    "source_code_uri"   => "https://github.com/ThrowTheSwitch/Ceedling",
+    "funding_uri"       => "https://github.com/sponsors/ThrowTheSwitch"
   }
   
   s.required_ruby_version = ">= 3.0.0"
@@ -69,10 +71,11 @@ Ceedling projects are created with a YAML configuration file. A variety of conve
   s.files        += Dir['vendor/unity/auto/**/*.rb']
   s.files        += Dir['vendor/unity/src/**/*.[ch]']
 
-  s.files       += Dir['**/*']
+  s.files        += Dir['**/*']
   s.files.reject! { |f| f.start_with?('site-web/') }
-  s.test_files   = Dir['test/**/*', 'spec/**/*', 'features/**/*']
-  s.executables  = ['ceedling'] # bin/ceedling
+
+  s.test_files = Dir['test/**/*', 'spec/**/*', 'features/**/*']
+  s.executables = ['ceedling'] # bin/ceedling
 
   s.require_paths = ["lib", "vendor/cmock/lib"]
 end
