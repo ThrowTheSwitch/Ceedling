@@ -1,18 +1,21 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-**Ceedling 1.1.0** is nearing release.
+**Ceedling 1.1.0** is the latest and greatest.
 
-[_Changelog_](docs/Changelog.md) is up to date. [_Release Notes_][release-notes], 
-[_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues] are nearly 
-completed. See [_Releases_](https://github.com/ThrowTheSwitch/Ceedling/releases) 
-for the latest prerelease version.
+See [_Release Notes_][release-notes], [_Changelog_](docs/Changelog.md), 
+[_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues].
+
+See [🚀 Getting Started](#-getting-started) for installation and new 
+project set up.
 
 **New goodies:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
 from the same source module in a single test file and enables testing of 
 `static` and `inline` functions without modifying source code.
-* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
+* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site]
+  available both online and as a local bundle exported from Ceedling’s 
+  command line.
 * More and expanded [example projects][example-projects].
 * New stock plugins for [Valgrind memory checking][valgrind-plugin] and 
 [Cppcheck static analysis][cppcheck-plugin].
@@ -41,6 +44,24 @@ unit test suites for your C projects — even in tricky embedded systems.
 ⭐️ **Eager to just get going? Jump to 
 [📚 Documentation & Learning](#-documentation--learning) and
 [🚀 Getting Started](#-getting-started).**
+
+For a test suite project using the default toolchain `gcc`, Ceedling’s
+configuration file could be as simple as this:
+
+```yaml
+:project:
+  :build_root: project/build/
+
+:paths:
+  :test:
+    - tests/**
+  :source:
+    - source/**
+  :include:
+    - inc/**
+```
+
+To execute all your unit tests, you would run `ceedling test:all`. That‘s it!
 
 Ceedling works the way developers want to work. It is flexible and entirely
 command-line driven. It drives code generation and command line tools for you.
@@ -108,31 +129,30 @@ library builds & dependency management, and more.
 
 # 📦 Releases
 
-Ceedling release numbering follows [SemVer convention](https://semver.org). See the [_Getting Started_](#-getting-started) section for installation details.
+Ceedling release numbering follows [SemVer convention](https://semver.org). See the [_Getting Started_](#-getting-started) section for installation details for both official releases and prereleases.
 
 ## Official releases
-Releases have a version number `#.#.#`.
+Releases have a version number `#.#.#` (`<major>.<minor>.<patch>`). Production systems and automated tooling should rely on official releases and not prereleases.
 
 Official releases are available as:
 
-1. A prepackaged Ruby Gem available through the public [RubyGems registry](https://rubygems.org/gems/ceedling).
+1. A prepackaged Ruby Gem available through the public [RubyGems repository](https://rubygems.org/gems/ceedling) (installable with `gem install ceedling` at the command line).
 1. Ready-to-run [Docker images](https://hub.docker.com/u/throwtheswitch).
 
-The latest `<major>.<minor>` version is officially supported with limited support for earlier minor releases.
+The latest `<major>.<minor>` version is supported with limited support for earlier minor releases.
+
+Bug fix patches `<major>.<minor>.<patch>` are official releases. Generally speaking, if you have adopted a `<major>.<minor>` release, you should update to bug fix releases when available.
 
 All official releases are retained historically.
 
+In rare cases of fatal flaws, severe security vulnerabilities, etc. an official release may be pulled.
+
 ## Prereleases
-Prerelease versions include `pre` in their version numbering. Prereleases are only available as downloadable .gem files attached to [release listings](https://github.com/throwtheswitch/ceedling/releases). These require local installation steps including some basic dependencies installation.
+Prerelease versions include `pre` in their version numbering (`#.#.#-pre.#`). Prereleases are only available as downloadable .gem files attached to [release listings](https://github.com/throwtheswitch/ceedling/releases). These require local installation steps including some basic dependencies management.
 
-Prereleases are ephemeral and unsupported. Particularly in the case of significant bugs or considerable new development, earlier prereleases will be pulled. Prereleases should not be relied upon in production systems or automated tooling.
+Prereleases are ephemeral and will be pulled as development continues or bugs are found. Prereleases should not be relied upon in production systems or automated tooling. At an official release, all prior prereleases will be pulled.
 
-At an official release, all prior prereleases will be pulled.
-
-## Bug fix patch releases
-Bug fix patches `<major>.<minor>.<patch>` are official releases and can be relied upon for production systems or automated tooling.
-
-In rare cases of fatal flaws, severe security vulnerabilities, etc. a patch release may be pulled.
+Prereleases are not officially supported, but feedback through submitting issues is very much welcome. As much help as is practical will be offered to support those exercising prereleases.
 
 <br/>
 
