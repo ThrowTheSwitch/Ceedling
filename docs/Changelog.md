@@ -10,7 +10,7 @@ This changelog is complemented by three other documents:
 
 ---
 
-# [1.1.0] — Prerelease
+# [1.1.0] — 2026-07-16
 
 ## 🌟 Added
 
@@ -176,6 +176,8 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - _CeedlingPacket.md_ user manual (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
 - _PluginDevelopmentGuide.md_ (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
 
+---
+
 # [1.0.1] — 2025-01-30
 
 ## 💪 Fixed
@@ -194,6 +196,8 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - Restored `:use_mocks` default to `true` in Ceedling defaults to match documentation and other mocking defaults in template projects.
 - Resolved a preprocessing issue that could cause the content of a file having a similar filename to that of the file `#include`ing it to become mixed with that file.
 - additional documentation improvements
+
+---
 
 # [1.0.0] — 2025-01-01
 

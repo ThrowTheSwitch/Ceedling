@@ -8,16 +8,16 @@ These release notes are complemented by three other documents:
 
 ---
 
-# 1.1.0 — Prerelease
+# 1.1.0 — July 16, 2026
 
 ## 👀 Highlights
 
-1.1.0 adds several significant new features plus a number of bug fixes and other improvements. See [Changelog](Changelog.md) for a full list of new features, bug fixes, and improvements.
+1.1.0 adds several significant new features plus incorporates a number of bug fixes and other improvements. See [Changelog](Changelog.md) for a full list of new features, bug fixes, and improvements.
 
 The incomplete list of goodies:
 
 * A [Partial][partials-docs] allows a test to mix mocked and real functions from the same source module in a single test file and enables testing of `static` and `inline` functions without modifying source code.
-* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
+* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site] available both online and as a local bundle exported from Ceedling’s command line.
 * More and expanded [example projects][example-projects].
 * New stock plugins for [Valgrind memory checking][valgrind-plugin] and [Cppcheck static analysis][cppcheck-plugin].
 * The [GCov plugin][gcov-plugin]:
@@ -46,7 +46,7 @@ Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet b
 
 To avoid Ruby version and installation environment complications, consider using [the readymade MadScienceLab Docker images](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
 
-## 📖 Project Configuration Cheatsheet for 1.1.0 Changes
+## 📖 Configuration Cheatsheet for 1.1.0 Changes
 
 The following is not a complete project configuration. But, for those already familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling through the lens of a project configuration. To be clear, more has changed than what is referenced in this YAML blurb (see the Changelog).
 
@@ -94,35 +94,37 @@ The following is not a complete project configuration. But, for those already fa
 
 ### Sponsors
 
-  - [ThingamaByte, LLC](https://thingamabyte.com) - For continuing to nurture these projects and community with so much of their time.
-  - [Infineon Technologies AG](https://www.infineon.com/) - For sponsoring the long-awaited 'Partials" features.
+- [ThingamaByte, LLC](https://thingamabyte.com) — For continuing to nurture these projects and community with so much of their time.
+- [Infineon Technologies AG](https://www.infineon.com/) — For sponsoring the long-awaited [Partials][partials-doc] features.
 
 ### Major Code/Doc Contributors
 
 These individuals contributed significant features, bugfixes, and improvements.
 
-  - Michael Karlesky
-  - Mark VanderVoord
-  - Roland Stahn
-  - Alejandro Rosso
-  - Ross Smyth
-  - burakutkuc
-  - ml-physec
-  - Cory Todd
-  - Gavin Dunlap
-  - Dariqq
-  - James Browning
-  - David Beitey
-  - savashn
-  - bal-stan
-  - aditya
-  - Marquez, Humberto
+- Michael Karlesky
+- Mark VanderVoord
+- Roland Stahn
+- Alejandro Rosso
+- Ross Smyth
+- burakutkuc
+- ml-physec
+- Cory Todd
+- Gavin Dunlap
+- Dariqq
+- James Browning
+- David Beitey
+- savashn
+- bal-stan
+- aditya
+- Marquez, Humberto
 
 ### Also, thanks for your contributions!
 
 Artem Sharipov, Christer Fletcher, Costas Akrivoulis, Crt Mori, Dominik Loidolt, Ivan Kravets, Jacques Boivin, 
 James Raphael Tiovalen, Joshua Stone, Kiran Phalak, Lucas Saavedra Vaz, Matt Sullivan, Matthew Biddlestone, 
 Michael Dwan, Peter Backeman, Roland Marchand, pikammmmm, yahyayozo
+
+---
 
 # 1.0.1 - January 30, 2025
 
@@ -132,6 +134,8 @@ See [Changelog](Changelog.md) for a full list of bug fixes and improvements.
 
 The most significant issues addressed with this release are problems with preprocessor handling, particularly when discovering which header files are required for each test. If you were running into similar problems with `1.0.0`, we highly recommend this upgrade.
 
+---
+
 # 1.0.0 — January 01, 2025
 
 **This Ceedling release is probably the most significant since the project was first [posted to SourceForge in 2009][sourceforge].**
@@ -140,7 +144,7 @@ Ceedling now runs in Ruby 3. Builds can now run much faster than previous versio
 
 * See all the [Highlights](#-highlights) below for an overview of everything in this big release.
 * See the [Changelog](Changelog.md) for a detailed list of new features, fixes, and changes in this release.
-* We’ve included below a [project configuration cheatsheet](#-project-configuration-cheatsheet-for-100-changes) for those already familiar with Ceedling that want to understand the various configuration changes.
+* We’ve included below a [project configuration cheatsheet](#-configuration-cheatsheet-for-100-changes) for those already familiar with Ceedling that want to understand the various configuration changes.
 
 ## 🏴‍☠️ Avast, Breaking Changes, Ye Scallywags!
 
@@ -202,7 +206,7 @@ Kalle Møller, Peter Kempter, Luca Cavalli, Maksim Chichikalov, Marcelo Jo, Matt
 Olivier C. Larocque, Patrick Little, Richard Eklycke, Serjche, Spencer Russell, Stavros Vagionitis, Steven Huang,
 Toby Mole, Tom Hotston, Yuanqing Liu, afacotti, ccarrizosa, diachini, Steven Willard
 
-## 📖 Project Configuration Cheatsheet for 1.0.0 Changes
+## 📖 Configuration Cheatsheet for 1.0.0 Changes
 
 The following is not a complete project configuration. But, for those already familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling through the lens of a project configuration.
 
