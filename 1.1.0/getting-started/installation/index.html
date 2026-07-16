@@ -4281,66 +4281,77 @@
 
 <h1 id="ceedling-installation-set-up">Ceedling Installation &amp; Set Up</h1>
 <p><strong>How Exactly Do I Get Started?</strong></p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>You will see various references to Ruby. You do not need to know Ruby
+to use Ceedling! Ruby is simply the implementation language and 
+software packaging for Ceedling as a tool.</p>
+<p>Once Ceedling is installed, you interact with it as a command line
+utility (<code>ceedling ...</code>).</p>
+</div>
 <p>You have two good options for installing and running Ceedling:</p>
 <ol>
 <li>The Ceedling Ruby Gem</li>
 <li>Prepackaged <em>MadScienceLab</em> Docker images</li>
 </ol>
-<p>The simplest way to get started with a local installation is to install 
-Ceedling as a Ruby gem. Gems are simply prepackaged Ruby-based software.
-Other options exist, but the Ceedling Gem is the best option for a local
-installation. However, you will also need a compiler toolchain (e.g. GNU
-Compiler Collection) plus any supporting tools used by any plugins you
-enabled.</p>
+<p>One way to get started is to 
+<a href="#installation-as-a-ruby-gem">install Ceedling as a Ruby gem</a>. Gems are 
+simply prepackaged Ruby-based software. Other options exist, but the 
+Ceedling Gem is perhaps the simplest option for local installation.
+However, please note that you will also need a compiler toolchain 
+installed (e.g. GCC — GNU Compiler Collection) plus any supporting tools 
+used by any Ceedling plugins you enable.</p>
 <p>If you are familiar with the virtualization technology Docker, our premade
 Docker images will get you started with Ceedling and all the accompanying
-tools lickety split. Install Docker, pull down one of the <em>MadScienceLab</em>
-images and go.</p>
+tools lickety split. Install Docker, pull down one of the
+<a href="#madsciencelab-docker-images"><em>MadScienceLab</em></a> images and go.</p>
 <h2 id="installation-as-a-ruby-gem">Installation as a <a href="http://docs.rubygems.org/read/chapter/1">Ruby Gem</a></h2>
 <ol>
-<li>
-<p><a href="http://www.ruby-lang.org/en/downloads/">Download and install Ruby</a>. Ruby 3 is required.</p>
-</li>
-<li>
-<p>Use Ruby's command line gem package manager to install Ceedling from
-   the <a href="http://rubygems.org">RubyGems repository</a>: <code>gem install ceedling</code>.</p>
-<ul>
+<li><a href="http://www.ruby-lang.org/en/downloads/">Download and install Ruby</a>. Ruby 3 is required.</li>
+<li>Use Ruby‘s command line gem package manager to install Ceedling from
+   the public <a href="http://rubygems.org">RubyGems repository</a>: <code>gem install ceedling</code>.<ul>
 <li>Unity and CMock come along with Ceedling at no extra charge.</li>
-<li>Installing from the RubyGems repo will also install Ceedling's 
- dependencies.</li>
+<li>Installing from the official RubyGems repository will automatically 
+  install Ceedling‘s dependencies.</li>
 </ul>
 </li>
-<li>Execute Ceedling at the command line to export an example project
-   or create an empty Ceedling project in your filesystem (executing
-   <code>ceedling help</code> first is, well, helpful).</li>
+<li>Use [Ceedling’s command line][command-line] to export an example 
+   project (<code>ceedling examples</code> for a listing) or create an empty Ceedling 
+   project with <code>ceedling new</code>. Of course, executing <code>ceedling help</code> first 
+   is, well, helpful.</li>
 </ol>
+<p>[command-line]: </p>
 <h3 id="gem-install-notes">Gem install notes</h3>
 <p>Steps 1–2 above are a one-time affair for your local environment. 
 When steps 1-2 are completed once, only step 3 is needed for each new 
-code projects.</p>
+code project.</p>
 <p>If you are working with prerelease versions of Ceedling or some other 
 off-the-beaten-path installation scenario, you may want to directly 
 install the Ceedling .gem file attached to any of the Github releases.
 No problem.</p>
 <p>The steps are similar to the preceding with two changes:</p>
 <ol>
-<li><code>gem install --local &lt;ceedling .gem filepath&gt;</code></li>
+<li><code>gem install --local &lt;ceedling .gem filepath&gt; --no-document</code></li>
 <li>Any missing dependencies must be manually installed before 
-installation of the local Ceedling gem will succeed. A local 
-installation attempt will complain about any missing dependencies. 
-Simply <code>gem install</code> them by name.</li>
+   installation of the local Ceedling gem will succeed. A local 
+   installation attempt will complain about any missing dependencies. 
+   Simply <code>gem install</code> them by name.</li>
 </ol>
 <h2 id="madsciencelab-docker-images"><em>MadScienceLab</em> Docker Images</h2>
 <p>As an alternative to local installation, fully packaged Docker images containing Ruby, Ceedling, the GCC toolchain, and more are also available. <a href="https://www.ibm.com/topics/docker">Docker</a> is a virtualization technology that provides self-contained software bundles that are a portable, well-managed alternative to local installation of tools like Ceedling.</p>
-<p>Four Docker image variants containing Ceedling and supporting tools exist. These four images are available for both Intel and ARM host platforms (Docker does the right thing based on your host environment). The latter includes ARM Linux and Apple's M-series macOS devices.</p>
+<p>Four Docker image variants containing Ceedling and supporting tools exist. These four images are available for both Intel and ARM host platforms (Docker does the right thing based on your host environment). The latter includes ARM Linux and Apple‘s M-series macOS devices.</p>
 <ol>
 <li><strong><em><a href="https://hub.docker.com/repository/docker/throwtheswitch/madsciencelab">MadScienceLab</a></em></strong>. This image contains Ruby, Ceedling, CMock, Unity, CException, the GNU Compiler Collection (gcc), and a handful of essential C libraries and command line utilities.</li>
-<li><strong><em><a href="https://hub.docker.com/repository/docker/throwtheswitch/madsciencelab-plugins">MadScienceLab Plugins</a></em></strong>. This image contains all of the above plus the command line tools that Ceedling's built-in plugins rely on. Naturally, it is quite a bit larger than option (1) because of the additional tools and dependencies.</li>
+<li><strong><em><a href="https://hub.docker.com/repository/docker/throwtheswitch/madsciencelab-plugins">MadScienceLab Plugins</a></em></strong>. This image contains all of the above plus the command line tools that Ceedling‘s built-in plugins rely on. Naturally, it is quite a bit larger than option (1) because of the additional tools and dependencies.</li>
 <li><strong><em><a href="https://hub.docker.com/repository/docker/throwtheswitch/madsciencelab-arm-none-eabi">MadScienceLab ARM</a></em></strong>. This image mirrors (1) with the compiler toolchain replaced with the GNU <code>arm-none-eabi</code> variant. </li>
 <li><strong><em><a href="https://hub.docker.com/repository/docker/throwtheswitch/madsciencelab-arm-none-eabi-plugins">MadScienceLab ARM + Plugins</a></em></strong>. This image is (3) with the addition of all the complementary plugin tooling just like (2) provides.</li>
 </ol>
 <p>See the Docker Hub pages linked above for more documentation on these images.</p>
 <p>Just to be clear here, most users of the <em>MadScienceLab</em> Docker images will probably care about the ability to run unit tests on your own host. If you are one of those users, no matter what host platform you are on — Intel or ARM — you'll want to go with (1) or (2) above. The tools within the image will automatically do the right thing within your environment. Options (3) and (4) are most useful for specialized cross-compilation scenarios.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If you are handy with Docker and want to create your own Docker image, please see the <a href="https://github.com/ThrowTheSwitch/MadScienceLabDocker/releases">MadScienceLab downloadable build artifacts</a> at the source repository as a reference. The .zip archives for each release include the Dockerfiles and assets we used to build the MadScienceLab Docker images.</p>
+</div>
 <h3 id="usage-basics">Usage basics</h3>
 <p>To use a <em>MadScienceLab</em> image from your local terminal:</p>
 <ol>
@@ -4360,9 +4371,9 @@ Simply <code>gem install</code> them by name.</li>
 <p>Note that all of these somewhat lengthy command lines lend themselves well to being wrapped up in simple helper scripts specific to your project and directory structure.</p>
 <h3 id="run-as-an-interactive-terminal">Run as an interactive terminal</h3>
 <p>When the container launches as shown below, it will drop you into a Z-shell command line that has access to all the tools and utilities available within the container. In this usage, the Docker container becomes just another terminal, including ending its execution with <code>exit</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="w"> </span>&gt;<span class="w"> </span>docker<span class="w"> </span>run<span class="w"> </span>-it<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>/my/local/project/path:/home/dev/project<span class="w"> </span>throwtheswitch/madsciencelab-plugins:1.0.0
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="w"> </span>&gt;<span class="w"> </span>docker<span class="w"> </span>run<span class="w"> </span>-it<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>/my/local/project/path:/home/dev/project<span class="w"> </span>throwtheswitch/madsciencelab-plugins:1.1.0
 </code></pre></div>
-<p>Once the <em>MadScienceLab</em> container's command line is available, to run Ceedling, execute it just as you would after installing Ceedling locally:</p>
+<p>Once the <em>MadScienceLab</em> container‘s command line is available, to run Ceedling, execute it just as you would after installing Ceedling locally:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w"> </span>~/project<span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span><span class="nb">help</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="w"> </span>~/project<span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>new<span class="w"> </span>...
@@ -4371,10 +4382,10 @@ Simply <code>gem install</code> them by name.</li>
 </code></pre></div>
 <h3 id="run-as-a-command-line-utility">Run as a command line utility</h3>
 <p>Alternatively, you can run Ceedling through the <em>MadScienceLab</em> Docker container directly from the command line as a command line utility. The general pattern is immediately below.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w"> </span>&gt;<span class="w"> </span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>/my/local/project/path:/home/dev/project<span class="w"> </span>throwtheswitch/madsciencelab-plugins:1.0.0<span class="w"> </span>&lt;Ceedling<span class="w"> </span><span class="nb">command</span><span class="w"> </span>line&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w"> </span>&gt;<span class="w"> </span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>/my/local/project/path:/home/dev/project<span class="w"> </span>throwtheswitch/madsciencelab-plugins:1.1.0<span class="w"> </span>&lt;Ceedling<span class="w"> </span><span class="nb">command</span><span class="w"> </span>line&gt;
 </code></pre></div>
 <p>As a specific example, to run all tests in a suite, the command line would be this:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="w"> </span>&gt;<span class="w"> </span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>/my/local/project/path:/home/dev/project<span class="w"> </span>throwtheswitch/madsciencelab-plugins:1.0.0<span class="w"> </span>ceedling<span class="w"> </span>test:all
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="w"> </span>&gt;<span class="w"> </span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>/my/local/project/path:/home/dev/project<span class="w"> </span>throwtheswitch/madsciencelab-plugins:1.1.0<span class="w"> </span>ceedling<span class="w"> </span>test:all
 </code></pre></div>
 <p>In this usage, the container starts, executes Ceedling, and then ends.</p>
 <h2 id="getting-started-after-installation">Getting Started after installation</h2>
