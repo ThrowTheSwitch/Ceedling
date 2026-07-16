@@ -40,8 +40,8 @@ class ToolValidator
     executable = tool[:executable].dup()
 
     # Handle a missing :executable
-    if (executable.nil? or executable.empty?)
-      error = "Tool #{name} is missing :executable in its configuration."
+    if (executable.nil?)
+      error = "Tool #{name} is missing :executable in its configuration!"
       if !boom
         @loginator.log( error, Verbosity::ERRORS )
         return false 
