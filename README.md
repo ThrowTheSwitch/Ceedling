@@ -16,6 +16,8 @@ from the same source module in a single test file and enables testing of
 * Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site]
   available both online and as a local bundle exported from Ceedling’s 
   command line.
+* A new [Discourse community forum](https://throwtheswitch.discourse.group) to 
+  supersede the old, spammy Google Group and handful of disparate support channels.
 * More and expanded [example projects][example-projects].
 * New stock plugins for [Valgrind memory checking][valgrind-plugin] and 
 [Cppcheck static analysis][cppcheck-plugin].
@@ -23,7 +25,8 @@ from the same source module in a single test file and enables testing of
    * _Finally_ supports coverage reports for all sources.
    * Adds support for Modified Condition / Decision Coverage.
 * Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
-* Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases (support was temporarily removed with 1.0.0).
+* Ceedling’s test preprocessing is once again compatible with Unity’s 
+  parameterized test cases (support was temporarily removed with 1.0.0).
 * Incorporates the latest updates to [CMock] and [Unity].
 
 [partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
@@ -161,7 +164,7 @@ Prereleases are not officially supported, but feedback through submitting issues
 * Found a bug or want to suggest a feature?
   **[Submit an issue][ceedling-issues]** at this repo.
 * Trying to understand features or solve a testing problem? Hit the
-  **[discussion forums][forums]**.
+  **[Discourse forums][forums]**.
 * Paid training, customizations, and support contracts are available through 
   **[Ceedling Assist][ceedling-assist]**.
 
@@ -172,7 +175,7 @@ Please familiarize yourself with our guidelines for **[contributing](docs/CONTRI
 Yes, work has begun on **[Ceedling Certified][ceedling-certified]**, a validated version of Ceedling to meet the needs of industry software certification.
 
 [ceedling-issues]: https://github.com/ThrowTheSwitch/Ceedling/issues
-[forums]: https://www.throwtheswitch.org/forums
+[forums]: https://throwtheswitch.discourse.group
 [ceedling-certified]: https://www.thingamabyte.com/ceedlingcertified
 
 <br/>
