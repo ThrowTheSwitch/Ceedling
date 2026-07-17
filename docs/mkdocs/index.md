@@ -1,18 +1,23 @@
 # Ceedling Packet
 
 Ceedling is a fancypants build system that greatly simplifies building 
-C projects. While it can certainly build release targets, it absolutely 
+C projects. While it can certainly build release targets, it 
 shines at running unit test suites.
-
-Ceedling and its suite of frameworks, including Unity and CMock, were developed 
-for use on platforms from heavy duty workstations to teeny tiny microcontrollers. 
-Features handy for low-level development have made these tools popular with 
-embedded systems developers.
 
 !!! tip "New to Ceedling?"
     <img src="assets/images/ceedling.svg" width="130"><br/>
     Jump straight to the [Quick Start][quick-start] — installation,
     project set up, and your first build tasks all in one place.
+
+In essence, Ceedling is a project configuration in YAML and a command line
+tool that executes from it. Code conventions and supporting features produce 
+executable test suites and/or release artifacts.
+Plugins provide reporting, code coverage, static analysis, and more.
+
+Ceedling and its suite of frameworks, including Unity and CMock, were developed 
+for use on platforms from heavy duty workstations to teeny tiny microcontrollers. 
+Features handy for low-level development have made these tools popular with 
+embedded systems developers.
 
 !!! feature "New in Ceedling 1.1.0 — Partials"
     A [_Partial_](testing-guide/partials/index.md) is your C code sliced and diced
@@ -22,6 +27,8 @@ embedded systems developers.
 
     👀 See the [Changelog](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md)
     for all the new goodness in 1.1.0.
+
+---
 
 ## Overview
 

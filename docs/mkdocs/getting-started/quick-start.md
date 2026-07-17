@@ -1,5 +1,25 @@
 # Quick Start
 
+For a test suite project using the default toolchain `gcc`, Ceedling’s
+configuration file could be as simple as this:
+
+```yaml
+:project:
+  :build_root: project/build/
+
+:paths:
+  :test:
+    - tests/**
+  :source:
+    - source/**
+  :include:
+    - inc/**
+```
+
+To execute all your unit tests, you would run `ceedling test:all`.
+
+---
+
 ## Handy Documentation
 
 * [Installation](installation.md)
@@ -8,8 +28,6 @@
 * [Simple Ceedling project file](../overview/build-system.md#simple-sample-project-file)
 * [Ceedling at the command line](command-line.md)
 * [All your project configuration file options](../configuration/index.md)
-
----
 
 ## Quick Start Steps
 
