@@ -18,7 +18,7 @@ This changelog is complemented by three other documents:
 
 [A Partial](https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/) is a new feature that allows a test author to work with portions of the same C module under test differently from within the same test file.
 
-With Partials, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see #936). Partials also allow testing of `static` and `inline` functions with no modification of your source code under test.
+With Partials, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see [#936](https://github.com/ThrowTheSwitch/Ceedling/issues/936)). Partials also allow testing of `static` and `inline` functions with no modification of your source code under test.
 
 💲 The Partials feature made possible thanks to a generous corporate sponsor via a [Ceedling Assist](https://www.thingamabyte.com/ceedling) engagement.
 
@@ -67,7 +67,7 @@ _NOTE:_ The `ReportGenerator` tool does not support extracting MC/DC even if tho
 
 #### Code coverage for all source files, not just those under test
 
-This feature addition resolves a longstanding feature request for coverage reporting (#329 and others).
+This feature addition resolves a longstanding feature request for coverage reporting ([#329](https://github.com/ThrowTheSwitch/Ceedling/issues/329) and others).
 
 The Gcov plugin now includes an `:untested_sources` option that controls how source files not exercised by any test are handled in coverage reporting — from full omission (`:ignore`), to a warning-level filepath listing of files not present in the coverage report (`:list`), to full compile-for-0%-coverage (`:compile`). The default is `:list`.
 
@@ -96,41 +96,41 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 
 ## 💪 Fixed
 
-- #1011 Performance Improvements.
-- #1014 Line Continuations not working in test name.
-- #1024 Fixed bug in options-handling for warnings log report.
+- [#1011](https://github.com/ThrowTheSwitch/Ceedling/issues/1011) Performance Improvements.
+- [#1014](https://github.com/ThrowTheSwitch/Ceedling/issues/1014) Line Continuations not working in test name.
+- [#1024](https://github.com/ThrowTheSwitch/Ceedling/issues/1024) Fixed bug in options-handling for warnings log report.
 - Now properly reports timing for single-batch builds (i.e. non-parallel builds).
 - Type handling in example `temp_sensor` project compatible with C23 (and previous C standards).
-- #1120 Fixed (by removal) an overly “helpful” holdover from Ceedling’s earliest days causing certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
-- #1162 Fixes to Partials handling for file encoding / multi-byte characters (e.g. ©) in comment blocks.
-- #1160 Proper handling of locales and file encoding.
-- #1135 Fixed test fixture results handling to properly process Unity’s colored output when enabled.
-- #1114 Fixed `:default_tasks` handling.
-- #1144 Fixed flags for release build linking.
-- #1169 Fixed linking with :libraries ↳ :release.
-- #1112 Fixed (via PR #1171) test failures incorrectly returning exit code 0 when the stdout pretty printer plugin is disabled ([Cory Todd](https://github.com/corytodd)).
+- [#1120](https://github.com/ThrowTheSwitch/Ceedling/issues/1120) Fixed (by removal) an overly “helpful” holdover from Ceedling’s earliest days causing certain temporary and backup files to be cleaned that were needed by the user’s IDE and text editing tooling.
+- [#1162](https://github.com/ThrowTheSwitch/Ceedling/issues/1162) Fixes to Partials handling for file encoding / multi-byte characters (e.g. ©) in comment blocks.
+- [#1160](https://github.com/ThrowTheSwitch/Ceedling/issues/1160) Proper handling of locales and file encoding.
+- [#1135](https://github.com/ThrowTheSwitch/Ceedling/issues/1135) Fixed test fixture results handling to properly process Unity’s colored output when enabled.
+- [#1114](https://github.com/ThrowTheSwitch/Ceedling/issues/1114) Fixed `:default_tasks` handling.
+- [#1144](https://github.com/ThrowTheSwitch/Ceedling/issues/1144) Fixed flags for release build linking.
+- [#1169](https://github.com/ThrowTheSwitch/Ceedling/issues/1169) Fixed linking with :libraries ↳ :release.
+- [#1112](https://github.com/ThrowTheSwitch/Ceedling/issues/1112) Fixed (via [PR #1171](https://github.com/ThrowTheSwitch/Ceedling/pull/1171)) test failures incorrectly returning exit code 0 when the stdout pretty printer plugin is disabled ([Cory Todd](https://github.com/corytodd)).
 - Restored build failure registration and final build failure summary. Replaced test build failures by exception with build failure registration.
 
 ### Mixins
-- #1128 Command line mixin precedence.
+- [#1128](https://github.com/ThrowTheSwitch/Ceedling/issues/1128) Command line mixin precedence.
 - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
 
 ### `#include`s handling and preprocessing
 - Extensive improvements throughout.
-- PR #1126 Fix for race condition in cache handling of `#include` listings in YAML files.
-- #1015 Probing toolchain for presence of preprocessor directives-only ability.
-- #1085 Fix relative `#include` path handling that broke test build convention.
-- #358 Mocks with relative path in `#include` directive.
-- PR #1056 Fix for extracting `#include` directive filenames that contain dashes.
-- #1127 Fixes to path handling in `#include` directives.
-- #1158 Fixes for `#include` filtering in test runner generation.
+- [PR #1126](https://github.com/ThrowTheSwitch/Ceedling/pull/1126) Fix for race condition in cache handling of `#include` listings in YAML files.
+- [PR #1015](https://github.com/ThrowTheSwitch/Ceedling/pull/1015) Probing toolchain for presence of preprocessor directives-only ability.
+- [#1085](https://github.com/ThrowTheSwitch/Ceedling/issues/1085) Fix relative `#include` path handling that broke test build convention.
+- [#358](https://github.com/ThrowTheSwitch/Ceedling/issues/358) Mocks with relative path in `#include` directive.
+- [PR #1056](https://github.com/ThrowTheSwitch/Ceedling/pull/1056) Fix for extracting `#include` directive filenames that contain dashes.
+- [#1127](https://github.com/ThrowTheSwitch/Ceedling/issues/1127) Fixes to path handling in `#include` directives.
+- [#1158](https://github.com/ThrowTheSwitch/Ceedling/issues/1158) Fixes for `#include` filtering in test runner generation.
 
 ### GCov plugin
 - `:gcov` section of `:flags` is able to use filename matchers again (like `:test` section).
-- #1115 Fixed Gcov plugin for Gcovr configuration file handling.
-- #1161 Fixed “Found no coverage results” when system headers are processed by coverage.
-- #1170 GCovr summary not passed through to NORMAL logging at end of a GCov plugin build.
-- #1081 Fixes for Gcovr summary cooperating with coverage threshold failures.
+- [#1115](https://github.com/ThrowTheSwitch/Ceedling/issues/1115) Fixed Gcov plugin for Gcovr configuration file handling.
+- [#1161](https://github.com/ThrowTheSwitch/Ceedling/issues/1161) Fixed “Found no coverage results” when system headers are processed by coverage.
+- [#1170](https://github.com/ThrowTheSwitch/Ceedling/issues/1170) GCovr summary not passed through to NORMAL logging at end of a GCov plugin build.
+- [#1081](https://github.com/ThrowTheSwitch/Ceedling/issues/1081) Fixes for Gcovr summary cooperating with coverage threshold failures.
 - Prevention of coverage corruption during `ReportGenerator` reporting runs.
 
 ## ⚠️ Changed
@@ -140,7 +140,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - Resolved ambiguity in updated `ceedling new` handling from 0.31.1 to 1.0.0.
 - Release build logging now matches test build logging.
 - Fixes for typos and grammar in documentation and logging.
-- Added documentation / commented sample in example _project.yml_ for CMock `:treat_inlines` inline function patterns option (PR #1096).
+- Added documentation / commented sample in example _project.yml_ for CMock `:treat_inlines` inline function patterns option ([PR #1096](https://github.com/ThrowTheSwitch/Ceedling/pull/1096)).
 - Integrates latest [Unity](https://github.com/ThrowTheSwitch/Unity) ([2.7.0](https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityChangeLog.md)).
 - Integrates latest [CMock](https://github.com/ThrowTheSwitch/CMock) ([2.7.0](https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMockChangeLog.md)).
 
@@ -149,7 +149,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - `:gdb` option captures a full log file from `gdb` output and provides that filepath in the test case crash report.
 
 ### Mixins
-- PR #1003 improvements for Mixin merges — clearer logging and edge case handling.
+- [PR #1003](https://github.com/ThrowTheSwitch/Ceedling/pull/1003) improvements for Mixin merges — clearer logging and edge case handling.
 - Added warning logging if a Mixin contains mixins (nesting is not supported).
 - Mixins now merge list content according to mixin priority. In all cases but one, a higher priority mixin inserts its list content before the content of the existing list to which it is merging. In the case of `:tools` `:arguments` lists, insertion occurs at the end of the arguments list to enable the typical CLI convention of rightmost argument having the highest priority.
 
@@ -182,17 +182,17 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 
 ## 💪 Fixed
 
-- `#978` -- Ceedling attempts to link source files that are commented out and/or removed by preprocessor directives
-- `#979` -- FFF plugin generates "warning: already initialized constant CMock" on some platforms
-- `#980` -- FFF original plugin should not be part of release build (le sigh)
-- `#981` -- Ceedling could not find header file to mock when using preprocessor
-- `#982` -- Ceedling did not inject required header file into mock when using preprocessor
-- `#985` -- Macros not being properly hidden from CMock’s parser when using preprocessor
-- `#988` -- Parsing of `TEST_SOURCE_FILE` did not support special characters (like `.`) in filenames
-- `#888` & `#977` -- Unicode characters produce crashes in various places
-- `#996` -- Improved handling and documentation of module generator path options
-- `#998` -- FFF plugin missing required stringio
-- `#1005` -- Additional handling of preprocessing extraction improvements
+- [#978](https://github.com/ThrowTheSwitch/Ceedling/issues/978) -- Ceedling attempts to link source files that are commented out and/or removed by preprocessor directives
+- [#979](https://github.com/ThrowTheSwitch/Ceedling/issues/979) -- FFF plugin generates "warning: already initialized constant CMock" on some platforms
+- [#980](https://github.com/ThrowTheSwitch/Ceedling/issues/980) -- FFF original plugin should not be part of release build (le sigh)
+- [#981](https://github.com/ThrowTheSwitch/Ceedling/issues/981) -- Ceedling could not find header file to mock when using preprocessor
+- [#982](https://github.com/ThrowTheSwitch/Ceedling/issues/982) -- Ceedling did not inject required header file into mock when using preprocessor
+- [#985](https://github.com/ThrowTheSwitch/Ceedling/issues/985) -- Macros not being properly hidden from CMock’s parser when using preprocessor
+- [#988](https://github.com/ThrowTheSwitch/Ceedling/issues/988) -- Parsing of `TEST_SOURCE_FILE` did not support special characters (like `.`) in filenames
+- [#888](https://github.com/ThrowTheSwitch/Ceedling/issues/888) & [#977](https://github.com/ThrowTheSwitch/Ceedling/issues/977) -- Unicode characters produce crashes in various places
+- [#996](https://github.com/ThrowTheSwitch/Ceedling/issues/996) -- Improved handling and documentation of module generator path options
+- [#998](https://github.com/ThrowTheSwitch/Ceedling/issues/998) -- FFF plugin missing required stringio
+- [PR #1005](https://github.com/ThrowTheSwitch/Ceedling/pull/1005) -- Additional handling of preprocessing extraction improvements
 - Restored `:use_mocks` default to `true` in Ceedling defaults to match documentation and other mocking defaults in template projects.
 - Resolved a preprocessing issue that could cause the content of a file having a similar filename to that of the file `#include`ing it to become mixed with that file.
 - additional documentation improvements
