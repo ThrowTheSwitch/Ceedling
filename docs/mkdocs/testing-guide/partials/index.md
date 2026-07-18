@@ -4,23 +4,25 @@ A _Partial_ is your C code sliced and diced to expose elements for testing
 that you could not otherwise access without rewriting your source code. 
 Think of Partials as a unit testing scalpel.
 
-Partials are useful when a module under test contains:
+Partials are useful when you need to test:
 
-* **`static` or `inline` functions** — These become accessible within 
-  your test code.
+* **`static` or `inline` functions** — These become accessible to 
+  your test code without modifying your source.
 * **File-scoped `static` variables** — The `static` keyword is stripped, 
-  and the variable is automatically made `extern` for easy access within 
-  your test code.
+  and the variable is automatically made `extern` for your test code 
+  with no changes to the source under test.
 * **Function-scoped `static` variables** — These are promoted from
   function scope to module scope so they can be accessed in your
-  test code. Apart from necessary renaming, this works identically to
-  file-scoped `static` variables.
-
-!!! warning "Limitations of Partials"
-    Partials are new to Ceedling with 1.1.0. Carving up C code is tricky
-    business. Complex code _may_ break Ceedling’s lexing or its assumptions 
-    on symbol ordering. Some issues may be [bugs to be reported](../../help.md) 
-    while others may be complexities that Partials are simply unable to resolve.
+  test code just like file-scoped `static` variables.
+* **Same-module mocked functions** — You can mix and match tested and 
+  mocked functions from the same source module. Partials allow mocking 
+  functions inside a module that are called by other functions inside 
+  the same module.
+  
+!!! tip
+    See the [`wondrous_forest`](../../getting-started/example-projects/wondrous-forest.md) 
+    example available within Ceedling for a working example project 
+    demonstrating Partials in action.
 
 ---
 
@@ -68,6 +70,13 @@ Partials are useful when a module under test contains:
     via Partials.
 
 </div>
+
+!!! warning "Limitations of Partials"
+    Partials are new to Ceedling with 1.1.0. Carving up C code is tricky
+    business. Complex code _may_ break Ceedling’s lexing or certain assumptions.
+    Some issues may be [bugs to be reported](../../help.md) while others may 
+    be complexities that Partials are simply unable to resolve.
+
 
 [overview]:        overview.md
 [conventions]:     conventions.md
