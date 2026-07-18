@@ -4070,24 +4070,26 @@
 <p>A <em>Partial</em> is your C code sliced and diced to expose elements for testing 
 that you could not otherwise access without rewriting your source code. 
 Think of Partials as a unit testing scalpel.</p>
-<p>Partials are useful when a module under test contains:</p>
+<p>Partials are useful when you need to test:</p>
 <ul>
-<li><strong><code>static</code> or <code>inline</code> functions</strong> — These become accessible within 
-  your test code.</li>
+<li><strong><code>static</code> or <code>inline</code> functions</strong> — These become accessible to 
+  your test code without modifying your source.</li>
 <li><strong>File-scoped <code>static</code> variables</strong> — The <code>static</code> keyword is stripped, 
-  and the variable is automatically made <code>extern</code> for easy access within 
-  your test code.</li>
+  and the variable is automatically made <code>extern</code> for your test code 
+  with no changes to the source under test.</li>
 <li><strong>Function-scoped <code>static</code> variables</strong> — These are promoted from
   function scope to module scope so they can be accessed in your
-  test code. Apart from necessary renaming, this works identically to
-  file-scoped <code>static</code> variables.</li>
+  test code just like file-scoped <code>static</code> variables.</li>
+<li><strong>Same-module mocked functions</strong> — You can mix and match tested and 
+  mocked functions from the same source module. Partials allow mocking 
+  functions inside a module that are called by other functions inside 
+  the same module.</li>
 </ul>
-<div class="admonition warning">
-<p class="admonition-title">Limitations of Partials</p>
-<p>Partials are new to Ceedling with 1.1.0. Carving up C code is tricky
-business. Complex code <em>may</em> break Ceedling’s lexing or its assumptions 
-on symbol ordering. Some issues may be <a href="../../help/">bugs to be reported</a> 
-while others may be complexities that Partials are simply unable to resolve.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>See the <a href="../../getting-started/example-projects/wondrous-forest/"><code>wondrous_forest</code></a> 
+example available within Ceedling for a working example project 
+demonstrating Partials in action.</p>
 </div>
 <hr />
 <div class="grid cards">
@@ -4130,6 +4132,13 @@ overview of directive macro categories.</p>
 via Partials.</p>
 </li>
 </ul>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Limitations of Partials</p>
+<p>Partials are new to Ceedling with 1.1.0. Carving up C code is tricky
+business. Complex code <em>may</em> break Ceedling’s lexing or certain assumptions.
+Some issues may be <a href="../../help/">bugs to be reported</a> while others may 
+be complexities that Partials are simply unable to resolve.</p>
 </div>
 <p><br/><br/></p>
 
