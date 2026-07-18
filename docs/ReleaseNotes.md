@@ -52,6 +52,10 @@ The following is not a complete project configuration. But, for those already fa
 
 ```yaml
 :project:
+  # Optional field that when set with a non-blank string adds a banner with project name
+  # to build logging and to plugin report fields that make use of it.
+  :name: "Q-36 Space Modulator"
+
   # When TRUE enables a significant new set of testing abilities (see Partials documentation).
   # Because this feature depends on test preprocessing and uses mocking, it automatically
   # enables those settings, overriding any user settings disabling them.
