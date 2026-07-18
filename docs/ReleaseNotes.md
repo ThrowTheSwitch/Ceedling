@@ -24,7 +24,7 @@ The incomplete list of goodies:
    * _Finally_ supports coverage reports for all sources.
    * Adds support for Modified Condition / Decision Coverage.
 * Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
-* Test preprocessing has undergone significant improvements (again) and is faster, more robust, and handles more testing needs.
+* Test preprocessing has undergone significant improvements (again) and is both more robust and handles more testing needs.
 * Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases (support was temporarily removed with 1.0.0).
 * Helpful logging at start up flagging automatic configuration changes or problematic combinations of settings.
 * Integrates latest [Unity](https://github.com/ThrowTheSwitch/Unity) ([2.7.0](https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityChangeLog.md)).
