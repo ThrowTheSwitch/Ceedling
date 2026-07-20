@@ -25,11 +25,12 @@ runs:
 
     # Build & Install Ceedling Gem
     # Plugin test suites require the installed gem
+    # Skip RDoc generation to speed up the build and remove language parsing failures
     - name: Build and install Ceedling gem
       shell: bash
       run: |
         gem build ceedling.gemspec
-        gem install --local ceedling-*.gem
+        gem install --local ceedling-*.gem --no-document
 
     - name: "Run tests on Ceedling plugin: FFF"
       shell: bash
