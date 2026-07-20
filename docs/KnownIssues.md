@@ -8,6 +8,12 @@ Known issues are complemented by three other documents:
 
 ---
 
+## All versions
+
+- Ceedling installation as a gem (variations of `gem install ceedling`) can fail if installation is allowed to run the default step of RDoc scanning. **Always use `--no-document` to opt out of the RDoc tool’s code scanning during Ceedling installation.** This documentation step is not needed by a user, and, more importantly, RDoc can cause installation failures due to bugs or language incompatibilities in RDoc’s custom language parser. The prepackaged _MadScienceLab_ Docker images avoid this issue entirely.
+
+---
+
 ## 1.1.0 — 2026-07-16
 
 1. The new internal pipeline as of 1.0.0 that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. The speed gains due to parallelization help make up for this. Future releases will concentrate on optimizing away duplication of build steps.

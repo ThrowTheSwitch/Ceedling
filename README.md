@@ -139,7 +139,7 @@ Releases have a version number `#.#.#` (`<major>.<minor>.<patch>`). Production s
 
 Official releases are available as:
 
-1. A prepackaged Ruby Gem available through the public [RubyGems repository](https://rubygems.org/gems/ceedling) (installable with `gem install ceedling` at the command line).
+1. A prepackaged Ruby Gem available through the public [RubyGems repository](https://rubygems.org/gems/ceedling) (installable with `gem install ceedling --no-document` at the command line).
 1. Ready-to-run [Docker images](https://hub.docker.com/u/throwtheswitch).
 
 The latest `<major>.<minor>` version is supported with limited support for earlier minor releases.

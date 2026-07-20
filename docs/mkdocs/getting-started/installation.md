@@ -30,9 +30,16 @@ tools lickety split. Install Docker, pull down one of the
 
 ## Installation as a [Ruby Gem][ruby-gem]
 
+!!! warning "Use `--no-document` for gem installation"
+    `--no-document` opts out of the RDoc tool’s automatic scanning of
+    Ceedling source code during installation. This documentation step is not 
+    needed by a user, and, more importantly, RDoc can cause installation 
+    failures due to bugs or language incompatibilities in RDoc’s custom 
+    language parser.
+
 1. [Download and install Ruby][ruby-install]. Ruby 3 is required.
 1. Use Ruby‘s command line gem package manager to install Ceedling from
-   the public [RubyGems repository][rubygems-repo]: `gem install ceedling`.
+   the public [RubyGems repository][rubygems-repo]: `gem install ceedling --no-document`.
     * Unity and CMock come along with Ceedling at no extra charge.
     * Installing from the official RubyGems repository will automatically 
       install Ceedling‘s dependencies.
