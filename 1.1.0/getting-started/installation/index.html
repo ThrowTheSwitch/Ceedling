@@ -4306,10 +4306,18 @@ Docker images will get you started with Ceedling and all the accompanying
 tools lickety split. Install Docker, pull down one of the
 <a href="#madsciencelab-docker-images"><em>MadScienceLab</em></a> images and go.</p>
 <h2 id="installation-as-a-ruby-gem">Installation as a <a href="http://docs.rubygems.org/read/chapter/1">Ruby Gem</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Use <code>--no-document</code> for gem installation</p>
+<p><code>--no-document</code> opts out of the RDoc tool’s automatic scanning of
+Ceedling source code during installation. This documentation step is not 
+needed by a user, and, more importantly, RDoc can cause installation 
+failures due to bugs or language incompatibilities in RDoc’s custom 
+language parser.</p>
+</div>
 <ol>
 <li><a href="http://www.ruby-lang.org/en/downloads/">Download and install Ruby</a>. Ruby 3 is required.</li>
 <li>Use Ruby‘s command line gem package manager to install Ceedling from
-   the public <a href="http://rubygems.org">RubyGems repository</a>: <code>gem install ceedling</code>.<ul>
+   the public <a href="http://rubygems.org">RubyGems repository</a>: <code>gem install ceedling --no-document</code>.<ul>
 <li>Unity and CMock come along with Ceedling at no extra charge.</li>
 <li>Installing from the official RubyGems repository will automatically 
   install Ceedling‘s dependencies.</li>
