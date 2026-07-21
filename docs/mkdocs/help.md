@@ -15,7 +15,7 @@
     Found a bug or want to suggest a feature? Open an issue in the Ceedling
     GitHub repository.
 
--   :material-forum: **[Discussion Forums][forums]**
+-   :material-forum: **[Discourse Forums][forums]**
 
     ---
 
@@ -40,7 +40,7 @@
 </div>
 
 [ceedling-issues]:       https://github.com/ThrowTheSwitch/Ceedling/issues
-[forums]:                https://www.throwtheswitch.org/forums
+[forums]:                https://throwtheswitch.discourse.group
 [ceedling-assist]:       https://www.thingamabyte.com/ceedlingassist
 [ThingamaByte]:          https://www.thingamabyte.com/
 [thingamabyte-ceedling]: https://www.thingamabyte.com/ceedling
