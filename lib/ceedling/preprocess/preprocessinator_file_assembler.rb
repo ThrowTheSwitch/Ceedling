@@ -60,15 +60,26 @@ class PreprocessinatorFileAssembler
     end
 
     # Bail out if no extras are required
-    return contents, [] if !extras
+    return contents, [], nil if !extras
 
-    # Try to find an #include guard in the first 2k of the file text.
-    # An #include guard is one macro from the original file we don't want to preserve if we can help it.
-    # We create our own #include guard in the header file we create.
-    # It's possible preserving the macro from the original file's #include guard could trip something up.
-    # Of course, it's also possible some header conditional compilation feature is dependent on it.
-    # ¯\_(ツ)_/¯
-    include_guard = @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath, 2048 ).clean_encoding )
+    # Try to find an #include guard in the first 2k of the file text. This name is used two ways:
+    #   1. To exclude the guard's own #define from the macro definitions preserved as "extras" below
+    #      (it would be redundant -- assemble_preprocessed_header_file writes its own guard).
+    #   2. Returned to the caller so the reconstructed header can reuse this exact guard name (see
+    #      assemble_preprocessed_header_file) instead of a synthetic one. Reusing the original name keeps
+    #      the reconstructed file recognized as "the same header" by the preprocessor wherever both the
+    #      original and a reconstructed/mocked copy are reachable in the same translation unit's include
+    #      graph. A mismatched synthetic guard was the root cause of enum/type redeclaration errors in
+    #      https://github.com/ThrowTheSwitch/Ceedling/issues/1064.
+    # If no guard is found (e.g. the header uses `#pragma once` or has none), `nil` flows through and
+    # assemble_preprocessed_header_file falls back to a synthetic guard, matching prior behavior.
+    include_guard =
+      @preprocessinator_reconstructor.extract_include_guard(
+        @file_wrapper.read(
+          filepath,
+          2048
+        ).clean_encoding
+      )
 
     if fallback
       msg = @reportinator.generate_module_progress(
@@ -104,7 +115,7 @@ class PreprocessinatorFileAssembler
       end
     end
 
-    return contents, (pragmas + macro_defs)
+    return contents, (pragmas + macro_defs), include_guard
   end
 
 
@@ -197,9 +208,12 @@ class PreprocessinatorFileAssembler
   end
 
 
-  def assemble_preprocessed_header_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
-    # Generate #include guard name for header files
-    guardname = FileWrapper.generate_include_guard( filename )
+  def assemble_preprocessed_header_file(filename:, preprocessed_filepath:, contents:, extras:, includes:, include_guard: nil)
+    # Reuse the original header's own #include guard name when we found one so that this
+    # reconstructed file is recognized as "the same header" by the preprocessor wherever both
+    # are reachable (e.g. once via a mock's shadowed copy, once via the original source path).
+    # Fall back to a synthetic guard derived from the filename otherwise.
+    guardname = include_guard || FileWrapper.generate_include_guard( filename )
 
     # Write contents of final preprocessed file a line at a time
     # ----------------------------------------------------------
