@@ -264,14 +264,15 @@ class Preprocessinator
     # `extras` are macro definitions, pragmas, etc. needed for the special case of mocking `inline` function declarations.
     # `extras` are empty for any cases other than mocking `inline` function declarations
     # (We don't want to increase our chances of a badly generated file--extracting extras could fail in complex files.)
-    contents, extras = @file_assembler.collect_mockable_header_file_contents( **arg_hash )
+    contents, extras, include_guard = @file_assembler.collect_mockable_header_file_contents( **arg_hash )
 
     arg_hash = {
       filename:              File.basename( filepath ),
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                extras,
-      includes:              includes                       
+      includes:              includes,
+      include_guard:         include_guard
     }
 
     # Create a reconstituted header file from preprocessing expansion and preserving any extras

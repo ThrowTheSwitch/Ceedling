@@ -60,7 +60,7 @@ class PreprocessinatorFileAssembler
     end
 
     # Bail out if no extras are required
-    return contents, [] if !extras
+    return contents, [], nil if !extras
 
     # Try to find an #include guard in the first 2k of the file text.
     # An #include guard is one macro from the original file we don't want to preserve if we can help it.
@@ -104,7 +104,7 @@ class PreprocessinatorFileAssembler
       end
     end
 
-    return contents, (pragmas + macro_defs)
+    return contents, (pragmas + macro_defs), include_guard
   end
 
 
@@ -197,9 +197,12 @@ class PreprocessinatorFileAssembler
   end
 
 
-  def assemble_preprocessed_header_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
-    # Generate #include guard name for header files
-    guardname = FileWrapper.generate_include_guard( filename )
+  def assemble_preprocessed_header_file(filename:, preprocessed_filepath:, contents:, extras:, includes:, include_guard: nil)
+    # Reuse the original header's own #include guard name when we found one so that this
+    # reconstructed file is recognized as "the same header" by the preprocessor wherever both
+    # are reachable (e.g. once via a mock's shadowed copy, once via the original source path).
+    # Fall back to a synthetic guard derived from the filename otherwise.
+    guardname = include_guard || FileWrapper.generate_include_guard( filename )
 
     # Write contents of final preprocessed file a line at a time
     # ----------------------------------------------------------
