@@ -10,6 +10,14 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.1.1] Prerelease
+
+## 💪 Fixed
+
+- [#1180](https://github.com/ThrowTheSwitch/Ceedling/issues/1180) `gcovr` illegal `--exclude` flag when Gcovr configuration file in use.
+
+---
+
 # [1.1.0] — 2026-07-16
 
 ## 🌟 Added
@@ -109,9 +117,11 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - [#1144](https://github.com/ThrowTheSwitch/Ceedling/issues/1144) Fixed flags for release build linking.
 - [#1169](https://github.com/ThrowTheSwitch/Ceedling/issues/1169) Fixed linking with :libraries ↳ :release.
 - [#1112](https://github.com/ThrowTheSwitch/Ceedling/issues/1112) Fixed (via [PR #1171](https://github.com/ThrowTheSwitch/Ceedling/pull/1171)) test failures incorrectly returning exit code 0 when the stdout pretty printer plugin is disabled ([Cory Todd](https://github.com/corytodd)).
+- [#1102](https://github.com/ThrowTheSwitch/Ceedling/issues/1102) Removing a test file using `:files` section causes crash.
 - Restored build failure registration and final build failure summary. Replaced test build failures by exception with build failure registration.
 
 ### Mixins
+- [#984](https://github.com/ThrowTheSwitch/Ceedling/issues/1128) Resolve differing "shapes" of `:defines` when Mixins in use.
 - [#1128](https://github.com/ThrowTheSwitch/Ceedling/issues/1128) Command line mixin precedence.
 - Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
 
