@@ -48,7 +48,9 @@ class SystemContext
       begin
         %w{BUNDLE_GEMFILE BUNDLE_BIN_PATH RUBYOPT}.each { |k| ENV.delete(k) }
         deploy_output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
-        deploy_output += `bundle install 2>&1`
+        # --prefer-local: Without it, Bundler resolves gems (e.g. `erb`) fresh from
+        # rubygems repository even when Ruby's default-gem copy satisfies the Gemfile constraint.
+        deploy_output += `bundle install --prefer-local 2>&1`
         raise VerificationFailed, "bundle install failed:\n#{deploy_output}" unless $?.success?
 
         verify = `bundle exec ruby -S ceedling version 2>&1`
