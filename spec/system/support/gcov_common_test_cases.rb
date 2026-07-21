@@ -246,11 +246,14 @@ module GcovCommonTestCases
           }
         })
 
-        output = `bundle exec ruby -S ceedling gcov:all 2>&1`
+        output = `bundle exec ruby -S ceedling gcov:all --verbosity=obnoxious 2>&1`
         if @gcov_reports.include? :gcovr
           # Config file honored (fix applied): strict mode exits non-zero on duplicate functions.
           # Config file overridden by Ceedling CLI (bug): merge-use-line-max exits 0.
           expect($?.exitstatus).not_to eq(0)
+
+          # No `--exclude` should appear on the gcovr command line when a config file is in use.
+          expect(output).not_to match(/--exclude/)
         end
       end
     end

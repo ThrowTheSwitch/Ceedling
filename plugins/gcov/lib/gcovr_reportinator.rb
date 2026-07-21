@@ -320,10 +320,12 @@ class GcovrReportinator < GcovReportinator
     # would see the already-mutated :report_exclude from the previous call and nest it.
     _opts = opts[GCOVR_SETTING_PREFIX.to_sym].dup
 
-    # Only auto-generate --exclude patterns when no config file is specified.
-    # A gcovr config file is authoritative; CLI args override it, so injecting
-    # auto-excludes would silently defeat the config file.
-    unless _opts[:config_file]
+    if _opts[:config_file]
+      # A gcovr config file is authoritative; CLI args override it, so injecting
+      # auto-excludes would silently defeat the config file. Force an empty array
+      # (not nil) so the tool executor omits the --exclude flag entirely.
+      _opts[:report_exclude] = []
+    else
       # Build array of --exclude patterns: user-provided value (if any) + internally-generated per-file patterns.
       # Splat via *Array() handles both a user-supplied string and a user-supplied array
       # without introducing a nested element into the exclusions list.
