@@ -260,4 +260,159 @@ RSpec.describe PreprocessinatorFileAssembler do
 
   end
 
+
+  # ===========================================================================
+  describe '#collect_mockable_header_file_contents' do
+  # ===========================================================================
+
+    let(:test) { 'test_module' }
+    let(:filepath) { '/src/module.h' }
+    let(:directives_only_filepath) { '/build/directives/module.h' }
+    let(:preprocessed_filepath) { '/build/full_expansion/module.h' }
+    let(:flags) { [] }
+    let(:defines) { [] }
+    let(:include_paths) { [] }
+
+    before :each do
+      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath)
+        .with(filepath, test).and_return(preprocessed_filepath)
+      allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return(:full_preprocessor)
+      allow(@tool_executor).to receive(:build_command_line).and_return('gcc -E ...')
+      allow(@tool_executor).to receive(:exec)
+      stub_file_open(preprocessed_filepath, "# 1 \"#{filepath}\"\nint x;\n", 'r')
+    end
+
+    def call_collect_mockable(fallback:, extras:)
+      subject.collect_mockable_header_file_contents(
+        test: test,
+        filepath: filepath,
+        directives_only_filepath: directives_only_filepath,
+        fallback: fallback,
+        flags: flags,
+        defines: defines,
+        include_paths: include_paths,
+        extras: extras
+      )
+    end
+
+    context 'when extras are not requested' do
+
+      it 'returns an empty extras list and a nil include guard' do
+        _contents, extras, include_guard = call_collect_mockable(fallback: true, extras: false)
+        expect(extras).to eq([])
+        expect(include_guard).to be_nil
+      end
+
+      it 'does not read the original file to look for an include guard' do
+        expect(@file_wrapper).not_to receive(:read)
+        call_collect_mockable(fallback: true, extras: false)
+      end
+
+    end
+
+    context 'when extras are requested' do
+
+      let(:header_with_guard) do
+        <<~C
+          #ifndef FOO_H
+          #define FOO_H
+
+          void foo(void);
+
+          #endif
+        C
+      end
+
+      it 'extracts the include guard from the original file in fallback mode' do
+        allow(@file_wrapper).to receive(:read).with(filepath, 2048).and_return(header_with_guard)
+        stub_file_open(filepath, header_with_guard, 'rb')
+
+        _contents, _extras, include_guard = call_collect_mockable(fallback: true, extras: true)
+        expect(include_guard).to eq('FOO_H')
+      end
+
+      it 'extracts the include guard from the original file in directives-only mode' do
+        allow(@file_wrapper).to receive(:read).with(filepath, 2048).and_return(header_with_guard)
+        stub_file_open(directives_only_filepath, header_with_guard, 'r')
+
+        _contents, _extras, include_guard = call_collect_mockable(fallback: false, extras: true)
+        expect(include_guard).to eq('FOO_H')
+      end
+
+      it 'returns a nil include guard when the original file has no #ifndef/#define guard pair' do
+        header_without_guard = "#pragma once\n\nvoid foo(void);\n"
+        allow(@file_wrapper).to receive(:read).with(filepath, 2048).and_return(header_without_guard)
+        stub_file_open(filepath, header_without_guard, 'rb')
+
+        _contents, _extras, include_guard = call_collect_mockable(fallback: true, extras: true)
+        expect(include_guard).to be_nil
+      end
+
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#assemble_preprocessed_header_file' do
+  # ===========================================================================
+
+    let(:preprocessed_filepath) { '/build/mocks/test_module/module.h' }
+
+    def stub_file_write(filepath)
+      output = StringIO.new
+      allow(@file_wrapper).to receive(:open).with(filepath, 'w').and_yield(output)
+      output
+    end
+
+    it 'writes the given include guard name as the #ifndef/#define/#endif guard' do
+      output = stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_header_file(
+        filename:              'module.h',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              ['void foo(void);'],
+        extras:                [],
+        includes:              [],
+        include_guard:         'FOO_H'
+      )
+
+      expect(output.string).to include("#ifndef FOO_H\n")
+      expect(output.string).to include("#define FOO_H\n")
+      expect(output.string).to include('#endif // FOO_H')
+    end
+
+    it 'derives a synthetic include guard from the filename when none is given' do
+      output = stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_header_file(
+        filename:              'module.h',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              ['void foo(void);'],
+        extras:                [],
+        includes:              []
+      )
+
+      expect(output.string).to include("#ifndef __CEEDLING_GENERATED_MODULE_H__\n")
+      expect(output.string).to include("#define __CEEDLING_GENERATED_MODULE_H__\n")
+    end
+
+    it 'writes provided includes and contents between the guard lines' do
+      output = stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_header_file(
+        filename:              'module.h',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              ['void foo(void);'],
+        extras:                [],
+        includes:              ['#include "bar.h"'],
+        include_guard:         'FOO_H'
+      )
+
+      expect(output.string).to include('#include "bar.h"')
+      expect(output.string).to include('void foo(void);')
+    end
+
+  end
+
 end
