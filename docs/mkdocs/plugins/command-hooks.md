@@ -4,7 +4,7 @@ Easily run command line tools and scripts at various points in a Ceedling build.
 
 ## Plugin Overview
 
-This plugin allows you to skip creating a full Ceedling plugin for many common use cases. It links Ceedling's programmatic `Plugin` code hooks to easily managed tool definitions. 
+This plugin allows you to skip creating a full Ceedling plugin for many common use cases. It links Ceedling’s programmatic `Plugin` code hooks to easily managed tool definitions. 
 
 ## Setup
 
@@ -40,7 +40,9 @@ See the commented examples below.
 
 Each Ceedling tool requires an `:executable` string and an optional `:arguments` list. See the [`:tools` configuration reference][tools-doc] to understand how to craft your argument list and other tool options.
 
-This plugin passes one or two runtime parameters for use in a hook's tool argument list depending on the hook. These parameters are referenced with Ceedling tool argument expansion identifiers `${1}`, `${2}`, etc. Wherever you place `${1}` or `${2}` in your tool argument list, they expand in the command line Ceedling constructs with the parameters this plugin provides for that build step hook. The list of build step hooks below documents which parameters are available for each hook.
+This plugin passes one or two runtime parameters for use in a hook’s tool argument list depending on the hook. These parameters are referenced with Ceedling tool argument expansion identifiers `${1}`, `${2}`, etc. Wherever you place `${1}` or `${2}` in your tool argument list, they expand in the command line Ceedling constructs with the parameters this plugin provides for that build step hook. The list of build step hooks below documents which parameters are available for each hook.
+
+Each tool may optionally include a `:name` — a simple nickname used in log and error messages. If omitted, the plugin forms a default name from the hook’s key (e.g. `pre_mock_generate`). For a hook configured with a list of tools, the default name additionally includes the tool’s position in the list (e.g. `post_link_execute_0`, `post_link_execute_1`). See the commented examples below.
 
 [tools-doc]: ../configuration/reference/tools.md
 
@@ -65,6 +67,7 @@ When logging is enabled and logging conditions are appropriate, any output from 
   :pre_mock_generate:
     # This tool is organized as a sub-hash beneath the command hook key
     :executable: python
+    :name: 'mock prep script' # Explicit nickname used in log/error messages
     :arguments:
       - my_script.py
       - --some-arg
@@ -74,18 +77,20 @@ When logging is enabled and logging conditions are appropriate, any output from 
   # Hook called for each linking operation
   # Here, we are performing two tasks for the same build step hook, converting a
   # binary executable to S-record format and, then, archiving with other artifacts.
+  # Neither tool below is given a :name -- the plugin defaults them to
+  # "post_link_execute_0" and "post_link_execute_1"
   :post_link_execute:
     # These tools are organized in a YAML list beneath the command hook key
     - :executable: objcopy.exe
       :arguments:
-        - ${1} # Replaced with the filepath to the linker's binary artifact output
+        - ${1} # Replaced with the filepath to the linker’s binary artifact output
         - output.srec
         - --strip-all
     - :executable: 
       :arguments: tar.exe
         - -acf
         - awesome_build.zip
-        - ${1} # Replaced with the filepath to the linker's binary artifact output
+        - ${1} # Replaced with the filepath to the linker’s binary artifact output
         - memory_report.txt
 ```
 
@@ -102,7 +107,7 @@ As an example, consider a Ceedling project with ten test files and seventeen moc
 * 10 occurrences of the `:pre_test` and `:post_test` hooks.
 * 17 occurrences of the `:pre_mock_generate` and `:post_mock_generate` hooks.
 * 10 occurrences of the `:pre_test_runner_generate` and `:post_test_runner_generate` hooks.
-* 27(+) occurrences of the `:pre_compile` and `:post_compile` hooks. These hooks would be called 27 times for test file and mock file compilation. A test suite build will also include compilation of the source files under tests, Unity's source, CMock's source, and generated test runner C files -- easily more than another two dozen compilation hook calls.
+* 27(+) occurrences of the `:pre_compile` and `:post_compile` hooks. These hooks would be called 27 times for test file and mock file compilation. A test suite build will also include compilation of the source files under tests, Unity’s source, CMock’s source, and generated test runner C files -- easily more than another two dozen compilation hook calls.
 * 10 occurrences of the `:pre_link` and `:post_link` hooks for test executable creation.
 * 10 occurrences of the `:pre_test_fixture_execute` and `:post_test_fixture_execute` hooks for running test executables and gathering the results of the tests cases they contain.
 * 1 occurrence of the `:post_test_build` hook.
@@ -130,17 +135,17 @@ The parameter available to a tool (`${1}`) when the hook is called is a floating
 
 Called just before each test begins its build pipeline and just after all context for that build has been gathered.
 
-The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
+The parameter available to a tool (`${1}`) when the hook is called is the test’s filepath.
 
 ### `:post_test`
 
 Called just after each test completes its build and execution.
 
-The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
+The parameter available to a tool (`${1}`) when the hook is called is the test’s filepath.
 
 ### `:pre_test_build`
 
-Called once just before the full test build pipeline begins (before any individual test's configure, preprocess, compile, link, or execute steps).
+Called once just before the full test build pipeline begins (before any individual test’s configure, preprocess, compile, link, or execute steps).
 
 Two parameters are available to a tool when the hook is called:
 
@@ -200,7 +205,7 @@ The parameter available to a tool (`${1}`) when the hook is called is the filepa
 
 If preprocessing is in use, this is called just before each test file is preprocessed before runner generation.
 
-The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
+The parameter available to a tool (`${1}`) when the hook is called is the test’s filepath.
 
 See [_Conventions & Behaviors_][preprocessing] for details on how Ceedling preprocessing operates.
 
@@ -208,7 +213,7 @@ See [_Conventions & Behaviors_][preprocessing] for details on how Ceedling prepr
 
 If preprocessing is in use, this is called just after each test file is preprocessed.
 
-The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
+The parameter available to a tool (`${1}`) when the hook is called is the test’s filepath.
 
 See [_Conventions & Behaviors_][preprocessing] for details on how Ceedling preprocessing operates.
 
@@ -216,13 +221,13 @@ See [_Conventions & Behaviors_][preprocessing] for details on how Ceedling prepr
 
 Called just before each test file is processed by test runner generation.
 
-The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
+The parameter available to a tool (`${1}`) when the hook is called is the test’s filepath.
 
 ### `:post_runner_generate`
 
 Called just after each test runner is generated.
 
-The parameter available to a tool (`${1}`) when the hook is called is the test's filepath.
+The parameter available to a tool (`${1}`) when the hook is called is the test’s filepath.
 
 ### `:pre_compile_execute`
 
@@ -240,13 +245,13 @@ The parameter available to a tool (`${1}`) when the hook is called is the filepa
 
 Called just before any binary artifact—test or release—is linked.
 
-The parameter available to a tool (`${1}`) when the hook is called is the binary output artifact's filepath.
+The parameter available to a tool (`${1}`) when the hook is called is the binary output artifact’s filepath.
 
 ### `:post_link_execute`
 
 Called just after a binary artifact is linked.
 
-The parameter available to a tool (`${1}`) when the hook is called is the binary output artifact's filepath.
+The parameter available to a tool (`${1}`) when the hook is called is the binary output artifact’s filepath.
 
 ### `:pre_test_fixture_execute`
 
@@ -256,7 +261,7 @@ The parameter available to a tool (`${1}`) when the hook is called is the filepa
 
 ### `:post_test_fixture_execute`
 
-Called just after each test's fixture is executed and test results are collected.
+Called just after each test’s fixture is executed and test results are collected.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the binary artifact that was executed by the fixture.
 

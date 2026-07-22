@@ -11,6 +11,11 @@ require 'benchmark'
 
 class ToolExecutor
 
+  # Populate a tool config hash's :name key from `default` if the user did not set one explicitly.
+  def self.default_name!(tool, default)
+    tool[:name] = default if tool[:name].nil?
+  end
+
   constructor :configurator, :tool_executor_helper, :loginator, :verbosinator, :system_wrapper, :ruby_expandinator
 
   # build up a command line from yaml provided config

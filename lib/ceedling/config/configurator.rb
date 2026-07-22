@@ -11,6 +11,7 @@ require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
 require 'ceedling/rake_app/rakefile_component_resolver'
 require 'ceedling/config/config_matchinator'
+require 'ceedling/tool_executor'
 require 'deep_merge'
 
 class Configurator
@@ -431,7 +432,7 @@ class Configurator
       end
 
       # Populate name if not given
-      tool[:name] = name.to_s if (tool[:name].nil?)
+      ToolExecutor.default_name!( tool, name.to_s )
 
       # Populate $stderr redirect option
       tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)

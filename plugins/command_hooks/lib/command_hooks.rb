@@ -8,6 +8,7 @@
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/plugins/plugin'
+require 'ceedling/tool_executor'
 
 COMMAND_HOOKS_ROOT_NAME = 'command_hooks'.freeze
 COMMAND_HOOKS_SYM       = COMMAND_HOOKS_ROOT_NAME.to_sym
@@ -156,6 +157,9 @@ class CommandHooks < Plugin
       error = "Expected configuration #{name} for Command Hooks plugin to be a Hash but found #{entry.class}"
       raise CeedlingException.new( error )
     end
+
+    # Populate name if not given
+    ToolExecutor.default_name!( entry, keys.join('_') )
 
     # Validate the Ceedling tool components of the hook entry config
     @tool_validator.validate( tool: entry, name: name, boom: true )
