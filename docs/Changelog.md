@@ -12,6 +12,10 @@ This changelog is complemented by three other documents:
 
 # [1.1.1] Prerelease
 
+## 🌟 Added
+
+- Gcov plugin: Warning logging for disallowed Gcovr configuration values set at the same time as a Gcovr configuration file (`:config_file`) is in use. Disallowed values are ignored.
+
 ## 💪 Fixed
 
 - [#1180](https://github.com/ThrowTheSwitch/Ceedling/issues/1180) Fixed `gcovr` illegal `--exclude` flag when Gcovr configuration file in use.
