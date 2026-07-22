@@ -20,6 +20,10 @@
 #
 class GcovReportinator
 
+  def initialize(config)
+    @config = config
+  end
+
   def name
     raise NotImplementedError.new("#{self.class} must implement name()")
   end

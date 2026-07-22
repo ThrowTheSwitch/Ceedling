@@ -317,7 +317,7 @@ class Gcov < Plugin
 
     # Instantiate console summary reportinator if summaries enabled
     @console_reportinator = summaries_enabled?(@project_config) ?
-      ConsoleReportinator.new(@ceedling) : nil
+      ConsoleReportinator.new(@ceedling, @project_config) : nil
 
     # Do not instantiate file reportinators (and tool validation) unless reports enabled
     return reportinators if (!enabled)
@@ -332,13 +332,13 @@ class Gcov < Plugin
 
     # Run reports using gcovr
     if utility_enabled?( config, GCOV_UTILITY_NAME_GCOVR )
-      reportinator = GcovrReportinator.new( @ceedling )
+      reportinator = GcovrReportinator.new( @ceedling, @project_config )
       reportinators << reportinator
     end
 
     # Run reports using ReportGenerator
     if utility_enabled?( config, GCOV_UTILITY_NAME_REPORT_GENERATOR )
-      reportinator = ReportGeneratorReportinator.new( @ceedling )
+      reportinator = ReportGeneratorReportinator.new( @ceedling, @project_config )
       reportinators << reportinator
     end
 

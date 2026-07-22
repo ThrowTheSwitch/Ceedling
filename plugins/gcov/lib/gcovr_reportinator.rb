@@ -20,7 +20,9 @@ class GcovrReportinator < GcovReportinator
 
   GCOVR_SETTING_PREFIX = "gcov_gcovr"
 
-  def initialize(system_objects)
+  def initialize(system_objects, config)
+    super(config)
+
     @artifacts_path = GCOV_GCOVR_ARTIFACTS_PATH
     @summary        = ''
     @ceedling = system_objects
@@ -36,6 +38,8 @@ class GcovrReportinator < GcovReportinator
     @reportinator = @ceedling[:reportinator]
     @tool_executor = @ceedling[:tool_executor]
     @configurator = @ceedling[:configurator]
+
+    check_config_options()
 
     @gcovr_version = get_gcovr_version()
 
@@ -78,13 +82,13 @@ class GcovrReportinator < GcovReportinator
   # and are not included in the string returned by this method.
   def args_builder_common(gcovr_opts, gcovr_version)
     args = ""
-    args += "--config \"#{gcovr_opts[:config_file]}\" " unless gcovr_opts[:config_file].nil?
+    args += "--config \"#{gcovr_opts[:config_file]}\" " if config_file_in_use?(gcovr_opts)
 
     # When a config file is provided, defer all other options to it.
     # This prevents Ceedling from overriding config file values with its CLI arguments.
     # --root (${1}) is always passed; --exclude (${2}) is nil when a config file is present,
     # so the tool executor omits those flags and the config file governs exclusions.
-    return args if gcovr_opts[:config_file]
+    return args if config_file_in_use?(gcovr_opts)
 
     args += "--filter \"#{gcovr_opts[:report_include]}\" " unless gcovr_opts[:report_include].nil?
     args += "--gcov-filter \"#{gcovr_opts[:gcov_filter]}\" " unless gcovr_opts[:gcov_filter].nil?
@@ -149,7 +153,7 @@ class GcovrReportinator < GcovReportinator
         artifacts_file_cobertura = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:cobertura_artifact_filename])
       end
 
-      args += "--xml-pretty " if gcovr_opts[:cobertura_pretty]
+      args += "--xml-pretty " if gcovr_opts[:cobertura_pretty] && !config_file_in_use?(gcovr_opts)
       args += "--xml #{use_output_option ? "--output " : ""} \"#{artifacts_file_cobertura}\" "
     end
 
@@ -190,7 +194,7 @@ class GcovrReportinator < GcovReportinator
         artifacts_file_json = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:json_artifact_filename])
       end
 
-      args += "--json-pretty " if gcovr_opts[:json_pretty]
+      args += "--json-pretty " if gcovr_opts[:json_pretty] && !config_file_in_use?(gcovr_opts)
       # Note: In gcovr 4.2, the JSON report is output only when the --output option is specified.
       # Hopefully we can remove --output after a future gcovr release.
       args += "--json #{use_output_option ? "--output " : ""} \"#{artifacts_file_json}\" "
@@ -219,12 +223,17 @@ class GcovrReportinator < GcovReportinator
       is_html_report_type_detailed = (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
 
       args += "--html-details " if is_html_report_type_detailed || report_enabled?(opts, ReportTypes::HTML_DETAILED)
-      args += "--html-title \"#{gcovr_opts[:html_title]}\" " unless gcovr_opts[:html_title].nil?
-      args += "--html-absolute-paths " if !(gcovr_opts[:html_absolute_paths].nil?) && gcovr_opts[:html_absolute_paths]
-      args += "--html-encoding \"#{gcovr_opts[:html_encoding]}\" " unless gcovr_opts[:html_encoding].nil?
 
-      [:html_medium_threshold, :html_high_threshold].each do |opt|
-        args += "--#{opt.to_s.gsub('_','-')} #{gcovr_opts[opt]} " unless gcovr_opts[opt].nil?
+      # These options duplicate settings a gcovr configuration file would provide, so they're
+      # withheld when :config_file is set to avoid silently overriding the file's values.
+      if !config_file_in_use?(gcovr_opts)
+        args += "--html-title \"#{gcovr_opts[:html_title]}\" " unless gcovr_opts[:html_title].nil?
+        args += "--html-absolute-paths " if !(gcovr_opts[:html_absolute_paths].nil?) && gcovr_opts[:html_absolute_paths]
+        args += "--html-encoding \"#{gcovr_opts[:html_encoding]}\" " unless gcovr_opts[:html_encoding].nil?
+
+        [:html_medium_threshold, :html_high_threshold].each do |opt|
+          args += "--#{opt.to_s.gsub('_','-')} #{gcovr_opts[opt]} " unless gcovr_opts[opt].nil?
+        end
       end
 
       # The following option must be appended last for gcovr version <= 4.2 to properly work.
@@ -313,6 +322,42 @@ class GcovrReportinator < GcovReportinator
   end
 
 
+  # gcovr options silently ignored whenever :config_file is set (dropped by args_builder_common's
+  # early return, or gated in args_builder_cobertura/json/html) -- in that case all such
+  # configuration must come from the gcovr configuration file itself.
+  IGNORED_WHEN_CONFIG_FILE_SET = [
+    :report_include, :report_exclude, :gcov_filter, :gcov_exclude, :exclude_directories,
+    :branches, :sort_uncovered, :sort_percentage, :print_summary, :gcov_executable,
+    :exclude_unreachable_branches, :exclude_throw_branches, :use_gcov_files, :gcov_ignore_parse_errors,
+    :keep, :delete, :threads, :merge_mode_function,
+    :fail_under_line, :fail_under_branch, :fail_under_decision, :fail_under_function,
+    :source_encoding, :object_directory,
+    :cobertura_pretty, :json_pretty,
+    :html_title, :html_absolute_paths, :html_encoding, :html_medium_threshold, :html_high_threshold
+  ].freeze
+
+  # True when a gcovr configuration file is in use, meaning Ceedling must defer to it and
+  # withhold any option that would silently override its settings.
+  def config_file_in_use?(gcovr_opts)
+    !gcovr_opts[:config_file].nil?
+  end
+
+
+  # Validate the gcovr plugin configuration for known-bad combinations.
+  def check_config_options
+    gcovr_opts = @config[GCOVR_SETTING_PREFIX.to_sym] || {}
+    return unless config_file_in_use?(gcovr_opts)
+
+    ignored = IGNORED_WHEN_CONFIG_FILE_SET.select { |key| !gcovr_opts[key].nil? }
+    return if ignored.empty?
+
+    list = ignored.map { |key| ":#{key}" }.join(', ')
+    msg = ":gcov ↳ :gcovr ↳ :config_file is set, so the following options are ignored: #{list}. " \
+          "Provide equivalent settings directly in your gcovr configuration file instead."
+    @loginator.log( msg, Verbosity::COMPLAIN )
+  end
+
+
   # Get the gcovr options from the project options.
   def collect_gcovr_opts(opts)
     # dup prevents repeated calls from accumulating mutations on the shared opts hash.
@@ -320,7 +365,7 @@ class GcovrReportinator < GcovReportinator
     # would see the already-mutated :report_exclude from the previous call and nest it.
     _opts = opts[GCOVR_SETTING_PREFIX.to_sym].dup
 
-    if _opts[:config_file]
+    if config_file_in_use?(_opts)
       # A gcovr config file is authoritative; CLI args override it, so injecting
       # auto-excludes would silently defeat the config file. Force an empty array
       # (not nil) so the tool executor omits the --exclude flag entirely.

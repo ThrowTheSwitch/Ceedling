@@ -19,7 +19,9 @@ class ReportGeneratorReportinator < GcovReportinator
 
   attr_reader :artifacts_path
 
-  def initialize(system_objects)
+  def initialize(system_objects, config)
+    super(config)
+
     @artifacts_path = GCOV_REPORT_GENERATOR_ARTIFACTS_PATH
     @summary        = ''
     @ceedling = system_objects

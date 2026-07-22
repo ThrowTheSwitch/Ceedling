@@ -16,7 +16,9 @@ class ConsoleReportinator < GcovReportinator
 
   attr_reader :artifacts_path  # nil — console output only, no filesystem artifacts
 
-  def initialize(system_objects)
+  def initialize(system_objects, config)
+    super(config)
+
     @loginator           = system_objects[:loginator]
     @plugin_reportinator = system_objects[:plugin_reportinator]
     @test_invoker        = system_objects[:test_invoker]
