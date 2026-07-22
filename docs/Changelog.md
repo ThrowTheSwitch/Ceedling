@@ -21,6 +21,7 @@ This changelog is complemented by three other documents:
 - [#1180](https://github.com/ThrowTheSwitch/Ceedling/issues/1180) Fixed `gcovr` illegal `--exclude` flag when Gcovr configuration file in use.
 - [#1181](https://github.com/ThrowTheSwitch/Ceedling/issues/1181) Fixed linker error when test files contain no test cases (fix was implemented in Unity and vendored into Ceedling).
 - [#1064](https://github.com/ThrowTheSwitch/Ceedling/issues/1064) Fixed include guard handling that in a certain combination of preprocessing and CMock options led to duplicated symbols for lack of duplicated include guards.
+- [#1098](https://github.com/ThrowTheSwitch/Ceedling/issues/1098) Fixed :test_compiler is used instead of :test_assembler for assembly file
 
 ---
 

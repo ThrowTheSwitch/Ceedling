@@ -37,7 +37,7 @@ module TestInvokerTypes
     :mocks,                                    # Hash — mock name → mock info
     :partials,                                 # TestablePartials — configs map + tests/mocks module name lists
     :sources, :frameworks, :core, :objects, :executable,
-    :no_link_objects, :results_pass, :results_fail, :tool,
+    :no_link_objects, :results_pass, :results_fail,
     keyword_init: true
   ) do
     def initialize(**kwargs)

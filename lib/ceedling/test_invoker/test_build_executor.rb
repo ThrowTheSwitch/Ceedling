@@ -412,7 +412,6 @@ class TestBuildExecutor
     @batchinator.exec(workload: :compile, things: state.objects_list) do |obj|
       src = @file_finder.find_build_input_file( filepath: obj[:obj], context: state.context )
       compile_test_component(
-        tool:    obj[:tool],
         context: state.context,
         test:    obj[:test],
         source:  src,
@@ -546,7 +545,7 @@ class TestBuildExecutor
   private
 
   # Compile a single C or assembly source file into an object file.
-  def compile_test_component(tool:, context:, test:, source:, object:, state:)
+  def compile_test_component(context:, test:, source:, object:, state:)
     testable     = state.testables[test.to_sym]
     defines      = testable.compile_defines
     search_paths = tailor_search_paths( search_paths: testable.search_paths, filepath: source )
@@ -555,7 +554,7 @@ class TestBuildExecutor
       flags = testable.compile_flags
 
       arg_hash = {
-        tool:         tool,
+        tool:         @configurator.tools_test_compiler,
         module_name:  test,
         context:      context,
         source:       source,
@@ -573,7 +572,7 @@ class TestBuildExecutor
       flags = testable.assembler_flags
 
       arg_hash = {
-        tool:         tool,
+        tool:         @configurator.tools_test_assembler,
         module_name:  test,
         context:      context,
         source:       source,

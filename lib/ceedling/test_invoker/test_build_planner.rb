@@ -162,7 +162,6 @@ class TestBuildPlanner
         testable.no_link_objects = test_no_link_objects
         testable.results_pass    = test_pass
         testable.results_fail    = test_fail
-        testable.tool            = TOOLS_TEST_COMPILER
       end
     end
   end
@@ -172,7 +171,6 @@ class TestBuildPlanner
     state.objects_list = state.testables.map do |_, testable|
       testable.objects.map do |obj|
         {
-          tool: testable.tool,
           test: testable.name,
           obj:  obj
         }
