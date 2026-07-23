@@ -9,6 +9,12 @@ project configuration.
     [June 1, 2024] Until the Bullseye Plugin can be updated for compatibility 
     with Ceedling >= 1.0.0, it has been disabled.
 
+!!! note
+    The Bullseye plugin creates a duplicate test build with `bullseye:` 
+    command line plugin tasks. [This is intentional and needed](index.md#understanding-plugin-build-duplication).
+
+---
+
 ## Configuration
 
 The bullseye plugin supports configuration options via your `project.yml` provided

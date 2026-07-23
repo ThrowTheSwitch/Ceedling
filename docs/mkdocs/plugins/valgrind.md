@@ -4,6 +4,12 @@ Adds Ceedling tasks to run test executables under [Valgrind] memory error
 detection to help find memory leaks, invalid memory accesses, and
 use-after-free bugs in your C code.
 
+!!! note
+    The Valgrind plugin creates a duplicate test build with `valgrind:` 
+    command line plugin tasks. [This is intentional and needed](index.md#understanding-plugin-build-duplication).
+
+---
+
 ## Plugin overview
 
 !!! note "Linux only"
