@@ -4155,6 +4155,12 @@ project configuration.</p>
 <p>[June 1, 2024] Until the Bullseye Plugin can be updated for compatibility 
 with Ceedling &gt;= 1.0.0, it has been disabled.</p>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The Bullseye plugin creates a duplicate test build with <code>bullseye:</code> 
+command line plugin tasks. <a href="../#understanding-plugin-build-duplication">This is intentional and needed</a>.</p>
+</div>
+<hr />
 <h2 id="configuration">Configuration</h2>
 <p>The bullseye plugin supports configuration options via your <code>project.yml</code> provided
 by Ceedling. The following is a typical configuration example:</p>

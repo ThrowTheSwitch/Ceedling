@@ -3987,6 +3987,29 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#understanding-plugin-build-duplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding plugin build duplication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directory
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Directory">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#console-test-results" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3996,8 +4019,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#test-results-reports" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4007,8 +4030,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#static-dynamic-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4018,8 +4041,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#code-coverage" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4029,8 +4052,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#mocking-test-doubles" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4040,8 +4063,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#build-integration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4051,8 +4074,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#project-release-builds" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4060,6 +4083,11 @@
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4148,6 +4176,42 @@ to Ceedling build steps. Alternatively, you can
 </div>
 <p>See the <a href="../configuration/reference/plugins/"><code>:plugins</code> configuration reference</a> 
 for how to enable built-in plugins and load custom plugins in your project.</p>
+<hr />
+<h2 id="understanding-plugin-build-duplication">Understanding plugin build duplication</h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Build-related plugins intentionally execute duplicated builds.</p>
+</div>
+<p>Plugins including <a href="gcov/">Gcov</a>, <a href="bullseye/">Bullseye</a>, and <a href="valgrind/">Valgrind</a>
+recreate test build tasks. That is, the command line build task <code>test:foo</code> also exists 
+as <code>gcov:foo</code>, <code>bullseye:foo</code>, and/or <code>valgrind:foo</code> if these plugins are enabled.
+Each of these triggers a full rebuild of the named test with instrumentation 
+activated. <strong>This duplication is intentional and very necessary.</strong></p>
+<p>These plugins modify executable code or the environment in which a test suite 
+executable runs. Duplicating and segregating the build tasks addresses several 
+important issues:</p>
+<ol>
+<li><strong>Conflicting interactions</strong>. Enabling multiple plugins without 
+   duplicated tasks (i.e. integrated build tasks) can bring about conflicts and
+   undefined behavior. For instance, Gcov’s instrumentation does not
+   necessarily play nice with Valgrind’s memory-instrumented emulation
+   runtime, and the two should be kept entirely segregated.</li>
+<li><strong>Unforeseen effects</strong>. These plugins can directly alter the functioning of
+   the code under test. For instance, coverage instrumentation inserted into
+   your compiled code can alter its function or timing. As such, it is vital
+   to maintain distinct builds to compare them. Your vanilla test suite build
+   may function slightly differently than the coverage-instrumented build.</li>
+<li><strong>Optional instrumentation</strong>. The <code>&lt;plugin&gt;:</code> command line task convention
+   also provides a very simple opt-in scheme. Plugins automatically enabled 
+   for every build drives the desire to optional disable them. Valgrind testing
+   can require 25-50x the execution time of a test suite, and you likely will
+   want the option to easily disable it. While Ceedling could certainly provide
+   that option at the command line for otherwise always-on plugins, this
+   plugin task namespacing scheme naturally accomplished this along with the
+   needs of (1) and (2).</li>
+</ol>
+<hr />
+<h2 id="directory">Directory</h2>
 <h3 id="console-test-results">Console Test Results</h3>
 <div class="grid cards">
 <ul>

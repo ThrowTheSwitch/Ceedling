@@ -4427,6 +4427,12 @@
 <p>Adds Ceedling tasks to run test executables under <a href="https://valgrind.org">Valgrind</a> memory error
 detection to help find memory leaks, invalid memory accesses, and
 use-after-free bugs in your C code.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The Valgrind plugin creates a duplicate test build with <code>valgrind:</code> 
+command line plugin tasks. <a href="../#understanding-plugin-build-duplication">This is intentional and needed</a>.</p>
+</div>
+<hr />
 <h2 id="plugin-overview">Plugin overview</h2>
 <div class="admonition note">
 <p class="admonition-title">Linux only</p>

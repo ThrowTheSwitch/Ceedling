@@ -4832,7 +4832,7 @@
 <h1 id="command-hooks">Command Hooks</h1>
 <p>Easily run command line tools and scripts at various points in a Ceedling build.</p>
 <h2 id="plugin-overview">Plugin Overview</h2>
-<p>This plugin allows you to skip creating a full Ceedling plugin for many common use cases. It links Ceedling's programmatic <code>Plugin</code> code hooks to easily managed tool definitions. </p>
+<p>This plugin allows you to skip creating a full Ceedling plugin for many common use cases. It links Ceedling’s programmatic <code>Plugin</code> code hooks to easily managed tool definitions. </p>
 <h2 id="setup">Setup</h2>
 <p>To use this plugin, it must be enabled:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:plugins</span><span class="p">:</span>
@@ -4851,7 +4851,8 @@
 <p>See the commented examples below.</p>
 <h3 id="tool-definitions">Tool definitions</h3>
 <p>Each Ceedling tool requires an <code>:executable</code> string and an optional <code>:arguments</code> list. See the <a href="../../configuration/reference/tools/"><code>:tools</code> configuration reference</a> to understand how to craft your argument list and other tool options.</p>
-<p>This plugin passes one or two runtime parameters for use in a hook's tool argument list depending on the hook. These parameters are referenced with Ceedling tool argument expansion identifiers <code>${1}</code>, <code>${2}</code>, etc. Wherever you place <code>${1}</code> or <code>${2}</code> in your tool argument list, they expand in the command line Ceedling constructs with the parameters this plugin provides for that build step hook. The list of build step hooks below documents which parameters are available for each hook.</p>
+<p>This plugin passes one or two runtime parameters for use in a hook’s tool argument list depending on the hook. These parameters are referenced with Ceedling tool argument expansion identifiers <code>${1}</code>, <code>${2}</code>, etc. Wherever you place <code>${1}</code> or <code>${2}</code> in your tool argument list, they expand in the command line Ceedling constructs with the parameters this plugin provides for that build step hook. The list of build step hooks below documents which parameters are available for each hook.</p>
+<p>Each tool may optionally include a <code>:name</code> — a simple nickname used in log and error messages. If omitted, the plugin forms a default name from the hook’s key (e.g. <code>pre_mock_generate</code>). For a hook configured with a list of tools, the default name additionally includes the tool’s position in the list (e.g. <code>post_link_execute_0</code>, <code>post_link_execute_1</code>). See the commented examples below.</p>
 <h3 id="hook-logging">Hook logging</h3>
 <p>In addition to the standard Ceedling tool definition elements, a hook configuration entry may optionally include a <code>:logging</code> setting.</p>
 <p><code>:logging</code> may be set to <code>TRUE</code> or <code>FALSE</code>. An omitted setting is equivalent to <code>FALSE</code>.</p>
@@ -4868,28 +4869,31 @@
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">:pre_mock_generate</span><span class="p">:</span>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="c1"># This tool is organized as a sub-hash beneath the command hook key</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="nt">:arguments</span><span class="p">:</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my_script.py</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--some-arg</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${1}</span><span class="w"> </span><span class="c1"># Replaced with the filepath of the header file that will be mocked</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="nt">:logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span><span class="w"> </span><span class="c1"># Log any tool output to console</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">  </span><span class="c1"># Hook called for each linking operation</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="c1"># Here, we are performing two tasks for the same build step hook, converting a</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">  </span><span class="c1"># binary executable to S-record format and, then, archiving with other artifacts.</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span><span class="nt">:post_link_execute</span><span class="p">:</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">    </span><span class="c1"># These tools are organized in a YAML list beneath the command hook key</span>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">objcopy.exe</span>
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">      </span><span class="nt">:arguments</span><span class="p">:</span>
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${1}</span><span class="w"> </span><span class="c1"># Replaced with the filepath to the linker&#39;s binary artifact output</span>
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">output.srec</span>
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--strip-all</span>
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span>
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">      </span><span class="nt">:arguments</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tar.exe</span>
-<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">- -acf</span>
-<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">- awesome_build.zip</span>
-<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">- ${1}</span><span class="w"> </span><span class="c1"># Replaced with the filepath to the linker&#39;s binary artifact output</span>
-<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">memory_report.txt</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="nt">:name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;mock</span><span class="nv"> </span><span class="s">prep</span><span class="nv"> </span><span class="s">script&#39;</span><span class="w"> </span><span class="c1"># Explicit nickname used in log/error messages</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">:arguments</span><span class="p">:</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my_script.py</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--some-arg</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${1}</span><span class="w"> </span><span class="c1"># Replaced with the filepath of the header file that will be mocked</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="nt">:logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span><span class="w"> </span><span class="c1"># Log any tool output to console</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="c1"># Hook called for each linking operation</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">  </span><span class="c1"># Here, we are performing two tasks for the same build step hook, converting a</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span><span class="c1"># binary executable to S-record format and, then, archiving with other artifacts.</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">  </span><span class="c1"># Neither tool below is given a :name -- the plugin defaults them to</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">  </span><span class="c1"># &quot;post_link_execute_0&quot; and &quot;post_link_execute_1&quot;</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">  </span><span class="nt">:post_link_execute</span><span class="p">:</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">    </span><span class="c1"># These tools are organized in a YAML list beneath the command hook key</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">objcopy.exe</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">      </span><span class="nt">:arguments</span><span class="p">:</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${1}</span><span class="w"> </span><span class="c1"># Replaced with the filepath to the linker’s binary artifact output</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">output.srec</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--strip-all</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">      </span><span class="nt">:arguments</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tar.exe</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">- -acf</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">- awesome_build.zip</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">- ${1}</span><span class="w"> </span><span class="c1"># Replaced with the filepath to the linker’s binary artifact output</span>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">memory_report.txt</span>
 </code></pre></div>
 <h2 id="available-build-step-hooks">Available Build Step Hooks</h2>
 <p>Define any of the following entries within a top-level <code>:command_hooks:</code> section of your Ceedling project file to automagically connect utilities or scripts to build process steps.</p>
@@ -4901,7 +4905,7 @@
 <li>10 occurrences of the <code>:pre_test</code> and <code>:post_test</code> hooks.</li>
 <li>17 occurrences of the <code>:pre_mock_generate</code> and <code>:post_mock_generate</code> hooks.</li>
 <li>10 occurrences of the <code>:pre_test_runner_generate</code> and <code>:post_test_runner_generate</code> hooks.</li>
-<li>27(+) occurrences of the <code>:pre_compile</code> and <code>:post_compile</code> hooks. These hooks would be called 27 times for test file and mock file compilation. A test suite build will also include compilation of the source files under tests, Unity's source, CMock's source, and generated test runner C files -- easily more than another two dozen compilation hook calls.</li>
+<li>27(+) occurrences of the <code>:pre_compile</code> and <code>:post_compile</code> hooks. These hooks would be called 27 times for test file and mock file compilation. A test suite build will also include compilation of the source files under tests, Unity’s source, CMock’s source, and generated test runner C files -- easily more than another two dozen compilation hook calls.</li>
 <li>10 occurrences of the <code>:pre_link</code> and <code>:post_link</code> hooks for test executable creation.</li>
 <li>10 occurrences of the <code>:pre_test_fixture_execute</code> and <code>:post_test_fixture_execute</code> hooks for running test executables and gathering the results of the tests cases they contain.</li>
 <li>1 occurrence of the <code>:post_test_build</code> hook.</li>
@@ -4918,12 +4922,12 @@
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is a floating-point stopwatch value in seconds at the moment the error is handled.</p>
 <h3 id="pre_test"><code>:pre_test</code></h3>
 <p>Called just before each test begins its build pipeline and just after all context for that build has been gathered.</p>
-<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test’s filepath.</p>
 <h3 id="post_test"><code>:post_test</code></h3>
 <p>Called just after each test completes its build and execution.</p>
-<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test’s filepath.</p>
 <h3 id="pre_test_build"><code>:pre_test_build</code></h3>
-<p>Called once just before the full test build pipeline begins (before any individual test's configure, preprocess, compile, link, or execute steps).</p>
+<p>Called once just before the full test build pipeline begins (before any individual test’s configure, preprocess, compile, link, or execute steps).</p>
 <p>Two parameters are available to a tool when the hook is called:</p>
 <ul>
 <li><code>${1}</code> — the build context as a string (e.g. <code>"test"</code>, <code>"gcov"</code>).</li>
@@ -4957,18 +4961,18 @@
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the filepath of the header file to be mocked.</p>
 <h3 id="pre_test_preprocess"><code>:pre_test_preprocess</code></h3>
 <p>If preprocessing is in use, this is called just before each test file is preprocessed before runner generation.</p>
-<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test’s filepath.</p>
 <p>See <a href="../../testing-guide/conventions/#test-preprocessing"><em>Conventions &amp; Behaviors</em></a> for details on how Ceedling preprocessing operates.</p>
 <h3 id="post_test_preprocess"><code>:post_test_preprocess</code></h3>
 <p>If preprocessing is in use, this is called just after each test file is preprocessed.</p>
-<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test’s filepath.</p>
 <p>See <a href="../../testing-guide/conventions/#test-preprocessing"><em>Conventions &amp; Behaviors</em></a> for details on how Ceedling preprocessing operates.</p>
 <h3 id="pre_runner_generate"><code>:pre_runner_generate</code></h3>
 <p>Called just before each test file is processed by test runner generation.</p>
-<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test’s filepath.</p>
 <h3 id="post_runner_generate"><code>:post_runner_generate</code></h3>
 <p>Called just after each test runner is generated.</p>
-<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test's filepath.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the test’s filepath.</p>
 <h3 id="pre_compile_execute"><code>:pre_compile_execute</code></h3>
 <p>Called just before each C or assembly file is compiled.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the filepath of the file to be compiled.</p>
@@ -4977,15 +4981,15 @@
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the filepath of the input file that was compiled.</p>
 <h3 id="pre_link_execute"><code>:pre_link_execute</code></h3>
 <p>Called just before any binary artifact—test or release—is linked.</p>
-<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the binary output artifact's filepath.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the binary output artifact’s filepath.</p>
 <h3 id="post_link_execute"><code>:post_link_execute</code></h3>
 <p>Called just after a binary artifact is linked.</p>
-<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the binary output artifact's filepath.</p>
+<p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the binary output artifact’s filepath.</p>
 <h3 id="pre_test_fixture_execute"><code>:pre_test_fixture_execute</code></h3>
 <p>Called just before each test is executed in its corresponding test fixture.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the filepath of the binary artifact to be executed by the fixture.</p>
 <h3 id="post_test_fixture_execute"><code>:post_test_fixture_execute</code></h3>
-<p>Called just after each test's fixture is executed and test results are collected.</p>
+<p>Called just after each test’s fixture is executed and test results are collected.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the filepath of the binary artifact that was executed by the fixture.</p>
 <p><br/><br/></p>
 
