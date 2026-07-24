@@ -167,6 +167,8 @@ class CExtractorDeclarations
           # Verify this looks like a valid declaration
           # Must have at least a type and identifier
           # Can end with: word character, ], ), }, or " (for string initializers)
+          # `/m` flag: declaration may span multiple lines (e.g. a multiline brace
+          # initializer), so '.' must match embedded newlines too
           if declaration =~ /\w+.*[\w\]\)\}"']\s*;$/m
             return [true, expand_and_parse(declaration)]
           else

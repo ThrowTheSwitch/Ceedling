@@ -445,6 +445,58 @@ describe CExtractorDeclarations do
       end
     end
 
+    context "escape sequences in string literal initializers" do
+      it "extracts pointer variable with escaped quote in string literal initializer" do
+        content = 'char* s = "say \"hi\"";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "say \"hi\"";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts pointer variable with escaped backslash in string literal initializer" do
+        content = 'char* s = "C:\\\\dir";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "C:\\\\dir";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts pointer variable with escaped newline in string literal initializer" do
+        content = 'char* s = "line1\\nline2";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "line1\\nline2";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts pointer variable with hex escape in string literal initializer" do
+        content = 'char* s = "\\x41\\x42";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "\\x41\\x42";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts pointer variable with octal escape in string literal initializer" do
+        content = 'char* s = "\\101\\102";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "\\101\\102";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+    end
+
     context "qualified type declarations" do
       it "extracts const variable" do
         content = "const int value;"
