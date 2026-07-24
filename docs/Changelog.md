@@ -26,7 +26,7 @@ New since 1.1.0:
 Backlog bug fixes predating 1.1.0:
 
 - [#1064](https://github.com/ThrowTheSwitch/Ceedling/issues/1064) Fixed include guard handling that in a certain combination of preprocessing and CMock options led to duplicated symbols breaking a test build.
-- [#1098](https://github.com/ThrowTheSwitch/Ceedling/issues/1098) Fixed :test_compiler used instead of :test_assembler for assembly file.
+- [#1098](https://github.com/ThrowTheSwitch/Ceedling/issues/1098) Fixed `:test_compiler` used instead of `:test_assembler` for assembly file.
 - [#1009](https://github.com/ThrowTheSwitch/Ceedling/issues/1009) Fixed tool name handling for `command_hooks` plugin.
 
 ## ⚠️ Changed

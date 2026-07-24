@@ -1,7 +1,7 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-**Ceedling 1.1.0** is the latest and greatest.
+**Ceedling 1.1.1** is the latest and greatest.
 
 See [_Release Notes_][release-notes], [_Changelog_](docs/Changelog.md), 
 [_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues].
@@ -9,7 +9,7 @@ See [_Release Notes_][release-notes], [_Changelog_](docs/Changelog.md),
 See [🚀 Getting Started](#-getting-started) for installation and new 
 project set up.
 
-**New goodies:**
+**New goodies in 1.1.x:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
 from the same source module in a single test file and enables testing of 
 `static` and `inline` functions without modifying source code.
