@@ -231,7 +231,7 @@ jobs:
       # and breaks std.cfg lookup entirely.
       - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
         run: |
-          choco upgrade cppcheck -y --version=2.13.0
+          choco upgrade cppcheck -y --version=2.12
           echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
 
       # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
