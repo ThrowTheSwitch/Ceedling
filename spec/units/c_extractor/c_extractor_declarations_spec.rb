@@ -685,6 +685,82 @@ describe CExtractorDeclarations do
       end
     end
 
+    context "multiline declarations" do
+      it "extracts array declaration whose closing brace and semicolon fall on the final line after multiline data (GH #1182)" do
+        content = "static uint8_t arr[10] = {\n    0x00, 0x01, 0x02, 0x03, 0x04,\n    0x05, 0x06, 0x07, 0x08, 0x09\n};"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'arr', type: 'uint8_t', decorators: ['static'],
+                     text: 'uint8_t arr[10] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };',
+                     array_suffix: '[10]')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts nested multi-dimensional array initializer whose closing braces and semicolon fall on the final line" do
+        content = "static int matrix[2][3] = {\n    {1, 2, 3},\n    {4, 5, 6}\n};"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'matrix', type: 'int', decorators: ['static'],
+                     text: 'int matrix[2][3] = { {1, 2, 3}, {4, 5, 6} };',
+                     array_suffix: '[2][3]')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "expands a compound declaration whose second declarator has a multiline brace initializer" do
+        content = "static int a, arr[3] = {\n    1,\n    2,\n    3\n};"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        expect(variable.length).to eq 2
+
+        expect(variable[0].name).to eq 'a'
+        expect(variable[0].decorators).to eq ['static']
+        expect(variable[0].text).to eq 'int a;'
+
+        expect(variable[1].name).to eq 'arr'
+        expect(variable[1].decorators).to eq ['static']
+        expect(variable[1].array_suffix).to eq '[3]'
+        expect(variable[1].text).to eq 'int arr[3] = { 1, 2, 3 };'
+
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts a declaration with the type and name split across lines and no braces involved" do
+        content = "int\n    x;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'x', type: 'int', text: 'int x;')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts a declaration whose initializer value falls on the line after the assignment" do
+        content = "int x =\n    5;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'x', type: 'int', text: 'int x = 5;')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts a declaration whose terminating semicolon is alone on the line following a bracketed declarator" do
+        content = "int arr[10]\n;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[10] ;', array_suffix: '[10]')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+    end
+
     context "array_suffix field" do
       it "returns empty string for a scalar variable" do
         content = "static uint8 s_count;"

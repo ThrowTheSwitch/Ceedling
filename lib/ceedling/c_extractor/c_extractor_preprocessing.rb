@@ -142,8 +142,9 @@ class CExtractorPreprocessing
     return [false, nil] unless success
     text << args
 
-    # Consume optional whitespace before ';'
-    text << (scanner.scan(/[ \t]*/) || '')
+    # Consume optional whitespace before ';' (including newlines, for statements formatted
+    # with the terminating ';' on its own line)
+    text << (scanner.scan(/\s*/) || '')
 
     # Consume the required terminating ';'
     return [false, nil] unless scanner.scan(/;/)

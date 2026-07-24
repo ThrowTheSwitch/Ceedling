@@ -295,6 +295,13 @@ describe CExtractorDefinitions do
       expect(pos).to eq input.length
     end
 
+    it "extracts a named struct when the closing '}' and terminating ';' fall on separate lines" do
+      input = "struct Point {\n  int x;\n}\n;\n"
+      result, pos = try_aggregate(input)
+      expect(result).to eq [true, input.chomp]
+      expect(pos).to eq input.length
+    end
+
     it "extracts an anonymous struct (no tag name)" do
       input = "struct { int x; int y; };\n"
       result, pos = try_aggregate(input)

@@ -483,6 +483,13 @@ describe CExtractorPreprocessing do
       expect(pos).to eq input.length
     end
 
+    it "handles a static assert whose terminating ';' falls on its own line after the closing ')'" do
+      input = "static_assert(sizeof(int) == 4, \"msg\")\n;\n"
+      result, pos = try_static_assert(input)
+      expect(result[0]).to be true
+      expect(pos).to eq input.length
+    end
+
     # --- Boundary behaviour ---
 
     it "stops at the ';' and does not consume following code" do

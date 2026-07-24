@@ -10,6 +10,14 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.1.2] — Prelease
+
+## 💪 Fixed
+
+- [#1182](https://github.com/ThrowTheSwitch/Ceedling/issues/1182) Fixed termination newline handling for certain variable declarations in Partials. Robustified all similar cases in C feature extraction and added further test coverage.
+
+---
+
 # [1.1.1] — 2026-07-23
 
 ## 🌟 Added

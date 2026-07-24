@@ -167,7 +167,7 @@ class CExtractorDeclarations
           # Verify this looks like a valid declaration
           # Must have at least a type and identifier
           # Can end with: word character, ], ), }, or " (for string initializers)
-          if declaration =~ /\w+.*[\w\]\)\}"']\s*;$/
+          if declaration =~ /\w+.*[\w\]\)\}"']\s*;$/m
             return [true, expand_and_parse(declaration)]
           else
             scanner.pos = start_pos
