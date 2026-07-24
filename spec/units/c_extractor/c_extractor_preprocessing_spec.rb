@@ -290,6 +290,45 @@ describe CExtractorPreprocessing do
       expect(pos).to eq input.length
     end
 
+    # --- Regression: GH #1184 — escape sequences inside a #define string literal ---
+    # A lone '\' preceding a string-literal escape (e.g. \n, \", \\) is not a line
+    # continuation and must not be mistaken for one, truncating the directive.
+
+    it "extracts a #define whose string literal contains an escaped newline" do
+      input = "#define SZ1 sizeof(\"\\n\")\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input.rstrip]
+      expect(pos).to eq input.length
+    end
+
+    it "extracts a #define whose string literal contains an escaped quote" do
+      input = "#define MSG \"say \\\"hi\\\"\"\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input.rstrip]
+      expect(pos).to eq input.length
+    end
+
+    it "extracts a #define whose string literal contains an escaped backslash" do
+      input = "#define PATH \"C:\\\\dir\"\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input.rstrip]
+      expect(pos).to eq input.length
+    end
+
+    it "extracts a #define with an escaped character and no trailing newline (EOS)" do
+      input = "#define SZ1 sizeof(\"\\n\")"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.length
+    end
+
+    it "does not consume a following function definition after a #define with an escaped character" do
+      input = "#define SZ1 sizeof(\"\\n\")\nvoid helloWorld() { return; }\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, "#define SZ1 sizeof(\"\\n\")"]
+      expect(pos).to eq "#define SZ1 sizeof(\"\\n\")\n".length
+    end
+
     it "stops at end of directive and does not consume following code" do
       input = "#define FOO 1\nint x = 0;"
       result, pos = try_directive(input)

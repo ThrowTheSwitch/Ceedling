@@ -232,20 +232,32 @@ class CExtractorPreprocessing
 
   # Collect and return the full text of a preprocessing directive starting at '#'.
   # Returns nil if not positioned at '#'. Handles backslash-newline continuations.
+  # String/char literals are consumed verbatim via skip_c_string() so an in-string
+  # escape (e.g. "\n", "\"", "\\") is never mistaken for a line continuation.
   # Trailing whitespace and newlines are stripped from the returned text.
   def _collect_directive(scanner)
     return nil unless scanner.check(/#/)
 
     text = scanner.scan(/#/)
 
-    loop do
-      text += scanner.scan(/[^\n\\]*/) || ''
+    until scanner.eos?
+      text << (scanner.scan(/[^"'\\\n]*/) || '')
 
-      if scanner.scan(/\\\n/)
-        text += "\\\n"
+      if (ch = scanner.peek(1)) == '"' || ch == "'"
+        before = scanner.pos
+        @c_extractor_code_text.skip_c_string(scanner, ch)
+        text << scanner.string[before...scanner.pos]
+
+      elsif scanner.scan(/\\\n/)
+        text << "\\\n"
+
       elsif scanner.scan(/\n/)
-        text += "\n"
+        text << "\n"
         break
+
+      elsif scanner.scan(/\\/)
+        text << '\\'
+
       else
         break  # EOS — no trailing newline
       end

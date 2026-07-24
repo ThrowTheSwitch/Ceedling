@@ -561,6 +561,23 @@ describe CExtractor do
       expect( contents.variable_declarations.length ).to eq 0
     end
 
+    it "should extract a function definition following a #define with an escaped character in a string literal (GH #1184)" do
+      file_contents = <<~'CONTENTS'
+      #include "world.h"
+      #define SZ1 sizeof("\n")
+      void helloWorld() { return; }
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect( contents.macro_definitions.length ).to eq 1
+      expect( contents.macro_definitions[0].text ).to eq '#define SZ1 sizeof("\n")'
+
+      expect( contents.function_definitions.length ).to eq 1
+      expect( contents.function_definitions[0].name ).to eq 'helloWorld'
+      expect( contents.function_definitions[0].body ).to eq '{ return; }'
+    end
+
     it "should consume #pragma and #include directives without storing them" do
       file_contents = <<~CONTENTS
       #pragma once
