@@ -225,13 +225,15 @@ jobs:
       # Install cppcheck via Chocolatey (installs the MSI to C:\Program Files\Cppcheck\).
       # Add the real install directory to PATH ahead of the Chocolatey shim so that
       # cppcheck can locate its cfg/ directory (needed for std.cfg library lookups).
-      # Pinned to a known-good version: the Chocolatey 2.14.0 package ships a Windows
-      # build with FILESDIR baked in as an absolute path from the packager's own
-      # machine (e.g. R:\winlibs64ucrt_stage\...), which doesn't exist on CI runners
-      # and breaks std.cfg lookup entirely.
+      # Pinned to 2.16.0 (matches the version Linux CI builds from source):
+      #   - Chocolatey's 2.14.0 package has a broken, winlibs-baked FILESDIR path
+      #     and appears to have been delisted upstream.
+      #   - Ceedling's cppcheck plugin defaults :xml_report_version to 3
+      #     (plugins/cppcheck/config/defaults.yml), which cppcheck only supports
+      #     starting at 2.16.0 -- anything older errors on --xml-version=3.
       - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
         run: |
-          choco upgrade cppcheck -y --version=2.12
+          choco upgrade cppcheck -y --version=2.16.0
           echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
 
       # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
