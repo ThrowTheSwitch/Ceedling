@@ -14,7 +14,10 @@ This changelog is complemented by three other documents:
 
 ## 💪 Fixed
 
-- [#1182](https://github.com/ThrowTheSwitch/Ceedling/issues/1182) Fixed termination newline handling for certain variable declarations in Partials. Robustified all similar cases in C feature extraction and added further test coverage.
+Partials:
+
+- [#1182](https://github.com/ThrowTheSwitch/Ceedling/issues/1182) Fixed termination newline handling for certain variable declarations. Robustified all similar cases in C feature extraction and added further test coverage.
+- [#1184](https://github.com/ThrowTheSwitch/Ceedling/issues/1184) Fixed escaped character handling in `#define` string literals.
 
 ---
 
