@@ -602,16 +602,20 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should generate a source file with functions and #line directives" do
+    it "should generate a source file with functions and #line directives using absolute source paths" do
+      # Absolute paths sidestep a GCC/mingw-w64 gcov --json-format line-attribution bug
+      # triggered by relative #line paths compiled from a sufficiently long/deep working
+      # directory (observed on Windows CI). gcovr's own --root handling relativizes these
+      # back to clean paths in reports, so this has no user-visible effect on output.
       file_contents = <<~CONTENTS
       // Ceeding generated file
 
-      #line 9 "../foo/bar/fubar.c"
+      #line 9 "#{File.expand_path('../foo/bar/fubar.c')}"
       void foobarbaz(int x, int y) {
         int z = x+y;
       }
 
-      #line 123 "src/code/ABC.c"
+      #line 123 "#{File.expand_path('src/code/ABC.c')}"
       int
       razzleDazzle(void* ptr)
       {
