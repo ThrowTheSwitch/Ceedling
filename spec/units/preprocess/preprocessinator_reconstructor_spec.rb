@@ -75,6 +75,105 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
     end
 
+    it "should preserve a run of multiple consecutive blank lines rather than collapsing to one" do
+      filepath = "this/path/MY_FILE.C"
+
+      file_contents = [
+        '# 1 "./this/path/MY_FILE.C" 99999',
+        'void some_function(void) {',
+        '',
+        '',
+        '',
+        '  return 0;',
+        '}'
+      ]
+
+      # All three blank lines must survive -- e.g. a stripped multi-line comment
+      # or literal blank lines in the source, either way nothing gets dropped.
+      expected = [
+        'void some_function(void) {',
+        '',
+        '',
+        '',
+        '  return 0;',
+        '}'
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
+    it "should preserve independent runs of differing blank-line counts between separate code lines" do
+      filepath = "path/multi.c"
+
+      file_contents = [
+        '# 1 "path/multi.c" 1',
+        'int a;',
+        '',
+        '',
+        'int b;',
+        '',
+        'int c;',
+        '',
+        '',
+        '',
+        'int d;'
+      ]
+
+      # Each run's count must stay attached to its own gap -- not merged with a
+      # neighboring run, not truncated to a shared count.
+      expected = [
+        'int a;',
+        '',
+        '',
+        'int b;',
+        '',
+        'int c;',
+        '',
+        '',
+        '',
+        'int d;'
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
+    it "should preserve a following blank-line run after a marker-continuation (dangling semicolon) fragment" do
+      filepath = "sys/types_wrapper.c"
+
+      file_contents = [
+        '# 1 "sys/types_wrapper.c" 1',
+        'typedef unsigned long uint32_t',    # System typedef expansion, unterminated
+        '# 1 "sys/types_wrapper.c" 2',       # GCC re-marks the SAME source line...
+        ';',                                  # ...to attach a dangling ';' as a continuation, not a new line
+        '',
+        '',
+        'void some_function(void) {',
+        '  return;',
+        '}',
+        '# 1 "some/useless/file.c"'
+      ]
+
+      # The typedef and its dangling ';' must aggregate onto a single output
+      # line (existing behavior), and the two blank lines that follow -- e.g.
+      # from a stripped comment after the typedef -- must both still survive.
+      expected = [
+        'typedef unsigned long uint32_t;',
+        '',
+        '',
+        'void some_function(void) {',
+        '  return;',
+        '}'
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
     it "should extract text of original file from preprocessed expansion with complex preprocessor line marker sequence" do
       filepath = "dir/our_file.c"
       
@@ -206,6 +305,8 @@ describe PreprocessinatorReconstructor do
         'static _Bool var1;',
         '',
         'static _Bool ecs_foo__init_structure(void);',
+        '',
+        '',
         '',
         'void ecs_foo_init(void) {',
         '    var1 = ecs_foo__init_structure();',

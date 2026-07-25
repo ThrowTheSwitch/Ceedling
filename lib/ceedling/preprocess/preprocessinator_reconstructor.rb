@@ -280,16 +280,21 @@ class PreprocessinatorReconstructor
 
     # Buffer for the last logical line (may still receive aggregated content)
     pending_line  = nil
-    # Whether a blank line should follow pending_line when flushed
-    pending_blank = false
+    # Count of blank lines to emit after pending_line when flushed. Tracked as
+    # an exact count, not just "was there a blank" -- callers that depend on
+    # this method for line-for-line fidelity with the original source (so
+    # that unrelated line-number math downstream stays correct) need every
+    # blank line preserved, including runs that used to be a multi-line
+    # comment before an earlier pass turned it into equivalent blank lines.
+    pending_blank_count = 0
 
-    # Yields pending_line (and optional trailing blank) then clears the buffer
+    # Yields pending_line (and any pending blank lines) then clears the buffer
     flush = lambda do
       unless pending_line.nil?
         block.call( pending_line )
-        block.call( '' ) if pending_blank
+        pending_blank_count.times { block.call( '' ) }
         pending_line  = nil
-        pending_blank = false
+        pending_blank_count = 0
       end
     end
 
@@ -308,9 +313,9 @@ class PreprocessinatorReconstructor
         # Strip a line so we can omit useless blank lines
         _line = line.strip()
 
-        # Skip processing blank lines, but mark a pending blank unless we already have one
+        # Skip processing blank lines, but track an exact count of them so runs of blanks survive intact
         if _line.empty?
-          pending_blank = true if !pending_line.nil? && !pending_line.empty?
+          pending_blank_count += 1 if !pending_line.nil? && !pending_line.empty?
           next
         end
 
