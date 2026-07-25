@@ -85,11 +85,11 @@ describe GeneratorPartials do
       source_file_handle = double('source_file_handle')
 
       allow(@file_wrapper).to receive(:open)
-        .with(expected_header_filepath, 'w')
+        .with(expected_header_filepath, 'wb')
         .and_yield(header_file_handle)
 
       allow(@file_wrapper).to receive(:open)
-        .with(expected_source_filepath, 'w')
+        .with(expected_source_filepath, 'wb')
         .and_yield(source_file_handle)
 
       # Spy on generate_header and generate_source -- allow them to be called but track the calls
@@ -145,8 +145,8 @@ describe GeneratorPartials do
       expect(@file_path_utils).to have_received(:form_partial_implementation_header_filename).with(name)
 
       # Verify file operations
-      expect(@file_wrapper).to have_received(:open).with(expected_header_filepath, 'w')
-      expect(@file_wrapper).to have_received(:open).with(expected_source_filepath, 'w')
+      expect(@file_wrapper).to have_received(:open).with(expected_header_filepath, 'wb')
+      expect(@file_wrapper).to have_received(:open).with(expected_source_filepath, 'wb')
 
       # Verify return value is the source filepath
       expect(result).to eq(expected_source_filepath)
@@ -169,7 +169,7 @@ describe GeneratorPartials do
       # Mock FileWrapper.open to yield a file handle
       file_handle = double('file_handle')
       allow(@file_wrapper).to receive(:open)
-        .with(expected_filepath, 'w')
+        .with(expected_filepath, 'wb')
         .and_yield(file_handle)
 
       # Spy on generate_header -- allow it to be called but track the call
@@ -211,7 +211,7 @@ describe GeneratorPartials do
       expect(@file_path_utils).to have_received(:form_partial_interface_header_filename).with(name)
 
       # Verify file operations
-      expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'w')
+      expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'wb')
 
       # Verify return value is the header filepath
       expect(result).to eq(expected_filepath)
@@ -602,20 +602,16 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should generate a source file with functions and #line directives using absolute source paths" do
-      # Absolute paths sidestep a GCC/mingw-w64 gcov --json-format line-attribution bug
-      # triggered by relative #line paths compiled from a sufficiently long/deep working
-      # directory (observed on Windows CI). gcovr's own --root handling relativizes these
-      # back to clean paths in reports, so this has no user-visible effect on output.
+    it "should generate a source file with functions and #line directives" do
       file_contents = <<~CONTENTS
       // Ceeding generated file
 
-      #line 9 "#{File.expand_path('../foo/bar/fubar.c')}"
+      #line 9 "../foo/bar/fubar.c"
       void foobarbaz(int x, int y) {
         int z = x+y;
       }
 
-      #line 123 "#{File.expand_path('src/code/ABC.c')}"
+      #line 123 "src/code/ABC.c"
       int
       razzleDazzle(void* ptr)
       {

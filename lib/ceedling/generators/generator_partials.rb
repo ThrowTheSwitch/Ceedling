@@ -28,11 +28,19 @@ class GeneratorPartials
     header_filepath = File.join(output_path, header)
     source_filepath = File.join(output_path, source)
 
-    @file_wrapper.open(header_filepath, 'w') do |file|
+    # Binary mode: function bodies embedded below (c_module element_sequence,
+    # function_definitions' code_block) are extracted from upstream preprocessed
+    # files and may already carry their own line endings verbatim. Windows text
+    # mode would translate every "\n" this method emits to "\r\n" -- including
+    # ones already part of an embedded "\r\n", doubling it to "\r\r\n". That
+    # doubling silently desyncs this file's line count from what its #line
+    # directives promise, which is exactly what gcov coverage attribution
+    # depends on being correct (see #line comment in emit_func below).
+    @file_wrapper.open(header_filepath, 'wb') do |file|
       generate_header(file, header, header_includes, function_definitions, c_module, true)
     end
 
-    @file_wrapper.open(source_filepath, 'w') do |file|
+    @file_wrapper.open(source_filepath, 'wb') do |file|
       generate_source(file, source_includes, function_definitions, c_module)
     end
 
@@ -43,7 +51,7 @@ class GeneratorPartials
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = File.join(output_path, header)
 
-    @file_wrapper.open(filepath, 'w') do |file|
+    @file_wrapper.open(filepath, 'wb') do |file|
       generate_header(file, header, includes, function_declarations, c_module, false)
     end
 
@@ -152,21 +160,10 @@ class GeneratorPartials
         # #line is the only thing tying this generated file's code back to its
         # original source location -- it's what makes debuggers, error messages, and
         # (critically) gcov coverage attribution point at the real file/line instead
-        # of this generated stand-in. That mapping has to be unambiguous: a relative
-        # path forces every downstream consumer to first resolve it against whatever
-        # working directory *it* believes was in effect, and any mismatch or bug in
-        # that resolution silently corrupts the mapping instead of failing loudly.
-        # An absolute path removes that resolution step entirely.
-        #
-        # This isn't theoretical: some GCC/mingw-w64 builds corrupt gcov's
-        # --json-format line attribution for #line-remapped source when given a
-        # relative path compiled from a sufficiently long/deep working directory
-        # (observed on Windows CI -- correct source line misattributed to a line
-        # deep in trailing comments). Absolute paths here sidestep that resolution
-        # step and the bug with it. gcovr's own `--root` handling relativizes
-        # absolute paths back down to clean relative ones in reports, so this has no
-        # user-visible effect on report output.
-        io << "#line #{func.line_num} \"#{File.expand_path(func.source_filepath)}\"\n"
+        # of this generated stand-in. Getting that mapping right depends on the whole
+        # file being byte-for-byte what it claims to be, line for line -- see the
+        # binary-mode file writes below for why that isn't automatic on Windows.
+        io << "#line #{func.line_num} \"#{func.source_filepath}\"\n"
       end
       io << func.code_block << "\n\n"
       emitted_funcs[func.name] = true
