@@ -7,11 +7,13 @@
 
 require 'spec_system_helper'
 require_relative 'support/gcov_common_test_cases'
+require_relative 'support/gcov_partials_test_cases'
 
 ceedling_system_tests do
   describe "Gcov" do
     include CommonSystemTestCases
     include GcovCommonTestCases
+    include GcovPartialsTestCases
     before :all do
       determine_reports_to_test
       @c = SystemContext.new
@@ -50,6 +52,18 @@ ceedling_system_tests do
       test_case :create_html_report_100_coverage_excluding_crashing_test_case
     end
 
+    describe "Coverage reporting with Partials" do
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :gcov_partials_coverage_blank_lines_in_function_body
+      test_case :gcov_partials_coverage_decorators_on_own_lines
+      test_case :gcov_partials_coverage_function_scope_static_promotion
+    end
+
     describe "Backtrace with GDB" do
       include_context "requires gdb"
 
@@ -78,7 +92,7 @@ ceedling_system_tests do
             # than resetting, crashing the test executable before Unity can print
             # its statistics line.
             FileUtils.rm_rf('temp_sensor')
-            output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
+            output = @c.ceedling_appcmd_exec("example temp_sensor")
             expect(output).to match(/created/)
           end
         end
@@ -86,7 +100,7 @@ ceedling_system_tests do
         it "should be testable" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:all 2>&1`
+              @output = @c.ceedling_build_exec("gcov:all --mixin=add_gcov")
               # Validate full test suite results
               expect(@output).to match(/TESTED:\s+86/)
               expect(@output).to match(/PASSED:\s+86/)
@@ -107,7 +121,7 @@ ceedling_system_tests do
         it "should be able to test a single module (it should INHERIT file-specific flags)" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:TemperatureCalculator 2>&1`
+              @output = @c.ceedling_build_exec("gcov:TemperatureCalculator --mixin=add_gcov")
               expect(@output).to match(/TESTED:\s+2/)
               expect(@output).to match(/PASSED:\s+2/)
 
@@ -119,7 +133,7 @@ ceedling_system_tests do
         it "should be able to test multiple files matching a pattern" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:pattern[Temp] 2>&1`
+              @output = @c.ceedling_build_exec("gcov:pattern[Temp] --mixin=add_gcov")
               expect(@output).to match(/TESTED:\s+6/)
               expect(@output).to match(/PASSED:\s+6/)
 
@@ -132,7 +146,7 @@ ceedling_system_tests do
         it "should be able to test all files matching in a path" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:path[adc] 2>&1`
+              @output = @c.ceedling_build_exec("gcov:path[adc] --mixin=add_gcov")
               expect(@output).to match(/TESTED:\s+24/)
               expect(@output).to match(/PASSED:\s+24/)
 
@@ -147,7 +161,7 @@ ceedling_system_tests do
         it "should be able to test specific test cases in a file" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:path[adc] --test-case="RunShouldNot" 2>&1`
+              @output = @c.ceedling_build_exec('gcov:path[adc] --mixin=add_gcov --test-case="RunShouldNot"')
               expect(@output).to match(/TESTED:\s+2/)
               expect(@output).to match(/PASSED:\s+2/)
 
