@@ -14,7 +14,9 @@ This changelog is complemented by three other documents:
 
 ## 💪 Fixed
 
-Partials:
+- Fixed line end handling for certain circumstances in Windows that could accidentally create extra white space lines that affect file line numbering (particularly in coverage reporting).
+
+### Partials
 
 - [#1182](https://github.com/ThrowTheSwitch/Ceedling/issues/1182) Fixed termination newline handling for certain variable declarations. Robustified all similar cases in C feature extraction and added further test coverage.
 - [#1184](https://github.com/ThrowTheSwitch/Ceedling/issues/1184) Fixed escaped character handling in `#define` string literals.
@@ -30,12 +32,12 @@ Partials:
 
 ## 💪 Fixed
 
-New since 1.1.0:
+### New since 1.1.0
 
 - [#1180](https://github.com/ThrowTheSwitch/Ceedling/issues/1180) Fixed `gcovr` illegal `--exclude` flag when Gcovr configuration file in use.
 - [#1181](https://github.com/ThrowTheSwitch/Ceedling/issues/1181) Fixed linker error when test files contain no test cases (fix was implemented in Unity and vendored into Ceedling).
 
-Backlog bug fixes predating 1.1.0:
+### Backlog bug fixes predating 1.1.0
 
 - [#1064](https://github.com/ThrowTheSwitch/Ceedling/issues/1064) Fixed include guard handling that in a certain combination of preprocessing and CMock options led to duplicated symbols breaking a test build.
 - [#1098](https://github.com/ThrowTheSwitch/Ceedling/issues/1098) Fixed `:test_compiler` used instead of `:test_assembler` for assembly file.
