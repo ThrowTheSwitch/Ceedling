@@ -18,6 +18,7 @@ Partials:
 
 - [#1182](https://github.com/ThrowTheSwitch/Ceedling/issues/1182) Fixed termination newline handling for certain variable declarations. Robustified all similar cases in C feature extraction and added further test coverage.
 - [#1184](https://github.com/ThrowTheSwitch/Ceedling/issues/1184) Fixed escaped character handling in `#define` string literals.
+- [#1183](https://github.com/ThrowTheSwitch/Ceedling/issues/1183) Fixed post-processing of preprocessed files (ha) to preserve blank lines in function definitions where comments were stripped out by preprocessing. Without preserving blank lines, line numbering for coverage reporting purposes becomes corrupted.
 
 ---
 
