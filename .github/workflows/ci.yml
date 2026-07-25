@@ -198,6 +198,17 @@ jobs:
         with:
           ruby: ${{ matrix.ruby }}
 
+      # Pin Windows CI to a stable GCC 14 release instead of the MSYS2/ridk-bundled
+      # toolchain's rolling ucrt64 gcc package (drifts forward automatically -- was
+      # observed at 16.1.0 and mis-attributing gcov coverage lines for #line-remapped
+      # Partials source with blank lines).
+      - name: Install Pinned GCC 14 Toolchain (winlibs)
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/brechtsanders/winlibs_mingw/releases/download/14.2.0posix-19.1.1-12.0.0-ucrt-r2/winlibs-x86_64-posix-seh-gcc-14.2.0-mingw-w64ucrt-12.0.0-r2.zip" -OutFile winlibs-gcc14.zip
+          Expand-Archive -Path winlibs-gcc14.zip -DestinationPath "$env:RUNNER_TEMP\winlibs-gcc14"
+          echo "$env:RUNNER_TEMP\winlibs-gcc14\mingw64\bin" >> $env:GITHUB_PATH
+
       # Install Gem Dependencies
       - name: Install Gem Dependencies
         # Ensure local installation to prevent system directory permission problems
