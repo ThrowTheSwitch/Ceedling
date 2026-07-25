@@ -12,9 +12,11 @@ require 'ceedling/parsing_parcels'
 describe PreprocessinatorReconstructor do
   before(:each) do
     @parsing_parcels = ParsingParcels.new()
+    @file_wrapper    = double( "FileWrapper" )
     @extractor = described_class.new(
       {
-        :parsing_parcels => @parsing_parcels
+        :parsing_parcels => @parsing_parcels,
+        :file_wrapper    => @file_wrapper,
       }
     )
   end
@@ -796,6 +798,53 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_macro_defs( file_text, '_INCLUDE_GUARD_' ) ).to eq expected
     end
 
+  end
+
+  context "#compact_file_from_expansion" do
+    it "should open its input in binary mode and its output in binary mode" do
+      # Binary mode on both ends: this content is read again downstream by code
+      # that depends on its line count being exact, so nothing here should be
+      # subject to platform-specific line ending translation.
+      input_handle  = StringIO.new( '# 1 "WANT.c" 5' + "\n" + 'text_we_want();' + "\n" )
+      output_handle = StringIO.new
+
+      expect(@file_wrapper).to receive(:open).with( 'input.c', 'rb' ).and_yield( input_handle )
+      expect(@file_wrapper).to receive(:open).with( 'output.c', 'wb' ).and_yield( output_handle )
+
+      @extractor.compact_file_from_expansion(
+        input_filepath:  'input.c',
+        source_filepath: 'WANT.c',
+        output_filepath: 'output.c'
+      )
+    end
+
+    it "should extract the same content from CRLF-terminated input as from LF-terminated input" do
+      # GCC's preprocessor output on Windows is CRLF-terminated. Extraction must
+      # produce identical results regardless of the input's line endings, since
+      # the exact line count of what's extracted matters to code downstream.
+      lf_input = StringIO.new(
+        '# 1 "WANT.c" 5' + "\n" + "line_one();\n" + "\n" + "line_two();\n"
+      )
+      crlf_input = StringIO.new(
+        '# 1 "WANT.c" 5' + "\r\n" + "line_one();\r\n" + "\r\n" + "line_two();\r\n"
+      )
+      lf_output   = StringIO.new
+      crlf_output = StringIO.new
+
+      allow(@file_wrapper).to receive(:open).with( 'lf.c', 'rb' ).and_yield( lf_input )
+      allow(@file_wrapper).to receive(:open).with( 'lf_out.c', 'wb' ).and_yield( lf_output )
+      allow(@file_wrapper).to receive(:open).with( 'crlf.c', 'rb' ).and_yield( crlf_input )
+      allow(@file_wrapper).to receive(:open).with( 'crlf_out.c', 'wb' ).and_yield( crlf_output )
+
+      @extractor.compact_file_from_expansion(
+        input_filepath: 'lf.c', source_filepath: 'WANT.c', output_filepath: 'lf_out.c'
+      )
+      @extractor.compact_file_from_expansion(
+        input_filepath: 'crlf.c', source_filepath: 'WANT.c', output_filepath: 'crlf_out.c'
+      )
+
+      expect( crlf_output.string ).to eq( lf_output.string )
+    end
   end
 
 end

@@ -9,9 +9,9 @@ require 'ceedling/constants'
 require 'ceedling/encodinator'
 require 'ceedling/parsing_parcels'
 
-class PreprocessinatorReconstructor 
- 
-  constructor :parsing_parcels
+class PreprocessinatorReconstructor
+
+  constructor :parsing_parcels, :file_wrapper
 
   ##
   ## Preprocessor Expansion Output Handling
@@ -104,10 +104,13 @@ class PreprocessinatorReconstructor
   # Opens `input_filepath` for reading and `output_filepath` for writing,
   # then delegates to `compact_from_expansion` with the resulting IO objects.
   def compact_file_from_expansion(input_filepath:, source_filepath:, output_filepath:)
-    # Open input in binary mode: GCC output under non-C locale contains non-ASCII bytes
-    # (localized markers). Per-line clean_encoding in _scan_expansion_for_file handles content.
-    File.open( input_filepath, 'rb' ) do |input|
-      File.open( output_filepath, 'w' ) do |output|
+    # Binary mode on both ends: GCC output under non-C locale contains non-ASCII
+    # bytes (localized markers; per-line clean_encoding in _scan_expansion_for_file
+    # handles content), and the compacted output is read again downstream by code
+    # that depends on its line count being exact. Windows text mode would rewrite
+    # "\n" to "\r\n" on write, which this content must not be subject to.
+    @file_wrapper.open( input_filepath, 'rb' ) do |input|
+      @file_wrapper.open( output_filepath, 'wb' ) do |output|
         compact_from_expansion( input: input, filepath: source_filepath, output: output )
       end
     end

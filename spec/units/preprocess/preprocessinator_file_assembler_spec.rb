@@ -17,7 +17,7 @@ RSpec.describe PreprocessinatorFileAssembler do
   # Use real ParsingParcels for _filter_conditionals and collect_file_contents_fallback tests
   let(:real_parsing_parcels) { ParsingParcels.new }
   let(:real_reconstructor) do
-    PreprocessinatorReconstructor.new({ parsing_parcels: real_parsing_parcels })
+    PreprocessinatorReconstructor.new({ parsing_parcels: real_parsing_parcels, file_wrapper: @file_wrapper })
   end
 
   before :each do
@@ -359,9 +359,12 @@ RSpec.describe PreprocessinatorFileAssembler do
 
     let(:preprocessed_filepath) { '/build/mocks/test_module/module.h' }
 
+    # Binary mode ('wb'): `contents` lines assembled into this file come from
+    # an upstream preprocessed file and must reach disk with their line
+    # endings unaltered, which text mode would not guarantee.
     def stub_file_write(filepath)
       output = StringIO.new
-      allow(@file_wrapper).to receive(:open).with(filepath, 'w').and_yield(output)
+      allow(@file_wrapper).to receive(:open).with(filepath, 'wb').and_yield(output)
       output
     end
 
@@ -411,6 +414,97 @@ RSpec.describe PreprocessinatorFileAssembler do
 
       expect(output.string).to include('#include "bar.h"')
       expect(output.string).to include('void foo(void);')
+    end
+
+    it 'opens its output file in binary mode' do
+      stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_header_file(
+        filename:              'module.h',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              [],
+        extras:                [],
+        includes:              []
+      )
+
+      expect(@file_wrapper).to have_received(:open).with(preprocessed_filepath, 'wb')
+    end
+
+    it "passes content lines through to the output file unchanged, including embedded CRLF" do
+      output = stub_file_write(preprocessed_filepath)
+      content_line_with_crlf = "void foo(void) {\r\n  return;\r\n}"
+
+      subject.assemble_preprocessed_header_file(
+        filename:              'module.h',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              [content_line_with_crlf],
+        extras:                [],
+        includes:              []
+      )
+
+      expect(output.string).to include(content_line_with_crlf)
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#assemble_preprocessed_code_file' do
+  # ===========================================================================
+
+    let(:preprocessed_filepath) { '/build/test/preprocess/module.c' }
+
+    # Binary mode ('wb'): `contents` lines assembled into this file come from
+    # an upstream preprocessed file and must reach disk with their line
+    # endings unaltered, which text mode would not guarantee.
+    def stub_file_write(filepath)
+      output = StringIO.new
+      allow(@file_wrapper).to receive(:open).with(filepath, 'wb').and_yield(output)
+      output
+    end
+
+    it 'writes provided includes and contents to the output file' do
+      output = stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_code_file(
+        filename:              'module.c',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              ['void foo(void) {}'],
+        extras:                [],
+        includes:              ['#include "bar.h"']
+      )
+
+      expect(output.string).to include('#include "bar.h"')
+      expect(output.string).to include('void foo(void) {}')
+    end
+
+    it 'opens its output file in binary mode' do
+      stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_code_file(
+        filename:              'module.c',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              [],
+        extras:                [],
+        includes:              []
+      )
+
+      expect(@file_wrapper).to have_received(:open).with(preprocessed_filepath, 'wb')
+    end
+
+    it "passes content lines through to the output file unchanged, including embedded CRLF" do
+      output = stub_file_write(preprocessed_filepath)
+      content_line_with_crlf = "void foo(void) {\r\n  return;\r\n}"
+
+      subject.assemble_preprocessed_code_file(
+        filename:              'module.c',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              [content_line_with_crlf],
+        extras:                [],
+        includes:              []
+      )
+
+      expect(output.string).to include(content_line_with_crlf)
     end
 
   end

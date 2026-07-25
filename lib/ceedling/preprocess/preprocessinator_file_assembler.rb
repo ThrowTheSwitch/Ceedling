@@ -217,7 +217,11 @@ class PreprocessinatorFileAssembler
 
     # Write contents of final preprocessed file a line at a time
     # ----------------------------------------------------------
-    @file_wrapper.open( preprocessed_filepath, 'w' ) do |file|
+    # Binary mode: `contents` lines below come from an upstream preprocessed
+    # file and may already carry their own line endings. Windows text mode
+    # rewrites "\n" on write, which would alter a line ending already present
+    # in that content instead of passing it through unchanged.
+    @file_wrapper.open( preprocessed_filepath, 'wb' ) do |file|
       # Add include guards and extra blank lines to beginning of file contents
       file << "#ifndef #{guardname}\n"
       file << "#define #{guardname}\n\n"
@@ -361,7 +365,11 @@ class PreprocessinatorFileAssembler
   def assemble_preprocessed_code_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
     # Write contents of final preprocessed file a line at a time
     # ----------------------------------------------------------
-    @file_wrapper.open( preprocessed_filepath, 'w' ) do |file|
+    # Binary mode: `contents` lines below come from an upstream preprocessed
+    # file and may already carry their own line endings. Windows text mode
+    # rewrites "\n" on write, which would alter a line ending already present
+    # in that content instead of passing it through unchanged.
+    @file_wrapper.open( preprocessed_filepath, 'wb' ) do |file|
       # Reinsert #include statements into stripped down file
       # Rely on Include object stringification for formatting of incudes
       includes.each { |include| file << "#{include}\n" }

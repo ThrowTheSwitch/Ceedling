@@ -28,14 +28,10 @@ class GeneratorPartials
     header_filepath = File.join(output_path, header)
     source_filepath = File.join(output_path, source)
 
-    # Binary mode: function bodies embedded below (c_module element_sequence,
-    # function_definitions' code_block) are extracted from upstream preprocessed
-    # files and may already carry their own line endings verbatim. Windows text
-    # mode would translate every "\n" this method emits to "\r\n" -- including
-    # ones already part of an embedded "\r\n", doubling it to "\r\r\n". That
-    # doubling silently desyncs this file's line count from what its #line
-    # directives promise, which is exactly what gcov coverage attribution
-    # depends on being correct (see #line comment in emit_func below).
+    # Binary mode: the function bodies written below may already contain their
+    # own line endings verbatim. Windows text mode rewrites every "\n" on
+    # write, which would alter any line ending already present in that
+    # content instead of passing it through unchanged.
     @file_wrapper.open(header_filepath, 'wb') do |file|
       generate_header(file, header, header_includes, function_definitions, c_module, true)
     end
@@ -51,6 +47,7 @@ class GeneratorPartials
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = File.join(output_path, header)
 
+    # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
       generate_header(file, header, includes, function_declarations, c_module, false)
     end
@@ -157,12 +154,11 @@ class GeneratorPartials
       # Blank line before a function when preceded by a non-function item
       io << "\n" if anything_emitted && !last_was_func
       if func.line_num and func.source_filepath
-        # #line is the only thing tying this generated file's code back to its
-        # original source location -- it's what makes debuggers, error messages, and
-        # (critically) gcov coverage attribution point at the real file/line instead
-        # of this generated stand-in. Getting that mapping right depends on the whole
-        # file being byte-for-byte what it claims to be, line for line -- see the
-        # binary-mode file writes below for why that isn't automatic on Windows.
+        # #line ties this generated file's code back to its original source
+        # location -- debuggers, error messages, and gcov coverage attribution
+        # all point at the real file/line instead of this generated stand-in.
+        # That mapping only holds if this file's line count matches what
+        # #line promises, which is why it's opened in binary mode above.
         io << "#line #{func.line_num} \"#{func.source_filepath}\"\n"
       end
       io << func.code_block << "\n\n"

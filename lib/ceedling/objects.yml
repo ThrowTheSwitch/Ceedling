@@ -288,6 +288,7 @@ preprocessinator_comment_stripper:
 preprocessinator_reconstructor:
   compose:
     - parsing_parcels
+    - file_wrapper
 
 preprocessinator:
   compose:

@@ -84,6 +84,8 @@ describe GeneratorPartials do
       header_file_handle = double('header_file_handle')
       source_file_handle = double('source_file_handle')
 
+      # Binary mode ('wb'): generated files carry embedded content whose line
+      # endings must reach disk unchanged, which text mode would not guarantee.
       allow(@file_wrapper).to receive(:open)
         .with(expected_header_filepath, 'wb')
         .and_yield(header_file_handle)
@@ -167,6 +169,8 @@ describe GeneratorPartials do
         .and_return(header_filename)
 
       # Mock FileWrapper.open to yield a file handle
+      # Binary mode ('wb'): generated files carry embedded content whose line
+      # endings must reach disk unchanged, which text mode would not guarantee.
       file_handle = double('file_handle')
       allow(@file_wrapper).to receive(:open)
         .with(expected_filepath, 'wb')
@@ -647,6 +651,28 @@ describe GeneratorPartials do
 
       @generator.send(:generate_source, buf, [], defns, c_module)
       expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should pass a code_block's line endings through unchanged, including embedded CRLF" do
+      # code_block content is written to the IO handle exactly as given, byte for
+      # byte, since the file it ends up in is opened by its caller in binary mode
+      # specifically so nothing here alters a line ending already present in it.
+      code_block_with_crlf = "void helloBlanks(void) {\r\n\r\n  return;\r\n}"
+
+      defn = Partials.manufacture_function_definition(
+        line_num: 2,
+        source_filepath: 'src/blanks.c',
+        name: 'helloBlanks',
+        signature: 'void helloBlanks(void)',
+        code_block: code_block_with_crlf
+      )
+      c_module = make_module(
+        CExtractorTypes::CFunctionDefinition.new(name: 'helloBlanks')
+      )
+
+      @generator.send(:generate_source, buf, [], [defn], c_module)
+
+      expect( buf.string ).to include( code_block_with_crlf )
     end
 
     it "should emit only variable declarations and function definitions from all four element_sequence categories" do
