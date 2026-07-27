@@ -1,7 +1,7 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-**Ceedling 1.1.1** is the latest and greatest.
+**Ceedling 1.1.2** is the latest and greatest.
 
 See [_Release Notes_][release-notes], [_Changelog_](docs/Changelog.md), 
 [_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues].
@@ -22,7 +22,7 @@ from the same source module in a single test file and enables testing of
 * New stock plugins for [Valgrind memory checking][valgrind-plugin] and 
 [Cppcheck static analysis][cppcheck-plugin].
 * The [GCov plugin][gcov-plugin]:
-   * _Finally_ supports coverage reports for all sources.
+   * Now supports coverage reports for all sources.
    * Adds support for Modified Condition / Decision Coverage.
 * Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
 * Ceedling’s test preprocessing is once again compatible with Unity’s 
