@@ -10,7 +10,7 @@ This changelog is complemented by three other documents:
 
 ---
 
-# [1.1.2] — Prelease
+# [1.1.2] — 2026-07-27
 
 ## 💪 Fixed
 
