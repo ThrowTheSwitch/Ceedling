@@ -355,6 +355,8 @@ jobs:
         with:
           ruby-version: '3.3'
 
+      # Workaround: fix Ruby toolcache gem dir permissions (Bundler exit 38)
+      # Issue: https://github.com/rubygems/rubygems/issues/7983
       - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
         run: |
           sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
