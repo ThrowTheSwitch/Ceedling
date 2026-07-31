@@ -186,7 +186,9 @@ def valgrind_available?
 end
 
 def bullseye_available?
-  tool_available?('covc --version 2>&1')
+  # covc has no --version flag (unrecognized options always exit non-zero,
+  # licensed or not) — --help is the cheapest licensed command that succeeds.
+  tool_available?('covc --help 2>&1')
 end
 
 RSpec.shared_context "requires gdb" do

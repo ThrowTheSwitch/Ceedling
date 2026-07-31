@@ -32,6 +32,14 @@ class Bullseye < Plugin
     # into the ENVIRONMENT_COVFILE global constant and the real COVFILE env var by Configurator
     @environment = [ {:covfile => BULLSEYE_COVFILE_PATH} ]
 
+    # COVLM environment variable — only meaningful for Bullseye's floating/evaluation
+    # license scheme (a shared license manager file consulted by every Bullseye tool
+    # invocation). Node-locked/unlimited licenses are activated once, at installation,
+    # independent of any per-build environment variable, so this option is a no-op for
+    # those and is left unset by default.
+    license_manager_file = @project_config[:bullseye_license_manager_file]
+    @environment << {:covlm => license_manager_file} unless license_manager_file.nil?
+
     @coverage_template_all = @ceedling[:file_wrapper].read( File.join( @plugin_root_path, 'assets/template.erb' ) )
 
     # Convenient instance variable references
@@ -104,9 +112,14 @@ class Bullseye < Plugin
     # coverage results
     return if (verify_coverage_file() == false)
 
+    # covselect exclusions must be applied regardless of :summaries — covhtml honors
+    # the same persisted selections, so this isn't just a console-output concern
     apply_report_exclusions()
-    report_per_function_coverage_results()
-    report_coverage_results_all()
+
+    if summaries_enabled?
+      report_per_function_coverage_results()
+      report_coverage_results_all()
+    end
 
     generate_html_report() if automatic_html_reporting_enabled?
   end
@@ -125,13 +138,17 @@ class Bullseye < Plugin
     @plugin_reportinator.run_test_results_report(hash)
 
     # coverage results
-    report_coverage_results_all()
+    report_coverage_results_all() if summaries_enabled?
   end
 
   # Called within class and also externally by plugin Rakefile
   # No parameters enables the opportunity for latter mechanism
   def automatic_html_reporting_enabled?
     return (@project_config[:bullseye_report_task] == false)
+  end
+
+  def summaries_enabled?
+    return (@project_config[:bullseye_summaries] != false)
   end
 
   # Called within class and also externally by plugin Rakefile to conditionally
