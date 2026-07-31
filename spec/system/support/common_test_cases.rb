@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'yaml'
+
 module CommonSystemTestCases
   def can_report_version_no_git_commit_sha
     @c.with_context do
@@ -888,6 +890,96 @@ module CommonSystemTestCases
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  # Regression test for issue #1185: a parameterized test (TEST_CASE) defined after a
+  # crashing test in the same file must still report its own real PASS results instead
+  # of being swept up as "crashed" alongside the actual crash. Uses :use_backtrace => :simple
+  # (Ceedling's default), which is the mode in which the bug was reported.
+  def crash_simple_sigsegv_with_parameterized_test
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv_with_param.c"), 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_backtrace => :simple },
+          :unity   => { :use_param_tests => true }
+        })
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
+        expect(output).to match(/Unit test failures/)
+        # 1 crashing test + 3 parameterized cases
+        expect(output).to match(/TESTED:\s+4/)
+        expect(output).to match(/PASSED:\s+3/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+
+        result_file = './build/test/results/test_example_file_crash_sigsegv_with_param.fail'
+        expect(File.exist?(result_file)).to be(true)
+        results = YAML.load_file(result_file, permitted_classes: [Symbol])
+
+        # Only the truly crashing test is reported as a failure/crash
+        expect(results[:failures].map { |f| f[:test] }).to eq(['test_add_numbers_will_fail'])
+        expect(results[:failures].first[:message]).to match(/Test case crashed/)
+
+        # Each parameterized case reports its own real (passing) result, by name, not a crash
+        expect(results[:successes].map { |s| s[:test] }).to contain_exactly(
+          'test_difference_between_numbers_is_correct(5, 3, 2)',
+          'test_difference_between_numbers_is_correct(10, 4, 6)',
+          'test_difference_between_numbers_is_correct(0, 0, 0)'
+        )
+      end
+    end
+  end
+
+  # Same regression coverage as `crash_simple_sigsegv_with_parameterized_test`, but for
+  # :use_backtrace => :gdb: confirms gdb-based isolation also correctly distinguishes the
+  # crashing test from the unrelated parameterized test, and still attributes the crash to
+  # the correct source line (exercising the gdb crash-frame symbol matching fix).
+  def crash_gdb_sigsegv_with_parameterized_test
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv_with_param.c"), 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_backtrace => :gdb },
+          :unity   => { :use_param_tests => true }
+        })
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
+        expect(output).to match(/Unit test failures/)
+        expect(output).to match(/TESTED:\s+4/)
+        expect(output).to match(/PASSED:\s+3/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+
+        result_file = './build/test/results/test_example_file_crash_sigsegv_with_param.fail'
+        expect(File.exist?(result_file)).to be(true)
+        results = YAML.load_file(result_file, permitted_classes: [Symbol])
+
+        # Only the truly crashing test is reported as a failure/crash
+        expect(results[:failures].map { |f| f[:test] }).to eq(['test_add_numbers_will_fail'])
+        expect(results[:failures].first[:message]).to match(/Test case crashed/)
+        expect(results[:failures].first[:message]).to match(/SIGSEGV/i)
+
+        # Each parameterized case reports its own real (passing) result, by name, not a crash
+        expect(results[:successes].map { |s| s[:test] }).to contain_exactly(
+          'test_difference_between_numbers_is_correct(5, 3, 2)',
+          'test_difference_between_numbers_is_correct(10, 4, 6)',
+          'test_difference_between_numbers_is_correct(0, 0, 0)'
+        )
+
+        log_path = './build/logs/test/test_example_file_crash_sigsegv_with_param/test_add_numbers_will_fail.gdb.log'
+        expect(File.exist?(log_path)).to be(true)
+        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
       end
     end
   end

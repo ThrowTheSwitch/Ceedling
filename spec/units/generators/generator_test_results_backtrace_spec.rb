@@ -65,6 +65,19 @@ GDB_NO_SIGNAL_OUTPUT = <<~GDB.freeze
   Inferior 1 (process 12345) exited with code 0139.
 GDB
 
+# Parameterized test crash (issue #1185): the crashing frame names the generated
+# wrapper function (`runner_args1_test_value_out_of_range_good`), not the human-facing
+# test name (`test_value_out_of_range_good(101, 1)`) that Unity reports at runtime.
+GDB_SIGSEGV_PARAM_OUTPUT = <<~GDB.freeze
+  [Thread debugging using libthread_db enabled]
+
+  Program received signal SIGSEGV, Segmentation fault.
+  0x00005618066ea1fb in runner_args1_test_value_out_of_range_good () at test/test_module_d.c:157
+  157	  int invalid = 1 / 0;
+  #0  0x00005618066ea1fb in runner_args1_test_value_out_of_range_good () at test/test_module_d.c:157
+  #1  0x00005618066eb4de in run_test (func=0x5618066ea1e7 <runner_args1_test_value_out_of_range_good>, name=0x5618066eb2e0 "test_value_out_of_range_good(101, 1)", line_num=157) at build/test/runners/test_module_d_runner.c:76
+GDB
+
 # Windows SIGSEGV — Thread N prefix, space-padded source line, DLL frames
 # Single-quoted heredoc: backslashes in Windows paths are literal, not escape sequences
 GDB_WINDOWS_SIGSEGV_OUTPUT = <<~'GDB'.freeze
@@ -153,7 +166,7 @@ describe GeneratorTestResultsBacktrace do
     let(:filename)    { 'test_lib.c' }
     let(:executable)  { 'build/test/out/test_lib/test_lib.out' }
     let(:shell_result){ { exit_code: 1, output: '', time: 0.0 } }
-    let(:test_cases)  { [{ test: 'test_asserting', line_number: 8 }] }
+    let(:test_cases)  { [{ test: 'test_asserting', symbol: 'test_asserting', line_number: 8 }] }
 
     before(:each) do
       allow(@configurator).to receive(:project_build_tests_root).and_return('build/test')
@@ -194,7 +207,7 @@ describe GeneratorTestResultsBacktrace do
     end
 
     it 'handles a SIGSEGV crash — writes log, includes signal label, backtick source line, and log path' do
-      test_cases_sigsegv = [{ test: 'testCrash', line_number: 37 }]
+      test_cases_sigsegv = [{ test: 'testCrash', symbol: 'testCrash', line_number: 37 }]
       filename_sigsegv   = 'TestUsartModel.c'
 
       allow(@tool_executor).to receive(:exec)
@@ -219,8 +232,39 @@ describe GeneratorTestResultsBacktrace do
       expect(crash_line).to include('(/build/logs/test/TestUsartModel/testCrash.gdb.log)')
     end
 
+    it 'attributes a crash in a parameterized test to its wrapper symbol, not its display name (issue #1185)' do
+      test_cases_param = [{
+        test:        'test_value_out_of_range_good(101, 1)',
+        symbol:      'runner_args1_test_value_out_of_range_good',
+        line_number: 157
+      }]
+      filename_param = 'test_module_d.c'
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_SIGSEGV_PARAM_OUTPUT, time: 0.5, exit_code: 139 })
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      expect(@file_wrapper).to receive(:write)
+        .with('/build/logs/test/test_module_d/test_value_out_of_range_good(101, 1).gdb.log', /=== test_value_out_of_range_good\(101, 1\) ===/, 'a')
+
+      @backtrace.do_gdb( filename_param, executable, shell_result, test_cases_param, context: :test )
+
+      crash_line = expected_output_lines.first
+      # The FAIL line reports the human-facing display name (with args)...
+      expect(crash_line).to start_with('test_module_d.c:157:test_value_out_of_range_good(101, 1):FAIL: Test case crashed')
+      # ...but the crash frame was still correctly located via the wrapper symbol.
+      expect(crash_line).to include('>> [SIGSEGV] Segmentation fault')
+      expect(crash_line).to include("#{NEWLINE_TOKEN}`int invalid = 1 / 0;`")
+      expect(crash_line).not_to include('failed to extract')
+    end
+
     it 'handles a SIGABRT crash from assert() — shows assertion text, no source line (issue #1038)' do
-      test_cases_assert = [{ test: 'test_asserting', line_number: 8 }]
+      test_cases_assert = [{ test: 'test_asserting', symbol: 'test_asserting', line_number: 8 }]
 
       allow(@tool_executor).to receive(:exec)
         .and_return({ output: GDB_SIGABRT_ASSERT_OUTPUT, time: 0.3, exit_code: 134 })
@@ -460,7 +504,7 @@ describe GeneratorTestResultsBacktrace do
 
   describe '#do_gdb with brief Windows assert (no crash frame)' do
     let(:filename_assert)   { 'test_example_file_crash_assert.c' }
-    let(:test_cases_assert) { [{ test: 'test_add_numbers_triggers_assert', line_number: 20 }] }
+    let(:test_cases_assert) { [{ test: 'test_add_numbers_triggers_assert', symbol: 'test_add_numbers_triggers_assert', line_number: 20 }] }
     let(:executable)        { 'build/test/out/test_example_file_crash_assert/test_example_file_crash_assert.out' }
     let(:shell_result)      { { exit_code: 1, output: '', time: 0.0 } }
 

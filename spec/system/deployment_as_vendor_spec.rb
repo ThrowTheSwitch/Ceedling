@@ -94,6 +94,7 @@ ceedling_system_tests do
       test_case :crash_none_writes_fail_results_file
       test_case :crash_simple_sigsegv_all_test_cases
       test_case :crash_simple_sigabrt_assert_failure
+      test_case :crash_simple_sigsegv_with_parameterized_test
     end
 
     describe "Backtrace with GDB" do
@@ -103,6 +104,7 @@ ceedling_system_tests do
       test_case :crash_gdb_sigsegv_targets_test_case_filter
       test_case :crash_gdb_sigsegv_excludes_test_case_filter
       test_case :crash_gdb_sigabrt_assert_failure
+      test_case :crash_gdb_sigsegv_with_parameterized_test
     end
 
     describe "Test filtering" do

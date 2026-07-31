@@ -96,7 +96,7 @@ describe GeneratorTestRunner do
 
       runner = build_runner( test_file_contents: source )
 
-      expect( runner.test_cases ).to eq( [ { test: 'test_ShouldDoSomething', line_number: 2 } ] )
+      expect( runner.test_cases ).to eq( [ { test: 'test_ShouldDoSomething', symbol: 'test_ShouldDoSomething', line_number: 2 } ] )
     end
 
     it 'remaps line numbers back to the original file when preprocessed content is given' do
@@ -114,7 +114,31 @@ describe GeneratorTestRunner do
 
       runner = build_runner( test_file_contents: original, preprocessed_file_contents: preprocessed )
 
-      expect( runner.test_cases ).to eq( [ { test: 'test_ShouldDoSomething', line_number: 3 } ] )
+      expect( runner.test_cases ).to eq( [ { test: 'test_ShouldDoSomething', symbol: 'test_ShouldDoSomething', line_number: 3 } ] )
+    end
+
+    it 'expands a parameterized test into one entry per TEST_CASE, carrying the runtime name and wrapper symbol' do
+      source = <<~SOURCE
+        void setUp(void) {}
+        void tearDown(void) {}
+
+        TEST_CASE(101, 1)
+        TEST_CASE(-1, 1)
+        void test_value_out_of_range_good(int a, int expected) {}
+      SOURCE
+
+      runner = described_class.new(
+        config: { use_param_tests: true },
+        test_file_contents: source,
+        parsing_parcels: @parsing_parcels
+      )
+
+      expect( runner.test_cases ).to eq(
+        [
+          { test: 'test_value_out_of_range_good(101, 1)', symbol: 'runner_args1_test_value_out_of_range_good', line_number: 6 },
+          { test: 'test_value_out_of_range_good(-1, 1)',   symbol: 'runner_args2_test_value_out_of_range_good', line_number: 6 }
+        ]
+      )
     end
   end
 end
