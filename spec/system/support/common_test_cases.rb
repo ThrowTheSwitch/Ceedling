@@ -5,8 +5,6 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'yaml'
-
 module CommonSystemTestCases
   def can_report_version_no_git_commit_sha
     @c.with_context do
@@ -921,7 +919,7 @@ module CommonSystemTestCases
 
         result_file = './build/test/results/test_example_file_crash_sigsegv_with_param.fail'
         expect(File.exist?(result_file)).to be(true)
-        results = YAML.load_file(result_file, permitted_classes: [Symbol])
+        results = YamlWrapper.new.load(result_file)
 
         # Only the truly crashing test is reported as a failure/crash
         expect(results[:failures].map { |f| f[:test] }).to eq(['test_add_numbers_will_fail'])
@@ -963,7 +961,7 @@ module CommonSystemTestCases
 
         result_file = './build/test/results/test_example_file_crash_sigsegv_with_param.fail'
         expect(File.exist?(result_file)).to be(true)
-        results = YAML.load_file(result_file, permitted_classes: [Symbol])
+        results = YamlWrapper.new.load(result_file)
 
         # Only the truly crashing test is reported as a failure/crash
         expect(results[:failures].map { |f| f[:test] }).to eq(['test_add_numbers_will_fail'])
