@@ -6,8 +6,8 @@
     links test executables with Bullseye instrumentation, executes them, and
     accumulates coverage data in a shared coverage data file.
 
-    `bullseye:` tasks entirely duplicate `test:` tasks and test builds because
-    of the needs of coverage instrumentation at compile time.
+    `bullseye:` tasks entirely duplicate `test:` tasks and test builds since
+    coverage instrumentation has to be applied at compile time.
 
 ## Coverage Metric
 

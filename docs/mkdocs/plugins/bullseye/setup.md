@@ -118,6 +118,20 @@ time-intensive report generation except when desired.
 ```
 **Default:** `FALSE`
 
+## Floating license manager file
+
+If your organization uses a Bullseye floating/evaluation license, point this
+plugin at the shared license manager file so every Bullseye tool invocation
+can find it (this sets the `COVLM` environment variable). See
+[Licensing](licensing.md) for the distinction between Bullseye's licensing
+mechanisms.
+
+```yaml
+:bullseye:
+  :license_manager_file: /path/to/shared/bullseye.lmgr
+```
+**Default:** unset
+
 ## Coverage Browser
 
 Independent of `bullseye:` tasks, this plugin's `utils:bullseye` task opens

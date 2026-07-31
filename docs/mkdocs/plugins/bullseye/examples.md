@@ -79,14 +79,37 @@ just that problem with the standalone task:
  > ceedling bullseye:untested_sources
 ```
 
+## Using a floating license manager file
+
+If your Bullseye license is a floating/evaluation license (see
+[Licensing](licensing.md)), point the plugin at your organization's shared
+license manager file so every Bullseye tool invocation can find it.
+
+```yaml
+:plugins:
+  :enabled:
+    - bullseye
+
+:bullseye:
+  :license_manager_file: /path/to/shared/bullseye.lmgr
+```
+
+```shell
+ > ceedling bullseye:all
+```
+
+This setting is unnecessary — and has no effect — for node-locked/unlimited
+licenses, which are activated once at installation time independent of any
+per-build configuration.
+
 ## Minimal console-only configuration
 
-For a project that only wants console coverage summaries with no HTML
-report at all, simply enable the plugin with no further configuration —
-report generation requires no `:reports:`-style opt-in the way `gcov`'s
-advanced reporting does, so leaving `:bullseye:` unconfigured already
-produces an HTML report by default. To suppress it, disable the report task
-and never invoke `report:bullseye`:
+Unlike `gcov`, this plugin produces an HTML report by default with no
+`:reports:`-style opt-in required — so a project that wants only console
+coverage summaries needs one setting to suppress it: `:report_task: TRUE`.
+This disables automatic HTML generation in favor of the on-demand
+`report:bullseye` task; as long as that task is never invoked, no HTML
+report is produced at all.
 
 ```yaml
 :plugins:

@@ -14,6 +14,6 @@
 
 # Add -bullseye to the plugins list to make use of the bullseye plugin.
 # You will need a working Bullseye Coverage installation and license to make it work.
-# For more information on these options, see docs in plugins/bullseye
+# For more information on these options, see docs in docs/mkdocs/plugins/bullseye
 
 ...
