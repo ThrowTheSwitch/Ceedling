@@ -452,4 +452,29 @@ release_invoker:
     - file_path_utils
     - file_wrapper
 
+gcc_dependency_parser:
+
+dependency_hasher:
+  compose:
+    - file_wrapper
+
+dependency_path_normalizer:
+  compose:
+    - file_wrapper
+
+dependency_cache_store:
+  compose:
+    - file_wrapper
+    - loginator
+
+dependency_tracker:
+  compose:
+    - file_wrapper
+    - system_wrapper
+    - loginator
+    - dependency_hasher
+    - dependency_path_normalizer
+    - dependency_cache_store
+    - gcc_dependency_parser
+
 erb_wrapper:
