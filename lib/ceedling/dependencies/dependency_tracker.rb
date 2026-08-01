@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'thread'
+require 'time'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 
@@ -53,12 +54,15 @@ class DependencyTracker
     :dependency_hasher,
     :dependency_path_normalizer,
     :dependency_cache_store,
-    :gcc_dependency_parser
+    :gcc_dependency_parser,
+    :dependency_debug_tree,
+    :dependency_differ
   )
 
   def setup()
     @mutex = Mutex.new
     @store_path = nil
+    @debug_root = nil
     @debug_tier = DEBUG_TIERS[:none]
     @relationships = {}
     @cache = { 'entries' => {} }
@@ -72,13 +76,20 @@ class DependencyTracker
   # Loginator's `CEEDLING_DECORATORS` handling) -- and falls back to :none for
   # anything unset or unrecognized, since these tiers are meant to be opt-in,
   # temporary debugging aids, never a silently-active default.
+  #
+  # Any cache entries dropped while loading (malformed, or their target
+  # deleted from disk -- see DependencyCacheStore#load) have their
+  # DependencyDebugTree data pruned too, so the debug tree never outlives
+  # the cache entries it exists to explain.
   def open(store_path:, debug_tier: nil)
     @store_path = store_path
+    @debug_root = debug_root_for( store_path )
     @debug_tier = resolve_debug_tier( debug_tier )
 
     @mutex.synchronize do
       @relationships = {}
       @cache = @dependency_cache_store.load( @store_path )
+      ( @cache['pruned'] || [] ).each { |target| @dependency_debug_tree.prune( @debug_root, target ) }
     end
   end
 
@@ -159,28 +170,29 @@ class DependencyTracker
   # A dependency that doesn't currently exist is simply omitted from the
   # recorded `deps` hashes (rather than raising); the next `stale?` call
   # already treats a missing dependency as stale on its own.
+  #
+  # When a debug tier is active, this also writes a DependencyDebugTree
+  # snapshot for `target` (tier :meta+: canonicalized meta; tier :full:
+  # target content too) and, at tier :full, for every currently-registered
+  # dependency (content only -- a dependency has no meta of its own). These
+  # snapshots are what `diagnose` later diffs live content against; nothing
+  # is embedded in the JSON cache entry itself.
   def mark_fresh(target)
     ensure_open!
 
     key = @dependency_path_normalizer.normalize( target )
     rel = @mutex.synchronize { @relationships[key] } || { files: [], meta: {} }
 
+    self_hash = @dependency_hasher.hash_of_file( key )
     entry = {
-      'self_hash' => @dependency_hasher.hash_of_file( key ),
+      'self_hash' => self_hash,
       'meta_hash' => @dependency_hasher.hash_of_meta( rel[:meta] ),
       'deps'      => rel[:files].each_with_object( {} ) do |dep, hashes|
         hashes[dep] = @dependency_hasher.hash_of_file( dep ) if @file_wrapper.exist?( dep )
       end
     }
 
-    if @debug_tier >= DEBUG_TIERS[:meta]
-      entry['debug_tier'] = @debug_tier
-      entry['debug_meta'] = @dependency_hasher.canonicalize( rel[:meta] )
-    end
-
-    if @debug_tier >= DEBUG_TIERS[:full]
-      entry['debug_files'] = capture_file_contents( (rel[:files] + [key]).uniq )
-    end
+    capture_debug_snapshots( key, self_hash, rel ) if @debug_tier > DEBUG_TIERS[:none]
 
     @mutex.synchronize { @cache['entries'][key] = entry }
   end
@@ -212,11 +224,52 @@ class DependencyTracker
     ensure_open!
 
     entries = @mutex.synchronize do
-      @cache['entries'].select! { |target, _entry| @relationships.key?( target ) } if prune
+      if prune
+        dropped = @cache['entries'].keys.reject { |target| @relationships.key?( target ) }
+        @cache['entries'].select! { |target, _entry| @relationships.key?( target ) }
+        dropped.each { |target| @dependency_debug_tree.prune( @debug_root, target ) }
+      end
       @cache['entries'].dup
     end
 
     @dependency_cache_store.persist( @store_path, entries )
+  end
+
+  # Explains why `target` is (or was last found to be) stale: which of
+  # self/meta/dependencies changed, and -- to whatever extent a prior
+  # DependencyDebugTree snapshot is available to compare against (see
+  # `mark_fresh`) -- an actual diff for each. Always runs (no debug tier
+  # required): with no snapshots ever captured, it still reports *which*
+  # checks failed, just without diff detail, each annotated with why no
+  # diff could be produced. Writes the result to the debug tree as
+  # `diagnosis.yml` under `target`'s own mirrored directory, and also
+  # returns it directly for programmatic use (e.g. specs).
+  #
+  # Does not require `target` to currently be stale -- calling it on a
+  # fresh target just reports everything as unchanged.
+  def diagnose(target)
+    ensure_open!
+
+    key = @dependency_path_normalizer.normalize( target )
+    rel = @mutex.synchronize { @relationships[key] }
+    entry = @mutex.synchronize { @cache['entries'][key] }
+
+    diagnosis = { 'target' => key, 'diagnosed_at' => Time.now.utc.iso8601 }
+
+    if rel.nil?
+      diagnosis['reason'] = 'never registered this run'
+    elsif !@file_wrapper.exist?( key )
+      diagnosis['reason'] = 'target does not exist on disk'
+    elsif entry.nil?
+      diagnosis['reason'] = 'no prior cache entry (never marked fresh)'
+    else
+      diagnosis['self'] = diagnose_self( key, entry )
+      diagnosis['meta'] = diagnose_meta( key, rel, entry )
+      diagnosis['antecedents'] = rel[:files].map { |dep| diagnose_dependency( dep, entry ) }
+    end
+
+    @dependency_debug_tree.write_diagnosis( @debug_root, key, diagnosis )
+    diagnosis
   end
 
   ### Private ###
@@ -238,17 +291,70 @@ class DependencyTracker
     value.strip.downcase.to_sym
   end
 
-  def capture_file_contents(paths)
-    paths.each_with_object( {} ) do |path, captured|
-      next unless @file_wrapper.exist?( path )
+  # Debug tree root, derived from `store_path` rather than a separate
+  # parameter -- `.dep_cache.json` -> `.dep_cache_debug/`, alongside it.
+  def debug_root_for(store_path)
+    dir  = @file_wrapper.dirname( store_path )
+    base = @file_wrapper.basename( store_path, @file_wrapper.extname( store_path ) )
+    File.join( dir, "#{base}_debug" )
+  end
 
-      content = @file_wrapper.read( path )
-      if content.bytesize > DEBUG_FULL_CAPTURE_SIZE_CAP
-        captured[path] = { 'truncated' => true, 'size' => content.bytesize }
-      else
-        captured[path] = { 'content' => content }
-      end
+  def capture_debug_snapshots(key, self_hash, rel)
+    meta = @debug_tier >= DEBUG_TIERS[:meta] ? @dependency_hasher.canonicalize( rel[:meta] ) : nil
+    content = @debug_tier >= DEBUG_TIERS[:full] ? captured_content( key ) : {}
+
+    @dependency_debug_tree.write_snapshot( @debug_root, key, hash: self_hash, meta: meta, **content )
+
+    return unless @debug_tier >= DEBUG_TIERS[:full]
+
+    rel[:files].each do |dep|
+      next unless @file_wrapper.exist?( dep )
+      @dependency_debug_tree.write_snapshot( @debug_root, dep, hash: @dependency_hasher.hash_of_file( dep ), **captured_content( dep ) )
     end
+  end
+
+  def captured_content(path)
+    content = @file_wrapper.read( path )
+    if content.bytesize > DEBUG_FULL_CAPTURE_SIZE_CAP
+      { truncated: true, size: content.bytesize }
+    else
+      { content: content }
+    end
+  end
+
+  def diagnose_self(key, entry)
+    current_hash = @dependency_hasher.hash_of_file( key )
+    changed = entry['self_hash'] != current_hash
+    result = { 'changed' => changed }
+    return result unless changed
+
+    snapshot = @dependency_debug_tree.read_snapshot( @debug_root, key )
+    current_content = @file_wrapper.exist?( key ) ? @file_wrapper.read( key ) : nil
+    result.merge( @dependency_differ.diff_content( snapshot, current_content ) )
+  end
+
+  def diagnose_meta(key, rel, entry)
+    current_meta_hash = @dependency_hasher.hash_of_meta( rel[:meta] )
+    changed = entry['meta_hash'] != current_meta_hash
+    result = { 'changed' => changed }
+    return result unless changed
+
+    snapshot = @dependency_debug_tree.read_snapshot( @debug_root, key )
+    old_meta = snapshot && snapshot['meta']
+    new_meta = @dependency_hasher.canonicalize( rel[:meta] )
+    result.merge( @dependency_differ.diff_meta( old_meta, new_meta ) )
+  end
+
+  def diagnose_dependency(dep, entry)
+    return { 'path' => dep, 'missing' => true } unless @file_wrapper.exist?( dep )
+
+    current_hash = @dependency_hasher.hash_of_file( dep )
+    changed = entry.dig( 'deps', dep ) != current_hash
+    result = { 'path' => dep, 'changed' => changed }
+    return result unless changed
+
+    snapshot = @dependency_debug_tree.read_snapshot( @debug_root, dep )
+    result.merge( @dependency_differ.diff_content( snapshot, @file_wrapper.read( dep ) ) )
   end
 
 end

@@ -17,10 +17,13 @@ require 'fileutils'
 require 'tmpdir'
 require 'ceedling/file_wrapper'
 require 'ceedling/system_wrapper'
+require 'ceedling/yaml_wrapper'
 require 'ceedling/dependencies/dependency_hasher'
 require 'ceedling/dependencies/dependency_path_normalizer'
 require 'ceedling/dependencies/dependency_cache_store'
 require 'ceedling/dependencies/gcc_dependency_parser'
+require 'ceedling/dependencies/dependency_debug_tree'
+require 'ceedling/dependencies/dependency_differ'
 require 'ceedling/dependencies/dependency_tracker'
 
 module DependencyTrackerSystemHelper
@@ -38,6 +41,8 @@ module DependencyTrackerSystemHelper
     normalizer.setup()
     cache_store = DependencyCacheStore.new( { :file_wrapper => file_wrapper, :loginator => loginator } )
     gcc_parser = GccDependencyParser.new
+    debug_tree = DependencyDebugTree.new( { :file_wrapper => file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+    differ = DependencyDiffer.new
 
     tracker = DependencyTracker.new(
       {
@@ -47,12 +52,22 @@ module DependencyTrackerSystemHelper
         :dependency_hasher => hasher,
         :dependency_path_normalizer => normalizer,
         :dependency_cache_store => cache_store,
-        :gcc_dependency_parser => gcc_parser
+        :gcc_dependency_parser => gcc_parser,
+        :dependency_debug_tree => debug_tree,
+        :dependency_differ => differ
       }
     )
     tracker.setup()
     tracker.open( store_path: store_path, debug_tier: debug_tier )
     tracker
+  end
+
+  # The debug tree root DependencyTracker derives from `store_path` --
+  # duplicated here (rather than reaching into the tracker's private state)
+  # so specs can independently verify debug tree content lives where it's
+  # expected to.
+  def debug_root_for(store_path)
+    File.join( File.dirname( store_path ), File.basename( store_path, '.*' ) + '_debug' )
   end
 
   # Runs `block` with a fresh, real temp directory, cleaned up afterward

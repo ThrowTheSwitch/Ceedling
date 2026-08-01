@@ -10,19 +10,23 @@ require 'ceedling/exceptions'
 require 'ceedling/file_wrapper'
 require 'ceedling/system_wrapper'
 require 'ceedling/loginator'
+require 'ceedling/yaml_wrapper'
 require 'ceedling/dependencies/dependency_hasher'
 require 'ceedling/dependencies/dependency_path_normalizer'
 require 'ceedling/dependencies/dependency_cache_store'
 require 'ceedling/dependencies/gcc_dependency_parser'
+require 'ceedling/dependencies/dependency_debug_tree'
+require 'ceedling/dependencies/dependency_differ'
 require 'ceedling/dependencies/dependency_tracker'
 
 # DependencyTracker is exercised here with its real (small, deterministic)
 # collaborators -- DependencyHasher, DependencyPathNormalizer,
-# DependencyCacheStore, GccDependencyParser -- wired to a mocked FileWrapper,
-# SystemWrapper, and Loginator. Those collaborators each have their own
-# exhaustive unit specs for internal edge cases; here the goal is verifying
-# DependencyTracker's actual end-to-end behavior through its public API
-# without a single real file ever touched.
+# DependencyCacheStore, GccDependencyParser, DependencyDebugTree,
+# DependencyDiffer -- wired to a mocked FileWrapper, SystemWrapper, and
+# Loginator. Those collaborators each have their own exhaustive unit specs
+# for internal edge cases; here the goal is verifying DependencyTracker's
+# actual end-to-end behavior through its public API without a single real
+# file ever touched.
 describe DependencyTracker do
 
   before(:each) do
@@ -40,7 +44,8 @@ describe DependencyTracker do
     # sensitivity-handling edge cases already have a dedicated, exhaustive spec.
     allow( @file_wrapper ).to receive(:get_expanded_path) { |path| path }
     allow( @file_wrapper ).to receive(:dirname) { |path| File.dirname( path ) }
-    allow( @file_wrapper ).to receive(:basename) { |path| File.basename( path ) }
+    allow( @file_wrapper ).to receive(:basename) { |path, ext = nil| ext ? File.basename( path, ext ) : File.basename( path ) }
+    allow( @file_wrapper ).to receive(:extname) { |path| File.extname( path ) }
     allow( @file_wrapper ).to receive(:directory_listing).and_return([])
     allow( @file_wrapper ).to receive(:exist?).and_return(false)
     allow( @file_wrapper ).to receive(:mkdir)
@@ -53,6 +58,8 @@ describe DependencyTracker do
     normalizer.setup()
     cache_store = DependencyCacheStore.new( { :file_wrapper => @file_wrapper, :loginator => @loginator } )
     gcc_parser = GccDependencyParser.new
+    debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+    differ = DependencyDiffer.new
 
     @tracker = described_class.new(
       {
@@ -62,7 +69,9 @@ describe DependencyTracker do
         :dependency_hasher => hasher,
         :dependency_path_normalizer => normalizer,
         :dependency_cache_store => cache_store,
-        :gcc_dependency_parser => gcc_parser
+        :gcc_dependency_parser => gcc_parser,
+        :dependency_debug_tree => debug_tree,
+        :dependency_differ => differ
       }
     )
     @tracker.setup()
@@ -320,32 +329,46 @@ describe DependencyTracker do
       expect( @tracker.stale?('foo.o') ).to be(true)
     end
 
+    # These write/read a real (mocked-FileWrapper-backed) DependencyDebugTree
+    # snapshot rather than anything embedded in the JSON cache -- Tier 2's
+    # capture moved out of the cache entries entirely. A small in-memory
+    # fake file store lets snapshots actually round-trip (write, then read
+    # back) within these examples; `stub_file` for specific paths (the
+    # target/dependency content itself) still takes precedence over it.
     context 'debug tiers' do
-      it 'records no debug fields by default (tier :none)' do
+      before(:each) do
+        @debug_files = {}
+        allow( @file_wrapper ).to receive(:write) { |path, content| @debug_files[path] = content }
+        allow( @file_wrapper ).to receive(:read) { |path| @debug_files.fetch( path ) { raise "unstubbed read: #{path}" } }
+        allow( @file_wrapper ).to receive(:exist?) { |path| @debug_files.key?( path ) }
+      end
+
+      def read_snapshot(path)
+        debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+        debug_tree.read_snapshot( @tracker.instance_variable_get(:@debug_root), path )
+      end
+
+      it 'writes no snapshot at all by default (tier :none)' do
         stub_file( 'foo.o', 'obj' )
         @tracker.register( 'foo.o', meta: { opt_level: 2 } )
         @tracker.mark_fresh( 'foo.o' )
 
-        persisted = last_persisted_entries
-        expect( persisted['foo.o'] ).not_to have_key('debug_tier')
-        expect( persisted['foo.o'] ).not_to have_key('debug_meta')
-        expect( persisted['foo.o'] ).not_to have_key('debug_files')
+        expect( read_snapshot('foo.o') ).to be_nil
       end
 
-      it 'records canonicalized meta at tier :meta, without file content' do
+      it 'writes a snapshot with canonicalized meta at tier :meta, without any file content' do
         open_tracker( debug_tier: :meta )
 
         stub_file( 'foo.o', 'obj' )
         @tracker.register( 'foo.o', meta: { opt_level: 2, coverage: true } )
         @tracker.mark_fresh( 'foo.o' )
 
-        persisted = last_persisted_entries
-        expect( persisted['foo.o']['debug_tier'] ).to eq( DependencyTracker::DEBUG_TIERS[:meta] )
-        expect( persisted['foo.o']['debug_meta'] ).to eq( 'coverage' => true, 'opt_level' => 2 )
-        expect( persisted['foo.o'] ).not_to have_key('debug_files')
+        snapshot = read_snapshot('foo.o')
+        expect( snapshot['meta'] ).to eq( 'coverage' => true, 'opt_level' => 2 )
+        expect( snapshot ).not_to have_key('content')
       end
 
-      it 'additionally captures dependency file content at tier :full' do
+      it 'additionally captures both target and dependency file content at tier :full' do
         open_tracker( debug_tier: :full )
 
         stub_file( 'foo.o', 'obj content' )
@@ -353,9 +376,20 @@ describe DependencyTracker do
         @tracker.register( 'foo.o', files: ['foo.h'] )
         @tracker.mark_fresh( 'foo.o' )
 
-        files = last_persisted_entries['foo.o']['debug_files']
-        expect( files['foo.o']['content'] ).to eq('obj content')
-        expect( files['foo.h']['content'] ).to eq('header content')
+        expect( read_snapshot('foo.o')['content'] ).to eq('obj content')
+        expect( read_snapshot('foo.h')['content'] ).to eq('header content')
+      end
+
+      it 'does not snapshot a dependency at tier :meta -- only the target (with its meta) gets one' do
+        open_tracker( debug_tier: :meta )
+
+        stub_file( 'foo.o', 'obj' )
+        stub_file( 'foo.h', 'header' )
+        @tracker.register( 'foo.o', files: ['foo.h'] )
+        @tracker.mark_fresh( 'foo.o' )
+
+        expect( read_snapshot('foo.o') ).not_to be_nil
+        expect( read_snapshot('foo.h') ).to be_nil
       end
 
       it 'truncates (rather than including or silently dropping) an oversized file at tier :full' do
@@ -366,10 +400,10 @@ describe DependencyTracker do
         @tracker.register( 'foo.o', files: [] )
         @tracker.mark_fresh( 'foo.o' )
 
-        captured = last_persisted_entries['foo.o']['debug_files']['foo.o']
-        expect( captured['truncated'] ).to be(true)
-        expect( captured['size'] ).to eq( huge.bytesize )
-        expect( captured ).not_to have_key('content')
+        snapshot = read_snapshot('foo.o')
+        expect( snapshot['truncated'] ).to be(true)
+        expect( snapshot['size'] ).to eq( huge.bytesize )
+        expect( snapshot ).not_to have_key('content')
       end
 
       it 'resolves debug tier from the CEEDLING_DEP_DEBUG environment variable when not given explicitly' do
@@ -380,7 +414,7 @@ describe DependencyTracker do
         @tracker.register( 'foo.o', meta: { a: 1 } )
         @tracker.mark_fresh( 'foo.o' )
 
-        expect( last_persisted_entries['foo.o'] ).to have_key('debug_meta')
+        expect( read_snapshot('foo.o') ).not_to be_nil
       end
 
       it 'falls back to :none for an unrecognized CEEDLING_DEP_DEBUG value' do
@@ -391,7 +425,7 @@ describe DependencyTracker do
         @tracker.register( 'foo.o', meta: { a: 1 } )
         @tracker.mark_fresh( 'foo.o' )
 
-        expect( last_persisted_entries['foo.o'] ).not_to have_key('debug_meta')
+        expect( read_snapshot('foo.o') ).to be_nil
       end
 
       it 'an explicit debug_tier argument to #open takes precedence over the environment variable' do
@@ -402,7 +436,7 @@ describe DependencyTracker do
         @tracker.register( 'foo.o', files: [] )
         @tracker.mark_fresh( 'foo.o' )
 
-        expect( last_persisted_entries['foo.o'] ).not_to have_key('debug_meta')
+        expect( read_snapshot('foo.o') ).to be_nil
       end
     end
   end
@@ -506,6 +540,232 @@ describe DependencyTracker do
 
         expect( last_persisted_entries( prune: true ).keys ).to eq( ['in-progress.o'] )
       end
+    end
+  end
+
+  # ── #diagnose ────────────────────────────────────────────────────────────
+
+  describe '#diagnose' do
+    before(:each) do
+      open_tracker
+      # A small in-memory fake file store so a snapshot written by mark_fresh
+      # within an example can actually be read back by diagnose later in
+      # that same example -- `stub_file` for specific paths (target/
+      # dependency content) still takes precedence over this generic
+      # fallback for its own exact path.
+      @debug_files = {}
+      allow( @file_wrapper ).to receive(:write) { |path, content| @debug_files[path] = content }
+      allow( @file_wrapper ).to receive(:mv) { |from, to| @debug_files[to] = @debug_files.delete( from ) }
+      allow( @file_wrapper ).to receive(:read) { |path| @debug_files.fetch( path ) { raise "unstubbed read: #{path}" } }
+      allow( @file_wrapper ).to receive(:exist?) { |path| @debug_files.key?( path ) }
+    end
+
+    # Reads back diagnosis.yml through the real DependencyDebugTree, proving
+    # #diagnose actually persisted it (not just returned it in-memory).
+    def read_diagnosis(target)
+      tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+      allow( @file_wrapper ).to receive(:read) { |path| @debug_files.fetch( path ) { raise "unstubbed read: #{path}" } }
+      allow( @file_wrapper ).to receive(:exist?) { |path| @debug_files.key?( path ) }
+      tree.send( :read_yaml, tree.send( :path_dir, @tracker.instance_variable_get(:@debug_root), target ) + '/diagnosis.yml' )
+    end
+
+    it 'reports why when the target was never registered this run' do
+      diagnosis = @tracker.diagnose( 'never-registered.o' )
+
+      expect( diagnosis['target'] ).to eq('never-registered.o')
+      expect( diagnosis['reason'] ).to match(/never registered/i)
+    end
+
+    it 'reports why when the target does not exist on disk' do
+      @tracker.register( 'missing.o', files: [] )
+
+      expect( @tracker.diagnose('missing.o')['reason'] ).to match(/does not exist on disk/i)
+    end
+
+    it 'reports why when there is no prior cache entry (never marked fresh)' do
+      stub_file( 'foo.o', 'obj' )
+      @tracker.register( 'foo.o', files: [] )
+
+      expect( @tracker.diagnose('foo.o')['reason'] ).to match(/never marked fresh/i)
+    end
+
+    it 'reports self/meta/antecedents as unchanged for a target that is not stale' do
+      stub_file( 'foo.o', 'obj' )
+      stub_file( 'foo.h', 'header' )
+      @tracker.register( 'foo.o', files: ['foo.h'], meta: { a: 1 } )
+      @tracker.mark_fresh( 'foo.o' )
+
+      diagnosis = @tracker.diagnose( 'foo.o' )
+
+      expect( diagnosis['self']['changed'] ).to be(false)
+      expect( diagnosis['meta']['changed'] ).to be(false)
+      expect( diagnosis['antecedents'] ).to eq( [ { 'path' => 'foo.h', 'changed' => false } ] )
+    end
+
+    it "reports a 'no snapshot' reason for changed self content when tier was :none at mark_fresh time" do
+      stub_file( 'foo.o', 'original' )
+      @tracker.register( 'foo.o', files: [] )
+      @tracker.mark_fresh( 'foo.o' ) # tier :none -- no snapshot captured
+
+      stub_file( 'foo.o', 'changed' )
+
+      diagnosis = @tracker.diagnose( 'foo.o' )
+      expect( diagnosis['self']['changed'] ).to be(true)
+      expect( diagnosis['self']['reason'] ).to match(/no prior snapshot/i)
+    end
+
+    it 'produces a real content diff for changed self content when tier was :full at mark_fresh time' do
+      open_tracker( debug_tier: :full )
+      stub_file( 'foo.o', "original\n" )
+      @tracker.register( 'foo.o', files: [] )
+      @tracker.mark_fresh( 'foo.o' )
+
+      stub_file( 'foo.o', "changed\n" )
+
+      diagnosis = @tracker.diagnose( 'foo.o' )
+      expect( diagnosis['self']['changed'] ).to be(true)
+      expect( diagnosis['self']['diff'] ).to include('original')
+      expect( diagnosis['self']['diff'] ).to include('changed')
+    end
+
+    it 'produces a real meta diff when tier was :meta at mark_fresh time' do
+      open_tracker( debug_tier: :meta )
+      stub_file( 'foo.o', 'obj' )
+      @tracker.register( 'foo.o', meta: { opt_level: 0 } )
+      @tracker.mark_fresh( 'foo.o' )
+
+      @tracker.register( 'foo.o', meta: { opt_level: 2 } )
+
+      diagnosis = @tracker.diagnose( 'foo.o' )
+      # The wrapper's own boolean must survive being merged with diff_meta's
+      # output -- diff_meta deliberately returns 'changed_keys', not
+      # 'changed', to avoid colliding with and clobbering this flag.
+      expect( diagnosis['meta']['changed'] ).to be(true)
+      expect( diagnosis['meta']['changed_keys'] ).to eq( 'opt_level' => { 'old' => 0, 'new' => 2 } )
+    end
+
+    it "flags a dependency that no longer exists as missing, rather than diffing it" do
+      stub_file( 'foo.o', 'obj' )
+      stub_file( 'foo.h', 'header' )
+      @tracker.register( 'foo.o', files: ['foo.h'] )
+      @tracker.mark_fresh( 'foo.o' )
+
+      allow( @file_wrapper ).to receive(:exist?).with('foo.h').and_return(false)
+
+      antecedent = @tracker.diagnose( 'foo.o' )['antecedents'].first
+      expect( antecedent ).to eq( 'path' => 'foo.h', 'missing' => true )
+    end
+
+    it 'produces a real content diff for a changed dependency when tier was :full at mark_fresh time' do
+      open_tracker( debug_tier: :full )
+      stub_file( 'foo.o', 'obj' )
+      stub_file( 'foo.h', "original header\n" )
+      @tracker.register( 'foo.o', files: ['foo.h'] )
+      @tracker.mark_fresh( 'foo.o' )
+
+      stub_file( 'foo.h', "changed header\n" )
+
+      antecedent = @tracker.diagnose( 'foo.o' )['antecedents'].first
+      expect( antecedent['path'] ).to eq('foo.h')
+      expect( antecedent['changed'] ).to be(true)
+      expect( antecedent['diff'] ).to include('original header')
+      expect( antecedent['diff'] ).to include('changed header')
+    end
+
+    it 'persists the diagnosis to the debug tree, not just returning it in-memory' do
+      stub_file( 'foo.o', 'obj' )
+      @tracker.register( 'foo.o', files: [] )
+
+      @tracker.diagnose( 'foo.o' )
+
+      persisted = read_diagnosis( 'foo.o' )
+      expect( persisted['target'] ).to eq('foo.o')
+    end
+
+    it 'works even when no debug tier was ever active -- diagnosis is not itself gated behind a tier' do
+      stub_file( 'foo.o', 'obj' )
+      @tracker.register( 'foo.o', files: [] )
+
+      expect { @tracker.diagnose('foo.o') }.not_to raise_error
+    end
+  end
+
+  # ── Debug tree pruning wiring ────────────────────────────────────────────
+  # Confirms DependencyTracker actually calls DependencyDebugTree#prune for
+  # targets dropped by each of the two pruning mechanisms (see
+  # DependencyCacheStore#load and #flush(prune:)), so the debug tree never
+  # outlives the cache entries it exists to explain. DependencyCacheStore's
+  # and DependencyDebugTree's own internals already have exhaustive specs;
+  # this is specifically about the wiring between them and the tracker.
+  describe 'debug tree pruning wiring' do
+    before(:each) do
+      @debug_files = {}
+      allow( @file_wrapper ).to receive(:write) { |path, content| @debug_files[path] = content }
+      allow( @file_wrapper ).to receive(:mv) { |from, to| @debug_files[to] = @debug_files.delete( from ) }
+      allow( @file_wrapper ).to receive(:read) { |path| @debug_files.fetch( path ) { raise "unstubbed read: #{path}" } }
+      allow( @file_wrapper ).to receive(:rm_rf) { |path| @debug_files.reject! { |p, _| p == path || p.start_with?( "#{path}/" ) } }
+      # A "directory" (as opposed to a specific written file) exists if any
+      # file under it does -- mirrors real filesystem semantics, needed
+      # because #prune checks `exist?` on a directory, not a file.
+      allow( @file_wrapper ).to receive(:exist?) { |path| @debug_files.key?( path ) || @debug_files.keys.any? { |p| p.start_with?( "#{path}/" ) } }
+    end
+
+    def seed_debug_snapshot(store_path, target)
+      debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+      debug_tree.write_snapshot( debug_root_for( store_path ), target, hash: 'a' * 64 )
+    end
+
+    def debug_snapshot_exists?(store_path, target)
+      debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+      !debug_tree.read_snapshot( debug_root_for( store_path ), target ).nil?
+    end
+
+    def debug_root_for(store_path)
+      @file_wrapper.dirname( store_path ) + '/' + @file_wrapper.basename( store_path, @file_wrapper.extname( store_path ) ) + '_debug'
+    end
+
+    it 'prunes debug tree data for a target load-time-pruned because its file was deleted from disk' do
+      seed_debug_snapshot( 'cache.json', 'deleted.o' )
+      expect( debug_snapshot_exists?( 'cache.json', 'deleted.o' ) ).to be(true)
+
+      cache_json = JSON.generate(
+        'schema_version' => DependencyCacheStore::CACHE_SCHEMA_VERSION,
+        'hash_algorithm' => DependencyHasher::HASH_ALGORITHM,
+        'entries' => { 'deleted.o' => { 'self_hash' => 'a' * 64, 'meta_hash' => nil, 'deps' => {} } }
+      )
+      allow( @file_wrapper ).to receive(:exist?).with('cache.json').and_return(true)
+      allow( @file_wrapper ).to receive(:exist?).with('deleted.o').and_return(false)
+      allow( @file_wrapper ).to receive(:read).with('cache.json').and_return( cache_json )
+
+      @tracker.open( store_path: 'cache.json' )
+
+      expect( debug_snapshot_exists?( 'cache.json', 'deleted.o' ) ).to be(false)
+    end
+
+    it 'prunes debug tree data for a target dropped by flush(prune: true)' do
+      open_tracker
+      seed_debug_snapshot( 'cache.json', 'orphan.o' )
+      expect( debug_snapshot_exists?( 'cache.json', 'orphan.o' ) ).to be(true)
+
+      seed_cache_entry( 'orphan.o' ) # in-memory cache entry, as if loaded from a prior run
+      stub_file( 'kept.o', 'kept' )
+      @tracker.register( 'kept.o', files: [] )
+
+      @tracker.flush( prune: true )
+
+      expect( debug_snapshot_exists?( 'cache.json', 'orphan.o' ) ).to be(false)
+    end
+
+    it 'does not prune debug tree data for a target flush(prune: true) keeps' do
+      open_tracker
+      seed_debug_snapshot( 'cache.json', 'kept.o' )
+      stub_file( 'kept.o', 'kept' )
+      @tracker.register( 'kept.o', files: [] )
+      @tracker.mark_fresh( 'kept.o' )
+
+      @tracker.flush( prune: true )
+
+      expect( debug_snapshot_exists?( 'cache.json', 'kept.o' ) ).to be(true)
     end
   end
 

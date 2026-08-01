@@ -58,7 +58,8 @@ describe DependencyCacheStore do
       expect( result ).to eq(
         'schema_version' => DependencyCacheStore::CACHE_SCHEMA_VERSION,
         'hash_algorithm' => DependencyHasher::HASH_ALGORITHM,
-        'entries'        => {}
+        'entries'        => {},
+        'pruned'         => []
       )
     end
 
@@ -271,6 +272,33 @@ describe DependencyCacheStore do
 
         expect( @store.load('cache.json')['entries'] ).to be_empty
         expect( @loginator ).to have_received(:log).with( a_string_matching(/malformed/i), any_args )
+      end
+
+      # `pruned` is what DependencyTracker#open uses to also clean up
+      # DependencyDebugTree data for the same targets -- both a deleted
+      # target and a malformed entry must be reported, since either way
+      # there's no valid cache entry left to explain.
+      it 'reports a deleted target in the returned pruned list' do
+        stub_file( 'cache.json', valid_payload( 'deleted.o' => valid_entry, 'kept.o' => valid_entry ) )
+        allow( @file_wrapper ).to receive(:exist?).with('deleted.o').and_return(false)
+        allow( @file_wrapper ).to receive(:exist?).with('kept.o').and_return(true)
+
+        expect( @store.load('cache.json')['pruned'] ).to eq( ['deleted.o'] )
+      end
+
+      it 'reports a malformed entry in the returned pruned list too' do
+        bad = valid_entry.merge( 'self_hash' => 'not-a-hex-digest' )
+        stub_file( 'cache.json', valid_payload( 'bad.o' => bad ) )
+        allow( @file_wrapper ).to receive(:exist?).with('bad.o').and_return(true)
+
+        expect( @store.load('cache.json')['pruned'] ).to eq( ['bad.o'] )
+      end
+
+      it 'reports an empty pruned list when nothing was dropped' do
+        stub_file( 'cache.json', valid_payload( 'kept.o' => valid_entry ) )
+        allow( @file_wrapper ).to receive(:exist?).with('kept.o').and_return(true)
+
+        expect( @store.load('cache.json')['pruned'] ).to eq( [] )
       end
     end
   end

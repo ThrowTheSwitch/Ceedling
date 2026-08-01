@@ -58,8 +58,13 @@ class DependencyCacheStore
 
   constructor :file_wrapper, :loginator
 
-  # Loads and validates `store_path`, returning `{ 'schema_version', 'hash_algorithm', 'entries' }`.
-  # `entries` is always a Hash of target path => entry Hash, with any invalid entries dropped.
+  # Loads and validates `store_path`, returning
+  # `{ 'schema_version', 'hash_algorithm', 'entries', 'pruned' }`. `entries`
+  # is always a Hash of target path => entry Hash, with any invalid or
+  # deleted-target entries dropped. `pruned` is the list of target paths
+  # dropped this load (malformed or deleted) -- callers use it to also clean
+  # up any DependencyDebugTree data for those same targets, so the debug
+  # tree doesn't outlive the cache entries it exists to explain.
   def load(store_path)
     return empty_store unless @file_wrapper.exist?( store_path )
 
@@ -72,23 +77,31 @@ class DependencyCacheStore
     return degrade( store_path, "is missing its entries object" ) unless parsed['entries'].is_a?( Hash )
 
     valid_entries = {}
+    pruned = []
     parsed['entries'].each do |target, entry|
       if !valid_entry?( entry )
         @loginator.log(
           "Dependency cache entry for '#{target}' in #{store_path} is malformed -- dropping just that entry.",
           Verbosity::COMPLAIN, LogLabels::WARNING
         )
+        pruned << target
       elsif !@file_wrapper.exist?( target )
         @loginator.log(
           "Dependency cache entry for '#{target}' in #{store_path} no longer exists on disk -- pruning it.",
           Verbosity::OBNOXIOUS, LogLabels::AUTO
         )
+        pruned << target
       else
         valid_entries[target] = entry
       end
     end
 
-    { 'schema_version' => CACHE_SCHEMA_VERSION, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => valid_entries }
+    {
+      'schema_version' => CACHE_SCHEMA_VERSION,
+      'hash_algorithm' => DependencyHasher::HASH_ALGORITHM,
+      'entries'        => valid_entries,
+      'pruned'         => pruned
+    }
 
   rescue JSON::ParserError => e
     degrade( store_path, "is not valid JSON (#{e.message})" )
@@ -116,7 +129,7 @@ class DependencyCacheStore
   private
 
   def empty_store
-    { 'schema_version' => CACHE_SCHEMA_VERSION, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => {} }
+    { 'schema_version' => CACHE_SCHEMA_VERSION, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => {}, 'pruned' => [] }
   end
 
   def degrade(store_path, reason)

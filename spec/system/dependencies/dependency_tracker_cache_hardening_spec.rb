@@ -30,10 +30,19 @@ describe 'DependencyTracker cache hardening (system)' do
     Digest::SHA256.hexdigest( File.read( path ) )
   end
 
+  def snapshot_path(store_path, target)
+    File.join( debug_root_for( store_path ), target.sub( /\A\/+/, '' ), 'snapshot.yml' )
+  end
+
   # ── (A) Debug modes ───────────────────────────────────────────────────
+  #
+  # These check presence/absence and shape of DependencyDebugTree's real
+  # snapshot.yml on disk -- Tier 2's capture lives there entirely, not in
+  # the JSON cache entry itself (see dependency_tracker_diagnose_spec.rb for
+  # the fuller diagnose()-driven treatment of debug tree content).
 
   context 'debug modes' do
-    it 'records no debug fields at the default tier (:none)' do
+    it 'writes no debug tree snapshot at all at the default tier (:none)' do
       in_temp_dir do |dir|
         store_path = File.join(dir, '.dep_cache.json')
         target = write_fixture( File.join(dir, 'foo.o'), 'object bytes' )
@@ -43,14 +52,11 @@ describe 'DependencyTracker cache hardening (system)' do
         tracker.mark_fresh( target )
         tracker.flush
 
-        entry = JSON.parse( File.read( store_path ) )['entries'][target]
-        expect( entry ).not_to have_key('debug_tier')
-        expect( entry ).not_to have_key('debug_meta')
-        expect( entry ).not_to have_key('debug_files')
+        expect( File.exist?( snapshot_path( store_path, target ) ) ).to be(false)
       end
     end
 
-    it 'records canonicalized meta at tier :meta, without any captured file content' do
+    it 'writes a real snapshot with canonicalized meta at tier :meta, without any captured file content' do
       in_temp_dir do |dir|
         store_path = File.join(dir, '.dep_cache.json')
         target = write_fixture( File.join(dir, 'foo.o'), 'object bytes' )
@@ -60,10 +66,9 @@ describe 'DependencyTracker cache hardening (system)' do
         tracker.mark_fresh( target )
         tracker.flush
 
-        entry = JSON.parse( File.read( store_path ) )['entries'][target]
-        expect( entry['debug_tier'] ).to eq( DependencyTracker::DEBUG_TIERS[:meta] )
-        expect( entry['debug_meta'] ).to eq( 'coverage' => true, 'opt_level' => 2 )
-        expect( entry ).not_to have_key('debug_files')
+        snapshot = YAML.safe_load( File.read( snapshot_path( store_path, target ) ) )
+        expect( snapshot['meta'] ).to eq( 'coverage' => true, 'opt_level' => 2 )
+        expect( snapshot ).not_to have_key('content')
       end
     end
 
@@ -78,9 +83,10 @@ describe 'DependencyTracker cache hardening (system)' do
         tracker.mark_fresh( target )
         tracker.flush
 
-        entry = JSON.parse( File.read( store_path ) )['entries'][target]
-        expect( entry['debug_files'][target]['content'] ).to eq('object bytes')
-        expect( entry['debug_files'][foo_h]['content'] ).to eq("#define FOO 1\n")
+        target_snapshot = YAML.safe_load( File.read( snapshot_path( store_path, target ) ) )
+        dep_snapshot = YAML.safe_load( File.read( snapshot_path( store_path, foo_h ) ) )
+        expect( target_snapshot['content'] ).to eq('object bytes')
+        expect( dep_snapshot['content'] ).to eq("#define FOO 1\n")
       end
     end
 
@@ -95,10 +101,10 @@ describe 'DependencyTracker cache hardening (system)' do
         tracker.mark_fresh( target )
         tracker.flush
 
-        captured = JSON.parse( File.read( store_path ) )['entries'][target]['debug_files'][target]
-        expect( captured['truncated'] ).to be(true)
-        expect( captured['size'] ).to eq( huge_content.bytesize )
-        expect( captured ).not_to have_key('content')
+        snapshot = YAML.safe_load( File.read( snapshot_path( store_path, target ) ) )
+        expect( snapshot['truncated'] ).to be(true)
+        expect( snapshot['size'] ).to eq( huge_content.bytesize )
+        expect( snapshot ).not_to have_key('content')
       end
     end
 
@@ -118,8 +124,7 @@ describe 'DependencyTracker cache hardening (system)' do
           ENV['CEEDLING_DEP_DEBUG'] = previous
         end
 
-        entry = JSON.parse( File.read( store_path ) )['entries'][target]
-        expect( entry ).to have_key('debug_meta')
+        expect( File.exist?( snapshot_path( store_path, target ) ) ).to be(true)
       end
     end
   end

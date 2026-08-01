@@ -467,6 +467,13 @@ dependency_cache_store:
     - file_wrapper
     - loginator
 
+dependency_debug_tree:
+  compose:
+    - file_wrapper
+    - yaml_wrapper
+
+dependency_differ:
+
 dependency_tracker:
   compose:
     - file_wrapper
@@ -476,5 +483,7 @@ dependency_tracker:
     - dependency_path_normalizer
     - dependency_cache_store
     - gcc_dependency_parser
+    - dependency_debug_tree
+    - dependency_differ
 
 erb_wrapper:
