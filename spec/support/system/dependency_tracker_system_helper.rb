@@ -65,9 +65,31 @@ module DependencyTrackerSystemHelper
   # The debug tree root DependencyTracker derives from `store_path` --
   # duplicated here (rather than reaching into the tracker's private state)
   # so specs can independently verify debug tree content lives where it's
-  # expected to.
+  # expected to. Safe to duplicate: `File.dirname`/`File.basename` already
+  # handle a Windows drive letter correctly on their own -- unlike mirroring
+  # an arbitrary target/dependency path *into* a subdirectory (see below),
+  # which is exactly the part that must not be reimplemented independently.
   def debug_root_for(store_path)
     File.join( File.dirname( store_path ), File.basename( store_path, '.*' ) + '_debug' )
+  end
+
+  # The real snapshot.yml/diagnosis.yml path for `path` under `debug_root`.
+  # Deliberately delegates to a real DependencyDebugTree instead of
+  # reimplementing its path-mirroring here: an independent reimplementation
+  # previously drifted out of sync with DependencyDebugTree#mirror's Windows
+  # drive-letter handling, producing a still-colon-containing path that's
+  # invalid on Windows (`Errno::EINVAL`) even though the path the *production*
+  # code actually wrote to was correct all along.
+  def snapshot_path(store_path, path)
+    debug_tree_for_specs.snapshot_file( debug_root_for( store_path ), path )
+  end
+
+  def diagnosis_path(store_path, target)
+    debug_tree_for_specs.diagnosis_file( debug_root_for( store_path ), target )
+  end
+
+  def debug_tree_for_specs
+    DependencyDebugTree.new( { :file_wrapper => FileWrapper.new, :yaml_wrapper => YamlWrapper.new } )
   end
 
   # Runs `block` with a fresh, real temp directory, cleaned up afterward

@@ -116,6 +116,37 @@ describe DependencyDebugTree do
     end
   end
 
+  # #snapshot_file/#diagnosis_file are the single source of truth for where
+  # a path's debug files live -- public specifically so callers (including
+  # specs) never need to reimplement `mirror`'s path handling independently.
+  # A prior independent reimplementation in the system specs drifted out of
+  # sync with the Windows drive-letter substitution here, producing a
+  # still-colon-containing path that's invalid on Windows (`Errno::EINVAL`)
+  # even though the path this class actually wrote to was correct all along.
+  describe '#snapshot_file / #diagnosis_file' do
+    it 'returns exactly the path #write_snapshot writes to' do
+      @tree.write_snapshot( 'debug', '/proj/foo.o', hash: 'abc' )
+
+      expect( @tree.snapshot_file( 'debug', '/proj/foo.o' ) ).to eq( @files.keys.first )
+    end
+
+    it 'returns exactly the path #write_diagnosis writes to' do
+      @tree.write_diagnosis( 'debug', '/proj/foo.o', { 'target' => '/proj/foo.o' } )
+
+      expect( @tree.diagnosis_file( 'debug', '/proj/foo.o' ) ).to eq( @files.keys.first )
+    end
+
+    it 'strips a Windows drive letter colon the same way #write_snapshot does' do
+      @tree.write_snapshot( 'C:/build/.dep_cache_debug', 'C:\\proj\\src\\foo.c', hash: 'abc' )
+      real_path = @files.keys.first
+
+      expect( @tree.snapshot_file( 'C:/build/.dep_cache_debug', 'C:\\proj\\src\\foo.c' ) ).to eq( real_path )
+      # Only debug_root's own leading drive letter contributes a colon --
+      # the mirrored target path contributes none.
+      expect( real_path.count(':') ).to eq(1)
+    end
+  end
+
   describe '#write_diagnosis' do
     it 'writes a diagnosis document that is not conflated with a snapshot' do
       @tree.write_snapshot( 'debug', '/proj/foo.o', hash: 'abc' )

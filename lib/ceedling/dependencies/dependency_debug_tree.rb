@@ -77,6 +77,20 @@ class DependencyDebugTree
     @file_wrapper.rm_rf( dir ) if @file_wrapper.exist?( dir )
   end
 
+  # The exact file path `write_snapshot`/`read_snapshot` use for `path`, and
+  # likewise for `write_diagnosis`. Public so callers that need to point a
+  # human at the right file (or verify one exists, e.g. in specs) use the
+  # same path-mirroring logic this class does internally, rather than an
+  # independent reimplementation that can silently drift out of sync with
+  # it -- notably around the Windows drive-letter handling in `mirror`.
+  def snapshot_file(debug_root, path)
+    File.join( path_dir( debug_root, path ), SNAPSHOT_FILENAME )
+  end
+
+  def diagnosis_file(debug_root, target)
+    File.join( path_dir( debug_root, target ), DIAGNOSIS_FILENAME )
+  end
+
   ### Private ###
   private
 

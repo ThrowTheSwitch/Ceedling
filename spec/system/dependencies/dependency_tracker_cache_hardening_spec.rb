@@ -30,10 +30,6 @@ describe 'DependencyTracker cache hardening (system)' do
     Digest::SHA256.hexdigest( File.read( path ) )
   end
 
-  def snapshot_path(store_path, target)
-    File.join( debug_root_for( store_path ), target.sub( /\A\/+/, '' ), 'snapshot.yml' )
-  end
-
   # ── (A) Debug modes ───────────────────────────────────────────────────
   #
   # These check presence/absence and shape of DependencyDebugTree's real

@@ -23,16 +23,6 @@ describe 'DependencyTracker#diagnose (system)' do
     YAML.safe_load( File.read( path ) )
   end
 
-  # A target's diagnosis.yml lives right alongside its own snapshot.yml,
-  # under its mirrored path in the debug tree.
-  def diagnosis_path(store_path, target)
-    File.join( debug_root_for( store_path ), target.sub( /\A\/+/, '' ), 'diagnosis.yml' )
-  end
-
-  def snapshot_path(store_path, target)
-    File.join( debug_root_for( store_path ), target.sub( /\A\/+/, '' ), 'snapshot.yml' )
-  end
-
   it 'writes a real, human-readable diagnosis.yml explaining unchanged self/meta/antecedents for a fresh target' do
     in_temp_dir do |dir|
       store_path = File.join(dir, '.dep_cache.json')
