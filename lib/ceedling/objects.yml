@@ -44,18 +44,6 @@ file_path_collection_utils:
 
 test_runner_manager:
 
-cacheinator:
-  compose:
-    - cacheinator_helper
-    - file_path_utils
-    - file_wrapper
-    - yaml_wrapper
-
-cacheinator_helper:
-  compose:
-    - file_wrapper
-    - yaml_wrapper
-
 tool_executor:
   compose:
     - configurator
@@ -159,7 +147,6 @@ file_finder:
   compose:
     - configurator
     - file_finder_helper
-    - cacheinator
     - file_path_utils
     - file_wrapper
     - yaml_wrapper
@@ -269,11 +256,7 @@ generator_partials:
 
 dependinator:
   compose:
-    - configurator
-    - test_context_extractor
-    - file_path_utils 
-    - rake_wrapper
-    - file_wrapper
+    - dependency_tracker
 
 preprocessinator_line_marker_includes_extractor:
   compose:
@@ -396,6 +379,7 @@ test_invoker:
     - test_build_executor
     - plugin_manager
     - batchinator
+    - dependinator
     - loginator
     - verbosinator
 

@@ -11,7 +11,7 @@ require 'ceedling/exceptions'
 
 class FileFinder
 
-  constructor :configurator, :file_finder_helper, :cacheinator, :file_path_utils, :file_wrapper, :yaml_wrapper
+  constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper
 
 
   def find_header_input_for_mock(mock)

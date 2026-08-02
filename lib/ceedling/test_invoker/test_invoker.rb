@@ -24,6 +24,7 @@ class TestInvoker
     :test_build_executor,
     :plugin_manager,
     :batchinator,
+    :dependinator,
     :loginator,
     :verbosinator
   )
@@ -50,12 +51,18 @@ class TestInvoker
   #                   when :sources_only or :build_only skips that stage.
   #   :test_fixture — Tool config for stage 17 (Executing). Ignored when :sources_only
   #                   or :build_only skips that stage.
+  #   :refresh      — Boolean. Set only by a full `test:all` run. Allows the dependency
+  #                   cache to prune entries for targets not registered this run (see
+  #                   Dependinator#flush) -- unsafe for any partial invocation, which
+  #                   would otherwise wipe cache entries for targets it simply didn't touch.
   # Other keys occasionally merged in by callers (e.g. :test_compiler, :force_run) are
   # currently not read by any pipeline stage; tool selection for compiling is instead
   # resolved per-context via the `pre_compile_execute` plugin hook.
   def setup_and_invoke(tests:, context: TEST_SYM, options: {})
     timestamp_s = SystemWrapper.time_stopwatch_s()
     @plugin_manager.pre_test_build( context, timestamp_s )
+
+    @dependinator.open
 
     @state = PipelineState.new(
       tests:            tests,
@@ -76,6 +83,7 @@ class TestInvoker
       @loginator.log( ex.message, Verbosity::ERRORS, LogLabels::EXCEPTION )
       @loginator.log_debug_backtrace( ex )
     ensure
+      @dependinator.flush( refresh: options[:refresh] )
       @plugin_manager.post_test_build( context, SystemWrapper.time_stopwatch_s() )
     end
   end

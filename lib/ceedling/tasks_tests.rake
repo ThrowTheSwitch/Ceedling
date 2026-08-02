@@ -24,7 +24,7 @@ namespace TEST_SYM do
   task :all => [:prepare] do
     @ceedling[:test_invoker].setup_and_invoke(
       tests:COLLECTION_ALL_TESTS,
-      options:{:force_run => true, :build_only => false}.merge(TOOL_COLLECTION_TEST_TASKS))
+      options:{:force_run => true, :build_only => false, :refresh => true}.merge(TOOL_COLLECTION_TEST_TASKS))
   end
 
   desc "Run single test ([*] test or source file name, no path)."

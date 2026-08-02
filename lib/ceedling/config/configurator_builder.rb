@@ -148,6 +148,8 @@ class ConfiguratorBuilder
       [:project_test_preprocess_files_path,     File.join(project_build_tests_root, 'preprocess/files'),    (in_hash[:project_use_test_preprocessor] != :none) ],
 
       [:project_test_partials_path,             File.join(project_build_tests_root, 'partials'),            in_hash[:project_use_partials] ],
+
+      [:project_build_dependencies_cache_path,  File.join(in_hash[:project_build_root], 'cache'),           true ],
     ]
 
     out_hash[:project_build_paths] = []
