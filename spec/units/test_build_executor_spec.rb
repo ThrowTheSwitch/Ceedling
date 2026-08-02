@@ -242,4 +242,112 @@ describe TestBuildExecutor do
       @executor.stage_execute( @state )
     end
   end
+
+  context "#stage_preprocess_mocks" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude )
+      allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/MockFoo.h' )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name             => 'a_test',
+        :preprocess_flags => [], :preprocess_defines => [], :search_paths => []
+      )
+      mock = {
+        :details  => { :source => 'src/Foo.h', :path => 'sub' },
+        :testable => @testable,
+        :name     => :MockFoo,
+        :directives_only_filepath => nil
+      }
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => {} )
+    end
+
+    it "preprocesses and marks fresh the mockable header when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      expect(@preprocessinator).to receive(:preprocess_mockable_header_file)
+      expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/MockFoo.h')
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "skips preprocessing the mockable header when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      expect(@preprocessinator).to_not receive(:preprocess_mockable_header_file)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+  end
+
+  context "#stage_generate_mocks" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@file_wrapper).to receive(:mkdir)
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name  => 'a_test',
+        :paths => { :mocks => 'build/test/mocks' }
+      )
+      mock = {
+        :details  => { :source => 'src/Foo.h', :path => 'sub', :input => 'build/preprocess/MockFoo.h', :name => 'MockFoo' },
+        :testable => @testable,
+        :name     => :MockFoo
+      }
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => {} )
+    end
+
+    it "generates and marks fresh the mock when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      expect(@generator).to receive(:generate_mock)
+      expect(@dependinator).to receive(:mark_fresh).with('build/test/mocks/sub/MockFoo.c')
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "skips generating the mock when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      expect(@generator).to_not receive(:generate_mock)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_generate_mocks( @state )
+    end
+  end
+
+  context "#stage_generate_runners" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( [] )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name     => 'a_test',
+        :filepath => 'test/TestFoo.c',
+        :runner   => { :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'test/TestFoo.c' }
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => {} )
+    end
+
+    it "generates and marks fresh the runner when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      expect(@generator).to receive(:generate_test_runner)
+      expect(@dependinator).to receive(:mark_fresh).with('build/test/runners/TestFoo_runner.c')
+
+      @executor.stage_generate_runners( @state )
+    end
+
+    it "skips generating the runner when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      expect(@generator).to_not receive(:generate_test_runner)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_generate_runners( @state )
+    end
+  end
 end

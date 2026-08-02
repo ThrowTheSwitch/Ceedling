@@ -257,9 +257,36 @@ class TestBuildExecutor
   # Stage 9: Preprocess header files to be mocked.
   def stage_preprocess_mocks(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
+    extras = (@configurator.cmock_treat_inlines == :include)
+
+    # Register every mock's preprocessed-header target and settle its staleness
+    # up front (sequentially -- cheap, no subprocess work), since it gates both
+    # of the parallel batches below.
+    state.mocks_list.each do |mock|
+      details  = mock[:details]
+      testable = mock[:testable]
+
+      target = @file_path_utils.form_preprocessed_file_filepath( details[:source], testable.name )
+
+      @dependinator.register(
+        target,
+        files: [details[:source]],
+        meta:  {
+          flags:        testable.preprocess_flags,
+          defines:      testable.preprocess_defines,
+          search_paths: testable.search_paths,
+          extras:       extras
+        }
+      )
+
+      mock[:preprocessed_target] = target
+      mock[:stale]               = @dependinator.stale?( target )
+    end
 
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
+      next unless mock[:stale]
+
       details  = mock[:details]
       testable = mock[:testable]
       name     = testable.name
@@ -286,11 +313,11 @@ class TestBuildExecutor
 
     # Preprocess and assemble header files to be mocked
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
+      next unless mock[:stale]
+
       details                  = mock[:details]
       testable                 = mock[:testable]
       directives_only_filepath = mock[:directives_only_filepath]
-
-      extras = (@configurator.cmock_treat_inlines == :include)
 
       arg_hash = {
         test:                     testable.name,
@@ -305,17 +332,32 @@ class TestBuildExecutor
       }
 
       @preprocessinator.preprocess_mockable_header_file( **arg_hash )
+
+      @dependinator.mark_fresh( mock[:preprocessed_target] )
     end
   end
 
   # Stage 10: Generate mocks for all tests.
   def stage_generate_mocks(state)
+    cmock_meta = @configurator.project_config_hash[:cmock]
+
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
       details  = mock[:details]
       testable = mock[:testable]
 
       output_path = File.join( testable.paths[:mocks], details[:path] )
       @file_wrapper.mkdir( output_path )
+
+      # `details[:input]` -- not the stage 9 preprocessed target -- is the
+      # correct antecedent here: it's exactly what CMock reads, whether or not
+      # mock preprocessing is enabled for this project (see stage_determine_files).
+      #
+      # `details[:name]` (a String), not `mock[:name]` (the Symbol key T2 carried
+      # the same value in for hash lookups) -- needed here as a real filename.
+      target = File.join( output_path, details[:name] + EXTENSION_CORE_SOURCE )
+      @dependinator.register( target, files: [details[:input]], meta: { cmock: cmock_meta } )
+
+      next unless @dependinator.stale?( target )
 
       arg_hash = {
         context:        state.context,
@@ -326,6 +368,8 @@ class TestBuildExecutor
       }
 
       @generator.generate_mock( **arg_hash )
+
+      @dependinator.mark_fresh( target )
     end
   end
 
@@ -393,18 +437,39 @@ class TestBuildExecutor
   end
 
   # Stage 13: Generate test runner files.
+  #
+  # Antecedent is the raw test file only (not yet the preprocessed variant --
+  # that lands with fine-grained preprocessing tracking in a later phase).
+  # This is still correct: the runner's mock/include lists are parsed fresh
+  # from this same file every run (stages 2/12), never from the mock/header
+  # files' own content, so an unchanged test file guarantees unchanged lists.
   def stage_generate_runners(state)
+    test_runner_meta = @configurator.project_config_hash[:test_runner]
+    unity_meta       = @configurator.project_config_hash[:unity]
+
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
+      target = testable.runner[:output_filepath]
+
+      @dependinator.register(
+        target,
+        files: [testable.filepath],
+        meta:  { test_runner: test_runner_meta, unity: unity_meta }
+      )
+
+      next unless @dependinator.stale?( target )
+
       arg_hash = {
         context:         state.context,
         mocks:           @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
         includes:        @context_extractor.lookup_nonmock_header_includes_list( testable.filepath ),
         test_filepath:   testable.filepath,
         input_filepath:  testable.runner[:input_filepath],
-        runner_filepath: testable.runner[:output_filepath]
+        runner_filepath: target
       }
 
       @generator.generate_test_runner( **arg_hash )
+
+      @dependinator.mark_fresh( target )
     end
   end
 
