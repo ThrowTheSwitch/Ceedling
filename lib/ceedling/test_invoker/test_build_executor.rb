@@ -25,7 +25,8 @@ class TestBuildExecutor
     :plugin_manager,
     :file_path_utils,
     :file_finder,
-    :file_wrapper
+    :file_wrapper,
+    :dependinator
   )
 
   def setup()
@@ -408,6 +409,13 @@ class TestBuildExecutor
   end
 
   # Stage 15: Compile all test build objects in parallel.
+  #
+  # KNOWN GAP (deferred until after first end-to-end validation): an unchanged
+  # object skips its compile-execute plugin hooks entirely (see
+  # compile_test_component), so plugins accumulating per-run state from
+  # pre_compile_execute/post_compile_execute -- compile_commands_json_db,
+  # report_build_warnings_log, bullseye, command_hooks -- under-report objects
+  # that didn't need recompiling this run. Same gap for stage 16's link hooks.
   def stage_build_objects(state)
     @batchinator.exec(workload: :compile, things: state.objects_list) do |obj|
       src = @file_finder.find_build_input_file( filepath: obj[:obj], context: state.context )
@@ -429,18 +437,35 @@ class TestBuildExecutor
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       remove_partials_source_objects( testable.objects, testable.partials.configs )
 
-      arg_hash = {
-        context:    state.context,
-        build_path: testable.paths[:build],
-        executable: testable.executable,
-        objects:    testable.objects,
-        flags:      testable.link_flags,
-        lib_args:   lib_args,
-        lib_paths:  lib_paths,
-        options:    state.options
-      }
+      @dependinator.register(
+        testable.executable,
+        files: testable.objects,
+        meta:  { flags: testable.link_flags, lib_args: lib_args, lib_paths: lib_paths }
+      )
+      stale = @dependinator.stale?( testable.executable )
 
-      generate_executable_now( **arg_hash )
+      if stale
+        arg_hash = {
+          context:    state.context,
+          build_path: testable.paths[:build],
+          executable: testable.executable,
+          objects:    testable.objects,
+          flags:      testable.link_flags,
+          lib_args:   lib_args,
+          lib_paths:  lib_paths,
+          options:    state.options
+        }
+
+        generate_executable_now( **arg_hash )
+
+        @dependinator.mark_fresh( testable.executable )
+      end
+
+      # Stage 17 relies on this rather than a second `stale?` call -- by the
+      # time it runs, `mark_fresh` above (when `stale` was true) has already
+      # updated the cache entry to match the executable's current state, so a
+      # fresh `stale?` query would always answer false.
+      state.lock.synchronize { testable.executable_rebuilt = stale }
     end
   end
 
@@ -448,16 +473,36 @@ class TestBuildExecutor
   def stage_execute(state)
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
-        arg_hash = {
-          context:       state.context,
-          test_name:     testable.name,
-          test_filepath: testable.filepath,
-          executable:    testable.executable,
-          result:        testable.results_pass,
-          options:       state.options
-        }
+        # An executable that didn't need relinking (see stage 16) still has
+        # valid cached results on disk from whenever it was last built --
+        # nothing to (re)run.
+        #
+        # KNOWN GAP (deferred until after first end-to-end validation): skipping
+        # this call also skips the pre_test_fixture_execute/post_test_fixture_execute
+        # plugin hooks, so any plugin that accumulates per-run state from those
+        # hooks under-reports skipped tests this run -- notably the live
+        # post_build test summary (report_tests_stdout_plugin.rb's `summary`
+        # task already re-scans all result files from disk and is unaffected),
+        # plus gcov/valgrind/bullseye/command_hooks, which also hook test-fixture
+        # execution.
+        if testable.executable_rebuilt
+          # Clear out any stale prior result (e.g. a lingering `.fail` from a
+          # test that now passes) immediately before -- not upfront for every
+          # test regardless of whether it's about to (re)run, which would
+          # destroy the still-valid cached result of a test left unchanged.
+          clean_test_results( testable.paths[:results], testable.name )
 
-        run_fixture_now( **arg_hash )
+          arg_hash = {
+            context:       state.context,
+            test_name:     testable.name,
+            test_filepath: testable.filepath,
+            executable:    testable.executable,
+            result:        testable.results_pass,
+            options:       state.options
+          }
+
+          run_fixture_now( **arg_hash )
+        end
 
       ensure
         @plugin_manager.post_test( testable.filepath )
@@ -515,6 +560,10 @@ class TestBuildExecutor
     end
   end
 
+  def clean_test_results(path, test)
+    @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
+  end
+
   def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, options:)
     @generator.generate_test_results(
       tool:          options[:test_fixture],
@@ -549,9 +598,13 @@ class TestBuildExecutor
     testable     = state.testables[test.to_sym]
     defines      = testable.compile_defines
     search_paths = tailor_search_paths( search_paths: testable.search_paths, filepath: source )
+    dependencies = @file_path_utils.form_test_dependencies_filepath( object, name: test, context: context )
 
     if @file_wrapper.extname( source ) != @configurator.extension_assembly
       flags = testable.compile_flags
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
+
+      return unless stale
 
       arg_hash = {
         tool:         @configurator.tools_test_compiler,
@@ -563,13 +616,16 @@ class TestBuildExecutor
         flags:        flags,
         defines:      defines,
         list:         @file_path_utils.form_test_build_list_filepath( object ),
-        dependencies: @file_path_utils.form_test_dependencies_filepath( object, name: test, context: context )
+        dependencies: dependencies
       }
 
       @generator.generate_object_file_c( **arg_hash )
 
     elsif @configurator.test_build_use_assembly
       flags = testable.assembler_flags
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
+
+      return unless stale
 
       arg_hash = {
         tool:         @configurator.tools_test_assembler,
@@ -581,11 +637,31 @@ class TestBuildExecutor
         flags:        flags,
         defines:      defines,
         list:         @file_path_utils.form_test_build_list_filepath( object ),
-        dependencies: @file_path_utils.form_test_dependencies_filepath( object, name: test, context: context )
+        dependencies: dependencies
       }
 
       @generator.generate_object_file_asm( **arg_hash )
+    else
+      return
     end
+
+    # A real (re)compile just happened -- register_gcc_deps_file again to pick
+    # up the freshly-written `.d` file's current header set (only produced for
+    # C compiles; a no-op call for assembly, whose tool has no -MMD/-MF) before
+    # recording this target's new baseline.
+    @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+    @dependinator.mark_fresh( object )
+  end
+
+  # Registers `object`'s antecedents (its source file, plus whatever headers
+  # gcc's `-MMD -MF` discovered on the *previous* successful compile, if any)
+  # and reports whether it needs (re)building. The previous run's `.d` file is
+  # the only header list available before this run's compile has happened --
+  # if headers changed, that's exactly what makes this stale.
+  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:)
+    @dependinator.register( object, files: [source], meta: { flags: flags, defines: defines, search_paths: search_paths } )
+    @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+    @dependinator.stale?( object )
   end
 
   def tailor_search_paths(filepath:, search_paths:)

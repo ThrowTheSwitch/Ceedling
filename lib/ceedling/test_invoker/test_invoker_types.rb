@@ -38,6 +38,8 @@ module TestInvokerTypes
     :partials,                                 # TestablePartials — configs map + tests/mocks module name lists
     :sources, :frameworks, :core, :objects, :executable,
     :no_link_objects, :results_pass, :results_fail,
+    :executable_rebuilt,                       # Boolean — set by stage 16; read by stage 17 to
+                                                # decide whether to run the fixture (see Dependinator)
     keyword_init: true
   ) do
     def initialize(**kwargs)

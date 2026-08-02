@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'rake'
 require 'ceedling/test_invoker/test_build_executor'
 require 'ceedling/test_invoker/test_invoker_types'
 
@@ -26,6 +27,7 @@ describe TestBuildExecutor do
     @file_path_utils                              = double( "FilePathUtils" )
     @file_finder                                     = double( "FileFinder" )
     @file_wrapper                                       = double( "FileWrapper" )
+    @dependinator                                          = double( "Dependinator" )
 
     @tools_test_compiler  = { name: 'fake compiler' }
     @tools_test_assembler = { name: 'fake assembler' }
@@ -40,6 +42,15 @@ describe TestBuildExecutor do
     allow(@file_path_utils).to receive(:form_test_build_list_filepath).and_return( 'build/list' )
     allow(@file_path_utils).to receive(:form_test_dependencies_filepath).and_return( 'build/deps' )
 
+    # Default: no prior `.d` file on disk, and the tracker reports every target
+    # stale -- i.e. every real build in this spec proceeds as if it were a
+    # fresh compile, matching these tests' original (pre-staleness) behavior.
+    allow(@file_wrapper).to receive(:exist?).and_return( false )
+    allow(@dependinator).to receive(:register)
+    allow(@dependinator).to receive(:register_gcc_deps_file)
+    allow(@dependinator).to receive(:stale?).and_return( true )
+    allow(@dependinator).to receive(:mark_fresh)
+
     @executor = described_class.new(
       {
         :configurator            => @configurator,
@@ -53,7 +64,8 @@ describe TestBuildExecutor do
         :plugin_manager          => @plugin_manager,
         :file_path_utils         => @file_path_utils,
         :file_finder             => @file_finder,
-        :file_wrapper            => @file_wrapper
+        :file_wrapper            => @file_wrapper,
+        :dependinator            => @dependinator
       }
     )
 
@@ -64,7 +76,16 @@ describe TestBuildExecutor do
       :assembler_flags  => []
     )
 
-    @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => testable } )
+    @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => testable }, :lock => Mutex.new )
+  end
+
+  # `@batchinator.exec` is a real collaborator only in production; here it's
+  # stubbed to synchronously yield every `things` entry to the given block,
+  # matching its real per-item iteration contract without pulling in Parallel.
+  def stub_batchinator_exec
+    allow(@batchinator).to receive(:exec) do |workload:, things:, &block|
+      things.each { |k, v| block.call(k, v) }
+    end
   end
 
   context "#compile_test_component" do
@@ -109,6 +130,116 @@ describe TestBuildExecutor do
         :compile_test_component,
         :context => :test, :test => :a_test, :source => 'src/foo.asm', :object => 'build/foo.o', :state => @state
       )
+    end
+
+    it "skips compiling and does not mark the object fresh when the dependency tracker reports it unchanged" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@generator).to_not receive(:generate_object_file_c)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    it "registers the object's source before checking staleness, and its freshly-written gcc deps file after a real compile" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+      allow(@file_wrapper).to receive(:exist?).with('build/deps').and_return( true )
+
+      expect(@dependinator).to receive(:register).with( 'build/foo.o', files: ['src/foo.c'], meta: anything ).ordered
+      expect(@dependinator).to receive(:register_gcc_deps_file).with('build/deps').ordered # pre-compile: prior .d file, if any
+      expect(@dependinator).to receive(:stale?).with('build/foo.o').and_return(true).ordered
+      expect(@generator).to receive(:generate_object_file_c).ordered
+      expect(@dependinator).to receive(:register_gcc_deps_file).with('build/deps').ordered # post-compile: freshly-written .d file
+      expect(@dependinator).to receive(:mark_fresh).with('build/foo.o').ordered
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+  end
+
+  context "#stage_build_executables" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@file_path_utils).to receive(:form_test_build_map_filepath).and_return( 'build/map' )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name       => 'a_test',
+        :objects    => ['build/foo.o'],
+        :executable => 'build/a_test.out',
+        :link_flags => [],
+        :paths      => { :build => 'build/test' }
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => {} )
+    end
+
+    it "links and marks the executable fresh, and records that it was rebuilt, when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      expect(@generator).to receive(:generate_executable_file)
+      expect(@dependinator).to receive(:mark_fresh).with('build/a_test.out')
+
+      @executor.stage_build_executables( @state )
+
+      expect( @testable.executable_rebuilt ).to be(true)
+    end
+
+    it "skips linking and records that it was not rebuilt when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      expect(@generator).to_not receive(:generate_executable_file)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_build_executables( @state )
+
+      expect( @testable.executable_rebuilt ).to be(false)
+    end
+  end
+
+  context "#stage_execute" do
+    before(:each) do
+      stub_batchinator_exec()
+      allow(@plugin_manager).to receive(:post_test)
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name         => 'a_test',
+        :filepath     => 'test/TestFoo.c',
+        :executable   => 'build/a_test.out',
+        :results_pass => 'build/a_test.pass',
+        :paths        => { :results => 'build/test/results' }
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => {} )
+    end
+
+    it "runs the test fixture when stage 16 rebuilt the executable, first clearing any stale prior result" do
+      @testable.executable_rebuilt = true
+      allow(@file_wrapper).to receive(:rm_f)
+      expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
+      expect(@generator).to receive(:generate_test_results)
+
+      @executor.stage_execute( @state )
+    end
+
+    it "does not run the test fixture or touch its cached result file when stage 16 found the executable unchanged" do
+      @testable.executable_rebuilt = false
+      expect(@generator).to_not receive(:generate_test_results)
+      expect(@file_wrapper).to_not receive(:rm_f)
+
+      @executor.stage_execute( @state )
+    end
+
+    it "always fires the post_test plugin hook, rebuilt or not" do
+      @testable.executable_rebuilt = false
+      expect(@plugin_manager).to receive(:post_test).with('test/TestFoo.c')
+
+      @executor.stage_execute( @state )
     end
   end
 end

@@ -425,6 +425,7 @@ test_build_executor:
     - file_path_utils
     - file_finder
     - file_wrapper
+    - dependinator
 
 release_invoker:
   compose:

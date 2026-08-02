@@ -84,8 +84,6 @@ class TestBuildSetup
       # Create all testable build paths
       testable.paths.each { |_, path| @file_wrapper.mkdir( path ) }
     end
-
-    clean_test_results( results_path, state.testables.map { |_, t| t.name } )
   end
 
   # Stage 2: Collect includes, build directives, and test case context from each test file.
@@ -424,12 +422,6 @@ class TestBuildSetup
     preprocessing_flags = flags( context: context, operation: OPERATION_PREPROCESS_SYM, filepath: filepath, default: nil )
     return compile_flags if preprocessing_flags.nil?
     return preprocessing_flags
-  end
-
-  def clean_test_results(path, tests)
-    tests.each do |test|
-      @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
-    end
   end
 
   private
