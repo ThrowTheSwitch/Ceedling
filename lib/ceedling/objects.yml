@@ -397,6 +397,7 @@ test_build_setup:
     - file_wrapper
     - file_path_utils
     - test_runner_manager
+    - dependinator
 
 test_build_planner:
   compose:

@@ -316,6 +316,28 @@ describe TestBuildExecutor do
 
       @executor.stage_generate_mocks( @state )
     end
+
+    it "tracks the mock's own generated header, not just its source input, as a dependency" do
+      # Regression coverage: stage_collect_preprocessor_context's includes
+      # stand-in generation (test_build_setup.rb) can overwrite a mock's
+      # generated header with a blank placeholder on a run where only the
+      # *test* file's own bare-includes cache misses -- unrelated to whether
+      # this mock's own antecedents changed. Without tracking the header file
+      # itself, that overwrite goes completely undetected and a stale/blank
+      # mock header silently ships to the compiler on a run that skips
+      # regenerating this mock.
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_mock)
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/test/mocks/sub/MockFoo.c',
+        files: ['build/preprocess/MockFoo.h', 'build/test/mocks/sub/MockFoo.h'],
+        meta:  anything
+      )
+
+      @executor.stage_generate_mocks( @state )
+    end
   end
 
   context "#stage_generate_runners" do
@@ -348,6 +370,59 @@ describe TestBuildExecutor do
       expect(@dependinator).to_not receive(:mark_fresh)
 
       @executor.stage_generate_runners( @state )
+    end
+  end
+
+  context "#stage_preprocess_test_files" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/files/TestFoo.c' )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list).and_return( [] )
+      allow(@configurator).to receive(:extension_source).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+      allow(@test_context_extractor).to receive(:collect_simple_context_from_file)
+      allow(@reportinator).to receive(:generate_progress).and_return( '' )
+      allow(@loginator).to receive(:log)
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name               => 'a_test',
+        :filepath           => 'test/TestFoo.c',
+        :preprocess         => { :directives_only => { :filepath => nil } },
+        :preprocess_flags   => [], :preprocess_defines => [], :search_paths => [],
+        :runner             => { :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => nil }
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => {} )
+    end
+
+    it "preprocesses and marks fresh the test file, storing its output as the runner input, when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      expect(@preprocessinator).to receive(:preprocess_test_file).and_return( 'build/preprocess/files/TestFoo.c' )
+      expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/files/TestFoo.c')
+
+      @executor.stage_preprocess_test_files( @state )
+
+      expect( @testable.runner[:input_filepath] ).to eq('build/preprocess/files/TestFoo.c')
+    end
+
+    it "skips preprocessing and reuses the deterministic path as the runner input when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      expect(@preprocessinator).to_not receive(:preprocess_test_file)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_preprocess_test_files( @state )
+
+      expect( @testable.runner[:input_filepath] ).to eq('build/preprocess/files/TestFoo.c')
+    end
+
+    it "still collects build-directive context every run, regardless of staleness" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      expect(@test_context_extractor).to receive(:collect_simple_context_from_file)
+
+      @executor.stage_preprocess_test_files( @state )
     end
   end
 end

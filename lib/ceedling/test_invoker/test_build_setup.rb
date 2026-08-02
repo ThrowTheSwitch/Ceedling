@@ -28,7 +28,8 @@ class TestBuildSetup
     :flaginator,
     :file_wrapper,
     :file_path_utils,
-    :test_runner_manager
+    :test_runner_manager,
+    :dependinator
   )
 
   def setup()
@@ -217,6 +218,24 @@ class TestBuildSetup
       name     = testable.name
       filepath = testable.filepath
 
+      # The raw output path is deterministic (form_preprocessed_file_raw_directives_only_filepath),
+      # so it can be registered and checked before deciding whether to actually
+      # (re)run the preprocessor. `generate_directives_only_output` also writes a
+      # second, compacted file derived atomically from the same run -- covered
+      # by this same staleness check since both come from the same inputs.
+      target = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, name )
+
+      @dependinator.register(
+        target,
+        files: [filepath],
+        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+      )
+
+      unless @dependinator.stale?( target )
+        testable.preprocess[:directives_only][:filepath] = target
+        next
+      end
+
       arg_hash = {
         filepath:      filepath,
         test:          name,
@@ -235,6 +254,11 @@ class TestBuildSetup
 
       testable.preprocess[:directives_only][:filepath] =
         @preprocessinator.generate_directives_only_output( **arg_hash )
+
+      # A nil result means the preprocessor failed (see generate_directives_only_output) --
+      # nothing was actually written, so there's nothing to mark fresh; the next
+      # run will correctly see this target as still missing and retry.
+      @dependinator.mark_fresh( target ) unless testable.preprocess[:directives_only][:filepath].nil?
     end
 
     # Third pass: reconcile includes from all extraction sources and ingest

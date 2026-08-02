@@ -354,8 +354,19 @@ class TestBuildExecutor
       #
       # `details[:name]` (a String), not `mock[:name]` (the Symbol key T2 carried
       # the same value in for hash lookups) -- needed here as a real filename.
-      target = File.join( output_path, details[:name] + EXTENSION_CORE_SOURCE )
-      @dependinator.register( target, files: [details[:input]], meta: { cmock: cmock_meta } )
+      target      = File.join( output_path, details[:name] + EXTENSION_CORE_SOURCE )
+      mock_header = File.join( output_path, details[:name] + EXTENSION_CORE_HEADER )
+
+      # `mock_header` is tracked here too -- not semantically an antecedent, but
+      # a file CMock writes atomically alongside `target` in the same call
+      # below. Without tracking it, an external overwrite of just the header
+      # goes completely undetected: stage_collect_preprocessor_context's
+      # includes stand-in generation (test_build_setup.rb) writes a blank
+      # placeholder to this exact path whenever the *test* file's own
+      # bare-includes cache misses, which would otherwise silently ship a
+      # blank mock header to the compiler on a run where this mock's own
+      # antecedents didn't change.
+      @dependinator.register( target, files: [details[:input], mock_header], meta: { cmock: cmock_meta } )
 
       next unless @dependinator.stale?( target )
 
@@ -385,19 +396,35 @@ class TestBuildExecutor
 
       fallback = (!directives_only or directives_only_filepath.nil?)
 
-      arg_hash = {
-        test:                     name,
-        filepath:                 filepath,
-        directives_only_filepath: directives_only_filepath,
-        fallback:                 fallback,
-        includes:                 @context_extractor.lookup_all_header_includes_list( testable.filepath ),
-        flags:                    testable.preprocess_flags,
-        include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
-        defines:                  testable.preprocess_defines
-      }
+      # form_preprocessed_file_filepath is deterministic (same call
+      # preprocess_test_file itself uses internally), so it can be registered
+      # and checked before deciding whether to actually preprocess.
+      target = @file_path_utils.form_preprocessed_file_filepath( filepath, name )
+      @dependinator.register(
+        target,
+        files: [filepath],
+        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+      )
 
-      _filepath = @preprocessinator.preprocess_test_file( **arg_hash )
+      if @dependinator.stale?( target )
+        arg_hash = {
+          test:                     name,
+          filepath:                 filepath,
+          directives_only_filepath: directives_only_filepath,
+          fallback:                 fallback,
+          includes:                 @context_extractor.lookup_all_header_includes_list( testable.filepath ),
+          flags:                    testable.preprocess_flags,
+          include_paths:            testable.search_paths,
+          vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+          defines:                  testable.preprocess_defines
+        }
+
+        _filepath = @preprocessinator.preprocess_test_file( **arg_hash )
+
+        @dependinator.mark_fresh( target )
+      else
+        _filepath = target
+      end
 
       state.lock.synchronize { testable.runner[:input_filepath] = _filepath }
 
