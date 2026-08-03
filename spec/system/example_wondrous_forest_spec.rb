@@ -39,6 +39,15 @@ ceedling_system_tests do
         @c.with_context do
           output = @c.ceedling_appcmd_exec("example wondrous_forest")
           expect(output).to match(/created/)
+
+          # `ceedling example` only overwrites src/, test/, mixin/, and project.yml --
+          # it never touches build/. Without clobbering it here, a dependency cache
+          # populated by an earlier example in this describe block would carry over
+          # and make delta-build staleness tracking correctly (but unhelpfully, for
+          # these tests) treat this "fresh" example as already fully built.
+          Dir.chdir "wondrous_forest" do
+            @c.ceedling_build_exec("clobber")
+          end
         end
       end
 
