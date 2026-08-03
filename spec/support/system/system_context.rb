@@ -11,7 +11,6 @@ require_relative 'gem_dir_layout'
 
 class SystemContext
   class VerificationFailed < RuntimeError; end
-  class InvalidBackupEnv < RuntimeError; end
 
   attr_reader :dir, :gem, :console_summary, :raw_output, :last_exit_status, :last_cmd
 
@@ -44,16 +43,24 @@ class SystemContext
     )
 
     Dir.chdir(shared_dir) do
-      saved = ENV.to_hash
       begin
-        %w{BUNDLE_GEMFILE BUNDLE_BIN_PATH RUBYOPT}.each { |k| ENV.delete(k) }
-        deploy_output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
-        # --prefer-local: Without it, Bundler resolves gems (e.g. `erb`) fresh from
-        # rubygems repository even when Ruby's default-gem copy satisfies the Gemfile constraint.
-        deploy_output += `bundle install --prefer-local 2>&1`
+        # Bundler.with_unbundled_env restores the pre-`bundle exec` environment for
+        # this block -- clearing not just BUNDLE_GEMFILE/BUNDLE_BIN_PATH/RUBYOPT but
+        # also GEM_HOME/GEM_PATH/RUBYLIB and every other var Bundler sets when this
+        # spec suite itself runs under `bundle exec` against a non-default GEM_HOME
+        # (e.g. `bundle install --path vendor/bundle`). Without it, this nested
+        # install inherits the outer Bundler's env and fails to find its own
+        # dependencies under a completely different Gemfile.
+        deploy_output = Bundler.with_unbundled_env do
+          output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
+          # --prefer-local: Without it, Bundler resolves gems (e.g. `erb`) fresh from
+          # rubygems repository even when Ruby's default-gem copy satisfies the Gemfile constraint.
+          output += `bundle install --prefer-local 2>&1`
+          output
+        end
         raise VerificationFailed, "bundle install failed:\n#{deploy_output}" unless $?.success?
 
-        verify = `bundle exec ruby -S ceedling version 2>&1`
+        verify = Bundler.with_unbundled_env { `bundle exec ruby -S ceedling version 2>&1` }
         unless $?.success?
           raise VerificationFailed,
             "Ceedling does not appear to be installed or ready for use.\n" \
@@ -62,8 +69,6 @@ class SystemContext
       rescue
         FileUtils.rm_rf(shared_dir)
         raise
-      ensure
-        ENV.replace(saved)
       end
     end
 
@@ -134,7 +139,8 @@ class SystemContext
     Dir.chdir @dir do |current_dir|
       with_constrained_env do
         # Point bundle exec to the shared Gemfile so it works from any project directory.
-        # constrain_env removes BUNDLE_GEMFILE; we re-set it here within the constrained scope.
+        # with_constrained_env's unbundled environment has no BUNDLE_GEMFILE of its
+        # own; set it here so the yielded commands resolve against the shared gem.
         ENV['BUNDLE_GEMFILE'] = File.join(@@shared_gem_dir, 'Gemfile') if @@shared_gem_dir
         ENV['RUBYLIB'] = @gem.lib
         ENV['RUBYPATH'] = @gem.bin
@@ -150,39 +156,15 @@ class SystemContext
 
   ############################################################
   # Functions for manipulating environment settings during tests:
-  def backup_env
-    @_env = ENV.to_hash
-  end
 
-  def reduce_env(destroy_keys=[])
-    ENV.keys.each {|k| ENV.delete(k) if destroy_keys.include?(k) }
-  end
-
-  def constrain_env
-    destroy_keys = %w{BUNDLE_GEMFILE BUNDLE_BIN_PATH RUBYOPT}
-    reduce_env(destroy_keys)
-  end
-
-  def restore_env
-    if @_env
-      # delete environment variables we've added since we started
-      ENV.to_hash.each_pair {|k,v| ENV.delete(k) unless @_env.include?(k) }
-
-      # restore environment variables we've modified since we started
-      @_env.each_pair {|k,v| ENV[k] = v}
-    else
-      raise InvalidBackupEnv.new
-    end
-  end
-
+  # Runs the block against the pre-`bundle exec` environment (see the matching
+  # comment on Bundler.with_unbundled_env in setup_shared_gem! above) so a
+  # subprocess spawned inside -- e.g. `bundle exec ruby -S ceedling ...` against
+  # the shared gem's own Gemfile in with_context below -- resolves against that
+  # Gemfile rather than whatever Bundler context this spec suite itself is
+  # already running under.
   def with_constrained_env
-    begin
-      backup_env
-      constrain_env
-      yield
-    ensure
-      restore_env
-    end
+    Bundler.with_unbundled_env { yield }
   end
 
   ############################################################
