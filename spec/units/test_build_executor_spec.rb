@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'rake'
 require 'ceedling/test_invoker/test_build_executor'
 require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/partials/partials'
 
 PROJECT_BUILD_VENDOR_UNITY_PATH = 'build/vendor/unity' unless defined?(PROJECT_BUILD_VENDOR_UNITY_PATH)
 UNITY_C_FILE = 'unity.c' unless defined?(UNITY_C_FILE)
@@ -436,6 +437,216 @@ describe TestBuildExecutor do
       expect(@test_context_extractor).to receive(:collect_simple_context_from_file)
 
       @executor.stage_preprocess_test_files( @state )
+    end
+  end
+
+  context "#stage_preprocess_partial_headers" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/Foo.h' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return( 'build/preprocess/full_expansion/Foo.h' )
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.h' )
+      allow(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros).and_return( ['build/preprocess/raw/Foo.h', []] )
+      allow(@preprocessinator).to receive(:preprocess_partial_header_expand_macros).and_return( 'build/preprocess/full_expansion/Foo.h' )
+      allow(@preprocessinator).to receive(:load_includes_list).and_return( [] )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name               => 'a_test',
+        :preprocess_flags   => ['-Wall'], :preprocess_defines => ['TEST'], :search_paths => ['src']
+      )
+      @config = Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' )
+      @details = { :config => @config, :testable => @testable, :directives_only_filepath => nil }
+      @state = TestInvokerTypes::PipelineState.new(
+        :testables => { :a_test => @testable }, :partials_headers => [@details], :context => :test, :options => {}
+      )
+    end
+
+    it "registers the header's deterministic target with the header file as sole antecedent and preprocess flags/defines/search paths as meta" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/Foo.h',
+        files: ['src/Foo.h'],
+        meta:  { flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'] }
+      )
+
+      @executor.stage_preprocess_partial_headers( @state )
+    end
+
+    it "runs all three preprocessing passes and marks the target fresh once, at the end, when the dependency tracker reports it stale" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@preprocessinator).to receive(:generate_directives_only_output).ordered
+      expect(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros).ordered
+      expect(@preprocessinator).to receive(:preprocess_partial_header_expand_macros).ordered
+      expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/Foo.h').ordered
+
+      @executor.stage_preprocess_partial_headers( @state )
+    end
+
+    it "skips all three preprocessing passes and reconstructs config state from the deterministic paths and cached includes list when the dependency tracker reports it unchanged" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      cached_includes = [ double("Include") ]
+      allow(@preprocessinator).to receive(:load_includes_list).with( test: 'a_test', filepath: 'src/Foo.h' ).and_return( cached_includes )
+
+      expect(@preprocessinator).to_not receive(:generate_directives_only_output)
+      expect(@preprocessinator).to_not receive(:preprocess_partial_header_file_preserve_macros)
+      expect(@preprocessinator).to_not receive(:preprocess_partial_header_expand_macros)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_preprocess_partial_headers( @state )
+
+      expect( @config.directives_only_filepath ).to eq( 'build/preprocess/Foo.h' )
+      expect( @config.includes ).to eq( cached_includes )
+      expect( @config.full_expansion_filepath ).to eq( 'build/preprocess/full_expansion/Foo.h' )
+    end
+
+    it "does nothing for the directives-only pass when directives-only preprocessing is unavailable for this toolchain, but still runs preserve-macros and full-expansion" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@preprocessinator).to_not receive(:generate_directives_only_output)
+      expect(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros)
+      expect(@preprocessinator).to receive(:preprocess_partial_header_expand_macros)
+
+      @executor.stage_preprocess_partial_headers( @state )
+    end
+  end
+
+  context "#stage_preprocess_partial_sources" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/Foo.c' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return( 'build/preprocess/full_expansion/Foo.c' )
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.c' )
+      allow(@preprocessinator).to receive(:preprocess_partial_source_file_preserve_macros).and_return( ['build/preprocess/raw/Foo.c', []] )
+      allow(@preprocessinator).to receive(:preprocess_partial_source_expand_macros).and_return( 'build/preprocess/full_expansion/Foo.c' )
+      allow(@preprocessinator).to receive(:load_includes_list).and_return( [] )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name               => 'a_test',
+        :preprocess_flags   => ['-Wall'], :preprocess_defines => ['TEST'], :search_paths => ['src']
+      )
+      @config = Partials::ConfigFileInfo.new( filepath: 'src/Foo.c' )
+      @details = { :config => @config, :testable => @testable, :directives_only_filepath => nil }
+      @state = TestInvokerTypes::PipelineState.new(
+        :testables => { :a_test => @testable }, :partials_sources => [@details], :context => :test, :options => {}
+      )
+    end
+
+    it "registers the source's deterministic target with the source file as sole antecedent and preprocess flags/defines/search paths as meta" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/Foo.c',
+        files: ['src/Foo.c'],
+        meta:  { flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'] }
+      )
+
+      @executor.stage_preprocess_partial_sources( @state )
+    end
+
+    it "runs all three preprocessing passes and marks the target fresh once, at the end, when the dependency tracker reports it stale" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@preprocessinator).to receive(:generate_directives_only_output).ordered
+      expect(@preprocessinator).to receive(:preprocess_partial_source_file_preserve_macros).ordered
+      expect(@preprocessinator).to receive(:preprocess_partial_source_expand_macros).ordered
+      expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/Foo.c').ordered
+
+      @executor.stage_preprocess_partial_sources( @state )
+    end
+
+    it "skips all three preprocessing passes and reconstructs config state from the deterministic paths and cached includes list when the dependency tracker reports it unchanged" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      cached_includes = [ double("Include") ]
+      allow(@preprocessinator).to receive(:load_includes_list).with( test: 'a_test', filepath: 'src/Foo.c' ).and_return( cached_includes )
+
+      expect(@preprocessinator).to_not receive(:generate_directives_only_output)
+      expect(@preprocessinator).to_not receive(:preprocess_partial_source_file_preserve_macros)
+      expect(@preprocessinator).to_not receive(:preprocess_partial_source_expand_macros)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_preprocess_partial_sources( @state )
+
+      expect( @config.directives_only_filepath ).to eq( 'build/preprocess/Foo.c' )
+      expect( @config.includes ).to eq( cached_includes )
+      expect( @config.full_expansion_filepath ).to eq( 'build/preprocess/full_expansion/Foo.c' )
+    end
+  end
+
+  context "#stage_generate_partials" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+
+      module_contents = double( "CModule", function_definitions: [], function_declarations: [] )
+      allow(@partializer).to receive(:extract_module_contents).and_return( module_contents )
+      allow(@partializer).to receive(:validate_config)
+      allow(@partializer).to receive(:sanitize)
+      allow(@partializer).to receive(:validate_extracted_functions)
+      allow(@partializer).to receive(:remap_implementation_header_includes).and_return( [] )
+      allow(@partializer).to receive(:remap_implementation_source_includes).and_return( [] )
+      allow(@partializer).to receive(:remap_interface_header_includes).and_return( [] )
+      allow(@generator).to receive(:generate_partial_implementation)
+      allow(@generator).to receive(:generate_partial_interface)
+
+      @config = Partials::Config.new(
+        module: 'Foo',
+        header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h', includes: [] ),
+        source: Partials::ConfigFileInfo.new( filepath: 'src/Foo.c', includes: [] )
+      )
+      @testable = TestInvokerTypes::Testable.new(
+        :name  => 'a_test',
+        :paths => { :partials => 'build/test/partials/a_test' }
+      )
+      @testable.partials.configs = { 'Foo' => @config }
+      @state = TestInvokerTypes::PipelineState.new(
+        :testables => { :a_test => @testable }, :context => :test, :options => {}, :lock => Mutex.new
+      )
+    end
+
+    # `config` here looks exactly as it would whether stage 6/7 just freshly
+    # preprocessed it or recalled it whole from a dependency-tracker cache
+    # hit -- this stage reads only `config` and has no way to tell the
+    # difference, so a single fixture covers both cases.
+    it "adds the module to tests and mocks when both implementation and interface are extracted" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      @executor.stage_generate_partials( @state )
+
+      expect( @testable.partials.tests ).to eq( ['Foo'] )
+      expect( @testable.partials.mocks ).to eq( ['Foo'] )
+    end
+
+    it "does not add to tests when no implementation is extracted" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      @executor.stage_generate_partials( @state )
+
+      expect( @testable.partials.tests ).to eq( [] )
+      expect( @testable.partials.mocks ).to eq( ['Foo'] )
+    end
+
+    it "does not add to mocks when no interface is extracted" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
+
+      @executor.stage_generate_partials( @state )
+
+      expect( @testable.partials.tests ).to eq( ['Foo'] )
+      expect( @testable.partials.mocks ).to eq( [] )
     end
   end
 end

@@ -35,18 +35,53 @@ class TestBuildExecutor
 
   # Stage 6: Preprocess partial header files for extract-and-generate pass.
   #
-  # Unlike every other generation stage in this file, stages 6-8 (partials)
-  # always run in full and register nothing with the dependency tracker.
-  # Stage 8 consumes `config.includes`/`directives_only_filepath`/
-  # `full_expansion_filepath` as in-memory state these stages return directly,
-  # not a stable file path read back on a later run -- the pattern every other
-  # stage here relies on for skipping unchanged work doesn't apply without
-  # first reconstructing that state some other way.
+  # A partial header's three preprocessing passes below (directives-only
+  # generation, preserve-macros preprocessing, full-expansion) all derive
+  # from the same antecedent file and the same preprocess flags/defines/
+  # search paths, so they're stale or fresh together as a single unit --
+  # one DependencyTracker target per header per test covers all three.
+  #
+  # Settling every target's staleness in its own sequential pass first
+  # (cheap, no subprocess work) is what lets the three parallel batches
+  # below each just check `details[:stale]` instead of duplicating the
+  # register/stale? call three times over. On a stale target, all three
+  # passes run and populate `config` as they do today. On a fresh target,
+  # the two preprocessed output filepaths are recomputed the same
+  # deterministic way the preprocessor methods themselves compute them, and
+  # `config.includes` is recalled from the on-disk list a prior stale run
+  # wrote -- so `config` ends up populated identically either way, and
+  # stage 8 (which reads only `config`) needs no knowledge of which path
+  # produced it.
   def stage_preprocess_partial_headers(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
 
+    state.partials_headers.each do |details|
+      config   = details[:config]
+      testable = details[:testable]
+      name     = testable.name
+
+      target = @file_path_utils.form_preprocessed_file_filepath( config.filepath, name )
+
+      @dependinator.register(
+        target,
+        files: [config.filepath],
+        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+      )
+
+      details[:preprocessed_target] = target
+      details[:stale]               = @dependinator.stale?( target )
+
+      next if details[:stale]
+
+      config.directives_only_filepath = target
+      config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
+      config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+    end
+
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
+      next unless details[:stale]
+
       config   = details[:config]
       testable = details[:testable]
       name     = testable.name
@@ -65,6 +100,8 @@ class TestBuildExecutor
 
     # Preprocess and assemble header files
     @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
+      next unless details[:stale]
+
       config                   = details[:config]
       testable                 = details[:testable]
       name                     = testable.name
@@ -86,6 +123,8 @@ class TestBuildExecutor
 
     # Full-preprocess partial header files for expanded signature extraction.
     @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
+      next unless details[:stale]
+
       config   = details[:config]
       testable = details[:testable]
       name     = testable.name
@@ -100,15 +139,44 @@ class TestBuildExecutor
       }
 
       config.full_expansion_filepath = @preprocessinator.preprocess_partial_header_expand_macros( **arg_hash )
+
+      @dependinator.mark_fresh( details[:preprocessed_target] )
     end
   end
 
   # Stage 7: Preprocess partial source files for extract-and-generate pass.
+  # Mirrors stage 6 exactly, against `state.partials_sources` and each
+  # partial's source file rather than its header.
   def stage_preprocess_partial_sources(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
 
+    state.partials_sources.each do |details|
+      config   = details[:config]
+      testable = details[:testable]
+      name     = testable.name
+
+      target = @file_path_utils.form_preprocessed_file_filepath( config.filepath, name )
+
+      @dependinator.register(
+        target,
+        files: [config.filepath],
+        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+      )
+
+      details[:preprocessed_target] = target
+      details[:stale]               = @dependinator.stale?( target )
+
+      next if details[:stale]
+
+      config.directives_only_filepath = target
+      config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
+      config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+    end
+
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
+      next unless details[:stale]
+
       config   = details[:config]
       testable = details[:testable]
       name     = testable.name
@@ -127,6 +195,8 @@ class TestBuildExecutor
 
     # Preprocess and assemble source files
     @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
+      next unless details[:stale]
+
       config                   = details[:config]
       testable                 = details[:testable]
       name                     = testable.name
@@ -148,6 +218,8 @@ class TestBuildExecutor
 
     # Full-preprocess partial source files for expanded signature extraction.
     @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
+      next unless details[:stale]
+
       config   = details[:config]
       testable = details[:testable]
       name     = testable.name
@@ -162,10 +234,19 @@ class TestBuildExecutor
       }
 
       config.full_expansion_filepath = @preprocessinator.preprocess_partial_source_expand_macros( **arg_hash )
+
+      @dependinator.mark_fresh( details[:preprocessed_target] )
     end
   end
 
   # Stage 8: Extract and generate partial implementation and interface files.
+  #
+  # Always runs in full, for every partial, every invocation -- it does no
+  # subprocess work of its own (pure in-memory C parsing and file generation
+  # from whatever `config` already holds), and `testable.partials.tests`/
+  # `.mocks` need to be rebuilt from the current `config` state every run
+  # regardless of whether stages 6/7 did real preprocessing work or recalled
+  # it, since stage 14 reads those lists to decide compile sources.
   def stage_generate_partials(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
 

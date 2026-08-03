@@ -282,7 +282,6 @@ preprocessinator:
     - preprocessinator_reconstructor
     - file_path_utils
     - tool_executor
-    - file_wrapper
     - plugin_manager
     - configurator
     - loginator
