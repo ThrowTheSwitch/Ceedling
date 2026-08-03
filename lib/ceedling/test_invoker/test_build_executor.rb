@@ -474,9 +474,18 @@ class TestBuildExecutor
   #
   # Antecedent is the raw test file, not stage 11's preprocessed variant --
   # correct because the runner's mock/include lists are parsed fresh from this
-  # same raw file every run (stages 2/12), never from the mock/header files'
-  # own content, so an unchanged test file guarantees unchanged lists
-  # regardless of what the preprocessed form of the file looks like.
+  # same raw file every run (stage 2), never from the mock/header files' own
+  # content, so an unchanged test file guarantees unchanged lists regardless
+  # of what the preprocessed form of the file looks like.
+  #
+  # `test_preprocessor_tests` meta covers a different piece of runner content:
+  # test case names. Stage 12 (gated by this same flag at the pipeline level,
+  # test_invoker.rb) parses them from the preprocessed test file when this is
+  # true, but when false that stage doesn't run at all -- stage 2 parses raw
+  # test-file text for them instead. An unchanged raw test file says nothing
+  # about which of those two sources actually fed the last-generated runner,
+  # so toggling this flag between runs (with no other change) must still be
+  # able to invalidate the target.
   def stage_generate_runners(state)
     test_runner_meta = @configurator.project_config_hash[:test_runner]
     unity_meta       = @configurator.project_config_hash[:unity]
@@ -487,7 +496,11 @@ class TestBuildExecutor
       @dependinator.register(
         target,
         files: [testable.filepath],
-        meta:  { test_runner: test_runner_meta, unity: unity_meta }
+        meta:  {
+          test_runner:              test_runner_meta,
+          unity:                    unity_meta,
+          test_preprocessor_tests:  @configurator.project_use_test_preprocessor_tests
+        }
       )
 
       next unless @dependinator.stale?( target )

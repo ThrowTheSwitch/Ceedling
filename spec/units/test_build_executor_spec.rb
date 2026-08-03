@@ -345,6 +345,7 @@ describe TestBuildExecutor do
       stub_batchinator_exec()
 
       allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
       allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( [] )
 
@@ -368,6 +369,18 @@ describe TestBuildExecutor do
       allow(@dependinator).to receive(:stale?).and_return( false )
       expect(@generator).to_not receive(:generate_test_runner)
       expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_generate_runners( @state )
+    end
+
+    it "includes whether test files are preprocessed in the registered meta, so toggling it invalidates the runner" do
+      allow(@generator).to receive(:generate_test_runner)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/test/runners/TestFoo_runner.c',
+        files: ['test/TestFoo.c'],
+        meta:  hash_including( test_preprocessor_tests: true )
+      )
 
       @executor.stage_generate_runners( @state )
     end
