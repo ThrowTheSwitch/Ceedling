@@ -172,6 +172,14 @@ class TestBuildSetup
   end
 
   # Stage 4 (conditional on preprocessing): Extract includes using the preprocessor.
+  #
+  # The three passes below use two independent, unrelated caching mechanisms:
+  # the first pass's bare-includes cache (`cached_includes_list?`/`load_includes_list`)
+  # predates content-hash-based dependency tracking and compares file modification
+  # times; the second pass's directives-only output is tracked via the dependency
+  # tracker instead, content-hash-based like the rest of the pipeline. The third
+  # pass always runs (its own reconciliation work is cheap relative to the
+  # preprocessor invocations the first two passes may skip).
   def stage_collect_preprocessor_context(state)
     # First pass: extract bare includes; create stand-in files for mocks and partials
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
@@ -341,6 +349,12 @@ class TestBuildSetup
     @include_pathinator.augment_environment_header_files( headers )
   end
 
+  # Writes placeholder header files for any mock or partial a test #includes,
+  # so early preprocessing/context-extraction steps have something to resolve
+  # before the real mock (stage 10) or partial (stage 8) exists yet. Later
+  # stages overwrite these paths with real generated content; a test build
+  # that never runs those later stages (e.g. :sources_only) is left with only
+  # the placeholder, which is sufficient for its purposes.
   def generate_test_includes_standins(test, includes)
     mocks    = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
     partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )

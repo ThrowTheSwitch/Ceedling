@@ -43,8 +43,8 @@ describe TestBuildExecutor do
     allow(@file_path_utils).to receive(:form_test_dependencies_filepath).and_return( 'build/deps' )
 
     # Default: no prior `.d` file on disk, and the tracker reports every target
-    # stale -- i.e. every real build in this spec proceeds as if it were a
-    # fresh compile, matching these tests' original (pre-staleness) behavior.
+    # stale -- i.e. every real build in this spec proceeds as an unconditional
+    # fresh compile unless a test overrides `stale?` to exercise the skip path.
     allow(@file_wrapper).to receive(:exist?).and_return( false )
     allow(@dependinator).to receive(:register)
     allow(@dependinator).to receive(:register_gcc_deps_file)
@@ -319,14 +319,13 @@ describe TestBuildExecutor do
     end
 
     it "tracks the mock's own generated header, not just its source input, as a dependency" do
-      # Regression coverage: stage_collect_preprocessor_context's includes
-      # stand-in generation (test_build_setup.rb) can overwrite a mock's
-      # generated header with a blank placeholder on a run where only the
-      # *test* file's own bare-includes cache misses -- unrelated to whether
-      # this mock's own antecedents changed. Without tracking the header file
-      # itself, that overwrite goes completely undetected and a stale/blank
-      # mock header silently ships to the compiler on a run that skips
-      # regenerating this mock.
+      # stage_collect_preprocessor_context's includes stand-in generation
+      # (test_build_setup.rb) can overwrite a mock's generated header with a
+      # blank placeholder on a run where only the *test* file's own
+      # bare-includes cache misses -- unrelated to whether this mock's own
+      # antecedents changed. Tracking the header file itself, not just the
+      # source input, is what lets that overwrite be detected and the mock
+      # regenerated on the next run.
       allow(@dependinator).to receive(:stale?).and_return( true )
       allow(@generator).to receive(:generate_mock)
       allow(@dependinator).to receive(:mark_fresh)

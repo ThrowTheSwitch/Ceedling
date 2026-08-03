@@ -175,13 +175,13 @@ class GeneratorTestResults
   end
 
   # Reads back a previously-written result file for `result_file` (a target's
-  # base `.pass` path) when its test executable didn't need rebuilding, so its
-  # cached outcome can still be reported this run instead of silently dropping
-  # out of it. Returns whichever of the `.pass`/`.fail` variant actually exists
-  # on disk (a test's outcome determines which extension
-  # #process_and_write_results wrote to), or nil if neither exists -- e.g. the
-  # result file was deleted independently of the executable and cache -- so
-  # the caller can fall back to actually running the test.
+  # base `.pass` path), so a test executable's cached outcome can be reported
+  # for a run where it didn't need rebuilding. Returns whichever of the
+  # `.pass`/`.fail` variant actually exists on disk (a test's outcome
+  # determines which extension #process_and_write_results wrote to), or nil if
+  # neither exists -- e.g. the result file was deleted independently of the
+  # executable and cache -- so the caller can fall back to actually running
+  # the test.
   def read_cached_results(result_file)
     fail_file = result_file.ext( @configurator.extension_testfail )
 

@@ -22,13 +22,12 @@ require 'spec_system_helper'
 # positives having nothing to do with an actual build step running.
 #
 # Each scenario appends a real, compiled-byte-changing statement to a source file
-# rather than just touching it or adding a comment: whitespace/comment-only edits
-# don't necessarily change a compiler's output (confirmed repeatedly during manual
-# verification of the underlying feature), so asserting on them would make these
-# tests flaky/compiler-dependent. A `volatile int` declaration inside a function
-# body (or a new function prototype at file scope, for header-only scenarios) is
-# used specifically because it reliably shows up in compiled output across
-# toolchains.
+# rather than just touching it or adding a comment: a compiler is free to produce
+# byte-identical output for a whitespace- or comment-only edit, so asserting on
+# those would make these tests flaky/compiler-dependent. A `volatile int`
+# declaration inside a function body (or a new function prototype at file scope,
+# for header-only scenarios) is used specifically because it reliably shows up in
+# compiled output across toolchains.
 ceedling_system_tests do
   before :all do
     @c = SystemContext.new
@@ -104,12 +103,12 @@ ceedling_system_tests do
 
           rebuild = @c.ceedling_build_exec("test:all")
 
-          # Regression coverage: stage_collect_preprocessor_context's includes
-          # stand-in generation can overwrite an already-generated mock header
-          # with a blank placeholder on any run where the *test* file's own
-          # bare-includes cache misses -- unrelated to whether that mock's own
-          # antecedents changed. A prior gap in mock staleness tracking let this
-          # go undetected, silently shipping a blank header to the compiler.
+          # stage_collect_preprocessor_context's includes stand-in generation
+          # overwrites an already-generated mock header with a blank placeholder
+          # on any run where the *test* file's own bare-includes cache misses,
+          # entirely independent of whether that mock's own antecedents
+          # changed -- exercising that path here confirms the resulting stale
+          # header is detected and every one of this test's mocks regenerated.
           expect(rebuild).to match(/Generating mock for TestAdcModel::TaskScheduler\.h/)
           expect(rebuild).to match(/Generating mock for TestAdcModel::TemperatureCalculator\.h/)
           expect(rebuild).to match(/Generating mock for TestAdcModel::TemperatureFilter\.h/)

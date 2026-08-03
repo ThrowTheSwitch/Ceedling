@@ -34,6 +34,14 @@ class TestBuildExecutor
   end
 
   # Stage 6: Preprocess partial header files for extract-and-generate pass.
+  #
+  # Unlike every other generation stage in this file, stages 6-8 (partials)
+  # always run in full and register nothing with the dependency tracker.
+  # Stage 8 consumes `config.includes`/`directives_only_filepath`/
+  # `full_expansion_filepath` as in-memory state these stages return directly,
+  # not a stable file path read back on a later run -- the pattern every other
+  # stage here relies on for skipping unchanged work doesn't apply without
+  # first reconstructing that state some other way.
   def stage_preprocess_partial_headers(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
 
@@ -357,15 +365,14 @@ class TestBuildExecutor
       target      = File.join( output_path, details[:name] + EXTENSION_CORE_SOURCE )
       mock_header = File.join( output_path, details[:name] + EXTENSION_CORE_HEADER )
 
-      # `mock_header` is tracked here too -- not semantically an antecedent, but
-      # a file CMock writes atomically alongside `target` in the same call
-      # below. Without tracking it, an external overwrite of just the header
-      # goes completely undetected: stage_collect_preprocessor_context's
+      # `mock_header` is tracked here too, alongside `target` -- not
+      # semantically an antecedent, but a file CMock writes atomically in the
+      # same call below. Tracking it is what lets a stale header be detected
+      # and regenerated on the next run: stage_collect_preprocessor_context's
       # includes stand-in generation (test_build_setup.rb) writes a blank
       # placeholder to this exact path whenever the *test* file's own
-      # bare-includes cache misses, which would otherwise silently ship a
-      # blank mock header to the compiler on a run where this mock's own
-      # antecedents didn't change.
+      # bare-includes cache misses, entirely independent of whether this
+      # mock's own antecedents changed.
       @dependinator.register( target, files: [details[:input], mock_header], meta: { cmock: cmock_meta } )
 
       next unless @dependinator.stale?( target )
@@ -465,11 +472,11 @@ class TestBuildExecutor
 
   # Stage 13: Generate test runner files.
   #
-  # Antecedent is the raw test file only (not yet the preprocessed variant --
-  # that lands with fine-grained preprocessing tracking in a later phase).
-  # This is still correct: the runner's mock/include lists are parsed fresh
-  # from this same file every run (stages 2/12), never from the mock/header
-  # files' own content, so an unchanged test file guarantees unchanged lists.
+  # Antecedent is the raw test file, not stage 11's preprocessed variant --
+  # correct because the runner's mock/include lists are parsed fresh from this
+  # same raw file every run (stages 2/12), never from the mock/header files'
+  # own content, so an unchanged test file guarantees unchanged lists
+  # regardless of what the preprocessed form of the file looks like.
   def stage_generate_runners(state)
     test_runner_meta = @configurator.project_config_hash[:test_runner]
     unity_meta       = @configurator.project_config_hash[:unity]
@@ -502,12 +509,14 @@ class TestBuildExecutor
 
   # Stage 15: Compile all test build objects in parallel.
   #
-  # KNOWN GAP (deferred until after first end-to-end validation): an unchanged
-  # object skips its compile-execute plugin hooks entirely (see
-  # compile_test_component), so plugins accumulating per-run state from
+  # An unchanged object skips its compile-execute plugin hooks entirely (see
+  # compile_test_component), so plugins that accumulate per-run state from
   # pre_compile_execute/post_compile_execute -- compile_commands_json_db,
-  # report_build_warnings_log, bullseye, command_hooks -- under-report objects
-  # that didn't need recompiling this run. Same gap for stage 16's link hooks.
+  # report_build_warnings_log, bullseye, command_hooks -- only see objects
+  # actually recompiled this run, not the full set. Same for stage 16's link
+  # hooks. Contrast with stage 17, where Generator#generate_test_results
+  # reports a skipped executable's cached result through both fixture-execute
+  # hooks regardless, so consumers of *that* pair always see every test.
   def stage_build_objects(state)
     @batchinator.exec(workload: :compile, things: state.objects_list) do |obj|
       src = @file_finder.find_build_input_file( filepath: obj[:obj], context: state.context )
