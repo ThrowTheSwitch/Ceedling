@@ -51,10 +51,22 @@ ceedling_system_tests do
 
   # Adds a new function prototype to a shared header, ahead of its include guard's
   # #endif -- a real content change to the header itself (affecting every source
-  # file that #includes it) without needing a corresponding definition.
+  # file that #includes it) without needing a corresponding definition. Matches
+  # both a trailing `// GUARD` and `/* GUARD */` comment on the #endif line.
   def probe_header!(relative_path)
     content = File.read(relative_path)
-    content.sub!(/#endif\s*(\/\/[^\n]*)?\s*\z/) { "void __ceedling_delta_probe(void);\n\n#{Regexp.last_match(0)}" }
+    content.sub!(/#endif\s*(\/\/[^\n]*|\/\*.*?\*\/)?\s*\z/) { "void __ceedling_delta_probe(void);\n\n#{Regexp.last_match(0)}" }
+    File.write(relative_path, content)
+  end
+
+  # Inserts a real statement as the first line of a named function's body in a
+  # plain source file -- the same kind of functional, compiled-byte-changing
+  # edit as probe_test_file!, but targeting an arbitrary function rather than
+  # the fixed setUp() convention.
+  def probe_source_file!(relative_path, function_name)
+    content = File.read(relative_path)
+    replaced = content.sub!(/(#{Regexp.escape(function_name)}\([^)]*\)\s*\{\n)/) { "#{Regexp.last_match(1)}  volatile int __ceedling_delta_probe = 1;\n" }
+    raise "probe_source_file!: could not find #{function_name}(...) in #{relative_path}" if replaced.nil?
     File.write(relative_path, content)
   end
 
@@ -255,6 +267,132 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Running /)
           expect(rebuild).to match(/TESTED:\s+86/)
           expect(rebuild).to match(/PASSED:\s+86/)
+        end
+      end
+    end
+  end
+
+  # Partials preprocessing (stages 6-8) gates its directives-only/preserve-macros/
+  # full-expansion passes on their own DependencyTracker targets, one per partial
+  # header and one per partial source -- separate from (and in addition to) the
+  # object-compile staleness every test already has. wondrous_forest exercises
+  # both an implementation-only partial (SoilMoisture, no interface) and an
+  # implementation+interface partial (ForestMonitor), so this project also proves
+  # that distinction survives an untouched rebuild.
+  describe "Delta builds: incremental rebuild staleness tracking (wondrous_forest, Partials)" do
+    before do
+      @c.with_context do
+        output = @c.ceedling_appcmd_exec("example wondrous_forest")
+        expect(output).to match(/created/)
+      end
+    end
+
+    it "skips recompiling, relinking, rerunning, and regenerating any partial or mock on an immediate rebuild with no changes" do
+      @c.with_context do
+        Dir.chdir "wondrous_forest" do
+          baseline = @c.ceedling_build_exec("test:all")
+          expect(baseline).to match(/TESTED:\s+65/)
+          expect(baseline).to match(/PASSED:\s+65/)
+
+          rebuild = @c.ceedling_build_exec("test:all")
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to_not match(/^Linking /)
+          expect(rebuild).to_not match(/^Running /)
+          expect(rebuild).to_not match(/Generating mock for/)
+
+          expect(rebuild).to match(/TESTED:\s+65/)
+          expect(rebuild).to match(/PASSED:\s+65/)
+        end
+      end
+    end
+
+    it "reprocesses only the changed partial's source, leaving its header, other partials, and unrelated tests untouched" do
+      @c.with_context do
+        Dir.chdir "wondrous_forest" do
+          @c.ceedling_build_exec("test:all")
+
+          probe_source_file!(File.join('src', 'SoilMoisture.c'), 'SoilMoisture_Init')
+
+          rebuild = @c.ceedling_build_exec("test:all")
+
+          expect(rebuild).to match(/^Compiling TestSoilMoisture::SoilMoisture\.c/)
+          expect(rebuild).to match(/^Linking TestSoilMoisture\.out/)
+          expect(rebuild).to match(/^Running TestSoilMoisture\.out/)
+
+          # Other partials -- implementation-only (EventQueue) and
+          # implementation+interface (ForestMonitor) alike -- show no activity.
+          expect(rebuild).to_not match(/^Compiling.*EventQueue/)
+          expect(rebuild).to_not match(/^Compiling.*ForestMonitor/)
+          expect(rebuild).to_not match(/^Linking TestEventQueue/)
+          expect(rebuild).to_not match(/^Linking TestForestMonitor/)
+
+          expect(rebuild).to match(/TESTED:\s+65/)
+          expect(rebuild).to match(/PASSED:\s+65/)
+        end
+      end
+    end
+
+    it "reprocesses only the changed partial's header, leaving its source, other partials, and unrelated tests untouched" do
+      @c.with_context do
+        Dir.chdir "wondrous_forest" do
+          @c.ceedling_build_exec("test:all")
+
+          # ForestMonitor.c #includes ForestMonitor.h directly, so this also
+          # exercises the pre-existing shared-header compile staleness path
+          # (proving it's unaffected by Partials' own separate DependencyTracker
+          # targets for the header/source preprocessing passes) alongside the
+          # header partial-preprocessing target itself. As with the equivalent
+          # temp_sensor scenario above, only Compiling is asserted here -- a
+          # bare added prototype with no call site can compile to an object
+          # identical to the prior one, in which case linking is correctly
+          # skipped on its own separate content-hash staleness check.
+          probe_header!(File.join('src', 'ForestMonitor.h'))
+
+          rebuild = @c.ceedling_build_exec("test:all")
+
+          expect(rebuild).to match(/^Compiling TestForestMonitor::ForestMonitor\.c/)
+
+          expect(rebuild).to_not match(/^Compiling.*SoilMoisture/)
+          expect(rebuild).to_not match(/^Compiling.*TemperatureSensor/)
+          expect(rebuild).to_not match(/^Linking TestSoilMoisture/)
+          expect(rebuild).to_not match(/^Linking TestTemperatureSensor/)
+
+          expect(rebuild).to match(/TESTED:\s+65/)
+          expect(rebuild).to match(/PASSED:\s+65/)
+        end
+      end
+    end
+
+    it "a preprocess-only meta change (no file edit) triggers re-extraction across partials without recompiling anything" do
+      @c.with_context do
+        Dir.chdir "wondrous_forest" do
+          @c.ceedling_build_exec("test:all")
+
+          # As with the equivalent temp_sensor scenario above, introducing a
+          # Hash-shaped :preprocess: defines section for the first time changes
+          # every file's effective preprocess defines project-wide, so every
+          # partial header/source and every test file's own bare-includes
+          # extraction goes stale together here purely from meta. Ceedling
+          # re-injects Partials' own required macro symbol into this section
+          # (Configurator#set_partials_derived_config) precisely so this
+          # doesn't also break every partial's macro-based #includes.
+          @c.merge_project_yml_for_test({
+            :defines => {
+              :preprocess => {
+                'TestSoilMoisture.c' => ['CEEDLING_DELTA_PROBE']
+              }
+            }
+          })
+
+          rebuild = @c.ceedling_build_exec("test:all")
+
+          expect(rebuild).to match(/^Extracting #includes from/)
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to_not match(/^Linking /)
+          expect(rebuild).to_not match(/^Running /)
+
+          expect(rebuild).to match(/TESTED:\s+65/)
+          expect(rebuild).to match(/PASSED:\s+65/)
         end
       end
     end
