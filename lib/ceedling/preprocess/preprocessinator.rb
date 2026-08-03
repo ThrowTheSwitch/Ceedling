@@ -144,14 +144,17 @@ class Preprocessinator
   end
 
   # Persists `includes` under a cache file keyed by `test`/`filepath` so
-  # `load_includes_list` can recall it later. Two independent callers share
-  # this pair of methods against different `filepath`s:
+  # `load_includes_list` can recall it later. Independent callers share this
+  # pair of methods against different `filepath`s, each gated its own way:
   #  - Stage 4 (test_build_setup.rb), for a test file's own bare-includes list
   #    -- DependencyTracker-gated there, so this write only happens when that
   #    stage has already determined its target is stale.
-  #  - `preprocess_file_includes_common` below, for a mocked/partial header or
-  #    source file's includes -- gated by this class's own `cached_includes_list?`
-  #    mtime check instead.
+  #  - `preprocess_file_includes_common` below, for a Partial header/source
+  #    file's includes -- gated by this class's own `cached_includes_list?`
+  #    mtime check.
+  #  - The same method, for a mocked header's includes -- DependencyTracker-
+  #    gated one level up in stage 9 (test_build_executor.rb) instead, via
+  #    `use_cache: false` (see `preprocess_mockable_header_file` below).
   # Caller-gated either way: this method itself performs no freshness check.
   def store_includes_list(test:, filepath:, includes:)
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
@@ -168,7 +171,7 @@ class Preprocessinator
 
   # Recalls an includes list previously written by `store_includes_list`.
   # Caller-gated: only meaningful once the caller has already established
-  # freshness some other way (see `store_includes_list` above for the two
+  # freshness some other way (see `store_includes_list` above for the
   # different mechanisms in play), since no freshness check is performed here.
   def load_includes_list(test:, filepath:)
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
@@ -238,8 +241,17 @@ class Preprocessinator
       defines:                   defines
     }
 
-    # Extract includes & log progress and details   
-    includes = preprocess_file_includes_common( **arg_hash )
+    # Extract includes & log progress and details.
+    # `use_cache: false` -- stage_preprocess_mocks (test_build_executor.rb)
+    # only ever calls this method once it has already determined, via its own
+    # DependencyTracker target (antecedent + flags/defines/search_paths/extras
+    # meta), that this header's preprocessing is stale. Reusing this class's
+    # separate mtime-based cache on top of that would be redundant at best and
+    # wrong at worst: it can't see a meta-only change (e.g. defines toggling
+    # which #includes are active under #ifdef), so it could return an
+    # includes list extracted under stale defines even though the caller
+    # correctly identified this exact header/test pair as needing fresh work.
+    includes = preprocess_file_includes_common( **arg_hash, use_cache: false )
 
     header = "Discovered #includes for mockable header from #{filepath}:"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
@@ -530,6 +542,11 @@ class Preprocessinator
     return full_expansion_filepath
   end
 
+  # `use_cache:` lets a caller that has already established freshness some
+  # other way (see `preprocess_mockable_header_file` above) skip this
+  # method's own mtime-based `cached_includes_list?` check entirely, rather
+  # than layering a second, less precise freshness check on top of a
+  # decision the caller already made correctly.
   def preprocess_file_includes_common(
       test:,
       filepath:,
@@ -538,7 +555,8 @@ class Preprocessinator
       flags:,
       include_paths:,
       vendor_paths:,
-      defines:
+      defines:,
+      use_cache: true
   )
     msg = @reportinator.generate_module_progress(
       operation: "Extracting includes",
@@ -549,7 +567,7 @@ class Preprocessinator
 
     includes = []
 
-    if cached_includes_list?( test: test, filepath: filepath )
+    if use_cache && cached_includes_list?( test: test, filepath: filepath )
       includes = load_includes_list( test: test, filepath: filepath )
     else
       # Full preprocessing-based #include extraction with saving to YAML file
@@ -599,15 +617,14 @@ class Preprocessinator
     return includes
   end
 
-  # Self-contained mtime-based freshness check for the mocked/partial header
-  # or source file includes cache written/read by `store_includes_list`/
-  # `load_includes_list` above, used only by `preprocess_file_includes_common`.
-  # Stage 9 (mocks, test_build_executor.rb) already gates whether this whole
-  # path runs at all via its own DependencyTracker target, so this check only
-  # matters once that stage has already decided regeneration is needed. Stage
-  # 6-8 (partials) always run in full with no DependencyTracker gate of their
-  # own, so for that case this mtime check is this cache's only freshness
-  # signal.
+  # Self-contained mtime-based freshness check for the Partial header/source
+  # file includes cache written/read by `store_includes_list`/
+  # `load_includes_list` above, reached only via `preprocess_file_includes_common`
+  # with its default `use_cache: true` -- i.e. only for Partials (stages 6-7),
+  # which always run in full with no DependencyTracker gate of their own, so
+  # this mtime check is that cache's only freshness signal. Mocked headers
+  # (stage 9) bypass this check entirely (`use_cache: false`) in favor of the
+  # DependencyTracker target that stage has already resolved.
   def cached_includes_list?(test:, filepath:)
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
