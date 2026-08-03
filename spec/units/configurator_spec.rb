@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/config/configurator'
 require 'ceedling/ruby_expandinator'
 require 'ceedling/exceptions'
+require 'ceedling/constants'
 
 describe Configurator do
 
@@ -180,6 +181,50 @@ describe Configurator do
       @configurator.prepare_plugins_load_paths( 'plugins/path', config )
 
       expect( config[:plugins][:load_paths] ).to include( '2' )
+    end
+
+  end
+
+  describe "#set_partials_derived_config" do
+
+    def partials_config
+      { project: { use_partials: true }, defines: { test: ['TEST'] }, cmock: {} }
+    end
+
+    it "does nothing when :use_partials is disabled" do
+      config = partials_config
+      config[:project][:use_partials] = false
+
+      @configurator.set_partials_derived_config( config )
+
+      expect( config[:defines][:test] ).to eq( ['TEST'] )
+      expect( config[:defines] ).to_not have_key( :preprocess )
+    end
+
+    it "appends the partials prefix symbol to a simple :test: defines list" do
+      config = partials_config
+
+      @configurator.set_partials_derived_config( config )
+
+      expect( config[:defines][:test] ).to include( "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}" )
+    end
+
+    it "leaves :preprocess: defines untouched when the project does not define that section" do
+      config = partials_config
+
+      @configurator.set_partials_derived_config( config )
+
+      expect( config[:defines] ).to_not have_key( :preprocess )
+    end
+
+    it "appends the partials prefix symbol under the :* matcher when the project defines its own :preprocess: matcher hash" do
+      config = partials_config
+      config[:defines][:preprocess] = { 'TestSoilMoisture.c' => ['CEEDLING_DELTA_PROBE'] }
+
+      @configurator.set_partials_derived_config( config )
+
+      expect( config[:defines][:preprocess][:*] ).to include( "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}" )
+      expect( config[:defines][:preprocess]['TestSoilMoisture.c'] ).to eq( ['CEEDLING_DELTA_PROBE'] )
     end
 
   end
