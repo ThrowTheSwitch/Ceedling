@@ -168,25 +168,25 @@ ceedling_system_tests do
         Dir.chdir "temp_sensor" do
           @c.ceedling_build_exec("test:all")
 
-          # A `:preprocess:`-scoped `:defines:` mixin changes the *effective*
-          # preprocess defines fed into stage 4's bare-includes extraction meta
-          # for every test (see Defineinator#defines: once a Hash-shaped
-          # `:preprocess:` config section exists at all, files that don't match
-          # one of its keys resolve to an empty list rather than falling back to
-          # compile-time defines, as they do when the section is absent
-          # entirely) -- without touching any test file's own content or its
-          # compile-time defines/flags. Staleness here is driven entirely by
-          # this meta, tracked independently of the source file's own content.
-          FileUtils.mkdir_p('mixin')
-          File.write('mixin/probe_preprocess_defines.yml', <<~YAML)
-            ---
-            :defines:
-              :preprocess:
-                'TestTemperatureCalculator.c':
-                  - CEEDLING_DELTA_PROBE
-          YAML
+          # A `:preprocess:`-scoped `:defines:` project.yml edit changes the
+          # *effective* preprocess defines fed into stage 4's bare-includes
+          # extraction meta for every test (see Defineinator#defines: once a
+          # Hash-shaped `:preprocess:` config section exists at all, files that
+          # don't match one of its keys resolve to an empty list rather than
+          # falling back to compile-time defines, as they do when the section
+          # is absent entirely) -- without touching any test file's own
+          # content or its compile-time defines/flags. Staleness here is
+          # driven entirely by this meta, tracked independently of the source
+          # file's own content.
+          @c.merge_project_yml_for_test({
+            :defines => {
+              :preprocess => {
+                'TestTemperatureCalculator.c' => ['CEEDLING_DELTA_PROBE']
+              }
+            }
+          })
 
-          rebuild = @c.ceedling_build_exec("test:all --mixin=mixin/probe_preprocess_defines.yml")
+          rebuild = @c.ceedling_build_exec("test:all")
 
           expect(rebuild).to match(/^Extracting #includes from/)
 
