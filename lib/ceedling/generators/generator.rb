@@ -343,7 +343,14 @@ class Generator
     end
   end
 
-  def generate_test_results(tool:, context:, test_name:, test_filepath:, executable:, result:)
+  # `skipped: true` means the executable didn't need relinking (see
+  # TestBuildExecutor#stage_execute) -- its cached result from the last real
+  # run is reported instead of re-running it. Both fixture-execute hooks still
+  # fire either way, so plugins that accumulate per-run state from them (e.g.
+  # the live test summary) see this target on every run, not only when it's
+  # actually rebuilt. If no cached result exists on disk (e.g. it was deleted
+  # independently of the executable and cache), falls back to a real run.
+  def generate_test_results(tool:, context:, test_name:, test_filepath:, executable:, result:, skipped: false)
     arg_hash = {
       :tool => tool,
       :context => context,
@@ -355,6 +362,17 @@ class Generator
     }
 
     @plugin_manager.pre_test_fixture_execute( arg_hash )
+
+    cached = skipped ? @generator_test_results.read_cached_results( result ) : nil
+
+    if cached
+      arg_hash[:result_file]  = cached[:result_file]
+      arg_hash[:results]      = cached[:results]
+      arg_hash[:shell_result] = nil
+
+      @plugin_manager.post_test_fixture_execute( arg_hash )
+      return nil
+    end
 
     @loginator.log( arg_hash[:msg] )
 

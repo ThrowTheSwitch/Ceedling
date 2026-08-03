@@ -230,6 +230,7 @@ generator_test_results:
     - loginator
     - reportinator
     - yaml_wrapper
+    - file_wrapper
 
 generator_test_results_backtrace:
   compose:

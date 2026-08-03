@@ -562,39 +562,30 @@ class TestBuildExecutor
   end
 
   # Stage 17: Execute test fixtures and collect results.
+  #
+  # An executable that didn't need relinking (see stage 16) still has valid
+  # cached results on disk from whenever it was last built -- Generator#generate_test_results
+  # reports those instead of actually (re)running it, per `skipped:` below.
   def stage_execute(state)
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
-        # An executable that didn't need relinking (see stage 16) still has
-        # valid cached results on disk from whenever it was last built --
-        # nothing to (re)run.
-        #
-        # KNOWN GAP (deferred until after first end-to-end validation): skipping
-        # this call also skips the pre_test_fixture_execute/post_test_fixture_execute
-        # plugin hooks, so any plugin that accumulates per-run state from those
-        # hooks under-reports skipped tests this run -- notably the live
-        # post_build test summary (report_tests_stdout_plugin.rb's `summary`
-        # task already re-scans all result files from disk and is unaffected),
-        # plus gcov/valgrind/bullseye/command_hooks, which also hook test-fixture
-        # execution.
-        if testable.executable_rebuilt
-          # Clear out any stale prior result (e.g. a lingering `.fail` from a
-          # test that now passes) immediately before -- not upfront for every
-          # test regardless of whether it's about to (re)run, which would
-          # destroy the still-valid cached result of a test left unchanged.
-          clean_test_results( testable.paths[:results], testable.name )
+        # Clear out any stale prior result (e.g. a lingering `.fail` from a test
+        # that now passes) immediately before an actual (re)run -- not upfront
+        # for every test regardless of whether it's about to run, which would
+        # destroy the still-valid cached result of a test left unchanged.
+        clean_test_results( testable.paths[:results], testable.name ) if testable.executable_rebuilt
 
-          arg_hash = {
-            context:       state.context,
-            test_name:     testable.name,
-            test_filepath: testable.filepath,
-            executable:    testable.executable,
-            result:        testable.results_pass,
-            options:       state.options
-          }
+        arg_hash = {
+          context:       state.context,
+          test_name:     testable.name,
+          test_filepath: testable.filepath,
+          executable:    testable.executable,
+          result:        testable.results_pass,
+          options:       state.options,
+          skipped:       !testable.executable_rebuilt
+        }
 
-          run_fixture_now( **arg_hash )
-        end
+        run_fixture_now( **arg_hash )
 
       ensure
         @plugin_manager.post_test( testable.filepath )
@@ -656,14 +647,15 @@ class TestBuildExecutor
     @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
   end
 
-  def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, options:)
+  def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, options:, skipped: false)
     @generator.generate_test_results(
       tool:          options[:test_fixture],
       context:       context,
       test_name:     test_name,
       test_filepath: test_filepath,
       executable:    executable,
-      result:        result
+      result:        result,
+      skipped:       skipped
     )
   end
 

@@ -222,14 +222,14 @@ describe TestBuildExecutor do
       @testable.executable_rebuilt = true
       allow(@file_wrapper).to receive(:rm_f)
       expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
-      expect(@generator).to receive(:generate_test_results)
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: false ) )
 
       @executor.stage_execute( @state )
     end
 
-    it "does not run the test fixture or touch its cached result file when stage 16 found the executable unchanged" do
+    it "reports the cached result instead of running the test fixture when stage 16 found the executable unchanged, and does not touch the cached result file" do
       @testable.executable_rebuilt = false
-      expect(@generator).to_not receive(:generate_test_results)
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: true ) )
       expect(@file_wrapper).to_not receive(:rm_f)
 
       @executor.stage_execute( @state )
@@ -237,6 +237,7 @@ describe TestBuildExecutor do
 
     it "always fires the post_test plugin hook, rebuilt or not" do
       @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
       expect(@plugin_manager).to receive(:post_test).with('test/TestFoo.c')
 
       @executor.stage_execute( @state )
