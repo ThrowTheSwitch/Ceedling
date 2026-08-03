@@ -279,6 +279,21 @@ class SystemContext
       sections << stderr.strip
     end
 
+    # Loginator routes `Verbosity::DEBUG` messages (including the backtrace
+    # `log_debug_backtrace` emits for a caught exception) to stdout rather than
+    # stderr, and this method's stdout scan above only pulls lines containing
+    # the literal substrings 'ERROR'/'EXCEPTION' -- a bare backtrace line
+    # (file:line:in `method') contains neither, so without surfacing it here
+    # explicitly, the one piece of stdout most useful for diagnosing *why* a
+    # command failed would otherwise only ever reach the full raw-output log
+    # file, not this console-visible summary (what CI output actually shows).
+    label = 'Debug Backtrace ==>'
+    backtrace_block = extract_section(stdout, label)
+    unless backtrace_block.empty?
+      sections << ">> DEBUG BACKTRACE"
+      sections.concat(backtrace_block)
+    end
+
     label = 'FAILED TEST SUMMARY'
     failed_block = extract_section(stdout, label)
     unless failed_block.empty?
