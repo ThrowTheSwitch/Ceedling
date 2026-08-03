@@ -31,21 +31,37 @@ describe TestBuildSetup do
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@loginator).to receive(:log)
-
-    # First pass (bare includes extraction, its own pre-existing mtime-based
-    # cache) is out of scope for this coverage -- short-circuited via its own
-    # cache hit so these specs stay focused on the second pass.
-    allow(@preprocessinator).to receive(:cached_includes_list?).and_return( true )
-
-    # Third pass similarly short-circuited via its own cache hit.
-    allow(@preprocessinator).to receive(:load_includes_list).and_return( [true, []] )
-    allow(@test_context_extractor).to receive(:ingest_includes)
+    allow(@loginator).to receive(:log_list)
 
     allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
+    allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
     allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath).and_return( 'build/preprocess/raw/Foo.txt' )
+    allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.c.yml' )
 
+    # Default: dependency tracker reports every target fresh (not stale).
+    # Tests below override this per test case via a blanket `stale?` stub,
+    # affecting whichever pass(es) that test actually cares about -- targets
+    # aren't discriminated by argument here, so a test focused on one pass
+    # relies on the other pass's own calls being harmlessly stubbed too (see
+    # the bare-includes and ingest defaults immediately below).
     allow(@dependinator).to receive(:register)
+    allow(@dependinator).to receive(:stale?).and_return( false )
     allow(@dependinator).to receive(:mark_fresh)
+
+    # Bare-includes pass (first pass) defaults, so tests focused on the
+    # directives-only pass (second) or reconciliation (third) don't need to
+    # know about the first pass's own calls.
+    allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [] )
+    allow(@preprocessinator).to receive(:store_includes_list)
+    allow(@preprocessinator).to receive(:load_includes_list).and_return( [] )
+
+    # Reconciliation (third pass) defaults, so tests focused on the first or
+    # second pass don't need to know about the third pass's own calls -- it
+    # always runs, ungated (see its comment in test_build_setup.rb).
+    allow(@preprocessinator).to receive(:preprocess_user_includes).and_return( [] )
+    allow(@preprocessinator).to receive(:preprocess_system_includes).and_return( [] )
+    allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
+    allow(@test_context_extractor).to receive(:ingest_includes)
 
     @setup = described_class.new(
       {
@@ -104,7 +120,7 @@ describe TestBuildSetup do
     it "does not mark fresh when the preprocessor fails (returns nil, nothing was actually written)" do
       allow(@dependinator).to receive(:stale?).and_return( true )
       allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( nil )
-      expect(@dependinator).to_not receive(:mark_fresh)
+      expect(@dependinator).to_not receive(:mark_fresh).with('build/preprocess/raw/Foo.txt')
 
       @setup.stage_collect_preprocessor_context( @state )
 
@@ -113,8 +129,55 @@ describe TestBuildSetup do
 
     it "does nothing when directives-only preprocessing is unavailable for this toolchain" do
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
-      expect(@dependinator).to_not receive(:register)
+      expect(@dependinator).to_not receive(:register).with('build/preprocess/raw/Foo.txt', anything)
       expect(@preprocessinator).to_not receive(:generate_directives_only_output)
+
+      @setup.stage_collect_preprocessor_context( @state )
+    end
+  end
+
+  context "#stage_collect_preprocessor_context (bare-includes pass)" do
+    before(:each) do
+      # Keeps the second pass a no-op in these tests, which focus on the first.
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+    end
+
+    it "extracts, caches, and marks fresh the bare-includes list, and generates stand-ins, when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      includes = []
+      expect(@preprocessinator).to receive(:preprocess_bare_includes).and_return( includes )
+      expect(@preprocessinator).to receive(:store_includes_list).with( test: 'a_test', filepath: 'test/TestFoo.c', includes: includes )
+      expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/includes/Foo.c.yml')
+
+      @setup.stage_collect_preprocessor_context( @state )
+
+      expect( @testable.preprocess[:includes] ).to eq( includes )
+    end
+
+    it "recalls the cached bare-includes list and skips extraction, caching, and stand-in generation when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      cached_includes = []
+      expect(@preprocessinator).to_not receive(:preprocess_bare_includes)
+      expect(@preprocessinator).to_not receive(:store_includes_list)
+      expect(@preprocessinator).to receive(:load_includes_list).with( test: 'a_test', filepath: 'test/TestFoo.c' ).and_return( cached_includes )
+      expect(@dependinator).to_not receive(:mark_fresh).with('build/preprocess/includes/Foo.c.yml')
+
+      @setup.stage_collect_preprocessor_context( @state )
+
+      expect( @testable.preprocess[:includes] ).to eq( cached_includes )
+    end
+
+    it "registers the test file as the sole antecedent, with preprocess flags/defines/search paths as meta" do
+      testable = @testable
+      testable.preprocess_flags   = ['-Wall']
+      testable.preprocess_defines = ['TEST']
+      testable.search_paths       = ['src']
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/includes/Foo.c.yml',
+        files: ['test/TestFoo.c'],
+        meta:  { flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'] }
+      )
 
       @setup.stage_collect_preprocessor_context( @state )
     end

@@ -73,6 +73,20 @@ describe "Includes serialization" do
       expect("#{restored[0]}").to eq("#{original[0]}")
     end
 
+    it "serializes and deserializes a single bare Include (undifferentiated user vs. system)" do
+      original = [Include.new("header.h")]
+
+      hashes = Includes.to_hashes(original)
+      restored = Includes.from_hashes(hashes)
+
+      expect(hashes[0]['type']).to eq('bare')
+      expect(restored.length).to eq(1)
+      expect(restored[0].class).to eq(Include)
+      expect(restored[0]).to eq(original[0])
+      expect(restored[0].filename).to eq(original[0].filename)
+      expect(restored[0].filepath).to eq(original[0].filepath)
+    end
+
     it "serializes and deserializes mixed include types" do
       original = [
         SystemInclude.new("stdio.h"),

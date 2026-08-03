@@ -24,11 +24,15 @@ class Includes
   #   # ]
   def self.to_hashes(includes)
     return includes.map do |include|
-      type = 
+      type =
         case include
         when MockInclude then 'mock'
         when UserInclude then 'user'
         when SystemInclude then 'system'
+        # Plain `Include` (not a subclass) is bare -- undifferentiated user vs.
+        # system, e.g. straight from bare-includes extraction, before any
+        # reconciliation has sorted includes into the subclasses above.
+        when Include then 'bare'
         else raise ArgumentError, "Unknown Include type: #{include.class}"
         end
 
@@ -68,8 +72,10 @@ class Includes
         MockInclude.new(hash['filepath'])
       when 'system'
         SystemInclude.new(hash['filepath'])
+      when 'bare'
+        Include.new(hash['filepath'])
       else
-        raise ArgumentError, "Invalid include type: #{hash['type']}. Must be 'user' or 'system'"
+        raise ArgumentError, "Invalid include type: #{hash['type']}. Must be 'user', 'system', 'mock', or 'bare'"
       end
     end
   end

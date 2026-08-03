@@ -173,49 +173,66 @@ class TestBuildSetup
 
   # Stage 4 (conditional on preprocessing): Extract includes using the preprocessor.
   #
-  # The three passes below use two independent, unrelated caching mechanisms:
-  # the first pass's bare-includes cache (`cached_includes_list?`/`load_includes_list`)
-  # predates content-hash-based dependency tracking and compares file modification
-  # times; the second pass's directives-only output is tracked via the dependency
-  # tracker instead, content-hash-based like the rest of the pipeline. The third
-  # pass always runs (its own reconciliation work is cheap relative to the
-  # preprocessor invocations the first two passes may skip).
+  # All three passes below are dependency-tracker-gated (or, for the third,
+  # cheap enough not to need its own gate at all -- see its comment). The
+  # first two passes each invoke a real, separate preprocessor subprocess
+  # (bare-includes extraction uses `-MM -MG -MP`; directives-only generation
+  # uses `-fdirectives-only`) and are exactly the "expensive" work worth
+  # skipping when nothing relevant changed.
   def stage_collect_preprocessor_context(state)
-    # First pass: extract bare includes; create stand-in files for mocks and partials
+    # First pass: extract bare includes; create stand-in files for mocks and partials.
+    #
+    # The extracted list is needed immediately (stand-in generation, below) and
+    # again by the third pass's reconciliation -- on a cache hit, it's recalled
+    # via `load_includes_list` rather than just leaving a file on disk for
+    # something else to notice, since nothing else reads this list back off
+    # disk on its own the way stage 9/11's plain preprocessed-output targets do.
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       name     = testable.name
       filepath = testable.filepath
 
-      if @preprocessinator.cached_includes_list?( test: name, filepath: filepath )
+      target = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, name )
+
+      @dependinator.register(
+        target,
+        files: [filepath],
+        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+      )
+
+      if @dependinator.stale?( target )
+        arg_hash = {
+          test:         name,
+          filepath:     filepath,
+          search_paths: [@configurator.project_build_vendor_ceedling_path],
+          flags:        testable.preprocess_flags,
+          defines:      testable.preprocess_defines
+        }
+
+        msg = @reportinator.generate_module_progress(
+          operation:   'Extracting #includes from',
+          module_name: name,
+          filename:    File.basename( filepath )
+        )
+        @loginator.log( msg )
+
+        includes = @preprocessinator.preprocess_bare_includes( **arg_hash )
+
+        testable.preprocess[:includes] = includes
+
+        @preprocessinator.store_includes_list( test: name, filepath: filepath, includes: includes )
+        @dependinator.mark_fresh( target )
+
+        generate_test_includes_standins( name, includes )
+      else
         msg = @reportinator.generate_module_progress(
           operation:   'Skipping preprocessing for #includes in favor of cached #includes for',
           module_name: name,
           filename:    File.basename( filepath )
         )
         @loginator.log( msg )
-        next
+
+        testable.preprocess[:includes] = @preprocessinator.load_includes_list( test: name, filepath: filepath )
       end
-
-      arg_hash = {
-        test:         name,
-        filepath:     filepath,
-        search_paths: [@configurator.project_build_vendor_ceedling_path],
-        flags:        testable.preprocess_flags,
-        defines:      testable.preprocess_defines
-      }
-
-      msg = @reportinator.generate_module_progress(
-        operation:   'Extracting #includes from',
-        module_name: name,
-        filename:    File.basename( filepath )
-      )
-      @loginator.log( msg )
-
-      includes = @preprocessinator.preprocess_bare_includes( **arg_hash )
-
-      testable.preprocess[:includes] = includes
-
-      generate_test_includes_standins( name, includes )
     end
 
     # Second pass: generate directives-only preprocessor output after stand-ins exist
@@ -269,18 +286,18 @@ class TestBuildSetup
       @dependinator.mark_fresh( target ) unless testable.preprocess[:directives_only][:filepath].nil?
     end
 
-    # Third pass: reconcile includes from all extraction sources and ingest
+    # Third pass: reconcile includes from all extraction sources and ingest.
+    #
+    # No dependency-tracker gate of its own: the user/system extraction below
+    # either parses the second pass's already-gated output or (fallback) does
+    # a cheap in-Ruby text scan, and reconciling that with the first pass's
+    # (fresh-or-recalled) bare-includes list is plain list-merging -- there's
+    # no expensive subprocess step here left to skip.
     directives_only = @configurator.test_build_preprocess_directives_only_available
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
       filename = File.basename( filepath )
       name     = testable.name
-
-      cached, includes = @preprocessinator.load_includes_list( test: name, filepath: filepath )
-      if cached
-        @context_extractor.ingest_includes( filepath, includes )
-        next
-      end
 
       unless directives_only
         msg = @reportinator.generate_module_progress(
@@ -330,12 +347,6 @@ class TestBuildSetup
       @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )
 
       @context_extractor.ingest_includes( filepath, all_includes )
-
-      @preprocessinator.store_includes_list(
-        test:     name,
-        filepath: filepath,
-        includes: all_includes
-      )
     end
   end
 

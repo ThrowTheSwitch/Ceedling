@@ -163,6 +163,45 @@ ceedling_system_tests do
       end
     end
 
+    it "a preprocess-only meta change (no test-file edit) triggers re-extraction without recompiling anything" do
+      @c.with_context do
+        Dir.chdir "temp_sensor" do
+          @c.ceedling_build_exec("test:all")
+
+          # A `:preprocess:`-scoped `:defines:` mixin changes the *effective*
+          # preprocess defines fed into stage 4's bare-includes extraction meta
+          # for every test (see Defineinator#defines: once a Hash-shaped
+          # `:preprocess:` config section exists at all, files that don't match
+          # one of its keys resolve to an empty list rather than falling back to
+          # compile-time defines, as they do when the section is absent
+          # entirely) -- without touching any test file's own content or its
+          # compile-time defines/flags. Staleness here is driven entirely by
+          # this meta, tracked independently of the source file's own content.
+          FileUtils.mkdir_p('mixin')
+          File.write('mixin/probe_preprocess_defines.yml', <<~YAML)
+            ---
+            :defines:
+              :preprocess:
+                'TestTemperatureCalculator.c':
+                  - CEEDLING_DELTA_PROBE
+          YAML
+
+          rebuild = @c.ceedling_build_exec("test:all --mixin=mixin/probe_preprocess_defines.yml")
+
+          expect(rebuild).to match(/^Extracting #includes from/)
+
+          # Compilation is untouched -- only preprocess-time defines changed,
+          # not compile-time defines/flags for any file.
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to_not match(/^Linking /)
+          expect(rebuild).to_not match(/^Running /)
+
+          expect(rebuild).to match(/TESTED:\s+86/)
+          expect(rebuild).to match(/PASSED:\s+86/)
+        end
+      end
+    end
+
     it "clobber removes the dependency cache and forces a full rebuild afterward" do
       @c.with_context do
         Dir.chdir "temp_sensor" do

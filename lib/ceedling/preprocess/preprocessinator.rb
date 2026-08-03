@@ -143,6 +143,16 @@ class Preprocessinator
     return includes
   end
 
+  # Persists `includes` under a cache file keyed by `test`/`filepath` so
+  # `load_includes_list` can recall it later. Two independent callers share
+  # this pair of methods against different `filepath`s:
+  #  - Stage 4 (test_build_setup.rb), for a test file's own bare-includes list
+  #    -- DependencyTracker-gated there, so this write only happens when that
+  #    stage has already determined its target is stale.
+  #  - `preprocess_file_includes_common` below, for a mocked/partial header or
+  #    source file's includes -- gated by this class's own `cached_includes_list?`
+  #    mtime check instead.
+  # Caller-gated either way: this method itself performs no freshness check.
   def store_includes_list(test:, filepath:, includes:)
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
@@ -156,23 +166,11 @@ class Preprocessinator
     end
   end
 
-  def cached_includes_list?(test:, filepath:)
-    _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
-
-    # Get or create a mutex for this specific cache file
-    file_lock = @file_locks_mutex.synchronize do
-      @file_locks[_filepath] ||= Mutex.new
-    end
-
-    file_lock.synchronize do
-      # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
-      return @file_wrapper.newer?( _filepath, filepath )
-    end
-  end
-
+  # Recalls an includes list previously written by `store_includes_list`.
+  # Caller-gated: only meaningful once the caller has already established
+  # freshness some other way (see `store_includes_list` above for the two
+  # different mechanisms in play), since no freshness check is performed here.
   def load_includes_list(test:, filepath:)
-    includes = []
-
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
     # Get or create a mutex for this specific cache file
@@ -181,23 +179,20 @@ class Preprocessinator
     end
 
     file_lock.synchronize do
-      # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
-      if @file_wrapper.newer?( _filepath, filepath )
-        msg = @reportinator.generate_module_progress(
-          operation: "Loading #include statement listing file for",
-          module_name: test,
-          filename: File.basename(filepath)
-          )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-      
-        includes = @includes_handler.load_includes_list( _filepath )
+      msg = @reportinator.generate_module_progress(
+        operation: "Loading #include statement listing file for",
+        module_name: test,
+        filename: File.basename(filepath)
+        )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-        header = "Loaded existing #include list from #{_filepath}:"
-        @loginator.log_list( includes, header, Verbosity::DEBUG )
-      end
+      includes = @includes_handler.load_includes_list( _filepath )
+
+      header = "Loaded existing #include list from #{_filepath}:"
+      @loginator.log_list( includes, header, Verbosity::DEBUG )
+
+      includes
     end
-
-    return !includes.empty?, includes
   end
 
   def preprocess_mockable_header_file(
@@ -553,9 +548,10 @@ class Preprocessinator
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     includes = []
-    success, includes = load_includes_list( test: test, filepath: filepath )
 
-    if !success
+    if cached_includes_list?( test: test, filepath: filepath )
+      includes = load_includes_list( test: test, filepath: filepath )
+    else
       # Full preprocessing-based #include extraction with saving to YAML file
 
       # Extract bare includes
@@ -601,6 +597,29 @@ class Preprocessinator
     end
 
     return includes
+  end
+
+  # Self-contained mtime-based freshness check for the mocked/partial header
+  # or source file includes cache written/read by `store_includes_list`/
+  # `load_includes_list` above, used only by `preprocess_file_includes_common`.
+  # Stage 9 (mocks, test_build_executor.rb) already gates whether this whole
+  # path runs at all via its own DependencyTracker target, so this check only
+  # matters once that stage has already decided regeneration is needed. Stage
+  # 6-8 (partials) always run in full with no DependencyTracker gate of their
+  # own, so for that case this mtime check is this cache's only freshness
+  # signal.
+  def cached_includes_list?(test:, filepath:)
+    _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
+
+    # Get or create a mutex for this specific cache file
+    file_lock = @file_locks_mutex.synchronize do
+      @file_locks[_filepath] ||= Mutex.new
+    end
+
+    file_lock.synchronize do
+      # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
+      @file_wrapper.newer?( _filepath, filepath )
+    end
   end
 
 end
