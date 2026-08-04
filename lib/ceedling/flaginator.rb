@@ -40,7 +40,10 @@ class Flaginator
     return @config_matchinator.config_include?(primary:@section, secondary:context, tertiary:operation)
   end
 
-  def flag_down(context:, operation:, filepath:nil, default:[])
+  # no_match_default: see ConfigMatchinator#matches? -- passed through untouched
+  # for callers that want a filepath matching no entry in a Hash-shaped
+  # `operation` to fall back to a specific value rather than an empty list.
+  def flag_down(context:, operation:, filepath:nil, default:[], no_match_default: nil)
     flags = @config_matchinator.get_config(primary:@section, secondary:context, tertiary:operation)
 
     if flags == nil then return default
@@ -52,7 +55,8 @@ class Flaginator
         filepath: filepath,
         section: @section,
         context: context,
-        operation: operation
+        operation: operation,
+        no_match_default: no_match_default
       }
 
       return @config_matchinator.matches?(**arg_hash)

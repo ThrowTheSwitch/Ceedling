@@ -457,6 +457,14 @@ class TestBuildSetup
     defines += @defineinator.defines( topkey: UNITY_SYM,     subkey: :defines )
     defines += @defineinator.defines( topkey: CMOCK_SYM,     subkey: :defines )
     defines += @defineinator.defines( topkey: CEXCEPTION_SYM, subkey: :defines )
+
+    # Partials' own macro-based #includes rely on this symbol being defined for
+    # every file, both at compile time and preprocess time -- delivered here
+    # unconditionally (like Unity/CMock/CException's own framework defines
+    # above) rather than injected into a project's :defines: matcher config,
+    # so it can never masquerade as a real per-file match there.
+    defines << "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}" if @configurator.project_use_partials
+
     return defines.uniq
   end
 
@@ -471,21 +479,34 @@ class TestBuildSetup
     return defines.uniq
   end
 
+  # A file matching nothing in a Hash-shaped `:preprocess:` section falls back
+  # to `test_defines` (its compile-time defines) exactly as if the section
+  # didn't exist for it -- see ConfigMatchinator#matches?'s `no_match_default`.
+  # Without this, introducing `:preprocess:` for even one file would silently
+  # zero out every other file's preprocess defines too, changing their
+  # dependency-tracker meta and invalidating targets nothing about them
+  # actually changed.
   def preprocess_defines(test_defines:, filepath:)
-    preprocessing_defines = @defineinator.defines( subkey: PREPROCESS_SYM, filepath: filepath, default: nil )
-    return test_defines if preprocessing_defines.nil?
-    return preprocessing_defines
+    return @defineinator.defines(
+      subkey: PREPROCESS_SYM, filepath: filepath, default: test_defines, no_match_default: test_defines
+    )
   end
 
-  def flags(context:, operation:, filepath:, default:[])
+  def flags(context:, operation:, filepath:, default:[], no_match_default: nil)
     context = TEST_SYM unless @flaginator.flags_defined?( context: context, operation: operation )
-    return @flaginator.flag_down( context: context, operation: operation, filepath: filepath, default: default )
+    return @flaginator.flag_down(
+      context: context, operation: operation, filepath: filepath, default: default, no_match_default: no_match_default
+    )
   end
 
+  # Mirrors #preprocess_defines: a file matching nothing in a Hash-shaped
+  # `:preprocess:` flags section falls back to `compile_flags` as if the
+  # section didn't exist for it, rather than silently going empty.
   def preprocess_flags(context:, compile_flags:, filepath:)
-    preprocessing_flags = flags( context: context, operation: OPERATION_PREPROCESS_SYM, filepath: filepath, default: nil )
-    return compile_flags if preprocessing_flags.nil?
-    return preprocessing_flags
+    return flags(
+      context: context, operation: OPERATION_PREPROCESS_SYM, filepath: filepath,
+      default: compile_flags, no_match_default: compile_flags
+    )
   end
 
   private

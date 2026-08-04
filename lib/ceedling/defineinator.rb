@@ -38,7 +38,11 @@ class Defineinator
 
   # Defaults to inspecting configurations beneath top-level :defines
   # (But, we can also lookup defines symbol lists within framework configurations--:unity, :cmock, :cexception)
-  def defines(topkey:@topkey, subkey:, filepath:nil, default:[])
+  #
+  # no_match_default: see ConfigMatchinator#matches? -- passed through untouched
+  # for callers that want a filepath matching no entry in a Hash-shaped
+  # `subkey` to fall back to a specific value rather than an empty list.
+  def defines(topkey:@topkey, subkey:, filepath:nil, default:[], no_match_default: nil)
     defines = @config_matchinator.get_config(primary:topkey, secondary:subkey)
 
     if defines == nil then return default
@@ -49,7 +53,8 @@ class Defineinator
         hash: defines,
         filepath: filepath,
         section: topkey,
-        context: subkey
+        context: subkey,
+        no_match_default: no_match_default
       }
 
       return @config_matchinator.matches?(**arg_hash)

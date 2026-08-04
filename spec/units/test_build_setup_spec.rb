@@ -230,4 +230,58 @@ describe TestBuildSetup do
       end
     end
   end
+
+  describe "#preprocess_defines" do
+    it "passes test_defines through as both the absent-section default and the no-match fallback" do
+      expect(@defineinator).to receive(:defines).with(
+        subkey: PREPROCESS_SYM, filepath: 'test/TestFoo.c', default: ['TEST'], no_match_default: ['TEST']
+      ).and_return( ['TEST'] )
+
+      result = @setup.preprocess_defines( test_defines: ['TEST'], filepath: 'test/TestFoo.c' )
+
+      expect( result ).to eq( ['TEST'] )
+    end
+  end
+
+  describe "#preprocess_flags" do
+    before(:each) do
+      allow(@flaginator).to receive(:flags_defined?).and_return( true )
+    end
+
+    it "passes compile_flags through as both the absent-section default and the no-match fallback" do
+      expect(@flaginator).to receive(:flag_down).with(
+        context: :test, operation: OPERATION_PREPROCESS_SYM, filepath: 'test/TestFoo.c',
+        default: ['-Wall'], no_match_default: ['-Wall']
+      ).and_return( ['-Wall'] )
+
+      result = @setup.preprocess_flags( context: :test, compile_flags: ['-Wall'], filepath: 'test/TestFoo.c' )
+
+      expect( result ).to eq( ['-Wall'] )
+    end
+  end
+
+  describe "#framework_defines" do
+    before(:each) do
+      allow(@defineinator).to receive(:defines).with( topkey: UNITY_SYM,      subkey: :defines ).and_return( ['UNITY_THING'] )
+      allow(@defineinator).to receive(:defines).with( topkey: CMOCK_SYM,      subkey: :defines ).and_return( ['CMOCK_MOCK_PREFIX=Mock'] )
+      allow(@defineinator).to receive(:defines).with( topkey: CEXCEPTION_SYM, subkey: :defines ).and_return( [] )
+    end
+
+    it "includes the Partials prefix symbol unconditionally, alongside the other framework defines, when Partials is enabled" do
+      allow(@configurator).to receive(:project_use_partials).and_return( true )
+
+      result = @setup.framework_defines()
+
+      expect( result ).to include( "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}" )
+      expect( result ).to include( 'UNITY_THING', 'CMOCK_MOCK_PREFIX=Mock' )
+    end
+
+    it "omits the Partials prefix symbol when Partials is disabled" do
+      allow(@configurator).to receive(:project_use_partials).and_return( false )
+
+      result = @setup.framework_defines()
+
+      expect( result ).to_not include( "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}" )
+    end
+  end
 end

@@ -88,9 +88,21 @@ class ConfigMatchinator
     return nil
   end
 
-  # Note: This method only relevant if hash includes test filepath matching keys
-  def matches?(hash:, filepath:, section:, context:, operation:nil)
+  # no_match_default: returned instead of an empty list when `filepath` matches
+  # none of `hash`'s keys at all -- distinct from a caller's own `default:` for
+  # when the section is absent entirely (see Defineinator#defines /
+  # Flaginator#flag_down): a Hash-shaped matcher section existing at all
+  # ordinarily means an unmatched file gets nothing, full stop, which is the
+  # right behavior for most matcher-based sections (e.g. :defines ↳ :test).
+  # A caller passes `no_match_default` only when it wants a specific file's
+  # "matched nothing" outcome to instead behave as if this section weren't
+  # present for that file at all -- e.g. :defines/:flags ↳ :preprocess falling
+  # back to the equivalent compile-time value per file, rather than silently
+  # going empty and changing that file's dependency-tracker meta hash for no
+  # reason the file's own configuration explains.
+  def matches?(hash:, filepath:, section:, context:, operation:nil, no_match_default: nil)
     _values = []
+    matched_any = false
 
     # Sanity check
     if filepath.nil?
@@ -101,7 +113,7 @@ class ConfigMatchinator
 
     # Iterate through every hash touple [matcher key, values array]
     # In prioritized order match test filepath against each matcher key.
-    # This order matches on special patterns first to ensure no funny business with simple substring matching 
+    # This order matches on special patterns first to ensure no funny business with simple substring matching
     #  1. All files wildcard ('*')
     #  2. Regex (/.../)
     #  3. Wildcard filepath matching (e.g. 'name*')
@@ -135,15 +147,21 @@ class ConfigMatchinator
       #    Note: (3) will do this if the matcher key lacks a '*', but this is a just-in-case backup
       elsif (filepath.include?(_matcher))
         matched = true
-      end        
+      end
 
       if matched
+        matched_any = true
         _values += values
         matched_notice(section:section, context:context, operation:operation, matcher:_matcher, filepath:filepath)
       else # No match
         path = generate_matcher_path(section, context, operation)
         @loginator.lazy( Verbosity::DEBUG ) { "#{path} ↳ `#{matcher}` did not match #{filepath}" }
       end
+    end
+
+    if !matched_any && !no_match_default.nil?
+      no_match_notice(section:section, context:context, operation:operation, filepath:filepath)
+      return no_match_default
     end
 
     # Flatten to handle list-nested YAML aliasing (should have already been flattened during validation)
@@ -219,6 +237,13 @@ class ConfigMatchinator
   def matched_notice(section:, context:, operation:, matcher:, filepath:)
     path = generate_matcher_path(section, context, operation)
     @loginator.lazy( Verbosity::OBNOXIOUS ) { "#{path} ↳ #{matcher} matched #{filepath}" }
+  end
+
+  def no_match_notice(section:, context:, operation:, filepath:)
+    path = generate_matcher_path(section, context, operation)
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      "#{path} matches no entry for #{filepath} -- falling back to its otherwise-configured value rather than an empty list"
+    end
   end
 
   def generate_matcher_path(*keys)

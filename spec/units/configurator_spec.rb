@@ -201,30 +201,13 @@ describe Configurator do
       expect( config[:defines] ).to_not have_key( :preprocess )
     end
 
-    it "appends the partials prefix symbol to a simple :test: defines list" do
+    it "leaves :defines: config untouched -- CEEDLING_PARTIALS_PREFIX is delivered unconditionally by TestBuildSetup#framework_defines instead" do
       config = partials_config
 
       @configurator.set_partials_derived_config( config )
 
-      expect( config[:defines][:test] ).to include( "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}" )
-    end
-
-    it "leaves :preprocess: defines untouched when the project does not define that section" do
-      config = partials_config
-
-      @configurator.set_partials_derived_config( config )
-
+      expect( config[:defines][:test] ).to eq( ['TEST'] )
       expect( config[:defines] ).to_not have_key( :preprocess )
-    end
-
-    it "appends the partials prefix symbol under the :* matcher when the project defines its own :preprocess: matcher hash" do
-      config = partials_config
-      config[:defines][:preprocess] = { 'TestSoilMoisture.c' => ['CEEDLING_DELTA_PROBE'] }
-
-      @configurator.set_partials_derived_config( config )
-
-      expect( config[:defines][:preprocess][:*] ).to include( "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}" )
-      expect( config[:defines][:preprocess]['TestSoilMoisture.c'] ).to eq( ['CEEDLING_DELTA_PROBE'] )
     end
 
   end

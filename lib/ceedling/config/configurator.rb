@@ -87,17 +87,6 @@ class Configurator
       config[:cmock][:treat_inlines] = :exclude
       @loginator.log( "Reverted :cmock ↳ :treat_inlines to :exclude because this CMock feature is superseded by Partials.", Verbosity::COMPLAIN, LogLabels::NOTICE )
     end
-
-    # If partials enabled, inject partials name prefix symbol to all test compilation
-    # and, if a project defines its own preprocess-scoped defines matcher, to
-    # preprocessing as well -- `:preprocess:` defines are looked up independently
-    # of `:test:` defines and only fall back to the latter when `:preprocess:`
-    # is absent entirely, so a project-defined `:preprocess:` matcher needs this
-    # symbol appended directly or Partials' own macro-based #includes break.
-    # Handle both the simple list and matcher hash config formats.
-    _partials_prefix_symbol = "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}"
-    ConfigMatchinator.append_matcher_entries( config[:defines][:test], _partials_prefix_symbol )
-    ConfigMatchinator.append_matcher_entries( config[:defines][:preprocess], _partials_prefix_symbol )
   end
 
 
