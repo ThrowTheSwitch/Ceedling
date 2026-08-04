@@ -87,7 +87,7 @@ describe ReleaseBuildPlanner do
 
     context "tool tag tailoring" do
       it "leaves tools untouched for a plain executable target" do
-        compiler = { executable: 'gcc', arguments: [] }
+        compiler = { executable: DEFAULT_RELEASE_COMPILER_TOOL[:executable], arguments: [] }
         linker   = { executable: 'gcc', arguments: [] }
         allow(@configurator).to receive(:tools_release_compiler).and_return( compiler )
         allow(@configurator).to receive(:tools_release_linker).and_return( linker )
@@ -101,7 +101,7 @@ describe ReleaseBuildPlanner do
       end
 
       it "adds -fPIC and -shared for a .so target using the default compiler" do
-        compiler = { executable: 'gcc', arguments: [] }
+        compiler = { executable: DEFAULT_RELEASE_COMPILER_TOOL[:executable], arguments: [] }
         linker   = { executable: 'gcc', arguments: [] }
         allow(@configurator).to receive(:tools_release_compiler).and_return( compiler )
         allow(@configurator).to receive(:tools_release_linker).and_return( linker )
@@ -114,7 +114,7 @@ describe ReleaseBuildPlanner do
       end
 
       it "swaps the linker for ar and adds -fPIC for a .a target using the default compiler" do
-        compiler = { executable: 'gcc', arguments: [] }
+        compiler = { executable: DEFAULT_RELEASE_COMPILER_TOOL[:executable], arguments: [] }
         linker   = { executable: 'gcc', arguments: [] }
         allow(@configurator).to receive(:tools_release_compiler).and_return( compiler )
         allow(@configurator).to receive(:tools_release_linker).and_return( linker )
