@@ -106,7 +106,7 @@ ceedling_system_tests do
       end
     end
 
-    it "recompiles, relinks, and reruns only the changed test (including regenerating its mocks), leaving unrelated tests untouched" do
+    it "recompiles, relinks, and reruns only the changed test, without regenerating mocks that didn't actually change, leaving unrelated tests untouched" do
       @c.with_context do
         Dir.chdir "temp_sensor" do
           @c.ceedling_build_exec("test:all")
@@ -115,15 +115,17 @@ ceedling_system_tests do
 
           rebuild = @c.ceedling_build_exec("test:all")
 
-          # stage_collect_preprocessor_context's includes stand-in generation
-          # overwrites an already-generated mock header with a blank placeholder
-          # on any run where the *test* file's own bare-includes cache misses,
-          # entirely independent of whether that mock's own antecedents
-          # changed -- exercising that path here confirms the resulting stale
-          # header is detected and every one of this test's mocks regenerated.
-          expect(rebuild).to match(/Generating mock for TestAdcModel::TaskScheduler\.h/)
-          expect(rebuild).to match(/Generating mock for TestAdcModel::TemperatureCalculator\.h/)
-          expect(rebuild).to match(/Generating mock for TestAdcModel::TemperatureFilter\.h/)
+          # The test file's own bare-includes cache misses (its content changed),
+          # which drives stage_collect_preprocessor_context's includes stand-in
+          # generation for this test's mocked headers -- but that stand-in step
+          # skips writing over an already-generated mock header rather than
+          # blanking it out (see TestBuildSetup#generate_test_includes_standins),
+          # so none of this test's mocks are considered stale purely from that
+          # unrelated cache miss. Only a change to the header a mock actually
+          # mocks, or to the mock's own config meta, can make it regenerate.
+          expect(rebuild).to_not match(/Generating mock for TestAdcModel::TaskScheduler\.h/)
+          expect(rebuild).to_not match(/Generating mock for TestAdcModel::TemperatureCalculator\.h/)
+          expect(rebuild).to_not match(/Generating mock for TestAdcModel::TemperatureFilter\.h/)
 
           expect(rebuild).to match(/^Compiling TestAdcModel\.c/)
           expect(rebuild).to match(/^Linking TestAdcModel\.out/)
@@ -182,14 +184,12 @@ ceedling_system_tests do
 
           # A `:preprocess:`-scoped `:defines:` project.yml edit changes the
           # *effective* preprocess defines fed into stage 4's bare-includes
-          # extraction meta for every test (see Defineinator#defines: once a
-          # Hash-shaped `:preprocess:` config section exists at all, files that
-          # don't match one of its keys resolve to an empty list rather than
-          # falling back to compile-time defines, as they do when the section
-          # is absent entirely) -- without touching any test file's own
-          # content or its compile-time defines/flags. Staleness here is
-          # driven entirely by this meta, tracked independently of the source
-          # file's own content.
+          # extraction meta, but only for the one file matching this new
+          # matcher -- every other file falls back to its own compile-time
+          # defines exactly as if the `:preprocess:` section didn't exist for
+          # it (see ConfigMatchinator#matches?'s `no_match_default`), so only
+          # TestTemperatureCalculator.c's meta actually changes here, without
+          # touching any test file's own content or compile-time defines/flags.
           @c.merge_project_yml_for_test({
             :defines => {
               :preprocess => {
@@ -200,7 +200,13 @@ ceedling_system_tests do
 
           rebuild = @c.ceedling_build_exec("test:all")
 
-          expect(rebuild).to match(/^Extracting #includes from/)
+          expect(rebuild).to match(/^Extracting #includes from TestTemperatureCalculator\.c/)
+
+          # Unrelated files' meta is untouched -- proving the no_match_default
+          # fallback, not just the matched file's own re-extraction.
+          expect(rebuild).to_not match(/^Extracting #includes from TestUsartModel/)
+          expect(rebuild).to_not match(/^Extracting #includes from TestTimerModel/)
+          expect(rebuild).to_not match(/^Extracting #includes from TestTemperatureFilter/)
 
           # Compilation is untouched -- only preprocess-time defines changed,
           # not compile-time defines/flags for any file.
@@ -369,13 +375,14 @@ ceedling_system_tests do
           @c.ceedling_build_exec("test:all")
 
           # As with the equivalent temp_sensor scenario above, introducing a
-          # Hash-shaped :preprocess: defines section for the first time changes
-          # every file's effective preprocess defines project-wide, so every
-          # partial header/source and every test file's own bare-includes
-          # extraction goes stale together here purely from meta. Ceedling
-          # re-injects Partials' own required macro symbol into this section
-          # (Configurator#set_partials_derived_config) precisely so this
-          # doesn't also break every partial's macro-based #includes.
+          # Hash-shaped :preprocess: defines section changes effective
+          # preprocess defines meta only for the one file matching it -- every
+          # other file falls back to its own compile-time defines (see
+          # ConfigMatchinator#matches?'s `no_match_default`), so only
+          # TestSoilMoisture.c's bare-includes extraction goes stale here.
+          # Partials' own required macro symbol (CEEDLING_PARTIALS_PREFIX) is
+          # delivered unconditionally by TestBuildSetup#framework_defines
+          # regardless of this section, so it's unaffected either way.
           @c.merge_project_yml_for_test({
             :defines => {
               :preprocess => {
@@ -386,7 +393,13 @@ ceedling_system_tests do
 
           rebuild = @c.ceedling_build_exec("test:all")
 
-          expect(rebuild).to match(/^Extracting #includes from/)
+          expect(rebuild).to match(/^Extracting #includes from TestSoilMoisture\.c/)
+
+          # Unrelated files' meta is untouched -- proving the no_match_default
+          # fallback, not just the matched file's own re-extraction.
+          expect(rebuild).to_not match(/^Extracting #includes from TestEventQueue/)
+          expect(rebuild).to_not match(/^Extracting #includes from TestUartDriver/)
+
           expect(rebuild).to_not match(/^Compiling /)
           expect(rebuild).to_not match(/^Linking /)
           expect(rebuild).to_not match(/^Running /)
