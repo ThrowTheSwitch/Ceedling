@@ -32,10 +32,14 @@ describe TestBuildExecutor do
 
     @tools_test_compiler  = { name: 'fake compiler' }
     @tools_test_assembler = { name: 'fake assembler' }
+    @tools_test_linker    = { name: 'fake linker' }
+    @tools_test_fixture   = { name: 'fake fixture' }
 
     allow(@configurator).to receive(:extension_assembly).and_return( '.asm' )
     allow(@configurator).to receive(:tools_test_compiler).and_return( @tools_test_compiler )
     allow(@configurator).to receive(:tools_test_assembler).and_return( @tools_test_assembler )
+    allow(@configurator).to receive(:tools_test_linker).and_return( @tools_test_linker )
+    allow(@configurator).to receive(:tools_test_fixture).and_return( @tools_test_fixture )
     allow(@configurator).to receive(:project_use_mocks).and_return( false )
     allow(@configurator).to receive(:project_use_exceptions).and_return( false )
     allow(@configurator).to receive(:collection_all_support).and_return( [] )
@@ -180,7 +184,7 @@ describe TestBuildExecutor do
         :link_flags => [],
         :paths      => { :build => 'build/test' }
       )
-      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => {} )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
     end
 
     it "links and marks the executable fresh, and records that it was rebuilt, when the dependency tracker reports it stale" do
@@ -216,7 +220,7 @@ describe TestBuildExecutor do
         :results_pass => 'build/a_test.pass',
         :paths        => { :results => 'build/test/results' }
       )
-      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => {} )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => [] )
     end
 
     it "runs the test fixture when stage 16 rebuilt the executable, first clearing any stale prior result" do
@@ -264,7 +268,7 @@ describe TestBuildExecutor do
         :name     => :MockFoo,
         :directives_only_filepath => nil
       }
-      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => {} )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => [] )
     end
 
     it "preprocesses and marks fresh the mockable header when the dependency tracker reports it stale" do
@@ -300,7 +304,7 @@ describe TestBuildExecutor do
         :testable => @testable,
         :name     => :MockFoo
       }
-      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => {} )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => [] )
     end
 
     it "generates and marks fresh the mock when the dependency tracker reports it stale" do
@@ -355,7 +359,7 @@ describe TestBuildExecutor do
         :filepath => 'test/TestFoo.c',
         :runner   => { :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'test/TestFoo.c' }
       )
-      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => {} )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => [] )
     end
 
     it "generates and marks fresh the runner when the dependency tracker reports it stale" do
@@ -409,7 +413,7 @@ describe TestBuildExecutor do
         :preprocess_flags   => [], :preprocess_defines => [], :search_paths => [],
         :runner             => { :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => nil }
       )
-      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => {} )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
     end
 
     it "preprocesses and marks fresh the test file, storing its output as the runner input, when the dependency tracker reports it stale" do
@@ -459,7 +463,7 @@ describe TestBuildExecutor do
       @config = Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' )
       @details = { :config => @config, :testable => @testable, :directives_only_filepath => nil }
       @state = TestInvokerTypes::PipelineState.new(
-        :testables => { :a_test => @testable }, :partials_headers => [@details], :context => :test, :options => {}
+        :testables => { :a_test => @testable }, :partials_headers => [@details], :context => :test, :options => []
       )
     end
 
@@ -536,7 +540,7 @@ describe TestBuildExecutor do
       @config = Partials::ConfigFileInfo.new( filepath: 'src/Foo.c' )
       @details = { :config => @config, :testable => @testable, :directives_only_filepath => nil }
       @state = TestInvokerTypes::PipelineState.new(
-        :testables => { :a_test => @testable }, :partials_sources => [@details], :context => :test, :options => {}
+        :testables => { :a_test => @testable }, :partials_sources => [@details], :context => :test, :options => []
       )
     end
 
@@ -611,7 +615,7 @@ describe TestBuildExecutor do
       )
       @testable.partials.configs = { 'Foo' => @config }
       @state = TestInvokerTypes::PipelineState.new(
-        :testables => { :a_test => @testable }, :context => :test, :options => {}, :lock => Mutex.new
+        :testables => { :a_test => @testable }, :context => :test, :options => [], :lock => Mutex.new
       )
     end
 

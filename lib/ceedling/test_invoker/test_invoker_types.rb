@@ -15,14 +15,19 @@ module TestInvokerTypes
     :tests,             # Array of test filepaths (input to stage 1)
     :testables,         # Hash<Symbol, Testable> — accumulated across all stages
     :context,
-    :options,
+    :options,           # Array<Symbol> — pipeline-control flags (see TestPipelineManager)
     :partials_headers,  # Produced by T1; consumed by stages 6 & 7
     :partials_sources,  # Produced by T1; consumed by stages 6 & 7
     :mocks_list,        # Produced by T2; consumed by stages 9 & 10
     :objects_list,      # Produced by T3; consumed by stage 15
     :lock,              # Mutex for thread-safe testable writes
     keyword_init: true
-  )
+  ) do
+    def initialize(**kwargs)
+      kwargs[:options] ||= []
+      super(**kwargs)
+    end
+  end
 
   # Named record replacing the raw hash per test file. Fields are populated
   # across multiple stages; nil fields are valid until their stage sets them.

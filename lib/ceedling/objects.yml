@@ -373,15 +373,19 @@ batchinator:
 test_invoker:
   compose:
     - application
-    - configurator
-    - test_build_setup
-    - test_build_planner
-    - test_build_executor
     - plugin_manager
-    - batchinator
     - dependinator
     - loginator
     - verbosinator
+    - test_pipeline_manager
+
+test_pipeline_manager:
+  compose:
+    - test_build_setup
+    - test_build_planner
+    - test_build_executor
+    - configurator
+    - batchinator
 
 test_build_setup:
   compose:

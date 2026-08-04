@@ -235,8 +235,8 @@ ceedling_system_tests do
     it "a partial build (test:pattern) does not disturb the full-run cache for untouched tests" do
       @c.with_context do
         Dir.chdir "temp_sensor" do
-          # Only `test:all` sets the :refresh option that permits the dependency
-          # cache to prune entries for targets it didn't see this run (see
+          # Only `test:all` sets the :refresh_dependencies option that permits the
+          # dependency cache to prune entries for targets it didn't see this run (see
           # Dependinator#flush) -- a partial invocation like test:pattern must
           # never trigger that pruning, or a subsequent full run would
           # incorrectly treat untouched targets as needing a rebuild.

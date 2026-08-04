@@ -39,12 +39,12 @@ class Dependinator
     @dependency_tracker.invalidate( target )
   end
 
-  # `refresh` is a full-run signal, set only by `test:all` (tasks_tests.rake):
+  # `refresh_dependencies` is a full-run signal, set only by `test:all` (tasks_tests.rake):
   # only a run that touched every test target may safely prune cache entries
   # for targets it didn't see this time -- a partial build (a single test
   # file, `test:pattern`, `test:path`, `test:build_only`) must not.
-  def flush(refresh: false)
-    @dependency_tracker.flush( prune: refresh )
+  def flush(refresh_dependencies: false)
+    @dependency_tracker.flush( prune: refresh_dependencies )
   end
 
   ### Private ###

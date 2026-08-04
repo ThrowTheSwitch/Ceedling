@@ -647,8 +647,7 @@ class TestBuildExecutor
           objects:    testable.objects,
           flags:      testable.link_flags,
           lib_args:   lib_args,
-          lib_paths:  lib_paths,
-          options:    state.options
+          lib_paths:  lib_paths
         }
 
         generate_executable_now( **arg_hash )
@@ -684,7 +683,6 @@ class TestBuildExecutor
           test_filepath: testable.filepath,
           executable:    testable.executable,
           result:        testable.results_pass,
-          options:       state.options,
           skipped:       !testable.executable_rebuilt
         }
 
@@ -700,10 +698,10 @@ class TestBuildExecutor
   # Helper methods
   # -----------------------------------------------------------------------
 
-  def generate_executable_now(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, options:)
+  def generate_executable_now(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:)
     begin
       @generator.generate_executable_file(
-        options[:test_linker],
+        @configurator.tools_test_linker,
         context,
         objects.map { |v| "\"#{v}\"" },
         flags,
@@ -750,9 +748,9 @@ class TestBuildExecutor
     @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
   end
 
-  def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, options:, skipped: false)
+  def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, skipped: false)
     @generator.generate_test_results(
-      tool:          options[:test_fixture],
+      tool:          @configurator.tools_test_fixture,
       context:       context,
       test_name:     test_name,
       test_filepath: test_filepath,

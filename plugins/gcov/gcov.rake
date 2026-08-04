@@ -27,7 +27,7 @@ namespace GCOV_SYM do
   desc 'Run code coverage for all tests'
   task all: [:prepare] do
     # Run tests with coverage
-    @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS )
+    @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:[] )
 
     # Optionally compile untested sources with coverage for complete source coverage results in the final report.
     # This comes after the tests because it depends on the accrued knowledge of which source files have associated tests.
@@ -56,7 +56,7 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS) )
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:[] )
     else
       @ceedling[:loginator].log("\nFound no tests matching pattern /#{args.regex}/.")
     end
@@ -71,7 +71,7 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:{ force_run: false }.merge(TOOL_COLLECTION_GCOV_TASKS) )
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:[] )
     else
       @ceedling[:loginator].log( 'Found no tests including the given path or path component', Verbosity::ERRORS )
     end
@@ -91,7 +91,7 @@ namespace GCOV_SYM do
      end
    ]) do |test|
     @ceedling[:rake_wrapper][:prepare].invoke
-    @ceedling[:test_invoker].setup_and_invoke( tests:[test.source], context:GCOV_SYM, options:TOOL_COLLECTION_GCOV_TASKS )
+    @ceedling[:test_invoker].setup_and_invoke( tests:[test.source], context:GCOV_SYM, options:[] )
   end
 end
 
@@ -115,12 +115,12 @@ namespace GCOV_SYM do
 
   desc 'Compile all untested source files with coverage'
   task :untested_sources => [:prepare] do
-    # sources_only: true — populate the tested-sources mapping (which sources each test
+    # :sources_only populates the tested-sources mapping (which sources each test
     # references) without compiling, linking, or executing any test.
     @ceedling[:test_invoker].setup_and_invoke(
       tests: COLLECTION_ALL_TESTS,
       context: GCOV_SYM,
-      options: { sources_only: true }
+      options: [:sources_only]
     )
     @ceedling[:gcov].process_untested_sources( sources: COLLECTION_ALL_SOURCE, guidance: false )
   end

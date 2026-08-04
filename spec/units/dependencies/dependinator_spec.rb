@@ -65,19 +65,19 @@ describe Dependinator do
   end
 
   describe '#flush' do
-    it 'does not prune the tracker cache when refresh is not requested (the default)' do
+    it 'does not prune the tracker cache when refresh_dependencies is not requested (the default)' do
       expect( @tracker ).to receive(:flush).with( prune: false )
       @dependinator.flush
     end
 
-    it 'does not prune when refresh is explicitly false (a partial build, e.g. test:pattern)' do
+    it 'does not prune when refresh_dependencies is explicitly false (a partial build, e.g. test:pattern)' do
       expect( @tracker ).to receive(:flush).with( prune: false )
-      @dependinator.flush( refresh: false )
+      @dependinator.flush( refresh_dependencies: false )
     end
 
-    it 'prunes the tracker cache when refresh is requested (a full test:all run)' do
+    it 'prunes the tracker cache when refresh_dependencies is requested (a full test:all run)' do
       expect( @tracker ).to receive(:flush).with( prune: true )
-      @dependinator.flush( refresh: true )
+      @dependinator.flush( refresh_dependencies: true )
     end
   end
 

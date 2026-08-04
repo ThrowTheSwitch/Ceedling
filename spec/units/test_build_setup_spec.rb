@@ -89,7 +89,7 @@ describe TestBuildSetup do
       :preprocess_defines => [],
       :search_paths       => []
     )
-    @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => {} )
+    @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => [] )
   end
 
   context "#stage_collect_preprocessor_context (directives-only pass)" do

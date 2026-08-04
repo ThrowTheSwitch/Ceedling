@@ -178,7 +178,8 @@ class ConfiguratorBuilder
          File.join( ceedling_lib_path, 'tasks_base.rake' ),
          File.join( ceedling_lib_path, 'tasks_filesystem.rake' ),
          File.join( ceedling_lib_path, 'tasks_tests.rake' ),
-         File.join( ceedling_lib_path, 'rules_tests.rake' )
+         File.join( ceedling_lib_path, 'rules_tests.rake' ),
+         File.join( ceedling_lib_path, 'tasks_generate.rake' )
          ]
       }
 

@@ -29,13 +29,6 @@ GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA   = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "Gc
 GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE   = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageSonarQube.xml")
 GCOV_GCOVR_ARTIFACTS_FILE_JSON        = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverage.json")
 
-TOOL_COLLECTION_GCOV_TASKS = {
-  :test_compiler  => TOOLS_GCOV_COMPILER,
-  :test_assembler => TOOLS_TEST_ASSEMBLER,
-  :test_linker    => TOOLS_GCOV_LINKER,
-  :test_fixture   => TOOLS_GCOV_FIXTURE
-}
-
 # Report Creation Utilities
 GCOV_UTILITY_NAME_GCOVR = "gcovr"
 GCOV_UTILITY_NAME_REPORT_GENERATOR = "ReportGenerator"
