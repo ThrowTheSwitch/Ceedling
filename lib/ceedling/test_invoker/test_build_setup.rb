@@ -366,12 +366,25 @@ class TestBuildSetup
   # stages overwrite these paths with real generated content; a test build
   # that never runs those later stages (e.g. :sources_only) is left with only
   # the placeholder, which is sufficient for its purposes.
+  #
+  # A path already holding a file -- real generated content from a prior run,
+  # or an earlier placeholder -- is left untouched rather than blanked. Only
+  # gcc's need for *something* resolvable at the #include path depends on this
+  # file at all; nothing reads its content for meaning. Overwriting it
+  # unconditionally would needlessly perturb it as a hash antecedent (mock
+  # generation, stage 10, tracks its own stand-in header as one of the inputs
+  # it hashes), invalidating a target purely because this stand-in step ran,
+  # independent of whether anything the mock or partial actually depends on
+  # changed. Whether real regeneration is warranted stays entirely up to each
+  # later stage's own dependency-tracker check.
   def generate_test_includes_standins(test, includes)
     mocks    = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
     partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )
 
     mocks.each do |include|
       filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
+      next if @file_wrapper.exist?( filepath )
+
       msg = @reportinator.generate_module_progress(
         operation:   'Generating stand-in header for',
         module_name: test,
@@ -384,6 +397,8 @@ class TestBuildSetup
 
     partials.each do |include|
       filepath = @file_path_utils.form_partial_header_filepath( test, include.filename )
+      next if @file_wrapper.exist?( filepath )
+
       msg = @reportinator.generate_module_progress(
         operation:   'Generating stand-in header for',
         module_name: test,

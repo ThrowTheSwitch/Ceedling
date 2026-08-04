@@ -181,5 +181,53 @@ describe TestBuildSetup do
 
       @setup.stage_collect_preprocessor_context( @state )
     end
+
+    context "stand-in generation" do
+      before(:each) do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@file_wrapper).to receive(:mkdir)
+        allow(@file_wrapper).to receive(:write_blank_file)
+        allow(@file_path_utils).to receive(:form_mock_header_filepath).and_return( 'build/test/mocks/a_test/MockFoo.h' )
+        allow(@file_path_utils).to receive(:form_partial_header_filepath).and_return( 'build/test/partials/a_test/ceedling_partial_Foo_impl.h' )
+      end
+
+      it "writes a blank stand-in for a mocked header that does not yet exist on disk" do
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
+
+        expect(@file_wrapper).to receive(:mkdir).with( File.dirname('build/test/mocks/a_test/MockFoo.h') )
+        expect(@file_wrapper).to receive(:write_blank_file).with( 'build/test/mocks/a_test/MockFoo.h' )
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
+      it "leaves an existing mocked header's stand-in path untouched, whether it holds real content or a prior stand-in" do
+        allow(@file_wrapper).to receive(:exist?).and_return( true )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
+
+        expect(@file_wrapper).to_not receive(:write_blank_file)
+        expect(@file_wrapper).to_not receive(:mkdir)
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
+      it "writes a blank stand-in for a partial header that does not yet exist on disk" do
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('ceedling_partial_Foo_impl.h') ] )
+
+        expect(@file_wrapper).to receive(:write_blank_file).with( 'build/test/partials/a_test/ceedling_partial_Foo_impl.h' )
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
+      it "leaves an existing partial header's stand-in path untouched" do
+        allow(@file_wrapper).to receive(:exist?).and_return( true )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('ceedling_partial_Foo_impl.h') ] )
+
+        expect(@file_wrapper).to_not receive(:write_blank_file)
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+    end
   end
 end
