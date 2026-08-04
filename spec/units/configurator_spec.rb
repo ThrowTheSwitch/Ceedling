@@ -201,7 +201,7 @@ describe Configurator do
       expect( config[:defines] ).to_not have_key( :preprocess )
     end
 
-    it "leaves :defines: config untouched -- CEEDLING_PARTIALS_PREFIX is delivered unconditionally by TestBuildSetup#framework_defines instead" do
+    it "leaves :defines: config untouched -- CEEDLING_PARTIALS_PREFIX is TestBuildSetup's concern, delivered unconditionally alongside other framework defines" do
       config = partials_config
 
       @configurator.set_partials_derived_config( config )

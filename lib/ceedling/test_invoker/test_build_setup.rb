@@ -458,11 +458,11 @@ class TestBuildSetup
     defines += @defineinator.defines( topkey: CMOCK_SYM,     subkey: :defines )
     defines += @defineinator.defines( topkey: CEXCEPTION_SYM, subkey: :defines )
 
-    # Partials' own macro-based #includes rely on this symbol being defined for
-    # every file, both at compile time and preprocess time -- delivered here
-    # unconditionally (like Unity/CMock/CException's own framework defines
-    # above) rather than injected into a project's :defines: matcher config,
-    # so it can never masquerade as a real per-file match there.
+    # Partials' own macro-based #includes require this symbol to be defined
+    # for every file, both at compile time and preprocess time. It's added
+    # here unconditionally, alongside Unity/CMock/CException's own framework
+    # defines above, so its presence never depends on whether a file happens
+    # to match any entry in a project's own :defines: matcher configuration.
     defines << "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}" if @configurator.project_use_partials
 
     return defines.uniq
@@ -480,12 +480,11 @@ class TestBuildSetup
   end
 
   # A file matching nothing in a Hash-shaped `:preprocess:` section falls back
-  # to `test_defines` (its compile-time defines) exactly as if the section
-  # didn't exist for it -- see ConfigMatchinator#matches?'s `no_match_default`.
-  # Without this, introducing `:preprocess:` for even one file would silently
-  # zero out every other file's preprocess defines too, changing their
-  # dependency-tracker meta and invalidating targets nothing about them
-  # actually changed.
+  # to `test_defines`, its compile-time defines, exactly as if the section
+  # didn't apply to it at all -- see ConfigMatchinator#matches?'s
+  # `no_match_default`. This keeps a file's preprocess-defines meta entirely
+  # explained by its own configuration, so a `:preprocess:` matcher targeting
+  # one file has no bearing on any other file's dependency-tracker meta.
   def preprocess_defines(test_defines:, filepath:)
     return @defineinator.defines(
       subkey: PREPROCESS_SYM, filepath: filepath, default: test_defines, no_match_default: test_defines
@@ -500,8 +499,8 @@ class TestBuildSetup
   end
 
   # Mirrors #preprocess_defines: a file matching nothing in a Hash-shaped
-  # `:preprocess:` flags section falls back to `compile_flags` as if the
-  # section didn't exist for it, rather than silently going empty.
+  # `:preprocess:` flags section falls back to `compile_flags`, its
+  # compile-time flags, exactly as if the section didn't apply to it at all.
   def preprocess_flags(context:, compile_flags:, filepath:)
     return flags(
       context: context, operation: OPERATION_PREPROCESS_SYM, filepath: filepath,
