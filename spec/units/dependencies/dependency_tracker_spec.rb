@@ -79,7 +79,12 @@ describe DependencyTracker do
 
   def stub_file(path, content)
     allow( @file_wrapper ).to receive(:exist?).with(path).and_return(true)
+    # :read backs .d-file and debug-snapshot reading (text); :read_binary
+    # backs DependencyHasher's content hashing. Both are stubbed to the same
+    # content since these tests don't exercise the distinction FileWrapper
+    # itself draws between the two.
     allow( @file_wrapper ).to receive(:read).with(path).and_return(content)
+    allow( @file_wrapper ).to receive(:read_binary).with(path).and_return(content)
   end
 
   def open_tracker(store_path: 'cache.json', debug_tier: nil)
@@ -340,6 +345,7 @@ describe DependencyTracker do
         @debug_files = {}
         allow( @file_wrapper ).to receive(:write) { |path, content| @debug_files[path] = content }
         allow( @file_wrapper ).to receive(:read) { |path| @debug_files.fetch( path ) { raise "unstubbed read: #{path}" } }
+        allow( @file_wrapper ).to receive(:read_binary) { |path| @debug_files.fetch( path ) { raise "unstubbed read_binary: #{path}" } }
         allow( @file_wrapper ).to receive(:exist?) { |path| @debug_files.key?( path ) }
       end
 
@@ -557,6 +563,7 @@ describe DependencyTracker do
       allow( @file_wrapper ).to receive(:write) { |path, content| @debug_files[path] = content }
       allow( @file_wrapper ).to receive(:mv) { |from, to| @debug_files[to] = @debug_files.delete( from ) }
       allow( @file_wrapper ).to receive(:read) { |path| @debug_files.fetch( path ) { raise "unstubbed read: #{path}" } }
+      allow( @file_wrapper ).to receive(:read_binary) { |path| @debug_files.fetch( path ) { raise "unstubbed read_binary: #{path}" } }
       allow( @file_wrapper ).to receive(:exist?) { |path| @debug_files.key?( path ) }
     end
 
@@ -565,6 +572,7 @@ describe DependencyTracker do
     def read_diagnosis(target)
       tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
       allow( @file_wrapper ).to receive(:read) { |path| @debug_files.fetch( path ) { raise "unstubbed read: #{path}" } }
+      allow( @file_wrapper ).to receive(:read_binary) { |path| @debug_files.fetch( path ) { raise "unstubbed read_binary: #{path}" } }
       allow( @file_wrapper ).to receive(:exist?) { |path| @debug_files.key?( path ) }
       tree.send( :read_yaml, tree.send( :path_dir, @tracker.instance_variable_get(:@debug_root), target ) + '/diagnosis.yml' )
     end
@@ -703,6 +711,7 @@ describe DependencyTracker do
       allow( @file_wrapper ).to receive(:write) { |path, content| @debug_files[path] = content }
       allow( @file_wrapper ).to receive(:mv) { |from, to| @debug_files[to] = @debug_files.delete( from ) }
       allow( @file_wrapper ).to receive(:read) { |path| @debug_files.fetch( path ) { raise "unstubbed read: #{path}" } }
+      allow( @file_wrapper ).to receive(:read_binary) { |path| @debug_files.fetch( path ) { raise "unstubbed read_binary: #{path}" } }
       allow( @file_wrapper ).to receive(:rm_rf) { |path| @debug_files.reject! { |p, _| p == path || p.start_with?( "#{path}/" ) } }
       # A "directory" (as opposed to a specific written file) exists if any
       # file under it does -- mirrors real filesystem semantics, needed

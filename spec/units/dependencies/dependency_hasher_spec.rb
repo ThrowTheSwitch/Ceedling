@@ -19,21 +19,53 @@ describe DependencyHasher do
 
   describe '#hash_of_file' do
     it 'returns the SHA-256 hex digest of the file content read via FileWrapper' do
-      allow( @file_wrapper ).to receive(:read).with('foo.c').and_return('int main(void) {}')
+      allow( @file_wrapper ).to receive(:read_binary).with('foo.c').and_return('int main(void) {}')
 
       expect( @hasher.hash_of_file('foo.c') ).to eq( Digest::SHA256.hexdigest('int main(void) {}') )
     end
 
     it 'never touches the real filesystem -- only the injected FileWrapper' do
-      expect( @file_wrapper ).to receive(:read).with('foo.c').and_return('content')
+      expect( @file_wrapper ).to receive(:read_binary).with('foo.c').and_return('content')
       @hasher.hash_of_file('foo.c')
     end
 
     it 'produces different hashes for different content' do
-      allow( @file_wrapper ).to receive(:read).with('a.c').and_return('aaa')
-      allow( @file_wrapper ).to receive(:read).with('b.c').and_return('bbb')
+      allow( @file_wrapper ).to receive(:read_binary).with('a.c').and_return('aaa')
+      allow( @file_wrapper ).to receive(:read_binary).with('b.c').and_return('bbb')
 
       expect( @hasher.hash_of_file('a.c') ).not_to eq( @hasher.hash_of_file('b.c') )
+    end
+
+    # Reads go through FileWrapper#read_binary rather than #read specifically so
+    # line endings are never silently translated -- see the comment on
+    # #hash_of_file. These cases pin that behavior down directly.
+    describe 'line ending handling' do
+      it 'reads via read_binary, not read, so no platform-dependent text-mode translation can occur' do
+        expect( @file_wrapper ).to_not receive(:read)
+        allow( @file_wrapper ).to receive(:read_binary).with('foo.c').and_return("a\r\nb")
+
+        @hasher.hash_of_file('foo.c')
+      end
+
+      it 'hashes CRLF bytes exactly as read, without normalizing them to LF' do
+        allow( @file_wrapper ).to receive(:read_binary).with('foo.c').and_return("a\r\nb")
+
+        expect( @hasher.hash_of_file('foo.c') ).to eq( Digest::SHA256.hexdigest("a\r\nb") )
+      end
+
+      it 'treats CRLF and LF versions of otherwise-identical content as different files' do
+        allow( @file_wrapper ).to receive(:read_binary).with('crlf.c').and_return("a\r\nb")
+        allow( @file_wrapper ).to receive(:read_binary).with('lf.c').and_return("a\nb")
+
+        expect( @hasher.hash_of_file('crlf.c') ).to_not eq( @hasher.hash_of_file('lf.c') )
+      end
+
+      it 'hashes binary content with embedded CR/LF-like bytes exactly as read' do
+        binary_content = "\x00\x01\r\n\xFF\xFE".dup.force_encoding( Encoding::BINARY )
+        allow( @file_wrapper ).to receive(:read_binary).with('foo.bin').and_return( binary_content )
+
+        expect( @hasher.hash_of_file('foo.bin') ).to eq( Digest::SHA256.hexdigest( binary_content ) )
+      end
     end
   end
 

@@ -32,9 +32,38 @@ class DependencyHasher
 
   constructor :file_wrapper
 
-  # SHA-256 hex digest of a file's content.
+  # SHA-256 hex digest of a file's exact on-disk bytes.
+  #
+  # Read via `read_binary` rather than `read`: Ruby's default text-mode read
+  # silently translates CRLF to LF on Windows but leaves it untouched on
+  # Unix-like platforms, so the same file's bytes -- text or binary -- would
+  # otherwise hash differently purely depending on which OS is running
+  # Ceedling. Reading raw bytes on every platform keeps the hash a function of
+  # the file's actual content alone.
+  #
+  # This intentionally hashes every file byte-for-byte, whitespace included,
+  # rather than attempting any whitespace- or format-insensitive normalization
+  # (e.g. collapsing indentation, trimming trailing spaces). That's a
+  # deliberate choice, not an oversight:
+  # - Whitespace is not reliably cosmetic. In C, the exact whitespace inside a
+  #   string or character literal is program content, not formatting -- and
+  #   trailing whitespace after a macro's line-continuing backslash can change
+  #   whether the continuation is even recognized. In YAML, indentation *is*
+  #   the syntax -- two documents differing only in whitespace can parse to
+  #   different data entirely.
+  # - Deciding which whitespace differences are safe to ignore requires
+  #   understanding the semantics of the specific file's language -- i.e. a
+  #   real parser for every format this hasher might ever see -- not a text
+  #   transform. A byte hash can't be fooled by a parsing bug; a "smart"
+  #   normalization can silently mask a real change.
+  # - The two ways this hash can be wrong aren't equally bad: reporting a
+  #   target stale when it isn't just costs a wasted rebuild, but reporting it
+  #   fresh when it isn't means shipping against a build that silently doesn't
+  #   reflect the source -- exactly the failure this class exists to prevent.
+  #   Any normalization narrows the margin between those two outcomes in
+  #   exchange for skipping some rebuilds; that trade isn't worth it here.
   def hash_of_file(path)
-    Digest::SHA256.hexdigest( @file_wrapper.read( path ) )
+    Digest::SHA256.hexdigest( @file_wrapper.read_binary( path ) )
   end
 
   # SHA-256 hex digest of a canonicalized `meta` value, or nil for nil/empty
