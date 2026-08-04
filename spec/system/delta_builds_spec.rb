@@ -410,4 +410,109 @@ ceedling_system_tests do
       end
     end
   end
+
+  # cipher_quest is the only example project with :release_build: TRUE. Its release
+  # build normally needs a --mixin to supply :defines ↳ :release (feature symbols
+  # main.c's conditional compilation requires) -- these scenarios instead merge
+  # those defines directly into project.yml, matching this file's own established
+  # pattern elsewhere, so they don't depend on mixin flags at all.
+  describe "Delta builds: incremental rebuild staleness tracking (cipher_quest, Release)" do
+    before do
+      @c.with_context do
+        output = @c.ceedling_appcmd_exec("example cipher_quest")
+        expect(output).to match(/created/)
+      end
+    end
+
+    # Merges :defines ↳ :release directly into cipher_quest's project.yml, standing
+    # in for the --mixin flag the example otherwise expects -- must run inside the
+    # project directory, so each `it` calls this itself rather than sharing a
+    # `before` (project.yml doesn't exist until the project directory is entered).
+    def enable_release_features!
+      @c.merge_project_yml_for_test({
+        :defines => {
+          :release => ['CIPHER_ROT13', 'CIPHER_CAESAR', 'ANALYZER_ENABLED']
+        }
+      })
+    end
+
+    it "skips recompiling and relinking on an immediate rebuild with no changes" do
+      @c.with_context do
+        Dir.chdir "cipher_quest" do
+          enable_release_features!
+
+          baseline = @c.ceedling_build_exec("release")
+          expect(baseline).to_not match(/ERROR/)
+
+          rebuild = @c.ceedling_build_exec("release")
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to_not match(/^Linking /)
+        end
+      end
+    end
+
+    it "recompiles and relinks only the object whose source changed" do
+      @c.with_context do
+        Dir.chdir "cipher_quest" do
+          enable_release_features!
+          @c.ceedling_build_exec("release")
+
+          probe_source_file!(File.join('src', 'cipher.c'), 'cipher_rot13')
+
+          rebuild = @c.ceedling_build_exec("release")
+
+          expect(rebuild).to match(/^Compiling cipher\.c/)
+          expect(rebuild).to match(/^Linking /)
+
+          expect(rebuild).to_not match(/^Compiling analyzer\.c/)
+          expect(rebuild).to_not match(/^Compiling text_utils\.c/)
+          expect(rebuild).to_not match(/^Compiling main\.c/)
+        end
+      end
+    end
+
+    it "recompiles every object whose source #includes a changed header, via .d-file-derived transitive tracking, leaving unrelated objects untouched" do
+      @c.with_context do
+        Dir.chdir "cipher_quest" do
+          enable_release_features!
+          @c.ceedling_build_exec("release")
+
+          # analyzer.h is #included by both analyzer.c and main.c, so both
+          # objects' registered dependencies -- populated from each object's own
+          # `.d` file, discovered by gcc's -MMD -MF during its prior compile --
+          # include analyzer.h; its content hash changing makes both objects
+          # stale, independent of either .c file's own content. Only Compiling
+          # is asserted (not Linking): a bare added prototype with no call site
+          # can compile to an object identical to the prior one, in which case
+          # linking is correctly skipped on its own separate content-hash
+          # staleness check.
+          probe_header!(File.join('src', 'analyzer.h'))
+
+          rebuild = @c.ceedling_build_exec("release")
+
+          expect(rebuild).to match(/^Compiling analyzer\.c/)
+          expect(rebuild).to match(/^Compiling main\.c/)
+
+          expect(rebuild).to_not match(/^Compiling cipher\.c/)
+          expect(rebuild).to_not match(/^Compiling text_utils\.c/)
+        end
+      end
+    end
+
+    it "release:compile:<file> rebuilds only that object and does not link" do
+      @c.with_context do
+        Dir.chdir "cipher_quest" do
+          enable_release_features!
+          @c.ceedling_build_exec("release")
+
+          probe_source_file!(File.join('src', 'cipher.c'), 'cipher_rot13')
+
+          rebuild = @c.ceedling_build_exec("release:compile:cipher.c")
+
+          expect(rebuild).to match(/^Compiling cipher\.c/)
+          expect(rebuild).to_not match(/^Linking /)
+        end
+      end
+    end
+  end
 end

@@ -434,13 +434,35 @@ test_build_executor:
 
 release_invoker:
   compose:
-    - configurator
-    - batchinator
-    - reportinator
+    - application
+    - plugin_manager
+    - dependinator
     - loginator
-    - rake_wrapper
+    - batchinator
+    - release_build_planner
+    - release_build_executor
+
+release_build_planner:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - flaginator
+    - defineinator
     - file_path_utils
     - file_wrapper
+
+release_build_executor:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - generator
+    - file_finder
+    - file_wrapper
+    - file_path_utils
+    - dependinator
 
 gcc_dependency_parser:
 

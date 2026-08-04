@@ -11,12 +11,27 @@
 # code only ever deals in build verbs, never cache mechanics.
 class Dependinator
 
-  CACHE_FILENAME = '.dep_cache.json'.freeze
+  CACHE_FILENAME = 'dep_cache.json'.freeze
 
   constructor :dependency_tracker
 
-  def open
-    @dependency_tracker.open( store_path: store_path )
+  # Builds the cache file path for a given pipeline identifier (:test, :release, a
+  # plugin's own symbol, ...). Public and callable without an instance so any
+  # caller -- a pipeline invoker, a spec, a future plugin -- can compute or inspect
+  # the path an identifier resolves to. Every identifier lands in the same,
+  # already-unconditionally-created directory, distinguished by filename alone, so
+  # a new pipeline needs no build-path scaffolding of its own to get an isolated
+  # cache -- just a unique identifier.
+  def self.cache_store_path(identifier)
+    File.join( PROJECT_BUILD_DEPENDENCIES_CACHE_PATH, ".#{identifier}.#{CACHE_FILENAME}" )
+  end
+
+  # `identifier` isolates one pipeline's cache from another's -- sharing a single
+  # cache file between, say, test and release builds would make a full test:all
+  # run's pruning flush (see `flush`) silently evict every cached release entry,
+  # and vice versa, since pruning drops anything not registered in the current run.
+  def open(identifier: :test)
+    @dependency_tracker.open( store_path: self.class.cache_store_path( identifier ) )
   end
 
   def register(target, files: [], meta: {})
@@ -45,13 +60,6 @@ class Dependinator
   # file, `test:pattern`, `test:path`, `test:build_only`) must not.
   def flush(refresh_dependencies: false)
     @dependency_tracker.flush( prune: refresh_dependencies )
-  end
-
-  ### Private ###
-  private
-
-  def store_path
-    File.join( PROJECT_BUILD_DEPENDENCIES_CACHE_PATH, CACHE_FILENAME )
   end
 
 end

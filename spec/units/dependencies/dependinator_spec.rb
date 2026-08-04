@@ -17,10 +17,25 @@ describe Dependinator do
     stub_const('PROJECT_BUILD_DEPENDENCIES_CACHE_PATH', '/proj/build/cache')
   end
 
+  describe '.cache_store_path' do
+    it 'is callable without an instance' do
+      expect( Dependinator.cache_store_path( :test ) ).to eq( '/proj/build/cache/.test.dep_cache.json' )
+    end
+
+    it 'resolves a distinct path per identifier within the same directory' do
+      expect( Dependinator.cache_store_path( :release ) ).to eq( '/proj/build/cache/.release.dep_cache.json' )
+    end
+  end
+
   describe '#open' do
-    it 'opens the tracker at a cache file beneath the project dependencies cache path' do
-      expect( @tracker ).to receive(:open).with( store_path: '/proj/build/cache/.dep_cache.json' )
+    it 'opens the tracker at a cache file identified by the default :test identifier when none is given' do
+      expect( @tracker ).to receive(:open).with( store_path: '/proj/build/cache/.test.dep_cache.json' )
       @dependinator.open
+    end
+
+    it 'opens the tracker at a distinct cache file for a different identifier' do
+      expect( @tracker ).to receive(:open).with( store_path: '/proj/build/cache/.release.dep_cache.json' )
+      @dependinator.open( identifier: :release )
     end
   end
 
