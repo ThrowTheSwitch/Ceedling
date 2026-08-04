@@ -6,6 +6,14 @@
 # =========================================================================
 
 require 'digest'
+# `Digest::SHA256` is lazily autoloaded from `digest/sha2` on first reference.
+# Every call site below runs inside parallel worker threads (DependencyTracker
+# is exercised from Batchinator-driven thread pools throughout the pipeline);
+# if two threads race to be the first to touch `Digest::SHA256`, Ruby's C
+# extension init for the digest classes can raise "Digest::Base cannot be
+# directly inherited in Ruby". Loading it here, once, single-threaded, at
+# require time settles the class before any worker thread can race on it.
+require 'digest/sha2'
 require 'json'
 
 # Computes the two kinds of hashes DependencyTracker persists per target:
