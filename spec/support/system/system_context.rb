@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'fileutils'
+require 'bundler'
 require 'ceedling/encodinator'
 require_relative 'gem_dir_layout'
 
