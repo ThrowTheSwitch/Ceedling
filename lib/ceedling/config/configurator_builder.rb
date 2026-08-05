@@ -146,6 +146,10 @@ class ConfiguratorBuilder
 
       [:project_test_preprocess_includes_path,  File.join(project_build_tests_root, 'preprocess/includes'), (in_hash[:project_use_test_preprocessor] != :none) ],
       [:project_test_preprocess_files_path,     File.join(project_build_tests_root, 'preprocess/files'),    (in_hash[:project_use_test_preprocessor] != :none) ],
+      # Present whether or not preprocessing is enabled -- a test file's own build
+      # directive macros (TEST_INCLUDE_PATH(), TEST_SOURCE_FILE()) are cached here
+      # regardless of which pass of the pipeline extracts them.
+      [:project_test_preprocess_build_directives_path, File.join(project_build_tests_root, 'preprocess/build_directives'), true ],
 
       [:project_test_partials_path,             File.join(project_build_tests_root, 'partials'),            in_hash[:project_use_partials] ],
 

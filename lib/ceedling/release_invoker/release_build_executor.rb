@@ -28,9 +28,14 @@ class ReleaseBuildExecutor
   )
 
   def compile_objects(state)
+    skipped = 0
+
     @batchinator.exec(workload: :compile, things: state.objects) do |object|
-      compile_release_component( object: object, state: state )
+      compiled = compile_release_component( object: object, state: state )
+      skipped += 1 unless compiled
     end
+
+    log_skip_summary( task: "compilation", count: skipped, noun: "objects" )
   end
 
   def link(state)
@@ -59,7 +64,12 @@ class ReleaseBuildExecutor
       )
 
       @dependinator.mark_fresh( target )
+    else
+      msg = @reportinator.generate_progress( "Skipping linking for #{File.basename( target )}" )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
     end
+
+    log_skip_summary( task: "linking", count: (stale ? 0 : 1), noun: "executables" )
 
     # #artifactinate relies on this rather than a second `stale?` call -- by
     # now `mark_fresh` above (when `stale` was true) has already updated the
@@ -69,20 +79,27 @@ class ReleaseBuildExecutor
   end
 
   def artifactinate(state)
-    return unless state.executable_rebuilt
-
-    [
+    artifacts = [
       @configurator.project_release_build_target,
       @configurator.project_release_build_map,
       @configurator.release_build_artifacts
-    ].flatten.each do |file|
+    ].flatten
+
+    unless state.executable_rebuilt
+      log_skip_summary( task: "artifact collection", count: artifacts.size, noun: "artifacts" )
+      return
+    end
+
+    artifacts.each do |file|
       @file_wrapper.cp( file, @configurator.project_release_artifacts_path ) if @file_wrapper.exist?( file )
     end
   end
 
   private
 
-  # Compile a single C or assembly source file into an object file.
+  # Compile a single C or assembly source file into an object file. Returns
+  # whether a real compile actually happened, so the caller can report how
+  # many objects across the whole build needed nothing done.
   def compile_release_component(object:, state:)
     source       = @file_finder.find_build_input_file( filepath: object, context: RELEASE_SYM )
     dependencies = @file_path_utils.form_release_dependencies_filepath( object )
@@ -91,7 +108,7 @@ class ReleaseBuildExecutor
       flags = state.compile_flags
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: state.defines, search_paths: state.search_paths )
 
-      return unless stale
+      return log_compile_skip( source: source ) unless stale
 
       @generator.generate_object_file_c(
         tool:         @configurator.tools_release_compiler,
@@ -109,7 +126,7 @@ class ReleaseBuildExecutor
       flags = state.assemble_flags
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: state.defines, search_paths: state.search_paths )
 
-      return unless stale
+      return log_compile_skip( source: source ) unless stale
 
       @generator.generate_object_file_asm(
         tool:         @configurator.tools_release_assembler,
@@ -131,6 +148,17 @@ class ReleaseBuildExecutor
     # recording this target's new baseline.
     @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.mark_fresh( object )
+
+    true
+  end
+
+  # Reports that a single object file needed no recompiling, at a verbosity
+  # meant for readers who want every target accounted for individually
+  # rather than just the batch total.
+  def log_compile_skip(source:)
+    msg = @reportinator.generate_progress( "Skipping compilation for #{File.basename( source )}" )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    false
   end
 
   # Registers `object`'s antecedents (its source file, plus whatever headers
@@ -196,6 +224,15 @@ class ReleaseBuildExecutor
     libraries = sorted_objects[:libraries] || []
     objects   = sorted_objects[:objects]   || []
     return objects, libraries
+  end
+
+  # States, in one line, how many targets a build step left untouched because nothing
+  # about them needed attention this run. Silent when nothing was skipped, so a full
+  # rebuild's output isn't cluttered with zero counts.
+  def log_skip_summary(task:, count:, noun:, reason: "nothing changed")
+    return if count == 0
+    singular_noun = noun.sub(/s$/, '')
+    @loginator.log( "Skipping #{task} for #{count} #{count == 1 ? singular_noun : noun} -- #{reason}" )
   end
 
 end

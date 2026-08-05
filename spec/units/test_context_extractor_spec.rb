@@ -26,7 +26,8 @@ describe TestContextExtractor do
     @configurator = double( "Configurator" )
     # Not actually exercised in these test cases
     @file_wrapper = double( "FileWrapper" )
-    
+    @yaml_wrapper = double( "YamlWrapper" )
+
     # Ignore all logging calls
     loginator = instance_double( "Loginator" )
     allow(loginator).to receive(:log)
@@ -68,6 +69,7 @@ describe TestContextExtractor do
         :partializer_config => partializer_config,
         :file_path_utils    => @file_path_utils,
         :file_wrapper       => @file_wrapper,
+        :yaml_wrapper       => @yaml_wrapper,
         :loginator          => loginator
       }
     )
@@ -118,6 +120,51 @@ describe TestContextExtractor do
   context "#lookup_mock_header_includes_list" do
     it "should provide empty list when no context extraction has occurred" do
       expect( @extractor.lookup_mock_header_includes_list( "path" ) ).to eq []
+    end
+  end
+
+  context "#store_build_directives_cache and #load_build_directives_cache" do
+    it "writes the currently known source files and include paths for a test file to the given cache filepath" do
+      @extractor.ingest_build_directive_source_files( "path", ["extra.c"] )
+      @extractor.ingest_build_directive_include_paths( "path", ["include/dir"] )
+
+      expect(@yaml_wrapper).to receive(:dump).with(
+        "cache/path.yml",
+        { source_files: ["extra.c"], include_paths: ["include/dir"] }
+      )
+
+      @extractor.store_build_directives_cache( filepath: "path", cache_filepath: "cache/path.yml" )
+    end
+
+    it "makes previously cached source files and include paths available again, the same as a fresh scan would" do
+      allow(@yaml_wrapper).to receive(:load).with("cache/path.yml").and_return(
+        { source_files: ["extra.c"], include_paths: ["include/dir"] }
+      )
+
+      @extractor.load_build_directives_cache( filepath: "path", cache_filepath: "cache/path.yml" )
+
+      expect( @extractor.lookup_build_directive_sources_list( "path" ) ).to eq( ["extra.c"] )
+      expect( @extractor.lookup_include_paths_list( "path" ) ).to eq( ["include/dir"] )
+    end
+
+    it "treats a cache file holding only one of the two kinds of data as having none of the other" do
+      allow(@yaml_wrapper).to receive(:load).with("cache/path.yml").and_return( { source_files: ["extra.c"] } )
+
+      @extractor.load_build_directives_cache( filepath: "path", cache_filepath: "cache/path.yml" )
+
+      expect( @extractor.lookup_build_directive_sources_list( "path" ) ).to eq( ["extra.c"] )
+      expect( @extractor.lookup_include_paths_list( "path" ) ).to eq( [] )
+    end
+
+    it "treats an empty cache file as having neither kind of data" do
+      allow(@yaml_wrapper).to receive(:load).with("cache/path.yml").and_return( nil )
+
+      expect {
+        @extractor.load_build_directives_cache( filepath: "path", cache_filepath: "cache/path.yml" )
+      }.to_not raise_error
+
+      expect( @extractor.lookup_build_directive_sources_list( "path" ) ).to eq( [] )
+      expect( @extractor.lookup_include_paths_list( "path" ) ).to eq( [] )
     end
   end
 

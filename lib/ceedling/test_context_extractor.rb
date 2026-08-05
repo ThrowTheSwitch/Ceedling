@@ -37,6 +37,7 @@ class TestContextExtractor
     :partializer_config,
     :file_path_utils,
     :file_wrapper,
+    :yaml_wrapper,
     :loginator
   )
 
@@ -263,6 +264,57 @@ class TestContextExtractor
     return _includes
   end
 
+  # Saves a test file's TEST_SOURCE_FILE() and TEST_INCLUDE_PATH() results to disk, so a
+  # later run whose test file content hasn't changed can recall them instead of scanning
+  # the file again. Everything else this class extracts -- #includes, Partials
+  # configuration, test runner details -- stays in memory only, since those hold richer
+  # information than a simple list of strings can capture.
+  def store_build_directives_cache(filepath:, cache_filepath:)
+    @yaml_wrapper.dump(
+      cache_filepath,
+      {
+        source_files:  lookup_build_directive_sources_list( filepath ),
+        include_paths: lookup_include_paths_list( filepath )
+      }
+    )
+  end
+
+  # Recalls build-directive results previously saved by store_build_directives_cache,
+  # making them available the same way a fresh scan would.
+  def load_build_directives_cache(filepath:, cache_filepath:)
+    cached = @yaml_wrapper.load( cache_filepath ) || {}
+    ingest_build_directive_source_files( filepath, cached[:source_files]  || [] )
+    ingest_build_directive_include_paths( filepath, cached[:include_paths] || [] )
+  end
+
+  # Unlike other ingest() calls, these two can be called externally -- a caller that
+  # already has build-directive results in hand (recalled from a cache rather than just
+  # scanned from a file) uses these to make that data available the same way a fresh
+  # scan would.
+  def ingest_build_directive_source_files(filepath, source_extras)
+    return if source_extras.empty?
+
+    key = form_file_key( filepath )
+
+    @lock.synchronize do
+      @source_extras[key] = source_extras
+    end
+  end
+
+  def ingest_build_directive_include_paths(filepath, include_paths)
+    return if include_paths.empty?
+
+    key = form_file_key( filepath )
+
+    @lock.synchronize do
+      @include_paths[key] = include_paths
+    end
+
+    @lock.synchronize do
+      @all_include_paths += include_paths
+    end
+  end
+
   private #################################
 
   def collect_build_directive_source_files(filepath, files)
@@ -386,30 +438,6 @@ class TestContextExtractor
   ##
   ## Data structure management ingest methods
   ##
-
-  def ingest_build_directive_source_files(filepath, source_extras)
-    return if source_extras.empty?
-    
-    key = form_file_key( filepath )
-
-    @lock.synchronize do
-      @source_extras[key] = source_extras
-    end
-  end
-
-  def ingest_build_directive_include_paths(filepath, include_paths)
-    return if include_paths.empty?
-
-    key = form_file_key( filepath )
-
-    @lock.synchronize do
-      @include_paths[key] = include_paths
-    end
-
-    @lock.synchronize do
-      @all_include_paths += include_paths
-    end
-  end
 
   def ingest_test_runner_details(filepath:, test_runner_generator:)
     key = form_file_key( filepath )

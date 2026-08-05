@@ -10,6 +10,7 @@ require 'rake'
 require 'ceedling/test_invoker/test_build_executor'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
+require 'ceedling/test_context_extractor'
 
 PROJECT_BUILD_VENDOR_UNITY_PATH = 'build/vendor/unity' unless defined?(PROJECT_BUILD_VENDOR_UNITY_PATH)
 UNITY_C_FILE = 'unity.c' unless defined?(UNITY_C_FILE)
@@ -46,6 +47,14 @@ describe TestBuildExecutor do
 
     allow(@file_path_utils).to receive(:form_test_build_list_filepath).and_return( 'build/list' )
     allow(@file_path_utils).to receive(:form_test_dependencies_filepath).and_return( 'build/deps' )
+    allow(@file_path_utils).to receive(:form_preprocessed_source_files_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/TestFoo.c_source_files.yml' )
+
+    allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
+    allow(@reportinator).to receive(:generate_progress).and_return( '' )
+    allow(@loginator).to receive(:log)
+    allow(@loginator).to receive(:log_list)
+    allow(@test_context_extractor).to receive(:store_build_directives_cache)
+    allow(@test_context_extractor).to receive(:load_build_directives_cache)
 
     # Default: no prior `.d` file on disk, and the tracker reports every target
     # stale -- i.e. every real build in this spec proceeds as an unconditional
@@ -170,6 +179,43 @@ describe TestBuildExecutor do
     end
   end
 
+  context "#stage_build_objects" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@file_finder).to receive(:find_build_input_file).and_return( 'src/foo.c' )
+      allow(@file_wrapper).to receive(:extname).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name              => 'a_test',
+        :compile_defines   => [], :search_paths => [], :compile_flags => []
+      )
+      @state = TestInvokerTypes::PipelineState.new(
+        :testables   => { :a_test => @testable },
+        :objects_list => [ { test: :a_test, obj: 'build/foo.o' } ],
+        :lock => Mutex.new, :context => :test, :options => []
+      )
+    end
+
+    it "logs a summary line stating how many objects were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping compilation for 1 object -- nothing changed" )
+
+      @executor.stage_build_objects( @state )
+    end
+
+    it "logs no summary line when every object needed compiling" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_object_file_c)
+
+      expect(@loginator).to_not receive(:log).with( /Skipping compilation/ )
+
+      @executor.stage_build_objects( @state )
+    end
+  end
+
   context "#stage_build_executables" do
     before(:each) do
       stub_batchinator_exec()
@@ -206,6 +252,14 @@ describe TestBuildExecutor do
 
       expect( @testable.executable_rebuilt ).to be(false)
     end
+
+    it "logs a summary line stating how many executables were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping linking for 1 executable -- nothing changed" )
+
+      @executor.stage_build_executables( @state )
+    end
   end
 
   context "#stage_execute" do
@@ -220,7 +274,7 @@ describe TestBuildExecutor do
         :results_pass => 'build/a_test.pass',
         :paths        => { :results => 'build/test/results' }
       )
-      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => [] )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
     end
 
     it "runs the test fixture when stage 16 rebuilt the executable, first clearing any stale prior result" do
@@ -244,6 +298,15 @@ describe TestBuildExecutor do
       @testable.executable_rebuilt = false
       allow(@generator).to receive(:generate_test_results)
       expect(@plugin_manager).to receive(:post_test).with('test/TestFoo.c')
+
+      @executor.stage_execute( @state )
+    end
+
+    it "logs a summary line stating how many tests reused a cached result" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+
+      expect(@loginator).to receive(:log).with( "Skipping test execution for 1 test -- reusing cached results" )
 
       @executor.stage_execute( @state )
     end
@@ -286,6 +349,14 @@ describe TestBuildExecutor do
 
       @executor.stage_preprocess_mocks( @state )
     end
+
+    it "logs a summary line stating how many mocks' preprocessing was recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping mock preprocessing for 1 mock -- nothing changed" )
+
+      @executor.stage_preprocess_mocks( @state )
+    end
   end
 
   context "#stage_generate_mocks" do
@@ -304,7 +375,7 @@ describe TestBuildExecutor do
         :testable => @testable,
         :name     => :MockFoo
       }
-      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => [] )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :lock => Mutex.new, :context => :test, :options => [] )
     end
 
     it "generates and marks fresh the mock when the dependency tracker reports it stale" do
@@ -319,6 +390,14 @@ describe TestBuildExecutor do
       allow(@dependinator).to receive(:stale?).and_return( false )
       expect(@generator).to_not receive(:generate_mock)
       expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "logs a summary line stating how many mocks were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping mock generation for 1 mock -- nothing changed" )
 
       @executor.stage_generate_mocks( @state )
     end
@@ -345,6 +424,59 @@ describe TestBuildExecutor do
     end
   end
 
+  context "#stage_collect_runner_details" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@test_context_extractor).to receive(:collect_test_runner_details)
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name     => 'a_test',
+        :filepath => 'test/TestFoo.c',
+        :runner   => { :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'build/preprocess/files/TestFoo.c' }
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
+    end
+
+    it "parses test case names when the runner target the dependency tracker reports is stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@test_context_extractor).to receive(:collect_test_runner_details).with( 'test/TestFoo.c', 'build/preprocess/files/TestFoo.c' )
+
+      @executor.stage_collect_runner_details( @state )
+    end
+
+    it "does nothing when the runner target the dependency tracker reports is unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@test_context_extractor).to_not receive(:collect_test_runner_details)
+
+      @executor.stage_collect_runner_details( @state )
+    end
+
+    it "registers the same target and meta stage 13 uses for the runner itself" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@dependinator).to receive(:register).with(
+        'build/test/runners/TestFoo_runner.c',
+        files: ['test/TestFoo.c'],
+        meta:  { test_runner: nil, unity: nil, test_preprocessor_tests: true }
+      )
+
+      @executor.stage_collect_runner_details( @state )
+    end
+
+    it "logs a summary line stating how many test files' test case name parsing was recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping test case name parsing for 1 test file -- nothing changed" )
+
+      @executor.stage_collect_runner_details( @state )
+    end
+  end
+
   context "#stage_generate_runners" do
     before(:each) do
       stub_batchinator_exec()
@@ -359,7 +491,7 @@ describe TestBuildExecutor do
         :filepath => 'test/TestFoo.c',
         :runner   => { :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'test/TestFoo.c' }
       )
-      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => [] )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
     end
 
     it "generates and marks fresh the runner when the dependency tracker reports it stale" do
@@ -374,6 +506,14 @@ describe TestBuildExecutor do
       allow(@dependinator).to receive(:stale?).and_return( false )
       expect(@generator).to_not receive(:generate_test_runner)
       expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_generate_runners( @state )
+    end
+
+    it "logs a summary line stating how many test runners were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping test runner generation for 1 test runner -- nothing changed" )
 
       @executor.stage_generate_runners( @state )
     end
@@ -436,9 +576,34 @@ describe TestBuildExecutor do
       expect( @testable.runner[:input_filepath] ).to eq('build/preprocess/files/TestFoo.c')
     end
 
-    it "still collects build-directive context every run, regardless of staleness" do
-      allow(@dependinator).to receive(:stale?).and_return( false )
+    it "scans and caches source directive macros when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:preprocess_test_file).and_return( 'build/preprocess/files/TestFoo.c' )
+
       expect(@test_context_extractor).to receive(:collect_simple_context_from_file)
+      expect(@test_context_extractor).to receive(:store_build_directives_cache).with(
+        filepath: 'test/TestFoo.c', cache_filepath: 'build/preprocess/build_directives/a_test/TestFoo.c_source_files.yml'
+      )
+      expect(@test_context_extractor).to_not receive(:load_build_directives_cache)
+
+      @executor.stage_preprocess_test_files( @state )
+    end
+
+    it "recalls cached source directive macros instead of scanning when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@test_context_extractor).to_not receive(:collect_simple_context_from_file)
+      expect(@test_context_extractor).to receive(:load_build_directives_cache).with(
+        filepath: 'test/TestFoo.c', cache_filepath: 'build/preprocess/build_directives/a_test/TestFoo.c_source_files.yml'
+      )
+
+      @executor.stage_preprocess_test_files( @state )
+    end
+
+    it "logs a summary line stating how many test files' preprocessing (and source directive macros) were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping test file preprocessing for 1 test file -- nothing changed" )
 
       @executor.stage_preprocess_test_files( @state )
     end

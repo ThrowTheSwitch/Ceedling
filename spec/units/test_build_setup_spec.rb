@@ -30,6 +30,7 @@ describe TestBuildSetup do
     end
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
+    allow(@reportinator).to receive(:generate_progress).and_return( '' )
     allow(@loginator).to receive(:log)
     allow(@loginator).to receive(:log_list)
 
@@ -37,6 +38,7 @@ describe TestBuildSetup do
     allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
     allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath).and_return( 'build/preprocess/raw/Foo.txt' )
     allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.c.yml' )
+    allow(@file_path_utils).to receive(:form_test_build_directives_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/Foo.c.yml' )
 
     # Default: dependency tracker reports every target fresh (not stale).
     # Tests below override this per test case via a blanket `stale?` stub,
@@ -89,7 +91,113 @@ describe TestBuildSetup do
       :preprocess_defines => [],
       :search_paths       => []
     )
-    @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => [] )
+    @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => [], :lock => Mutex.new )
+  end
+
+  context "#stage_collect_test_context" do
+    before(:each) do
+      allow(@test_context_extractor).to receive(:collect_simple_context_from_file)
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_partials_config).and_return( {} )
+      allow(@test_context_extractor).to receive(:store_build_directives_cache)
+      allow(@test_context_extractor).to receive(:load_build_directives_cache)
+      allow(@include_pathinator).to receive(:validate_test_build_directive_paths)
+      allow(@include_pathinator).to receive(:validate_header_files_collection).and_return( [] )
+      allow(@include_pathinator).to receive(:augment_environment_header_files)
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+      allow(@configurator).to receive(:project_use_partials).and_return( false )
+    end
+
+    context "when preprocessing is enabled" do
+      before(:each) do
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      end
+
+      it "scans #includes, build directive include paths, and Partials configuration, then caches the build directives, when the cache is stale" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+
+        expect(@test_context_extractor).to receive(:collect_simple_context_from_file).with(
+          'test/TestFoo.c', nil,
+          TestContextExtractor::Context::INCLUDES,
+          TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS,
+          TestContextExtractor::Context::PARTIALS_CONFIGURATION
+        )
+        expect(@test_context_extractor).to receive(:store_build_directives_cache).with(
+          filepath: 'test/TestFoo.c', cache_filepath: 'build/preprocess/build_directives/a_test/Foo.c.yml'
+        )
+        expect(@dependinator).to receive(:mark_fresh).with( 'build/preprocess/build_directives/a_test/Foo.c.yml' )
+        expect(@test_context_extractor).to_not receive(:load_build_directives_cache)
+
+        @setup.stage_collect_test_context( @state )
+      end
+
+      it "scans only #includes and Partials configuration, recalling build directives from cache, when the cache is fresh" do
+        allow(@dependinator).to receive(:stale?).and_return( false )
+
+        expect(@test_context_extractor).to receive(:collect_simple_context_from_file).with(
+          'test/TestFoo.c', nil,
+          TestContextExtractor::Context::INCLUDES,
+          TestContextExtractor::Context::PARTIALS_CONFIGURATION
+        )
+        expect(@test_context_extractor).to receive(:load_build_directives_cache).with(
+          filepath: 'test/TestFoo.c', cache_filepath: 'build/preprocess/build_directives/a_test/Foo.c.yml'
+        )
+        expect(@test_context_extractor).to_not receive(:store_build_directives_cache)
+        expect(@dependinator).to_not receive(:mark_fresh)
+
+        @setup.stage_collect_test_context( @state )
+      end
+    end
+
+    context "when preprocessing is disabled" do
+      before(:each) do
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+      end
+
+      it "also scans build directive source files and test runner details, and caches build directives, when the cache is stale" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+
+        expect(@test_context_extractor).to receive(:collect_simple_context_from_file).with(
+          'test/TestFoo.c', nil,
+          TestContextExtractor::Context::INCLUDES,
+          TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS,
+          TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES,
+          TestContextExtractor::Context::TEST_RUNNER_DETAILS
+        )
+
+        @setup.stage_collect_test_context( @state )
+      end
+
+      it "still scans test runner details when the build directives cache is fresh" do
+        allow(@dependinator).to receive(:stale?).and_return( false )
+
+        expect(@test_context_extractor).to receive(:collect_simple_context_from_file).with(
+          'test/TestFoo.c', nil,
+          TestContextExtractor::Context::INCLUDES,
+          TestContextExtractor::Context::TEST_RUNNER_DETAILS
+        )
+
+        @setup.stage_collect_test_context( @state )
+      end
+    end
+
+    it "logs one summary line stating how many test files' build directives were recalled from cache" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping build directive macro scanning for 1 test file -- nothing changed" )
+
+      @setup.stage_collect_test_context( @state )
+    end
+
+    it "logs no summary line when every test file's build directives needed scanning" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@loginator).to_not receive(:log).with( /Skipping build directive macro scanning/ )
+
+      @setup.stage_collect_test_context( @state )
+    end
   end
 
   context "#stage_collect_preprocessor_context (directives-only pass)" do
@@ -134,6 +242,23 @@ describe TestBuildSetup do
 
       @setup.stage_collect_preprocessor_context( @state )
     end
+
+    it "logs a summary line stating how many test files' directives-only output was recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping directives-only preprocessing for 1 test file -- nothing changed" )
+
+      @setup.stage_collect_preprocessor_context( @state )
+    end
+
+    it "logs no summary line when every test file's directives-only output needed regenerating" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.txt' )
+
+      expect(@loginator).to_not receive(:log).with( /Skipping directives-only preprocessing/ )
+
+      @setup.stage_collect_preprocessor_context( @state )
+    end
   end
 
   context "#stage_collect_preprocessor_context (bare-includes pass)" do
@@ -165,6 +290,22 @@ describe TestBuildSetup do
       @setup.stage_collect_preprocessor_context( @state )
 
       expect( @testable.preprocess[:includes] ).to eq( cached_includes )
+    end
+
+    it "logs a summary line stating how many test files' #includes were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping #include extraction for 1 test file -- nothing changed" )
+
+      @setup.stage_collect_preprocessor_context( @state )
+    end
+
+    it "logs no summary line when every test file's #includes needed extracting" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@loginator).to_not receive(:log).with( /Skipping #include extraction/ )
+
+      @setup.stage_collect_preprocessor_context( @state )
     end
 
     it "registers the test file as the sole antecedent, with preprocess flags/defines/search paths as meta" do

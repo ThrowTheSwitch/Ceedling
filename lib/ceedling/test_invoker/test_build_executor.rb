@@ -54,6 +54,7 @@ class TestBuildExecutor
   # produced it.
   def stage_preprocess_partial_headers(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
+    skipped = 0
 
     state.partials_headers.each do |details|
       config   = details[:config]
@@ -73,10 +74,20 @@ class TestBuildExecutor
 
       next if details[:stale]
 
+      msg = @reportinator.generate_module_progress(
+        operation:   'Skipping partial header preprocessing for',
+        module_name: name,
+        filename:    File.basename( config.filepath )
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+      skipped += 1
+
       config.directives_only_filepath = target
       config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
       config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
     end
+
+    log_skip_summary( task: "partial header preprocessing", count: skipped, noun: "headers" )
 
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
@@ -149,6 +160,7 @@ class TestBuildExecutor
   # partial's source file rather than its header.
   def stage_preprocess_partial_sources(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
+    skipped = 0
 
     state.partials_sources.each do |details|
       config   = details[:config]
@@ -168,10 +180,20 @@ class TestBuildExecutor
 
       next if details[:stale]
 
+      msg = @reportinator.generate_module_progress(
+        operation:   'Skipping partial source preprocessing for',
+        module_name: name,
+        filename:    File.basename( config.filepath )
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+      skipped += 1
+
       config.directives_only_filepath = target
       config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
       config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
     end
+
+    log_skip_summary( task: "partial source preprocessing", count: skipped, noun: "sources" )
 
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
@@ -347,6 +369,7 @@ class TestBuildExecutor
   def stage_preprocess_mocks(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
     extras = (@configurator.cmock_treat_inlines == :include)
+    skipped = 0
 
     # Register every mock's preprocessed-header target and settle its staleness
     # up front (sequentially -- cheap, no subprocess work), since it gates both
@@ -370,7 +393,19 @@ class TestBuildExecutor
 
       mock[:preprocessed_target] = target
       mock[:stale]               = @dependinator.stale?( target )
+
+      next if mock[:stale]
+
+      msg = @reportinator.generate_module_progress(
+        operation:   'Skipping mock preprocessing for',
+        module_name: testable.name,
+        filename:    File.basename( details[:source] )
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+      skipped += 1
     end
+
+    log_skip_summary( task: "mock preprocessing", count: skipped, noun: "mocks" )
 
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
@@ -429,6 +464,7 @@ class TestBuildExecutor
   # Stage 10: Generate mocks for all tests.
   def stage_generate_mocks(state)
     cmock_meta = @configurator.project_config_hash[:cmock]
+    skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
       details  = mock[:details]
@@ -456,7 +492,16 @@ class TestBuildExecutor
       # mock's own antecedents changed.
       @dependinator.register( target, files: [details[:input], mock_header], meta: { cmock: cmock_meta } )
 
-      next unless @dependinator.stale?( target )
+      unless @dependinator.stale?( target )
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping mock generation for',
+          module_name: testable.name,
+          filename:    details[:name]
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped += 1 }
+        next
+      end
 
       arg_hash = {
         context:        state.context,
@@ -470,11 +515,20 @@ class TestBuildExecutor
 
       @dependinator.mark_fresh( target )
     end
+
+    log_skip_summary( task: "mock generation", count: skipped, noun: "mocks" )
   end
 
   # Stage 11: Preprocess test files and extract source build directives.
+  #
+  # A test file's TEST_SOURCE_FILE() results depend on exactly the same file,
+  # flags, defines, and search paths already tracked for the preprocessing step
+  # itself, so the same staleness answer covers both: when the preprocessed
+  # output is already current, its build directive macros are recalled from a
+  # small cache instead of being scanned again.
   def stage_preprocess_test_files(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
+    skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath                 = testable.filepath
@@ -494,7 +548,9 @@ class TestBuildExecutor
         meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
       )
 
-      if @dependinator.stale?( target )
+      stale = @dependinator.stale?( target )
+
+      if stale
         arg_hash = {
           test:                     name,
           filepath:                 filepath,
@@ -511,35 +567,78 @@ class TestBuildExecutor
 
         @dependinator.mark_fresh( target )
       else
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping test file preprocessing for',
+          module_name: name,
+          filename:    filename
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped += 1 }
+
         _filepath = target
       end
 
       state.lock.synchronize { testable.runner[:input_filepath] = _filepath }
 
-      msg = @reportinator.generate_progress( "Parsing #{filename} for test source directive macros" )
-      @loginator.log( msg )
+      source_files_cache = @file_path_utils.form_preprocessed_source_files_cache_filepath( filepath, name )
 
-      if fallback
-        _filepath = filepath
+      if stale
+        msg = @reportinator.generate_progress( "Parsing #{filename} for test source directive macros" )
+        @loginator.log( msg )
+
+        if fallback
+          _filepath = filepath
+        else
+          _filepath = @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, name )
+        end
+
+        @context_extractor.collect_simple_context_from_file(
+          _filepath,
+          filepath,
+          TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
+        )
+        @context_extractor.store_build_directives_cache( filepath: filepath, cache_filepath: source_files_cache )
       else
-        _filepath = @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, name )
+        msg = @reportinator.generate_progress( "Recalling cached source directive macros for #{filename}" )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        @context_extractor.load_build_directives_cache( filepath: filepath, cache_filepath: source_files_cache )
       end
-
-      @context_extractor.collect_simple_context_from_file(
-        _filepath,
-        filepath,
-        TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
-      )
 
       state.testables.each do |_, t|
         validate_build_directive_source_files( test: name, filepath: t.filepath )
       end
     end
+
+    log_skip_summary( task: "test file preprocessing", count: skipped, noun: "test files" )
   end
 
   # Stage 12: Collect test runner details (test case names) from preprocessed test files.
+  #
+  # Test case names exist only to feed stage 13's runner generation, so this
+  # stage checks the same runner target stage 13 uses and does nothing when
+  # that target is already current -- there's nothing downstream left to feed.
+  # Registering the same target twice across the two stages is harmless:
+  # registration accumulates rather than overwrites, and only stage 13 ever
+  # marks it fresh, so both stages agree on the same answer.
   def stage_collect_runner_details(state)
+    skipped = 0
+
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
+      target = testable.runner[:output_filepath]
+
+      @dependinator.register( target, files: [testable.filepath], meta: runner_target_meta() )
+
+      unless @dependinator.stale?( target )
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping test case name parsing for',
+          module_name: testable.name,
+          filename:    File.basename( testable.filepath )
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped += 1 }
+        next
+      end
+
       msg = @reportinator.generate_module_progress(
         operation:   'Parsing test case names',
         module_name: testable.name,
@@ -549,6 +648,8 @@ class TestBuildExecutor
 
       @context_extractor.collect_test_runner_details( testable.filepath, testable.runner[:input_filepath] )
     end
+
+    log_skip_summary( task: "test case name parsing", count: skipped, noun: "test files" )
   end
 
   # Stage 13: Generate test runner files.
@@ -568,23 +669,23 @@ class TestBuildExecutor
   # so toggling this flag between runs (with no other change) must still be
   # able to invalidate the target.
   def stage_generate_runners(state)
-    test_runner_meta = @configurator.project_config_hash[:test_runner]
-    unity_meta       = @configurator.project_config_hash[:unity]
+    skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       target = testable.runner[:output_filepath]
 
-      @dependinator.register(
-        target,
-        files: [testable.filepath],
-        meta:  {
-          test_runner:              test_runner_meta,
-          unity:                    unity_meta,
-          test_preprocessor_tests:  @configurator.project_use_test_preprocessor_tests
-        }
-      )
+      @dependinator.register( target, files: [testable.filepath], meta: runner_target_meta() )
 
-      next unless @dependinator.stale?( target )
+      unless @dependinator.stale?( target )
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping test runner generation for',
+          module_name: testable.name,
+          filename:    File.basename( testable.filepath )
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped += 1 }
+        next
+      end
 
       arg_hash = {
         context:         state.context,
@@ -599,6 +700,8 @@ class TestBuildExecutor
 
       @dependinator.mark_fresh( target )
     end
+
+    log_skip_summary( task: "test runner generation", count: skipped, noun: "test runners" )
   end
 
   # Stage 15: Compile all test build objects in parallel.
@@ -612,22 +715,28 @@ class TestBuildExecutor
   # reports a skipped executable's cached result through both fixture-execute
   # hooks regardless, so consumers of *that* pair always see every test.
   def stage_build_objects(state)
+    skipped = 0
+
     @batchinator.exec(workload: :compile, things: state.objects_list) do |obj|
       src = @file_finder.find_build_input_file( filepath: obj[:obj], context: state.context )
-      compile_test_component(
+      compiled = compile_test_component(
         context: state.context,
         test:    obj[:test],
         source:  src,
         object:  obj[:obj],
         state:   state
       )
+      state.lock.synchronize { skipped += 1 } unless compiled
     end
+
+    log_skip_summary( task: "compilation", count: skipped, noun: "objects" )
   end
 
   # Stage 16: Link test executables.
   def stage_build_executables(state)
     lib_args  = convert_libraries_to_arguments()
     lib_paths = get_library_paths_to_arguments()
+    skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       remove_partials_source_objects( testable.objects, testable.partials.configs )
@@ -653,6 +762,14 @@ class TestBuildExecutor
         generate_executable_now( **arg_hash )
 
         @dependinator.mark_fresh( testable.executable )
+      else
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping linking for',
+          module_name: testable.name,
+          filename:    File.basename( testable.executable )
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped += 1 }
       end
 
       # Stage 17 relies on this rather than a second `stale?` call -- by the
@@ -661,6 +778,8 @@ class TestBuildExecutor
       # fresh `stale?` query would always answer false.
       state.lock.synchronize { testable.executable_rebuilt = stale }
     end
+
+    log_skip_summary( task: "linking", count: skipped, noun: "executables" )
   end
 
   # Stage 17: Execute test fixtures and collect results.
@@ -669,6 +788,8 @@ class TestBuildExecutor
   # cached results on disk from whenever it was last built -- Generator#generate_test_results
   # reports those instead of actually (re)running it, per `skipped:` below.
   def stage_execute(state)
+    skipped = 0
+
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
         # Clear out any stale prior result (e.g. a lingering `.fail` from a test
@@ -676,6 +797,16 @@ class TestBuildExecutor
         # for every test regardless of whether it's about to run, which would
         # destroy the still-valid cached result of a test left unchanged.
         clean_test_results( testable.paths[:results], testable.name ) if testable.executable_rebuilt
+
+        unless testable.executable_rebuilt
+          msg = @reportinator.generate_module_progress(
+            operation:   'Skipping test execution for',
+            module_name: testable.name,
+            filename:    File.basename( testable.executable )
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+          state.lock.synchronize { skipped += 1 }
+        end
 
         arg_hash = {
           context:       state.context,
@@ -692,6 +823,8 @@ class TestBuildExecutor
         @plugin_manager.post_test( testable.filepath )
       end
     end
+
+    log_skip_summary( task: "test execution", count: skipped, noun: "tests", reason: "reusing cached results" )
   end
 
   # -----------------------------------------------------------------------
@@ -778,7 +911,9 @@ class TestBuildExecutor
 
   private
 
-  # Compile a single C or assembly source file into an object file.
+  # Compile a single C or assembly source file into an object file. Returns
+  # whether a real compile actually happened, so the caller can report how
+  # many objects across the whole build needed nothing done.
   def compile_test_component(context:, test:, source:, object:, state:)
     testable     = state.testables[test.to_sym]
     defines      = testable.compile_defines
@@ -789,7 +924,7 @@ class TestBuildExecutor
       flags = testable.compile_flags
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
 
-      return unless stale
+      return log_compile_skip( test: test, source: source ) unless stale
 
       arg_hash = {
         tool:         @configurator.tools_test_compiler,
@@ -810,7 +945,7 @@ class TestBuildExecutor
       flags = testable.assembler_flags
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
 
-      return unless stale
+      return log_compile_skip( test: test, source: source ) unless stale
 
       arg_hash = {
         tool:         @configurator.tools_test_assembler,
@@ -827,7 +962,7 @@ class TestBuildExecutor
 
       @generator.generate_object_file_asm( **arg_hash )
     else
-      return
+      return false
     end
 
     # A real (re)compile just happened -- register_gcc_deps_file again to pick
@@ -836,6 +971,18 @@ class TestBuildExecutor
     # recording this target's new baseline.
     @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.mark_fresh( object )
+
+    true
+  end
+
+  def log_compile_skip(test:, source:)
+    msg = @reportinator.generate_module_progress(
+      operation:   'Skipping compilation for',
+      module_name: test,
+      filename:    File.basename( source )
+    )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    false
   end
 
   # Registers `object`'s antecedents (its source file, plus whatever headers
@@ -916,6 +1063,26 @@ class TestBuildExecutor
     objects.delete_if do |filepath|
       modules.include?( File.basename( filepath ).ext() )
     end
+  end
+
+  # A test runner's content comes from two configuration sections plus a flag
+  # governing where its test case names came from -- shared here so stages 12
+  # and 13 always register the exact same meta for the same target.
+  def runner_target_meta()
+    {
+      test_runner:              @configurator.project_config_hash[:test_runner],
+      unity:                    @configurator.project_config_hash[:unity],
+      test_preprocessor_tests:  @configurator.project_use_test_preprocessor_tests
+    }
+  end
+
+  # States, in one line, how many targets a build step left untouched because nothing
+  # about them needed attention this run. Silent when nothing was skipped, so a full
+  # rebuild's output isn't cluttered with zero counts.
+  def log_skip_summary(task:, count:, noun:, reason: "nothing changed")
+    return if count == 0
+    singular_noun = noun.sub(/s$/, '')
+    @loginator.log( "Skipping #{task} for #{count} #{count == 1 ? singular_noun : noun} -- #{reason}" )
   end
 
 end

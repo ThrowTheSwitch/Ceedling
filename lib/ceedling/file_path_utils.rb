@@ -226,6 +226,24 @@ class FilePathUtils
     form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_RAW_DIRECTIVES_ONLY_DIR)
   end
 
+  def form_test_preprocess_build_directives_path(name, context: nil)
+    form_named_path(@configurator.project_test_preprocess_build_directives_path, name)
+  end
+
+  # Where a test file's own #include/build-directive scan results are cached, keyed by
+  # the test file's own name so each test's cache lives alongside its other
+  # preprocessing artifacts.
+  def form_test_build_directives_cache_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_build_directives_path, subdir, File.basename(filepath) + EXTENSION_CORE_YAML )
+  end
+
+  # Where a test file's TEST_SOURCE_FILE() results are cached once its preprocessed
+  # output has been generated -- kept distinct from the raw-file cache above since the
+  # two are populated at different points in the pipeline from different content.
+  def form_preprocessed_source_files_cache_filepath(filepath, subdir)
+    return File.join( @configurator.project_test_preprocess_build_directives_path, subdir, File.basename(filepath) + '_source_files' + EXTENSION_CORE_YAML )
+  end
+
   def form_test_build_cache_path(filepath)
     return File.join( @configurator.project_test_build_cache_path, File.basename(filepath) )
   end
@@ -259,7 +277,7 @@ class FilePathUtils
   end
 
   def form_preprocessed_includes_list_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_includes_path, subdir, File.basename(filepath) + @configurator.extension_yaml )
+    return File.join( @configurator.project_test_preprocess_includes_path, subdir, File.basename(filepath) + EXTENSION_CORE_YAML )
   end
 
   def form_preprocessed_file_filepath(filepath, subdir)

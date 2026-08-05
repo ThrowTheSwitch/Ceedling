@@ -38,6 +38,9 @@ describe ReleaseBuildExecutor do
     allow(@file_path_utils).to receive(:form_release_build_list_filepath).and_return( 'build/release/out/list' )
     allow(@file_path_utils).to receive(:form_release_dependencies_filepath).and_return( 'build/release/dependencies/deps' )
 
+    allow(@reportinator).to receive(:generate_progress).and_return( '' )
+    allow(@loginator).to receive(:log)
+
     # Default: no prior `.d` file on disk, and the tracker reports every target
     # stale -- i.e. every real build in this spec proceeds as an unconditional
     # fresh compile/link unless a test overrides `stale?` to exercise the skip path.
@@ -122,6 +125,28 @@ describe ReleaseBuildExecutor do
       @executor.compile_objects( @state )
     end
 
+    it "logs a summary line stating how many objects were recalled from cache" do
+      allow(@file_finder).to receive(:find_build_input_file).and_return( 'src/foo.c' )
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping compilation for 1 object -- nothing changed" )
+
+      @state.objects = ['build/release/out/foo.o']
+      @executor.compile_objects( @state )
+    end
+
+    it "logs no summary line when every object needed compiling" do
+      allow(@file_finder).to receive(:find_build_input_file).and_return( 'src/foo.c' )
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@generator).to receive(:generate_object_file_c)
+
+      expect(@loginator).to_not receive(:log).with( /Skipping compilation/ )
+
+      @state.objects = ['build/release/out/foo.o']
+      @executor.compile_objects( @state )
+    end
+
     it "registers the object's source before checking staleness, and its freshly-written gcc deps file after a real compile" do
       allow(@file_finder).to receive(:find_build_input_file).and_return( 'src/foo.c' )
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
@@ -163,6 +188,23 @@ describe ReleaseBuildExecutor do
 
       expect( @state.executable_rebuilt ).to be(false)
     end
+
+    it "logs a summary line stating how many executables were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@loginator).to receive(:log).with( "Skipping linking for 1 executable -- nothing changed" )
+
+      @executor.link( @state )
+    end
+
+    it "logs no summary line when the executable needed linking" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_executable_file)
+
+      expect(@loginator).to_not receive(:log).with( /Skipping linking/ )
+
+      @executor.link( @state )
+    end
   end
 
   context "#artifactinate" do
@@ -181,6 +223,25 @@ describe ReleaseBuildExecutor do
     it "does nothing when the executable was not rebuilt" do
       @state.executable_rebuilt = false
       expect(@file_wrapper).to_not receive(:cp)
+
+      @executor.artifactinate( @state )
+    end
+
+    it "logs a summary line counting the target, map, and every configured extra artifact when the executable was not rebuilt" do
+      @state.executable_rebuilt = false
+      allow(@configurator).to receive(:release_build_artifacts).and_return( ['README.md', 'CHANGELOG.md'] )
+
+      expect(@loginator).to receive(:log).with( "Skipping artifact collection for 4 artifacts -- nothing changed" )
+
+      @executor.artifactinate( @state )
+    end
+
+    it "logs no summary line when the executable was rebuilt" do
+      @state.executable_rebuilt = true
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
+      allow(@file_wrapper).to receive(:cp)
+
+      expect(@loginator).to_not receive(:log).with( /Skipping artifact collection/ )
 
       @executor.artifactinate( @state )
     end

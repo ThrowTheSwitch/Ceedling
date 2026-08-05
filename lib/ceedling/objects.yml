@@ -164,6 +164,7 @@ test_context_extractor:
   compose:
     - configurator
     - file_wrapper
+    - yaml_wrapper
     - include_factory
     - partializer_config
     - file_path_utils

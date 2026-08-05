@@ -271,4 +271,51 @@ describe FilePathUtils do
     end
   end
 
+  describe '#form_test_preprocess_build_directives_path, #form_test_build_directives_cache_filepath, #form_preprocessed_source_files_cache_filepath' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_test_preprocess_build_directives_path).and_return('build/test/preprocess/build_directives')
+    end
+
+    it 'forms a per-test build directives cache directory path' do
+      expect( @fpu.form_test_preprocess_build_directives_path('TestFoo') )
+        .to eq('build/test/preprocess/build_directives/TestFoo')
+    end
+
+    it 'forms a build directives cache filepath using the fixed internal .yml extension' do
+      expect( @fpu.form_test_build_directives_cache_filepath('test/TestFoo.c', 'TestFoo') )
+        .to eq('build/test/preprocess/build_directives/TestFoo/TestFoo.c.yml')
+    end
+
+    it 'forms a distinct source files cache filepath alongside the build directives cache' do
+      expect( @fpu.form_preprocessed_source_files_cache_filepath('test/TestFoo.c', 'TestFoo') )
+        .to eq('build/test/preprocess/build_directives/TestFoo/TestFoo.c_source_files.yml')
+    end
+  end
+
+  describe '#form_preprocessed_includes_list_filepath' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
+    end
+
+    it 'uses the fixed internal .yml extension regardless of a project-configured :extension ↳ :yaml setting' do
+      expect(@configurator).to_not receive(:extension_yaml)
+      expect( @fpu.form_preprocessed_includes_list_filepath('test/TestFoo.c', 'TestFoo') )
+        .to eq('build/test/preprocess/includes/TestFoo/TestFoo.c.yml')
+    end
+  end
+
 end

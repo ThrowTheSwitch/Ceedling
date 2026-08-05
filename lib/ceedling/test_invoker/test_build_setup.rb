@@ -82,16 +82,32 @@ class TestBuildSetup
         paths[:preprocess_files_raw_directives_only]  = @file_path_utils.form_test_preprocess_files_raw_directives_only_path( name )
       end
 
+      # A test file's own build directive macros are cached here regardless of whether
+      # preprocessing is enabled, so this path is always present.
+      paths[:preprocess_build_directives] = @file_path_utils.form_test_preprocess_build_directives_path( name )
+
       # Create all testable build paths
       testable.paths.each { |_, path| @file_wrapper.mkdir( path ) }
     end
   end
 
   # Stage 2: Collect includes, build directives, and test case context from each test file.
+  #
+  # A test file's #includes and Partials configuration are read fresh every run, since
+  # they carry richer information than a simple cache can hold. Its build directive
+  # macros -- TEST_INCLUDE_PATH() always, and (when preprocessing is off)
+  # TEST_SOURCE_FILE() -- are plain lists of strings, so those are recalled from a small
+  # cache instead of being scanned again when nothing about the file itself has changed.
   def stage_collect_test_context(state)
+    skipped = 0
+
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
       filename = File.basename( filepath )
+
+      cache_target = @file_path_utils.form_test_build_directives_cache_filepath( filepath, testable.name )
+      @dependinator.register( cache_target, files: [filepath] )
+      directives_stale = @dependinator.stale?( cache_target )
 
       contexts = [TestContextExtractor::Context::INCLUDES]
 
@@ -99,10 +115,12 @@ class TestBuildSetup
         msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #includes (fallback for preprocessing failures)" )
         @loginator.log( msg )
 
-        contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
+        if directives_stale
+          contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
 
-        msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
-        @loginator.log( msg )
+          msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
+          @loginator.log( msg )
+        end
 
         msg = @reportinator.generate_progress( "Parsing #{filename} for Partials directive macros" )
         @loginator.log( msg )
@@ -111,15 +129,34 @@ class TestBuildSetup
         msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #includes" )
         @loginator.log( msg )
 
-        contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
-        contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
+        if directives_stale
+          contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
+          contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
+
+          msg = @reportinator.generate_progress( "Parsing #{filename} for build directive macros" )
+          @loginator.log( msg )
+        end
+
         contexts << TestContextExtractor::Context::TEST_RUNNER_DETAILS
 
-        msg = @reportinator.generate_progress( "Parsing #{filename} for build directive macros and test case names" )
+        msg = @reportinator.generate_progress( "Parsing #{filename} for test case names" )
         @loginator.log( msg )
       end
 
+      unless directives_stale
+        msg = @reportinator.generate_progress( "Recalling cached build directive macros for #{filename}" )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+      end
+
       @context_extractor.collect_simple_context_from_file( filepath, nil, *contexts )
+
+      if directives_stale
+        @context_extractor.store_build_directives_cache( filepath: filepath, cache_filepath: cache_target )
+        @dependinator.mark_fresh( cache_target )
+      else
+        @context_extractor.load_build_directives_cache( filepath: filepath, cache_filepath: cache_target )
+        state.lock.synchronize { skipped += 1 }
+      end
 
       validate_mocks_in_use(
         filename: filename,
@@ -132,6 +169,8 @@ class TestBuildSetup
         includes:        @context_extractor.lookup_all_header_includes_list( filepath )
       )
     end
+
+    log_skip_summary( task: "build directive macro scanning", count: skipped, noun: "test files" )
 
     process_project_include_paths()
   end
@@ -187,6 +226,8 @@ class TestBuildSetup
     # via `load_includes_list` rather than just leaving a file on disk for
     # something else to notice, since nothing else reads this list back off
     # disk on its own the way stage 9/11's plain preprocessed-output targets do.
+    skipped_includes = 0
+
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       name     = testable.name
       filepath = testable.filepath
@@ -229,14 +270,19 @@ class TestBuildSetup
           module_name: name,
           filename:    File.basename( filepath )
         )
-        @loginator.log( msg )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped_includes += 1 }
 
         testable.preprocess[:includes] = @preprocessinator.load_includes_list( test: name, filepath: filepath )
       end
     end
 
+    log_skip_summary( task: "#include extraction", count: skipped_includes, noun: "test files" )
+
     # Second pass: generate directives-only preprocessor output after stand-ins exist
     directives_only = @configurator.test_build_preprocess_directives_only_available
+    skipped_directives_only = 0
+
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       next unless directives_only
 
@@ -257,6 +303,14 @@ class TestBuildSetup
       )
 
       unless @dependinator.stale?( target )
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping directives-only preprocessing for',
+          module_name: name,
+          filename:    File.basename( filepath )
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped_directives_only += 1 }
+
         testable.preprocess[:directives_only][:filepath] = target
         next
       end
@@ -285,6 +339,8 @@ class TestBuildSetup
       # run will correctly see this target as still missing and retry.
       @dependinator.mark_fresh( target ) unless testable.preprocess[:directives_only][:filepath].nil?
     end
+
+    log_skip_summary( task: "directives-only preprocessing", count: skipped_directives_only, noun: "test files" ) if directives_only
 
     # Third pass: reconcile includes from all extraction sources and ingest.
     #
@@ -512,6 +568,15 @@ class TestBuildSetup
 
   def testable_symbolize(filepath)
     return (File.basename( filepath ).ext( '' )).to_sym
+  end
+
+  # States, in one line, how many targets a build step left untouched because nothing
+  # about them needed attention this run. Silent when nothing was skipped, so a full
+  # rebuild's output isn't cluttered with zero counts.
+  def log_skip_summary(task:, count:, noun:, reason: "nothing changed")
+    return if count == 0
+    singular_noun = noun.sub(/s$/, '')
+    @loginator.log( "Skipping #{task} for #{count} #{count == 1 ? singular_noun : noun} -- #{reason}" )
   end
 
 end
