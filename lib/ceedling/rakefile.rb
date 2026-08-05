@@ -16,6 +16,7 @@ Dir.glob(File.join(CEEDLING_APPCFG[:ceedling_lib_path], '**/')).each do |dir|
 end
 
 require 'rake'
+require 'rake_patches'
 
 # Let's make sure we remember the task descriptions in case we need them
 Rake::TaskManager.record_task_metadata = true
