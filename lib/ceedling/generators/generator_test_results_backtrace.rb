@@ -13,7 +13,8 @@ class GeneratorTestResultsBacktrace
     @RESULTS_COLLECTOR = Struct.new( :passed, :failed, :ignored, :output, keyword_init:true )
   end
 
-  # Re-runs each test case under gdb to identify which ones crashed and why.
+  # Re-runs each test case (or, for a parameterized test, each group of parameterized
+  # cases -- see `group_test_cases`) under gdb to identify which one(s) crashed and why.
   # Writes the full gdb transcript to a per-test-case log file and assembles a
   # terse crash label (signal + description, optional source line in backticks)
   # for each failing test case. Returns a modified shell_result with regenerated output.
@@ -28,54 +29,83 @@ class GeneratorTestResultsBacktrace
 
     test_name = File.basename( filename, '.*' )
 
-    # Iterate on test cases
-    test_cases.each do |test_case|
-      # Per-test-case log file: <log_path>/<context>/<test_name>/<test_case>.gdb.log
-      log_path = @file_path_utils.form_test_gdb_log( test_name, context: context, name: test_case[:test] )
-      @file_wrapper.mkdir( File.dirname( log_path ) )
-
-      # Build the test fixture to run with our test case of interest
+    # Iterate on test cases, one sub-process run per group (see `group_test_cases`)
+    group_test_cases( test_cases ).each do |group|
+      # Build the test fixture to run with our test case (or parameterized group) of interest
       command = @tool_executor.build_command_line(
         @configurator.tools_test_backtrace_gdb, [],
         gdb_script_filepath,
         executable,
-        test_case[:test]
+        unity_filter_arg( group )
       )
       # Things are gonna go boom, so ignore booms to get output
       command[:options][:boom] = false
 
       crash_result = @tool_executor.exec( command )
 
-      # Sum execution time for each test case
+      # Sum execution time for each sub-process run
       # Note: Running tests separately increases total execution time
       shell_result[:time] += crash_result[:time].to_f()
 
-      test_output = ''
+      unresolved = []
 
-      # Process single test case stats
-      case crash_result[:output]
-      # Success test case
-      when /(^#{filename}.+:PASS\s*$)/
-        test_case_results[:passed]  += 1
-        test_output = $1 # Grab regex match
+      # Attribute each group member its own real result line, if Unity printed one
+      group.each do |test_case|
+        case crash_result[:output]
+        # Success test case
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:PASS\s*$)/
+          test_case_results[:passed]  += 1
+          test_case_results[:output] << $1
 
-      # Ignored test case
-      when /(^#{filename}.+:IGNORE\s*$)/
-        test_case_results[:ignored] += 1
-        test_output = $1 # Grab regex match
+        # Ignored test case
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:IGNORE\s*$)/
+          test_case_results[:ignored] += 1
+          test_case_results[:output] << $1
 
-      when /(^#{filename}.+:FAIL(:.+)?\s*$)/
-        test_case_results[:failed]  += 1
-        test_output = $1 # Grab regex match
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:FAIL(:.+)?\s*$)/
+          test_case_results[:failed]  += 1
+          test_case_results[:output] << $1
 
-      else # Crash failure case
-        test_case_results[:failed]  += 1
+        # No result line for this member -- either it crashed, or it never got to run
+        # because an earlier member in this same group crashed. Resolved below.
+        else
+          unresolved << test_case
+        end
+      end
 
-        # Append full gdb output for this test case to the log
-        @file_wrapper.write( log_path, "=== #{test_case[:test]} ===\n#{crash_result[:output]}\n", 'a' )
+      next if unresolved.empty?
 
-        # Collect file_name and line in which crash occurred
-        matched = crash_result[:output].match( /#{test_case[:test]}\s*\(\)\sat.+#{filename}:(\d+)\n/ )
+      # Prefer whichever unresolved member's own C symbol is actually named in the gdb
+      # backtrace (works regardless of position in the group); fall back to the first
+      # unresolved member if no member's symbol can be found in the transcript (e.g. a
+      # brief crash report with no frame information at all).
+      crashed_case = unresolved.find do |tc|
+        crash_result[:output].match?( /#{Regexp.escape(tc[:symbol])}\s*\(\)\sat/ )
+      end
+      crashed_case ||= unresolved.first
+
+      # Per-test-case log file: <log_path>/<context>/<test_name>/<test_case>.gdb.log
+      log_path = @file_path_utils.form_test_gdb_log( test_name, context: context, name: crashed_case[:test] )
+      @file_wrapper.mkdir( File.dirname( log_path ) )
+      @file_wrapper.write( log_path, "=== #{crashed_case[:test]} ===\n#{crash_result[:output]}\n", 'a' )
+
+      unresolved.each do |test_case|
+        test_case_results[:failed] += 1
+
+        if !test_case.equal?( crashed_case )
+          # An earlier case in this same parameterized group already crashed the
+          # process -- this member never got a chance to run.
+          test_case_results[:output] <<
+            "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: " \
+            "Test case not run -- an earlier case in this parameterized test group crashed"
+          next
+        end
+
+        # Collect file_name and line in which crash occurred.
+        # Match against the actual C symbol (`:symbol`), not the human-facing test name
+        # (`:test`): a parameterized test case crashes inside a generated wrapper function
+        # (`runner_args<N>_<test>`), not a function literally named `<test>(<args>)`.
+        matched = crash_result[:output].match( /#{Regexp.escape(test_case[:symbol])}\s*\(\)\sat.+#{filename}:(\d+)\n/ )
 
         # If we found an error report line containing `test_case() at filename.c:###` in `gdb` output
         if matched
@@ -86,7 +116,7 @@ class GeneratorTestResultsBacktrace
           signal_label = format_signal_label( crash_result[:output] )
 
           # Extract the offending source line (nil for assertion crashes or when unavailable)
-          source_line = extract_source_line( crash_result[:output], test_case[:test], filename )
+          source_line = extract_source_line( crash_result[:output], test_case[:symbol], filename )
 
           # Unity's test executable output is line oriented.
           # Multi-line output is not possible (it looks like random `printf()` statements to the results parser).
@@ -94,7 +124,7 @@ class GeneratorTestResultsBacktrace
           crash_detail = source_line ? "#{NEWLINE_TOKEN}`#{source_line}`" : ''
 
           # Log path appears on its own encoded line so the results parser treats it separately
-          test_output =
+          test_case_results[:output] <<
             "#{filename}:#{line_number}:#{test_case[:test]}:FAIL: Test case crashed" \
             " >> #{signal_label}" \
             "#{crash_detail}" \
@@ -106,20 +136,18 @@ class GeneratorTestResultsBacktrace
           label = format_signal_label( crash_result[:output] )
 
           if !label.empty?
-            test_output =
+            test_case_results[:output] <<
               "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed" \
               " >> #{label}" \
               "#{NEWLINE_TOKEN}(#{log_path})"
           else
-            test_output =
+            test_case_results[:output] <<
               "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: " \
               "Test case crashed (failed to extract `gdb` report)" \
               "#{NEWLINE_TOKEN}(#{log_path})"
           end
         end
       end
-
-      test_case_results[:output] << test_output
     end
 
     # Reset shell result exit code and output
@@ -135,7 +163,8 @@ class GeneratorTestResultsBacktrace
     return shell_result
   end
 
-  # Re-runs each test case individually to determine which ones crashed.
+  # Re-runs each test case (or, for a parameterized test, each group of parameterized
+  # cases -- see `group_test_cases`) individually to determine which one(s) crashed.
   # For crash cases, captures any extra output from the test binary (e.g.
   # assertion messages on stderr) and includes it in the failure report.
   # Returns a modified shell_result with regenerated output.
@@ -146,50 +175,61 @@ class GeneratorTestResultsBacktrace
     # Reset time
     shell_result[:time] = 0
 
-    # Iterate on test cases
-    test_cases.each do |test_case|
-      # Build the test fixture to run with our test case of interest
+    # Iterate on test cases, one sub-process run per group (see `group_test_cases`)
+    group_test_cases( test_cases ).each do |group|
+      # Build the test fixture to run with our test case (or parameterized group) of interest
       command = @tool_executor.build_command_line(
         @configurator.tools_test_fixture_simple_backtrace, [],
         executable,
-        test_case[:test]
+        unity_filter_arg( group )
       )
       # Things are gonna go boom, so ignore booms to get output
       command[:options][:boom] = false
 
       crash_result = @tool_executor.exec( command )
 
-      # Sum execution time for each test case
+      # Sum execution time for each sub-process run
       # Note: Running tests separately increases total execution time
       shell_result[:time] += crash_result[:time].to_f()
 
-      # Process single test case stats
-      case crash_result[:output]
-      # Success test case
-      when /(^#{filename}.+:PASS\s*$)/
-        test_case_results[:passed]  += 1
-        test_output = $1 # Grab regex match
+      crashed = false # Has the actual crash in this group already been attributed?
 
-      # Ignored test case
-      when /(^#{filename}.+:IGNORE\s*$)/
-        test_case_results[:ignored] += 1
-        test_output = $1 # Grab regex match
+      # Attribute each group member its own real result line, if Unity printed one
+      group.each do |test_case|
+        case crash_result[:output]
+        # Success test case
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:PASS\s*$)/
+          test_case_results[:passed]  += 1
+          test_case_results[:output] << $1
 
-      when /(^#{filename}.+:FAIL(:.+)?\s*$)/
-        test_case_results[:failed]  += 1
-        test_output = $1 # Grab regex match
+        # Ignored test case
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:IGNORE\s*$)/
+          test_case_results[:ignored] += 1
+          test_case_results[:output] << $1
 
-      else # Crash failure case
-        test_case_results[:failed]  += 1
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:FAIL(:.+)?\s*$)/
+          test_case_results[:failed]  += 1
+          test_case_results[:output] << $1
 
-        # Collect any non-result, non-blank lines (e.g. assertion messages on stderr)
-        extra = extract_simple_crash_output( crash_result[:output], filename )
-        test_output = "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed"
-        test_output += " >> #{extra.join(NEWLINE_TOKEN)}" unless extra.empty?
+        # No result line for this member -- either it crashed, or it never got to run
+        # because an earlier member in this same group crashed.
+        else
+          test_case_results[:failed] += 1
+
+          if crashed
+            test_case_results[:output] <<
+              "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: " \
+              "Test case not run -- an earlier case in this parameterized test group crashed"
+          else
+            crashed = true
+            # Collect any non-result, non-blank lines (e.g. assertion messages on stderr)
+            extra = extract_simple_crash_output( crash_result[:output], filename )
+            test_output = "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed"
+            test_output += " >> #{extra.join(NEWLINE_TOKEN)}" unless extra.empty?
+            test_case_results[:output] << test_output
+          end
+        end
       end
-
-      # Collect up real and stand-in test results output
-      test_case_results[:output] << test_output
     end
 
     # Reset shell result exit code and output
@@ -207,6 +247,34 @@ class GeneratorTestResultsBacktrace
 
   ### Private ###
   private
+
+  # Groups test cases so each parameterized test's cases are isolated together as one
+  # sub-process run instead of one run per case. Unity's `-n`/`-f` command-line filter
+  # parser treats a comma as a separator between multiple OR'd filter clauses, so an
+  # exact filter can never match a parameterized case's runtime name once it has more
+  # than one argument (e.g. `name(5, 3, 2)`). Grouping by base name and matching each
+  # member's own result line out of the group's single shared sub-run output sidesteps
+  # that limitation entirely. Non-parameterized test cases are unaffected: each forms
+  # its own single-member group, isolated exactly as before.
+  def group_test_cases(test_cases)
+    test_cases.group_by { |test_case| test_case[:test].sub(/\(.*\)\z/, '') }.values
+  end
+
+  # Builds the Unity command-line filter argument for isolating one group (see
+  # `group_test_cases`). A non-parameterized (single-member, no-args) group is isolated
+  # with an exact-match filter as before. A parameterized group is isolated with a
+  # non-strict prefix filter on its shared base name -- the only reliable way to select
+  # such a group, since its members' runtime names contain commas.
+  def unity_filter_arg(group)
+    test_name = group.first[:test]
+
+    if test_name.include?('(')
+      base_name = test_name.sub(/\(.*\)\z/, '')
+      %(-f "#{base_name}")
+    else
+      %(-n "#{test_name}")
+    end
+  end
 
   # Builds a terse crash label from gdb output.
   # Rules:

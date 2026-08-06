@@ -69,7 +69,10 @@ DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
   :name => 'default_test_fixture_simple_backtrace'.freeze,
   :optional => false.freeze,
   :arguments => [
-    '-n ${2}'.freeze # Exact test case name matching flag
+    # Test case matching flag and (quoted) value, fully composed by the caller as
+    # either `-n "<exact name>"` or `-f "<base name>"` -- see
+    # GeneratorTestResultsBacktrace#unity_filter_arg.
+    '${2}'.freeze
     ].freeze
   }
 
@@ -202,7 +205,10 @@ DEFAULT_TEST_BACKTRACE_GDB_TOOL = {
     "--command \"${1}\"".freeze, # Debug script file to run
     '--args'.freeze,
     '${2}'.freeze,               # Test executable
-    '-n ${3}'.freeze             # Exact test case name matching flag
+    # Test case matching flag and (quoted) value, fully composed by the caller as
+    # either `-n "<exact name>"` or `-f "<base name>"` -- see
+    # GeneratorTestResultsBacktrace#unity_filter_arg.
+    '${3}'.freeze
     ].freeze
   }
 

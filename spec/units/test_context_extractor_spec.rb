@@ -391,8 +391,8 @@ describe TestContextExtractor do
       @extractor.collect_context( filepath, input, TestContextExtractor::Context::TEST_RUNNER_DETAILS )
 
       expected = [
-        {:line_number =>  2, :test => 'test_this_function'},
-        {:line_number => 12, :test => 'test_another_function'},
+        {:line_number =>  2, :test => 'test_this_function', :symbol => 'test_this_function'},
+        {:line_number => 12, :test => 'test_another_function', :symbol => 'test_another_function'},
       ]
 
       expect( @extractor.lookup_test_cases( filepath ) ).to eq expected
@@ -411,7 +411,7 @@ describe TestContextExtractor do
         @extractor.collect_context( filepath, input, TestContextExtractor::Context::TEST_RUNNER_DETAILS )
       }.not_to raise_error
 
-      expected = [{ :line_number => 2, :test => 'test_this_function' }]
+      expected = [{ :line_number => 2, :test => 'test_this_function', :symbol => 'test_this_function' }]
       expect( @extractor.lookup_test_cases( filepath ) ).to eq expected
     end
 

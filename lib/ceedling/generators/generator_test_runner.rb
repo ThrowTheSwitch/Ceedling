@@ -62,8 +62,26 @@ class GeneratorTestRunner
     # Unity's runner generator `find_tests()` produces an array of hashes with the following keys...
     # { test:, args:, call:, params:, line_number: }
 
-    # For external use of test case names and line numbers, keep only those pieces of info
-    @test_cases = @test_cases_internal.map {|hash| hash.slice( :test, :line_number )}
+    # For external use, reduce down to test name, runtime C symbol, and line number.
+    # A parameterized test (`:args` populated) is expanded into one entry per TEST_CASE /
+    # TEST_RANGE / TEST_MATRIX row, since Unity's generated runner registers each invocation
+    # under its own name (matching `generate_test_runner.rb`'s `"#{test}(#{args})"` naming) and
+    # runs it through its own wrapper function (`runner_args<N>_<test>`). Collapsing these to a
+    # single bare-name entry breaks exact-match test case isolation (crash handling) for
+    # parameterized tests.
+    @test_cases = @test_cases_internal.flat_map do |hash|
+      if hash[:args].nil? || hash[:args].empty?
+        [ { test: hash[:test], symbol: hash[:test], line_number: hash[:line_number] } ]
+      else
+        hash[:args].each_with_index.map do |args, idx|
+          {
+            test:        "#{hash[:test]}(#{args})",
+            symbol:      "runner_args#{idx + 1}_#{hash[:test]}",
+            line_number: hash[:line_number]
+          }
+        end
+      end
+    end
   end
 
   def extract_test_cases(source_contents)
