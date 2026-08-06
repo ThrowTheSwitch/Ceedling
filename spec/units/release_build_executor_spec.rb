@@ -39,6 +39,7 @@ describe ReleaseBuildExecutor do
     allow(@file_path_utils).to receive(:form_release_dependencies_filepath).and_return( 'build/release/dependencies/deps' )
 
     allow(@reportinator).to receive(:generate_progress).and_return( '' )
+    allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
     allow(@loginator).to receive(:log)
 
     # Default: no prior `.d` file on disk, and the tracker reports every target
@@ -130,8 +131,9 @@ describe ReleaseBuildExecutor do
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping compilation for 1 object -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping compilation for 1 object (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping compilation for 1 object (nothing changed)..." )
       @state.objects = ['build/release/out/foo.o']
       @executor.compile_objects( @state )
     end
@@ -192,8 +194,9 @@ describe ReleaseBuildExecutor do
     it "logs a summary line stating how many executables were recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping linking for 1 executable -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping linking for 1 executable (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping linking for 1 executable (nothing changed)..." )
       @executor.link( @state )
     end
 
@@ -231,8 +234,9 @@ describe ReleaseBuildExecutor do
       @state.executable_rebuilt = false
       allow(@configurator).to receive(:release_build_artifacts).and_return( ['README.md', 'CHANGELOG.md'] )
 
-      expect(@loginator).to receive(:log).with( "Skipping artifact collection for 4 artifacts -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping artifact collection for 4 artifacts (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping artifact collection for 4 artifacts (nothing changed)..." )
       @executor.artifactinate( @state )
     end
 

@@ -51,6 +51,7 @@ describe TestBuildExecutor do
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_progress).and_return( '' )
+    allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
     allow(@loginator).to receive(:log)
     allow(@loginator).to receive(:log_list)
     allow(@test_context_extractor).to receive(:store_build_directives_cache)
@@ -201,8 +202,9 @@ describe TestBuildExecutor do
     it "logs a summary line stating how many objects were recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping compilation for 1 object -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping compilation for 1 object (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping compilation for 1 object (nothing changed)..." )
       @executor.stage_build_objects( @state )
     end
 
@@ -256,8 +258,9 @@ describe TestBuildExecutor do
     it "logs a summary line stating how many executables were recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping linking for 1 executable -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping linking for 1 executable (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping linking for 1 executable (nothing changed)..." )
       @executor.stage_build_executables( @state )
     end
   end
@@ -306,8 +309,9 @@ describe TestBuildExecutor do
       @testable.executable_rebuilt = false
       allow(@generator).to receive(:generate_test_results)
 
-      expect(@loginator).to receive(:log).with( "Skipping test execution for 1 test -- reusing cached results" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping test execution for 1 test (reusing cached results)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping test execution for 1 test (reusing cached results)..." )
       @executor.stage_execute( @state )
     end
   end
@@ -353,8 +357,9 @@ describe TestBuildExecutor do
     it "logs a summary line stating how many mocks' preprocessing was recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping mock preprocessing for 1 mock -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping mock preprocessing for 1 mock (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping mock preprocessing for 1 mock (nothing changed)..." )
       @executor.stage_preprocess_mocks( @state )
     end
   end
@@ -364,6 +369,7 @@ describe TestBuildExecutor do
       stub_batchinator_exec()
 
       allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock' } )
       allow(@file_wrapper).to receive(:mkdir)
 
       @testable = TestInvokerTypes::Testable.new(
@@ -397,8 +403,9 @@ describe TestBuildExecutor do
     it "logs a summary line stating how many mocks were recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping mock generation for 1 mock -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping mock generation for 1 mock (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping mock generation for 1 mock (nothing changed)..." )
       @executor.stage_generate_mocks( @state )
     end
 
@@ -422,6 +429,26 @@ describe TestBuildExecutor do
 
       @executor.stage_generate_mocks( @state )
     end
+
+    it "registers CMock's actual configuration as meta, not project_config_hash's flattened (and therefore always-empty) :cmock entry" do
+      # project_config_hash is flattened -- CMock's settings live there as individual
+      # top-level keys like :cmock_mock_prefix, never as a :cmock section -- so a
+      # config change (e.g. :cmock ↳ :mock_prefix) can only be detected here via
+      # get_cmock_config, the one place CMock's configuration still exists as a
+      # single value.
+      allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Custom' } )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_mock)
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/test/mocks/sub/MockFoo.c',
+        files: anything,
+        meta:  { cmock: { mock_prefix: 'Custom' } }
+      )
+
+      @executor.stage_generate_mocks( @state )
+    end
   end
 
   context "#stage_collect_runner_details" do
@@ -429,6 +456,8 @@ describe TestBuildExecutor do
       stub_batchinator_exec()
 
       allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@configurator).to receive(:get_runner_config).and_return( {} )
+      allow(@configurator).to receive(:get_unity_config).and_return( {} )
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
       allow(@test_context_extractor).to receive(:collect_test_runner_details)
 
@@ -456,13 +485,31 @@ describe TestBuildExecutor do
       @executor.stage_collect_runner_details( @state )
     end
 
+    it "registers the real test runner and Unity configuration as meta, not project_config_hash's flattened (and therefore always-empty) :test_runner/:unity entries" do
+      # project_config_hash is flattened -- these sections live there as individual
+      # top-level keys like :unity_use_param_tests, never as :test_runner/:unity
+      # sections -- so a config change in either can only be detected here via
+      # get_runner_config/get_unity_config.
+      allow(@configurator).to receive(:get_runner_config).and_return( { mock_prefix: 'Custom' } )
+      allow(@configurator).to receive(:get_unity_config).and_return( { use_param_tests: true } )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@dependinator).to receive(:register).with(
+        'build/test/runners/TestFoo_runner.c',
+        files: anything,
+        meta:  { test_runner: { mock_prefix: 'Custom' }, unity: { use_param_tests: true }, test_preprocessor_tests: true }
+      )
+
+      @executor.stage_collect_runner_details( @state )
+    end
+
     it "registers the same target and meta stage 13 uses for the runner itself" do
       allow(@dependinator).to receive(:stale?).and_return( true )
 
       expect(@dependinator).to receive(:register).with(
         'build/test/runners/TestFoo_runner.c',
         files: ['test/TestFoo.c'],
-        meta:  { test_runner: nil, unity: nil, test_preprocessor_tests: true }
+        meta:  { test_runner: {}, unity: {}, test_preprocessor_tests: true }
       )
 
       @executor.stage_collect_runner_details( @state )
@@ -471,8 +518,9 @@ describe TestBuildExecutor do
     it "logs a summary line stating how many test files' test case name parsing was recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping test case name parsing for 1 test file -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping test case name parsing for 1 test file (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping test case name parsing for 1 test file (nothing changed)..." )
       @executor.stage_collect_runner_details( @state )
     end
   end
@@ -482,6 +530,8 @@ describe TestBuildExecutor do
       stub_batchinator_exec()
 
       allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@configurator).to receive(:get_runner_config).and_return( {} )
+      allow(@configurator).to receive(:get_unity_config).and_return( {} )
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
       allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( [] )
@@ -513,8 +563,9 @@ describe TestBuildExecutor do
     it "logs a summary line stating how many test runners were recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping test runner generation for 1 test runner -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping test runner generation for 1 test runner (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping test runner generation for 1 test runner (nothing changed)..." )
       @executor.stage_generate_runners( @state )
     end
 
@@ -603,8 +654,9 @@ describe TestBuildExecutor do
     it "logs a summary line stating how many test files' preprocessing (and source directive macros) were recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping test file preprocessing for 1 test file -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping test file preprocessing for 1 test file (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping test file preprocessing for 1 test file (nothing changed)..." )
       @executor.stage_preprocess_test_files( @state )
     end
   end

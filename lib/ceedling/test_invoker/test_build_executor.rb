@@ -463,7 +463,11 @@ class TestBuildExecutor
 
   # Stage 10: Generate mocks for all tests.
   def stage_generate_mocks(state)
-    cmock_meta = @configurator.project_config_hash[:cmock]
+    # get_cmock_config, not project_config_hash[:cmock]: project_config_hash is
+    # flattened -- CMock's own settings live there as individual top-level keys
+    # like :cmock_mock_prefix, not as a :cmock section -- so this is the only
+    # place that still holds CMock's configuration as a single value to compare.
+    cmock_meta = @configurator.get_cmock_config
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
@@ -1068,10 +1072,15 @@ class TestBuildExecutor
   # A test runner's content comes from two configuration sections plus a flag
   # governing where its test case names came from -- shared here so stages 12
   # and 13 always register the exact same meta for the same target.
+  #
+  # `get_runner_config`/`get_unity_config`, not `project_config_hash[:test_runner]`/
+  # `[:unity]`: project_config_hash is flattened -- each nested section's fields
+  # become individual top-level keys like `:unity_use_param_tests` -- so it never
+  # holds a `:test_runner` or `:unity` section of its own to read back here.
   def runner_target_meta()
     {
-      test_runner:              @configurator.project_config_hash[:test_runner],
-      unity:                    @configurator.project_config_hash[:unity],
+      test_runner:              @configurator.get_runner_config,
+      unity:                    @configurator.get_unity_config,
       test_preprocessor_tests:  @configurator.project_use_test_preprocessor_tests
     }
   end
@@ -1080,9 +1089,8 @@ class TestBuildExecutor
   # about them needed attention this run. Silent when nothing was skipped, so a full
   # rebuild's output isn't cluttered with zero counts.
   def log_skip_summary(task:, count:, noun:, reason: "nothing changed")
-    return if count == 0
-    singular_noun = noun.sub(/s$/, '')
-    @loginator.log( "Skipping #{task} for #{count} #{count == 1 ? singular_noun : noun} -- #{reason}" )
+    msg = @reportinator.generate_skip_summary( task: task, count: count, noun: noun, reason: reason )
+    @loginator.log( msg ) unless msg.nil?
   end
 
 end

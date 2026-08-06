@@ -28,6 +28,11 @@ class Configurator
     # Runner config reference to provide to runner generation
     @runner_config = {} # Default empty hash, replaced by reference below
 
+    # Unity config reference -- kept alongside the above two since project_config_hash
+    # is flattened (nested sections become individual top-level keys like
+    # :unity_use_param_tests) and no longer holds a :unity section of its own to read back.
+    @unity_config = {} # Default empty hash, replaced by reference below
+
     # Note: project_config_hash is an instance variable so constants and accessors created
     # in eval() statements in build() have something of proper scope and persistence to reference
     @project_config_hash = {}
@@ -291,9 +296,12 @@ class Configurator
 
 
   def populate_unity_config(config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
       @reportinator.generate_progress( 'Processing Unity configuration' )
     end
+
+    # Save Unity config reference
+    @unity_config = config[:unity]
 
     if config[:unity][:use_param_tests]
       config[:unity][:defines] << 'UNITY_SUPPORT_TEST_CASES'
@@ -406,6 +414,12 @@ class Configurator
     # Clone because test mock generation is not thread-safe;
     # The mock generator is manufactured for each use with configuration changes for each use.
     return @cmock_config.clone
+  end
+
+
+  def get_unity_config
+    # Clone for the same reason as get_runner_config/get_cmock_config above.
+    return @unity_config.clone
   end
 
 

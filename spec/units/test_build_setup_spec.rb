@@ -31,6 +31,7 @@ describe TestBuildSetup do
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_progress).and_return( '' )
+    allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
     allow(@loginator).to receive(:log)
     allow(@loginator).to receive(:log_list)
 
@@ -185,8 +186,9 @@ describe TestBuildSetup do
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping build directive macro scanning for 1 test file -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping build directive macro scanning for 1 test file (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping build directive macro scanning for 1 test file (nothing changed)..." )
       @setup.stage_collect_test_context( @state )
     end
 
@@ -246,8 +248,9 @@ describe TestBuildSetup do
     it "logs a summary line stating how many test files' directives-only output was recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping directives-only preprocessing for 1 test file -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping directives-only preprocessing for 1 test file (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping directives-only preprocessing for 1 test file (nothing changed)..." )
       @setup.stage_collect_preprocessor_context( @state )
     end
 
@@ -295,8 +298,9 @@ describe TestBuildSetup do
     it "logs a summary line stating how many test files' #includes were recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@loginator).to receive(:log).with( "Skipping #include extraction for 1 test file -- nothing changed" )
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping #include extraction for 1 test file (nothing changed)..." )
 
+      expect(@loginator).to receive(:log).with( "Skipping #include extraction for 1 test file (nothing changed)..." )
       @setup.stage_collect_preprocessor_context( @state )
     end
 

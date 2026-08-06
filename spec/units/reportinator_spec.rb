@@ -227,6 +227,31 @@ describe Reportinator do
   end
 
   # ---------------------------------------------------------------------------
+  # #generate_skip_summary
+  # ---------------------------------------------------------------------------
+
+  describe '#generate_skip_summary' do
+    it 'states the count and default reason, pluralizing the noun' do
+      result = @rp.generate_skip_summary(task: 'compilation', count: 4, noun: 'objects')
+      expect(result).to eq("Skipping compilation for 4 objects (nothing changed)...")
+    end
+
+    it 'singularizes the noun when the count is 1' do
+      result = @rp.generate_skip_summary(task: 'compilation', count: 1, noun: 'objects')
+      expect(result).to eq("Skipping compilation for 1 object (nothing changed)...")
+    end
+
+    it 'uses a custom reason when given' do
+      result = @rp.generate_skip_summary(task: 'test execution', count: 3, noun: 'tests', reason: 'reusing cached results')
+      expect(result).to eq("Skipping test execution for 3 tests (reusing cached results)...")
+    end
+
+    it 'returns nil when nothing was skipped' do
+      expect(@rp.generate_skip_summary(task: 'compilation', count: 0, noun: 'objects')).to be_nil
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # #generate_config_walk
   # ---------------------------------------------------------------------------
 

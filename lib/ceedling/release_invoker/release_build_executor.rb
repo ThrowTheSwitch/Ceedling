@@ -230,9 +230,8 @@ class ReleaseBuildExecutor
   # about them needed attention this run. Silent when nothing was skipped, so a full
   # rebuild's output isn't cluttered with zero counts.
   def log_skip_summary(task:, count:, noun:, reason: "nothing changed")
-    return if count == 0
-    singular_noun = noun.sub(/s$/, '')
-    @loginator.log( "Skipping #{task} for #{count} #{count == 1 ? singular_noun : noun} -- #{reason}" )
+    msg = @reportinator.generate_skip_summary( task: task, count: count, noun: noun, reason: reason )
+    @loginator.log( msg ) unless msg.nil?
   end
 
 end
