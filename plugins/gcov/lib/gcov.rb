@@ -354,8 +354,8 @@ class Gcov < Plugin
 
     shell_result = @tool_executor.exec( command )
 
-    # First line of gcc --version: "gcc (...platform info...) major.minor.patch"
-    version_match = shell_result[:output].match(/^gcc\s+.*\s+(\d+)\.(\d+)\.\d+/)
+    # First line of gcc --version: "gcc[.exe] (...platform info...) major.minor.patch"
+    version_match = shell_result[:output].match(/^gcc(?:#{Regexp.escape(EXTENSION_WIN_EXE)})?\s+.*\s+(\d+)\.(\d+)\.\d+/)
 
     if version_match.nil? || version_match[1].nil? || version_match[2].nil?
       raise CeedlingException.new("Could not collect `gcc` version from its command line")

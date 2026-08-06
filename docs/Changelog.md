@@ -10,6 +10,14 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.1.3] — Prerelease
+
+## 💪 Fixed
+- [#1185](https://github.com/ThrowTheSwitch/Ceedling/issues/1185) Fixed / improved crash handling for parameterized Unity test cases.
+- [#1186](https://github.com/ThrowTheSwitch/Ceedling/issues/1186) Fixed `gcc` version lookup for the Gcov plugin running on Windows.
+- Ensure compilation symbols needed for Partials are injected when `:preprocess` defines are configured.
+- Fixed use of Thor’s Actions#directory to ensure a single options hash.
+
 # [1.1.2] — 2026-07-27
 
 ## 💪 Fixed
