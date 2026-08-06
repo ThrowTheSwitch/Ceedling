@@ -10,7 +10,7 @@ This changelog is complemented by three other documents:
 
 ---
 
-# [1.1.3] — Prerelease
+# [1.1.3] — 2026-08-06
 
 ## 💪 Fixed
 - [#1185](https://github.com/ThrowTheSwitch/Ceedling/issues/1185) Fixed / improved crash handling for parameterized Unity test cases.
