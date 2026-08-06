@@ -232,7 +232,7 @@ describe GeneratorTestResultsBacktrace do
       expect(crash_line).to include('(/build/logs/test/TestUsartModel/testCrash.gdb.log)')
     end
 
-    it 'attributes a crash in a parameterized test to its wrapper symbol, not its display name (issue #1185)' do
+    it 'attributes a crash in a parameterized test to its wrapper symbol, not its display name' do
       test_cases_param = [{
         test:        'test_value_out_of_range_good(101, 1)',
         symbol:      'runner_args1_test_value_out_of_range_good',
@@ -263,7 +263,7 @@ describe GeneratorTestResultsBacktrace do
       expect(crash_line).not_to include('failed to extract')
     end
 
-    it 'handles a SIGABRT crash from assert() — shows assertion text, no source line (issue #1038)' do
+    it 'handles a SIGABRT crash from assert() — shows assertion text, no source line' do
       test_cases_assert = [{ test: 'test_asserting', symbol: 'test_asserting', line_number: 8 }]
 
       allow(@tool_executor).to receive(:exec)
