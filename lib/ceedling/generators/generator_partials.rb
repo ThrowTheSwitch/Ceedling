@@ -8,6 +8,7 @@
 require 'ceedling/file_wrapper'
 require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_types'
+require 'ceedling/c_extractor/c_extractor_constants'
 
 class GeneratorPartials
 
@@ -56,6 +57,24 @@ class GeneratorPartials
   end
 
   private
+
+  # A `CVariableDeclaration`'s `decorators` mixes storage-class specifiers (`static`,
+  # `extern`) with base-type qualifiers (`const`, `volatile`, `restrict`) in their
+  # original source order, since both kinds of keyword lead a declaration the same
+  # way. An `extern` declaration and the variable's own definition both need the
+  # qualifiers reasserted -- omitting them produces a type that disagrees with any
+  # other declaration of the same variable elsewhere in the same translation unit --
+  # but neither may carry a storage-class specifier: `static` would contradict the
+  # external linkage the Partial is establishing, and `extern` is supplied literally
+  # by the caller. Filtering to TYPE_QUALIFIER_KEYWORDS keeps only what belongs on
+  # both forms.
+  #
+  # @param decl [CExtractorTypes::CVariableDeclaration]
+  # @return [String] e.g. "volatile " / "const volatile " / "" (trailing space when non-empty)
+  def qualifier_prefix(decl)
+    quals = decl.decorators.select { |kw| CExtractorConstants::TYPE_QUALIFIER_KEYWORDS.include?(kw) }
+    quals.empty? ? '' : "#{quals.join(' ')} "
+  end
 
   # Emit a partial header file.
   #
@@ -106,8 +125,12 @@ class GeneratorPartials
         anything_emitted = true
       when CExtractorTypes::CVariableDeclaration
         next unless include_variables
-        # If there is no array involved, array_suffix collapses to an empty string
-        io << "extern #{item.type} #{item.name}#{item.array_suffix};\n"
+        # If there is no array involved, array_suffix collapses to an empty string.
+        # A leading const/volatile/restrict on the original declaration (see
+        # qualifier_prefix) is part of the variable's type and belongs here too,
+        # so this extern agrees with the definition and any other declaration of
+        # the same variable elsewhere in the translation unit.
+        io << "extern #{qualifier_prefix(item)}#{item.type} #{item.name}#{item.array_suffix};\n"
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CFunctionDefinition, CExtractorTypes::CFunctionDeclaration
@@ -170,7 +193,12 @@ class GeneratorPartials
     c_module.element_sequence.each do |item|
       case item
       when CExtractorTypes::CVariableDeclaration
-        io << "#{item.text}\n"
+        # `item.text` is the declaration with its leading decorator run removed (see
+        # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict
+        # qualifier on the base type is reapplied here via qualifier_prefix -- this
+        # definition's type must match the extern declaration emitted for the same
+        # variable in generate_header.
+        io << "#{qualifier_prefix(item)}#{item.text}\n"
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CFunctionDefinition
