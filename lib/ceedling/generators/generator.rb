@@ -35,6 +35,21 @@ class Generator
     @backtrace = @generator_test_results_backtrace
   end
 
+  # A module's typedefs and aggregate definitions are identical regardless of whether a test
+  # file tests it, mocks it, or both, so they're generated once into their own header here
+  # rather than duplicated by generate_partial_implementation and generate_partial_interface.
+  # Returns the bare generated filename (for the caller to add to each header's own includes
+  # list) or nil when the module has no typedefs or aggregate definitions to share.
+  def generate_partial_types(name:, c_module:, output_path:)
+    arg_hash = {
+      :name => name,
+      :c_module => c_module,
+      :output_path => output_path
+    }
+
+    return @generator_partials.generate_types( **arg_hash )
+  end
+
   def generate_partial_interface(test:, partial:, function_declarations:, includes:, c_module:, input_filepath:, output_path:)
     msg = @reportinator.generate_module_progress(
       operation: "Generating Partial mockable interface for",

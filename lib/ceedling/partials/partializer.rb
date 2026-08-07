@@ -83,7 +83,7 @@ class Partializer
   end
 
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def remap_implementation_header_includes(name:, includes:, partials:, test: nil)
+  def remap_implementation_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
     _includes = includes.clone()
 
     # Get list of all partialized module names
@@ -95,6 +95,10 @@ class Partializer
       includes: _includes,
       modules: ([name] + partialized_modules)
     )
+
+    # When this module has any typedefs or aggregate definitions, they live in a shared
+    # header generated once and included here rather than duplicated inline.
+    _includes << UserInclude.new(types_header) if types_header
 
     # Remove any duplicates
     Includes.sanitize!(_includes)
@@ -153,7 +157,7 @@ class Partializer
   end
 
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def remap_interface_header_includes(name:, includes:, partials:, test: nil)
+  def remap_interface_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
     _includes = includes.clone()
 
     # Get list of all partialized module names
@@ -165,6 +169,10 @@ class Partializer
       includes: _includes,
       modules: ([name] + partialized_modules)
     )
+
+    # When this module has any typedefs or aggregate definitions, they live in a shared
+    # header generated once and included here rather than duplicated inline.
+    _includes << UserInclude.new(types_header) if types_header
 
     # Remove any duplicates
     Includes.sanitize!(_includes)

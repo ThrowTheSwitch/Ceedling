@@ -10,9 +10,17 @@
 
 #include "Types.h"
 
-void   LightSensor_Init(uint32 nighttime_threshold_lux);
-bool   LightSensor_Sample(void);
-uint32 LightSensor_GetLux(void);
-bool   LightSensor_IsNighttime(void);
+typedef enum
+{
+    LIGHT_LEVEL_DARK   = 0,
+    LIGHT_LEVEL_DIM    = 1,
+    LIGHT_LEVEL_BRIGHT = 2
+} LightLevel_t;
+
+void         LightSensor_Init(uint32 nighttime_threshold_lux);
+bool         LightSensor_Sample(void);
+uint32       LightSensor_GetLux(void);
+bool         LightSensor_IsNighttime(void);
+LightLevel_t LightSensor_GetLightLevel(void);
 
 #endif /* LIGHT_SENSOR_H */

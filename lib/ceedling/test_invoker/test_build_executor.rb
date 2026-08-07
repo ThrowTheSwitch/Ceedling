@@ -183,6 +183,15 @@ class TestBuildExecutor
 
       @partializer.sanitize( module_contents )
 
+      # Generated once and shared by the implementation and interface headers below (via
+      # their own includes lists), so a module tested and mocked in the same test file gets
+      # exactly one C definition of each of its typedefs and aggregate types.
+      types_header = @generator.generate_partial_types(
+        name:        name,
+        c_module:    module_contents,
+        output_path: testable.paths[:partials]
+      )
+
       implementation = @partializer.extract_implementation_functions(
         test:        name,
         partial:     config.module,
@@ -211,10 +220,11 @@ class TestBuildExecutor
         function_definitions: implementation,
         c_module:             module_contents,
         header_includes:      @partializer.remap_implementation_header_includes(
-                                name:     config.module,
-                                includes: (config.source.includes + config.header.includes),
-                                partials: testable.partials.configs,
-                                test:     name
+                                name:         config.module,
+                                includes:     (config.source.includes + config.header.includes),
+                                partials:     testable.partials.configs,
+                                types_header: types_header,
+                                test:         name
                               ),
         source_includes:      @partializer.remap_implementation_source_includes(
                                 name:     config.module,
@@ -236,10 +246,11 @@ class TestBuildExecutor
         partial:               config.module,
         function_declarations: interface,
         includes:              @partializer.remap_interface_header_includes(
-                                 name:     config.module,
-                                 includes: (config.source.includes + config.header.includes),
-                                 partials: testable.partials.configs,
-                                 test:     name
+                                 name:         config.module,
+                                 includes:     (config.source.includes + config.header.includes),
+                                 partials:     testable.partials.configs,
+                                 types_header: types_header,
+                                 test:         name
                                ),
         c_module:              module_contents,
         input_filepath:        config.header.filepath,

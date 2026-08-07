@@ -303,6 +303,13 @@ class FilePathUtils
     return PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
   end
 
+  # A module's typedefs and aggregate (struct/enum/union) definitions are generated into this
+  # standalone header, shared by both the implementation and interface headers below, so a
+  # module tested and mocked in the same file never has its types defined more than once.
+  def form_partial_types_header_filename(_module)
+    return PARTIAL_FILENAME_PREFIX + _module + '_types' + EXTENSION_CORE_HEADER
+  end
+
   def form_mock_partial_interface_header_filename(_module)
     return @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
   end

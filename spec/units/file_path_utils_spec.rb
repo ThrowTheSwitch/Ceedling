@@ -271,4 +271,21 @@ describe FilePathUtils do
     end
   end
 
+  describe '#form_partial_types_header_filename' do
+    before(:each) do
+      @fpu = described_class.new({
+        :configurator => double('configurator'),
+        :file_wrapper => double('file_wrapper')
+      })
+    end
+
+    it 'forms a filename from the module name, the partial prefix, and a _types suffix' do
+      # Mirrors the sibling _interface/_impl header filename conventions -- a shared
+      # location for a module's typedefs and aggregate definitions needs a name
+      # distinct from those two generated headers so all three can coexist.
+      expect( @fpu.form_partial_types_header_filename('LightSensor') )
+        .to eq('ceedling_partial_LightSensor_types.h')
+    end
+  end
+
 end
