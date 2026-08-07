@@ -756,6 +756,7 @@ class Configurator
     blotter &= @configurator_setup.validate_test_preprocessor( config )
     blotter &= @configurator_setup.validate_backtrace( config )
     blotter &= @configurator_setup.validate_threads( config )
+    blotter &= @configurator_setup.validate_partials( config )
     blotter &= @configurator_setup.validate_plugins( config )
 
     # Informational notices

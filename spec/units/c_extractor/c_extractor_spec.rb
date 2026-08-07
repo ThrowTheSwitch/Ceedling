@@ -22,6 +22,58 @@ require 'stringio'
 describe CExtractor do
 
   ###
+  ### setup() / default_max_buffer_length() -- :partials -> :max_extraction_length wiring
+  ###
+  describe "#setup (private method testing)" do
+    # Helper to build a CExtractor with a given configurator double, without wiring the
+    # other collaborators -- default_max_buffer_length only reads @configurator
+    let(:build_extractor) do
+      ->(configurator) do
+        extractor = CExtractor.new(
+          {
+            c_extractor_code_text:     CExtractorCodeText.new,
+            c_extractor_functions:     CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new }),
+            c_extractor_declarations:  CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new }),
+            c_extractor_preprocessing: CExtractorPreprocessing.new({ c_extractor_code_text: CExtractorCodeText.new }),
+            c_extractor_definitions:   CExtractorDefinitions.new({ c_extractor_code_text: CExtractorCodeText.new }),
+            configurator:              configurator,
+            loginator:                 double('Loginator').as_null_object
+          }
+        )
+        extractor.setup()
+        extractor
+      end
+    end
+
+    it "scales :partials_max_extraction_length by 1000 when the configurator provides it" do
+      configurator = double('Configurator', partials_max_extraction_length: 7)
+      extractor = build_extractor.call(configurator)
+
+      expect(extractor.send(:default_max_buffer_length)).to eq(7000)
+    end
+
+    it "falls back to the built-in default when the configurator doesn't provide it" do
+      # A bare double with no stub -- #respond_to? is false, exactly like direct/test
+      # construction of this class where no real project configuration is available.
+      configurator = double('Configurator')
+      extractor = build_extractor.call(configurator)
+
+      expect(extractor.send(:default_max_buffer_length)).to eq(CExtractorConstants::DEFAULT_MAX_FUNCTION_LENGTH)
+    end
+
+    it "setup() itself assigns @max_buffer_length from default_max_buffer_length" do
+      configurator = double('Configurator', partials_max_extraction_length: 3)
+      extractor = build_extractor.call(configurator)
+
+      # @max_buffer_length has no reader; drive behavior through from_string, which raises
+      # once the buffer set up by setup() is exceeded.
+      expect {
+        extractor.from_string(content: ('x' * 3001), chunk_size: 500)
+      }.to raise_error(CeedlingException, /exceeded maximum length of 3000 characters/)
+    end
+  end
+
+  ###
   ### extract_next_feature()
   ###
   describe "#extract_next_feature (private method testing)" do
@@ -55,7 +107,11 @@ describe CExtractor do
             c_extractor_functions:    functions,
             c_extractor_declarations: declarations,
             c_extractor_preprocessing: preprocessing,
-            c_extractor_definitions:  definitions
+            c_extractor_definitions:  definitions,
+            # Bare double (no :partials_max_extraction_length stub) so #respond_to? is
+            # false and CExtractor falls back to its own built-in default buffer length.
+            configurator:             double('Configurator'),
+            loginator:                double('Loginator').as_null_object
           }
         )
         extractor.setup()

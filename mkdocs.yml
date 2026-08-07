@@ -137,6 +137,7 @@ nav:
       - Global Project Settings: configuration/reference/project.md
       - Mixins: configuration/reference/mixins.md
       - Test Build Settings: configuration/reference/test-build.md
+      - Partials Settings: configuration/reference/partials.md
       - Release Build Settings: configuration/reference/release-build.md
       - Search Paths: configuration/reference/paths.md
       - File Collections: configuration/reference/files.md

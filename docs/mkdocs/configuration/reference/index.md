@@ -26,6 +26,13 @@ All top-level keys of the Ceedling project configuration file, each on its own p
 
     Assembly file support for test suite builds.
 
+-   :material-book-open-variant: **[`:partials` — Partials Settings][ref-partials]**
+
+    ---
+
+    Bound how large a single C construct may grow during extraction before
+    Partial generation fails outright rather than searching indefinitely.
+
 -   :material-book-open-variant: **[`:release_build` — Release Build Settings][ref-release-build]**
 
     ---
@@ -150,6 +157,7 @@ All top-level keys of the Ceedling project configuration file, each on its own p
 [ref-project]:       project.md
 [ref-mixins]:        mixins.md
 [ref-test-build]:    test-build.md
+[ref-partials]:      partials.md
 [ref-release-build]: release-build.md
 [ref-paths]:         paths.md
 [ref-files]:         files.md

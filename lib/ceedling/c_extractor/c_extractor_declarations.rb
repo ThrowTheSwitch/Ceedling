@@ -16,12 +16,9 @@ class CExtractorDeclarations
 
   constructor :c_extractor_code_text
 
-  attr_writer :max_line_length
-
   def setup()
     # Aliases
-    @code_text       = @c_extractor_code_text
-    @max_line_length = DEFAULT_MAX_LINE_LENGTH
+    @code_text = @c_extractor_code_text
   end
 
   # Attempts to extract a complete variable declaration from the scanner
@@ -58,11 +55,14 @@ class CExtractorDeclarations
   #   On failure: Resets scanner position to starting position
   #
   # Safety:
-  #   Enforces max_line_length limit to prevent infinite loops on malformed input
+  #   A declaration with no terminating semicolon runs the scan to the end of
+  #   whatever buffer the caller (CExtractor#extract_next_feature) has grown so
+  #   far; that caller is the one place enforcing an overall length ceiling,
+  #   since only it knows how much more of the file remains to try growing into.
   def try_extract_variable(scanner)
     start_pos = scanner.pos
 
-    # Tracks paren, bracket, and brace depth simultaneously with inline string state machine and max_line_length guard — not suitable for collect_balanced()
+    # Tracks paren, bracket, and brace depth simultaneously with an inline string state machine — not suitable for collect_balanced()
     paren_depth = 0
     bracket_depth = 0
     brace_depth = 0
@@ -73,12 +73,6 @@ class CExtractorDeclarations
     # If we reach the end of string scanner, we failed to find something.
     until scanner.eos?
       char = scanner.peek(1)
-
-      # Safety check -- prevent infinite loops on malformed input
-      if (scanner.pos - start_pos) > @max_line_length
-        scanner.pos = start_pos
-        return [false, nil]
-      end
 
       # Handle string literals
       if in_string

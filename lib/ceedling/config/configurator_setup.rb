@@ -744,6 +744,32 @@ class ConfiguratorSetup
     return valid
   end
 
+  # `:max_extraction_length` is a multiplier of 1000 characters, not a raw character count
+  # (project-file ergonomics -- `5000` reads more clearly than `5000000`). The minimum here
+  # keeps that ceiling comfortably above any ordinary single C declaration or function
+  # signature, catching a value so small it would defeat the setting's own purpose (e.g.
+  # someone setting `1000` expecting "1000 characters" rather than "1000x characters").
+  def validate_partials(config)
+    valid = true
+
+    max_extraction_length = config[:partials][:max_extraction_length]
+
+    walk = @reportinator.generate_config_walk( [:partials, :max_extraction_length] )
+
+    case max_extraction_length
+    when Integer
+      if max_extraction_length < 10
+        @loginator.log( "#{walk} must be at least 10 (10,000 characters)", Verbosity::ERRORS )
+        valid = false
+      end
+    else
+      @loginator.log( "#{walk} is not an integer", Verbosity::ERRORS )
+      valid = false
+    end
+
+    return valid
+  end
+
   def validate_plugins(config)
     missing_plugins =
       Set.new( config[:plugins][:enabled] ) -

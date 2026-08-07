@@ -295,6 +295,14 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :preprocess_force_fallback => false,
   },
 
+  :partials => {
+    # A single C construct (declaration, definition, directive, etc.) is extracted into a
+    # growing buffer; this bounds how large that buffer may grow before extraction fails
+    # outright rather than silently dropping an oversized construct and everything after
+    # it in the file. Value is a multiplier of 1000 characters -- 5000 means 5,000,000.
+    :max_extraction_length => 5000,
+  },
+
   # Unlike other top-level entries, :environment is an array (of hashes) to preserve order
   :environment => [],
 

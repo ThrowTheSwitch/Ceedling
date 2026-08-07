@@ -34,7 +34,11 @@ describe CExtractor do
         c_extractor_functions:     functions,
         c_extractor_declarations:  declarations,
         c_extractor_preprocessing: preprocessing,
-        c_extractor_definitions:   definitions
+        c_extractor_definitions:   definitions,
+        # Bare double (no :partials_max_extraction_length stub) so #respond_to? is
+        # false and CExtractor falls back to its own built-in default buffer length.
+        configurator:              double('Configurator'),
+        loginator:                 double('Loginator').as_null_object
       }
     )
     extractor.setup()
@@ -602,18 +606,21 @@ describe CExtractor do
       CONTENTS
 
       # TODO: Test for function name extraction after implementing generic handling of feature summaries
-      expect { extractor.from_string(content: file_contents, chunk_size: 10, max_buffer_length: 20) }.to raise_error(CeedlingException, /Feature extraction exceeded maximum length/)
+      expect { extractor.from_string(content: file_contents, chunk_size: 10, max_buffer_length: 20) }.to raise_error(CeedlingException, /Extraction exceeded maximum length/)
     end
 
-    it "should fail to extract a signature longer than max length" do
-      file_contents = <<~CONTENTS
-      void a_function(void) {
-        int a = 1 + 1;
-      }
-      CONTENTS
+    it "should extract a variable declaration longer than 1000 characters" do
+      # A single limit governs every feature type (see extract_next_feature); this confirms a
+      # declaration comfortably longer than the old, now-removed 1000-character inner limit is
+      # captured rather than silently dropped, as long as it's within the (much larger) buffer
+      # ceiling -- the default here, since none is passed explicitly.
+      values = (1..400).map { |n| n.to_s }.join(', ')
+      file_contents = "static const int a_table[] = { #{values} };\n"
+      expect(file_contents.length).to be > 1000
 
-      contents = extractor.from_string(content: file_contents, chunk_size: 10, max_line_length: 10)
-      expect(contents.function_definitions.length ).to eq 0
+      contents = extractor.from_string(content: file_contents)
+      expect(contents.variable_declarations.length).to eq 1
+      expect(contents.variable_declarations[0].name).to eq 'a_table'
     end
 
     it "should extract typedef definitions and no other features from a typedefs-only input" do
