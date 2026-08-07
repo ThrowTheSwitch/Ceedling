@@ -194,9 +194,33 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        # Leading `const` is a decorator; gsub removes all `const` occurrences
-        check_single(variable, name: 'ptr', type: 'int*', decorators: ['const'], text: 'int* ptr;')
+        # Leading `const` (qualifying `int`) is a decorator; the second `const`
+        # (qualifying the pointer itself) is part of the declarator and stays put
+        check_single(variable, name: 'ptr', type: 'int* const', decorators: ['const'], text: 'int* const ptr;')
         expect(pos).to eq(21)
+        expect(rest).to eq("")
+      end
+
+      it "extracts volatile pointer to volatile" do
+        content = "volatile int* volatile ptr;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        # Same as const/const above: only the leading qualifier is a decorator
+        check_single(variable, name: 'ptr', type: 'int* volatile', decorators: ['volatile'], text: 'int* volatile ptr;')
+        expect(pos).to eq(27)
+        expect(rest).to eq("")
+      end
+
+      it "extracts static const pointer to const" do
+        content = "static const int* const ptr;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        # `static` and the leading `const` are decorators; the trailing `const`
+        # on the pointer itself is retained in both `.type` and `.text`
+        check_single(variable, name: 'ptr', type: 'int* const', decorators: ['static', 'const'], text: 'int* const ptr;')
+        expect(pos).to eq(28)
         expect(rest).to eq("")
       end
     end

@@ -10,6 +10,17 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.1.4] — Prerelease
+
+## 💪 Fixed
+
+### Partials
+
+- [#1189](https://github.com/ThrowTheSwitch/Ceedling/issues/1189)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed `const`/`volatile`/`restrict` qualifiers stripped from a Partial's generated `extern` declaration and definition for a promoted variable.
+- Fixed C variable extraction discarding a pointer's own qualifier (e.g. the second `const` in `const uint8_t* const ptr;`) whenever the same qualifier keyword also led the declaration.
+
+---
+
 # [1.1.3] — 2026-08-06
 
 ## 💪 Fixed
@@ -17,6 +28,8 @@ This changelog is complemented by three other documents:
 - [#1186](https://github.com/ThrowTheSwitch/Ceedling/issues/1186) Fixed `gcc` version lookup for the Gcov plugin running on Windows.
 - Ensure compilation symbols needed for Partials are injected when `:preprocess` defines are configured.
 - Fixed use of Thor’s Actions#directory to ensure a single options hash.
+
+---
 
 # [1.1.2] — 2026-07-27
 

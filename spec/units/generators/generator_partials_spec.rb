@@ -282,6 +282,24 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
+    it "should reapply a leading qualifier decorator to an extern declaration" do
+      c_module = make_module(
+        make_var(name: 'cmd', type: 'cmd_t', text: 'cmd_t cmd = { 0 };', decorators: ['static', 'volatile'])
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, true)
+
+      expect(buf.string).to include('extern volatile cmd_t cmd;')
+    end
+
+    it "should not reapply a qualifier already embedded in a pointer-level declarator" do
+      c_module = make_module(
+        make_var(name: 'lookup_table', type: 'uint8_t* const', text: 'uint8_t* const lookup_table;', decorators: ['static', 'const'])
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, true)
+
+      expect(buf.string).to include('extern const uint8_t* const lookup_table;')
+    end
+
     it "should generate a header file with #include statements, variable declarations, and function signatures" do
       file_contents = <<~CONTENTS
       #ifndef __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
@@ -566,6 +584,16 @@ describe GeneratorPartials do
 
       @generator.send(:generate_source, buf, [], defns, c_module)
       expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should reapply a leading qualifier decorator to a variable definition" do
+      c_module = make_module(
+        make_var(name: 'cmd', type: 'cmd_t', text: 'cmd_t cmd = { 0 };', decorators: ['static', 'volatile'])
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).to include('volatile cmd_t cmd = { 0 };')
     end
 
     it "should generate a source file with include directives, variable declarations, and functions" do
