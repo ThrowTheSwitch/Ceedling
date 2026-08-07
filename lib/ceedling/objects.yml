@@ -44,18 +44,6 @@ file_path_collection_utils:
 
 test_runner_manager:
 
-cacheinator:
-  compose:
-    - cacheinator_helper
-    - file_path_utils
-    - file_wrapper
-    - yaml_wrapper
-
-cacheinator_helper:
-  compose:
-    - file_wrapper
-    - yaml_wrapper
-
 tool_executor:
   compose:
     - configurator
@@ -159,7 +147,6 @@ file_finder:
   compose:
     - configurator
     - file_finder_helper
-    - cacheinator
     - file_path_utils
     - file_wrapper
     - yaml_wrapper
@@ -177,6 +164,7 @@ test_context_extractor:
   compose:
     - configurator
     - file_wrapper
+    - yaml_wrapper
     - include_factory
     - partializer_config
     - file_path_utils
@@ -243,6 +231,7 @@ generator_test_results:
     - loginator
     - reportinator
     - yaml_wrapper
+    - file_wrapper
 
 generator_test_results_backtrace:
   compose:
@@ -269,11 +258,7 @@ generator_partials:
 
 dependinator:
   compose:
-    - configurator
-    - test_context_extractor
-    - file_path_utils 
-    - rake_wrapper
-    - file_wrapper
+    - dependency_tracker
 
 preprocessinator_line_marker_includes_extractor:
   compose:
@@ -298,7 +283,6 @@ preprocessinator:
     - preprocessinator_reconstructor
     - file_path_utils
     - tool_executor
-    - file_wrapper
     - plugin_manager
     - configurator
     - loginator
@@ -390,14 +374,19 @@ batchinator:
 test_invoker:
   compose:
     - application
-    - configurator
+    - plugin_manager
+    - dependinator
+    - loginator
+    - verbosinator
+    - test_pipeline_manager
+
+test_pipeline_manager:
+  compose:
     - test_build_setup
     - test_build_planner
     - test_build_executor
-    - plugin_manager
+    - configurator
     - batchinator
-    - loginator
-    - verbosinator
 
 test_build_setup:
   compose:
@@ -413,6 +402,7 @@ test_build_setup:
     - file_wrapper
     - file_path_utils
     - test_runner_manager
+    - dependinator
 
 test_build_planner:
   compose:
@@ -441,15 +431,72 @@ test_build_executor:
     - file_path_utils
     - file_finder
     - file_wrapper
+    - dependinator
 
 release_invoker:
   compose:
-    - configurator
-    - batchinator
-    - reportinator
+    - application
+    - plugin_manager
+    - dependinator
     - loginator
-    - rake_wrapper
+    - batchinator
+    - release_build_planner
+    - release_build_executor
+
+release_build_planner:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - flaginator
+    - defineinator
     - file_path_utils
     - file_wrapper
+
+release_build_executor:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - generator
+    - file_finder
+    - file_wrapper
+    - file_path_utils
+    - dependinator
+
+gcc_dependency_parser:
+
+dependency_hasher:
+  compose:
+    - file_wrapper
+
+dependency_path_normalizer:
+  compose:
+    - file_wrapper
+
+dependency_cache_store:
+  compose:
+    - file_wrapper
+    - loginator
+
+dependency_debug_tree:
+  compose:
+    - file_wrapper
+    - yaml_wrapper
+
+dependency_differ:
+
+dependency_tracker:
+  compose:
+    - file_wrapper
+    - system_wrapper
+    - loginator
+    - dependency_hasher
+    - dependency_path_normalizer
+    - dependency_cache_store
+    - gcc_dependency_parser
+    - dependency_debug_tree
+    - dependency_differ
 
 erb_wrapper:

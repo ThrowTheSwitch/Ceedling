@@ -6,14 +6,6 @@
 # =========================================================================
 
 namespace TEST_SYM do
-  TOOL_COLLECTION_TEST_RULES = {
-    :context        => TEST_SYM,
-    :test_compiler  => TOOLS_TEST_COMPILER,
-    :test_assembler => TOOLS_TEST_ASSEMBLER,
-    :test_linker    => TOOLS_TEST_LINKER,
-    :test_fixture   => TOOLS_TEST_FIXTURE
-  }
-
   # Use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
   rule(/^#{TEST_TASK_ROOT}\S+$/ => [ # Test task names by regex
       proc do |task_name|
@@ -31,10 +23,6 @@ namespace TEST_SYM do
     @ceedling[:rake_wrapper][:prepare].invoke
 
     # Execute the test task
-    @ceedling[:test_invoker].setup_and_invoke(
-      tests:[test.source],
-      options:{:force_run => true, :build_only => false}.merge( TOOL_COLLECTION_TEST_RULES )
-    )
+    @ceedling[:test_invoker].setup_and_invoke(tests: [test.source], options: [])
   end
 end
-

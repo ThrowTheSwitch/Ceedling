@@ -28,6 +28,11 @@ class Configurator
     # Runner config reference to provide to runner generation
     @runner_config = {} # Default empty hash, replaced by reference below
 
+    # Unity config reference -- kept alongside the above two since project_config_hash
+    # is flattened (nested sections become individual top-level keys like
+    # :unity_use_param_tests) and no longer holds a :unity section of its own to read back.
+    @unity_config = {} # Default empty hash, replaced by reference below
+
     # Note: project_config_hash is an instance variable so constants and accessors created
     # in eval() statements in build() have something of proper scope and persistence to reference
     @project_config_hash = {}
@@ -87,17 +92,6 @@ class Configurator
       config[:cmock][:treat_inlines] = :exclude
       @loginator.log( "Reverted :cmock ↳ :treat_inlines to :exclude because this CMock feature is superseded by Partials.", Verbosity::COMPLAIN, LogLabels::NOTICE )
     end
-
-    # If partials enabled, inject partials name prefix symbol to all test compilation
-    # and, if a project defines its own preprocess-scoped defines matcher, to
-    # preprocessing as well -- `:preprocess:` defines are looked up independently
-    # of `:test:` defines and only fall back to the latter when `:preprocess:`
-    # is absent entirely, so a project-defined `:preprocess:` matcher needs this
-    # symbol appended directly or Partials' own macro-based #includes break.
-    # Handle both the simple list and matcher hash config formats.
-    _partials_prefix_symbol = "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}"
-    ConfigMatchinator.append_matcher_entries( config[:defines][:test], _partials_prefix_symbol )
-    ConfigMatchinator.append_matcher_entries( config[:defines][:preprocess], _partials_prefix_symbol )
   end
 
 
@@ -302,9 +296,12 @@ class Configurator
 
 
   def populate_unity_config(config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
       @reportinator.generate_progress( 'Processing Unity configuration' )
     end
+
+    # Save Unity config reference
+    @unity_config = config[:unity]
 
     if config[:unity][:use_param_tests]
       config[:unity][:defines] << 'UNITY_SUPPORT_TEST_CASES'
@@ -417,6 +414,12 @@ class Configurator
     # Clone because test mock generation is not thread-safe;
     # The mock generator is manufactured for each use with configuration changes for each use.
     return @cmock_config.clone
+  end
+
+
+  def get_unity_config
+    # Clone for the same reason as get_runner_config/get_cmock_config above.
+    return @unity_config.clone
   end
 
 

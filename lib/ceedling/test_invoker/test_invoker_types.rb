@@ -15,14 +15,19 @@ module TestInvokerTypes
     :tests,             # Array of test filepaths (input to stage 1)
     :testables,         # Hash<Symbol, Testable> — accumulated across all stages
     :context,
-    :options,
+    :options,           # Array<Symbol> — pipeline-control flags (see TestPipelineManager)
     :partials_headers,  # Produced by T1; consumed by stages 6 & 7
     :partials_sources,  # Produced by T1; consumed by stages 6 & 7
     :mocks_list,        # Produced by T2; consumed by stages 9 & 10
     :objects_list,      # Produced by T3; consumed by stage 15
     :lock,              # Mutex for thread-safe testable writes
     keyword_init: true
-  )
+  ) do
+    def initialize(**kwargs)
+      kwargs[:options] ||= []
+      super(**kwargs)
+    end
+  end
 
   # Named record replacing the raw hash per test file. Fields are populated
   # across multiple stages; nil fields are valid until their stage sets them.
@@ -38,6 +43,12 @@ module TestInvokerTypes
     :partials,                                 # TestablePartials — configs map + tests/mocks module name lists
     :sources, :frameworks, :core, :objects, :executable,
     :no_link_objects, :results_pass, :results_fail,
+    :executable_rebuilt,                       # Boolean — set by stage 16, read by stage 17 to decide
+                                                # whether to run the fixture. Carried on the struct rather
+                                                # than re-querying the dependency tracker in stage 17: by
+                                                # then the executable has already been marked fresh (if it
+                                                # was rebuilt), so a fresh staleness query would always
+                                                # answer false regardless of what actually happened.
     keyword_init: true
   ) do
     def initialize(**kwargs)

@@ -28,7 +28,8 @@ class TestBuildSetup
     :flaginator,
     :file_wrapper,
     :file_path_utils,
-    :test_runner_manager
+    :test_runner_manager,
+    :dependinator
   )
 
   def setup()
@@ -81,18 +82,32 @@ class TestBuildSetup
         paths[:preprocess_files_raw_directives_only]  = @file_path_utils.form_test_preprocess_files_raw_directives_only_path( name )
       end
 
+      # A test file's own build directive macros are cached here regardless of whether
+      # preprocessing is enabled, so this path is always present.
+      paths[:preprocess_build_directives] = @file_path_utils.form_test_preprocess_build_directives_path( name )
+
       # Create all testable build paths
       testable.paths.each { |_, path| @file_wrapper.mkdir( path ) }
     end
-
-    clean_test_results( results_path, state.testables.map { |_, t| t.name } )
   end
 
   # Stage 2: Collect includes, build directives, and test case context from each test file.
+  #
+  # A test file's #includes and Partials configuration are read fresh every run, since
+  # they carry richer information than a simple cache can hold. Its build directive
+  # macros -- TEST_INCLUDE_PATH() always, and (when preprocessing is off)
+  # TEST_SOURCE_FILE() -- are plain lists of strings, so those are recalled from a small
+  # cache instead of being scanned again when nothing about the file itself has changed.
   def stage_collect_test_context(state)
+    skipped = 0
+
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
       filename = File.basename( filepath )
+
+      cache_target = @file_path_utils.form_test_build_directives_cache_filepath( filepath, testable.name )
+      @dependinator.register( cache_target, files: [filepath] )
+      directives_stale = @dependinator.stale?( cache_target )
 
       contexts = [TestContextExtractor::Context::INCLUDES]
 
@@ -100,10 +115,12 @@ class TestBuildSetup
         msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #includes (fallback for preprocessing failures)" )
         @loginator.log( msg )
 
-        contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
+        if directives_stale
+          contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
 
-        msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
-        @loginator.log( msg )
+          msg = @reportinator.generate_progress( "Parsing #{filename} for include path build directive macros" )
+          @loginator.log( msg )
+        end
 
         msg = @reportinator.generate_progress( "Parsing #{filename} for Partials directive macros" )
         @loginator.log( msg )
@@ -112,15 +129,34 @@ class TestBuildSetup
         msg = @reportinator.generate_progress( "Parsing #{filename} for user & system #includes" )
         @loginator.log( msg )
 
-        contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
-        contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
+        if directives_stale
+          contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_INCLUDE_PATHS
+          contexts << TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
+
+          msg = @reportinator.generate_progress( "Parsing #{filename} for build directive macros" )
+          @loginator.log( msg )
+        end
+
         contexts << TestContextExtractor::Context::TEST_RUNNER_DETAILS
 
-        msg = @reportinator.generate_progress( "Parsing #{filename} for build directive macros and test case names" )
+        msg = @reportinator.generate_progress( "Parsing #{filename} for test case names" )
         @loginator.log( msg )
       end
 
+      unless directives_stale
+        msg = @reportinator.generate_progress( "Recalling cached build directive macros for #{filename}" )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+      end
+
       @context_extractor.collect_simple_context_from_file( filepath, nil, *contexts )
+
+      if directives_stale
+        @context_extractor.store_build_directives_cache( filepath: filepath, cache_filepath: cache_target )
+        @dependinator.mark_fresh( cache_target )
+      else
+        @context_extractor.load_build_directives_cache( filepath: filepath, cache_filepath: cache_target )
+        state.lock.synchronize { skipped += 1 }
+      end
 
       validate_mocks_in_use(
         filename: filename,
@@ -133,6 +169,8 @@ class TestBuildSetup
         includes:        @context_extractor.lookup_all_header_includes_list( filepath )
       )
     end
+
+    log_skip_summary( task: "build directive macro scanning", count: skipped, noun: "test files" )
 
     process_project_include_paths()
   end
@@ -173,51 +211,109 @@ class TestBuildSetup
   end
 
   # Stage 4 (conditional on preprocessing): Extract includes using the preprocessor.
+  #
+  # All three passes below are dependency-tracker-gated (or, for the third,
+  # cheap enough not to need its own gate at all -- see its comment). The
+  # first two passes each invoke a real, separate preprocessor subprocess
+  # (bare-includes extraction uses `-MM -MG -MP`; directives-only generation
+  # uses `-fdirectives-only`) and are exactly the "expensive" work worth
+  # skipping when nothing relevant changed.
   def stage_collect_preprocessor_context(state)
-    # First pass: extract bare includes; create stand-in files for mocks and partials
+    # First pass: extract bare includes; create stand-in files for mocks and partials.
+    #
+    # The extracted list is needed immediately (stand-in generation, below) and
+    # again by the third pass's reconciliation -- on a cache hit, it's recalled
+    # via `load_includes_list` rather than just leaving a file on disk for
+    # something else to notice, since nothing else reads this list back off
+    # disk on its own the way stage 9/11's plain preprocessed-output targets do.
+    skipped_includes = 0
+
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       name     = testable.name
       filepath = testable.filepath
 
-      if @preprocessinator.cached_includes_list?( test: name, filepath: filepath )
+      target = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, name )
+
+      @dependinator.register(
+        target,
+        files: [filepath],
+        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+      )
+
+      if @dependinator.stale?( target )
+        arg_hash = {
+          test:         name,
+          filepath:     filepath,
+          search_paths: [@configurator.project_build_vendor_ceedling_path],
+          flags:        testable.preprocess_flags,
+          defines:      testable.preprocess_defines
+        }
+
+        msg = @reportinator.generate_module_progress(
+          operation:   'Extracting #includes from',
+          module_name: name,
+          filename:    File.basename( filepath )
+        )
+        @loginator.log( msg )
+
+        includes = @preprocessinator.preprocess_bare_includes( **arg_hash )
+
+        testable.preprocess[:includes] = includes
+
+        @preprocessinator.store_includes_list( test: name, filepath: filepath, includes: includes )
+        @dependinator.mark_fresh( target )
+
+        generate_test_includes_standins( name, includes )
+      else
         msg = @reportinator.generate_module_progress(
           operation:   'Skipping preprocessing for #includes in favor of cached #includes for',
           module_name: name,
           filename:    File.basename( filepath )
         )
-        @loginator.log( msg )
-        next
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped_includes += 1 }
+
+        testable.preprocess[:includes] = @preprocessinator.load_includes_list( test: name, filepath: filepath )
       end
-
-      arg_hash = {
-        test:         name,
-        filepath:     filepath,
-        search_paths: [@configurator.project_build_vendor_ceedling_path],
-        flags:        testable.preprocess_flags,
-        defines:      testable.preprocess_defines
-      }
-
-      msg = @reportinator.generate_module_progress(
-        operation:   'Extracting #includes from',
-        module_name: name,
-        filename:    File.basename( filepath )
-      )
-      @loginator.log( msg )
-
-      includes = @preprocessinator.preprocess_bare_includes( **arg_hash )
-
-      testable.preprocess[:includes] = includes
-
-      generate_test_includes_standins( name, includes )
     end
+
+    log_skip_summary( task: "#include extraction", count: skipped_includes, noun: "test files" )
 
     # Second pass: generate directives-only preprocessor output after stand-ins exist
     directives_only = @configurator.test_build_preprocess_directives_only_available
+    skipped_directives_only = 0
+
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       next unless directives_only
 
       name     = testable.name
       filepath = testable.filepath
+
+      # The raw output path is deterministic (form_preprocessed_file_raw_directives_only_filepath),
+      # so it can be registered and checked before deciding whether to actually
+      # (re)run the preprocessor. `generate_directives_only_output` also writes a
+      # second, compacted file derived atomically from the same run -- covered
+      # by this same staleness check since both come from the same inputs.
+      target = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, name )
+
+      @dependinator.register(
+        target,
+        files: [filepath],
+        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+      )
+
+      unless @dependinator.stale?( target )
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping directives-only preprocessing for',
+          module_name: name,
+          filename:    File.basename( filepath )
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped_directives_only += 1 }
+
+        testable.preprocess[:directives_only][:filepath] = target
+        next
+      end
 
       arg_hash = {
         filepath:      filepath,
@@ -237,20 +333,27 @@ class TestBuildSetup
 
       testable.preprocess[:directives_only][:filepath] =
         @preprocessinator.generate_directives_only_output( **arg_hash )
+
+      # A nil result means the preprocessor failed (see generate_directives_only_output) --
+      # nothing was actually written, so there's nothing to mark fresh; the next
+      # run will correctly see this target as still missing and retry.
+      @dependinator.mark_fresh( target ) unless testable.preprocess[:directives_only][:filepath].nil?
     end
 
-    # Third pass: reconcile includes from all extraction sources and ingest
+    log_skip_summary( task: "directives-only preprocessing", count: skipped_directives_only, noun: "test files" ) if directives_only
+
+    # Third pass: reconcile includes from all extraction sources and ingest.
+    #
+    # No dependency-tracker gate of its own: the user/system extraction below
+    # either parses the second pass's already-gated output or (fallback) does
+    # a cheap in-Ruby text scan, and reconciling that with the first pass's
+    # (fresh-or-recalled) bare-includes list is plain list-merging -- there's
+    # no expensive subprocess step here left to skip.
     directives_only = @configurator.test_build_preprocess_directives_only_available
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
       filename = File.basename( filepath )
       name     = testable.name
-
-      cached, includes = @preprocessinator.load_includes_list( test: name, filepath: filepath )
-      if cached
-        @context_extractor.ingest_includes( filepath, includes )
-        next
-      end
 
       unless directives_only
         msg = @reportinator.generate_module_progress(
@@ -300,12 +403,6 @@ class TestBuildSetup
       @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )
 
       @context_extractor.ingest_includes( filepath, all_includes )
-
-      @preprocessinator.store_includes_list(
-        test:     name,
-        filepath: filepath,
-        includes: all_includes
-      )
     end
   end
 
@@ -319,12 +416,31 @@ class TestBuildSetup
     @include_pathinator.augment_environment_header_files( headers )
   end
 
+  # Writes placeholder header files for any mock or partial a test #includes,
+  # so early preprocessing/context-extraction steps have something to resolve
+  # before the real mock (stage 10) or partial (stage 8) exists yet. Later
+  # stages overwrite these paths with real generated content; a test build
+  # that never runs those later stages (e.g. :sources_only) is left with only
+  # the placeholder, which is sufficient for its purposes.
+  #
+  # A path already holding a file -- real generated content from a prior run,
+  # or an earlier placeholder -- is left untouched rather than blanked. Only
+  # gcc's need for *something* resolvable at the #include path depends on this
+  # file at all; nothing reads its content for meaning. Overwriting it
+  # unconditionally would needlessly perturb it as a hash antecedent (mock
+  # generation, stage 10, tracks its own stand-in header as one of the inputs
+  # it hashes), invalidating a target purely because this stand-in step ran,
+  # independent of whether anything the mock or partial actually depends on
+  # changed. Whether real regeneration is warranted stays entirely up to each
+  # later stage's own dependency-tracker check.
   def generate_test_includes_standins(test, includes)
     mocks    = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
     partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )
 
     mocks.each do |include|
       filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
+      next if @file_wrapper.exist?( filepath )
+
       msg = @reportinator.generate_module_progress(
         operation:   'Generating stand-in header for',
         module_name: test,
@@ -337,6 +453,8 @@ class TestBuildSetup
 
     partials.each do |include|
       filepath = @file_path_utils.form_partial_header_filepath( test, include.filename )
+      next if @file_wrapper.exist?( filepath )
+
       msg = @reportinator.generate_module_progress(
         operation:   'Generating stand-in header for',
         module_name: test,
@@ -395,6 +513,14 @@ class TestBuildSetup
     defines += @defineinator.defines( topkey: UNITY_SYM,     subkey: :defines )
     defines += @defineinator.defines( topkey: CMOCK_SYM,     subkey: :defines )
     defines += @defineinator.defines( topkey: CEXCEPTION_SYM, subkey: :defines )
+
+    # Partials' own macro-based #includes require this symbol to be defined
+    # for every file, both at compile time and preprocess time. It's added
+    # here unconditionally, alongside Unity/CMock/CException's own framework
+    # defines above, so its presence never depends on whether a file happens
+    # to match any entry in a project's own :defines: matcher configuration.
+    defines << "CEEDLING_PARTIALS_PREFIX=#{PARTIAL_FILENAME_PREFIX}" if @configurator.project_use_partials
+
     return defines.uniq
   end
 
@@ -409,33 +535,47 @@ class TestBuildSetup
     return defines.uniq
   end
 
+  # A file matching nothing in a Hash-shaped `:preprocess:` section falls back
+  # to `test_defines`, its compile-time defines, exactly as if the section
+  # didn't apply to it at all -- see ConfigMatchinator#matches?'s
+  # `no_match_default`. This keeps a file's preprocess-defines meta entirely
+  # explained by its own configuration, so a `:preprocess:` matcher targeting
+  # one file has no bearing on any other file's dependency-tracker meta.
   def preprocess_defines(test_defines:, filepath:)
-    preprocessing_defines = @defineinator.defines( subkey: PREPROCESS_SYM, filepath: filepath, default: nil )
-    return test_defines if preprocessing_defines.nil?
-    return preprocessing_defines
+    return @defineinator.defines(
+      subkey: PREPROCESS_SYM, filepath: filepath, default: test_defines, no_match_default: test_defines
+    )
   end
 
-  def flags(context:, operation:, filepath:, default:[])
+  def flags(context:, operation:, filepath:, default:[], no_match_default: nil)
     context = TEST_SYM unless @flaginator.flags_defined?( context: context, operation: operation )
-    return @flaginator.flag_down( context: context, operation: operation, filepath: filepath, default: default )
+    return @flaginator.flag_down(
+      context: context, operation: operation, filepath: filepath, default: default, no_match_default: no_match_default
+    )
   end
 
+  # Mirrors #preprocess_defines: a file matching nothing in a Hash-shaped
+  # `:preprocess:` flags section falls back to `compile_flags`, its
+  # compile-time flags, exactly as if the section didn't apply to it at all.
   def preprocess_flags(context:, compile_flags:, filepath:)
-    preprocessing_flags = flags( context: context, operation: OPERATION_PREPROCESS_SYM, filepath: filepath, default: nil )
-    return compile_flags if preprocessing_flags.nil?
-    return preprocessing_flags
-  end
-
-  def clean_test_results(path, tests)
-    tests.each do |test|
-      @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
-    end
+    return flags(
+      context: context, operation: OPERATION_PREPROCESS_SYM, filepath: filepath,
+      default: compile_flags, no_match_default: compile_flags
+    )
   end
 
   private
 
   def testable_symbolize(filepath)
     return (File.basename( filepath ).ext( '' )).to_sym
+  end
+
+  # States, in one line, how many targets a build step left untouched because nothing
+  # about them needed attention this run. Silent when nothing was skipped, so a full
+  # rebuild's output isn't cluttered with zero counts.
+  def log_skip_summary(task:, count:, noun:, reason: "nothing changed")
+    msg = @reportinator.generate_skip_summary( task: task, count: count, noun: noun, reason: reason )
+    @loginator.log( msg ) unless msg.nil?
   end
 
 end

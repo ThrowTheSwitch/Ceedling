@@ -58,10 +58,10 @@ class RakeTaskRegistry
   #   @ceedling[:test_invoker].setup_and_invoke(
   #
   # MARKER_RELEASE_TASKS matches any call of the form:
-  #   @ceedling[:release_invoker].setup_and_invoke_objects(
+  #   @ceedling[:release_invoker].setup_and_invoke(
 
   MARKER_TEST_TASKS_SETUP_AND_INVOKE = /\[\s*:test_invoker\s*\]\.setup_and_invoke/
-  MARKER_RELEASE_TASKS               = /\[\s*:release_invoker\s*\]\.setup_and_invoke_objects/
+  MARKER_RELEASE_TASKS               = /\[\s*:release_invoker\s*\]\.setup_and_invoke/
 
   def initialize
     # Maps root namespace string → Array<Symbol> of semantic tags

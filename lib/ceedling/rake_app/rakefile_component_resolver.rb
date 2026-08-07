@@ -16,6 +16,7 @@ module RakefileComponentResolver
     tasks_filesystem.rake
     tasks_tests.rake
     rules_tests.rake
+    tasks_generate.rake
   ].freeze
 
   RELEASE_RAKE_FILES = %w[

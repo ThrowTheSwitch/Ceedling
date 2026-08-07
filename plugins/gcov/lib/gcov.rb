@@ -190,6 +190,12 @@ class Gcov < Plugin
     end
   end
 
+  def pre_test_fixture_execute(arg_hash)
+    if arg_hash[:context] == GCOV_SYM
+      arg_hash[:tool] = TOOLS_GCOV_FIXTURE
+    end
+  end
+
   # `Plugin` build step hook
   def post_test_fixture_execute(arg_hash)
     result_file = arg_hash[:result_file]

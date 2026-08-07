@@ -75,6 +75,11 @@ EXTENSION_NONWIN_EXE  = '.out'
 EXTENSION_CORE_HEADER = '.h'
 EXTENSION_CORE_SOURCE = '.c'
 
+# Ceedling's own internal cache files are always .yml, independent of a project's
+# configurable :extension ↳ :yaml setting (which governs files a project author
+# might actually want to name differently, not Ceedling's own bookkeeping).
+EXTENSION_CORE_YAML = '.yml'
+
 CEEDLING_HEADER_FILENAME = 'ceedling.h'
 CEEDLING_HEADER_FILEPATH = CEEDLING_HEADER_FILENAME # lib/ceedling/
 PARTIAL_FILENAME_PREFIX  = 'ceedling_partial_'

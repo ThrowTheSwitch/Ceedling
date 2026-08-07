@@ -17,7 +17,6 @@ class Preprocessinator
     :preprocessinator_reconstructor,
     :file_path_utils,
     :tool_executor,
-    :file_wrapper,
     :plugin_manager,
     :configurator,
     :loginator,
@@ -143,6 +142,17 @@ class Preprocessinator
     return includes
   end
 
+  # Persists `includes` under a cache file keyed by `test`/`filepath` so
+  # `load_includes_list` can recall it later. Independent callers share this
+  # pair of methods against different `filepath`s, each already knowing its
+  # target is stale before writing here:
+  #  - Stage 4 (test_build_setup.rb), for a test file's own bare-includes list.
+  #  - `preprocess_file_includes_common` below, for a mocked header's or a
+  #    Partial header/source file's includes -- called from stage 9 and
+  #    stages 6/7 (test_build_executor.rb) respectively, both of which
+  #    register their own DependencyTracker target and only call in once
+  #    they've determined it stale.
+  # This method itself performs no freshness check of its own.
   def store_includes_list(test:, filepath:, includes:)
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
@@ -156,23 +166,11 @@ class Preprocessinator
     end
   end
 
-  def cached_includes_list?(test:, filepath:)
-    _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
-
-    # Get or create a mutex for this specific cache file
-    file_lock = @file_locks_mutex.synchronize do
-      @file_locks[_filepath] ||= Mutex.new
-    end
-
-    file_lock.synchronize do
-      # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
-      return @file_wrapper.newer?( _filepath, filepath )
-    end
-  end
-
+  # Recalls an includes list previously written by `store_includes_list`.
+  # Caller-gated the same way (see `store_includes_list` above): meaningful
+  # only once the caller has already established the target is not stale,
+  # since no freshness check is performed here.
   def load_includes_list(test:, filepath:)
-    includes = []
-
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
     # Get or create a mutex for this specific cache file
@@ -181,23 +179,20 @@ class Preprocessinator
     end
 
     file_lock.synchronize do
-      # If existing YAML file of includes is newer than the file we're processing, skip preprocessing
-      if @file_wrapper.newer?( _filepath, filepath )
-        msg = @reportinator.generate_module_progress(
-          operation: "Loading #include statement listing file for",
-          module_name: test,
-          filename: File.basename(filepath)
-          )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-      
-        includes = @includes_handler.load_includes_list( _filepath )
+      msg = @reportinator.generate_module_progress(
+        operation: "Loading #include statement listing file for",
+        module_name: test,
+        filename: File.basename(filepath)
+        )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-        header = "Loaded existing #include list from #{_filepath}:"
-        @loginator.log_list( includes, header, Verbosity::DEBUG )
-      end
+      includes = @includes_handler.load_includes_list( _filepath )
+
+      header = "Loaded existing #include list from #{_filepath}:"
+      @loginator.log_list( includes, header, Verbosity::DEBUG )
+
+      includes
     end
-
-    return !includes.empty?, includes
   end
 
   def preprocess_mockable_header_file(
@@ -243,7 +238,11 @@ class Preprocessinator
       defines:                   defines
     }
 
-    # Extract includes & log progress and details   
+    # Extract includes & log progress and details. stage_preprocess_mocks
+    # (test_build_executor.rb) only ever calls this method once it has
+    # already determined, via its own DependencyTracker target (antecedent +
+    # flags/defines/search_paths/extras meta), that this header's
+    # preprocessing is stale, so the extraction below always runs for real.
     includes = preprocess_file_includes_common( **arg_hash )
 
     header = "Discovered #includes for mockable header from #{filepath}:"
@@ -535,6 +534,11 @@ class Preprocessinator
     return full_expansion_filepath
   end
 
+  # Extracts, reconciles, and persists a header or source file's user/system
+  # includes. Called only once a caller has already determined, via its own
+  # DependencyTracker target, that this exact file/test pair is stale --
+  # see `preprocess_mockable_header_file` above and stages 6/7 in
+  # test_build_executor.rb -- so the extraction below always runs for real.
   def preprocess_file_includes_common(
       test:,
       filepath:,
@@ -552,53 +556,46 @@ class Preprocessinator
     )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-    includes = []
-    success, includes = load_includes_list( test: test, filepath: filepath )
+    # Extract bare includes
+    bare_includes = @includes_handler.extract_bare_includes(
+      filepath:      filepath,
+      test:          test,
+      flags:         flags,
+      search_paths:  vendor_paths,
+      defines:       defines
+    )
 
-    if !success
-      # Full preprocessing-based #include extraction with saving to YAML file
+    # Extract user includes
+    user_includes = preprocess_user_includes(
+      name:                     test,
+      filepath:                 filepath,
+      directives_only_filepath: directives_only_filepath,
+      fallback:                 fallback,
+      defines:                  defines
+    )
 
-      # Extract bare includes
-      bare_includes = @includes_handler.extract_bare_includes(
-        filepath:      filepath,
-        test:          test,
-        flags:         flags,
-        search_paths:  vendor_paths,
-        defines:       defines
-      )
+    # Extract system includes
+    system_includes = preprocess_system_includes(
+      name:                     test,
+      filepath:                 filepath,
+      directives_only_filepath: directives_only_filepath,
+      fallback:                 fallback,
+      defines:                  defines
+    )
 
-      # Extract user includes
-      user_includes = preprocess_user_includes(
-        name:                     test,
-        filepath:                 filepath,
-        directives_only_filepath: directives_only_filepath,
-        fallback:                 fallback,
-        defines:                  defines
-      )
+    # Reconcile includes with overlapping information
+    includes = Includes.reconcile(
+      bare: bare_includes,
+      user: user_includes,
+      system: system_includes
+    )
 
-      # Extract system includes
-      system_includes = preprocess_system_includes(
-        name:                     test,
-        filepath:                 filepath,
-        directives_only_filepath: directives_only_filepath,
-        fallback:                 fallback,
-        defines:                  defines
-      )
-
-      # Reconcile includes with overlapping information
-      includes = Includes.reconcile(
-        bare: bare_includes,
-        user: user_includes,
-        system: system_includes
-      )
-
-      # Sanitize the final list and remove any includes that have been mocked
-      Includes.sanitize!(includes) do |include, all|
-        all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
-      end
-    
-      store_includes_list( filepath: filepath, test: test, includes: includes )
+    # Sanitize the final list and remove any includes that have been mocked
+    Includes.sanitize!(includes) do |include, all|
+      all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
     end
+
+    store_includes_list( filepath: filepath, test: test, includes: includes )
 
     return includes
   end

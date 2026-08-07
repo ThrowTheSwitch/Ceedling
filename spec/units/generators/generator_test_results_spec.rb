@@ -11,6 +11,7 @@ require 'fileutils'
 require 'ceedling/generators/generator_test_results_sanity_checker'
 require 'ceedling/generators/generator_test_results'
 require 'ceedling/yaml_wrapper'
+require 'ceedling/file_wrapper'
 require 'ceedling/constants'
 require 'ceedling/config/configurator'
 
@@ -151,7 +152,8 @@ describe GeneratorTestResults do
       :generator_test_results_sanity_checker => @sanity_checker,
       :loginator                             => @loginator,
       :reportinator                          => @reportinator,
-      :yaml_wrapper                          => @yaml_wrapper
+      :yaml_wrapper                          => @yaml_wrapper,
+      :file_wrapper                          => FileWrapper.new
     })
 
     @tmpdir = Dir.mktmpdir
@@ -161,6 +163,34 @@ describe GeneratorTestResults do
 
   after(:each) do
     FileUtils.rm_rf(@tmpdir)
+  end
+
+  describe '#read_cached_results' do
+    before(:each) do
+      allow(@configurator).to receive(:extension_testfail).and_return('.fail')
+    end
+
+    it 'returns the parsed .pass file when only a passing result is cached' do
+      @yaml_wrapper.dump( @tmp_out_file, { :counts => { :failed => 0 } } )
+
+      cached = @generate_test_results.read_cached_results( @tmp_out_file )
+
+      expect( cached[:result_file] ).to eq( @tmp_out_file )
+      expect( cached[:results] ).to eq( { :counts => { :failed => 0 } } )
+    end
+
+    it 'returns the parsed .fail file when a failing result is cached, even though the .pass base path was asked for' do
+      @yaml_wrapper.dump( @tmp_out_file_fail, { :counts => { :failed => 1 } } )
+
+      cached = @generate_test_results.read_cached_results( @tmp_out_file )
+
+      expect( cached[:result_file] ).to eq( @tmp_out_file_fail )
+      expect( cached[:results] ).to eq( { :counts => { :failed => 1 } } )
+    end
+
+    it 'returns nil when neither a cached .pass nor .fail file exists' do
+      expect( @generate_test_results.read_cached_results( @tmp_out_file ) ).to be_nil
+    end
   end
 
   describe '#process_and_write_results' do

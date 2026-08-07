@@ -87,7 +87,7 @@ require 'ceedling/exceptions'
 
 class GeneratorTestResults
 
-  constructor :configurator, :generator_test_results_sanity_checker, :loginator, :reportinator, :yaml_wrapper
+  constructor :configurator, :generator_test_results_sanity_checker, :loginator, :reportinator, :yaml_wrapper, :file_wrapper
 
   def setup()
     # Aliases
@@ -172,6 +172,29 @@ class GeneratorTestResults
     @yaml_wrapper.dump(output_file, results)
 
     return { :result_file => output_file, :results => results }
+  end
+
+  # Reads back a previously-written result file for `result_file` (a target's
+  # base `.pass` path), so a test executable's cached outcome can be reported
+  # for a run where it didn't need rebuilding. Returns whichever of the
+  # `.pass`/`.fail` variant actually exists on disk (a test's outcome
+  # determines which extension #process_and_write_results wrote to), or nil if
+  # neither exists -- e.g. the result file was deleted independently of the
+  # executable and cache -- so the caller can fall back to actually running
+  # the test.
+  def read_cached_results(result_file)
+    fail_file = result_file.ext( @configurator.extension_testfail )
+
+    cached_file =
+      if @file_wrapper.exist?( fail_file )
+        fail_file
+      elsif @file_wrapper.exist?( result_file )
+        result_file
+      end
+
+    return nil if cached_file.nil?
+
+    { :result_file => cached_file, :results => @yaml_wrapper.load( cached_file ) }
   end
 
   # Filter list of test cases:

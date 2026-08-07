@@ -15,6 +15,12 @@ gem "rake", ">= 12", "< 14"
 gem "rr"
 gem "require_all"
 
+# Dev-only: used by DependencyTracker's :full debug tier to render human-readable
+# content diffs. Soft dependency at runtime (lib/ceedling/dependencies/dependency_differ.rb
+# requires it defensively and degrades gracefully if absent) -- deliberately NOT declared in
+# ceedling.gemspec, so it is never a hard requirement for an installed release gem.
+gem "diff-lcs", "~> 1.5"
+
 # Ceedling dependencies
 gem "diy", "~> 1.1"
 gem "constructor", "~> 2"

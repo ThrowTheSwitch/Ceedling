@@ -396,6 +396,39 @@ describe ConfigMatchinator do
       end
     end
 
+    context 'no_match_default' do
+      it 'returns the accumulated (empty) result when nothing matches and no fallback is given' do
+        hash = { :Model => ['HIT'] }
+        result = @cm.matches?(hash: hash, filepath: 'test_Unrelated', section: :defines, context: :test)
+        expect(result).to eq([])
+      end
+
+      it 'returns no_match_default when nothing matches and a fallback is given' do
+        hash = { :Model => ['HIT'] }
+        result = @cm.matches?(
+          hash: hash, filepath: 'test_Unrelated', section: :defines, context: :test, no_match_default: ['FALLBACK']
+        )
+        expect(result).to eq(['FALLBACK'])
+      end
+
+      it 'ignores no_match_default when something does match' do
+        hash = { :* => ['ALWAYS'] }
+        result = @cm.matches?(
+          hash: hash, filepath: 'test_Anything', section: :defines, context: :test, no_match_default: ['FALLBACK']
+        )
+        expect(result).to eq(['ALWAYS'])
+      end
+
+      it 'logs a notice at OBNOXIOUS verbosity when falling back to no_match_default' do
+        hash = { :Model => ['HIT'] }
+        expect(@loginator).to receive(:lazy).with(Verbosity::OBNOXIOUS)
+
+        @cm.matches?(
+          hash: hash, filepath: 'test_Unrelated', section: :defines, context: :test, no_match_default: ['FALLBACK']
+        )
+      end
+    end
+
   end # #matches?
 
 end

@@ -26,7 +26,7 @@ namespace VALGRIND_SYM do
     @ceedling[:test_invoker].setup_and_invoke(
       tests: COLLECTION_ALL_TESTS,
       context: VALGRIND_SYM,
-      options: { :force_run => true, :build_only => false }.merge(TOOL_COLLECTION_TEST_TASKS)
+      options: []
     )
   end
 
@@ -46,7 +46,7 @@ namespace VALGRIND_SYM do
       @ceedling[:test_invoker].setup_and_invoke(
         tests: matches,
         context: VALGRIND_SYM,
-        options: { :force_run => false }.merge(TOOL_COLLECTION_TEST_TASKS)
+        options: []
       )
     else
       @ceedling[:loginator].log( "Found no tests matching pattern /#{args.regex}/", Verbosity::ERRORS )
@@ -61,7 +61,7 @@ namespace VALGRIND_SYM do
       @ceedling[:test_invoker].setup_and_invoke(
         tests: matches,
         context: VALGRIND_SYM,
-        options: { :force_run => false }.merge(TOOL_COLLECTION_TEST_TASKS)
+        options: []
       )
     else
       @ceedling[:loginator].log( "Found no tests including the given path or path component", Verbosity::ERRORS )
@@ -82,6 +82,6 @@ rule(/^#{VALGRIND_TASK_ROOT}\S+$/ => [
   @ceedling[:test_invoker].setup_and_invoke(
     tests: [test.source],
     context: VALGRIND_SYM,
-    options: { :force_run => true, :build_only => false }.merge(TOOL_COLLECTION_TEST_TASKS)
+    options: []
   )
 end

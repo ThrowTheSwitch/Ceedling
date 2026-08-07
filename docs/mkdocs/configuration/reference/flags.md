@@ -96,12 +96,20 @@ Flags may be represented in a simple YAML list or with a more sophisticated
 file matcher YAML key plus flag list. Both are documented below.
 
 !!! note "`:preprocess` flags default behavior"
-    Left unspecified, `:preprocess` flags default to behaving identically
-    to `:compile` flags. Override this behavior by adding `:test` ↳ `:preprocess`
-    flags. If you want no additional flags for preprocessing regardless of test
-    compilation flags, simply specify an empty list `[]`.
+    Left unspecified entirely, `:preprocess` flags default to behaving
+    identically to `:compile` flags for every file.
 
-**Default**: Same flags as specified for test compilation
+    If `:preprocess` is a matcher hash the flags apply **per file**. A 
+    test file that matches one of your `:preprocess` matchers gets exactly 
+    those flags, while a test file that matches none of them falls back 
+    to flags resolved under `:compile`.
+
+    Override this behavior by adding `:test` ↳ `:preprocess` flags. If you
+    want no additional flags for preprocessing regardless of test compilation
+    flags, specify an empty list `[]` for the relevant matcher (or for the
+    whole `:preprocess` section, if using the simple list format).
+
+**Default**: Same flags as that same file resolved to for `:compile`, unless specified
 
 ## `:flags` ↳ `:test` ↳ `:link`
 

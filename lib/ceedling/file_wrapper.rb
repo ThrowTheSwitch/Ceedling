@@ -104,6 +104,16 @@ class FileWrapper
     return File.read(filepath, length)
   end
 
+  # Reads raw bytes with no text-mode translation. `File.read`'s default text
+  # mode silently converts CRLF to LF on Windows but not on Unix-like
+  # platforms, so the same on-disk bytes can read back differently depending
+  # on the host OS. Callers needing a deterministic, platform-independent view
+  # of a file's actual bytes -- content hashing chief among them -- use this
+  # instead.
+  def read_binary(filepath)
+    return File.binread(filepath)
+  end
+
   def touch(filepath, options={})
     FileUtils.touch(filepath, **options)
   end
