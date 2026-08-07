@@ -18,7 +18,7 @@ class CExtractor
   include CExtractorConstants
   include CExtractorTypes
 
-  constructor :c_extractor_code_text, :c_extractor_functions, :c_extractor_declarations, :c_extractor_preprocessing, :c_extractor_definitions
+  constructor :c_extractor_code_text, :c_extractor_functions, :c_extractor_declarations, :c_extractor_preprocessing, :c_extractor_definitions, :configurator, :loginator
 
   attr_writer :chunk_size, :max_buffer_length
 
@@ -31,7 +31,7 @@ class CExtractor
     @definitions   = @c_extractor_definitions
 
     @chunk_size        = DEFAULT_CHUNK_SIZE
-    @max_buffer_length = DEFAULT_MAX_FUNCTION_LENGTH
+    @max_buffer_length = default_max_buffer_length
   end
 
   # Extract C module contents from a source file on disk.
@@ -58,25 +58,35 @@ class CExtractor
   # Parameters:
   #   content:           String containing C source code to extract from
   #   chunk_size:        (Optional) Size of chunks to read at a time (default: 16 KB)
-  #   max_buffer_length: (Optional) Maximum allowed function size (default: 5 MB)
-  #   max_line_length:   (Optional) Maximum allowed line length (default: 1000 chars)
+  #   max_buffer_length: (Optional) Maximum allowed feature size in characters. Defaults to
+  #                      whatever setup() already established (project configuration if
+  #                      available, otherwise the built-in default) rather than a literal
+  #                      value here, so an explicit-override-free call doesn't clobber that.
   #
   # Returns: CModule struct containing all features extracted.
   def from_string(
     content:,
     chunk_size:        DEFAULT_CHUNK_SIZE,
-    max_buffer_length: DEFAULT_MAX_FUNCTION_LENGTH,
-    max_line_length:   DEFAULT_MAX_LINE_LENGTH
+    max_buffer_length: nil
   )
     @chunk_size        = chunk_size
-    @max_buffer_length = max_buffer_length
-    @functions.max_line_length    = max_line_length
-    @declarations.max_line_length = max_line_length
+    @max_buffer_length = max_buffer_length unless max_buffer_length.nil?
 
     return extract_contents( StringIO.new( content ), nil )
   end
 
   private
+
+  # `:configurator` is absent for direct/test construction of this class (only Ceedling's
+  # DI container supplies it in production), so this falls back to the built-in default in
+  # that case rather than requiring every caller to know about project configuration.
+  # The configured value is a small integer multiplier of 1000 characters (project-file
+  # ergonomics -- `5000` reads more clearly than `5000000`), so it's scaled up here to the
+  # actual character count this class works in internally.
+  def default_max_buffer_length()
+    return DEFAULT_MAX_FUNCTION_LENGTH unless @configurator.respond_to?(:partials_max_extraction_length)
+    return @configurator.partials_max_extraction_length * 1000
+  end
 
   # Extracts all C code features from the given IO source.
   #
@@ -276,9 +286,25 @@ class CExtractor
       # Expand the buffer with the new chunk
       buffer << chunk
 
-      # Safety check -- don't let buffer grow indefinitely
+      # Safety check -- don't let buffer grow indefinitely. This is the single ceiling for every
+      # feature type (directives, typedefs, functions, variable declarations, etc.) -- individual
+      # extractors don't enforce their own separate, smaller limits, since any of them scanning
+      # to the end of an ever-growing buffer without finding a terminator is exactly this same
+      # condition and belongs to this one check.
+      #
+      # Which of the several extractors tried at this file position is active when this fires
+      # isn't reported: extract_contents tries each one in a fixed order at every position, and
+      # an extractor that rejects content outright (e.g. text not starting with '#' for a
+      # directive) rejects it the same way regardless of how much more the buffer grows, so the
+      # first extractor in that fixed order is always the one still running when the buffer
+      # finally crosses this ceiling -- naming it here would misattribute the failure to it
+      # rather than to whatever construct actually caused the overrun.
       if buffer.length > max_length
-        raise CeedlingException.new("Feature extraction exceeded maximum length of #{max_length} characters")
+        @loginator.log(
+          "Extraction starting at file position #{chunk_start_pos} exceeded maximum length of #{max_length} characters",
+          Verbosity::DEBUG
+        ) if @loginator
+        raise CeedlingException.new("Extraction exceeded maximum length of #{max_length} characters, starting at file position #{chunk_start_pos}")
       end
 
       # Create a new scanner for the current buffer

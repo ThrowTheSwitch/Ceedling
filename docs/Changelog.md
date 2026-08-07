@@ -19,6 +19,7 @@ This changelog is complemented by three other documents:
 - [#1189](https://github.com/ThrowTheSwitch/Ceedling/issues/1189)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed `const`/`volatile`/`restrict` qualifiers stripped from a Partial's generated `extern` declaration and definition for a promoted variable.
 - Fixed C variable extraction discarding a pointer's own qualifier (e.g. the second `const` in `const uint8_t* const ptr;`) whenever the same qualifier keyword also led the declaration.
 - [#1190](https://github.com/ThrowTheSwitch/Ceedling/issues/1190)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed a module's typedefs and aggregate (struct/enum/union) definitions being generated into both its Test Partial and Mock Partial headers, causing a redefinition error when a test file uses both for the same module. Such content is now generated once into a shared header with unique include guard that both Partial headers, in turn, include.
+- [#1188](https://github.com/ThrowTheSwitch/Ceedling/issues/1188)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed a long file-scope C declaration silently vanishing from a Partial (and everything textually after it in the same file) once it exceeded an internal, undocumented 1000-character cap. C feature extraction now raises a clear error instead of silently truncating, and the buffer ceiling is configurable via the new `:partials` ↳ `:max_extraction_length` project configuration option.
 
 ---
 

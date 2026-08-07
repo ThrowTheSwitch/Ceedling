@@ -15,13 +15,9 @@ class CExtractorFunctions
 
   constructor :c_extractor_code_text
 
-  attr_writer :max_line_length
-
   def setup()
     # Aliases
     @code_text = @c_extractor_code_text
-
-    @max_line_length = DEFAULT_MAX_LINE_LENGTH
   end
 
   def try_extract_function_declaration(scanner)
@@ -124,7 +120,10 @@ class CExtractorFunctions
   #  - Before '{' for definitions)
   #
   # Safety:
-  #   Enforces max_line_length limit to prevent infinite loops on malformed input
+  #   A signature with no terminating ')'/'{' runs the scan to the end of
+  #   whatever buffer the caller (CExtractor#extract_next_feature) has grown so
+  #   far; that caller is the one place enforcing an overall length ceiling,
+  #   since only it knows how much more of the file remains to try growing into.
   def extract_function_signature(scanner, type)
     start_pos = scanner.pos
     # Tracks paren depth while accumulating candidate end-positions — not suitable for collect_balanced()
@@ -133,15 +132,9 @@ class CExtractorFunctions
     string_char = nil
     signature_candidates = []  # Track positions where paren_depth returns to 0
     found_opening_paren = false  # Track if we've seen an opening paren
-    
+
     until scanner.eos?
       char = scanner.peek(1)
-
-      # Safety check
-      if (scanner.pos - start_pos) > @max_line_length
-        scanner.pos = start_pos
-        return nil
-      end
 
       # Handle string literals
       if in_string

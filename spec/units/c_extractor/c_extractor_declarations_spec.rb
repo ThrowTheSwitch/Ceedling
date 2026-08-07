@@ -19,11 +19,10 @@ describe CExtractorDeclarations do
   describe "#try_extract_variable" do
     # Helper to create extractor and test variable extraction
     let(:extract_variable) do
-      ->(content, max_line_length=1000) do
+      ->(content) do
         scanner = StringScanner.new(content)
         declarations = CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new() })
         declarations.setup()
-        declarations.max_line_length = max_line_length
         success, variable = declarations.try_extract_variable(scanner)
         return [success, variable, scanner.pos, scanner.rest]
       end

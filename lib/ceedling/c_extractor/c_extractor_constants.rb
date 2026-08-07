@@ -6,9 +6,6 @@
 # =========================================================================
 
 module CExtractorConstants
-  # 1000 character safety limit
-  DEFAULT_MAX_LINE_LENGTH = 1000
-
   # 16 KB -- enough for most functions
   DEFAULT_CHUNK_SIZE = (16 * 1024)
 

@@ -338,6 +338,8 @@ c_extractor:
     - c_extractor_functions
     - c_extractor_preprocessing
     - c_extractor_definitions
+    - configurator
+    - loginator
 
 partializer_config:
   compose:
