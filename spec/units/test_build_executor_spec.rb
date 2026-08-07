@@ -818,6 +818,7 @@ describe TestBuildExecutor do
       allow(@partializer).to receive(:remap_implementation_header_includes).and_return( [] )
       allow(@partializer).to receive(:remap_implementation_source_includes).and_return( [] )
       allow(@partializer).to receive(:remap_interface_header_includes).and_return( [] )
+      allow(@generator).to receive(:generate_partial_types)
       allow(@generator).to receive(:generate_partial_implementation)
       allow(@generator).to receive(:generate_partial_interface)
 

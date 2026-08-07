@@ -222,6 +222,80 @@ describe GeneratorPartials do
     end
   end
 
+  context "#generate_types" do
+    it "writes nothing and returns nil when the module has no typedefs or aggregate definitions" do
+      allow(@file_wrapper).to receive(:open)
+
+      c_module = make_module(
+        make_stmt(text: "#define FOO 1", line_num: 1),
+        make_var(name: 'counter', type: 'int', text: 'int counter;', line_num: 2)
+      )
+
+      result = @generator.generate_types(
+        name: 'my_module',
+        c_module: c_module,
+        output_path: '/path/to/output'
+      )
+
+      expect(@file_wrapper).not_to have_received(:open)
+      expect(result).to be_nil
+    end
+
+    it "writes only the typedefs and aggregate definitions, guarded and in element_sequence order, and returns the bare filename" do
+      file_contents = <<~CONTENTS
+      #ifndef __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+      #define __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+
+      typedef uint8_t Byte;
+      struct Config { int id; };
+
+      #endif // __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+
+      CONTENTS
+
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+      expected_filepath = File.join(output_path, header_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename)
+        .with(name)
+        .and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open)
+        .with(expected_filepath, 'wb')
+        .and_yield(buf)
+
+      # A macro and a variable sit between the two type-defining statements in
+      # element_sequence; only the typedef and the aggregate belong in the shared
+      # types header, in their original relative order, and neither the macro nor
+      # the variable (which stay behind for generate_header) appear here at all.
+      typedef_stmt   = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+      macro_stmt     = CExtractorTypes::CStatement.new(text: "#define FOO 1", line_num: 2)
+      var_decl       = make_var(name: 'counter', type: 'int', text: 'int counter;', line_num: 3)
+      aggregate_stmt = CExtractorTypes::CStatement.new(text: "struct Config { int id; };", line_num: 4)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:      [typedef_stmt],
+        macro_definitions:     [macro_stmt],
+        variable_declarations: [var_decl],
+        aggregate_definitions: [aggregate_stmt],
+        element_sequence:      [typedef_stmt, macro_stmt, var_decl, aggregate_stmt]
+      )
+
+      result = @generator.generate_types(
+        name: name,
+        c_module: c_module,
+        output_path: output_path
+      )
+
+      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'wb')
+      expect(result).to eq(header_filename)
+    end
+  end
+
   context "#generate_header (private method)" do
     # Define common StringIO buffer
     let(:buf) { StringIO.new() }
@@ -378,23 +452,29 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should emit all four injectable statement categories correctly in element_sequence order" do
-      # One item of each category that can be injected into a generated Partial header:
-      #   macro_definitions    → CStatement emitted as-is
-      #   type_definitions     → CStatement emitted as-is
-      #   aggregate_definitions → CStatement emitted as-is
-      #   variable_declarations → CVariableDeclaration emitted as extern declaration
+    it "should emit macro and variable statements inline while routing typedefs and aggregates to the shared types header" do
+      # One item of each category that can appear in a generated Partial header:
+      #   macro_definitions     → CStatement emitted as-is, inline
+      #   type_definitions      → CStatement skipped here; belongs to generate_types instead
+      #   aggregate_definitions → CStatement skipped here; belongs to generate_types instead
+      #   variable_declarations → CVariableDeclaration emitted as extern declaration, inline
+      #
+      # A typedef or aggregate defines a type, and C rejects a second definition of the same
+      # type in one translation unit even when it's textually identical -- unlike a macro,
+      # which may legally repeat. Since a module's implementation and interface headers can
+      # both be included in the same test file, generate_header always defers type-defining
+      # content to the one shared types header generate_types produces, rather than risking
+      # two independent copies landing in the same translation unit.
       #
       # Ordering is intentionally interleaved (not grouped by category) to confirm that
-      # element_sequence — not typed-array membership — governs emit order.
+      # element_sequence — not typed-array membership — governs emit order for the items
+      # that do remain inline.
       file_contents = <<~CONTENTS
       #ifndef __CEEDLING_GENERATED_ALL_STATEMENTS_H__
       #define __CEEDLING_GENERATED_ALL_STATEMENTS_H__
 
       #define MAX_ITEMS 16
-      typedef uint8_t Byte;
       extern int item_count;
-      struct Config { int id; int flags; };
 
       #endif // __CEEDLING_GENERATED_ALL_STATEMENTS_H__
 
@@ -461,12 +541,10 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
-    it "should interleave functions with other elements in element_sequence order" do
+    it "should interleave functions with other elements in element_sequence order, skipping a leading typedef routed to the shared types header" do
       file_contents = <<~CONTENTS
       #ifndef __CEEDLING_GENERATED_INTERLEAVED_H__
       #define __CEEDLING_GENERATED_INTERLEAVED_H__
-
-      typedef uint8_t Byte;
 
       void foo(void);
 
@@ -478,6 +556,8 @@ describe GeneratorPartials do
 
       CONTENTS
 
+      # typedef_stmt is a member of type_definitions, so generate_header leaves it out here;
+      # it's the sole responsibility of generate_types (see the "shared types header" tests)
       typedef_stmt = make_stmt(text: "typedef uint8_t Byte;", line_num: 1)
       var_decl     = make_var( name: 'counter', type: 'int', text: 'int counter;', line_num: 5)
 

@@ -522,6 +522,31 @@ describe Partializer do
       expect(result).not_to include(UserInclude.new('partial1.h'))
       expect(result).not_to include(UserInclude.new('partial2.h'))
     end
+
+    it "appends the shared types header when one was generated for this module" do
+      includes = [UserInclude.new('header1.h')]
+      partials = {}
+      result = @partializer.remap_implementation_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials,
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to include(UserInclude.new('ceedling_partial_module_types.h'))
+    end
+
+    it "does not append a types header when the module has none" do
+      includes = [UserInclude.new('header1.h')]
+      partials = {}
+      result = @partializer.remap_implementation_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+
+      expect(result).to match_array([UserInclude.new('header1.h')])
+    end
   end
 
   ###
@@ -682,6 +707,31 @@ describe Partializer do
       expect(result).not_to include(UserInclude.new('module.h'))
       expect(result).not_to include(UserInclude.new('partial1.h'))
       expect(result).not_to include(UserInclude.new('partial2.h'))
+    end
+
+    it "appends the shared types header when one was generated for this module" do
+      includes = [UserInclude.new('header1.h')]
+      partials = {}
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials,
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to include(UserInclude.new('ceedling_partial_module_types.h'))
+    end
+
+    it "does not append a types header when the module has none" do
+      includes = [UserInclude.new('header1.h')]
+      partials = {}
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+
+      expect(result).to match_array([UserInclude.new('header1.h')])
     end
   end
 
