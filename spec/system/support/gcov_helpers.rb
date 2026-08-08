@@ -29,7 +29,7 @@ module GcovHelpers
   end
 
   def prep_project_yml_for_coverage
-    FileUtils.cp test_asset_path("project.yml"), "project.yml"
+    FileUtils.cp feature_asset_path("project.yml"), "project.yml"
     @c.uncomment_project_yml_option_for_test("- gcov")
     @c.comment_project_yml_option_for_test("- gcovr") unless @gcov_reports.include? :gcovr
     @c.uncomment_project_yml_option_for_test("- ReportGenerator") if @gcov_reports.include? :reportgenerator

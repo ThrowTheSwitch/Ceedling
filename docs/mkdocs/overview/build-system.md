@@ -58,7 +58,7 @@ extend Ceedling's capabilities for needs such as custom code metrics
 reporting, build artifact packaging, and much more. A variety of 
 built-in plugins come with Ceedling.
 
-[example-config-file]: ../snapshot/assets/project.yml
+[example-config-file]: ../snapshot/assets/features/project.yml
 [project-configuration]: ../configuration/index.md
 
 ## What's with this name?

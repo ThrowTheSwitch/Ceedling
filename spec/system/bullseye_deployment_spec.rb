@@ -46,7 +46,7 @@ ceedling_system_tests do
       it "should run a passing test suite with coverage instrumentation" do
         @c.with_context do
           Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("project.yml"), "project.yml"
+            FileUtils.cp feature_asset_path("project.yml"), "project.yml"
             @c.uncomment_project_yml_option_for_test("- bullseye")
 
             FileUtils.cp test_asset_path("example_file.h"), 'src/'
@@ -69,7 +69,7 @@ ceedling_system_tests do
       it "should report a failing test suite" do
         @c.with_context do
           Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("project.yml"), "project.yml"
+            FileUtils.cp feature_asset_path("project.yml"), "project.yml"
             @c.uncomment_project_yml_option_for_test("- bullseye")
 
             FileUtils.cp test_asset_path("example_file.h"), 'src/'

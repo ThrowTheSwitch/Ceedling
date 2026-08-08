@@ -76,7 +76,7 @@ class CliHelper
 
   def create_project_file(dest, local, ceedling_tag)
     project_filepath = File.join( dest, DEFAULT_PROJECT_FILENAME )
-    source_filepath = File.join( 'assets', DEFAULT_PROJECT_FILENAME )
+    source_filepath = File.join( 'assets', 'features', DEFAULT_PROJECT_FILENAME )
 
     # Clone the project file
     @actions._copy_file( source_filepath, project_filepath, :force => true)
@@ -605,7 +605,7 @@ class CliHelper
     if @system_wrapper.windows?
       # Windows command prompt launch script
       @actions._copy_file(
-        File.join( 'assets', 'ceedling.cmd'),
+        File.join( 'assets', 'features', 'ceedling.cmd'),
         File.join( dest, 'ceedling.cmd'),
         :force => true
       )
@@ -613,7 +613,7 @@ class CliHelper
       # Unix shell launch script
       launch = File.join( dest, 'ceedling')
       @actions._copy_file(
-        File.join( 'assets', 'ceedling'),
+        File.join( 'assets', 'features', 'ceedling'),
         launch,
         :force => true
       )

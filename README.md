@@ -594,7 +594,7 @@ Or, use Ceedling’s built-in `examples` & `example` commands to extract a sampl
 
 See the [configuration section][ceedling-docs-config] of Ceedling’s documentation for way more details on your project configuration options than we can provide here.
 
-[example-config-file]: assets/project.yml
+[example-config-file]: assets/features/project.yml
 [ceedling-docs-config]: https://throwtheswitch.github.io/Ceedling/latest/configuration/
 
 ## Using Ceedling’s command line (and related)

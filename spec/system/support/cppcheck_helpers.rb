@@ -19,7 +19,7 @@ module CppcheckHelpers
   end
 
   def prep_project_yml_for_cppcheck(reports: [:text])
-    FileUtils.cp test_asset_path("project.yml"), "project.yml"
+    FileUtils.cp feature_asset_path("project.yml"), "project.yml"
     @c.uncomment_project_yml_option_for_test("- cppcheck")
     @c.merge_project_yml_for_test({cppcheck: {reports: reports}})
   end

@@ -193,6 +193,6 @@ any trouble. Ceedling will happily process that section
 or value and simply use the properly spelled default maintained
 internally — thus leading to unexpected behavior without warning.
 
-[example-config-file]: ../snapshot/assets/project.yml
+[example-config-file]: ../snapshot/assets/features/project.yml
 
 <br/><br/>

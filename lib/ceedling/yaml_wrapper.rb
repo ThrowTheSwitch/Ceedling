@@ -15,7 +15,7 @@ class YamlWrapper
   # unnecessary and unsafe -- `YAML.safe_load` restricts deserialization to plain data types
   # plus whatever is explicitly permitted below.
   #
-  # Ceedling's YAML convention (see assets/project.yml, cacheinator.rb, generator_test_results.rb)
+  # Ceedling's YAML convention (see assets/features/project.yml, cacheinator.rb, generator_test_results.rb)
   # uses colon-prefixed keys (`:foo:`) to mean "this key is a Ruby Symbol"; unprefixed keys
   # stay Strings. Psych recognizes `:foo` scalar notation as Symbol by default -- safe_load
   # just needs `Symbol` added to its class allowlist to permit it. Aliases (`&anchor`/`*alias`)

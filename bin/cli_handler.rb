@@ -128,7 +128,7 @@ class CliHandler
     # Copy Git Ignore file 
     if options[:gitsupport]
       @actions._copy_file(
-        File.join( 'assets', 'default_gitignore' ),
+        File.join( 'assets', 'features', 'default_gitignore' ),
         File.join( dest, '.gitignore' ),
         :force => true
       )

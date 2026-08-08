@@ -147,7 +147,11 @@ RSpec.configure do |config|
 end
 
 def test_asset_path(asset_file_name)
-  File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', asset_file_name)
+  File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', 'fixtures', asset_file_name)
+end
+
+def feature_asset_path(asset_file_name)
+  File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', 'features', asset_file_name)
 end
 
 def unique_proj_name(prefix)

@@ -31,7 +31,7 @@ require 'spec_system_helper'
 ##   :project    => { :use_partials => true }   — triggers source/header partial preprocessing
 ##   :test_build => { :preprocess_force_fallback => true }  — forces text-only fallback
 ##
-## Test assets: assets/tests_with_fallback_conditionals/
+## Test assets: assets/fixtures/tests_with_fallback_conditionals/
 ##   - conditional_module.h: declares ConditionalModule_Init()
 ##   - conditional_module.c: conditionally includes optional_dep.h and
 ##     calls OptionalDep_DoWork() when CONDITIONAL_FEATURE is defined
