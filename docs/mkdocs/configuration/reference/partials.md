@@ -13,7 +13,9 @@
 
 ## `:max_extraction_length`
 
-Note: The default should be sufficient for nearly all test builds. Modification should only be necessary on error.
+Notes:
+- The default should be sufficient for nearly all test builds. Modification should only be necessary on error.
+- This configuration option is only available in Ceedling 1.1.4+.
 
 Building a Partial requires Ceedling to extract each C construct — a
 variable declaration, a function, a macro, and so on — from your source
