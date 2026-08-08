@@ -6,10 +6,14 @@
 
 ```yaml
 :partials:
+  # Ceiling of 1000 character blocks for buffer growth
+  # 8000 = a max buffer growth to 8,000,000 characters
   :max_extraction_length: 8000
 ```
 
 ## `:max_extraction_length`
+
+Note: The default should be sufficient for nearly all test builds. Modification should only be necessary on error.
 
 Building a Partial requires Ceedling to extract each C construct — a
 variable declaration, a function, a macro, and so on — from your source
