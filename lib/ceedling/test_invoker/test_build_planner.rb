@@ -195,7 +195,7 @@ class TestBuildPlanner
 
     if @configurator.project_use_mocks
       @configurator.cmock_unity_helper_path.each do |helper|
-        if @file_wrapper.exist?( helper.ext( EXTENSION_SOURCE ) )
+        if @file_wrapper.exist?( helper.ext( EXTENSION_SOURCE.primary ) )
           sources << helper
         end
       end
@@ -212,7 +212,7 @@ class TestBuildPlanner
       sources << @file_finder.find_build_input_file( filepath: source, complain: :ignore, context: context )
     end
 
-    _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename( filepath ).ext( EXTENSION_HEADER ) }
+    _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename( filepath ).ext( EXTENSION_HEADER.primary ) }
 
     includes = @test_context_extractor.lookup_all_header_includes_list( test_filepath )
     includes.each do |include|

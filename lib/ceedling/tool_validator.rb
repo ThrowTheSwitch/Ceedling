@@ -94,8 +94,9 @@ class ToolValidator
         if (@file_wrapper.exist?( File.join(path, executable)) )
           exists = true
           break
-        # File exists with executable file extension
-        elsif (@file_wrapper.exist?( (File.join(path, executable)).ext( extension ) ))
+        # File exists under one of the executable type's configured extensions -- a tool's
+        # binary might be named with any of several, so each candidate is worth a look
+        elsif (extension.any? { |ext| @file_wrapper.exist?( (File.join(path, executable)).ext( ext ) ) })
           exists = true
           break
         # We're on Windows and file exists with .exe file extension

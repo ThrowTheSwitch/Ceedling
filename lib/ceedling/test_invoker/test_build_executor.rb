@@ -935,7 +935,7 @@ class TestBuildExecutor
     search_paths = tailor_search_paths( search_paths: testable.search_paths, filepath: source )
     dependencies = @file_path_utils.form_test_dependencies_filepath( object, name: test, context: context )
 
-    if @file_wrapper.extname( source ) != @configurator.extension_assembly
+    if !@configurator.extension_assembly.match?( source )
       flags = testable.compile_flags
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
 
@@ -1046,7 +1046,7 @@ class TestBuildExecutor
   def validate_build_directive_source_files(test:, filepath:)
     sources = @test_context_extractor.lookup_build_directive_sources_list( filepath )
 
-    ext_message = @configurator.extension_source
+    ext_message = @configurator.extension_source.to_s
     if @configurator.test_build_use_assembly
       ext_message += " or #{@configurator.extension_assembly}"
     end
@@ -1055,10 +1055,9 @@ class TestBuildExecutor
       valid_extension = true
 
       if not @configurator.test_build_use_assembly
-        valid_extension = false if @file_wrapper.extname( source ) != @configurator.extension_source
+        valid_extension = false unless @configurator.extension_source.match?( source )
       else
-        ext = @file_wrapper.extname( source )
-        valid_extension = false if (ext != @configurator.extension_assembly) and (ext != @configurator.extension_source)
+        valid_extension = false unless @configurator.extension_assembly.match?( source ) or @configurator.extension_source.match?( source )
       end
 
       if not valid_extension

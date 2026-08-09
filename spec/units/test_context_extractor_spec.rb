@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/filename_extension'
 require 'ceedling/test_context_extractor'
 require 'ceedling/includes/includes'
 require 'ceedling/includes/include_factory'
@@ -57,8 +58,8 @@ describe TestContextExtractor do
 
     allow(@configurator).to receive(:cmock_mock_prefix).and_return( mock_prefix )
     allow(@configurator).to receive(:cmock_mock_path).and_return( 'build/mocks' )
-    allow(@configurator).to receive(:extension_header).and_return( '.h' )
-    allow(@configurator).to receive(:extension_source).and_return( '.c' )
+    allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new('.h') )
+    allow(@configurator).to receive(:extension_source).and_return( FilenameExtension.new('.c') )
     allow(@configurator).to receive(:get_runner_config).and_return( test_runner_config )
 
     @extractor = described_class.new(

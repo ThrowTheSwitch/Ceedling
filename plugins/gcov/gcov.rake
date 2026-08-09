@@ -81,7 +81,8 @@ namespace GCOV_SYM do
   rule(/^#{GCOV_TASK_ROOT}\S+$/ => [ # gcov test tasks by regex
      proc do |task_name|
         # Yield clean test name => Strip the task string, remove Rake test task prefix, and remove any code file extension
-        test = task_name.strip().sub(/^#{GCOV_TASK_ROOT}/, '').chomp( EXTENSION_SOURCE )
+        test = task_name.strip().sub(/^#{GCOV_TASK_ROOT}/, '')
+        EXTENSION_SOURCE.each { |ext| test = test.chomp( ext ) }
 
         # Ensure the test name begins with a test name prefix
         test = PROJECT_TEST_FILE_PREFIX + test if not (test.start_with?( PROJECT_TEST_FILE_PREFIX ))

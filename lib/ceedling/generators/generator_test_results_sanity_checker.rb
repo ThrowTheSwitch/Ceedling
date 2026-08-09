@@ -56,7 +56,7 @@ class GeneratorTestResultsSanityChecker
   
   def sanity_check_warning(file, message)
     unless defined?(CEEDLING_IGNORE_SANITY_CHECK)
-      notice = "Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable)}' finds that #{message}\n" +
+      notice = "Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable.primary)}' finds that #{message}\n" +
                "  Possible causes:\n" +
                "    1. Your test + source dereferenced a null pointer.\n" +
                "    2. Your test + source indexed past the end of a buffer.\n" +

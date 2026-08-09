@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/filename_extension'
 require 'rake'
 require 'ceedling/release_invoker/release_build_executor'
 require 'ceedling/release_invoker/release_invoker_types'
@@ -26,7 +27,7 @@ describe ReleaseBuildExecutor do
     @tools_release_assembler = { name: 'fake assembler' }
     @tools_release_linker    = { name: 'fake linker' }
 
-    allow(@configurator).to receive(:extension_assembly).and_return( '.asm' )
+    allow(@configurator).to receive(:extension_assembly).and_return( FilenameExtension.new('.asm') )
     allow(@configurator).to receive(:tools_release_compiler).and_return( @tools_release_compiler )
     allow(@configurator).to receive(:tools_release_assembler).and_return( @tools_release_assembler )
     allow(@configurator).to receive(:tools_release_linker).and_return( @tools_release_linker )

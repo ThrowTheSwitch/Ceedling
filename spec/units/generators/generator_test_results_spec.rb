@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/filename_extension'
 require 'tmpdir'
 require 'fileutils'
 require 'ceedling/generators/generator_test_results_sanity_checker'
@@ -167,7 +168,7 @@ describe GeneratorTestResults do
 
   describe '#read_cached_results' do
     before(:each) do
-      allow(@configurator).to receive(:extension_testfail).and_return('.fail')
+      allow(@configurator).to receive(:extension_testfail).and_return(FilenameExtension.new('.fail'))
     end
 
     it 'returns the parsed .pass file when only a passing result is cached' do
@@ -265,7 +266,7 @@ describe GeneratorTestResults do
     end
 
     it 'handles a normal test output with failures' do
-      allow(@configurator).to receive(:extension_testfail).and_return('.fail')
+      allow(@configurator).to receive(:extension_testfail).and_return(FilenameExtension.new('.fail'))
       @generate_test_results.process_and_write_results(
         { :executable => 'test_example.out',
           :output => FAIL_OUTPUT,
@@ -299,7 +300,7 @@ describe GeneratorTestResults do
     end
 
     it 'handles color (ANSI) test output for failing tests' do
-      allow(@configurator).to receive(:extension_testfail).and_return('.fail')
+      allow(@configurator).to receive(:extension_testfail).and_return(FilenameExtension.new('.fail'))
       @generate_test_results.process_and_write_results(
         { :executable => 'test_example.out',
           :output => COLOR_FAIL_OUTPUT,
@@ -339,7 +340,7 @@ describe GeneratorTestResults do
     end
 
     it 'separates passes, failures, and ignores from a mixed-result run' do
-      allow(@configurator).to receive(:extension_testfail).and_return('.fail')
+      allow(@configurator).to receive(:extension_testfail).and_return(FilenameExtension.new('.fail'))
       @generate_test_results.process_and_write_results(
         { :executable => 'test_example.out',
           :output => MIXED_OUTPUT,

@@ -145,19 +145,19 @@ class FilePathUtils
   end
 
   def form_release_dependencies_filepath(filepath)
-    return File.join( @configurator.project_release_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies) )
+    return File.join( @configurator.project_release_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies.primary) )
   end
 
   def form_release_build_objects_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_build_output_path}/%n#{@configurator.extension_object}")
+    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_build_output_path}/%n#{@configurator.extension_object.primary}")
   end
 
   def form_release_build_list_filepath(filepath)
-    return File.join( @configurator.project_release_build_output_path, File.basename(filepath).ext(@configurator.extension_list) )
+    return File.join( @configurator.project_release_build_output_path, File.basename(filepath).ext(@configurator.extension_list.primary) )
   end
 
   def form_release_dependencies_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_dependencies_path}/%n#{@configurator.extension_dependencies}")
+    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_dependencies_path}/%n#{@configurator.extension_dependencies.primary}")
   end
 
   ### Tests ###
@@ -169,7 +169,7 @@ class FilePathUtils
   def form_test_object_filepath(filepath, name: nil, context: nil)
     File.join(
       form_build_context_path(BUILD_OUT_DIR, name: name, context: context),
-      File.basename(filepath).ext(@configurator.extension_object)
+      File.basename(filepath).ext(@configurator.extension_object.primary)
     )
   end
 
@@ -194,7 +194,7 @@ class FilePathUtils
   def form_test_dependencies_filepath(filepath, name: nil, context: nil)
     File.join(
       form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context),
-      File.basename(filepath).ext(@configurator.extension_dependencies)
+      File.basename(filepath).ext(@configurator.extension_dependencies.primary)
     )
   end
 
@@ -249,15 +249,19 @@ class FilePathUtils
   end
 
   def form_pass_results_filepath(build_output_path, filepath)
-    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testpass) )
+    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testpass.primary) )
   end
 
   def form_fail_results_filepath(build_output_path, filepath)
-    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testfail) )
+    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testfail.primary) )
   end
 
   def form_runner_filepath_from_test(filepath)
-    return File.join( @configurator.project_test_runners_path, File.basename(filepath, @configurator.extension_source)) + @configurator.test_runner_file_suffix + EXTENSION_CORE_SOURCE
+    # Strip whatever extension the test file actually carries -- there's no need to consult
+    # the configured source extension(s) here, since the basename's own suffix is already
+    # known to be a valid one by the time a runner is being formed for it.
+    basename = File.basename(filepath, File.extname(filepath))
+    return File.join( @configurator.project_test_runners_path, basename) + @configurator.test_runner_file_suffix + EXTENSION_CORE_SOURCE
   end
 
   def form_test_filepath_from_runner(filepath)
@@ -265,15 +269,15 @@ class FilePathUtils
   end
 
   def form_test_executable_filepath(build_output_path, filepath)
-    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_executable) )
+    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_executable.primary) )
   end
 
   def form_test_build_map_filepath(build_output_path, filepath)
-    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_map) )
+    return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_map.primary) )
   end
 
   def form_test_build_list_filepath(filepath)
-    return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_list) )
+    return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_list.primary) )
   end
 
   def form_preprocessed_includes_list_filepath(filepath, subdir)
@@ -297,7 +301,7 @@ class FilePathUtils
   end
 
   def form_test_build_objects_filelist(path, sources)
-    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{path}/%n#{@configurator.extension_object}")
+    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{path}/%n#{@configurator.extension_object.primary}")
   end
 
   def form_mock_header_filepath(subdir, filename)
@@ -342,12 +346,12 @@ class FilePathUtils
 
   def form_test_dependencies_filelist(files)
     list = @file_wrapper.instantiate_file_list(files)
-    return list.pathmap("#{@configurator.project_test_dependencies_path}/%n#{@configurator.extension_dependencies}")
+    return list.pathmap("#{@configurator.project_test_dependencies_path}/%n#{@configurator.extension_dependencies.primary}")
   end
 
   def form_pass_results_filelist(path, files)
     list = @file_wrapper.instantiate_file_list(files)
-    return list.pathmap("#{path}/%n#{@configurator.extension_testpass}")
+    return list.pathmap("#{path}/%n#{@configurator.extension_testpass.primary}")
   end
 
   ### Private ###

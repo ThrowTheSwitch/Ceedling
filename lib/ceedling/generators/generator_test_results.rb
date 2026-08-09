@@ -164,7 +164,7 @@ class GeneratorTestResults
 
     @sanity_checker.verify( results, unity_shell_result[:exit_code] )
 
-    output_file = output_file.ext( @configurator.extension_testfail ) if (results[:counts][:failed] > 0)
+    output_file = output_file.ext( @configurator.extension_testfail.primary ) if (results[:counts][:failed] > 0)
 
     msg = @reportinator.generate_progress("Collecting test results from #{File.basename(executable)} to #{output_file}")
     @loginator.log(msg, Verbosity::OBNOXIOUS)
@@ -183,7 +183,7 @@ class GeneratorTestResults
   # executable and cache -- so the caller can fall back to actually running
   # the test.
   def read_cached_results(result_file)
-    fail_file = result_file.ext( @configurator.extension_testfail )
+    fail_file = result_file.ext( @configurator.extension_testfail.primary )
 
     cached_file =
       if @file_wrapper.exist?( fail_file )

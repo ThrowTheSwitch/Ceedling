@@ -10,6 +10,7 @@ require 'rake'                     # for ext() method
 require 'ceedling/file_path_utils' # for class methods
 require 'ceedling/defaults'
 require 'ceedling/constants'       # for Verbosity constants class & base file paths
+require 'ceedling/filename_extension'
 
 class ConfiguratorBuilder
 
@@ -99,6 +100,20 @@ class ConfiguratorBuilder
       elsif config[key].is_a?(Hash) && value.is_a?(Hash)
         populate_with_defaults(config[key], value)
       end
+    end
+  end
+
+
+  # A project names each file type's extension(s) under `:extension`, either as a
+  # single string or a list -- wrapping every entry in a FilenameExtension here
+  # means every part of the build downstream deals with one uniform interface for
+  # a file type's extension(s), never a raw string or array whose shape it has to
+  # check for itself.
+  def normalize_filename_extensions(config)
+    return if config[:extension].nil?
+
+    config[:extension].each_pair do |key, value|
+      config[:extension][key] = FilenameExtension.new(value)
     end
   end
 
@@ -197,8 +212,8 @@ class ConfiguratorBuilder
   def set_release_target(in_hash)
     return {} if (not in_hash[:project_release_build])
 
-    release_target_file = ((in_hash[:release_build_output].nil?) ? (DEFAULT_RELEASE_TARGET_NAME.ext(in_hash[:extension_executable])) : in_hash[:release_build_output])
-    release_map_file    = ((in_hash[:release_build_output].nil?) ? (DEFAULT_RELEASE_TARGET_NAME.ext(in_hash[:extension_map])) : in_hash[:release_build_output].ext(in_hash[:extension_map]))
+    release_target_file = ((in_hash[:release_build_output].nil?) ? (DEFAULT_RELEASE_TARGET_NAME.ext(in_hash[:extension_executable].primary)) : in_hash[:release_build_output])
+    release_map_file    = ((in_hash[:release_build_output].nil?) ? (DEFAULT_RELEASE_TARGET_NAME.ext(in_hash[:extension_map].primary)) : in_hash[:release_build_output].ext(in_hash[:extension_map].primary))
 
     return {
       # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
@@ -338,7 +353,11 @@ class ConfiguratorBuilder
     all_tests = @file_wrapper.instantiate_file_list
 
     in_hash[:collection_paths_test].each do |path|
-      all_tests.include( File.join(path, "#{in_hash[:project_test_file_prefix]}*#{in_hash[:extension_source]}") )
+      # A test file's basename carries the project's test-file prefix ahead of whichever
+      # source extension is in play, so the prefix is folded into the glob fragment itself.
+      in_hash[:extension_source].each do |ext|
+        all_tests.include( File.join(path, "#{in_hash[:project_test_file_prefix]}*#{ext}") )
+      end
     end
 
     # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
@@ -361,12 +380,12 @@ class ConfiguratorBuilder
 
     # Sprinkle in all assembly files we can find in the source folders
     in_hash[:collection_paths_source].each do |path|
-      all_assembly.include( File.join(path, "*#{in_hash[:extension_assembly]}") )
+      all_assembly.include( *in_hash[:extension_assembly].glob_patterns(path) )
     end
 
     # Also add all assembly files we can find in the support folders
     in_hash[:collection_paths_support].each do |path|
-      all_assembly.include( File.join(path, "*#{in_hash[:extension_assembly]}") )
+      all_assembly.include( *in_hash[:extension_assembly].glob_patterns(path) )
     end
 
     # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
@@ -384,7 +403,7 @@ class ConfiguratorBuilder
     all_source = @file_wrapper.instantiate_file_list
 
     in_hash[:collection_paths_source].each do |path|
-      all_source.include( File.join(path, "*#{in_hash[:extension_source]}") )
+      all_source.include( *in_hash[:extension_source].glob_patterns(path) )
     end
 
     # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
@@ -416,7 +435,7 @@ class ConfiguratorBuilder
       in_hash[:collection_paths_include]
 
     paths.each do |path|
-      all_headers.include( File.join(path, "*#{in_hash[:extension_header]}") )
+      all_headers.include( *in_hash[:extension_header].glob_patterns(path) )
     end
 
     # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
@@ -442,8 +461,8 @@ class ConfiguratorBuilder
 
     # Collect source files
     in_hash[:collection_paths_source].each do |path|
-      release_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
-      release_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:release_build_use_assembly]
+      release_input.include( *in_hash[:extension_source].glob_patterns(path) )
+      release_input.include( *in_hash[:extension_assembly].glob_patterns(path) ) if in_hash[:release_build_use_assembly]
     end
 
     # Add / subtract files via :files ↳ :source & :files ↳ :assembly
@@ -481,8 +500,8 @@ class ConfiguratorBuilder
 
     # Collect code files
     paths.each do |path|
-      all_input.include( File.join(path, "*#{in_hash[:extension_source]}") )
-      all_input.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
+      all_input.include( *in_hash[:extension_source].glob_patterns(path) )
+      all_input.include( *in_hash[:extension_assembly].glob_patterns(path) ) if in_hash[:test_build_use_assembly]
     end
 
     # Add / subtract files via :files entries
@@ -504,7 +523,7 @@ class ConfiguratorBuilder
     objects = []
 
     # no build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
-    objects << CEXCEPTION_C_FILE.ext( in_hash[:extension_object] ) if (in_hash[:project_use_exceptions])
+    objects << CEXCEPTION_C_FILE.ext( in_hash[:extension_object].primary ) if (in_hash[:project_use_exceptions])
 
     return {:collection_release_artifact_extra_link_objects => objects}
   end
@@ -518,8 +537,8 @@ class ConfiguratorBuilder
 
     # Collect code files
     paths.each do |path|
-      support.include( File.join(path, "*#{in_hash[:extension_source]}") )
-      support.include( File.join(path, "*#{in_hash[:extension_assembly]}") ) if in_hash[:test_build_use_assembly]
+      support.include( *in_hash[:extension_source].glob_patterns(path) )
+      support.include( *in_hash[:extension_assembly].glob_patterns(path) ) if in_hash[:test_build_use_assembly]
     end
 
     # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)
@@ -533,7 +552,7 @@ class ConfiguratorBuilder
     objects = sources.map { |file| File.basename(file) }
 
     # No build paths here so plugins can remap if necessary (i.e. path mapping happens at runtime)
-    objects.map! { |object| object.ext(in_hash[:extension_object]) }
+    objects.map! { |object| object.ext(in_hash[:extension_object].primary) }
 
     return { 
       :collection_all_support => sources,

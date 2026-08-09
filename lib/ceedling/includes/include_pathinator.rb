@@ -43,8 +43,10 @@ class IncludePathinator
     # Get all paths specified by TEST_INCLUDE_PATH() directive in test files
     directive_paths = @extractor.lookup_all_include_paths
 
-    # Add to collection of headers (Rake FileList) with directive paths and shallow wildcard matching on header file extension
-    headers += @file_wrapper.instantiate_file_list( directive_paths.map { |path| File.join(path, '*' + EXTENSION_HEADER) } )
+    # Add to collection of headers (Rake FileList) with directive paths and shallow wildcard
+    # matching on header file extension -- a project may configure more than one header
+    # extension, so each directive path contributes one glob pattern per configured extension
+    headers += @file_wrapper.instantiate_file_list( directive_paths.flat_map { |path| EXTENSION_HEADER.glob_patterns(path) } )
     headers.resolve()
 
     headers.uniq!
@@ -69,11 +71,11 @@ class IncludePathinator
     return @extractor.lookup_include_paths_list(filepath)
   end
 
-  # Gather together [:paths][:test] that actually contain .h files
+  # Gather together [:paths][:test] that actually contain header files
   def collect_test_include_paths
     paths = []
     @configurator.collection_paths_test.each do |path|
-      headers = @file_wrapper.directory_listing( File.join( path, '*' + @configurator.extension_header ) )
+      headers = @file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) )
       paths << path if headers.length > 0
     end
 

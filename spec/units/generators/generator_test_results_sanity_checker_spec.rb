@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/filename_extension'
 require 'ceedling/generators/generator_test_results_sanity_checker'
 require 'ceedling/constants'
 require 'ceedling/loginator'
@@ -62,7 +63,7 @@ describe GeneratorTestResultsSanityChecker do
     it 'rasies error if basic check fails for ignore' do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:ignored] = 0
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
@@ -70,7 +71,7 @@ describe GeneratorTestResultsSanityChecker do
     it 'rasies error if basic check fails for failed' do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:failed] = 0
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
@@ -78,21 +79,21 @@ describe GeneratorTestResultsSanityChecker do
     it 'rasies error if basic check fails for total' do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:total] = 0
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
 
     it 'rasies error if thorough check fails for error code not 255 not equal' do
       @configurator.sanity_checks = TestResultsSanityChecks::THOROUGH
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 2)}.to raise_error(RuntimeError)
     end
 
     it 'rasies error if thorough check fails for error code 255 less than 255' do
       @configurator.sanity_checks = TestResultsSanityChecks::THOROUGH
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 255)}.to raise_error(RuntimeError)
     end

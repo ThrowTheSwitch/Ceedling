@@ -247,10 +247,10 @@ class TestContextExtractor
     # Processing list of UserInclude and/or SystemInclude
     _includes.each do |include|
       # <*.h>
-      if include.filename =~ /#{Regexp.escape(@configurator.extension_header)}$/
+      if @configurator.extension_header.match?( include.filename )
         # Add to .h includes list
         headers << include
-      elsif include.filename =~ /#{Regexp.escape(@configurator.extension_source)}$/
+      elsif @configurator.extension_source.match?( include.filename )
         # Add to .c includes list
         sources << include
       end

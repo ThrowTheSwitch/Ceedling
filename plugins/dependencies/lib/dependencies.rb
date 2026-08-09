@@ -383,7 +383,7 @@ class Dependencies < Plugin
         cfg[:collection_paths_test_support_source_include] << source
         cfg[:collection_paths_test_support_source_include_vendor] << source
         cfg[:collection_paths_release_toolchain_include] << source
-        Dir[ File.join(source, "*#{EXTENSION_SOURCE}") ].each do |f|
+        Dir[ *EXTENSION_SOURCE.glob_patterns(source) ].each do |f|
           cfg[:collection_all_source] << f
         end
       end
@@ -424,10 +424,10 @@ class Dependencies < Plugin
     lib = libs[0]
 
     # Find all the source, header, and assembly files 
-    src = Dir["./**/*#{EXTENSION_SOURCE}"]
-    hdr = Dir["./**/*#{EXTENSION_HEADER}"].map{|f| File.dirname(f) }.uniq
-    if (EXTENSION_ASSEMBLY && !EXTENSION_ASSEMBLY.empty?)  
-      asm = Dir["./**/*#{EXTENSION_ASSEMBLY}"]
+    src = Dir[ *EXTENSION_SOURCE.glob_patterns('./**') ]
+    hdr = Dir[ *EXTENSION_HEADER.glob_patterns('./**') ].map{|f| File.dirname(f) }.uniq
+    if (EXTENSION_ASSEMBLY && !EXTENSION_ASSEMBLY.empty?)
+      asm = Dir[ *EXTENSION_ASSEMBLY.glob_patterns('./**') ]
     end
 
     # Do we have what we need to do this?
@@ -438,7 +438,7 @@ class Dependencies < Plugin
 
     # Build all the source files
     src.each do |src_file|
-      object_file = relative_build_path + File.basename(src_file).ext(EXTENSION_OBJECT)
+      object_file = relative_build_path + File.basename(src_file).ext(EXTENSION_OBJECT.primary)
       @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPS, find_my_paths(src_file, blob))
       @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPS, find_my_defines(src_file, blob))
       @ceedling[:generator].generate_object_file_c(
@@ -450,14 +450,14 @@ class Dependencies < Plugin
         search_paths: hdr,
         flags:        (blob[:flags] || []),
         defines:      (blob[:defines] || []),
-        list:         @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename(src_file,EXTENSION_OBJECT) )
+        list:         @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename(src_file, EXTENSION_OBJECT.primary) )
       )
       obj << object_file
     end 
 
     # Build all the assembly files
     asm.each do |src_file|
-      object_file = relative_build_path + File.basename(src_file).ext(EXTENSION_OBJECT)
+      object_file = relative_build_path + File.basename(src_file).ext(EXTENSION_OBJECT.primary)
       @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPS, find_my_paths(src_file, blob))
       @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPS, find_my_defines(src_file, blob))
       @ceedling[:generator].generate_object_file_asm(

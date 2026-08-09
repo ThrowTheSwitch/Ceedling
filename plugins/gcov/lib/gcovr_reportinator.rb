@@ -391,14 +391,18 @@ class GcovrReportinator < GcovReportinator
     data = build_exclusion_data
     patterns = []
 
+    # A source extension can be configured as more than one string, so its escaped forms
+    # are joined into one alternation rather than assuming there's only ever one to match.
+    src_extension_alternation = data[:src_extension].to_a.map { |ext| Regexp.escape(ext) }.join('|')
+
     data[:test_paths].each do |path|
       # Test files (e.g. test_foo.c)
-      patterns << ".*#{path}.*/#{data[:test_prefix]}.+\\#{data[:src_extension]}$"
+      patterns << ".*#{path}.*/#{data[:test_prefix]}.+(?:#{src_extension_alternation})$"
     end
 
     # Support files (e.g. helpers, stubs, fixtures) — never production source
     data[:support_paths].each do |path|
-      patterns << ".*#{path}/.+\\#{data[:src_extension]}$"
+      patterns << ".*#{path}/.+(?:#{src_extension_alternation})$"
     end
 
     # Any generated files for tests or vendored framework C source files below the root of the build directory

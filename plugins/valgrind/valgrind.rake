@@ -73,7 +73,8 @@ end
 # Use a rule to handle dynamic per-file tasks: valgrind:foo → build and run foo under Valgrind
 rule(/^#{VALGRIND_TASK_ROOT}\S+$/ => [
   proc do |task_name|
-    test = task_name.strip().sub(/^#{VALGRIND_TASK_ROOT}/, '').chomp(EXTENSION_SOURCE)
+    test = task_name.strip().sub(/^#{VALGRIND_TASK_ROOT}/, '')
+    EXTENSION_SOURCE.each { |ext| test = test.chomp(ext) }
     test = PROJECT_TEST_FILE_PREFIX + test unless test.start_with?(PROJECT_TEST_FILE_PREFIX)
     @ceedling[:file_finder].find_test_file_from_name(test)
   end

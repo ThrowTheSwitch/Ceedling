@@ -44,11 +44,7 @@ class FileFinder
 
   # Find test filepath from only the base name of a test file (e.g. 'test_foo')
   def find_test_file_from_name(name)
-    test_file = name + @configurator.extension_source
-
-    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error, name)
-
-    return found_path
+    return find_first_candidate(name, @configurator.extension_source, @configurator.collection_all_tests, :error, name)
   end
 
 
@@ -134,25 +130,13 @@ class FileFinder
     # We save the existence handling until the end.
     #
 
-    # Assembly files for release build 
+    # Assembly files for release build
     if release and @configurator.release_build_use_assembly
-      _source_file = source_file + @configurator.extension_assembly
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @configurator.collection_release_build_input,
-          :ignore,
-          filepath)
+      found_file = try_extensions(source_file, @configurator.extension_assembly, @configurator.collection_release_build_input)
 
-    # Assembly files for test build 
+    # Assembly files for test build
     elsif (!release) and @configurator.test_build_use_assembly
-      _source_file = source_file + @configurator.extension_assembly
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @configurator.collection_existing_test_build_input,
-          :ignore,
-          filepath)
+      found_file = try_extensions(source_file, @configurator.extension_assembly, @configurator.collection_existing_test_build_input)
     end
 
     if !found_file.nil?
@@ -161,28 +145,19 @@ class FileFinder
 
     # Release build C files
     if release
-      _source_file = source_file + @configurator.extension_source
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @configurator.collection_release_build_input,
-          :ignore,
-          filepath)
-        
+      found_file = try_extensions(source_file, @configurator.extension_source, @configurator.collection_release_build_input)
+
     # Test build C files
     else
-      _source_file = source_file + @configurator.extension_source
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @configurator.collection_existing_test_build_input,
-          :ignore,
-          filepath)
+      found_file = try_extensions(source_file, @configurator.extension_source, @configurator.collection_existing_test_build_input)
     end
 
     if found_file.nil?
-      _source_file += " or #{_source_file.ext(@configurator.extension_assembly)}" if @configurator.release_build_use_assembly
-      @file_finder_helper.handle_missing_file(_source_file, complain)
+      # Every name actually attempted above, laid out for the reader in the same order they
+      # were tried, so a missing-file complaint names every filename ceedling went looking for.
+      tried = @configurator.extension_source.map { |ext| source_file + ext }
+      tried += @configurator.extension_assembly.map { |ext| source_file + ext } if @configurator.release_build_use_assembly
+      @file_finder_helper.handle_missing_file(tried.join(' or '), complain)
     end
 
     return found_file
@@ -190,23 +165,65 @@ class FileFinder
 
 
   def find_header_file(filepath, complain = :error)
-    header_file = File.basename(filepath).ext(@configurator.extension_header)
-    return @file_finder_helper.find_file_in_collection(header_file, @configurator.collection_all_headers, complain, filepath)
+    return find_first_candidate(File.basename(filepath), @configurator.extension_header, @configurator.collection_all_headers, complain, filepath)
   end
 
   def find_source_file(filepath, complain = :error)
-    source_file = File.basename(filepath).ext(@configurator.extension_source)
-    return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_source, complain, filepath)
+    return find_first_candidate(File.basename(filepath), @configurator.extension_source, @configurator.collection_all_source, complain, filepath)
   end
 
 
   def find_assembly_file(filepath, complain = :error)
-    assembly_file = File.basename(filepath).ext(@configurator.extension_assembly)
-    return @file_finder_helper.find_file_in_collection(assembly_file, @configurator.collection_all_assembly, complain, filepath)
+    return find_first_candidate(File.basename(filepath), @configurator.extension_assembly, @configurator.collection_all_assembly, complain, filepath)
   end
 
   def find_file_from_list(filepath, file_list, complain)
     return @file_finder_helper.find_file_in_collection(filepath, file_list, complain, filepath)
   end
+
+  ### Private ###
+
+  private
+
+  # A file type may be named by any one of several configured extensions, so a basename
+  # alone doesn't say which candidate filename actually exists. Every candidate but the
+  # last is searched for quietly by plain exact-basename matching -- a miss there just
+  # means trying the next spelling, not a real problem, and critically, must not go through
+  # find_file_in_collection at all: that helper's own case-insensitive "did you mean"
+  # fallback would otherwise fire on an early, expected miss (trying `.s` before `.S`, say)
+  # the moment ANY differently-cased candidate happens to exist on disk, well before every
+  # real candidate has had its turn. Only the true last candidate is searched under the
+  # caller's own complain-on-miss behavior, so a genuine failure still reports one sensible name.
+  def find_first_candidate(basename, extension, collection, complain, filepath)
+    candidates = extension.candidates(basename)
+
+    candidates[0...-1].each do |candidate|
+      found = exact_basename_match(candidate, collection)
+      return found unless found.nil?
+    end
+
+    return @file_finder_helper.find_file_in_collection(candidates.last, collection, complain, filepath)
+  end
+
+  # As `find_first_candidate`, but builds each candidate by plain string concatenation
+  # rather than `String#ext` -- some legacy filenames carry a dotted version segment
+  # (e.g. `foo.44`), and `.ext` would clobber that segment while re-adding the extension.
+  # Every candidate is searched for quietly; the caller decides how to react if none exist.
+  def try_extensions(basename, extension, collection)
+    extension.each do |ext|
+      found = exact_basename_match(basename + ext, collection)
+      return found unless found.nil?
+    end
+
+    return nil
+  end
+
+  # A single candidate's exact basename, matched case-sensitively against `collection`,
+  # with no fuzzy fallback of any kind -- callers trying several candidate spellings in
+  # turn need each individual attempt to simply say yes or no, not raise partway through.
+  def exact_basename_match(candidate, collection)
+    collection.find { |v| File.basename(v) == File.basename(candidate) }
+  end
+
 end
 

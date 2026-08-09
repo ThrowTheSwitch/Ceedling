@@ -66,7 +66,7 @@ class Bullseye < Plugin
 
     # Instrument every non-assembly file uniformly; report-time exclusions (covselect)
     # filter framework/test noise rather than skipping instrumentation at compile time
-    return if File.extname(source) == EXTENSION_ASSEMBLY
+    return if EXTENSION_ASSEMBLY.match?(source)
 
     arg_hash[:tool] = TOOLS_BULLSEYE_COMPILER
     arg_hash[:defines] += ['CODE_COVERAGE']
@@ -275,9 +275,11 @@ class Bullseye < Plugin
   def apply_report_exclusions()
     @ceedling[:tool_validator].validate( tool: TOOLS_BULLSEYE_COVSELECT, boom: false, respect_optional: true )
 
-    patterns = BULLSEYE_IGNORE_SOURCES.map { |name| "!**/#{name}#{EXTENSION_SOURCE}" }
-    patterns << "!**/#{@configurator.project_test_file_prefix}*#{EXTENSION_SOURCE}"
-    patterns << "!**/#{@configurator.cmock_mock_prefix}*#{EXTENSION_SOURCE}"
+    # A source extension can be configured as more than one string, so each ignored
+    # name/prefix contributes one covselect exclusion pattern per configured extension.
+    patterns = BULLSEYE_IGNORE_SOURCES.flat_map { |name| EXTENSION_SOURCE.map { |ext| "!**/#{name}#{ext}" } }
+    patterns += EXTENSION_SOURCE.map { |ext| "!**/#{@configurator.project_test_file_prefix}*#{ext}" }
+    patterns += EXTENSION_SOURCE.map { |ext| "!**/#{@configurator.cmock_mock_prefix}*#{ext}" }
 
     patterns.each do |pattern|
       command = @tool_executor.build_command_line(TOOLS_BULLSEYE_COVSELECT, [], pattern)
@@ -324,8 +326,11 @@ class Bullseye < Plugin
     coverage_sources = []
     @test_invoker.each_test_with_sources { |_, srcs| coverage_sources.concat( srcs ) }
     coverage_sources.uniq!
-    coverage_sources.delete_if {|item| item =~ /#{@configurator.cmock_mock_prefix}.+#{EXTENSION_SOURCE}$/}
-    coverage_sources.delete_if {|item| item =~ /#{BULLSEYE_IGNORE_SOURCES.join('|')}#{EXTENSION_SOURCE}$/}
+    # Every configured source extension is a valid ending for a mock/ignored-source name,
+    # so the two are joined into one regex alternation rather than matching just one.
+    source_extensions = EXTENSION_SOURCE.to_a.map { |ext| Regexp.escape(ext) }.join('|')
+    coverage_sources.delete_if {|item| item =~ /#{@configurator.cmock_mock_prefix}.+(?:#{source_extensions})$/}
+    coverage_sources.delete_if {|item| item =~ /(?:#{BULLSEYE_IGNORE_SOURCES.join('|')})(?:#{source_extensions})$/}
 
     coverage_sources.each do |source|
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, [], source)

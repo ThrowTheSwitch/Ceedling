@@ -292,6 +292,11 @@ class Configurator
     end
 
     @configurator_builder.populate_with_defaults( config_hash, defaults_hash )
+
+    # Every :extension value is settled the moment defaults are merged in, well before
+    # validation or flattening ever look at it, so nothing downstream ever has to wonder
+    # whether a given :extension entry is a bare String or already a FilenameExtension.
+    @configurator_builder.normalize_filename_extensions( config_hash )
   end
 
 

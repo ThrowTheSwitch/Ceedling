@@ -170,7 +170,7 @@ class Gcov < Plugin
       source = arg_hash[:source]
 
       # Compile all non-assembly files with coverage; gcovr --exclude filters non-production files from reports
-      if File.extname(source) != EXTENSION_ASSEMBLY
+      if !EXTENSION_ASSEMBLY.match?(source)
         arg_hash[:tool] = TOOLS_GCOV_COMPILER
         arg_hash[:msg] = @reportinator.generate_module_progress(
           operation: "Compiling with coverage",

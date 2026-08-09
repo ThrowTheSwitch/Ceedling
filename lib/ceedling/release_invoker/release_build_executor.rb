@@ -104,7 +104,7 @@ class ReleaseBuildExecutor
     source       = @file_finder.find_build_input_file( filepath: object, context: RELEASE_SYM )
     dependencies = @file_path_utils.form_release_dependencies_filepath( object )
 
-    if @file_wrapper.extname( source ) != @configurator.extension_assembly
+    if !@configurator.extension_assembly.match?( source )
       flags = state.compile_flags
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: state.defines, search_paths: state.search_paths )
 
@@ -202,9 +202,14 @@ class ReleaseBuildExecutor
   # arguments rather than as ordinary link inputs, so they're split out here
   # by file extension before linking.
   def sort_objects_and_libraries(both)
+    # A library type may be named by several extensions at once (.a and .so, say), so its
+    # regex alternation is built from however many are configured -- one entry needs no
+    # alternation at all, several are joined into one. Enumerable is the test rather than
+    # Array specifically, since a library-type extension is a FilenameExtension by the time
+    # it reaches here, not a raw Array, even though both are iterable the same way.
     extension = if ((defined? EXTENSION_SUBPROJECTS) && (defined? EXTENSION_LIBRARIES))
-      extension_libraries = if (EXTENSION_LIBRARIES.class == Array)
-                              EXTENSION_LIBRARIES.join(")|(?:\\")
+      extension_libraries = if (EXTENSION_LIBRARIES.is_a? Enumerable)
+                              EXTENSION_LIBRARIES.to_a.join(")|(?:\\")
                             else
                               EXTENSION_LIBRARIES
                             end
@@ -212,8 +217,8 @@ class ReleaseBuildExecutor
     elsif (defined? EXTENSION_SUBPROJECTS)
       "\\#{EXTENSION_SUBPROJECTS}"
     elsif (defined? EXTENSION_LIBRARIES)
-      if (EXTENSION_LIBRARIES.class == Array)
-        "(?:\\#{EXTENSION_LIBRARIES.join(")|(?:\\")})"
+      if (EXTENSION_LIBRARIES.is_a? Enumerable)
+        "(?:\\#{EXTENSION_LIBRARIES.to_a.join(")|(?:\\")})"
       else
         "\\#{EXTENSION_LIBRARIES}"
       end

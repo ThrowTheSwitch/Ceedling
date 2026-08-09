@@ -1,0 +1,2 @@
+.globl asm_helper_lower_marker
+asm_helper_lower_marker:

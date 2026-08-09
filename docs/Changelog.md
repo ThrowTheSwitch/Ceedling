@@ -10,6 +10,16 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.2.0] — Prerelease
+
+## 🌟 Added
+
+- Delta builds have been restored after a temporary hiatus following a major refactoring for 1.0.0 ([Restore delta test builds to Ceedling 1.0.0+](https://github.com/ThrowTheSwitch/Ceedling/issues/1143)). A delta build is simply a build run that only regenerates, compiles, or links as needed because of changed files. Ceedling 1.0.0 introduced threaded parallel build steps but had to remove delta builds in the process. As of 1.2.0, both build speedups are now available. Delta builds are automatic with no configuration needed.
+- Support for multiple [file extensions](https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
+- Support for the Bullseye commercial code coverage tool has been restored through updates to the temporarily disabled [Bullseye plugin](https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/).
+
+---
+
 # [1.1.4] — Prerelease
 
 ## 💪 Fixed

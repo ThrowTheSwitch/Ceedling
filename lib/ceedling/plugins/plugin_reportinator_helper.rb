@@ -15,8 +15,8 @@ class PluginReportinatorHelper
   
   def fetch_results(results_path, options)
     # Create the results filepaths
-    pass_path = results_path.ext( @configurator.extension_testpass )
-    fail_path = results_path.ext( @configurator.extension_testfail )
+    pass_path = results_path.ext( @configurator.extension_testpass.primary )
+    fail_path = results_path.ext( @configurator.extension_testfail.primary )
 
     # Collect whether the results file(s) exists
     pass_exists = ( @file_wrapper.exist?( pass_path ) ? true : false )
@@ -27,7 +27,7 @@ class PluginReportinatorHelper
 
       if options[:boom]
         # Complain loudly
-        error = "Could find no test results for '#{File.basename(results_path).ext(@configurator.extension_source)}'"
+        error = "Could find no test results for '#{File.basename(results_path).ext(@configurator.extension_source.primary)}'"
         raise CeedlingException.new(error)
 
       else

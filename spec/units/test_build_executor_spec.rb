@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/filename_extension'
 require 'rake'
 require 'ceedling/test_invoker/test_build_executor'
 require 'ceedling/test_invoker/test_invoker_types'
@@ -36,7 +37,7 @@ describe TestBuildExecutor do
     @tools_test_linker    = { name: 'fake linker' }
     @tools_test_fixture   = { name: 'fake fixture' }
 
-    allow(@configurator).to receive(:extension_assembly).and_return( '.asm' )
+    allow(@configurator).to receive(:extension_assembly).and_return( FilenameExtension.new('.asm') )
     allow(@configurator).to receive(:tools_test_compiler).and_return( @tools_test_compiler )
     allow(@configurator).to receive(:tools_test_assembler).and_return( @tools_test_assembler )
     allow(@configurator).to receive(:tools_test_linker).and_return( @tools_test_linker )
@@ -591,7 +592,7 @@ describe TestBuildExecutor do
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/files/TestFoo.c' )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
       allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list).and_return( [] )
-      allow(@configurator).to receive(:extension_source).and_return( '.c' )
+      allow(@configurator).to receive(:extension_source).and_return( FilenameExtension.new('.c') )
       allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
       allow(@test_context_extractor).to receive(:collect_simple_context_from_file)
       allow(@reportinator).to receive(:generate_progress).and_return( '' )

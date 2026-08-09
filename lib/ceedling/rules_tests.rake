@@ -9,8 +9,11 @@ namespace TEST_SYM do
   # Use rules to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
   rule(/^#{TEST_TASK_ROOT}\S+$/ => [ # Test task names by regex
       proc do |task_name|
-        # Yield clean test name => Strip the task string, remove Rake test task prefix, and remove any code file extension
-        test = task_name.strip().sub(/^#{TEST_TASK_ROOT}/, '').chomp( EXTENSION_SOURCE )
+        # Yield clean test name => Strip the task string, remove Rake test task prefix, and remove any code file extension.
+        # Only one configured source extension can actually be present at the end of a given
+        # task name, so trying each in turn is safe -- chomp is a no-op for the ones that don't match.
+        test = task_name.strip().sub(/^#{TEST_TASK_ROOT}/, '')
+        EXTENSION_SOURCE.each { |ext| test = test.chomp( ext ) }
 
         # Ensure the test name begins with a test name prefix
         test = PROJECT_TEST_FILE_PREFIX + test if not (test.start_with?( PROJECT_TEST_FILE_PREFIX ))
