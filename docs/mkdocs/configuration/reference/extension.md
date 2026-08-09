@@ -4,11 +4,20 @@
 
 Ceedling uses path lists and wildcard matching against filename extensions to collect file lists.
 
+Each file type below accepts either a single extension or a list of extensions. A single
+extension is written as a plain string. A list is useful when a project mixes conventions for
+a given file type (e.g. source files named with both `.c` and `.C`).
+
+Ceedling searches for and collects files under any extension in the list.
+
 ## Example `:extension` YAML
 
 ```yaml
 :extension:
-  :source: .cc
+  :source: .cc       # A single extension
+  :header:           # A list of extensions
+    - .h
+    - .H
   :executable: .bin
 ```
 
