@@ -30,20 +30,26 @@ describe FileFinderHelper do
       expect(@ff_helper.find_file_in_collection('b.h', FILE_LIST, :ignore)).to eq(FILE_LIST[3])
     end
 
-    it 'handles duplicate files with best match' do
-      expect(@ff_helper.find_file_in_collection('c.hpp', FILE_LIST, :ignore)).to eq(FILE_LIST[5])
-      expect(@ff_helper.find_file_in_collection('c.hpp', FILE_LIST, :ignore, 'inc/c.hpp')).to eq(FILE_LIST[5])
-      expect(@ff_helper.find_file_in_collection('c.hpp', FILE_LIST, :ignore, 'here/inc/c.hpp')).to eq(FILE_LIST[5])
-      expect(@ff_helper.find_file_in_collection('c.hpp', FILE_LIST, :ignore, 'copy/inc/c.hpp')).to eq(FILE_LIST[7])
+    it 'raises a CeedlingException naming every candidate when a bare basename is ambiguous' do
+      expect { @ff_helper.find_file_in_collection('c.hpp', FILE_LIST, :ignore) }.to raise_error(CeedlingException) do |error|
+        expect(error.message).to include('here/inc/c.hpp')
+        expect(error.message).to include('copy/inc/c.hpp')
+      end
 
-      expect(@ff_helper.find_file_in_collection('c.cpp', FILE_LIST, :ignore)).to eq(FILE_LIST[4])
-      expect(@ff_helper.find_file_in_collection('c.cpp', FILE_LIST, :ignore, 'src/c.cpp')).to eq(FILE_LIST[4])
-      expect(@ff_helper.find_file_in_collection('c.cpp', FILE_LIST, :ignore, 'SRC/c.cpp')).to eq(FILE_LIST[6])
-      expect(@ff_helper.find_file_in_collection('c.cpp', FILE_LIST, :ignore, 'test/src/c.cpp')).to eq(FILE_LIST[4])
-      expect(@ff_helper.find_file_in_collection('c.cpp', FILE_LIST, :ignore, 'meh/SRC/c.cpp')).to eq(FILE_LIST[6])
-      expect(@ff_helper.find_file_in_collection('c.cpp', FILE_LIST, :ignore, 'c/c.cpp')).to eq(FILE_LIST[4])
-      expect(@ff_helper.find_file_in_collection('c.cpp', FILE_LIST, :ignore, 'copy/meh/c.cpp')).to eq(FILE_LIST[6])
-      expect(@ff_helper.find_file_in_collection('c.cpp', FILE_LIST, :ignore, 'here/too/and/fro/c.cpp')).to eq(FILE_LIST[4])
+      expect { @ff_helper.find_file_in_collection('c.cpp', FILE_LIST, :ignore) }.to raise_error(CeedlingException) do |error|
+        expect(error.message).to include('here/src/c.cpp')
+        expect(error.message).to include('copy/SRC/c.cpp')
+      end
+    end
+
+    it 'resolves an ambiguous basename when the query supplies enough path to disambiguate' do
+      expect(@ff_helper.find_file_in_collection('here/inc/c.hpp', FILE_LIST, :ignore)).to eq(FILE_LIST[5])
+      expect(@ff_helper.find_file_in_collection('copy/inc/c.hpp', FILE_LIST, :ignore)).to eq(FILE_LIST[7])
+
+      expect(@ff_helper.find_file_in_collection('src/c.cpp', FILE_LIST, :ignore)).to eq(FILE_LIST[4])
+      expect(@ff_helper.find_file_in_collection('here/src/c.cpp', FILE_LIST, :ignore)).to eq(FILE_LIST[4])
+      expect(@ff_helper.find_file_in_collection('SRC/c.cpp', FILE_LIST, :ignore)).to eq(FILE_LIST[6])
+      expect(@ff_helper.find_file_in_collection('copy/SRC/c.cpp', FILE_LIST, :ignore)).to eq(FILE_LIST[6])
     end
 
     context 'file not found' do
