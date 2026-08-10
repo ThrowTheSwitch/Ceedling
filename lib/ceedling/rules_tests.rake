@@ -12,11 +12,23 @@ namespace TEST_SYM do
         # Yield clean test name => Strip the task string, remove Rake test task prefix, and remove any code file extension.
         # Only one configured source extension can actually be present at the end of a given
         # task name, so trying each in turn is safe -- chomp is a no-op for the ones that don't match.
+        # Whatever directory the invoker typed ahead of the name (e.g. `test:unit/test_foo.c`)
+        # is left exactly as given -- it's not decoration, it's what disambiguates one test
+        # from another same-named test elsewhere in the project.
         test = task_name.strip().sub(/^#{TEST_TASK_ROOT}/, '')
         EXTENSION_SOURCE.each { |ext| test = test.chomp( ext ) }
 
-        # Ensure the test name begins with a test name prefix
-        test = PROJECT_TEST_FILE_PREFIX + test if not (test.start_with?( PROJECT_TEST_FILE_PREFIX ))
+        # Normalized to forward slashes so a directory the invoker typed with backslashes
+        # (a Windows-style task name run under a POSIX Ruby, e.g. WSL or Cygwin, where
+        # File.dirname/basename below don't treat '\' as a separator) still splits correctly.
+        test = test.gsub( '\\', '/' )
+
+        # Ensure the test name's own basename begins with the test file prefix, without
+        # disturbing any directory the invoker supplied ahead of it.
+        dir  = File.dirname( test )
+        base = File.basename( test )
+        base = PROJECT_TEST_FILE_PREFIX + base if not (base.start_with?( PROJECT_TEST_FILE_PREFIX ))
+        test = (dir == '.') ? base : File.join( dir, base )
 
         # Provide the filepath for the target test task back to the Rake task
         @ceedling[:file_finder].find_test_file_from_name( test )

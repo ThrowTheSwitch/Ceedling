@@ -18,11 +18,12 @@ namespace TEST_SYM do
     @ceedling[:test_invoker].setup_and_invoke(tests: COLLECTION_ALL_TESTS, options: [:refresh_dependencies])
   end
 
-  desc "Run single test ([*] test or source file name, no path)."
+  desc "Run single test ([*] test or source file name, with path if needed to disambiguate)."
   task :* do
     message = "Oops! '#{TEST_ROOT_NAME}:*' isn't a real task. " +
-              "Use a real test or source file name (no path) in place of the wildcard.\n" +
-              "Example: `ceedling #{TEST_ROOT_NAME}:foo.c`"
+              "Use a real test or source file name in place of the wildcard, " +
+              "adding as much of its path as needed to identify one file among any same-named tests.\n" +
+              "Example: `ceedling #{TEST_ROOT_NAME}:foo.c` or `ceedling #{TEST_ROOT_NAME}:unit/foo.c`"
 
     @ceedling[:loginator].log( message, Verbosity::ERRORS )
   end
