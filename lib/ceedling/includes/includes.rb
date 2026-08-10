@@ -268,8 +268,13 @@ class Includes
     return _includes
   end
 
+  # `sort_by!` alone is not a stable sort -- with only two possible keys (system vs.
+  # everything else), most elements tie, and an unstable sort is free to reorder tied
+  # elements arbitrarily. Decorating each element with its original index as a tiebreaker
+  # forces ties to resolve in original order, regardless of platform or Ruby version.
   def self.sort!(includes)
-    includes.sort_by! { |include| include.is_a?(SystemInclude) ? 0 : 1 }
+    stable = includes.each_with_index.sort_by { |include, i| [include.is_a?(SystemInclude) ? 0 : 1, i] }
+    includes.replace( stable.map(&:first) )
     return includes
   end
 end
