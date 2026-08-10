@@ -41,7 +41,7 @@ ceedling_system_tests do
         Dir.chdir "temp_sensor" do
           output = @c.ceedling_build_exec("generate:mocks")
 
-          expect(output).to match(/Generating mock for TestAdcModel::TaskScheduler\.h/)
+          expect(output).to match(/Generating mock for adc\/TestAdcModel::TaskScheduler\.h/)
           expect(output).to_not match(/Generating runner for/)
           expect(output).to_not match(/^Compiling /)
           expect(output).to_not match(/^Linking /)
@@ -55,7 +55,7 @@ ceedling_system_tests do
         Dir.chdir "temp_sensor" do
           output = @c.ceedling_build_exec("generate:test_runners")
 
-          expect(output).to match(/Generating mock for TestAdcModel::TaskScheduler\.h/)
+          expect(output).to match(/Generating mock for adc\/TestAdcModel::TaskScheduler\.h/)
           expect(output).to match(/Generating runner for TestAdcModel\.c/)
           expect(output).to_not match(/^Compiling /)
           expect(output).to_not match(/^Linking /)

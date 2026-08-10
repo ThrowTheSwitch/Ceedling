@@ -224,6 +224,16 @@ describe Reportinator do
       result = @rp.generate_module_progress(module_name: 'bar', filename: 'baz.c', operation: 'Compiling')
       expect(result).to eq("Compiling bar::baz.c...")
     end
+
+    it 'omits module label when filename matches only the last segment of a mirrored, multi-segment module name' do
+      result = @rp.generate_module_progress(module_name: 'adc/TestFoo', filename: 'TestFoo.c', operation: 'Compiling')
+      expect(result).to eq("Compiling TestFoo.c...")
+    end
+
+    it 'prepends the full mirrored module name when filename differs from its last segment' do
+      result = @rp.generate_module_progress(module_name: 'adc/TestFoo', filename: 'MockBar.c', operation: 'Generating mock for')
+      expect(result).to eq("Generating mock for adc/TestFoo::MockBar.c...")
+    end
   end
 
   # ---------------------------------------------------------------------------

@@ -50,6 +50,8 @@ describe TestBuildExecutor do
     allow(@file_path_utils).to receive(:form_test_dependencies_filepath).and_return( 'build/deps' )
     allow(@file_path_utils).to receive(:form_preprocessed_source_files_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/TestFoo.c_source_files.yml' )
 
+    allow(@file_wrapper).to receive(:mkdir)
+
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )

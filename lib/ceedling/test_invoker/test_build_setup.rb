@@ -11,6 +11,7 @@ require 'ceedling/test_context_extractor'
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partials'
 require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/path_mirror'
 
 class TestBuildSetup
 
@@ -39,11 +40,11 @@ class TestBuildSetup
   # Stage 1: Create per-test build/results/mock/partial directory structure
   # and populate the testables hash with initial entries.
   def stage_prepare_build_paths(state)
-    results_path = @file_path_utils.form_test_results_path( context: state.context )
+    clean_test_roots = PathMirror.clean_roots( @configurator.paths_test )
 
     @batchinator.exec(workload: :compile, things: state.tests) do |filepath|
       filepath = filepath.to_s
-      key  = testable_symbolize( filepath )
+      key  = testable_symbolize( filepath, clean_test_roots )
       name = key.to_s
 
       state.lock.synchronize do
@@ -60,8 +61,9 @@ class TestBuildSetup
 
       # Assemble all needed testable build paths
       paths[:build]        = @file_path_utils.form_test_build_path( name, context: state.context )
-      paths[:results]      = results_path
+      paths[:results]      = @file_path_utils.form_test_results_path( name, context: state.context )
       paths[:dependencies] = @file_path_utils.form_test_dependencies_path( name, context: state.context )
+      paths[:runners]      = @file_path_utils.form_test_runners_path( name )
 
       if @configurator.project_use_mocks
         paths[:mocks] = @file_path_utils.form_test_mocks_path( name )
@@ -566,8 +568,12 @@ class TestBuildSetup
 
   private
 
-  def testable_symbolize(filepath)
-    return (File.basename( filepath ).ext( '' )).to_sym
+  def testable_symbolize(filepath, clean_roots)
+    basename = File.basename( filepath ).ext( '' )
+    subdir   = PathMirror.relative_subdir_from_clean_roots( filepath, clean_roots )
+    name     = subdir.empty? ? basename : File.join( subdir, basename )
+
+    return name.to_sym
   end
 
   # States, in one line, how many targets a build step left untouched because nothing

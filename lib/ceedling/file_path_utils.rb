@@ -11,6 +11,7 @@ require 'fileutils'
 require 'ceedling/exceptions'
 require 'ceedling/system_wrapper'
 require 'ceedling/constants'
+require 'ceedling/path_mirror'
 
 # global utility methods (for plugins, project files, etc.)
 def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)
@@ -140,24 +141,40 @@ class FilePathUtils
   ######### Instance methods ##########
 
   ### Release ###
-  def form_release_build_cache_path(filepath)
-    return File.join( @configurator.project_release_build_cache_path, File.basename(filepath) )
-  end
 
+  # `filepath` is an already-mirrored object path -- recovering the mirrored subdirectory
+  # beyond the release build output root and re-rooting it under the dependencies path
+  # keeps this dependencies file alongside the same-named object it accompanies, rather
+  # than colliding with another object's dependencies file at a shared flat basename.
   def form_release_dependencies_filepath(filepath)
-    return File.join( @configurator.project_release_dependencies_path, File.basename(filepath).ext(@configurator.extension_dependencies.primary) )
+    subdir   = PathMirror.relative_subdir( filepath, [@configurator.project_release_build_output_path] )
+    basename = File.basename(filepath).ext(@configurator.extension_dependencies.primary)
+    root     = @configurator.project_release_dependencies_path
+    return subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
   end
 
   def form_release_build_objects_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_build_output_path}/%n#{@configurator.extension_object.primary}")
+    return mirror_build_objects(
+      files,
+      root:  @configurator.project_release_build_output_path,
+      ext:   @configurator.extension_object.primary,
+      roots: @configurator.paths_source
+    )
   end
 
+  # `filepath` is an already-mirrored object path -- its own directory is exactly where its
+  # list file belongs too, so no separate mirroring of its own is needed here.
   def form_release_build_list_filepath(filepath)
-    return File.join( @configurator.project_release_build_output_path, File.basename(filepath).ext(@configurator.extension_list.primary) )
+    return File.join( File.dirname(filepath), File.basename(filepath).ext(@configurator.extension_list.primary) )
   end
 
   def form_release_dependencies_filelist(files)
-    return (@file_wrapper.instantiate_file_list(files)).pathmap("#{@configurator.project_release_dependencies_path}/%n#{@configurator.extension_dependencies.primary}")
+    return mirror_build_objects(
+      files,
+      root:  @configurator.project_release_dependencies_path,
+      ext:   @configurator.extension_dependencies.primary,
+      roots: @configurator.paths_source
+    )
   end
 
   ### Tests ###
@@ -173,8 +190,15 @@ class FilePathUtils
     )
   end
 
+  # As `form_test_runners_path`: a flat test's own identity forms the shared flat results
+  # directory, untouched -- only a genuinely nested test's own mirrored subdirectory
+  # becomes an extra directory level here, so two same-named tests land in distinct
+  # results directories without perturbing the overwhelmingly common flat, non-duplicate
+  # case.
   def form_test_results_path(name = nil, context: nil)
-    form_build_context_path(BUILD_RESULTS_DIR, context: context)
+    subdir = name.nil? ? '' : mirrored_test_subdir(name)
+    return form_build_context_path(BUILD_RESULTS_DIR, context: context) if subdir.empty?
+    return form_build_context_path(BUILD_RESULTS_DIR, name: subdir, context: context)
   end
 
   # Forms the filepath for the gdb backtrace log for a given test case.
@@ -191,11 +215,20 @@ class FilePathUtils
     form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
   end
 
+  # `filepath` is an already-mirrored object path -- recovering the mirrored subdirectory
+  # beyond the test's own build root and re-rooting it under this test's dependencies path
+  # keeps this dependencies file alongside the same-named object it accompanies, rather
+  # than colliding with another object's dependencies file at a shared flat basename.
+  # Without a test identity to recover that build root from, there's no mirroring to do --
+  # the dependencies file stays exactly where its context-level directory alone places it.
   def form_test_dependencies_filepath(filepath, name: nil, context: nil)
-    File.join(
-      form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context),
-      File.basename(filepath).ext(@configurator.extension_dependencies.primary)
-    )
+    root     = form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
+    basename = File.basename(filepath).ext(@configurator.extension_dependencies.primary)
+
+    return File.join(root, basename) if name.nil?
+
+    subdir = PathMirror.relative_subdir( filepath, [form_test_build_path(name, context: context)] )
+    return subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
   end
 
   def form_test_mocks_path(name, context: nil)
@@ -244,10 +277,6 @@ class FilePathUtils
     return File.join( @configurator.project_test_preprocess_build_directives_path, subdir, File.basename(filepath) + '_source_files' + EXTENSION_CORE_YAML )
   end
 
-  def form_test_build_cache_path(filepath)
-    return File.join( @configurator.project_test_build_cache_path, File.basename(filepath) )
-  end
-
   def form_pass_results_filepath(build_output_path, filepath)
     return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testpass.primary) )
   end
@@ -256,12 +285,24 @@ class FilePathUtils
     return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testfail.primary) )
   end
 
-  def form_runner_filepath_from_test(filepath)
+  # A flat test's own identity (no mirrored subdirectory of its own) forms the shared flat
+  # runners directory, untouched -- only a genuinely nested test's own mirrored
+  # subdirectory (excluding its own basename) becomes an extra directory level here, so two
+  # same-named tests in different directories land in distinct runner directories without
+  # perturbing the overwhelmingly common flat, non-duplicate case.
+  def form_test_runners_path(name, context: nil)
+    subdir = mirrored_test_subdir(name)
+    return @configurator.project_test_runners_path if subdir.empty?
+    return File.join(@configurator.project_test_runners_path, subdir)
+  end
+
+  def form_runner_filepath_from_test(filepath, name: nil)
     # Strip whatever extension the test file actually carries -- there's no need to consult
     # the configured source extension(s) here, since the basename's own suffix is already
     # known to be a valid one by the time a runner is being formed for it.
     basename = File.basename(filepath, File.extname(filepath))
-    return File.join( @configurator.project_test_runners_path, basename) + @configurator.test_runner_file_suffix + EXTENSION_CORE_SOURCE
+    root = name ? form_test_runners_path(name) : @configurator.project_test_runners_path
+    return File.join( root, basename) + @configurator.test_runner_file_suffix + EXTENSION_CORE_SOURCE
   end
 
   def form_test_filepath_from_runner(filepath)
@@ -276,8 +317,10 @@ class FilePathUtils
     return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_map.primary) )
   end
 
+  # `filepath` is an already-mirrored object path -- its own directory is exactly where its
+  # list file belongs too, so no separate mirroring of its own is needed here.
   def form_test_build_list_filepath(filepath)
-    return File.join( @configurator.project_test_build_output_path, File.basename(filepath).ext(@configurator.extension_list.primary) )
+    return File.join( File.dirname(filepath), File.basename(filepath).ext(@configurator.extension_list.primary) )
   end
 
   def form_preprocessed_includes_list_filepath(filepath, subdir)
@@ -301,18 +344,18 @@ class FilePathUtils
   end
 
   def form_test_build_objects_filelist(path, sources)
-    return (@file_wrapper.instantiate_file_list(sources)).pathmap("#{path}/%n#{@configurator.extension_object.primary}")
+    return mirror_build_objects(
+      sources,
+      root:  path,
+      ext:   @configurator.extension_object.primary,
+      roots: @configurator.paths_source + @configurator.paths_support
+    )
   end
 
   def form_mock_header_filepath(subdir, filename)
     # @configurator.cmock_mock_path accessor only exists if mocks are enabled
     raise CeedlingException.new('Mocks are not enabled, but an internal feature dependent on them was accessed.') unless @configurator.project_use_mocks
     return File.join(@configurator.cmock_mock_path, subdir, filename.ext(EXTENSION_CORE_HEADER))
-  end
-
-  def form_mocks_source_filelist(path, mocks)
-    list = (@file_wrapper.instantiate_file_list(mocks))
-    return list.map{ |file| File.join(path, File.basename(file).ext(EXTENSION_CORE_SOURCE)) }
   end
 
   def form_partial_header_filepath(subdir, filename)
@@ -344,14 +387,13 @@ class FilePathUtils
     return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_SOURCE
   end
 
-  def form_test_dependencies_filelist(files)
-    list = @file_wrapper.instantiate_file_list(files)
-    return list.pathmap("#{@configurator.project_test_dependencies_path}/%n#{@configurator.extension_dependencies.primary}")
-  end
-
   def form_pass_results_filelist(path, files)
-    list = @file_wrapper.instantiate_file_list(files)
-    return list.pathmap("#{path}/%n#{@configurator.extension_testpass.primary}")
+    return mirror_build_objects(
+      files,
+      root:  path,
+      ext:   @configurator.extension_testpass.primary,
+      roots: @configurator.paths_test
+    )
   end
 
   ### Private ###
@@ -371,6 +413,32 @@ class FilePathUtils
   def form_named_path(base, name, subdir: nil)
     return File.join( base, name, subdir ) if subdir
     File.join( base, name )
+  end
+
+  # The mirrored-subdirectory portion of a test's own identity, excluding its own basename
+  # -- '' for a flat test (e.g. 'TestFoo', no subdirectory at all), or the leading segments
+  # for a nested one (e.g. 'unit' for 'unit/test_foo').
+  def mirrored_test_subdir(name)
+    dir = File.dirname(name)
+    return '' if dir == '.'
+    return dir
+  end
+
+  # Maps each file to root/[mirrored subdir/]basename.ext, mirroring whichever configured
+  # root in `roots` the file lives under -- e.g. a source file in a second configured
+  # source directory lands in its own mirrored subdirectory rather than colliding with a
+  # same-named object from the first. A file matching none of `roots` (a mock's own bare
+  # basename, a vendor framework file, the test file itself under its own build path) is
+  # left flat under `root`.
+  def mirror_build_objects(files, root:, ext:, roots:)
+    clean_roots = PathMirror.clean_roots( roots )
+
+    objects = @file_wrapper.instantiate_file_list(files).map do |file|
+      subdir   = PathMirror.relative_subdir_from_clean_roots( file, clean_roots )
+      basename = File.basename(file).ext(ext)
+      subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
+    end
+    return @file_wrapper.instantiate_file_list(objects)
   end
 
 end

@@ -733,7 +733,7 @@ class TestBuildExecutor
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.objects_list) do |obj|
-      src = @file_finder.find_build_input_file( filepath: obj[:obj], context: state.context )
+      src = @file_finder.find_build_input_file( filepath: obj[:obj], context: state.context, test: obj[:test] )
       compiled = compile_test_component(
         context: state.context,
         test:    obj[:test],
@@ -811,7 +811,7 @@ class TestBuildExecutor
         # that now passes) immediately before an actual (re)run -- not upfront
         # for every test regardless of whether it's about to run, which would
         # destroy the still-valid cached result of a test left unchanged.
-        clean_test_results( testable.paths[:results], testable.name ) if testable.executable_rebuilt
+        clean_test_results( testable.paths[:results], File.basename( testable.name ) ) if testable.executable_rebuilt
 
         unless testable.executable_rebuilt
           msg = @reportinator.generate_module_progress(
@@ -941,6 +941,13 @@ class TestBuildExecutor
 
       return log_compile_skip( test: test, source: source ) unless stale
 
+      # A module-under-test or support source mirrored into its own subdirectory needs that
+      # subdirectory (and its dependencies-file counterpart) to actually exist before the
+      # compiler can write there -- the test's own per-test directories are pre-created
+      # upfront, but a mirrored subdirectory beneath one is not.
+      @file_wrapper.mkdir( File.dirname( object ) )
+      @file_wrapper.mkdir( File.dirname( dependencies ) )
+
       arg_hash = {
         tool:         @configurator.tools_test_compiler,
         module_name:  test,
@@ -961,6 +968,9 @@ class TestBuildExecutor
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
 
       return log_compile_skip( test: test, source: source ) unless stale
+
+      @file_wrapper.mkdir( File.dirname( object ) )
+      @file_wrapper.mkdir( File.dirname( dependencies ) )
 
       arg_hash = {
         tool:         @configurator.tools_test_assembler,

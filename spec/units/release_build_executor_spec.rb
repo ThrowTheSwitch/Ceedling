@@ -47,6 +47,7 @@ describe ReleaseBuildExecutor do
     # stale -- i.e. every real build in this spec proceeds as an unconditional
     # fresh compile/link unless a test overrides `stale?` to exercise the skip path.
     allow(@file_wrapper).to receive(:exist?).and_return( false )
+    allow(@file_wrapper).to receive(:mkdir)
     allow(@dependinator).to receive(:register)
     allow(@dependinator).to receive(:register_gcc_deps_file)
     allow(@dependinator).to receive(:stale?).and_return( true )

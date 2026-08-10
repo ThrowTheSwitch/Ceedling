@@ -35,7 +35,7 @@ class TestBuildPlanner
       test     = testable.name
       filepath = testable.filepath
 
-      runner_filepath = @file_path_utils.form_runner_filepath_from_test( filepath )
+      runner_filepath = @file_path_utils.form_runner_filepath_from_test( filepath, name: test )
 
       mocks   = {}
       _mocks  = @context_extractor.lookup_mock_header_includes_list( filepath )
@@ -221,7 +221,7 @@ class TestBuildPlanner
       next if _basename.start_with?( CMOCK_MOCK_PREFIX )
       next if _support_headers.include?( _basename )
 
-      sources << @file_finder.find_build_input_file( filepath: include.filename, complain: :ignore, context: context )
+      sources << @file_finder.find_build_input_file( filepath: include.filepath, complain: :ignore, context: context )
     end
 
     # Add to the source list any testable Partials (no mock Partials)
