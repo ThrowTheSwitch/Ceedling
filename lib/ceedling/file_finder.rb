@@ -49,8 +49,13 @@ class FileFinder
     source_file = File.basename(filepath).ext('')
 
     # Recovered once and reused by every branch below that needs it, rather than each
-    # independently re-deriving the same test identity from the same filepath.
-    test_context = test_context_of(filepath)
+    # independently re-deriving the same test identity from the same filepath. Prefers the
+    # caller's own explicitly-known test identity over inferring it from the filepath's own
+    # structure -- inference only works when a context's own object paths are mirrored under
+    # a per-test subdirectory (the :test context is; GCOV and Bullseye's own flat, project-wide
+    # object paths are not), so a context lacking that structure would otherwise never recover
+    # a test identity at all.
+    test_context = test ? test.to_s : test_context_of(filepath)
 
     # We only collect files that already exist when we start up.
     # FileLists can produce undesired results for dynamically generated files depending on when they're accessed.

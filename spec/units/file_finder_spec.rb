@@ -224,6 +224,32 @@ describe FileFinder do
       }.to raise_error(CeedlingException)
     end
 
+    it 'resolves a mock scoped to its own test via an explicitly-given test identity, even when the object path itself is flat (e.g. a GCOV or Bullseye build with no per-test mirroring of its own)' do
+      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+
+      all_mocks = {
+        'build/test/mocks/TestAdcModel' => ['build/test/mocks/TestAdcModel/MockTemperatureFilter.c'],
+        'build/test/mocks/TestModel'    => ['build/test/mocks/TestModel/MockTemperatureFilter.c']
+      }
+      allow(@file_wrapper).to receive(:directory_listing) do |glob|
+        test_dir = all_mocks.keys.find { |dir| glob.start_with?(dir) }
+        test_dir.nil? ? [] : all_mocks[test_dir]
+      end
+
+      # A flat, project-wide object path (no per-test subdirectory of its own, as GCOV/Bullseye
+      # form their own objects) carries no test identity for test_context_of to recover -- only
+      # the explicitly-given `test:` lets this resolve to the right one of two same-named mocks.
+      found = @file_finder.find_build_input_file(
+        filepath: 'build/gcov/out/MockTemperatureFilter.o', complain: :error, context: :gcov, test: 'TestAdcModel'
+      )
+      expect(found).to eq('build/test/mocks/TestAdcModel/MockTemperatureFilter.c')
+
+      found = @file_finder.find_build_input_file(
+        filepath: 'build/gcov/out/MockTemperatureFilter.o', complain: :error, context: :gcov, test: 'TestModel'
+      )
+      expect(found).to eq('build/test/mocks/TestModel/MockTemperatureFilter.c')
+    end
+
     it 'resolves a release object via its own mirrored subdirectory, even when another same-named source exists elsewhere' do
       allow(@configurator).to receive(:collection_release_build_input).and_return(
         ['drivers/foo/bar.c', 'drivers/baz/bar.c']
