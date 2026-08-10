@@ -18,13 +18,9 @@ class IncludeFactory
     return nil
   end
 
-  def user_include_from_filepath(filepath)
+  def user_include_from_filepath(filepath, test: nil)
     if File.basename(filepath).start_with?( @configurator.cmock_mock_prefix )
-      # Remove any build directory path that snuck into mock handling.
-      # This can happen from discovering an empty mock stand-in or previously generated mock files.
-      # This regex matches the base build mocks directory and any test name subdirectory beneath it.
-      _filepath = filepath.sub( /^#{Regexp.escape( @configurator.cmock_mock_path )}\/[^\/]+\//, '' )
-      return MockInclude.new(_filepath)
+      return MockInclude.new( strip_mock_test_subdir( filepath, test ) )
     end
     return UserInclude.new(filepath)
   end
@@ -38,6 +34,25 @@ class IncludeFactory
   def system_include_from_filepath(filepath)
     # Just a light wrapper anticipating more complexities later on
     return SystemInclude.new(filepath)
+  end
+
+  private
+
+  # A resolved mock include's filepath may carry a leading build directory path that
+  # snuck in from discovering an empty mock stand-in or an already-generated mock file.
+  # That leading path is the current test's own mock subdirectory -- which mirrors the
+  # test's path below its configured :paths -> :test root, so it can be more than one
+  # segment deep (e.g. `adc/TestFoo`) -- followed by however many further segments mirror
+  # the mocked header's own relative directory (e.g. `calculators/`). Knowing the current
+  # test's identity lets exactly the first part be removed, leaving any header-mirroring
+  # segments after it untouched. Without that identity, fall back to stripping everything
+  # up through the last segment, the best a caller lacking test context can do.
+  def strip_mock_test_subdir(filepath, test)
+    if test
+      prefix = File.join( @configurator.cmock_mock_path, test.to_s ) + '/'
+      return filepath.start_with?( prefix ) ? filepath[prefix.length..] : filepath
+    end
+    return filepath.sub( /^#{Regexp.escape( @configurator.cmock_mock_path )}\/.+\//, '' )
   end
 
 end

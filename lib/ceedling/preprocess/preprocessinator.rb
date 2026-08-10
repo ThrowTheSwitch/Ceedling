@@ -585,9 +585,10 @@ class Preprocessinator
 
     # Reconcile includes with overlapping information
     includes = Includes.reconcile(
-      bare: bare_includes,
-      user: user_includes,
-      system: system_includes
+      bare:          bare_includes,
+      user:          user_includes,
+      system:        system_includes,
+      test_filepath: filepath
     )
 
     # Sanitize the final list and remove any includes that have been mocked

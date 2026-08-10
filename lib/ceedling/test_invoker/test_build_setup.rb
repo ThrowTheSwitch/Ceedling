@@ -396,9 +396,10 @@ class TestBuildSetup
       bare_includes = testable.preprocess[:includes]
 
       all_includes = Includes.reconcile(
-        bare:   bare_includes,
-        user:   user_includes,
-        system: system_includes
+        bare:          bare_includes,
+        user:          user_includes,
+        system:        system_includes,
+        test_filepath: filepath
       )
 
       header = "Extracted reconciled #include list from #{filepath}:"

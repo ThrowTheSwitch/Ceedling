@@ -91,8 +91,10 @@ class PreprocessinatorLineMarkerIncludesExtractor
 
   # Parse preprocessor output from a file (production use)
   # @param filepath [String] Path to the preprocessor output file
+  # @param test [String, nil] Current test's identity, needed to correctly strip its
+  #   own mock subdirectory from a resolved mock include's filepath
   # @return [Array<UserInclude, SystemInclude>]
-  def extract_includes_from_file(filepath, type, max_depth=nil)
+  def extract_includes_from_file(filepath, type, max_depth=nil, test: nil)
     validate_type_argument( type )
     includes = []
     begin
@@ -106,7 +108,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
       # NOTE: binary mode means \r\n line endings are NOT translated on Windows; the
       # extract_includes method calls line.chomp! before regex matching to handle this.
       File.open(filepath, 'rb') do |file|
-        includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth)
+        includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth, test: test)
       end
     rescue StandardError => e
       raise CeedlingException.new("Failed to extract #{type} includes from preprocessor output file '#{filepath}' ⏩️ #{e.message}")
@@ -117,11 +119,11 @@ class PreprocessinatorLineMarkerIncludesExtractor
   # Parse preprocessor output from a string (testing use)
   # @param content [String] Preprocessor output as a string
   # @return [Array<UserInclude, SystemInclude>]
-  def extract_includes_from_string(content, filepath, type, max_depth=nil)
+  def extract_includes_from_string(content, filepath, type, max_depth=nil, test: nil)
     validate_type_argument( type )
     require 'stringio'
     io = StringIO.new(content)
-    return extract_includes(io: io, filepath: filepath, type: type, max_depth: max_depth)
+    return extract_includes(io: io, filepath: filepath, type: type, max_depth: max_depth, test: test)
   end
 
   private
@@ -134,7 +136,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
 
   # Extracts includes from directives-only preprocessor output
   # Returns an array of Include-derived objects
-  def extract_includes(io:, filepath:, type:, max_depth:)
+  def extract_includes(io:, filepath:, type:, max_depth:, test: nil)
     includes = []
     seen_paths = Set.new
     initial_file_seen = false
@@ -199,7 +201,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
           # Extract user includes
           elsif type == USER
             unless flags.include?(3)
-              includes << @include_factory.user_include_from_filepath( filepath )
+              includes << @include_factory.user_include_from_filepath( filepath, test: test )
             end
           end
         # Flag 2 means returning to a previous file
