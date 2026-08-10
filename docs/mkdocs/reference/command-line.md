@@ -216,8 +216,13 @@ validation of code and configuration via your toolchain.
 ### [`ceedling test:*`](../getting-started/command-line.md#ceedling-test)
 
 Execute the named test file or the named source file that has an
-accompanying test. No path. Examples: `ceedling test:foo`, `ceedling 
-test:foo.c` or `ceedling test:test_foo.c`
+accompanying test. Examples: `ceedling test:foo`, `ceedling test:foo.c`
+or `ceedling test:test_foo.c`
+
+!!! tip
+    See the full documentation linked in this reference section title for
+    details on how to reference test files having the same filename within
+    different paths.
 
 #### [`ceedling test:* --test-case=<test_case_name>`](../getting-started/command-line.md#ceedling-test-test-casetest_case_name)
 Execute individual test cases which match `test_case_name`.

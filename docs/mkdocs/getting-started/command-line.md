@@ -329,8 +329,20 @@ validation of code and configuration via your toolchain.
 ### `ceedling test:*`
 
 Execute the named test file or the named source file that has an
-accompanying test. No path. Examples: `ceedling test:foo`, `ceedling 
-test:foo.c` or `ceedling test:test_foo.c`
+accompanying test. Examples: `ceedling test:foo`, `ceedling test:foo.c`
+or `ceedling test:test_foo.c`
+
+!!! tip "Disambiguating test files with the same name"
+    If more than one test file shares that filename in different test
+    directories, add enough of the trailing path to identify the file you
+    want—with as much or as little path as needed.
+    
+    For example, given _test/unit/test_foo.c_ and _test/integration/test_foo.c_, 
+    run `ceedling test:unit/test_foo.c` at the command line to identify
+    the first test file.
+    
+    When Ceedling is unable to uniquely identify a file path, it raises 
+    an error naming every matching file.
 
 ---
 

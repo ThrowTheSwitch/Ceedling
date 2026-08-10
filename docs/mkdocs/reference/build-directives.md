@@ -15,6 +15,11 @@ must appear above their use in a test file.
 
 ## `TEST_SOURCE_FILE("filepath")`
 
+!!! tip
+    Ceedling [distinguishes files of the same name by their path](../../testing-guide/conventions.md#distinguishing-same-named-files).
+    Include a partial path to distinguish any source files of the
+    same name to be compiled and linked with your test executable.
+
 Inject a specific source file into a test executable's build. Use this when
 a source file has no corresponding header file that Ceedling can discover by
 convention, or when you need to explicitly include an assembly file (`.s`) in

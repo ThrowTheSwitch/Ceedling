@@ -10,7 +10,12 @@ Entries in `:paths` help create directory-based bulk file collections. The
 `:files` configuration section is available for filepath-oriented tailoring of
 these bulk file collections.
 
-Entries in `:paths` ↳ `:include` also specify search paths for header files.
+Entries in `:paths` ↳ `:include` also specify compilation search paths for 
+header files.
+
+!!! tip
+    Ceedling [distinguishes files of the same name by their path with various interfaces and conventions to expose this](../../testing-guide/conventions.md#distinguishing-same-named-files).
+    This ability is particularly of interest in test suite builds.
 
 All of the configuration subsections that follow default to empty lists. In
 YAML, list items can be comma separated within brackets or organized per line
@@ -272,5 +277,6 @@ Subtractive paths may be simple paths or globs just like any other path entry.
 
 [GCC]: https://gcc.gnu.org
 [inline-ruby-string-expansion]: ../project-file.md#inline-ruby-string-expansion
+
 
 <br/><br/>
