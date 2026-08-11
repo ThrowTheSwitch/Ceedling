@@ -741,6 +741,33 @@ describe TestBuildExecutor do
 
       @executor.stage_preprocess_partial_headers( @state )
     end
+
+    it "logs a NORMAL progress line for a header that needs preprocessing, and no OBNOXIOUS skip line" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@reportinator).to receive(:generate_module_progress)
+        .with( operation: 'Preprocessing partial header for', module_name: 'a_test', filename: 'Foo.h' )
+        .and_return( 'Preprocessing partial header for a_test::Foo.h...' )
+
+      expect(@loginator).to receive(:log).with( 'Preprocessing partial header for a_test::Foo.h...' )
+      expect(@loginator).to_not receive(:log).with( anything, Verbosity::OBNOXIOUS )
+
+      @executor.stage_preprocess_partial_headers( @state )
+    end
+
+    it "logs an OBNOXIOUS skip line for a header recalled from cache, and no NORMAL preprocessing line" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      allow(@reportinator).to receive(:generate_module_progress)
+        .with( operation: 'Skipping partial header preprocessing for', module_name: 'a_test', filename: 'Foo.h' )
+        .and_return( 'Skipping partial header preprocessing for a_test::Foo.h...' )
+
+      expect(@loginator).to receive(:log).with( 'Skipping partial header preprocessing for a_test::Foo.h...', Verbosity::OBNOXIOUS )
+      expect(@reportinator).to_not receive(:generate_module_progress)
+        .with( operation: 'Preprocessing partial header for', module_name: anything, filename: anything )
+
+      @executor.stage_preprocess_partial_headers( @state )
+    end
   end
 
   context "#stage_preprocess_partial_sources" do
@@ -806,6 +833,33 @@ describe TestBuildExecutor do
       expect( @config.directives_only_filepath ).to eq( 'build/preprocess/Foo.c' )
       expect( @config.includes ).to eq( cached_includes )
       expect( @config.full_expansion_filepath ).to eq( 'build/preprocess/full_expansion/Foo.c' )
+    end
+
+    it "logs a NORMAL progress line for a source that needs preprocessing, and no OBNOXIOUS skip line" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@reportinator).to receive(:generate_module_progress)
+        .with( operation: 'Preprocessing partial source for', module_name: 'a_test', filename: 'Foo.c' )
+        .and_return( 'Preprocessing partial source for a_test::Foo.c...' )
+
+      expect(@loginator).to receive(:log).with( 'Preprocessing partial source for a_test::Foo.c...' )
+      expect(@loginator).to_not receive(:log).with( anything, Verbosity::OBNOXIOUS )
+
+      @executor.stage_preprocess_partial_sources( @state )
+    end
+
+    it "logs an OBNOXIOUS skip line for a source recalled from cache, and no NORMAL preprocessing line" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      allow(@reportinator).to receive(:generate_module_progress)
+        .with( operation: 'Skipping partial source preprocessing for', module_name: 'a_test', filename: 'Foo.c' )
+        .and_return( 'Skipping partial source preprocessing for a_test::Foo.c...' )
+
+      expect(@loginator).to receive(:log).with( 'Skipping partial source preprocessing for a_test::Foo.c...', Verbosity::OBNOXIOUS )
+      expect(@reportinator).to_not receive(:generate_module_progress)
+        .with( operation: 'Preprocessing partial source for', module_name: anything, filename: anything )
+
+      @executor.stage_preprocess_partial_sources( @state )
     end
   end
 

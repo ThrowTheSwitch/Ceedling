@@ -74,19 +74,26 @@ class TestBuildExecutor
       details.preprocessed_target = target
       details.stale               = @dependinator.stale?( target )
 
-      next if details.stale
+      if details.stale
+        msg = @reportinator.generate_module_progress(
+          operation:   'Preprocessing partial header for',
+          module_name: name,
+          filename:    File.basename( config.filepath )
+        )
+        @loginator.log( msg )
+      else
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping partial header preprocessing for',
+          module_name: name,
+          filename:    File.basename( config.filepath )
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        skipped += 1
 
-      msg = @reportinator.generate_module_progress(
-        operation:   'Skipping partial header preprocessing for',
-        module_name: name,
-        filename:    File.basename( config.filepath )
-      )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
-      skipped += 1
-
-      config.directives_only_filepath = target
-      config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
-      config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+        config.directives_only_filepath = target
+        config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
+        config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+      end
     end
 
     log_skip_summary( task: "partial header preprocessing", count: skipped, noun: "headers" )
@@ -180,19 +187,26 @@ class TestBuildExecutor
       details.preprocessed_target = target
       details.stale               = @dependinator.stale?( target )
 
-      next if details.stale
+      if details.stale
+        msg = @reportinator.generate_module_progress(
+          operation:   'Preprocessing partial source for',
+          module_name: name,
+          filename:    File.basename( config.filepath )
+        )
+        @loginator.log( msg )
+      else
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping partial source preprocessing for',
+          module_name: name,
+          filename:    File.basename( config.filepath )
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        skipped += 1
 
-      msg = @reportinator.generate_module_progress(
-        operation:   'Skipping partial source preprocessing for',
-        module_name: name,
-        filename:    File.basename( config.filepath )
-      )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
-      skipped += 1
-
-      config.directives_only_filepath = target
-      config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
-      config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+        config.directives_only_filepath = target
+        config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
+        config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+      end
     end
 
     log_skip_summary( task: "partial source preprocessing", count: skipped, noun: "sources" )
@@ -302,6 +316,7 @@ class TestBuildExecutor
       # exactly one C definition of each of its typedefs and aggregate types.
       types_header = @generator.generate_partial_types(
         name:        name,
+        partial:     config.module,
         c_module:    module_contents,
         output_path: testable.paths[:partials]
       )
