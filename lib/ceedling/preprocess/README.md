@@ -15,7 +15,9 @@ Each of these is explained in its own section below, with an example of the kind
 
 ## Where This Fits in a Test Build
 
-Ceedling's test pipeline calls into this subsystem at several points. It calls in to learn what a test file or header includes. It calls in again to produce a fully resolved version of a file's content, ready for further text extraction. Both the test-building and mock-generating stages of the pipeline rely on this subsystem this way, and this document explains the mechanics behind those calls rather than the pipeline's own stage order, which is documented separately alongside the pipeline itself.
+Ceedling's test pipeline reaches this subsystem through one class, `Preprocessinator`. It calls in to learn what a test file or header includes. It calls in again to produce a fully resolved version of a file's content, ready for further text extraction. Both the test-building and mock-generating stages of the pipeline call `Preprocessinator` this way, and this document explains the mechanics behind those calls rather than the pipeline's own stage order, which is documented separately alongside the pipeline itself.
+
+`Preprocessinator` does not do this work alone. It hands each piece of the job to one of several smaller classes living alongside it in this directory. Each of those classes is named where its own particular job is explained below.
 
 Release builds do not use this subsystem at all. A release build only needs to know a file's true dependencies for staleness tracking, a simpler question answered by a lighter tool of its own.
 
@@ -29,13 +31,15 @@ To keep track of which piece of that flattened stream came from which original f
 # 6 "src/module.c" 2
 ```
 
-The number is a line count. The quoted text is a file name. The trailing numbers are flags describing what just happened. A flag of `1` means the preprocessor has just entered a new file, typically because of an `#include`. A flag of `2` means the preprocessor has just returned to the file it was in before. A flag of `3` means the file just entered is a system header, found through a system include path rather than a project path. These three flags are what let Ceedling walk through a flattened stream of preprocessor output and correctly attribute each line back to its real, original file.
+The number is a line count. The quoted text is a file name. The trailing numbers are flags describing what just happened. A flag of `1` means the preprocessor has just entered a new file, typically because of an `#include`. A flag of `2` means the preprocessor has just returned to the file it was in before. A flag of `3` means the file just entered is a system header, found through a system include path rather than a project path. These three flags are what let Ceedling walk through a flattened stream of preprocessor output and correctly attribute each line back to its real, original file. A class called `PreprocessinatorLineMarkerIncludesExtractor` is the one that actually does this walking.
 
 ## Finding Every Include, Accurately
 
 Knowing exactly which headers a file includes, and whether each one is a user header or a system header, turns out to be harder than it sounds. A header protected by an include guard will not appear a second time if it happens to be reached again through a different path. This means a single pass over line markers cannot be fully trusted to report every include at the top level of a file.
 
-Ceedling solves this with two separate preprocessor passes that are then reconciled together. The first pass runs the preprocessor in bare-includes mode, a mode meant only to report dependencies, deliberately pointed at no real project search paths at all. Because no real header can be found this way, none are ever opened, so no include guard can ever suppress anything. This pass is not troubled by nesting or guards, and it reliably reports the complete, accurate list of every include a file would pull in at its own top level, given its current macro definitions. What it cannot do is say whether any one of those includes is a user header or a system header.
+Ceedling solves this with two separate preprocessor passes that are then reconciled together. A class called `PreprocessinatorIncludesHandler` runs both passes and hands each one's raw output to a small parser built just for it. `PreprocessinatorBareIncludesExtractor` reads the first pass's output. `PreprocessinatorLineMarkerIncludesExtractor`, already named above, reads the second.
+
+The first pass runs the preprocessor in bare-includes mode, a mode meant only to report dependencies, deliberately pointed at no real project search paths at all. Because no real header can be found this way, none are ever opened, so no include guard can ever suppress anything. This pass is not troubled by nesting or guards, and it reliably reports the complete, accurate list of every include a file would pull in at its own top level, given its current macro definitions. What it cannot do is say whether any one of those includes is a user header or a system header.
 
 Bare-includes mode is invoked roughly like this, with only Ceedling's own vendor path available to search:
 
@@ -108,7 +112,7 @@ This mode is used sparingly, specifically where a signature or a visibility keyw
 
 Raw preprocessor output cannot be handed directly to anything expecting an ordinary, self-contained C file. It has already been described as an entire include tree flattened into one document, and none of a file's own `#include` lines survive that process, since a real preprocessor's whole purpose is to replace each one with the file's contents.
 
-Ceedling reconstructs a usable file from this output. It walks the flattened stream watching line markers, keeping only the lines that belong to the file actually being reconstructed and discarding every line that arrived from somewhere else. Given flattened output like this, where a target file's own lines sit between the contents of two other files it does not actually want:
+A class called `PreprocessinatorFileAssembler` is what actually runs the preprocessor invocations shown above, and what turns their output back into a real file afterward. For the second half of that job it leans on another class, `PreprocessinatorReconstructor`, which walks the flattened stream watching line markers, keeping only the lines that belong to the file actually being reconstructed and discarding every line that arrived from somewhere else. Given flattened output like this, where a target file's own lines sit between the contents of two other files it does not actually want:
 
 ```
 # 1 "some/file/we/do/not/want.c" 5
@@ -131,13 +135,13 @@ some_awesome_text_we_want_so_hard();
 holy_crepes_more_awesome_text();
 ```
 
-Ceedling then places the file's own, original include directives back at the top, drawn from the reconciled include list described above, ahead of this recovered body text. The result reads as a complete, ordinary C file again, ready for compiling or for further text extraction, rather than as an undifferentiated stream of every header a file happens to depend on.
+`PreprocessinatorFileAssembler` then places the file's own, original include directives back at the top, drawn from the reconciled include list described above, ahead of this recovered body text. The result reads as a complete, ordinary C file again, ready for compiling or for further text extraction, rather than as an undifferentiated stream of every header a file happens to depend on.
 
 ## Comments and Why They Go First
 
 Several later steps read meaningful text directly out of preprocessor output. A step reading macro definitions, or reading a special marker macro placed by a test author, has to trust that whatever looks like a directive or a macro name really is one. A stray comment containing text that merely resembles a directive could otherwise be mistaken for a real one.
 
-To avoid this, comments are found and removed from a file's preprocessed output before any of that later reading happens. The removal is careful about where a comment can legitimately begin. It never mistakes a `//` or a `/*` sitting inside a quoted string for the start of a real comment. Directives-only output carrying a comment like this:
+To avoid this, a class called `PreprocessinatorCommentStripper` finds and removes comments from a file's preprocessed output before any of that later reading happens. It leans on a lower-level class, `CCommentScanner`, to do the actual finding. `CCommentScanner` is built on the same `StringScanner` approach explained in this codebase's c_extractor documentation, walking the text one position at a time rather than searching it as a whole. This is what lets it stay careful about where a comment can legitimately begin. It never mistakes a `//` or a `/*` sitting inside a quoted string for the start of a real comment. Directives-only output carrying a comment like this:
 
 ```
 # 1 "module.c"
@@ -155,12 +159,12 @@ When a multi-line comment is removed, it is replaced with the same number of bla
 
 ## Finding Where a Snippet Came From
 
-A separate, smaller capability exists for tracing a piece of already-preprocessed text back to the original line number it came from. Given a snippet of code and a body of preprocessor output containing it, this capability walks backward through the nearest line markers to work out which original file and line the snippet actually belongs to.
+A separate, smaller class, `PreprocessinatorCodeFinder`, exists for tracing a piece of already-preprocessed text back to the original line number it came from. Given a snippet of code and a body of preprocessor output containing it, it walks backward through the nearest line markers to work out which original file and line the snippet actually belongs to.
 
 Ceedling's Partials feature relies on this directly. A function copied out into a generated Partial file still needs to point back at its true, original location, and this is how that original location is found.
 
 ## Caching and the Fallback Path
 
-Running a real preprocessor is genuinely expensive, and a project's files do not change on every single build. Ceedling caches the include lists it works out for a file, and reuses a cached list rather than repeating a preprocessor pass when nothing relevant about that file has changed since the last run.
+Running a real preprocessor is genuinely expensive, and a project's files do not change on every single build. `PreprocessinatorIncludesHandler`, already named above, also owns a small cache of the include lists it works out for a file, and reuses a cached list rather than repeating a preprocessor pass when nothing relevant about that file has changed since the last run.
 
-Sometimes running a real preprocessor is not possible at all, whether because a project's toolchain does not support the mode Ceedling needs, or because a particular invocation simply fails for some other reason. When this happens, Ceedling falls back to a plain text scan of the original file instead. This fallback cannot resolve a conditional the way a real preprocessor can, so its results are necessarily less certain. It exists to keep a build moving forward far enough for a test author to see what is actually going wrong, rather than leaving a build unable to proceed at all.
+Sometimes running a real preprocessor is not possible at all, whether because a project's toolchain does not support the mode Ceedling needs, or because a particular invocation simply fails for some other reason. When this happens, Ceedling falls back to a plain text scan of the original file instead, guided by a small class called `CPreprocessorConditionals`, which tracks `#ifdef`, `#ifndef`, `#if`, `#elif`, `#else`, and `#endif` state well enough to skip text that real conditional compilation would have excluded. This fallback cannot resolve a conditional with the same certainty a real preprocessor can, so its results are necessarily less certain. It exists to keep a build moving forward far enough for a test author to see what is actually going wrong, rather than leaving a build unable to proceed at all.
