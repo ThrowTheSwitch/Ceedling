@@ -14,10 +14,28 @@ This changelog is complemented by three other documents:
 
 ## 🌟 Added
 
-- Delta builds have been restored after a temporary hiatus following a major refactoring for 1.0.0 ([Restore delta test builds to Ceedling 1.0.0+](https://github.com/ThrowTheSwitch/Ceedling/issues/1143)). A delta build is simply a build run that only performs regeneration, compilation, or linking as needed because of changed files. Ceedling 1.0.0 introduced threaded parallel build steps but had to remove delta builds in the process. As of 1.2.0, both build speedups are now available. Delta builds are automatic with no configuration needed.
-- Added support for properly distinguishing all C files by filepath (addressing [#1167](https://github.com/ThrowTheSwitch/Ceedling/issues) specifically but also the fundamental problem generally). In Ceedling’s early history simplicity won out with the assumption that every C file would be uniquely named. But, for example, this meant _dir1/foo.h_ and _dir2/foo.h_ were indistiguishable. Now Ceedling fully utilizes filepaths to distinguish all elements of a build. Relative paths are supported in `#include` directives and `test:` tasks at the command line can optionally include a filepath to distinguish test files of the same name.
-- Added support for multiple [file extensions](https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
 - Support for the Bullseye commercial code coverage tool has been restored through updates to the temporarily disabled [Bullseye plugin](https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/).
+
+### Delta builds
+Delta builds have been restored after a temporary hiatus following a major refactoring for 1.0.0 ([Restore delta test builds to Ceedling 1.0.0+](https://github.com/ThrowTheSwitch/Ceedling/issues/1143)).
+
+A delta build is simply a build run that only performs regeneration, compilation, or linking as needed because of changed files. Ceedling 1.0.0 introduced threaded parallel build steps but had to remove delta builds in the process. As of 1.2.0, both build speedups are now available. Delta builds are automatic with no configuration needed.
+
+### `#include` relative paths & duplicate filename disambiguation
+Added support for properly distinguishing all C files by filepath (addressing [#1167](https://github.com/ThrowTheSwitch/Ceedling/issues) specifically but also the fundamental problem generally).
+
+In Ceedling’s early history simplicity won out with the assumption that every C file would be uniquely named. But, for example, this meant _dir1/foo.h_ and _dir2/foo.h_ were indistiguishable. Now Ceedling fully utilizes filepaths to distinguish all elements of a build. Relative paths are supported in `#include` directives. `test:` build tasks at the command line can optionally include a filepath to distinguish test files of the same name.
+
+### Multiple file extensions per file type
+Added support for multiple [file extensions](https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
+
+## ⚠️ Changed
+
+### `#include` relative paths & duplicate filename disambiguation
+Because of the support added for handling paths and distinguishing duplicated filenames, the functional interface for testing has changed.
+
+1. The interface for test-build command line tasks has expanded. If you need to distinguish _foo/test_thing.c_ from _bar/test_thing.c_, you must now add a trailing path to disambiguate the tests — `ceedling test:foo/thing` and `ceedling test:bar/thing`. The trailing path is optional and is only required to distinguish test files of the same name in different subdirectories. Of course, the test files must both be in the collection created by your `:paths` and `:extension` configurations.
+1. Paths in `#include` directives are optional but now required to disambiguate header files of the same filename. 
 
 ---
 
