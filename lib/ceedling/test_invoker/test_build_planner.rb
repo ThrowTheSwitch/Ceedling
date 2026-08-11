@@ -255,18 +255,22 @@ class TestBuildPlanner
   end
 
   # Every #include naming a real project header -- other than a mock (validated separately,
-  # as part of resolving it via FileFinder#resolve_mock), a system header, Unity's own header, or a Partial
-  # (Ceedling's own generated content, not a project file to validate) -- must resolve to
-  # exactly one file in collection_all_headers: the same hard-ambiguity-or-not-found policy
-  # applied everywhere else a query is matched against a collection of real files. A bogus
-  # or merely-unmatched path is otherwise never actually checked against real project
-  # headers -- only its potential corresponding source file is, tolerantly, elsewhere.
+  # as part of resolving it via FileFinder#resolve_mock), a system header, Unity's or
+  # Ceedling's own header, or a Partial (Ceedling's own generated content, not a project file
+  # to validate) -- must resolve to exactly one file in collection_all_headers: the same
+  # hard-ambiguity-or-not-found policy applied everywhere else a query is matched against a
+  # collection of real files. A bogus or merely-unmatched path is otherwise never actually
+  # checked against real project headers -- only its potential corresponding source file is,
+  # tolerantly, elsewhere. Unity's and Ceedling's own headers live in the build's vendor
+  # directories, outside every configured :test/:source/:support/:include root that
+  # collection_all_headers is built from, so neither could ever resolve there.
   def validate_header_includes(test_filepath)
     includes = @context_extractor.lookup_nonmock_header_includes_list( test_filepath )
 
     includes.each do |include|
       next if include.is_a?( SystemInclude )
       next if include.filename == UNITY_H_FILE
+      next if include.filename == CEEDLING_HEADER_FILENAME
       next if include.filename.start_with?( PARTIAL_FILENAME_PREFIX )
 
       @file_finder.find_header_file( include.filepath, :error )
