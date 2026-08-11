@@ -29,7 +29,6 @@ class TestBuildSetup
     :flaginator,
     :file_wrapper,
     :file_path_utils,
-    :file_finder,
     :test_runner_manager,
     :dependinator
   )
@@ -441,26 +440,12 @@ class TestBuildSetup
     mocks    = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
     partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )
 
-    clean_header_roots = PathMirror.clean_roots( @configurator.paths_test + @configurator.paths_support + @configurator.paths_include )
-
     mocks.each do |include|
-      # A partial mock has no real header to resolve against -- it's Ceedling's own generated
-      # content, always flat per test, so the #include's own (already flat) path is correct
-      # as written. An ordinary mock's stand-in must mirror wherever its real header actually
-      # lives -- exactly like the real mock (stage 10) will -- or the stand-in and the
-      # eventual real generated file land at different paths and stage 10 never overwrites
-      # this stand-in at all.
-      is_partial = include.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
-
-      if is_partial
-        filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
-      else
-        source   = @file_finder.find_header_input_for_mock( include.filepath )
-        subdir   = PathMirror.relative_subdir_from_clean_roots( source, clean_header_roots )
-        mock_dir = subdir.empty? ? test : File.join( test, subdir )
-        filepath = @file_path_utils.form_mock_header_filepath( mock_dir, include.filename )
-      end
-
+      # Mirrors the #include's own path, matching the real mock (stage 10) for the same
+      # reason described in stage_determine_files: the mock is only ever findable by the
+      # compiler via a search path pointing at the flat mock root, so it must live wherever
+      # that root plus whatever path the #include itself wrote actually resolves to.
+      filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
       next if @file_wrapper.exist?( filepath )
 
       msg = @reportinator.generate_module_progress(

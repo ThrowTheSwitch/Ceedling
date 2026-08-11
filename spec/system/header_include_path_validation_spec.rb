@@ -8,23 +8,27 @@
 require 'spec_system_helper'
 
 ##
-## Header #include Path Validation & Mirroring Consistency
-## ==========================================================
+## Header #include Path Validation
+## =================================
 ##
-## Two related properties of a #include'd header (mock or vanilla), neither
-## previously enforced:
+## A #include's path -- however much or little it carries -- must resolve to
+## exactly one real header in the project's header collection. A path that
+## matches nothing is a hard error (not silently resolved by basename alone,
+## which would let a bogus leading path go completely unnoticed), the same
+## hard-ambiguity-or-not-found policy applied everywhere else a query is
+## matched against a collection of real files. This applies to both mocks
+## (find_header_input_for_mock) and ordinary, non-mock headers
+## (validate_header_includes).
 ##
-## 1. A #include's path -- however much or little it carries -- must resolve to
-##    exactly one real header in the project's header collection. A path that
-##    matches nothing is a hard error (not silently resolved by basename alone,
-##    which would let a bogus leading path go completely unnoticed), the same
-##    hard-ambiguity-or-not-found policy applied everywhere else a query is
-##    matched against a collection of real files.
-##
-## 2. A mock's own generated location mirrors its real header's resolved
-##    location -- not however much path the #include itself happened to carry.
-##    Two test files #including the very same header, one bare and one with a
-##    disambiguating path, must place that header's mock in the very same spot.
+## A mock's own generated location still mirrors the #include's own path, not
+## its real header's resolved location -- a mock is only ever findable by the
+## compiler via a search path pointing at the flat per-test mock root (C's own
+## #include resolution has no notion of a recursive search path), so its
+## location has to match whatever the #include itself wrote, by construction.
+## The first test below confirms a mock whose real header lives in a
+## subdirectory still compiles correctly whether its #include is bare or
+## carries a disambiguating path -- each lands wherever its own #include text
+## says, which remains the one location guaranteed to compile.
 ##
 ## Test assets: assets/fixtures/header_include_path_validation/
 ##   - drivers/foo.h: declares foo_value(void), no corresponding .c (mocked only)
@@ -56,7 +60,7 @@ ceedling_system_tests do
     end
 
     # =========================================================================
-    describe "A mock's own generated location, regardless of #include specificity" do
+    describe "A mock whose real header lives in a subdirectory" do
     # =========================================================================
 
       before do
@@ -70,7 +74,7 @@ ceedling_system_tests do
         end
       end
 
-      it "is identical whether the #include is bare or carries a disambiguating path" do
+      it "compiles whether the #include is bare or carries a disambiguating path" do
         @c.with_context do
           Dir.chdir @proj_name do
             output = @c.ceedling_build_exec("test:all")
@@ -79,7 +83,12 @@ ceedling_system_tests do
             expect(output).to match(/TESTED:\s+2/)
             expect(output).to match(/PASSED:\s+2/)
 
-            expect(File.exist?('build/test/mocks/test_bare_mock/drivers/Mockfoo.h')).to be true
+            # A mock is only ever findable by the compiler via a search path pointing at the
+            # flat per-test mock root (C's own #include resolution has no notion of a
+            # recursive search path), so its stand-in/real generated location mirrors
+            # whatever path the #include itself wrote -- flat for the bare #include, nested
+            # to match for the disambiguated one.
+            expect(File.exist?('build/test/mocks/test_bare_mock/Mockfoo.h')).to be true
             expect(File.exist?('build/test/mocks/test_pathed_mock/drivers/Mockfoo.h')).to be true
           end
         end

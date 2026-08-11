@@ -22,7 +22,6 @@ describe TestBuildSetup do
     @flaginator              = double( "Flaginator" )
     @file_wrapper            = double( "FileWrapper" )
     @file_path_utils         = double( "FilePathUtils" )
-    @file_finder             = double( "FileFinder" )
     @test_runner_manager     = double( "TestRunnerManager" )
     @dependinator            = double( "Dependinator" )
 
@@ -39,8 +38,6 @@ describe TestBuildSetup do
     allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
     allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
     allow(@configurator).to receive(:paths_test).and_return( [] )
-    allow(@configurator).to receive(:paths_support).and_return( [] )
-    allow(@configurator).to receive(:paths_include).and_return( [] )
     allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath).and_return( 'build/preprocess/raw/Foo.txt' )
     allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.c.yml' )
     allow(@file_path_utils).to receive(:form_test_build_directives_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/Foo.c.yml' )
@@ -83,7 +80,6 @@ describe TestBuildSetup do
         :flaginator             => @flaginator,
         :file_wrapper           => @file_wrapper,
         :file_path_utils        => @file_path_utils,
-        :file_finder            => @file_finder,
         :test_runner_manager    => @test_runner_manager,
         :dependinator           => @dependinator
       }
@@ -339,7 +335,6 @@ describe TestBuildSetup do
         allow(@file_wrapper).to receive(:write_blank_file)
         allow(@file_path_utils).to receive(:form_mock_header_filepath).and_return( 'build/test/mocks/a_test/MockFoo.h' )
         allow(@file_path_utils).to receive(:form_partial_header_filepath).and_return( 'build/test/partials/a_test/ceedling_partial_Foo_impl.h' )
-        allow(@file_finder).to receive(:find_header_input_for_mock).and_return( 'src/Foo.h' )
       end
 
       it "writes a blank stand-in for a mocked header that does not yet exist on disk" do

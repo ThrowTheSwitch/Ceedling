@@ -403,7 +403,6 @@ test_build_setup:
     - flaginator
     - file_wrapper
     - file_path_utils
-    - file_finder
     - test_runner_manager
     - dependinator
 

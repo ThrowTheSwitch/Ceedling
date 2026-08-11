@@ -7,7 +7,6 @@
 
 require 'ceedling/constants'
 require 'ceedling/test_invoker/test_invoker_types'
-require 'ceedling/path_mirror'
 require 'ceedling/includes/includes'
 
 class TestBuildPlanner
@@ -33,12 +32,6 @@ class TestBuildPlanner
 
   # Stage 5: Determine runners, mocks, and partials for all tests.
   def stage_determine_files(state)
-    # The same roots collection_all_headers itself is built from (collect_headers in
-    # configurator_builder.rb) -- computed once since none of it changes mid-run, reused by
-    # every testable and every mock within it, rather than every mock's own call re-parsing
-    # the same still-decorated list from scratch.
-    clean_header_roots = PathMirror.clean_roots( @configurator.paths_test + @configurator.paths_support + @configurator.paths_include )
-
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       test     = testable.name
       filepath = testable.filepath
@@ -62,14 +55,16 @@ class TestBuildPlanner
           input             = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
         end
 
-        # Mirrors the resolved header's own subdirectory -- not whatever path (if any) the
-        # #include itself happened to spell out. Two test builds #including the same header
-        # with different amounts of disambiguating path must place its mock in the same
-        # place; only the header's real, resolved location is a stable answer to "where."
+        # Mirrors the #include's own path, not the resolved header's -- a mock is only ever
+        # found by the compiler via a search path pointing at the flat mock root (search_paths
+        # in test_build_setup.rb adds no per-mock subdirectory of its own, and C's own #include
+        # resolution has no notion of a recursive search path), so the mock must live wherever
+        # that flat root plus whatever path the #include itself wrote actually resolves to --
+        # the one location guaranteed to still compile, by construction.
         mocks[name.to_sym] = {
           name:     name,
-          filepath: source,
-          path:     PathMirror.relative_subdir_from_clean_roots( source, clean_header_roots ),
+          filepath: include.filepath,
+          path:     include.path,
           source:   source,
           input:    input
         }
