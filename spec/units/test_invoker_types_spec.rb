@@ -128,5 +128,63 @@ describe "TestInvokerTypes" do
       expect(stage.run?( TestInvokerTypes::PipelineState.new( options: [:build_only] ) )).to be true
       expect(stage.run?( TestInvokerTypes::PipelineState.new( options: [] ) )).to be false
     end
+
+    describe "#enabled? and #empty?" do
+      it "is enabled whenever its condition returns true, regardless of empty_condition" do
+        stage = TestInvokerTypes::Stage.new(
+          name: 'A stage', condition: ->(_s) { true }, empty_condition: ->(_s) { true }, body: ->(_s) {}
+        )
+
+        expect(stage.enabled?( nil )).to be true
+      end
+
+      it "is not enabled when its condition returns false" do
+        stage = TestInvokerTypes::Stage.new( name: 'A stage', condition: ->(_s) { false }, body: ->(_s) {} )
+
+        expect(stage.enabled?( nil )).to be false
+      end
+
+      it "is never empty when given no empty_condition" do
+        stage = TestInvokerTypes::Stage.new( name: 'A stage', body: ->(_s) {} )
+
+        expect(stage.empty?( nil )).to be false
+      end
+
+      it "is empty only when its empty_condition returns true" do
+        stage = TestInvokerTypes::Stage.new(
+          name: 'A stage', empty_condition: ->(s) { s.mocks_list.empty? }, body: ->(_s) {}
+        )
+
+        expect(stage.empty?( TestInvokerTypes::PipelineState.new( mocks_list: [] ) )).to be true
+        expect(stage.empty?( TestInvokerTypes::PipelineState.new( mocks_list: [double("Mock")] ) )).to be false
+      end
+
+      it "does not run when enabled but empty, though it remains enabled" do
+        stage = TestInvokerTypes::Stage.new(
+          name: 'A stage',
+          condition:       ->(_s) { true },
+          empty_condition: ->(s) { s.mocks_list.empty? },
+          body:            ->(_s) {}
+        )
+        state = TestInvokerTypes::PipelineState.new( mocks_list: [] )
+
+        expect(stage.enabled?( state )).to be true
+        expect(stage.empty?( state )).to be true
+        expect(stage.run?( state )).to be false
+      end
+
+      it "does not run when disabled, even if it would otherwise have work to do" do
+        stage = TestInvokerTypes::Stage.new(
+          name: 'A stage',
+          condition:       ->(_s) { false },
+          empty_condition: ->(s) { s.mocks_list.empty? },
+          body:            ->(_s) {}
+        )
+        state = TestInvokerTypes::PipelineState.new( mocks_list: [double("Mock")] )
+
+        expect(stage.enabled?( state )).to be false
+        expect(stage.run?( state )).to be false
+      end
+    end
   end
 end

@@ -389,6 +389,7 @@ test_pipeline_manager:
     - test_build_executor
     - configurator
     - batchinator
+    - loginator
 
 test_build_setup:
   compose:
