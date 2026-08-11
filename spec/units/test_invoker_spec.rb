@@ -116,4 +116,18 @@ describe TestInvoker do
       expect( yielded ).to eq( [['a_test', ['src/Foo.c']]] )
     end
   end
+
+  describe "#lookup_sources" do
+    it "returns the named test's sources after a run, accepting either a String or Symbol name" do
+      testable = TestInvokerTypes::Testable.new( :name => 'a_test', :sources => ['src/Foo.c'] )
+      allow(@test_pipeline_manager).to receive(:run) do |state|
+        state.testables[:a_test] = testable
+      end
+
+      @invoker.setup_and_invoke( tests: [] )
+
+      expect( @invoker.lookup_sources( test: 'a_test' ) ).to eq( ['src/Foo.c'] )
+      expect( @invoker.lookup_sources( test: :a_test ) ).to eq( ['src/Foo.c'] )
+    end
+  end
 end

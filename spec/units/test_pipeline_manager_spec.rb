@@ -158,5 +158,91 @@ describe TestPipelineManager do
         @manager.run( state(options: [:sources_only]) )
       end
     end
+
+    context "with no stop-point options and every optional feature enabled" do
+      before(:each) do
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+        allow(@configurator).to receive(:project_use_partials).and_return( true )
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+      end
+
+      it "runs every stage and transform, start to finish" do
+        expect(@test_build_setup).to receive(:stage_prepare_build_paths)
+        expect(@test_build_setup).to receive(:stage_collect_test_context)
+        expect(@test_build_setup).to receive(:stage_ingest_configurations)
+        expect(@test_build_setup).to receive(:stage_collect_preprocessor_context)
+        expect(@test_build_planner).to receive(:stage_determine_files)
+        expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
+        expect(@test_build_executor).to receive(:stage_preprocess_partial_headers)
+        expect(@test_build_executor).to receive(:stage_preprocess_partial_sources)
+        expect(@test_build_executor).to receive(:stage_generate_partials)
+        expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
+        expect(@test_build_executor).to receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to receive(:stage_generate_mocks)
+        expect(@test_build_executor).to receive(:stage_preprocess_test_files)
+        expect(@test_build_executor).to receive(:stage_collect_runner_details)
+        expect(@test_build_executor).to receive(:stage_generate_runners)
+        expect(@test_build_planner).to receive(:stage_determine_artifacts)
+        expect(@test_build_planner).to receive(:stage_flatten_objects_list)
+        expect(@test_build_executor).to receive(:stage_build_objects)
+        expect(@test_build_executor).to receive(:stage_build_executables)
+        expect(@test_build_executor).to receive(:stage_execute)
+
+        @manager.run( state(options: []) )
+      end
+    end
+
+    context "when test preprocessing is disabled" do
+      it "skips test-file preprocessing and its two dependent stages, independent of any stop-point option" do
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+
+        expect(@test_build_setup).to_not receive(:stage_collect_preprocessor_context)
+        expect(@test_build_executor).to_not receive(:stage_preprocess_test_files)
+        expect(@test_build_executor).to_not receive(:stage_collect_runner_details)
+        expect(@test_build_executor).to receive(:stage_generate_runners)
+
+        @manager.run( state(options: []) )
+      end
+    end
+
+    context "when Partials is disabled" do
+      it "skips the Partials transform and its three stages, independent of any stop-point option" do
+        allow(@configurator).to receive(:project_use_partials).and_return( false )
+
+        expect(@test_build_planner).to_not receive(:stage_flatten_partials_lists)
+        expect(@test_build_executor).to_not receive(:stage_preprocess_partial_headers)
+        expect(@test_build_executor).to_not receive(:stage_preprocess_partial_sources)
+        expect(@test_build_executor).to_not receive(:stage_generate_partials)
+        expect(@test_build_planner).to receive(:stage_determine_files)
+
+        @manager.run( state(options: []) )
+      end
+    end
+
+    context "when mocking is disabled" do
+      it "skips the mocks transform and both mocking stages, independent of any stop-point option" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( false )
+
+        expect(@test_build_planner).to_not receive(:stage_flatten_mocks_list)
+        expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to_not receive(:stage_generate_mocks)
+        expect(@test_build_executor).to receive(:stage_generate_runners)
+
+        @manager.run( state(options: []) )
+      end
+    end
+
+    context "when mocking is enabled but mock preprocessing is disabled" do
+      it "still generates mocks but skips preprocessing headers to be mocked" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+
+        expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to receive(:stage_generate_mocks)
+
+        @manager.run( state(options: []) )
+      end
+    end
   end
 end
