@@ -22,6 +22,7 @@ describe TestBuildSetup do
     @flaginator              = double( "Flaginator" )
     @file_wrapper            = double( "FileWrapper" )
     @file_path_utils         = double( "FilePathUtils" )
+    @file_finder             = double( "FileFinder" )
     @test_runner_manager     = double( "TestRunnerManager" )
     @dependinator            = double( "Dependinator" )
 
@@ -80,6 +81,7 @@ describe TestBuildSetup do
         :flaginator             => @flaginator,
         :file_wrapper           => @file_wrapper,
         :file_path_utils        => @file_path_utils,
+        :file_finder            => @file_finder,
         :test_runner_manager    => @test_runner_manager,
         :dependinator           => @dependinator
       }
@@ -88,6 +90,7 @@ describe TestBuildSetup do
     @testable = TestInvokerTypes::Testable.new(
       :name               => 'a_test',
       :filepath           => 'test/TestFoo.c',
+      :paths              => {},
       :preprocess         => { :includes => [], :directives_only => { :filepath => nil } },
       :preprocess_flags   => [],
       :preprocess_defines => [],
@@ -335,6 +338,7 @@ describe TestBuildSetup do
         allow(@file_wrapper).to receive(:write_blank_file)
         allow(@file_path_utils).to receive(:form_mock_header_filepath).and_return( 'build/test/mocks/a_test/MockFoo.h' )
         allow(@file_path_utils).to receive(:form_partial_header_filepath).and_return( 'build/test/partials/a_test/ceedling_partial_Foo_impl.h' )
+        allow(@file_finder).to receive(:resolve_mock).and_return( ['src/Foo.h', ''] )
       end
 
       it "writes a blank stand-in for a mocked header that does not yet exist on disk" do
@@ -374,6 +378,85 @@ describe TestBuildSetup do
 
         @setup.stage_collect_preprocessor_context( @state )
       end
+    end
+  end
+
+  describe "#collect_mock_search_paths" do
+    before(:each) do
+      @testable.paths[:mocks] = 'build/test/mocks/a_test'
+    end
+
+    it "collects each non-Partial mocked header's own mirrored directory, deduplicated" do
+      foo_mock = MockInclude.new('MockFoo.h')
+      bar_mock = MockInclude.new('MockBar.h')
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+        .with('test/TestFoo.c').and_return( [foo_mock, bar_mock] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h').and_return( ['src/drivers/foo.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockBar.h').and_return( ['src/drivers/bar.h', 'drivers'] )
+
+      result = @setup.collect_mock_search_paths( @testable )
+
+      expect(result).to eq(['build/test/mocks/a_test/drivers'])
+    end
+
+    it "uses the flat mock root itself for a header directly in a configured root" do
+      foo_mock = MockInclude.new('MockFoo.h')
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+        .with('test/TestFoo.c').and_return( [foo_mock] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h').and_return( ['src/foo.h', ''] )
+
+      result = @setup.collect_mock_search_paths( @testable )
+
+      expect(result).to eq(['build/test/mocks/a_test'])
+    end
+
+    it "skips a Partial mock -- it has no real header to resolve against" do
+      partial_mock = MockInclude.new('Mockceedling_partial_foo_interface.h')
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+        .with('test/TestFoo.c').and_return( [partial_mock] )
+      expect(@file_finder).to_not receive(:resolve_mock)
+
+      result = @setup.collect_mock_search_paths( @testable )
+
+      expect(result).to eq([])
+    end
+
+    it "returns nothing when the project has no mocks path at all (mocking disabled)" do
+      @testable.paths.delete(:mocks)
+
+      result = @setup.collect_mock_search_paths( @testable )
+
+      expect(result).to eq([])
+    end
+  end
+
+  describe "#search_paths" do
+    before(:each) do
+      allow(@include_pathinator).to receive(:lookup_test_directive_include_paths).and_return( [] )
+      allow(@include_pathinator).to receive(:collect_test_include_paths).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_support).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_include).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_libraries).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
+    end
+
+    it "includes a mocked header's own mirrored directory alongside the flat mock root" do
+      paths = { mocks: 'build/test/mocks/a_test' }
+      mock_search_paths = ['build/test/mocks/a_test/drivers']
+
+      result = @setup.search_paths( 'test/TestFoo.c', paths, mock_search_paths )
+
+      expect(result).to include('build/test/mocks/a_test')
+      expect(result).to include('build/test/mocks/a_test/drivers')
+    end
+
+    it "carries only the flat mock root when no mock needs a mirrored directory of its own" do
+      paths = { mocks: 'build/test/mocks/a_test' }
+
+      result = @setup.search_paths( 'test/TestFoo.c', paths )
+
+      expect(result).to eq(['build/test/mocks/a_test'])
     end
   end
 

@@ -1,5 +1,5 @@
 #include "unity.h"
-#include "totally/bogus/dir/Mockfoo.h"
+#include "totally/bogus/dir/mock_foo.h"
 
 void setUp(void) {}
 void tearDown(void) {}

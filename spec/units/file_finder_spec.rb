@@ -90,6 +90,41 @@ describe FileFinder do
     end
   end
 
+  describe '#resolve_mock' do
+    before(:each) do
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@configurator).to receive(:collection_all_headers).and_return(
+        ['src/drivers/foo.h', 'src/baz.h']
+      )
+      allow(@configurator).to receive(:paths_test).and_return( [] )
+      allow(@configurator).to receive(:paths_support).and_return( [] )
+      allow(@configurator).to receive(:paths_include).and_return( ['src'] )
+    end
+
+    it 'resolves a mock header and its own mirrored subdirectory below the configured root that contains it' do
+      source, subdir = @file_finder.resolve_mock('Mockfoo.h')
+      expect(source).to eq('src/drivers/foo.h')
+      expect(subdir).to eq('drivers')
+    end
+
+    it 'returns an empty subdirectory for a mock header directly in a configured root' do
+      source, subdir = @file_finder.resolve_mock('Mockbaz.h')
+      expect(source).to eq('src/baz.h')
+      expect(subdir).to eq('')
+    end
+
+    it 'resolves identically regardless of how much disambiguating path the query itself carries' do
+      bare,   bare_subdir   = @file_finder.resolve_mock('Mockfoo.h')
+      pathed, pathed_subdir = @file_finder.resolve_mock('drivers/Mockfoo.h')
+      expect(bare).to eq(pathed)
+      expect(bare_subdir).to eq(pathed_subdir)
+    end
+
+    it 'still raises on a bogus or ambiguous mock reference, exactly as find_header_input_for_mock does' do
+      expect { @file_finder.resolve_mock('nonexistent/dir/Mockfoo.h') }.to raise_error(CeedlingException)
+    end
+  end
+
   describe '#find_source_file' do
     before(:each) do
       allow(@configurator).to receive(:extension_source).and_return( FilenameExtension.new('.c') )

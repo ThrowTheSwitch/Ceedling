@@ -1,5 +1,5 @@
 #include "unity.h"
-#include "Mockfoo.h"
+#include "mock_foo.h"
 
 void setUp(void) {}
 void tearDown(void) {}

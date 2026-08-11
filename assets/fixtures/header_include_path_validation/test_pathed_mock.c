@@ -1,5 +1,5 @@
 #include "unity.h"
-#include "drivers/Mockfoo.h"
+#include "drivers/mock_foo.h"
 
 void setUp(void) {}
 void tearDown(void) {}

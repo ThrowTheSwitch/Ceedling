@@ -20,22 +20,25 @@ require 'spec_system_helper'
 ## (find_header_input_for_mock) and ordinary, non-mock headers
 ## (validate_header_includes).
 ##
-## A mock's own generated location still mirrors the #include's own path, not
-## its real header's resolved location -- a mock is only ever findable by the
-## compiler via a search path pointing at the flat per-test mock root (C's own
-## #include resolution has no notion of a recursive search path), so its
-## location has to match whatever the #include itself wrote, by construction.
-## The first test below confirms a mock whose real header lives in a
-## subdirectory still compiles correctly whether its #include is bare or
-## carries a disambiguating path -- each lands wherever its own #include text
-## says, which remains the one location guaranteed to compile.
+## A mock's own generated location mirrors its real header's resolved path, not
+## the #include's own path -- so a mock's location stays stable regardless of
+## how much disambiguating path a given #include happens to carry, and no stale
+## mock is ever left behind under a differently-shaped path when a #include's
+## specificity changes between builds. Since C's own #include resolution has no
+## notion of a recursive search path, the compiler can only find a mock via a
+## search path pointing directly at wherever it actually lives, so that
+## mirrored directory is folded into the test's own search paths alongside the
+## flat per-test mock root. The first test below confirms a mock whose real
+## header lives in a subdirectory compiles correctly whether its #include is
+## bare or carries a disambiguating path -- both land at the same mirrored
+## location, since both name the same real header.
 ##
 ## Test assets: assets/fixtures/header_include_path_validation/
 ##   - drivers/foo.h: declares foo_value(void), no corresponding .c (mocked only)
 ##   - bar.h: defines BAR_VALUE, a plain (non-mocked) header
-##   - test_bare_mock.c: #include "Mockfoo.h" (bare)
-##   - test_pathed_mock.c: #include "drivers/Mockfoo.h" (disambiguating path)
-##   - test_bogus_mock_path.c: #include "totally/bogus/dir/Mockfoo.h"
+##   - test_bare_mock.c: #include "mock_foo.h" (bare)
+##   - test_pathed_mock.c: #include "drivers/mock_foo.h" (disambiguating path)
+##   - test_bogus_mock_path.c: #include "totally/bogus/dir/mock_foo.h"
 ##   - test_bogus_vanilla_path.c: #include "totally/bogus/dir/bar.h"
 ##
 
@@ -83,13 +86,11 @@ ceedling_system_tests do
             expect(output).to match(/TESTED:\s+2/)
             expect(output).to match(/PASSED:\s+2/)
 
-            # A mock is only ever findable by the compiler via a search path pointing at the
-            # flat per-test mock root (C's own #include resolution has no notion of a
-            # recursive search path), so its stand-in/real generated location mirrors
-            # whatever path the #include itself wrote -- flat for the bare #include, nested
-            # to match for the disambiguated one.
-            expect(File.exist?('build/test/mocks/test_bare_mock/Mockfoo.h')).to be true
-            expect(File.exist?('build/test/mocks/test_pathed_mock/drivers/Mockfoo.h')).to be true
+            # A mock's location mirrors its real header's resolved path, not whatever path its
+            # own #include happened to write, so both tests' mocks land at the identical
+            # location -- each #include names the same real header, drivers/foo.h.
+            expect(File.exist?('build/test/mocks/test_bare_mock/drivers/mock_foo.h')).to be true
+            expect(File.exist?('build/test/mocks/test_pathed_mock/drivers/mock_foo.h')).to be true
           end
         end
       end

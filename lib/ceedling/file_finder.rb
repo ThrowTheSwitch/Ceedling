@@ -39,6 +39,18 @@ class FileFinder
     return found_path
   end
 
+  # A mock's real header and its own mirrored subdirectory below whichever configured
+  # :test/:support/:include root contains it -- the same roots collection_all_headers is
+  # built from. Combined into one call since every caller needing the mirrored subdirectory
+  # also needs (or can reuse) the header path it was derived from, and every caller placing
+  # a mock's own files -- its search path, an early stand-in for it, or its real generated
+  # content -- must agree on exactly the same subdirectory for that mock to ever compile.
+  def resolve_mock(mock)
+    source = find_header_input_for_mock(mock)
+    subdir = PathMirror.relative_subdir(source, @configurator.paths_test + @configurator.paths_support + @configurator.paths_include)
+    return [source, subdir]
+  end
+
 
   # Find test filepath from only the base name of a test file (e.g. 'test_foo')
   def find_test_file_from_name(name)

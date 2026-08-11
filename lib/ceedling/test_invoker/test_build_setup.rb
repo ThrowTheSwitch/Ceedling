@@ -29,6 +29,7 @@ class TestBuildSetup
     :flaginator,
     :file_wrapper,
     :file_path_utils,
+    :file_finder,
     :test_runner_manager,
     :dependinator
   )
@@ -170,6 +171,8 @@ class TestBuildSetup
         partials_in_use: !(@context_extractor.lookup_partials_config( filepath )).empty?,
         includes:        @context_extractor.lookup_all_header_includes_list( filepath )
       )
+
+      testable.mock_search_paths = collect_mock_search_paths( testable )
     end
 
     log_skip_summary( task: "build directive macro scanning", count: skipped, noun: "test files" )
@@ -185,7 +188,7 @@ class TestBuildSetup
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
 
-      srch_paths     = search_paths( filepath, testable.paths )
+      srch_paths     = search_paths( filepath, testable.paths, testable.mock_search_paths )
       cmp_flags      = flags( context: state.context, operation: OPERATION_COMPILE_SYM,    filepath: filepath )
       pre_flags      = preprocess_flags( context: state.context, compile_flags: cmp_flags, filepath: filepath )
       asm_flags      = flags( context: state.context, operation: OPERATION_ASSEMBLE_SYM,   filepath: filepath )
@@ -441,11 +444,19 @@ class TestBuildSetup
     partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )
 
     mocks.each do |include|
-      # Mirrors the #include's own path, matching the real mock (stage 10) for the same
-      # reason described in stage_determine_files: the mock is only ever findable by the
-      # compiler via a search path pointing at the flat mock root, so it must live wherever
-      # that root plus whatever path the #include itself wrote actually resolves to.
-      filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
+      # A Partial mock is Ceedling's own generated content with no real header to resolve
+      # against, always flat per test. An ordinary mock's stand-in mirrors wherever its real
+      # header actually lives, matching the real mock (stage 10) -- both are findable by the
+      # compiler only via a search path pointing directly at that mirrored directory (already
+      # collected into this test's own search paths, stage 3, before either one is written).
+      if mock_partial?( include )
+        filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
+      else
+        _source, subdir = @file_finder.resolve_mock( include.filepath )
+        mock_dir = subdir.empty? ? test : File.join( test, subdir )
+        filepath = @file_path_utils.form_mock_header_filepath( mock_dir, include.filename )
+      end
+
       next if @file_wrapper.exist?( filepath )
 
       msg = @reportinator.generate_module_progress(
@@ -470,6 +481,28 @@ class TestBuildSetup
       @loginator.log( msg, Verbosity::DEBUG )
       @file_wrapper.write_blank_file( filepath )
     end
+  end
+
+  # A Partial mock is Ceedling's own generated content, identifiable by its own naming
+  # convention rather than by any real header it corresponds to (it has none).
+  def mock_partial?(include)
+    include.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
+  end
+
+  # Every mocked header's own mirrored directory below this test's mock root -- a mock is
+  # only ever findable by the compiler via a search path pointing directly at wherever it
+  # actually lives, since C's own #include resolution has no notion of a recursive search
+  # path, so this feeds directly into this test's own search paths (search_paths, below).
+  def collect_mock_search_paths(testable)
+    return [] unless testable.paths[:mocks]
+
+    dirs = []
+    @context_extractor.lookup_mock_header_includes_list( testable.filepath ).each do |include|
+      next if mock_partial?( include )
+      _source, subdir = @file_finder.resolve_mock( include.filepath )
+      dirs << (subdir.empty? ? testable.paths[:mocks] : File.join( testable.paths[:mocks], subdir ))
+    end
+    return dirs.uniq
   end
 
   def validate_mocks_in_use(filename:, mocks:)
@@ -501,9 +534,10 @@ class TestBuildSetup
     end
   end
 
-  def search_paths(filepath, paths)
+  def search_paths(filepath, paths, mock_search_paths = [])
     _paths = []
     _paths << paths[:mocks]    if paths[:mocks]
+    _paths += mock_search_paths
     _paths << paths[:partials] if paths[:partials]
     _paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
     _paths += @include_pathinator.collect_test_include_paths()
