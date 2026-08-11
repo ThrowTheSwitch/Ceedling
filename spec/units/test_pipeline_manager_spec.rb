@@ -17,8 +17,10 @@ describe TestPipelineManager do
     @test_build_executor  = double( "TestBuildExecutor" )
     @configurator         = double( "Configurator" )
     @batchinator          = double( "Batchinator" )
+    @loginator            = double( "Loginator" )
 
     allow(@batchinator).to receive(:build_step) { |*_args, &block| block.call }
+    allow(@loginator).to receive(:log)
 
     allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
     allow(@configurator).to receive(:project_use_partials).and_return( false )
@@ -54,13 +56,23 @@ describe TestPipelineManager do
         :test_build_planner  => @test_build_planner,
         :test_build_executor => @test_build_executor,
         :configurator        => @configurator,
-        :batchinator         => @batchinator
+        :batchinator         => @batchinator,
+        :loginator           => @loginator
       }
     )
   end
 
-  def state(options: [])
-    TestInvokerTypes::PipelineState.new( :testables => {}, :context => :test, :options => options )
+  # Defaults every flattened list to non-empty, real-shaped-enough content, so every
+  # existing test below exercises the "has work to do" path without having to know or
+  # care about T1/T2's output -- exactly as it would if a project had at least one
+  # Partial and one mock. Tests specifically about the "enabled but nothing to do this
+  # run" case (below) override one or more of these to `[]`.
+  def state(options: [], partials_headers: [double("PartialWork")], partials_sources: [double("PartialWork")], mocks_list: [double("MockWork")])
+    TestInvokerTypes::PipelineState.new(
+      :testables        => {}, :context => :test, :options => options,
+      :partials_headers => partials_headers, :partials_sources => partials_sources, :mocks_list => mocks_list,
+      :objects_list     => []
+    )
   end
 
   describe "#run" do
@@ -207,7 +219,7 @@ describe TestPipelineManager do
     end
 
     context "when Partials is disabled" do
-      it "skips the Partials transform and its three stages, independent of any stop-point option" do
+      it "skips the Partials transform and its three stages, independent of any stop-point option, in total silence" do
         allow(@configurator).to receive(:project_use_partials).and_return( false )
 
         expect(@test_build_planner).to_not receive(:stage_flatten_partials_lists)
@@ -215,21 +227,61 @@ describe TestPipelineManager do
         expect(@test_build_executor).to_not receive(:stage_preprocess_partial_sources)
         expect(@test_build_executor).to_not receive(:stage_generate_partials)
         expect(@test_build_planner).to receive(:stage_determine_files)
+        expect(@loginator).to_not receive(:log)
 
         @manager.run( state(options: []) )
       end
     end
 
     context "when mocking is disabled" do
-      it "skips the mocks transform and both mocking stages, independent of any stop-point option" do
+      it "skips the mocks transform and both mocking stages, independent of any stop-point option, in total silence" do
         allow(@configurator).to receive(:project_use_mocks).and_return( false )
 
         expect(@test_build_planner).to_not receive(:stage_flatten_mocks_list)
         expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
         expect(@test_build_executor).to_not receive(:stage_generate_mocks)
         expect(@test_build_executor).to receive(:stage_generate_runners)
+        expect(@loginator).to_not receive(:log)
 
         @manager.run( state(options: []) )
+      end
+    end
+
+    context "when Partials is enabled but this run has no Partials" do
+      it "skips the three Partials stages and logs an OBNOXIOUS notice for each, instead of running them" do
+        allow(@configurator).to receive(:project_use_partials).and_return( true )
+
+        expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
+        expect(@test_build_executor).to_not receive(:stage_preprocess_partial_headers)
+        expect(@test_build_executor).to_not receive(:stage_preprocess_partial_sources)
+        expect(@test_build_executor).to_not receive(:stage_generate_partials)
+
+        expect(@loginator).to receive(:log)
+          .with( "Preprocessing for Testing & Mocking Partials: no Partials to process", Verbosity::OBNOXIOUS )
+        expect(@loginator).to receive(:log)
+          .with( "Preprocessing for Testing Partials: no Partials to process", Verbosity::OBNOXIOUS )
+        expect(@loginator).to receive(:log)
+          .with( "Partials: no Partials to generate", Verbosity::OBNOXIOUS )
+
+        @manager.run( state(options: [], partials_headers: [], partials_sources: []) )
+      end
+    end
+
+    context "when mocking is enabled but this run has no mocks" do
+      it "skips both mocking stages and logs an OBNOXIOUS notice for each, instead of running them" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+
+        expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
+        expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to_not receive(:stage_generate_mocks)
+
+        expect(@loginator).to receive(:log)
+          .with( "Preprocessing for Mocks: no mocks to process", Verbosity::OBNOXIOUS )
+        expect(@loginator).to receive(:log)
+          .with( "Mocking: no mocks to generate", Verbosity::OBNOXIOUS )
+
+        @manager.run( state(options: [], mocks_list: []) )
       end
     end
 

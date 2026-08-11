@@ -22,7 +22,8 @@ class TestPipelineManager
     :test_build_planner,
     :test_build_executor,
     :configurator,
-    :batchinator
+    :batchinator,
+    :loginator
   )
 
   # `options:` (an Array of Symbols; see `TestInvoker#setup_and_invoke`) is a flat
@@ -56,7 +57,12 @@ class TestPipelineManager
     validate_stop_point_options!( state.options )
 
     build_stage_sequence().each do |stage|
-      next unless stage.run?( state )
+      next unless stage.enabled?( state )
+
+      if stage.empty?( state )
+        @loginator.log( "#{stage.name}: #{stage.empty_notice}", Verbosity::OBNOXIOUS )
+        next
+      end
 
       if stage.transform
         stage.body.call( state )
@@ -128,19 +134,25 @@ class TestPipelineManager
 
       # Stage 6
       stage("Preprocessing for Testing & Mocking Partials",
-            condition: use_partials,
+            condition:       use_partials,
+            empty_condition: ->(s) { s.partials_headers.empty? },
+            empty_notice:    "no Partials to process",
             body: ->(s) { @test_build_executor.stage_preprocess_partial_headers(s) }
       ),
 
       # Stage 7
       stage("Preprocessing for Testing Partials",
-            condition: use_partials,
+            condition:       use_partials,
+            empty_condition: ->(s) { s.partials_sources.empty? },
+            empty_notice:    "no Partials to process",
             body: ->(s) { @test_build_executor.stage_preprocess_partial_sources(s) }
       ),
 
       # Stage 8
       stage("Partials",
-            condition: use_partials,
+            condition:       use_partials,
+            empty_condition: ->(s) { s.partials_headers.empty? && s.partials_sources.empty? },
+            empty_notice:    "no Partials to generate",
             body: ->(s) { @test_build_executor.stage_generate_partials(s) }
       ),
 
@@ -152,13 +164,17 @@ class TestPipelineManager
 
       # Stage 9
       stage("Preprocessing for Mocks",
-            condition: use_mocks_preproc,
+            condition:       use_mocks_preproc,
+            empty_condition: ->(s) { s.mocks_list.empty? },
+            empty_notice:    "no mocks to process",
             body: ->(s) { @test_build_executor.stage_preprocess_mocks(s) }
       ),
 
       # Stage 10 — the :mocking stop point runs through here, then halts.
       stage("Mocking",
-            condition: use_mocks,
+            condition:       use_mocks,
+            empty_condition: ->(s) { s.mocks_list.empty? },
+            empty_notice:    "no mocks to generate",
             body: ->(s) { @test_build_executor.stage_generate_mocks(s) }
       ),
 
@@ -220,13 +236,15 @@ class TestPipelineManager
     ]
   end
 
-  def stage(name = nil, heading: true, condition: nil, transform: false, body:)
+  def stage(name = nil, heading: true, condition: nil, empty_condition: nil, empty_notice: nil, transform: false, body:)
     Stage.new(
-      name:      name,
-      heading:   heading,
-      condition: condition,
-      transform: transform,
-      body:      body
+      name:            name,
+      heading:         heading,
+      condition:       condition,
+      empty_condition: empty_condition,
+      empty_notice:    empty_notice,
+      transform:       transform,
+      body:            body
     )
   end
 

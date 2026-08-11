@@ -90,9 +90,25 @@ module TestInvokerTypes
   end
 
   # Describes one pipeline step — either a named build_step or a silent transform.
-  Stage = Struct.new(:name, :heading, :condition, :transform, :body, keyword_init: true) do
-    def run?(state)
+  # `condition` gates whether this stage's feature is in play at all for the project
+  # (e.g. Partials or mocking enabled) -- when false, the stage is skipped in total
+  # silence, exactly as if it didn't exist. `empty_condition` (nil for most stages)
+  # gates a narrower case: the feature IS enabled, but this particular run happens to
+  # have none of that stage's kind of work to do -- when true, the stage's heading and
+  # body are both skipped, but `empty_notice` is logged at OBNOXIOUS so a verbose run
+  # can still see that the stage was considered and correctly found nothing to do,
+  # distinct from the feature being off project-wide.
+  Stage = Struct.new(:name, :heading, :condition, :empty_condition, :empty_notice, :transform, :body, keyword_init: true) do
+    def enabled?(state)
       condition.nil? || condition.call(state)
+    end
+
+    def empty?(state)
+      !empty_condition.nil? && empty_condition.call(state)
+    end
+
+    def run?(state)
+      enabled?(state) && !empty?(state)
     end
   end
 
