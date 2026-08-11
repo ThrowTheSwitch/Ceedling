@@ -5,6 +5,9 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
+require 'ceedling/exceptions'
+
 class Includes
   # Class method to convert mixed list of Include objects into an order-preserving list of hashes
   #
@@ -127,8 +130,10 @@ class Includes
   # @example Custom rejection
   #   Includes.sanitize!(includes) { |include, all| ... }
   def self.sanitize!(includes, &block)
-    # Remove any duplicates
-    includes.uniq!
+    # Remove any duplicates -- by filepath, not just filename, so two genuinely
+    # different files that happen to share a basename are never mistaken for the
+    # same entry and collapsed down to one.
+    includes.uniq!( &:filepath )
 
     # Apply custom rejection with access to full list if block provided
     if block_given?
@@ -147,7 +152,7 @@ class Includes
   # Purpose
   # -------
   # Bare include preprocessing extracts user and system includes, but there's no way
-  # to explicitly differentiate these. Meanwhile, by necessity, user and system include 
+  # to explicitly differentiate these. Meanwhile, by necessity, user and system include
   # extraction can identify too many includes. This class method uses the knowledeg of
   # the different types of extraction to reconcile the two lists. It accomplishes:
   #  1. Paring down system includes to the include directives used in original file.
@@ -156,10 +161,30 @@ class Includes
   #
   # Method
   # ------
-  # Compares bare includes against user and system includes and applies the following rules:
-  # 1. Intersection of bare includes and system includes.
-  # 2. Intersection of bare includes and user includes.
-  def self.reconcile(bare:, user:, system:)
+  # User (and mock) includes are matched against bare entries by path, not merely by
+  # filename, since a project may legitimately contain two files of the same name in
+  # different directories. Matching honors however much path either side carries: a bare
+  # entry's literal #include text can carry more path than its candidate (a fallback text
+  # scan sees only what's literally written) or less (a candidate directives-only
+  # preprocessing resolved to a fuller real location than an unqualified bare #include
+  # ever names). A bare entry matching more than one user/mock candidate (typically a
+  # pathless bare entry corresponding to two same-named project files in different
+  # directories) is ambiguous and hard-errors naming every candidate, rather than silently
+  # keeping all of them or guessing one -- this is the one case reconciliation has enough
+  # information to actually tell apart two same-named candidates, and the same policy
+  # applies everywhere else a query is matched against a collection of real files.
+  #
+  # System includes are still matched by filename alone: a system header commonly reaches
+  # the same basename through more than one real file (a compiler-provided header
+  # #include_next-ing its libc counterpart, for instance) as a normal, benign toolchain
+  # detail rather than a genuine project-file conflict, and a system header is never a
+  # candidate module Ceedling needs to build -- there's no project-identity question here
+  # worth hard-erroring over.
+  #
+  # `test_filepath` plays no part in matching -- it's carried only so the ambiguity error
+  # below can name the one test file whose #include statement actually needs editing,
+  # since nothing further up the call stack adds that context on its own.
+  def self.reconcile(bare:, user:, system:, test_filepath: nil)
     # Validate input types
 
     # `bare` can only be base Include objects, no sub-classes.
@@ -168,39 +193,72 @@ class Includes
     end
 
     # Ensure `user` is an array of UserInclude objects or sub-classes
-    unless user.is_a?(Array) && user.all? { |include| include.is_a?(UserInclude) }    
+    unless user.is_a?(Array) && user.all? { |include| include.is_a?(UserInclude) }
       raise ArgumentError, "`user` must be an Array of UserInclude objects"
     end
-    
+
     # Ensure `system` is an array of SystemInclude objects or sub-classes
-    unless system.is_a?(Array) && system.all? { |include| include.is_a?(SystemInclude) }    
+    unless system.is_a?(Array) && system.all? { |include| include.is_a?(SystemInclude) }
       raise ArgumentError, "`system` must be an Array of SystemInclude objects"
     end
 
     return [] if bare.empty?
 
-    system_includes = []
-    user_includes = []
-
-    # Create set of bare include filenames for O(1) lookup
     bare_filenames = Set.new(bare.map(&:filename))
 
-    # Intersect system includes with bare includes based on filename.
-    # Keep system includes that have matching filenames in bare list.
     system_includes = system.select do |include|
       bare_filenames.include?(include.filename)
     end
 
-    # Intersect user includes with bare includes based on filename.
-    # Keep user includes (including subclasses) that have matching filenames in bare list.
-    user_includes = user.select do |include|
-      bare_filenames.include?(include.filename)
-    end    
+    user_filepaths = user.map(&:filepath)
+    user_by_filepath = {}
+    user.each { |include| user_by_filepath[include.filepath] ||= include }
 
-    # Construct reconciled list of includes with reconciled results.
+    user_includes = []
+    seen = Set.new
+
+    bare.each do |bare_include|
+      # Matching is deliberately bidirectional: a bare entry can carry either more path
+      # than its candidate (literal, unresolved #include text against a bare-scanned
+      # candidate from fallback preprocessing) or less (a pathless bare entry against a
+      # candidate directives-only preprocessing resolved to a fuller real location) --
+      # either side may be the more specific one, so whichever is shorter sets how many
+      # of the longer one's trailing segments must match.
+      matched = user_filepaths.select { |filepath| paths_correspond?(bare_include.filepath, filepath) }
+
+      case matched.length
+      when 0
+        next
+      when 1
+        filepath = matched.first
+        next if seen.include?(filepath)
+        seen << filepath
+        user_includes << user_by_filepath[filepath]
+      else
+        location = test_filepath ? " within '#{test_filepath}'" : ''
+        raise CeedlingException.new(
+          "Ambiguous #include reference '#{bare_include.filepath}' found#{location}. " \
+          "Include more trailing path in that #include statement to distinguish among: #{matched.join(', ')}"
+        )
+      end
+    end
+
     # Always system includes first (C best practice).
-    return (system_includes + user_includes)
+    reconciled = system_includes + user_includes
+    self.sort!(reconciled)
+    return reconciled
   end
+
+  # Two filepaths correspond if the shorter one's path segments equal the longer one's
+  # own trailing segments, exactly, in order -- checked without regard for which side is
+  # shorter, since either a bare entry or its candidate may be the one carrying less path.
+  def self.paths_correspond?(a, b)
+    segments_a = a.split(/[\\\/]/).reject(&:empty?)
+    segments_b = b.split(/[\\\/]/).reject(&:empty?)
+    shorter, longer = segments_a.length <= segments_b.length ? [segments_a, segments_b] : [segments_b, segments_a]
+    return longer.last(shorter.length) == shorter
+  end
+  private_class_method :paths_correspond?
 
   # Sort list so system includes are at the beginning
   # (Best practice)
@@ -210,8 +268,13 @@ class Includes
     return _includes
   end
 
+  # `sort_by!` alone is not a stable sort -- with only two possible keys (system vs.
+  # everything else), most elements tie, and an unstable sort is free to reorder tied
+  # elements arbitrarily. Decorating each element with its original index as a tiebreaker
+  # forces ties to resolve in original order, regardless of platform or Ruby version.
   def self.sort!(includes)
-    includes.sort_by! { |include| include.is_a?(SystemInclude) ? 0 : 1 }
+    stable = includes.each_with_index.sort_by { |include, i| [include.is_a?(SystemInclude) ? 0 : 1, i] }
+    includes.replace( stable.map(&:first) )
     return includes
   end
 end

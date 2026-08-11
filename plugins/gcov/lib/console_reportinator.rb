@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/path_mirror'
 require 'gcov_reportinator'
 
 class ConsoleReportinator < GcovReportinator
@@ -19,10 +20,11 @@ class ConsoleReportinator < GcovReportinator
   def initialize(system_objects, config)
     super(config)
 
-    @loginator           = system_objects[:loginator]
-    @plugin_reportinator = system_objects[:plugin_reportinator]
-    @test_invoker        = system_objects[:test_invoker]
-    @tool_executor       = system_objects[:tool_executor]
+    @configurator         = system_objects[:configurator]
+    @loginator            = system_objects[:loginator]
+    @plugin_reportinator  = system_objects[:plugin_reportinator]
+    @test_invoker         = system_objects[:test_invoker]
+    @tool_executor        = system_objects[:tool_executor]
   end
 
   def generate_reports(opts, untested_sources: [])
@@ -74,6 +76,13 @@ class ConsoleReportinator < GcovReportinator
   def run_gcov_summary(test, source, opts)
     filename = File.basename(source)
 
+    # A module-under-test's object (and its accompanying .gcno/.gcda) mirrors its source's own
+    # subdirectory below whichever configured root it came from -- the same convention its actual
+    # compile step already follows -- so the directory gcov is told to search must include that
+    # mirrored subdirectory too, not just the flat <build>/gcov/out/<test name> root.
+    subdir  = PathMirror.relative_subdir( source, @configurator.paths_source + @configurator.paths_support )
+    obj_dir = subdir.empty? ? File.join(GCOV_BUILD_OUTPUT_PATH, test) : File.join(GCOV_BUILD_OUTPUT_PATH, test, subdir)
+
     # Run gcov to extract the coverage summary
     command = @tool_executor.build_command_line(
       TOOLS_GCOV_SUMMARY,
@@ -81,7 +90,7 @@ class ConsoleReportinator < GcovReportinator
       (opts[:gcov_mcdc] ? ['-g'] : []),
       # Argument replacement
       filename, # .c source file compiled with coverage
-      File.join(GCOV_BUILD_OUTPUT_PATH, test) # <build>/gcov/out/<test name> for coverage data files
+      obj_dir # <build>/gcov/out/<test name>[/mirrored subdir] for coverage data files
     )
 
     # Do not raise an exception if `gcov` terminates with a non-zero exit code, just note it and move on.

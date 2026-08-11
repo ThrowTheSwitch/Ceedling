@@ -110,6 +110,14 @@ class ReleaseBuildExecutor
 
       return log_compile_skip( source: source ) unless stale
 
+      # A source mirrored into its own subdirectory needs that subdirectory (and its
+      # dependencies-file counterpart) to actually exist before the compiler can write there.
+      # Object and dependency paths can nest arbitrarily deep depending on where the source
+      # itself lives; only the flat top-level build roots are pre-created via `directory()`
+      # tasks, not every mirrored subdirectory beneath them.
+      @file_wrapper.mkdir( File.dirname( object ) )
+      @file_wrapper.mkdir( File.dirname( dependencies ) )
+
       @generator.generate_object_file_c(
         tool:         @configurator.tools_release_compiler,
         module_name:  File.basename( source ).ext(),
@@ -127,6 +135,9 @@ class ReleaseBuildExecutor
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: state.defines, search_paths: state.search_paths )
 
       return log_compile_skip( source: source ) unless stale
+
+      @file_wrapper.mkdir( File.dirname( object ) )
+      @file_wrapper.mkdir( File.dirname( dependencies ) )
 
       @generator.generate_object_file_asm(
         tool:         @configurator.tools_release_assembler,

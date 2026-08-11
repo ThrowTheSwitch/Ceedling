@@ -17,6 +17,32 @@ within source directories, or tests and source directories
 can be wholly separated at the top of your project's directory
 tree.
 
+## Distinguishing same-named files
+
+Ceedling distinguishes files by their full relative path, not just their
+filename. A project may have, for example, both `src/drivers/uart.c` and
+`src/sensors/uart.c` without one hiding or colliding with the other.
+
+Distinguishing files is mostly an issue in test builds. If two files share 
+a name and however you refer to them throughout your project does not 
+include enough path to distinguish them, Ceedling raises an error naming 
+every matching file rather than guessing which one you meant.
+
+* Use paths in `#include` directives in your test files to distinguish header 
+  files of the same name (mocks are distiguished by the same filepath as the 
+  headers from which they are generated). Examples: `#include "foo/bar/file.h"`
+  and/or `#include "foo/bar/mock_file.h"`.
+* Use the [`TEST_SOURCE_FILE()` build directive macro][build-directive-macros]
+  to provide a path to distinguish source files of the same name to be 
+  compiled and linked with a test executable.
+* Execute [`ceedling test:` tasks][ceedling-test] at the command line with an 
+  optional partial path to distinguish test executables (e.g. `test:foo/bar.c`), 
+  recalling that multiple conventions exist for finding/executing a test 
+  executable via `test:` task.
+
+[build-directive-macros]: build-directives.md
+[ceedling-test]: ../getting-started/command-line.md
+
 ## Test build search paths
 
 Test builds in C are fairly complex. Each test file becomes a test

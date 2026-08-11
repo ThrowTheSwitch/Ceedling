@@ -128,8 +128,11 @@ class Reportinator
     # Sanitze -- ensure it's a string and strip any filename extension
     _module_name = module_name.to_s().ext('')
 
-    # If filename is the module name, don't add the module label
-    label = (File.basename(filename).ext('') == _module_name) ? '' : "#{_module_name}::"
+    # If filename is the module name, don't add the module label. A module name
+    # mirroring its file's path below a configured root (e.g. `adc/TestFoo`) is
+    # still the same module as far as this comparison is concerned, so only its
+    # own last segment is weighed against filename's bare basename.
+    label = (File.basename(filename).ext('') == File.basename(_module_name)) ? '' : "#{_module_name}::"
     return generate_progress("#{operation} #{label}#{filename}")
   end
 

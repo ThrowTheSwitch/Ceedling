@@ -445,7 +445,10 @@ class Generator
     
     shell_result[:executable] = executable
     shell_result[:result_file] = arg_hash[:result_file]
-    shell_result[:test_file] = @file_finder.find_test_file_from_filepath( arg_hash[:executable] )
+    # The caller already knows exactly which test this run belongs to -- rediscovering it by
+    # searching the whole project's test collection for the executable's bare basename would
+    # only ever be a wasteful, ambiguity-prone way of re-deriving something already in hand.
+    shell_result[:test_file] = test_filepath
     processed = @generator_test_results.process_and_write_results( shell_result )
 
     arg_hash[:result_file]  = processed[:result_file]

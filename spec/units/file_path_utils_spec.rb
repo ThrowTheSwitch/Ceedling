@@ -7,6 +7,8 @@
 
 require 'spec_helper'
 require 'ceedling/file_path_utils'
+require 'ceedling/file_wrapper'
+require 'ceedling/filename_extension'
 
 describe FilePathUtils do
 
@@ -271,6 +273,112 @@ describe FilePathUtils do
     end
   end
 
+  describe '#form_runner_filepath_from_test' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_test_runners_path).and_return('build/test/runners')
+      allow(@configurator).to receive(:test_runner_file_suffix).and_return('_runner')
+    end
+
+    it 'forms a flat runner filepath when no test identity is given' do
+      expect( @fpu.form_runner_filepath_from_test('test/test_foo.c') )
+        .to eq('build/test/runners/test_foo_runner.c')
+    end
+
+    it 'forms a flat runner filepath for a flat test\'s own identity' do
+      expect( @fpu.form_runner_filepath_from_test('test/test_foo.c', name: 'test_foo') )
+        .to eq('build/test/runners/test_foo_runner.c')
+    end
+
+    it 'mirrors the runner beneath the test\'s own mirrored subdirectory, distinguishing same-named tests' do
+      expect( @fpu.form_runner_filepath_from_test('test/unit/test_foo.c', name: 'unit/test_foo') )
+        .to eq('build/test/runners/unit/test_foo_runner.c')
+
+      expect( @fpu.form_runner_filepath_from_test('test/integration/test_foo.c', name: 'integration/test_foo') )
+        .to eq('build/test/runners/integration/test_foo_runner.c')
+    end
+
+    it 'forms a flat runner directory for a flat test' do
+      expect( @fpu.form_test_runners_path('test_foo') ).to eq('build/test/runners')
+    end
+
+    it 'forms the runner directory itself beneath a nested test\'s own mirrored subdirectory' do
+      expect( @fpu.form_test_runners_path('unit/test_foo') ).to eq('build/test/runners/unit')
+    end
+  end
+
+  describe '#form_release_dependencies_filepath, #form_release_build_list_filepath' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_release_build_output_path).and_return('build/release/out')
+      allow(@configurator).to receive(:project_release_dependencies_path).and_return('build/release/dependencies')
+      allow(@configurator).to receive(:extension_dependencies).and_return( FilenameExtension.new('.d') )
+      allow(@configurator).to receive(:extension_list).and_return( FilenameExtension.new('.lst') )
+    end
+
+    it 'mirrors a dependencies filepath the same way as the object it accompanies' do
+      expect( @fpu.form_release_dependencies_filepath('build/release/out/foo/bar.o') )
+        .to eq('build/release/dependencies/foo/bar.d')
+    end
+
+    it 'forms a flat dependencies filepath for a flat object' do
+      expect( @fpu.form_release_dependencies_filepath('build/release/out/bar.o') )
+        .to eq('build/release/dependencies/bar.d')
+    end
+
+    it 'forms the list filepath directly alongside the object, wherever it was mirrored to' do
+      expect( @fpu.form_release_build_list_filepath('build/release/out/foo/bar.o') )
+        .to eq('build/release/out/foo/bar.lst')
+    end
+  end
+
+  describe '#form_test_dependencies_filepath, #form_test_build_list_filepath' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:extension_dependencies).and_return( FilenameExtension.new('.d') )
+      allow(@configurator).to receive(:extension_list).and_return( FilenameExtension.new('.lst') )
+    end
+
+    it 'mirrors a dependencies filepath the same way as the object it accompanies, distinguishing same-named modules under test' do
+      expect( @fpu.form_test_dependencies_filepath('build/test/out/TestFoo/calculators/AdcCalc.o', name: 'TestFoo', context: :test) )
+        .to eq('build/test/dependencies/TestFoo/calculators/AdcCalc.d')
+    end
+
+    it 'forms a flat dependencies filepath for a flat object' do
+      expect( @fpu.form_test_dependencies_filepath('build/test/out/TestFoo/AdcCalc.o', name: 'TestFoo', context: :test) )
+        .to eq('build/test/dependencies/TestFoo/AdcCalc.d')
+    end
+
+    it 'forms a flat dependencies filepath when no test identity is given' do
+      expect( @fpu.form_test_dependencies_filepath('build/gcov/out/AdcCalc.o', context: :gcov) )
+        .to eq('build/gcov/dependencies/AdcCalc.d')
+    end
+
+    it 'forms the list filepath directly alongside the object, wherever it was mirrored to' do
+      expect( @fpu.form_test_build_list_filepath('build/test/out/TestFoo/calculators/AdcCalc.o') )
+        .to eq('build/test/out/TestFoo/calculators/AdcCalc.lst')
+    end
+  end
+
   describe '#form_test_preprocess_build_directives_path, #form_test_build_directives_cache_filepath, #form_preprocessed_source_files_cache_filepath' do
     before(:each) do
       @configurator = double('configurator')
@@ -296,6 +404,114 @@ describe FilePathUtils do
     it 'forms a distinct source files cache filepath alongside the build directives cache' do
       expect( @fpu.form_preprocessed_source_files_cache_filepath('test/TestFoo.c', 'TestFoo') )
         .to eq('build/test/preprocess/build_directives/TestFoo/TestFoo.c_source_files.yml')
+    end
+  end
+
+  describe '#form_release_build_objects_filelist' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = FileWrapper.new
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_release_build_output_path).and_return('build/release/out')
+      allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
+      allow(@configurator).to receive(:paths_source).and_return( ['drivers'] )
+    end
+
+    it 'mirrors each object beneath whichever configured source root matched its file, distinguishing same-named sources' do
+      objects = @fpu.form_release_build_objects_filelist( ['drivers/foo/bar.c', 'drivers/baz/bar.c'] )
+      expect( objects ).to include('build/release/out/foo/bar.o')
+      expect( objects ).to include('build/release/out/baz/bar.o')
+    end
+
+    it 'leaves a file matching no configured source root flat' do
+      objects = @fpu.form_release_build_objects_filelist( ['vendor/unity.c'] )
+      expect( objects ).to eq(['build/release/out/unity.o'])
+    end
+  end
+
+  describe '#form_release_dependencies_filelist' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = FileWrapper.new
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_release_dependencies_path).and_return('build/release/dependencies')
+      allow(@configurator).to receive(:extension_dependencies).and_return( FilenameExtension.new('.d') )
+      allow(@configurator).to receive(:paths_source).and_return( ['drivers'] )
+    end
+
+    it 'mirrors each dependency file the same way as its corresponding object' do
+      deps = @fpu.form_release_dependencies_filelist( ['drivers/foo/bar.c', 'drivers/baz/bar.c'] )
+      expect( deps ).to include('build/release/dependencies/foo/bar.d')
+      expect( deps ).to include('build/release/dependencies/baz/bar.d')
+    end
+  end
+
+  describe '#form_test_build_objects_filelist' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = FileWrapper.new
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
+      allow(@configurator).to receive(:paths_source).and_return( ['drivers'] )
+      allow(@configurator).to receive(:paths_support).and_return( ['support'] )
+    end
+
+    it 'mirrors a module-under-test or support source beneath its matching configured root' do
+      objects = @fpu.form_test_build_objects_filelist(
+        'build/test/out/TestFoo', ['drivers/foo/bar.c', 'drivers/baz/bar.c']
+      )
+      expect( objects ).to include('build/test/out/TestFoo/foo/bar.o')
+      expect( objects ).to include('build/test/out/TestFoo/baz/bar.o')
+    end
+
+    it 'leaves the test file itself, mocks, and other unmatched inputs flat' do
+      objects = @fpu.form_test_build_objects_filelist(
+        'build/test/out/TestFoo', ['test/TestFoo.c', 'MockBar.c', 'support/qux.c']
+      )
+      expect( objects ).to eq([
+        'build/test/out/TestFoo/TestFoo.o',
+        'build/test/out/TestFoo/MockBar.o',
+        'build/test/out/TestFoo/qux.o'
+      ])
+    end
+  end
+
+  describe '#form_pass_results_filelist' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = FileWrapper.new
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:extension_testpass).and_return( FilenameExtension.new('.pass') )
+      allow(@configurator).to receive(:paths_test).and_return( ['test'] )
+    end
+
+    it 'mirrors each expected results file beneath the same test identity its own build directory uses' do
+      results = @fpu.form_pass_results_filelist(
+        'build/test/results', ['test/unit/test_foo.c', 'test/integration/test_foo.c']
+      )
+      expect( results ).to include('build/test/results/unit/test_foo.pass')
+      expect( results ).to include('build/test/results/integration/test_foo.pass')
+    end
+
+    it 'leaves a flat test\'s own results file flat, undisturbed by mirroring' do
+      results = @fpu.form_pass_results_filelist('build/test/results', ['test/test_bar.c'])
+      expect( results ).to eq(['build/test/results/test_bar.pass'])
     end
   end
 

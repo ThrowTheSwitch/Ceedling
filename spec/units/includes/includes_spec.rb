@@ -8,6 +8,7 @@
 require 'set'
 require 'spec_helper'
 require 'ceedling/includes/includes'
+require 'ceedling/exceptions'
 
 describe "Includes serialization" do
   it "produces valid hash structure" do
@@ -652,11 +653,34 @@ describe "Includes sanitization" do
         SystemInclude.new("stdio.h"),
         UserInclude.new("config.h")
       ]
-      
+
       result = Includes.sanitize!(includes) { |include, all| false }
-      
+
       expect(result.length).to eq(3)
       expect(result[0]).to be_a(SystemInclude)
+    end
+
+    it "keeps two different same-basename includes distinct, rather than deduping them as if identical" do
+      includes = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("baz/bar.h")
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:filepath)).to include("foo/bar.h", "baz/bar.h")
+    end
+
+    it "still dedupes a genuine literal duplicate include of the same path" do
+      includes = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("foo/bar.h")
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect(result.length).to eq(1)
     end
   end
 
@@ -1063,21 +1087,126 @@ describe "Includes reconciliation" do
       expect(user_count).to eq(50)
     end
 
-    it "handles includes with path separators in filenames" do
+    it "matches a bare entry against a candidate with more resolved path than the bare text carries" do
+      # A bare, unqualified #include ("header.h") commonly resolves to a candidate
+      # reported with a fuller, actual location by directives-only preprocessing --
+      # a bare entry with less path than its candidate is the realistic case, not the
+      # other way around, since the candidate reflects where the compiler actually found it.
       bare = [
-        Include.new("subdir/header.h"),
-        Include.new("sys/types.h")
+        Include.new("header.h"),
+        Include.new("types.h")
       ]
-      
-      user = [UserInclude.new("header.h")]
-      system = [SystemInclude.new("types.h")]
-      
+
+      user = [UserInclude.new("subdir/header.h")]
+      system = [SystemInclude.new("sys/types.h")]
+
       result = Includes.reconcile(bare: bare, user: user, system: system)
-      
-      # Should match by filename only
+
       expect(result.length).to eq(2)
-      expect(result[0].filename).to eq("types.h")
-      expect(result[1].filename).to eq("header.h")
+      expect(result[0].filepath).to eq("sys/types.h")
+      expect(result[1].filepath).to eq("subdir/header.h")
+    end
+
+    it "matches a bare entry with more resolved path than its candidate carries" do
+      # A module source's own bare-includes extraction can resolve a quoted #include
+      # via the including file's own directory (real, standard C search behavior)
+      # even when the candidate side -- text-scanned via fallback preprocessing --
+      # only ever sees the literal, unresolved #include text.
+      bare = [
+        Include.new("src/conditional_module.h"),
+        Include.new("src/optional_dep.h")
+      ]
+
+      user = [
+        UserInclude.new("conditional_module.h"),
+        UserInclude.new("optional_dep.h")
+      ]
+
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:filepath)).to include("conditional_module.h", "optional_dep.h")
+    end
+
+    it "keeps two genuinely different same-basename candidates distinct when each bare entry carries its own disambiguating path" do
+      bare = [
+        Include.new("foo/bar.h"),
+        Include.new("baz/bar.h")
+      ]
+
+      user = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("baz/bar.h")
+      ]
+
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:filepath)).to include("foo/bar.h", "baz/bar.h")
+    end
+
+    it "raises a CeedlingException, rather than silently guessing, when a pathless bare entry could correspond to either of two same-named candidates" do
+      bare = [Include.new("bar.h")]
+
+      user = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("baz/bar.h")
+      ]
+
+      system = []
+
+      expect {
+        Includes.reconcile(bare: bare, user: user, system: system)
+      }.to raise_error(CeedlingException) do |error|
+        expect(error.message).to include("foo/bar.h")
+        expect(error.message).to include("baz/bar.h")
+      end
+    end
+
+    it "names the test file whose #include statement needs editing when test_filepath is given" do
+      bare = [Include.new("bar.h")]
+
+      user = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("baz/bar.h")
+      ]
+
+      system = []
+
+      expect {
+        Includes.reconcile(bare: bare, user: user, system: system, test_filepath: "test/test_foo.c")
+      }.to raise_error(CeedlingException) do |error|
+        expect(error.message).to include("test/test_foo.c")
+        expect(error.message).to include("foo/bar.h")
+        expect(error.message).to include("baz/bar.h")
+      end
+    end
+
+    it "does not hard-error over two same-named system headers, a normal toolchain wrapper-chain pattern rather than a project-file conflict" do
+      # e.g. a compiler-provided stdint.h #include_next-ing its libc counterpart --
+      # both real, both legitimately entered, both sharing a basename, neither a
+      # project file whose identity is actually in question.
+      bare = [Include.new("stdint.h")]
+
+      user = []
+      system = [
+        SystemInclude.new("/usr/lib/gcc/x86_64-linux-gnu/14/include/stdint.h"),
+        SystemInclude.new("/usr/include/stdint.h")
+      ]
+
+      result = nil
+      expect {
+        result = Includes.reconcile(bare: bare, user: user, system: system)
+      }.not_to raise_error
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:filepath)).to include(
+        "/usr/lib/gcc/x86_64-linux-gnu/14/include/stdint.h", "/usr/include/stdint.h"
+      )
     end
   end
-end    
+end

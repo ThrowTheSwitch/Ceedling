@@ -100,11 +100,12 @@ class PreprocessinatorIncludesHandler
     )
     @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-    includes = 
+    includes =
       @line_marker_includes_extractor.extract_includes_from_file(
         preprocessed_filepath,
-        PreprocessinatorLineMarkerIncludesExtractor::USER
+        PreprocessinatorLineMarkerIncludesExtractor::USER,
         # Note: No limit to max depth to search for user includes
+        test: name
       )
 
     return clean_self_reference( filepath, includes )

@@ -35,6 +35,10 @@ module TestInvokerTypes
     :filepath, :name,
     :paths,                                    # Hash — build/results/mocks/partials/preprocess paths
     :preprocess,                               # Hash — preprocessing scratch state
+    :mock_search_paths,                        # Array — each mocked header's own mirrored
+                                                # directory below this test's mock root, folded
+                                                # into search_paths so a mock is still findable
+                                                # by however little path its own #include wrote
     :search_paths,
     :compile_flags, :preprocess_flags, :assembler_flags, :link_flags,
     :compile_defines, :preprocess_defines,
@@ -52,7 +56,8 @@ module TestInvokerTypes
     keyword_init: true
   ) do
     def initialize(**kwargs)
-      kwargs[:partials] ||= TestablePartials.new(configs: {}, tests: [], mocks: [])
+      kwargs[:partials]           ||= TestablePartials.new(configs: {}, tests: [], mocks: [])
+      kwargs[:mock_search_paths]  ||= []
       super(**kwargs)
     end
   end
