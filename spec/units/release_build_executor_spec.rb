@@ -212,6 +212,87 @@ describe ReleaseBuildExecutor do
     end
   end
 
+  context "#link -- library and library-search-path argument construction" do
+    before(:each) do
+      @state.objects = ['build/release/out/foo.o']
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
+      allow(@generator).to receive(:generate_executable_file)
+    end
+
+    it "separates a configured library-extension object from plain objects before linking" do
+      stub_const( "EXTENSION_LIBRARIES", FilenameExtension.new('.a') )
+      @state.objects = ['build/release/out/foo.o', 'vendor/libbar.a']
+
+      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, objects, *_rest|
+        expect(objects).to eq( ['build/release/out/foo.o'] )
+      end
+
+      @executor.link( @state )
+    end
+
+    it "formats a separated library as a linker argument via the configured flag template" do
+      stub_const( "EXTENSION_LIBRARIES", FilenameExtension.new('.a') )
+      stub_const( "LIBRARIES_FLAG", '-l${1}' )
+      @state.objects = ['build/release/out/foo.o', 'vendor/libbar.a']
+
+      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, _objects, _flags, _target, _map, lib_args, _lib_paths|
+        expect(lib_args).to eq( ['-lvendor/libbar.a'] )
+      end
+
+      @executor.link( @state )
+    end
+
+    it "includes configured system and release-only libraries as linker arguments even when nothing was separated out of the object list" do
+      stub_const( "LIBRARIES_SYSTEM", ['m'] )
+      stub_const( "LIBRARIES_RELEASE", ['pthread'] )
+      stub_const( "LIBRARIES_FLAG", '-l${1}' )
+
+      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, _objects, _flags, _target, _map, lib_args, _lib_paths|
+        expect(lib_args).to eq( ['-lm', '-lpthread'] )
+      end
+
+      @executor.link( @state )
+    end
+
+    it "formats configured library search paths as linker arguments via the configured flag template" do
+      stub_const( "PATHS_LIBRARIES", ['vendor/lib'] )
+      stub_const( "LIBRARIES_PATH_FLAG", '-L${1}' )
+
+      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, _objects, _flags, _target, _map, _lib_args, lib_paths|
+        expect(lib_paths).to eq( ['-Lvendor/lib'] )
+      end
+
+      @executor.link( @state )
+    end
+
+    it "links plainly, with no library arguments, when none of the library-related project settings are configured" do
+      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, objects, _flags, _target, _map, lib_args, lib_paths|
+        expect(objects).to eq( ['build/release/out/foo.o'] )
+        expect(lib_args).to eq( [] )
+        expect(lib_paths).to eq( [] )
+      end
+
+      @executor.link( @state )
+    end
+
+    it "registers the resolved link flags and library arguments, not just the object files, as meta" do
+      stub_const( "LIBRARIES_SYSTEM", ['m'] )
+      stub_const( "LIBRARIES_FLAG", '-l${1}' )
+      stub_const( "PATHS_LIBRARIES", ['vendor/lib'] )
+      stub_const( "LIBRARIES_PATH_FLAG", '-L${1}' )
+      @state.link_flags = ['-Wall']
+
+      expect(@dependinator).to receive(:register).with(
+        'build/release/out/project.out',
+        files: ['build/release/out/foo.o'],
+        meta:  { flags: ['-Wall'], lib_args: ['-lm'], lib_paths: ['-Lvendor/lib'] }
+      )
+
+      @executor.link( @state )
+    end
+  end
+
   context "#artifactinate" do
     it "copies the artifact, map file, and configured extra artifacts when the executable was rebuilt" do
       @state.executable_rebuilt = true
