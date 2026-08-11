@@ -43,7 +43,7 @@ class TestBuildExecutor
   #
   # Settling every target's staleness in its own sequential pass first
   # (cheap, no subprocess work) is what lets the three parallel batches
-  # below each just check `details[:stale]` instead of duplicating the
+  # below each just check `details.stale` instead of duplicating the
   # register/stale? call three times over. On a stale target, all three
   # passes run and populate `config` as they do today. On a fresh target,
   # the two preprocessed output filepaths are recomputed the same
@@ -57,8 +57,8 @@ class TestBuildExecutor
     skipped = 0
 
     state.partials_headers.each do |details|
-      config   = details[:config]
-      testable = details[:testable]
+      config   = details.config
+      testable = details.testable
       name     = testable.name
 
       target = @file_path_utils.form_preprocessed_file_filepath( config.filepath, name )
@@ -69,10 +69,10 @@ class TestBuildExecutor
         meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
       )
 
-      details[:preprocessed_target] = target
-      details[:stale]               = @dependinator.stale?( target )
+      details.preprocessed_target = target
+      details.stale               = @dependinator.stale?( target )
 
-      next if details[:stale]
+      next if details.stale
 
       msg = @reportinator.generate_module_progress(
         operation:   'Skipping partial header preprocessing for',
@@ -91,10 +91,10 @@ class TestBuildExecutor
 
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
-      next unless details[:stale]
+      next unless details.stale
 
-      config   = details[:config]
-      testable = details[:testable]
+      config   = details.config
+      testable = details.testable
       name     = testable.name
 
       arg_hash = {
@@ -106,17 +106,17 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      details[:directives_only_filepath] = @preprocessinator.generate_directives_only_output( **arg_hash )
+      details.directives_only_filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
     end if directives_only
 
     # Preprocess and assemble header files
     @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
-      next unless details[:stale]
+      next unless details.stale
 
-      config                   = details[:config]
-      testable                 = details[:testable]
+      config                   = details.config
+      testable                 = details.testable
       name                     = testable.name
-      directives_only_filepath = details[:directives_only_filepath]
+      directives_only_filepath = details.directives_only_filepath
 
       arg_hash = {
         test:                     name,
@@ -134,10 +134,10 @@ class TestBuildExecutor
 
     # Full-preprocess partial header files for expanded signature extraction.
     @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
-      next unless details[:stale]
+      next unless details.stale
 
-      config   = details[:config]
-      testable = details[:testable]
+      config   = details.config
+      testable = details.testable
       name     = testable.name
 
       arg_hash = {
@@ -151,7 +151,7 @@ class TestBuildExecutor
 
       config.full_expansion_filepath = @preprocessinator.preprocess_partial_header_expand_macros( **arg_hash )
 
-      @dependinator.mark_fresh( details[:preprocessed_target] )
+      @dependinator.mark_fresh( details.preprocessed_target )
     end
   end
 
@@ -163,8 +163,8 @@ class TestBuildExecutor
     skipped = 0
 
     state.partials_sources.each do |details|
-      config   = details[:config]
-      testable = details[:testable]
+      config   = details.config
+      testable = details.testable
       name     = testable.name
 
       target = @file_path_utils.form_preprocessed_file_filepath( config.filepath, name )
@@ -175,10 +175,10 @@ class TestBuildExecutor
         meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
       )
 
-      details[:preprocessed_target] = target
-      details[:stale]               = @dependinator.stale?( target )
+      details.preprocessed_target = target
+      details.stale               = @dependinator.stale?( target )
 
-      next if details[:stale]
+      next if details.stale
 
       msg = @reportinator.generate_module_progress(
         operation:   'Skipping partial source preprocessing for',
@@ -197,10 +197,10 @@ class TestBuildExecutor
 
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
-      next unless details[:stale]
+      next unless details.stale
 
-      config   = details[:config]
-      testable = details[:testable]
+      config   = details.config
+      testable = details.testable
       name     = testable.name
 
       arg_hash = {
@@ -212,17 +212,17 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      details[:directives_only_filepath] = @preprocessinator.generate_directives_only_output( **arg_hash )
+      details.directives_only_filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
     end if directives_only
 
     # Preprocess and assemble source files
     @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
-      next unless details[:stale]
+      next unless details.stale
 
-      config                   = details[:config]
-      testable                 = details[:testable]
+      config                   = details.config
+      testable                 = details.testable
       name                     = testable.name
-      directives_only_filepath = details[:directives_only_filepath]
+      directives_only_filepath = details.directives_only_filepath
 
       arg_hash = {
         test:                     name,
@@ -240,10 +240,10 @@ class TestBuildExecutor
 
     # Full-preprocess partial source files for expanded signature extraction.
     @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
-      next unless details[:stale]
+      next unless details.stale
 
-      config   = details[:config]
-      testable = details[:testable]
+      config   = details.config
+      testable = details.testable
       name     = testable.name
 
       arg_hash = {
@@ -257,7 +257,7 @@ class TestBuildExecutor
 
       config.full_expansion_filepath = @preprocessinator.preprocess_partial_source_expand_macros( **arg_hash )
 
-      @dependinator.mark_fresh( details[:preprocessed_target] )
+      @dependinator.mark_fresh( details.preprocessed_target )
     end
   end
 
@@ -386,14 +386,14 @@ class TestBuildExecutor
     # up front (sequentially -- cheap, no subprocess work), since it gates both
     # of the parallel batches below.
     state.mocks_list.each do |mock|
-      details  = mock[:details]
-      testable = mock[:testable]
+      details  = mock.details
+      testable = mock.testable
 
-      target = @file_path_utils.form_preprocessed_file_filepath( details[:source], testable.name )
+      target = @file_path_utils.form_preprocessed_file_filepath( details.source, testable.name )
 
       @dependinator.register(
         target,
-        files: [details[:source]],
+        files: [details.source],
         meta:  {
           flags:        testable.preprocess_flags,
           defines:      testable.preprocess_defines,
@@ -402,15 +402,15 @@ class TestBuildExecutor
         }
       )
 
-      mock[:preprocessed_target] = target
-      mock[:stale]               = @dependinator.stale?( target )
+      mock.preprocessed_target = target
+      mock.stale               = @dependinator.stale?( target )
 
-      next if mock[:stale]
+      next if mock.stale
 
       msg = @reportinator.generate_module_progress(
         operation:   'Skipping mock preprocessing for',
         module_name: testable.name,
-        filename:    File.basename( details[:source] )
+        filename:    File.basename( details.source )
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS )
       skipped += 1
@@ -420,12 +420,12 @@ class TestBuildExecutor
 
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
-      next unless mock[:stale]
+      next unless mock.stale
 
-      details  = mock[:details]
-      testable = mock[:testable]
+      details  = mock.details
+      testable = mock.testable
       name     = testable.name
-      filepath = details[:source]
+      filepath = details.source
 
       arg_hash = {
         filepath:      filepath,
@@ -443,20 +443,20 @@ class TestBuildExecutor
         @loginator.log( msg, Verbosity::COMPLAIN )
       end
 
-      mock[:directives_only_filepath] = _filepath
+      mock.directives_only_filepath = _filepath
     end if directives_only
 
     # Preprocess and assemble header files to be mocked
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
-      next unless mock[:stale]
+      next unless mock.stale
 
-      details                  = mock[:details]
-      testable                 = mock[:testable]
-      directives_only_filepath = mock[:directives_only_filepath]
+      details                  = mock.details
+      testable                 = mock.testable
+      directives_only_filepath = mock.directives_only_filepath
 
       arg_hash = {
         test:                     testable.name,
-        filepath:                 details[:source],
+        filepath:                 details.source,
         directives_only_filepath: directives_only_filepath,
         fallback:                 (!directives_only or directives_only_filepath.nil?),
         flags:                    testable.preprocess_flags,
@@ -468,7 +468,7 @@ class TestBuildExecutor
 
       @preprocessinator.preprocess_mockable_header_file( **arg_hash )
 
-      @dependinator.mark_fresh( mock[:preprocessed_target] )
+      @dependinator.mark_fresh( mock.preprocessed_target )
     end
   end
 
@@ -482,20 +482,20 @@ class TestBuildExecutor
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
-      details  = mock[:details]
-      testable = mock[:testable]
+      details  = mock.details
+      testable = mock.testable
 
-      output_path = File.join( testable.paths[:mocks], details[:path] )
+      output_path = File.join( testable.paths[:mocks], details.path )
       @file_wrapper.mkdir( output_path )
 
-      # `details[:input]` -- not the stage 9 preprocessed target -- is the
+      # `details.input` -- not the stage 9 preprocessed target -- is the
       # correct antecedent here: it's exactly what CMock reads, whether or not
       # mock preprocessing is enabled for this project (see stage_determine_files).
       #
-      # `details[:name]` (a String), not `mock[:name]` (the Symbol key T2 carried
+      # `details.name` (a String), not `mock.name` (the Symbol key T2 carried
       # the same value in for hash lookups) -- needed here as a real filename.
-      target      = File.join( output_path, details[:name] + EXTENSION_CORE_SOURCE )
-      mock_header = File.join( output_path, details[:name] + EXTENSION_CORE_HEADER )
+      target      = File.join( output_path, details.name + EXTENSION_CORE_SOURCE )
+      mock_header = File.join( output_path, details.name + EXTENSION_CORE_HEADER )
 
       # `mock_header` is tracked here too, alongside `target` -- not
       # semantically an antecedent, but a file CMock writes atomically in the
@@ -505,13 +505,13 @@ class TestBuildExecutor
       # placeholder to this exact path whenever the *test* file's own
       # bare-includes cache misses, entirely independent of whether this
       # mock's own antecedents changed.
-      @dependinator.register( target, files: [details[:input], mock_header], meta: { cmock: cmock_meta } )
+      @dependinator.register( target, files: [details.input, mock_header], meta: { cmock: cmock_meta } )
 
       unless @dependinator.stale?( target )
         msg = @reportinator.generate_module_progress(
           operation:   'Skipping mock generation for',
           module_name: testable.name,
-          filename:    details[:name]
+          filename:    details.name
         )
         @loginator.log( msg, Verbosity::OBNOXIOUS )
         state.lock.synchronize { skipped += 1 }
@@ -520,9 +520,9 @@ class TestBuildExecutor
 
       arg_hash = {
         context:        state.context,
-        mock:           mock[:name],
+        mock:           mock.name,
         test:           testable.name,
-        input_filepath: details[:input],
+        input_filepath: details.input,
         output_path:    output_path
       }
 
@@ -593,7 +593,7 @@ class TestBuildExecutor
         _filepath = target
       end
 
-      state.lock.synchronize { testable.runner[:input_filepath] = _filepath }
+      state.lock.synchronize { testable.runner.input_filepath = _filepath }
 
       source_files_cache = @file_path_utils.form_preprocessed_source_files_cache_filepath( filepath, name )
 
@@ -639,7 +639,7 @@ class TestBuildExecutor
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      target = testable.runner[:output_filepath]
+      target = testable.runner.output_filepath
 
       @dependinator.register( target, files: [testable.filepath], meta: runner_target_meta() )
 
@@ -661,7 +661,7 @@ class TestBuildExecutor
       )
       @loginator.log( msg )
 
-      @context_extractor.collect_test_runner_details( testable.filepath, testable.runner[:input_filepath] )
+      @context_extractor.collect_test_runner_details( testable.filepath, testable.runner.input_filepath )
     end
 
     log_skip_summary( task: "test case name parsing", count: skipped, noun: "test files" )
@@ -687,7 +687,7 @@ class TestBuildExecutor
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      target = testable.runner[:output_filepath]
+      target = testable.runner.output_filepath
 
       @dependinator.register( target, files: [testable.filepath], meta: runner_target_meta() )
 
@@ -707,7 +707,7 @@ class TestBuildExecutor
         mocks:           @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
         includes:        @context_extractor.lookup_nonmock_header_includes_list( testable.filepath ),
         test_filepath:   testable.filepath,
-        input_filepath:  testable.runner[:input_filepath],
+        input_filepath:  testable.runner.input_filepath,
         runner_filepath: target
       }
 

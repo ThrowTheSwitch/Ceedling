@@ -16,9 +16,9 @@ module TestInvokerTypes
     :testables,         # Hash<Symbol, Testable> — accumulated across all stages
     :context,
     :options,           # Array<Symbol> — pipeline-control flags (see TestPipelineManager)
-    :partials_headers,  # Produced by T1; consumed by stages 6 & 7
-    :partials_sources,  # Produced by T1; consumed by stages 6 & 7
-    :mocks_list,        # Produced by T2; consumed by stages 9 & 10
+    :partials_headers,  # Array<PartialWork> — produced by T1; consumed by stages 6 & 7
+    :partials_sources,  # Array<PartialWork> — produced by T1; consumed by stages 6 & 7
+    :mocks_list,        # Array<MockWork> — produced by T2; consumed by stages 9 & 10
     :objects_list,      # Produced by T3; consumed by stage 15
     :lock,              # Mutex for thread-safe testable writes
     keyword_init: true
@@ -28,6 +28,33 @@ module TestInvokerTypes
       super(**kwargs)
     end
   end
+
+  # A resolved mock: its own header's real, resolved location (`source`, also
+  # duplicated onto `filepath`), the mirrored subdirectory it lives in below
+  # this test's mock root (`path`), and whichever of the two the compiler
+  # should actually read (`input` -- the raw header or its preprocessed
+  # output, depending on whether mock preprocessing is enabled).
+  MockDetails = Struct.new(:name, :filepath, :path, :source, :input, keyword_init: true)
+
+  # A test's generated Unity runner: the C file to be compiled (`output_filepath`)
+  # and the (possibly preprocessed) test file it was generated from (`input_filepath`).
+  RunnerInfo = Struct.new(:output_filepath, :input_filepath, keyword_init: true)
+
+  # One partial header or source file's own preprocessing work, flattened out of its
+  # owning testable for parallel processing (T1). `preprocessed_target` and `stale` are
+  # unset until the corresponding stage settles this target's staleness.
+  PartialWork = Struct.new(
+    :config, :testable, :directives_only_filepath, :preprocessed_target, :stale,
+    keyword_init: true
+  )
+
+  # One mock's own preprocessing/generation work, flattened out of its owning testable
+  # for parallel processing (T2). `details` is this mock's own MockDetails; `preprocessed_target`
+  # and `stale` are unset until the corresponding stage settles this target's staleness.
+  MockWork = Struct.new(
+    :name, :details, :testable, :directives_only_filepath, :preprocessed_target, :stale,
+    keyword_init: true
+  )
 
   # Named record replacing the raw hash per test file. Fields are populated
   # across multiple stages; nil fields are valid until their stage sets them.
@@ -42,8 +69,8 @@ module TestInvokerTypes
     :search_paths,
     :compile_flags, :preprocess_flags, :assembler_flags, :link_flags,
     :compile_defines, :preprocess_defines,
-    :runner,                                   # Hash — {output_filepath:, input_filepath:}
-    :mocks,                                    # Hash — mock name → mock info
+    :runner,                                   # RunnerInfo
+    :mocks,                                    # Hash — mock name (Symbol) → MockDetails
     :partials,                                 # TestablePartials — configs map + tests/mocks module name lists
     :sources, :frameworks, :core, :objects, :executable,
     :no_link_objects, :results_pass, :results_fail,

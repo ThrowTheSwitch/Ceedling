@@ -62,13 +62,13 @@ class TestBuildPlanner
         # by the compiler regardless of how much path the #include itself happened to spell
         # out. A Partial mock has no real header to resolve against, so it stays flat -- the
         # empty default `subdir` already reflects that.
-        mocks[name.to_sym] = {
+        mocks[name.to_sym] = MockDetails.new(
           name:     name,
           filepath: source,
           path:     subdir,
           source:   source,
           input:    input
-        }
+        )
       end
 
       validate_header_includes( filepath )
@@ -79,10 +79,10 @@ class TestBuildPlanner
       end
 
       state.lock.synchronize do
-        testable.runner = {
+        testable.runner = RunnerInfo.new(
           output_filepath: runner_filepath,
           input_filepath:  filepath
-        }
+        )
         testable.mocks    = mocks
         testable.partials.configs = partials_configs
 
@@ -95,17 +95,17 @@ class TestBuildPlanner
   def stage_flatten_partials_lists(state)
     state.testables.each do |_, testable|
       testable.partials.configs.each do |_, config|
-        state.partials_headers << {
+        state.partials_headers << PartialWork.new(
           config:                   config.header,
           testable:                 testable,
           directives_only_filepath: nil
-        } if config.header.filepath
+        ) if config.header.filepath
 
-        state.partials_sources << {
+        state.partials_sources << PartialWork.new(
           config:                   config.source,
           testable:                 testable,
           directives_only_filepath: nil
-        } if config.source.filepath
+        ) if config.source.filepath
       end
     end
   end
@@ -114,12 +114,12 @@ class TestBuildPlanner
   def stage_flatten_mocks_list(state)
     state.testables.each do |_, testable|
       testable.mocks.each do |name, elems|
-        state.mocks_list << {
+        state.mocks_list << MockWork.new(
           name:                     name,
           details:                  elems,
           testable:                 testable,
           directives_only_filepath: nil
-        }
+        )
       end
     end
   end
@@ -145,7 +145,7 @@ class TestBuildPlanner
       compilations  = []
       compilations << filepath
       compilations += test_core
-      compilations << testable.runner[:output_filepath]
+      compilations << testable.runner.output_filepath
       compilations += test_frameworks
       compilations += test_support
       compilations.uniq!

@@ -332,12 +332,12 @@ describe TestBuildExecutor do
         :name             => 'a_test',
         :preprocess_flags => [], :preprocess_defines => [], :search_paths => []
       )
-      mock = {
-        :details  => { :source => 'src/Foo.h', :path => 'sub' },
+      mock = TestInvokerTypes::MockWork.new(
+        :details  => TestInvokerTypes::MockDetails.new( :source => 'src/Foo.h', :path => 'sub' ),
         :testable => @testable,
         :name     => :MockFoo,
         :directives_only_filepath => nil
-      }
+      )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => [] )
     end
 
@@ -379,11 +379,13 @@ describe TestBuildExecutor do
         :name  => 'a_test',
         :paths => { :mocks => 'build/test/mocks' }
       )
-      mock = {
-        :details  => { :source => 'src/Foo.h', :path => 'sub', :input => 'build/preprocess/MockFoo.h', :name => 'MockFoo' },
+      mock = TestInvokerTypes::MockWork.new(
+        :details  => TestInvokerTypes::MockDetails.new(
+          :source => 'src/Foo.h', :path => 'sub', :input => 'build/preprocess/MockFoo.h', :name => 'MockFoo'
+        ),
         :testable => @testable,
         :name     => :MockFoo
-      }
+      )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :lock => Mutex.new, :context => :test, :options => [] )
     end
 
@@ -467,7 +469,7 @@ describe TestBuildExecutor do
       @testable = TestInvokerTypes::Testable.new(
         :name     => 'a_test',
         :filepath => 'test/TestFoo.c',
-        :runner   => { :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'build/preprocess/files/TestFoo.c' }
+        :runner   => TestInvokerTypes::RunnerInfo.new( :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'build/preprocess/files/TestFoo.c' )
       )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
     end
@@ -542,7 +544,7 @@ describe TestBuildExecutor do
       @testable = TestInvokerTypes::Testable.new(
         :name     => 'a_test',
         :filepath => 'test/TestFoo.c',
-        :runner   => { :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'test/TestFoo.c' }
+        :runner   => TestInvokerTypes::RunnerInfo.new( :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'test/TestFoo.c' )
       )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
     end
@@ -605,7 +607,7 @@ describe TestBuildExecutor do
         :filepath           => 'test/TestFoo.c',
         :preprocess         => { :directives_only => { :filepath => nil } },
         :preprocess_flags   => [], :preprocess_defines => [], :search_paths => [],
-        :runner             => { :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => nil }
+        :runner             => TestInvokerTypes::RunnerInfo.new( :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => nil )
       )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
     end
@@ -617,7 +619,7 @@ describe TestBuildExecutor do
 
       @executor.stage_preprocess_test_files( @state )
 
-      expect( @testable.runner[:input_filepath] ).to eq('build/preprocess/files/TestFoo.c')
+      expect( @testable.runner.input_filepath ).to eq('build/preprocess/files/TestFoo.c')
     end
 
     it "skips preprocessing and reuses the deterministic path as the runner input when the dependency tracker reports it unchanged" do
@@ -627,7 +629,7 @@ describe TestBuildExecutor do
 
       @executor.stage_preprocess_test_files( @state )
 
-      expect( @testable.runner[:input_filepath] ).to eq('build/preprocess/files/TestFoo.c')
+      expect( @testable.runner.input_filepath ).to eq('build/preprocess/files/TestFoo.c')
     end
 
     it "scans and caches source directive macros when the dependency tracker reports it stale" do
@@ -681,7 +683,7 @@ describe TestBuildExecutor do
         :preprocess_flags   => ['-Wall'], :preprocess_defines => ['TEST'], :search_paths => ['src']
       )
       @config = Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' )
-      @details = { :config => @config, :testable => @testable, :directives_only_filepath => nil }
+      @details = TestInvokerTypes::PartialWork.new( :config => @config, :testable => @testable, :directives_only_filepath => nil )
       @state = TestInvokerTypes::PipelineState.new(
         :testables => { :a_test => @testable }, :partials_headers => [@details], :context => :test, :options => []
       )
@@ -758,7 +760,7 @@ describe TestBuildExecutor do
         :preprocess_flags   => ['-Wall'], :preprocess_defines => ['TEST'], :search_paths => ['src']
       )
       @config = Partials::ConfigFileInfo.new( filepath: 'src/Foo.c' )
-      @details = { :config => @config, :testable => @testable, :directives_only_filepath => nil }
+      @details = TestInvokerTypes::PartialWork.new( :config => @config, :testable => @testable, :directives_only_filepath => nil )
       @state = TestInvokerTypes::PipelineState.new(
         :testables => { :a_test => @testable }, :partials_sources => [@details], :context => :test, :options => []
       )

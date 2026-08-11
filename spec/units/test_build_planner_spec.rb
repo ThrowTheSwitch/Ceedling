@@ -80,8 +80,10 @@ describe TestBuildPlanner do
       @planner.stage_determine_files( @state )
 
       expect(@testable.runner).to eq(
-        output_filepath: 'build/test/runners/a_test/TestFoo_runner.c',
-        input_filepath:  'test/TestFoo.c'
+        TestInvokerTypes::RunnerInfo.new(
+          output_filepath: 'build/test/runners/a_test/TestFoo_runner.c',
+          input_filepath:  'test/TestFoo.c'
+        )
       )
       expect(@testable.mocks).to eq({})
     end
@@ -135,11 +137,13 @@ describe TestBuildPlanner do
         @planner.stage_determine_files( @state )
 
         expect(@testable.mocks[:MockFoo]).to eq(
-          name:     'MockFoo',
-          filepath: 'src/drivers/foo.h',
-          path:     'drivers',
-          source:   'src/drivers/foo.h',
-          input:    'src/drivers/foo.h'
+          TestInvokerTypes::MockDetails.new(
+            name:     'MockFoo',
+            filepath: 'src/drivers/foo.h',
+            path:     'drivers',
+            source:   'src/drivers/foo.h',
+            input:    'src/drivers/foo.h'
+          )
         )
       end
 
@@ -148,7 +152,7 @@ describe TestBuildPlanner do
 
         @planner.stage_determine_files( @state )
 
-        expect(@testable.mocks[:MockFoo][:input]).to eq( 'build/test/preprocess/files/a_test/full_expansion/foo.h' )
+        expect(@testable.mocks[:MockFoo].input).to eq( 'build/test/preprocess/files/a_test/full_expansion/foo.h' )
       end
     end
 
@@ -169,11 +173,13 @@ describe TestBuildPlanner do
         @planner.stage_determine_files( @state )
 
         expect(@testable.mocks[:Mockceedling_partial_foo_interface]).to eq(
-          name:     'Mockceedling_partial_foo_interface',
-          filepath: 'build/test/partials/a_test/ceedling_partial_foo_interface.h',
-          path:     '',
-          source:   'build/test/partials/a_test/ceedling_partial_foo_interface.h',
-          input:    'build/test/partials/a_test/ceedling_partial_foo_interface.h'
+          TestInvokerTypes::MockDetails.new(
+            name:     'Mockceedling_partial_foo_interface',
+            filepath: 'build/test/partials/a_test/ceedling_partial_foo_interface.h',
+            path:     '',
+            source:   'build/test/partials/a_test/ceedling_partial_foo_interface.h',
+            input:    'build/test/partials/a_test/ceedling_partial_foo_interface.h'
+          )
         )
       end
     end
@@ -193,7 +199,7 @@ describe TestBuildPlanner do
       @planner.stage_flatten_partials_lists( @state )
 
       expect(@state.partials_headers).to eq(
-        [{ config: header, testable: @testable, directives_only_filepath: nil }]
+        [TestInvokerTypes::PartialWork.new( config: header, testable: @testable, directives_only_filepath: nil )]
       )
       expect(@state.partials_sources).to eq( [] )
     end
@@ -206,7 +212,7 @@ describe TestBuildPlanner do
       @planner.stage_flatten_partials_lists( @state )
 
       expect(@state.partials_sources).to eq(
-        [{ config: source, testable: @testable, directives_only_filepath: nil }]
+        [TestInvokerTypes::PartialWork.new( config: source, testable: @testable, directives_only_filepath: nil )]
       )
       expect(@state.partials_headers).to eq( [] )
     end
@@ -229,26 +235,31 @@ describe TestBuildPlanner do
 
     it "flattens this testable's mocks into one parallel-processing-friendly list" do
       @testable.mocks = {
-        MockFoo: { name: 'MockFoo', filepath: 'src/foo.h', path: '', source: 'src/foo.h', input: 'src/foo.h' }
+        MockFoo: TestInvokerTypes::MockDetails.new(
+          name: 'MockFoo', filepath: 'src/foo.h', path: '', source: 'src/foo.h', input: 'src/foo.h'
+        )
       }
 
       @planner.stage_flatten_mocks_list( @state )
 
       expect(@state.mocks_list).to eq(
-        [{ name: :MockFoo, details: @testable.mocks[:MockFoo], testable: @testable, directives_only_filepath: nil }]
+        [TestInvokerTypes::MockWork.new(
+          name: :MockFoo, details: @testable.mocks[:MockFoo], testable: @testable, directives_only_filepath: nil
+        )]
       )
     end
 
     it "flattens mocks across every testable into a single list" do
       other = TestInvokerTypes::Testable.new(
-        name: 'b_test', filepath: 'test/TestBar.c', mocks: { MockBar: { name: 'MockBar' } }
+        name: 'b_test', filepath: 'test/TestBar.c',
+        mocks: { MockBar: TestInvokerTypes::MockDetails.new( name: 'MockBar' ) }
       )
-      @testable.mocks = { MockFoo: { name: 'MockFoo' } }
+      @testable.mocks = { MockFoo: TestInvokerTypes::MockDetails.new( name: 'MockFoo' ) }
       @state.testables[:b_test] = other
 
       @planner.stage_flatten_mocks_list( @state )
 
-      expect(@state.mocks_list.map { |m| m[:name] }).to contain_exactly( :MockFoo, :MockBar )
+      expect(@state.mocks_list.map { |m| m.name }).to contain_exactly( :MockFoo, :MockBar )
     end
   end
 
@@ -268,7 +279,9 @@ describe TestBuildPlanner do
       allow(@configurator).to receive(:cmock_unity_helper_path).and_return( [] )
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
 
-      @testable.runner = { output_filepath: 'build/test/runners/a_test/TestFoo_runner.c', input_filepath: 'test/TestFoo.c' }
+      @testable.runner = TestInvokerTypes::RunnerInfo.new(
+        output_filepath: 'build/test/runners/a_test/TestFoo_runner.c', input_filepath: 'test/TestFoo.c'
+      )
 
       allow(@file_path_utils).to receive(:form_test_build_objects_filelist) do |_build_path, files|
         files.map { |f| f.ext( '.o' ) }
@@ -304,7 +317,7 @@ describe TestBuildPlanner do
           .with( 'test/TestFoo.c' ).and_return( ['Foo'] )
         allow(@file_finder).to receive(:find_build_input_file)
           .with( filepath: 'Foo', complain: :ignore, context: :test ).and_return( 'src/Foo.c' )
-        @testable.mocks = { MockFoo: { name: 'MockFoo' } }
+        @testable.mocks = { MockFoo: TestInvokerTypes::MockDetails.new( name: 'MockFoo' ) }
       end
 
       it "compiles the mock's generated core source instead of the real header's own source file" do
