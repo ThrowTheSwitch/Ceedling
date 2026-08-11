@@ -4,6 +4,15 @@ Ceedling runs the real C preprocessor in several different modes to answer diffe
 
 A C preprocessor's job is to resolve conditionals, expand macros, and pull in the contents of every `#include`d file. Ceedling relies on a real preprocessor, typically the one built into the project's own compiler, to do this rather than reimplementing it. A real preprocessor already understands every conditional and macro trick a project might use. A hand-built approximation would not.
 
+Ceedling asks the preprocessor four different kinds of questions, and each one gets its own mode of invocation.
+
+- **Bare-includes mode** finds every header a file depends on, without opening a single one of them. It exists to produce a trustworthy, top-level include list.
+- **Directives-only mode** resolves conditionals and follows real includes, but leaves macro directives and comments in the output untouched. It exists to categorize includes as user or system headers, and to produce a version of a file with its macros still intact for later text extraction.
+- **Full-expansion mode** resolves everything a preprocessor can resolve, including every macro use in the body of a file. It exists for the rarer case where a macro is hiding something a later step needs to see plainly, such as a function's true signature or visibility.
+- **Text-scan fallback** does not invoke a preprocessor at all. It exists for the times a real preprocessor pass is unavailable or fails, scanning the original file's text directly as a less certain but always-available substitute.
+
+Each of these is explained in its own section below, with an example of the kind of output it produces.
+
 ## Where This Fits in a Test Build
 
 Ceedling's test pipeline calls into this subsystem at several points. It calls in to learn what a test file or header includes. It calls in again to produce a fully resolved version of a file's content, ready for further text extraction. Both the test-building and mock-generating stages of the pipeline rely on this subsystem this way, and this document explains the mechanics behind those calls rather than the pipeline's own stage order, which is documented separately alongside the pipeline itself.
@@ -26,9 +35,44 @@ The number is a line count. The quoted text is a file name. The trailing numbers
 
 Knowing exactly which headers a file includes, and whether each one is a user header or a system header, turns out to be harder than it sounds. A header protected by an include guard will not appear a second time if it happens to be reached again through a different path. This means a single pass over line markers cannot be fully trusted to report every include at the top level of a file.
 
-Ceedling solves this with two separate preprocessor passes that are then reconciled together. The first pass runs the preprocessor in a mode meant only to report dependencies, deliberately pointed at no real project search paths at all. Because no real header can be found this way, none are ever opened, so no include guard can ever suppress anything. This pass is not troubled by nesting or guards, and it reliably reports the complete, accurate list of every include a file would pull in at its own top level, given its current macro definitions. What it cannot do is say whether any one of those includes is a user header or a system header.
+Ceedling solves this with two separate preprocessor passes that are then reconciled together. The first pass runs the preprocessor in bare-includes mode, a mode meant only to report dependencies, deliberately pointed at no real project search paths at all. Because no real header can be found this way, none are ever opened, so no include guard can ever suppress anything. This pass is not troubled by nesting or guards, and it reliably reports the complete, accurate list of every include a file would pull in at its own top level, given its current macro definitions. What it cannot do is say whether any one of those includes is a user header or a system header.
 
-The second pass runs the preprocessor with full search paths and reads the resulting line markers, exactly as described above, to learn which included files are user headers and which are system headers. This pass sees real nesting and real include guards, so its own list cannot be fully trusted as a top-level list on its own.
+Bare-includes mode is invoked roughly like this, with only Ceedling's own vendor path available to search:
+
+```
+gcc -E -M -MG -MP -I"build/vendor/ceedling" -D"UNIT_TEST" -nostdinc -x c "test_module.c"
+```
+
+Its output is not C code at all. It is a make-style dependency rule, listing the file itself and everything it depends on:
+
+```
+test_module.o: test_module.c unity.h module.h \
+  mock_dependency.h
+```
+
+The second pass runs the preprocessor in directives-only mode, with full search paths, and reads the resulting line markers, exactly as described above, to learn which included files are user headers and which are system headers. This pass sees real nesting and real include guards, so its own list cannot be fully trusted as a top-level list on its own.
+
+Directives-only mode is invoked with full project search paths:
+
+```
+gcc -E -I"src" -D"UNIT_TEST" -x c -fdirectives-only "test_module.c" -o "out.c"
+```
+
+Its output still looks recognizably like source. Conditionals are already resolved and includes already followed, but macro directives and comments are left exactly as written, and line markers show where each piece of text actually came from:
+
+```
+# 1 "test_module.c"
+# 1 "unity.h" 1
+# 1 "module.h" 1
+#define MODULE_LIMIT 10 // upper bound for calculations
+void module_calculate(int value);
+# 2 "test_module.c" 2
+
+void test_should_calculate_within_limit(void)
+{
+  TEST_ASSERT_EQUAL(20, module_calculate(2));
+}
+```
 
 Reconciling the two lists together gives the best of both. The first pass supplies the authoritative list of what belongs at the top level. The second pass supplies the categorization for each entry that list already contains. Anything only the second pass reports, having been reached solely through some deeper, guarded path, is set aside. The reconciled list is also cleaned of any include referring to the file itself, and any include of a header superseded by a mock of that same header.
 
@@ -36,19 +80,78 @@ Reconciling the two lists together gives the best of both. The first pass suppli
 
 A separate preprocessor pass, run with every macro fully expanded and every conditional fully resolved, exists for a narrower purpose. Sometimes a function's true signature is hidden behind a project's own macro, such as a macro standing in for the word `static`. A pass that merely preserves macro text intact cannot see through a substitution like that. A fully expanded pass can, because by the time it finishes running, the substitution has already happened.
 
+Full-expansion mode is invoked without the directives-only flag:
+
+```
+gcc -E -I"src" -D"UNIT_TEST" -x c "test_module.c" -o "out.c"
+```
+
+Given a project that defines `#define PRIVATE static` and a function written as `PRIVATE void module_calculate(void)`, directives-only output still shows the macro use exactly as written:
+
+```
+#define PRIVATE static
+PRIVATE void module_calculate(void)
+{
+```
+
+Full-expansion output shows the substitution already carried out, with the `#define` itself gone and `static` sitting plainly in its place:
+
+```
+# 3 "test_module.c"
+static void module_calculate(void)
+{
+```
+
 This mode is used sparingly, specifically where a signature or a visibility keyword needs to be resolved with full confidence, since it is the most expensive of the preprocessor modes Ceedling relies on.
 
 ## Putting a File Back Together
 
 Raw preprocessor output cannot be handed directly to anything expecting an ordinary, self-contained C file. It has already been described as an entire include tree flattened into one document, and none of a file's own `#include` lines survive that process, since a real preprocessor's whole purpose is to replace each one with the file's contents.
 
-Ceedling reconstructs a usable file from this output. It walks the flattened stream watching line markers, keeping only the lines that belong to the file actually being reconstructed and discarding every line that arrived from somewhere else. It then places the file's own, original include directives back at the top, drawn from the reconciled include list described above, ahead of the recovered body text. The result reads as a complete, ordinary C file again, ready for compiling or for further text extraction, rather than as an undifferentiated stream of every header a file happens to depend on.
+Ceedling reconstructs a usable file from this output. It walks the flattened stream watching line markers, keeping only the lines that belong to the file actually being reconstructed and discarding every line that arrived from somewhere else. Given flattened output like this, where a target file's own lines sit between the contents of two other files it does not actually want:
+
+```
+# 1 "some/file/we/do/not/want.c" 5
+some_text_we_do_not_want();
+# 11 "path/do/want.c" 99999
+some_text_we_do_want();
+
+some_awesome_text_we_want_so_hard();
+holy_crepes_more_awesome_text();
+# 3 "some/other/file/we/ignore.c" 5
+ignored_text();
+```
+
+only the lines belonging to `path/do/want.c` survive the walk:
+
+```
+some_text_we_do_want();
+
+some_awesome_text_we_want_so_hard();
+holy_crepes_more_awesome_text();
+```
+
+Ceedling then places the file's own, original include directives back at the top, drawn from the reconciled include list described above, ahead of this recovered body text. The result reads as a complete, ordinary C file again, ready for compiling or for further text extraction, rather than as an undifferentiated stream of every header a file happens to depend on.
 
 ## Comments and Why They Go First
 
 Several later steps read meaningful text directly out of preprocessor output. A step reading macro definitions, or reading a special marker macro placed by a test author, has to trust that whatever looks like a directive or a macro name really is one. A stray comment containing text that merely resembles a directive could otherwise be mistaken for a real one.
 
-To avoid this, comments are found and removed from a file's preprocessed output before any of that later reading happens. The removal is careful about where a comment can legitimately begin. It never mistakes a `//` or a `/*` sitting inside a quoted string for the start of a real comment. When a multi-line comment is removed, it is replaced with the same number of blank lines it originally spanned, so the file's total line count stays exactly as it was, keeping every later line-number calculation correct.
+To avoid this, comments are found and removed from a file's preprocessed output before any of that later reading happens. The removal is careful about where a comment can legitimately begin. It never mistakes a `//` or a `/*` sitting inside a quoted string for the start of a real comment. Directives-only output carrying a comment like this:
+
+```
+# 1 "module.c"
+#define FOO 1 // enable feature
+```
+
+has that comment blanked out, while the line marker and the directive itself are left completely untouched:
+
+```
+# 1 "module.c"
+#define FOO 1
+```
+
+When a multi-line comment is removed, it is replaced with the same number of blank lines it originally spanned, so the file's total line count stays exactly as it was, keeping every later line-number calculation correct.
 
 ## Finding Where a Snippet Came From
 
