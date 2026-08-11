@@ -7,11 +7,13 @@
 
 require 'ceedling/constants'
 require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/test_invoker/test_pipeline_helpers'
 require 'ceedling/includes/includes'
 
 class TestBuildPlanner
 
   include TestInvokerTypes
+  include TestPipelineHelpers
 
   constructor(
     :configurator,
@@ -291,13 +293,6 @@ class TestBuildPlanner
   def remove_mock_original_headers(filelist, mocklist)
     filelist.delete_if do |filepath|
       mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ).ext( EXTENSION_CORE_HEADER ) )
-    end
-  end
-
-  def remove_partials_source_objects(objects, configs)
-    modules = configs.keys
-    objects.delete_if do |filepath|
-      modules.include?( File.basename( filepath ).ext() )
     end
   end
 

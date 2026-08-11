@@ -8,10 +8,12 @@
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/test_invoker/test_pipeline_helpers'
 
 class TestBuildExecutor
 
   include TestInvokerTypes
+  include TestPipelineHelpers
 
   constructor(
     :configurator,
@@ -1082,13 +1084,6 @@ class TestBuildExecutor
     end
   end
 
-  def remove_partials_source_objects(objects, configs)
-    modules = configs.keys
-    objects.delete_if do |filepath|
-      modules.include?( File.basename( filepath ).ext() )
-    end
-  end
-
   # A test runner's content comes from two configuration sections plus a flag
   # governing where its test case names came from -- shared here so stages 12
   # and 13 always register the exact same meta for the same target.
@@ -1103,14 +1098,6 @@ class TestBuildExecutor
       unity:                    @configurator.get_unity_config,
       test_preprocessor_tests:  @configurator.project_use_test_preprocessor_tests
     }
-  end
-
-  # States, in one line, how many targets a build step left untouched because nothing
-  # about them needed attention this run. Silent when nothing was skipped, so a full
-  # rebuild's output isn't cluttered with zero counts.
-  def log_skip_summary(task:, count:, noun:, reason: "nothing changed")
-    msg = @reportinator.generate_skip_summary( task: task, count: count, noun: noun, reason: reason )
-    @loginator.log( msg ) unless msg.nil?
   end
 
 end
