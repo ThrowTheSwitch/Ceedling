@@ -1,184 +1,63 @@
-# Preprocessing in Ceedling
+# Preprocessing
 
-## Summary
+Ceedling runs the real C preprocessor in several different modes to answer different questions about a file. It then reconstructs a usable C file from what it learns.
 
-Ceedling’s preprocessing system provides the basis for C code extraction and transformation capabilities for test builds. It operates in two primary modes utilitizing GCC’s preprpocessor output:
+A C preprocessor's job is to resolve conditionals, expand macros, and pull in the contents of every `#include`d file. Ceedling relies on a real preprocessor, typically the one built into the project's own compiler, to do this rather than reimplementing it. A real preprocessor already understands every conditional and macro trick a project might use. A hand-built approximation would not.
 
-1. **Includes Extraction** — Extracts and categorizes `#include` directives (user vs. system headers).
-2. **Code Expansion** — Fully expands macros and preprocessor directives to generate simplified C files (both test and source files). Reconstructing C code from this expansion is dependent on (1).
+## Where This Fits in a Test Build
 
-Ceedling’s preprocessing system runs GCC’s preprocessor in multiple modes to extract includes and expand C code. It employs cacheing and conditional strategies to minimize preprocessing tool execution across test runs.
+Ceedling's test pipeline calls into this subsystem at several points. It calls in to learn what a test file or header includes. It calls in again to produce a fully resolved version of a file's content, ready for further text extraction. Both the test-building and mock-generating stages of the pipeline rely on this subsystem this way, and this document explains the mechanics behind those calls rather than the pipeline's own stage order, which is documented separately alongside the pipeline itself.
 
----
+Release builds do not use this subsystem at all. A release build only needs to know a file's true dependencies for staleness tracking, a simpler question answered by a lighter tool of its own.
 
-## Includes Extraction
+## Reading a Line Marker
 
-### Overview
+Running a C preprocessor over a file does not produce anything resembling the original file. Every `#include`d file's contents are pulled in and flattened into the same stream of text, and the whole tree of includes ends up concatenated together as one document.
 
-Includes extraction identifies all `#include` directives in a C file and categorizes them as either user includes (`#include "header.h"`) or system includes (`#include <header.h>`). This process can operate independently of code expansion for use in Ceedling build steps. The same process is relied upon to provide the include directives needed for reconstructing expanded C files.
+To keep track of which piece of that flattened stream came from which original file, the preprocessor inserts special lines called line markers as it works. A line marker looks like this:
 
-### Three-Way Intersection Technique
+```
+# 6 "src/module.c" 2
+```
 
-Ceedling uses a three-way intersection approach to accurately extract and categorize includes:
+The number is a line count. The quoted text is a file name. The trailing numbers are flags describing what just happened. A flag of `1` means the preprocessor has just entered a new file, typically because of an `#include`. A flag of `2` means the preprocessor has just returned to the file it was in before. A flag of `3` means the file just entered is a system header, found through a system include path rather than a project path. These three flags are what let Ceedling walk through a flattened stream of preprocessor output and correctly attribute each line back to its real, original file.
 
-#### 1. Bare Includes Extraction
+## Finding Every Include, Accurately
 
-The preprocessor runs in **dependencies mode** (`-MM -MG -MP`) with:
-- All project symbols defined.
-- **Only** the Ceedling vendor path in search paths (no project paths). This ensures no header files are opened apart from Ceedling’s internal _partials.h_.
+Knowing exactly which headers a file includes, and whether each one is a user header or a system header, turns out to be harder than it sounds. A header protected by an include guard will not appear a second time if it happens to be reached again through a different path. This means a single pass over line markers cannot be fully trusted to report every include at the top level of a file.
 
-This configuration causes the preprocessor to:
-- Conditionally evaluate all `#ifdef`, `#ifndef`, and `#if defined()` directives.
-- Assume any unresolved includes will be generated (via `-MG` flag). This encompasses mocks but also avoids any include guard complications since no headers are actually opened.
-- Extract all includes that would be processed given the current symbol definitions.
+Ceedling solves this with two separate preprocessor passes that are then reconciled together. The first pass runs the preprocessor in a mode meant only to report dependencies, deliberately pointed at no real project search paths at all. Because no real header can be found this way, none are ever opened, so no include guard can ever suppress anything. This pass is not troubled by nesting or guards, and it reliably reports the complete, accurate list of every include a file would pull in at its own top level, given its current macro definitions. What it cannot do is say whether any one of those includes is a user header or a system header.
 
-**Result:** A complete list of all includes that would be processed but without distinguishing user vs. system includes.
+The second pass runs the preprocessor with full search paths and reads the resulting line markers, exactly as described above, to learn which included files are user headers and which are system headers. This pass sees real nesting and real include guards, so its own list cannot be fully trusted as a top-level list on its own.
 
-#### 2. User Includes Extraction
+Reconciling the two lists together gives the best of both. The first pass supplies the authoritative list of what belongs at the top level. The second pass supplies the categorization for each entry that list already contains. Anything only the second pass reports, having been reached solely through some deeper, guarded path, is set aside. The reconciled list is also cleaned of any include referring to the file itself, and any include of a header superseded by a mock of that same header.
 
-The preprocessor runs in **directives-only mode** (`-E -dD -fdirectives-only`) with full symbols and search paths, which:
-- Outputs only preprocessor directives and line markers.
-- Preserves the original `#include` statements.
-- Generates line markers showing file entry/exit points.
+## Expanding a File in Full
 
-Ceedling parses the line markers to identify:
-- All user includes via tracing which headers were entered (flag `1` in line markers).
-- Which files are user headers (_absence_ of flag `3` in line markers).
+A separate preprocessor pass, run with every macro fully expanded and every conditional fully resolved, exists for a narrower purpose. Sometimes a function's true signature is hidden behind a project's own macro, such as a macro standing in for the word `static`. A pass that merely preserves macro text intact cannot see through a substitution like that. A fully expanded pass can, because by the time it finishes running, the substitution has already happened.
 
-**Result:** A list of all user includes associated with the processed file. Note that because of nesting includes and include guards this list cannot be used to determine the top-level (i.e. depth 0) includes in the way bare includes extraction can.
+This mode is used sparingly, specifically where a signature or a visibility keyword needs to be resolved with full confidence, since it is the most expensive of the preprocessor modes Ceedling relies on.
 
-**Note:** The directives-only mode requires that all files referenced in `#include` directives exist in search paths. Ceedling addresses this need by generating blank “stand-in” files for mocks and partials to allow the preprocessor to succeed. These files are replaced by the actual generated content in later build steps.
+## Putting a File Back Together
 
-#### 3. System Includes Extraction
+Raw preprocessor output cannot be handed directly to anything expecting an ordinary, self-contained C file. It has already been described as an entire include tree flattened into one document, and none of a file's own `#include` lines survive that process, since a real preprocessor's whole purpose is to replace each one with the file's contents.
 
-Using the same directives-only preprocessor output as used for user includes, Ceedling identifies:
-- Includes marked with the system header flag (`3`).
-- Includes limited to a practical depth (typically 5 levels) to avoid excessive noise from deeply nested internal system includes.
+Ceedling reconstructs a usable file from this output. It walks the flattened stream watching line markers, keeping only the lines that belong to the file actually being reconstructed and discarding every line that arrived from somewhere else. It then places the file's own, original include directives back at the top, drawn from the reconciled include list described above, ahead of the recovered body text. The result reads as a complete, ordinary C file again, ready for compiling or for further text extraction, rather than as an undifferentiated stream of every header a file happens to depend on.
 
-**Result:** A list of system includes associated with the processed file. Note that because of nesting includes and include guards this list cannot be used to determine the top-level (i.e. depth 0) includes in the way bare includes extraction can.
+## Comments and Why They Go First
 
-#### 4. Intersection and Reconciliation
+Several later steps read meaningful text directly out of preprocessor output. A step reading macro definitions, or reading a special marker macro placed by a test author, has to trust that whatever looks like a directive or a macro name really is one. A stray comment containing text that merely resembles a directive could otherwise be mistaken for a real one.
 
-The three lists are reconciled using `Includes.reconcile()`:
-- **Bare includes** provide the authoritative list of the top-level (i.e. depth 0) includes but with no distinction of user and system includes.
-- **User includes** from line markers distinguishes user headers.
-- **System includes** from line markers distinguishes system headers.
-- Any include appearing in bare includes but not in user/system lists is ignored.
+To avoid this, comments are found and removed from a file's preprocessed output before any of that later reading happens. The removal is careful about where a comment can legitimately begin. It never mistakes a `//` or a `/*` sitting inside a quoted string for the start of a real comment. When a multi-line comment is removed, it is replaced with the same number of blank lines it originally spanned, so the file's total line count stays exactly as it was, keeping every later line-number calculation correct.
 
-The final list is sanitized to:
-- Remove self-references (a file referencing itself).
-- Remove any includes that have been mocked (e.g., `mock_header.h` supersedes `header.h`).
-- Sort such that system includes are first in the resulting list (a C best practice).
+## Finding Where a Snippet Came From
 
-### Benefits of This Approach
+A separate, smaller capability exists for tracing a piece of already-preprocessed text back to the original line number it came from. Given a snippet of code and a body of preprocessor output containing it, this capability walks backward through the nearest line markers to work out which original file and line the snippet actually belongs to.
 
-- **Conditional accuracy:** Respects `#ifdef` and other conditional compilation directives.
-- **No include guard issues:** Never opens actual header files during bare includes extraction, ensuring a list of top-level (i.e. depth 0) include directives.
-- **Handles generated files:** Assumes missing files will be generated (mocks, etc.).
-- **Proper categorization:** Distinguishes user vs. system includes for correct build ordering.
+Ceedling's Partials feature relies on this directly. A function copied out into a generated Partial file still needs to point back at its true, original location, and this is how that original location is found.
 
----
+## Caching and the Fallback Path
 
-## Code Expansion
+Running a real preprocessor is genuinely expensive, and a project's files do not change on every single build. Ceedling caches the include lists it works out for a file, and reuses a cached list rather than repeating a preprocessor pass when nothing relevant about that file has changed since the last run.
 
-### Overview
-
-Code expansion transforms C source and header files by fully expanding all preprocessor directives, macros, and conditional compilation statements. This produces simplified files suitable for extracting test case names, C function definitions (for Partials), and more as needed by Ceedling’s advanced features.
-
-Code expansion via the preprocessor is “too good.” It expands all include directives, macros, etc. These details are needed by various build steps and text extraction. As such, after code expansion, Ceedling reconstructs the expanded code file to inject include directives and certain macros.
-
-### Full Preprocessing Mode
-
-The preprocessor runs in **full expansion mode** (`-E`) with:
-- All project symbols defined.
-- Complete search paths (project, vendor, system).
-- All header files opened and processed.
-
-This generates output where:
-- All macros are expanded to their final values.
-- All `#ifdef`/`#ifndef` blocks are resolved.
-- All `#include` directives are replaced with file contents.
-- Line markers indicate the source of each line.
-
-### File Reconstruction
-
-Expanded files are reconstructed to maintain a usable structure:
-
-#### 1. Header Reconstruction
-
-For each expanded header file:
-1. Extract the original includes list (using the includes extraction process discussed in preceding sections).
-2. Create a new file with:
-   - Original `#include` directives at the top (user and system headers).
-   - Fully expanded macros, function declarations, and function definitions.
-
-#### 2. Source File Reconstruction
-
-For each expanded source file:
-1. Extract the original includes list.
-2. Create a new file with:
-   - Original `#include` directives at the top.
-   - Fully expanded code with all macros resolved.
-   - All conditional compilation resolved.
-
-### Directives-Only Output Usage
-
-The directives-only preprocessor output serves multiple purposes in reconstruction:
-
-1. **Include:** Used by includes extraction to inject includes into reconstructed files.
-2. **Macro Preservation (Optional):** Can extract `#define` directives for inclusion in reconstructed C files. Key “marker” macros like `TEST_SOURCE_FILE()` must be preserved for text scanning steps that provide the details of the marker needed in later build steps.
-
-### Dependency on Includes Extraction
-
-Code expansion **requires** includes extraction because:
-- Reconstructed files need original `#include` directives at the top, but these are expanded inline during preprocessing.
-- Mock generation requires knowing which mocks a test author referenced in a test file.
-
-Without accurate includes extraction, reconstructed files would lack proper header dependencies and fail to compile or provide necessary build details to later build steps.
-
----
-
-## Efficiencies and Caching
-
-### Shared Directives-Only Output
-
-**Problem:** Multiple preprocessing steps need the same directives-only preprocessor output.
-
-**Solution:** Generate the directives-only output once and pass its filepath to all consumers:
-
-**Benefits:**
-- Reduces preprocessor invocations from N to 1 per file.
-- Eliminates redundant file I/O.
-- Ensures consistency across extraction steps.
-
-### Shared Directives-Only Output
-
-**Problem:** Preprocessing is expensive and often repeated unnecessarily.
-
-**Solution:** Cache extracted includes lists as YAML files and rely on file timestamps to determine if cached includes are up to date and can be used in place of running the preprocessor multiple times.
-
-**Benefits:**
-- Skips expensive preprocessing on unchanged files.
-- Preserves full includes information across runs.
-
----
-
-## Fallback
-
-If executing the preprocessor fails for any reason — a mode not supported by the toolchain available in the environment or some oddball quirk of symbols and paths — automatic fallback options are executed.
-
-In fallback modes, in place of relying on the preprocessor, Ceedling relies on simple text scanning of the original file. Of course, this cannot be resilient to conditional compilation, etc. that preprocessing handles. But, this can often be good enough or bring a test build to a sufficient point of completion to allow a test author to more easily determine the failure scenario at hand.
-
----
-
-## Implementation Details
-
-**Key Classes**
-- `Preprocessinator` - Main preprocessing orchestrator.
-- `PreprocessinatorIncludesHandler` - Manages includes extraction workflows.
-- `PreprocessinatorLineMarkerIncludesExtractor` - Parses line markers from directives-only output.
-- `PreprocessinatorBareIncludesExtractor` - Parses make-style dependency output.
-- `PreprocessinatorReconstructor` — Recreates C code files from fully expanded output, include lists, and optionally preserved directives.
-- `Include` objects and derivatives — Encapsulates include directive details.
-- `Includes` - Various utilities for processing includes lists.
-- `IncludeFactory` - Manufactures `UserInclude` and `SystemInclude` objects.
+Sometimes running a real preprocessor is not possible at all, whether because a project's toolchain does not support the mode Ceedling needs, or because a particular invocation simply fails for some other reason. When this happens, Ceedling falls back to a plain text scan of the original file instead. This fallback cannot resolve a conditional the way a real preprocessor can, so its results are necessarily less certain. It exists to keep a build moving forward far enough for a test author to see what is actually going wrong, rather than leaving a build unable to proceed at all.
