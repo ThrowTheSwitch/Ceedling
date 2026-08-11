@@ -17,12 +17,18 @@ class FileFinder
 
 
   def find_header_input_for_mock(mock)
-    # Mock name => <mock prefix><header filename (.h)>
-    # Examples: 'Mockfoo.h' or 'mock_Bar.h'
+    # Mock name/path => <mock prefix><header filename (.h)>, optionally preceded by however
+    # much path the #include itself carried (e.g. 'Mockfoo.h' or 'drivers/Mockfoo.h').
     # Note: In some rare cases, a mock name may include a dot (ex. Sensor.44) because of versioning file naming convention
     #       Be careful about assuming the end of the name has any sort of file extension
-
-    header = mock.delete_prefix(@configurator.cmock_mock_prefix)
+    #
+    # Stripping the mock prefix from only the basename -- not the whole query -- preserves
+    # whatever disambiguating path the #include carried, so a query with a path is matched
+    # exactly as specifically as it was written, not collapsed to a bare basename that would
+    # throw away real disambiguating information.
+    dir      = File.dirname(mock)
+    basename = File.basename(mock).delete_prefix(@configurator.cmock_mock_prefix)
+    header   = dir == '.' ? basename : File.join(dir, basename)
 
     found_path = @file_finder_helper.find_file_in_collection(
       header,

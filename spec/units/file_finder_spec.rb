@@ -59,6 +59,37 @@ describe FileFinder do
     end
   end
 
+  describe '#find_header_input_for_mock' do
+    before(:each) do
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@configurator).to receive(:collection_all_headers).and_return(
+        ['unit/bar.h', 'integration/bar.h', 'baz.h']
+      )
+    end
+
+    it 'resolves a bare mock name when its header is unique' do
+      expect(@file_finder.find_header_input_for_mock('Mockbaz.h')).to eq('baz.h')
+    end
+
+    it 'raises a CeedlingException naming every candidate when a bare mock name is ambiguous' do
+      expect { @file_finder.find_header_input_for_mock('Mockbar.h') }.to raise_error(CeedlingException) do |error|
+        expect(error.message).to include('unit/bar.h')
+        expect(error.message).to include('integration/bar.h')
+      end
+    end
+
+    it 'resolves an ambiguous mock name when the query supplies enough path to disambiguate' do
+      expect(@file_finder.find_header_input_for_mock('unit/Mockbar.h')).to eq('unit/bar.h')
+      expect(@file_finder.find_header_input_for_mock('integration/Mockbar.h')).to eq('integration/bar.h')
+    end
+
+    it 'raises rather than silently matching just the basename when the given path is bogus' do
+      expect {
+        @file_finder.find_header_input_for_mock('nonexistent/dir/Mockbaz.h')
+      }.to raise_error(CeedlingException)
+    end
+  end
+
   describe '#find_source_file' do
     before(:each) do
       allow(@configurator).to receive(:extension_source).and_return( FilenameExtension.new('.c') )
