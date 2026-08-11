@@ -11,11 +11,13 @@ require 'ceedling/test_context_extractor'
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partials'
 require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/test_invoker/test_pipeline_helpers'
 require 'ceedling/path_mirror'
 
 class TestBuildSetup
 
   include TestInvokerTypes
+  include TestPipelineHelpers
 
   constructor(
     :configurator,
@@ -78,7 +80,7 @@ class TestBuildSetup
         testable.preprocess[:includes]         = []
         testable.preprocess[:directives_only]  = { filepath: nil }
 
-        paths[:preprocess_incudes]                    = @file_path_utils.form_test_preprocess_includes_path( name )
+        paths[:preprocess_includes]                   = @file_path_utils.form_test_preprocess_includes_path( name )
         paths[:preprocess_files]                      = @file_path_utils.form_test_preprocess_files_path( name )
         paths[:preprocess_files_full_expansion]       = @file_path_utils.form_test_preprocess_files_full_expansion_path( name )
         paths[:preprocess_files_directives_only]      = @file_path_utils.form_test_preprocess_files_directives_only_path( name )
@@ -613,14 +615,6 @@ class TestBuildSetup
     name     = subdir.empty? ? basename : File.join( subdir, basename )
 
     return name.to_sym
-  end
-
-  # States, in one line, how many targets a build step left untouched because nothing
-  # about them needed attention this run. Silent when nothing was skipped, so a full
-  # rebuild's output isn't cluttered with zero counts.
-  def log_skip_summary(task:, count:, noun:, reason: "nothing changed")
-    msg = @reportinator.generate_skip_summary( task: task, count: count, noun: noun, reason: reason )
-    @loginator.log( msg ) unless msg.nil?
   end
 
 end
