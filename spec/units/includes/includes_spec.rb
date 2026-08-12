@@ -111,20 +111,38 @@ describe "Includes serialization" do
       expect(restored.map(&:filename)).to eq(["first.h", "second.h", "third.h", "fourth.h"])
     end
 
-    it "handles includes with paths during serialization" do
+    it "handles includes with an include_path override during serialization" do
       original = [
-        UserInclude.new("path/to/header.h", use_path: true),
-        SystemInclude.new("sys/stdio.h", use_path: true),
-        MockInclude.new("mocks/mock_module.h", use_path: true)
+        UserInclude.new("path/to/header.h", include_path: "path/to/header.h"),
+        SystemInclude.new("sys/stdio.h", include_path: "sys/stdio.h"),
+        MockInclude.new("mocks/mock_module.h")
       ]
-      
+
       hashes = Includes.to_hashes(original)
       restored = Includes.from_hashes(hashes)
-      
+
       expect(restored.length).to eq(3)
       expect(restored[0].filepath).to eq("path/to/header.h")
       expect(restored[1].filepath).to eq("sys/stdio.h")
       expect(restored[2].filepath).to eq("mocks/mock_module.h")
+      # `include_path` must itself round-trip, not merely `filepath` -- otherwise a cached
+      # build silently reverts to filename-only rendering on its next, cache-hit run.
+      expect("#{restored[0]}").to eq('#include "path/to/header.h"')
+      expect("#{restored[1]}").to eq('#include <sys/stdio.h>')
+    end
+
+    it "round-trips include_path, and has it take rendering precedence over filepath/filename" do
+      original = [
+        SystemInclude.new("/usr/include/x86_64-linux-gnu/sys/stat.h", include_path: "sys/stat.h")
+      ]
+
+      hashes = Includes.to_hashes(original)
+      restored = Includes.from_hashes(hashes)
+
+      expect(restored.length).to eq(1)
+      expect(restored[0].filepath).to eq("/usr/include/x86_64-linux-gnu/sys/stat.h")
+      expect(restored[0].include_path).to eq("sys/stat.h")
+      expect("#{restored[0]}").to eq("#include <sys/stat.h>")
     end
 
     it "handles empty array" do
@@ -1054,16 +1072,88 @@ describe "Includes reconciliation" do
         Include.new("subdir/header.h"),
         Include.new("sys/types.h")
       ]
-      
+
       user = [UserInclude.new("header.h")]
       system = [SystemInclude.new("types.h")]
-      
+
       result = Includes.reconcile(bare: bare, user: user, system: system)
-      
+
       # Should match by filename only
       expect(result.length).to eq(2)
       expect(result[0].filename).to eq("types.h")
       expect(result[1].filename).to eq("header.h")
     end
+
+    it "preserves a system include directive's original directory components instead of collapsing to its bare filename" do
+      bare = [Include.new("sys/stat.h")]
+      user = []
+      system = [SystemInclude.new("/usr/include/x86_64-linux-gnu/sys/stat.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect(result[0]).to be_a(SystemInclude)
+      expect(result[0].filepath).to eq("/usr/include/x86_64-linux-gnu/sys/stat.h")
+      expect("#{result[0]}").to eq("#include <sys/stat.h>")
+      expect(Includes.from_hashes(Includes.to_hashes(result)).map(&:to_s)).to eq(["#include <sys/stat.h>"])
+    end
+
+    it "prefers the more specific bare entry when a system header's basename collides with an unrelated bare entry" do
+      # A project's own quoted `#include "stat.h"` sitting alongside a system
+      # `#include <sys/stat.h>` in the same file: both reach `bare` as plain, untyped
+      # Include objects, and the short entry trivially "corresponds" to any longer
+      # resolved path ending in the same filename. The longer, genuinely-corresponding
+      # entry must still win, regardless of which one happens to appear first in `bare`.
+      bare = [
+        Include.new("stat.h"),
+        Include.new("sys/stat.h")
+      ]
+      user = []
+      system = [SystemInclude.new("/usr/include/x86_64-linux-gnu/sys/stat.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect("#{result[0]}").to eq("#include <sys/stat.h>")
+    end
+
+    it "falls back to a same-filename bare entry when nothing corresponds by path" do
+      # The compiler's real search-path structure can diverge from a directive's own
+      # literal spelling (a symlinked or vendored include root, for instance), so a
+      # resolved system path may not share any trailing segment with its bare entry
+      # beyond the filename itself. Rendering the bare entry's own spelling is still
+      # strictly better than collapsing to the bare filename alone.
+      bare = [Include.new("compat/stat.h")]
+      user = []
+      system = [SystemInclude.new("/usr/include/x86_64-linux-gnu/bits/stat.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect("#{result[0]}").to eq("#include <compat/stat.h>")
+    end
+
+    it "does not hard-error over two same-named system headers, a normal toolchain wrapper-chain pattern rather than a project-file conflict" do
+      # e.g. a compiler-provided stdint.h #include_next-ing its libc counterpart --
+      # both real, both legitimately entered, both sharing a basename, neither a
+      # project file whose identity is actually in question.
+      bare = [Include.new("stdint.h")]
+
+      user = []
+      system = [
+        SystemInclude.new("/usr/lib/gcc/x86_64-linux-gnu/14/include/stdint.h"),
+        SystemInclude.new("/usr/include/stdint.h")
+      ]
+
+      result = nil
+      expect {
+        result = Includes.reconcile(bare: bare, user: user, system: system)
+      }.not_to raise_error
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:filepath)).to include(
+        "/usr/lib/gcc/x86_64-linux-gnu/14/include/stdint.h", "/usr/include/stdint.h"
+      )
+    end
   end
-end    
+end
