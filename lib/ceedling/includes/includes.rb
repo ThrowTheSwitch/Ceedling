@@ -43,7 +43,9 @@ class Includes
         'type' => type,
         'filepath' => include.filepath,
       }
-      hash['use_path'] = true if include.use_path
+      # `include_path` is only ever meaningful on a reconciled UserInclude/SystemInclude,
+      # so it's written only when actually set -- a cached build's YAML stays
+      # uncluttered for the common, plain case.
       hash['include_path'] = include.include_path if include.include_path
       hash
     end
@@ -73,11 +75,11 @@ class Includes
       
       case hash['type']
       when 'user'
-        UserInclude.new(hash['filepath'], use_path: hash.fetch('use_path', false), include_path: hash['include_path'])
+        UserInclude.new(hash['filepath'], include_path: hash['include_path'])
       when 'mock'
         MockInclude.new(hash['filepath'])
       when 'system'
-        SystemInclude.new(hash['filepath'], use_path: hash.fetch('use_path', false), include_path: hash['include_path'])
+        SystemInclude.new(hash['filepath'], include_path: hash['include_path'])
       when 'bare'
         Include.new(hash['filepath'])
       else
@@ -184,6 +186,27 @@ class Includes
   # candidate module Ceedling needs to build -- there's no project-identity question here
   # worth hard-erroring over.
   #
+  # A matched system include's `filepath` is its real, resolved location (possibly
+  # absolute), which is what identity and deduplication need but is wrong to render
+  # verbatim into a generated file. Each matched system include is therefore rebuilt
+  # carrying `include_path:` recovered from `bare` -- the original, as-written directive
+  # text -- via `best_bare_match`, so `<sys/stat.h>` renders as written instead of
+  # collapsing to `<stat.h>`.
+  #
+  # A matched user include is deliberately left rendering filename-only, even when its
+  # own `#include` was genuinely subdirectory-qualified as written. Recovering "the
+  # original spelling" from `bare` the same way system includes do isn't safe here: a
+  # quoted include's bare-includes pass still performs GCC's standard directory-relative
+  # search for the including file (nothing about `-nostdinc` suppresses that), so a bare
+  # `#include "Types.h"` inside `src/LightSensor.h` resolves in the bare pass itself to
+  # `src/Types.h`, the moment a real `src/Types.h` exists on disk -- there's no literal
+  # spelling left in `bare` to recover at that point. Rendering that resolved path
+  # verbatim breaks Ceedling's own convention of adding every source directory as its
+  # own search path (`src/Types.h` isn't found via a `-Isrc` search path; only
+  # `Types.h` is). A system include's bare entry never has this problem: `<...>`
+  # includes are never resolved against a real file under `-nostdinc`, so its bare text
+  # is always exactly what was written.
+  #
   # `test_filepath` plays no part in matching -- it's carried only so the ambiguity error
   # below can name the one test file whose #include statement actually needs editing,
   # since nothing further up the call stack adds that context on its own.
@@ -212,8 +235,7 @@ class Includes
     system_includes = system.select do |include|
       bare_filenames.include?(include.filename)
     end.map do |include|
-      original = bare.find { |bare_include| paths_correspond?(bare_include.filepath, include.filepath) } ||
-        bare.find { |bare_include| bare_include.filename == include.filename }
+      original = best_bare_match(bare, include.filepath)
       SystemInclude.new(include.filepath, include_path: original.filepath)
     end
 
@@ -240,6 +262,9 @@ class Includes
         filepath = matched.first
         next if seen.include?(filepath)
         seen << filepath
+        # Deliberately not carrying an include_path override here -- see the class
+        # comment above `reconcile` for why that isn't safe for a user include the way
+        # it is for a system include. This renders filename-only, same as it always has.
         user_includes << user_by_filepath[filepath]
       else
         location = test_filepath ? " within '#{test_filepath}'" : ''
@@ -267,6 +292,27 @@ class Includes
   end
   private_class_method :paths_correspond?
 
+  # Finds the bare entry that best identifies a resolved system include's original,
+  # as-written spelling. A bare entry carries no information about whether its own
+  # #include was quoted or bracketed -- PreprocessinatorBareIncludesExtractor can't see
+  # that far -- so a project's own same-named quoted include (`#include "stat.h"`) can
+  # sit in `bare` right alongside a system one (`#include <sys/stat.h>`). Preferring the
+  # *longest* path correspondence, rather than merely the first one found, keeps a short,
+  # unrelated bare entry -- which trivially "corresponds" to any longer resolved path
+  # ending in the same filename -- from shadowing the correct, more specific entry.
+  # Falls back to the longest same-filename candidate, even without path correspondence,
+  # only when the compiler's real search-path structure doesn't literally match the
+  # directive's own spelling (a symlinked or vendored include root, for instance) --
+  # this still can't happen for the filename-only match itself, since `system_includes`
+  # was only reached because some bare entry already shares this filename.
+  def self.best_bare_match(bare, filepath)
+    candidates = bare.select { |bare_include| bare_include.filename == File.basename(filepath) }
+    corresponding = candidates.select { |bare_include| paths_correspond?(bare_include.filepath, filepath) }
+    pool = corresponding.empty? ? candidates : corresponding
+    return pool.max_by { |bare_include| bare_include.filepath.split(/[\\\/]/).reject(&:empty?).length }
+  end
+  private_class_method :best_bare_match
+
   # Sort list so system includes are at the beginning
   # (Best practice)
   def self.sort(includes)
@@ -292,7 +338,6 @@ class Include
   attr_reader :filepath
   attr_reader :filename
   attr_reader :path
-  attr_reader :use_path
   attr_reader :include_path
 
   # Initialize an Include object from a C include statement or simple filepath.
@@ -302,18 +347,20 @@ class Include
   #  - #include <stdio.h>
   #  - A quoted/bracketed filepath (e.g., '"header.h"' or <stdio.h>')
   #  - A plain filepath (e.g., 'path/to/header.h')
-  # @param use_path [Boolean] (default: false)
-  #  - If true, use the full filepath in the include directive
-  #  - If false, use only the filename
+  # @param include_path [String, nil] (default: nil)
+  #  - When set, this exact spelling is used in the include directive, taking
+  #    precedence over `filepath`/`filename`. This exists for a reconciled
+  #    UserInclude/SystemInclude, whose `filepath` is deliberately the header's real,
+  #    resolved location (needed elsewhere for identity -- see `Includes.sanitize!`)
+  #    rather than the original, as-written directive text a reconciled render needs.
   # @raise [ArgumentError] If the statement is empty or becomes empty after cleaning
-  def initialize(statement, use_path: false, include_path: nil)
+  def initialize(statement, include_path: nil)
     @filepath = clean(statement)
 
     raise ArgumentError, "Empty include statement" if @filepath.empty?
 
     @filename = File.basename(@filepath)
     @path = File.dirname(@filepath)
-    @use_path = use_path
     @include_path = clean(include_path) if include_path
   end
 
@@ -374,7 +421,7 @@ class Include
   # Returns the configured entry to use in the include directive
   def include()
     return @include_path if @include_path
-    @use_path ? @filepath : @filename
+    @filename
   end
 
   private
