@@ -140,6 +140,8 @@ describe "Includes serialization" do
       expect(restored[0].filepath).to eq("path/to/header.h")
       expect(restored[1].filepath).to eq("sys/stdio.h")
       expect(restored[2].filepath).to eq("mocks/mock_module.h")
+      expect("#{restored[0]}").to eq('#include "path/to/header.h"')
+      expect("#{restored[1]}").to eq('#include <sys/stdio.h>')
     end
 
     it "handles empty array" do
@@ -1105,6 +1107,18 @@ describe "Includes reconciliation" do
       expect(result.length).to eq(2)
       expect(result[0].filepath).to eq("sys/types.h")
       expect(result[1].filepath).to eq("subdir/header.h")
+    end
+
+    it "preserves directory components from a system include directive" do
+      bare = [Include.new("sys/stat.h")]
+      user = []
+      system = [SystemInclude.new("/usr/include/x86_64-linux-gnu/sys/stat.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.map(&:to_s)).to eq(["#include <sys/stat.h>"])
+      expect(result.first.filepath).to eq("/usr/include/x86_64-linux-gnu/sys/stat.h")
+      expect(Includes.from_hashes(Includes.to_hashes(result)).map(&:to_s)).to eq(["#include <sys/stat.h>"])
     end
 
     it "matches a bare entry with more resolved path than its candidate carries" do

@@ -39,10 +39,13 @@ class Includes
         else raise ArgumentError, "Unknown Include type: #{include.class}"
         end
 
-      {
+      hash = {
         'type' => type,
         'filepath' => include.filepath,
       }
+      hash['use_path'] = true if include.use_path
+      hash['include_path'] = include.include_path if include.include_path
+      hash
     end
   end
 
@@ -70,11 +73,11 @@ class Includes
       
       case hash['type']
       when 'user'
-        UserInclude.new(hash['filepath'])
+        UserInclude.new(hash['filepath'], use_path: hash.fetch('use_path', false), include_path: hash['include_path'])
       when 'mock'
         MockInclude.new(hash['filepath'])
       when 'system'
-        SystemInclude.new(hash['filepath'])
+        SystemInclude.new(hash['filepath'], use_path: hash.fetch('use_path', false), include_path: hash['include_path'])
       when 'bare'
         Include.new(hash['filepath'])
       else
@@ -208,6 +211,10 @@ class Includes
 
     system_includes = system.select do |include|
       bare_filenames.include?(include.filename)
+    end.map do |include|
+      original = bare.find { |bare_include| paths_correspond?(bare_include.filepath, include.filepath) } ||
+        bare.find { |bare_include| bare_include.filename == include.filename }
+      SystemInclude.new(include.filepath, include_path: original.filepath)
     end
 
     user_filepaths = user.map(&:filepath)
@@ -285,6 +292,8 @@ class Include
   attr_reader :filepath
   attr_reader :filename
   attr_reader :path
+  attr_reader :use_path
+  attr_reader :include_path
 
   # Initialize an Include object from a C include statement or simple filepath.
   #
@@ -297,7 +306,7 @@ class Include
   #  - If true, use the full filepath in the include directive
   #  - If false, use only the filename
   # @raise [ArgumentError] If the statement is empty or becomes empty after cleaning
-  def initialize(statement, use_path: false)
+  def initialize(statement, use_path: false, include_path: nil)
     @filepath = clean(statement)
 
     raise ArgumentError, "Empty include statement" if @filepath.empty?
@@ -305,6 +314,7 @@ class Include
     @filename = File.basename(@filepath)
     @path = File.dirname(@filepath)
     @use_path = use_path
+    @include_path = clean(include_path) if include_path
   end
 
   # Method specialized by subclasses
@@ -363,6 +373,7 @@ class Include
 
   # Returns the configured entry to use in the include directive
   def include()
+    return @include_path if @include_path
     @use_path ? @filepath : @filename
   end
 
