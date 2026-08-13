@@ -446,7 +446,7 @@ module CommonSystemTestCases
   # GCC's same-directory quoted #include resolution during bare-includes extraction.
   # Auto source-pairing must not pull the real source implementing the type header's
   # like-named stem into this build alongside its mock of the differently-named header.
-  def test_project_preprocessing_mock_survives_transitive_same_directory_pairing
+  def test_project_preprocessing_same_dir_mock_pairing
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("same_dir_pairing_module.h"), 'test/'

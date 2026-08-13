@@ -226,12 +226,6 @@ class FilePathUtils
     form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_RAW_DIRECTIVES_ONLY_DIR)
   end
 
-  # Parent directory for per-file, sibling-free isolation copies used during bare-includes
-  # extraction (see PreprocessinatorIncludesHandler#extract_bare_includes).
-  def form_test_preprocess_bare_includes_isolation_path(name, context: nil)
-    form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_BARE_INCLUDES_ISOLATION_DIR)
-  end
-
   def form_test_build_cache_path(filepath)
     return File.join( @configurator.project_test_build_cache_path, File.basename(filepath) )
   end

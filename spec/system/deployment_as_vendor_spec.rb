@@ -65,7 +65,7 @@ ceedling_system_tests do
       test_case :test_project_with_preprocessing_for_mocks
       test_case :test_project_with_preprocessing_for_missing_mock
       test_case :test_project_with_preprocessing_all
-      test_case :test_project_preprocessing_mock_survives_transitive_same_directory_pairing
+      test_case :test_project_preprocessing_same_dir_mock_pairing
     end
 
     describe "Defines and configuration" do
@@ -180,7 +180,7 @@ ceedling_system_tests do
       test_case :test_project_with_preprocessing_for_mocks
       test_case :test_project_with_preprocessing_for_missing_mock
       test_case :test_project_with_preprocessing_all
-      test_case :test_project_preprocessing_mock_survives_transitive_same_directory_pairing
+      test_case :test_project_preprocessing_same_dir_mock_pairing
     end
 
     describe "Defines and configuration" do
