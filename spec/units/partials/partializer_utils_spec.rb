@@ -166,6 +166,17 @@ describe PartializerUtils do
         expect(result.signature).to eq(signature)
         expect(result).not_to respond_to(:code_block)
       end
+
+      it "strips a trailing semicolon from a declaration-sourced signature" do
+        # CFunctionDeclaration#signature_stripped always carries its own trailing
+        # semicolon (it's a bare prototype); CFunctionDefinition#signature_stripped never
+        # does. Callers render "#{signature};" uniformly, so this must not double up.
+        signature = 'void testFunc(int x);'
+
+        result = @utils.transform_function(mock_func, signature, :interface)
+
+        expect(result.signature).to eq('void testFunc(int x)')
+      end
     end
 
     context "when output_type is invalid" do
