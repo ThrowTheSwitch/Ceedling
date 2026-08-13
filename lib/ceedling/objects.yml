@@ -238,8 +238,10 @@ generator_test_results_backtrace:
      - configurator
      - tool_executor
      - generator_test_results
+     - generator_helper
      - file_path_utils
      - file_wrapper
+     - loginator
 
 generator_test_results_sanity_checker:
   compose:
