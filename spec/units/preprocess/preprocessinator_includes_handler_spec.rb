@@ -80,7 +80,7 @@ RSpec.describe PreprocessinatorIncludesHandler do
 
     let(:test_name)         { 'test_other' }
     let(:filepath)          { '/project/test/test_other.c' }
-    let(:isolation_parent)  { '/project/build/test/preprocess/files/test_other/bare_includes_isolation' }
+    let(:isolation_parent)  { '/project/build/test/preprocess/files/test_other' }
     let(:isolation_dir)     { "#{isolation_parent}/tmp1234" }
     let(:isolated_filepath) { "#{isolation_dir}/test_other.c" }
     let(:make_rules) do
@@ -89,11 +89,10 @@ RSpec.describe PreprocessinatorIncludesHandler do
     end
 
     before :each do
-      allow(@file_path_utils).to receive(:form_test_preprocess_bare_includes_isolation_path)
+      allow(@file_path_utils).to receive(:form_test_preprocess_files_path)
         .with(test_name).and_return(isolation_parent)
-      allow(@file_wrapper).to receive(:mkdir).with(isolation_parent)
       allow(@file_wrapper).to receive(:mkdir_tmp)
-        .with('test_other.c', isolation_parent).and_return(isolation_dir)
+        .with(nil, isolation_parent).and_return(isolation_dir)
       allow(@file_wrapper).to receive(:cp).with(filepath, isolated_filepath)
       allow(@file_wrapper).to receive(:rm_rf).with(isolation_dir)
 
@@ -115,8 +114,7 @@ RSpec.describe PreprocessinatorIncludesHandler do
     it 'stages a copy of the file into an isolated, sibling-free directory before extraction' do
       call_it()
 
-      expect(@file_wrapper).to have_received(:mkdir).with(isolation_parent)
-      expect(@file_wrapper).to have_received(:mkdir_tmp).with('test_other.c', isolation_parent)
+      expect(@file_wrapper).to have_received(:mkdir_tmp).with(nil, isolation_parent)
       expect(@file_wrapper).to have_received(:cp).with(filepath, isolated_filepath)
     end
 

@@ -57,15 +57,23 @@ class PreprocessinatorIncludesHandler
     # processing, independent of search paths -- a real sibling header on disk is opened and
     # recursed into regardless of the restricted search paths above. Staging an isolated,
     # sibling-free copy of the file being scanned keeps this pass's output limited to genuine
-    # top-level #include statements only.
-    isolation_parent = @file_path_utils.form_test_preprocess_bare_includes_isolation_path( test )
-    @file_wrapper.mkdir( isolation_parent )
-
-    isolation_dir = @file_wrapper.mkdir_tmp( filename, isolation_parent )
+    # top-level #include statements only. The isolation directory is minted directly inside the
+    # test's own preprocess-files build directory (already created in an earlier build stage) --
+    # no dedicated subdirectory or filename-based naming, to keep the resulting path as short as
+    # possible for platforms with tight path length limits.
+    isolation_parent = @file_path_utils.form_test_preprocess_files_path( test )
+    isolation_dir = @file_wrapper.mkdir_tmp( nil, isolation_parent )
     isolated_filepath = File.join( isolation_dir, filename )
 
     begin
       @file_wrapper.cp( filepath, isolated_filepath )
+
+      msg = @reportinator.generate_module_progress(
+        operation: "Isolating a sibling-free copy for bare-includes extraction at",
+        module_name: test,
+        filename: isolated_filepath
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
 
       command =
         @tool_executor.build_command_line(
