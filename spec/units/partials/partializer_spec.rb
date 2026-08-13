@@ -1571,6 +1571,66 @@ describe Partializer do
       expect(result).to eq(filtered)
     end
 
+    it "merges declaration-only functions into the DEDUCT candidate pool" do
+      defn     = double('inline_func', name: 'inline_fn')
+      decl     = double('proto_func', name: 'proto_fn')
+      defs     = [defn]
+      decls    = [decl]
+      filtered = [double('iface_inline'), double('iface_proto')]
+      pf       = make_pf(type: Partials::DEDUCT)
+
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with([defn, decl], Partials::DEDUCT, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
+      )
+      expect(result).to eq(filtered)
+    end
+
+    it "merges declaration-only functions into the PUBLIC candidate pool too" do
+      defn     = double('def_func', name: 'pub_def')
+      decl     = double('decl_func', name: 'pub_decl')
+      defs     = [defn]
+      decls    = [decl]
+      filtered = [double('iface_func')]
+      pf       = make_pf(type: Partials::PUBLIC)
+
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with([defn, decl], Partials::PUBLIC, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
+      )
+      expect(result).to eq(filtered)
+    end
+
+    it "excludes a declaration already present as a definition with the same name (dedup)" do
+      defn     = double('def_func', name: 'shared')
+      decl     = double('decl_func', name: 'shared') # e.g. header prototype for the same function
+      defs     = [defn]
+      decls    = [decl]
+      filtered = [double('iface_func')]
+      pf       = make_pf(type: Partials::DEDUCT)
+
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with([defn], Partials::DEDUCT, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
+      )
+      expect(result).to eq(filtered)
+    end
+
     it "fills list from additions only for ACCUMULATE type" do
       defs   = [double('def', name: 'named')]
       decls  = []
@@ -1598,8 +1658,10 @@ describe Partializer do
       found = double('iface_func', name: 'decl_only')
       pf    = make_pf(type: Partials::ACCUMULATE, additions: ['decl_only'])
 
+      # candidates = definitions + declarations (ACCUMULATE ignores this list regardless --
+      # it always starts empty -- but it's still built before the type check discards it).
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(defs, Partials::ACCUMULATE, :interface).and_return([])
+        .with(decls, Partials::ACCUMULATE, :interface).and_return([])
       expect(@partializer_helper).to receive(:find_and_transform_func)
         .with(name: 'decl_only', primary_funcs: defs, secondary_funcs: decls, output_type: :interface)
         .and_return(found)

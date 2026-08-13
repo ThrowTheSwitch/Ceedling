@@ -19,6 +19,7 @@ This changelog is complemented by three other documents:
 
 ### Partials
 
+- [#1203](https://github.com/ThrowTheSwitch/Ceedling/issues/1203) Fixed `MOCK_PARTIAL_ALL_MODULE()` (and `MOCK_PARTIAL_PUBLIC_MODULE()`/`MOCK_PARTIAL_PRIVATE_MODULE()`) silently omitting a function from the mock interface in certain cases where no function body could be found in the module.
 - [#1189](https://github.com/ThrowTheSwitch/Ceedling/issues/1189)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed `const`/`volatile`/`restrict` qualifiers stripped from a Partial's generated `extern` declaration and definition for a promoted variable.
 - Fixed C variable extraction discarding a pointer's own qualifier (e.g. the second `const` in `const uint8_t* const ptr;`) whenever the same qualifier keyword also led the declaration.
 - [#1190](https://github.com/ThrowTheSwitch/Ceedling/issues/1190)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed a module's typedefs and aggregate (struct/enum/union) definitions being generated into both its Test Partial and Mock Partial headers, causing a redefinition error when a test file uses both for the same module. Such content is now generated once into a shared header with unique include guard that both Partial headers, in turn, include.

@@ -65,6 +65,10 @@ ceedling_system_tests do
       test_case :test_project_preprocessing_same_dir_mock_pairing
     end
 
+    describe "Partials" do
+      test_case :test_project_partial_all_module_mocks_declaration_only_function
+    end
+
     describe "Defines and configuration" do
       test_case :test_project_with_per_file_defines
       test_case :test_project_with_test_and_vendor_defines

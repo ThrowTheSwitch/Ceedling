@@ -475,6 +475,33 @@ module CommonSystemTestCases
     end
   end
 
+  # A module header with both a plain (non-inline) function prototype and a `static
+  # inline` function, with no paired .c source providing a body for the plain prototype
+  # (so it exists only as a bare declaration, never a definition). MOCK_PARTIAL_ALL_MODULE()
+  # must mock both functions, not just the one with a body.
+  def test_project_partial_all_module_mocks_declaration_only_function
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("partial_all_module.h"), 'src/'
+        FileUtils.cp test_asset_path("test_partial_all_module.c"), 'test/'
+
+        settings = {
+          :project => {
+            :use_partials          => true,
+            :use_test_preprocessor => :all
+          }
+        }
+        @c.merge_project_yml_for_test(settings)
+
+        output = @c.ceedling_build_exec("test:partial_all_module")
+        expect(@c.last_exit_status).to eq(0) # Successful build and tests
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+      end
+    end
+  end
+
   def test_project_fail
     @c.with_context do
       Dir.chdir @proj_name do

@@ -47,9 +47,14 @@ class PartializerUtils
         code_block:      new_code_block
       )
     when :interface
+      # A signature sourced from a CFunctionDefinition never carries a trailing semicolon
+      # (it's followed by a body, not one), but a signature sourced from a
+      # CFunctionDeclaration always does (it's a bare prototype). Strip it here so
+      # callers can render "#{signature};" uniformly regardless of which kind of
+      # function this interface entry came from.
       Partials.manufacture_function_declaration(
         name: func.name,
-        signature: signature
+        signature: signature.sub(/;\s*\z/, '')
       )
     else
       PartializerRuntime.raise_on_option(output_type)
