@@ -349,8 +349,15 @@ class Partializer
       Verbosity::DEBUG
     )
 
+    # A mock interface only ever needs a signature, never a body, so a declaration-only
+    # function (no body found anywhere in this module's merged content) is just as valid a
+    # candidate as one with a definition -- unlike extract_implementation_functions, which
+    # needs real code to inject and so stays definitions-only. A function named in both
+    # (declared in the header, defined in the paired source) is only counted once.
+    candidates = definitions + declarations.reject { |d| definitions.any? { |f| f.name == d.name } }
+
     # Build initial list by visibility; ACCUMULATE yields []
-    funcs = @helper.filter_and_transform_funcs(definitions, pf.type, :interface)
+    funcs = @helper.filter_and_transform_funcs(candidates, pf.type, :interface)
 
     # Additions: search definitions first, then declarations
     pf.additions.each do |name|

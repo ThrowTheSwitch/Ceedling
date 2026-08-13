@@ -48,6 +48,7 @@ Because of the support added for handling paths and distinguishing duplicated fi
 
 ### Partials
 
+- [#1203](https://github.com/ThrowTheSwitch/Ceedling/issues/1203) Fixed `MOCK_PARTIAL_ALL_MODULE()` (and `MOCK_PARTIAL_PUBLIC_MODULE()`/`MOCK_PARTIAL_PRIVATE_MODULE()`) silently omitting a function from the mock interface in certain cases where no function body could be found in the module.
 - [#1194](https://github.com/ThrowTheSwitch/Ceedling/issues/1194) Fixed generated Partials stripping directory components from system include directives (e.g. `<sys/stat.h>` becoming `<stat.h>`).
 - [#1189](https://github.com/ThrowTheSwitch/Ceedling/issues/1189)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed `const`/`volatile`/`restrict` qualifiers stripped from a Partial's generated `extern` declaration and definition for a promoted variable.
 - Fixed C variable extraction discarding a pointer's own qualifier (e.g. the second `const` in `const uint8_t* const ptr;`) whenever the same qualifier keyword also led the declaration.
