@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'rbconfig'
+
 module CommonSystemTestCases
   def can_report_version_no_git_commit_sha
     @c.with_context do
@@ -978,6 +980,78 @@ module CommonSystemTestCases
         log_path = './build/logs/test/test_example_file_crash_sigsegv_with_param/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+      end
+    end
+  end
+
+  # Regression test for issue #1198: a custom :test_fixture tool (e.g. a wrapper
+  # enabling a sanitizer's halt-on-error) can correctly detect a crash on the main run,
+  # only for that crash to be silently overwritten by a :simple backtrace diagnostic
+  # retry that runs through a *different*, independently-configured tool
+  # (test_fixture_simple_backtrace) and behaves differently there -- legitimately
+  # passing in that other environment. fake_crash_test_fixture.rb reproduces the
+  # mismatch without needing a real sanitizer: it always exits nonzero without ever
+  # running the real, bug-free test executable it's given, while the unmodified default
+  # backtrace retry tool runs that same executable directly and passes.
+  def crash_simple_diagnostic_retry_disagrees_with_main_fixture
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        FileUtils.cp test_asset_path("fake_crash_test_fixture.rb"), 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_backtrace => :simple },
+          :tools   => {
+            :test_fixture => {
+              :executable => RbConfig.ruby,
+              :arguments  => ['test/fake_crash_test_fixture.rb']
+            }
+          }
+        })
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).not_to eq(0)
+        expect(output).to match(/Unit test failures/)
+        expect(output).not_to match(/PASSED:\s+1/)
+      end
+    end
+  end
+
+  # Same regression coverage as crash_simple_diagnostic_retry_disagrees_with_main_fixture
+  # above, but with a real UBSan-triggered crash (matching issue #1198's own
+  # reproduction exactly) instead of the portable simulated fixture. UBSan doesn't
+  # produce an OS-level crash signal the way a segfault does -- run_with_ubsan.rb's
+  # halt_on_error setting is what turns the undefined behavior into a hard stop, and
+  # only the main :test_fixture invocation goes through that wrapper. Requires a Linux
+  # gcc toolchain with -fsanitize=undefined support -- see "requires gcc with UBSan".
+  def crash_simple_ubsan_diagnostic_retry_disagrees_with_main_fixture
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("test_example_file_ub_shift_overflow.c"), 'test/'
+        FileUtils.cp test_asset_path("run_with_ubsan.rb"), 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_backtrace => :simple },
+          :flags   => {
+            :test => {
+              :compile => { '*' => ['-fsanitize=undefined'] },
+              :link    => { '*' => ['-fsanitize=undefined'] }
+            }
+          },
+          :tools => {
+            :test_fixture => {
+              :executable => RbConfig.ruby,
+              :arguments  => ['test/run_with_ubsan.rb', '${1}']
+            }
+          }
+        })
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).not_to eq(0)
+        expect(output).to match(/Unit test failures/)
+        expect(output).not_to match(/PASSED:\s+1/)
       end
     end
   end

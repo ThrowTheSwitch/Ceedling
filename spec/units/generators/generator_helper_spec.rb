@@ -21,30 +21,57 @@ describe GeneratorHelper do
     @helper = described_class.new({ :loginator => @loginator })
 
     # A minimal status double for shell_result[:status].
-    @ok_status = double('status', termsig: nil)
+    @ok_status = double('status', termsig: nil, signaled?: false, exitstatus: 0, success?: true)
   end
 
 
   # ---------------------------------------------------------------------------
   # Helper: build a shell_result hash
   # ---------------------------------------------------------------------------
-  def shell_result(output: VALID_STATS_OUTPUT, stderr: '', termsig: nil)
-    status = double('status', termsig: termsig)
+  # `success` left unspecified derives from `termsig`/`exitstatus` the way a real
+  # Process::Status would -- signaled or nonzero-exit is never success. Callers that
+  # need an inconsistent combination (a status that looks successful despite a nonzero
+  # exit, exercised nowhere here) can still pass `success:` explicitly.
+  def shell_result(output: VALID_STATS_OUTPUT, stderr: '', termsig: nil, exitstatus: 0, success: nil)
+    success = (termsig.nil? && exitstatus == 0) if success.nil?
+    status = double(
+      'status', termsig: termsig, signaled?: !termsig.nil?, exitstatus: exitstatus, success?: success
+    )
     { :output => output, :stderr => stderr, :status => status }
   end
 
 
   describe '#test_crash?' do
 
-    context 'SIGSEGV detection (termsig == 11)' do
-      it 'returns true when the process was terminated by signal 11' do
+    context 'signal death (any signal, not just SIGSEGV)' do
+      it 'returns true when the process was terminated by signal 11 (SIGSEGV)' do
         result = shell_result(termsig: 11)
         expect( @helper.test_crash?('test_foo.c', 'test_foo.out', result) ).to be true
       end
 
-      it 'does not flag SIGSEGV for other signal numbers' do
-        result = shell_result(termsig: 6)   # SIGABRT
+      it 'returns true when the process was terminated by signal 6 (SIGABRT) -- e.g. UBSan/ASan halt_on_error' do
+        result = shell_result(termsig: 6)
         # output still has stats, stderr is empty → only the signal check matters here
+        expect( @helper.test_crash?('test_foo.c', 'test_foo.out', result) ).to be true
+      end
+    end
+
+    context 'a clean summary contradicted by the real exit status' do
+      it 'returns true when 0 failures are reported but the real process exited nonzero and unsignaled' do
+        # e.g. LeakSanitizer detecting a leak during teardown, after every test case
+        # already printed and Unity's own summary already looked clean.
+        result = shell_result(output: VALID_STATS_OUTPUT, exitstatus: 1, success: false)
+        expect( @helper.test_crash?('test_foo.c', 'test_foo.out', result) ).to be true
+      end
+
+      it 'returns false when a nonzero real exit is consistent with Unity reporting real failures' do
+        failing_output = "\n---------\n2 Tests 1 Failures 0 Ignored\nFAIL\n"
+        result = shell_result(output: failing_output, exitstatus: 1, success: false)
+        expect( @helper.test_crash?('test_foo.c', 'test_foo.out', result) ).to be false
+      end
+
+      it 'returns false when 0 failures are reported and the real process exited successfully' do
+        result = shell_result(output: VALID_STATS_OUTPUT, exitstatus: 0, success: true)
         expect( @helper.test_crash?('test_foo.c', 'test_foo.out', result) ).to be false
       end
     end

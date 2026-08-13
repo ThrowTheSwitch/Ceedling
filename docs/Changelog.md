@@ -43,6 +43,8 @@ Because of the support added for handling paths and distinguishing duplicated fi
 
 ## 💪 Fixed
 
+- [#1198](https://github.com/ThrowTheSwitch/Ceedling/issues/1198) Fixed a crash that could go unnoticed. If a test crashed but `:use_backtrace`'s diagnostic retry ran cleanly instead of reproducing the crash, Ceedling trusted that clean retry over the real crash and reported the test as passing, with a successful exit code.
+
 ### Partials
 
 - [#1194](https://github.com/ThrowTheSwitch/Ceedling/issues/1194) Fixed generated Partials stripping directory components from system include directives (e.g. `<sys/stat.h>` becoming `<stat.h>`).

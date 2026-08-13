@@ -92,6 +92,13 @@ ceedling_system_tests do
       test_case :crash_simple_sigsegv_all_test_cases
       test_case :crash_simple_sigabrt_assert_failure
       test_case :crash_simple_sigsegv_with_parameterized_test
+      test_case :crash_simple_diagnostic_retry_disagrees_with_main_fixture
+    end
+
+    describe "Crash handling with real UBSan" do
+      include_context "requires gcc with UBSan"
+
+      test_case :crash_simple_ubsan_diagnostic_retry_disagrees_with_main_fixture
     end
 
     describe "Backtrace with GDB" do
