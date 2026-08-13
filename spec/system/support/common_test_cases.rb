@@ -439,6 +439,42 @@ module CommonSystemTestCases
     end
   end
 
+  # A module splits its function declarations (same_dir_pairing_module_func.h, mocked by
+  # this test) from its type declarations (same_dir_pairing_module.h, reached only
+  # transitively via same_dir_pairing_other.h, never included directly by the test). All
+  # of these files are colocated in the test's own directory, which is what exercises
+  # GCC's same-directory quoted #include resolution during bare-includes extraction.
+  # Auto source-pairing must not pull the real source implementing the type header's
+  # like-named stem into this build alongside its mock of the differently-named header.
+  def test_project_preprocessing_same_dir_mock_pairing
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("same_dir_pairing_module.h"), 'test/'
+        FileUtils.cp test_asset_path("same_dir_pairing_module_func.h"), 'test/'
+        FileUtils.cp test_asset_path("same_dir_pairing_module.c"), 'test/'
+        FileUtils.cp test_asset_path("same_dir_pairing_other.h"), 'test/'
+        FileUtils.cp test_asset_path("same_dir_pairing_other.c"), 'test/'
+        FileUtils.cp test_asset_path("test_same_dir_pairing.c"), 'test/'
+
+        settings = {
+          :project => { :use_test_preprocessor => :all },
+          :paths => {
+            :source  => ['src/**', 'test/**'],
+            :include => ['src/**', 'test/**']
+          }
+        }
+        @c.merge_project_yml_for_test(settings)
+
+        output = @c.ceedling_build_exec("test:same_dir_pairing")
+        expect(@c.last_exit_status).to eq(0) # Successful build and tests
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).not_to match(/multiple definition|duplicate symbol/)
+      end
+    end
+  end
+
   def test_project_fail
     @c.with_context do
       Dir.chdir @proj_name do
