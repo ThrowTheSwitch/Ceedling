@@ -19,6 +19,7 @@ class PreprocessinatorIncludesHandler
     :include_factory,
     :tool_executor,
     :file_wrapper,
+    :file_path_utils,
     :yaml_wrapper,
     :parsing_parcels,
     :loginator,
@@ -48,25 +49,43 @@ class PreprocessinatorIncludesHandler
     # Notes:
     #  - This approach can have gaps with advacnced user-level macros like `#include <MACRO>`.
     #    By including Ceedling's vendor search path, we support Partials macros of this sort.
-    #  - Gaps can be minimized with proper defines in the project file. However, needed, complex macros 
+    #  - Gaps can be minimized with proper defines in the project file. However, needed, complex macros
     #    located in other header files could still gum up the works.
     #  - Many errors can occur but may not necessarily prevent usable results.
-    command = 
-      @tool_executor.build_command_line(
-        @configurator.tools_test_bare_includes_preprocessor,
-        # No additional arguments
-        [],
-        # Argument replacement
-        filepath,
-        defines,
-        flags,
-        search_paths
-      )
+    #
+    # GCC's quoted #include resolution always checks the directory of the file it's currently
+    # processing, independent of search paths -- a real sibling header on disk is opened and
+    # recursed into regardless of the restricted search paths above. Staging an isolated,
+    # sibling-free copy of the file being scanned keeps this pass's output limited to genuine
+    # top-level #include statements only.
+    isolation_parent = @file_path_utils.form_test_preprocess_bare_includes_isolation_path( test )
+    @file_wrapper.mkdir( isolation_parent )
 
-    # Assume possible errors so we have best shot at extracting results from preprocessing.
-    # Full code compilation will catch any breaking code errors
-    command[:options][:boom] = false
-    shell_result = @tool_executor.exec( command )
+    isolation_dir = @file_wrapper.mkdir_tmp( filename, isolation_parent )
+    isolated_filepath = File.join( isolation_dir, filename )
+
+    begin
+      @file_wrapper.cp( filepath, isolated_filepath )
+
+      command =
+        @tool_executor.build_command_line(
+          @configurator.tools_test_bare_includes_preprocessor,
+          # No additional arguments
+          [],
+          # Argument replacement
+          isolated_filepath,
+          defines,
+          flags,
+          search_paths
+        )
+
+      # Assume possible errors so we have best shot at extracting results from preprocessing.
+      # Full code compilation will catch any breaking code errors
+      command[:options][:boom] = false
+      shell_result = @tool_executor.exec( command )
+    ensure
+      @file_wrapper.rm_rf( isolation_dir )
+    end
 
     make_rules = shell_result[:output]
 

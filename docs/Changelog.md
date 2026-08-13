@@ -15,6 +15,7 @@ This changelog is complemented by three other documents:
 ## 💪 Fixed
 
 - [#1198](https://github.com/ThrowTheSwitch/Ceedling/issues/1198) Fixed a crash that could go unnoticed. If a test crashed but `:use_backtrace`'s diagnostic retry ran cleanly instead of reproducing the crash, Ceedling trusted that clean retry over the real crash and reported the test as passing, with a successful exit code.
+- [#1197](https://github.com/ThrowTheSwitch/Ceedling/issues/1197) Fixed edge case of includes extraction where header files in the same directory as a file being preprocessed were erroneously discovered as depth 0 `#include`s in the preprocessed file. The cause is a quirk of GCC search path defaults. The impact was greatest on certain test file organizations.
 
 ### Partials
 
