@@ -277,6 +277,10 @@ class FilePathUtils
     return File.join( @configurator.project_test_preprocess_build_directives_path, subdir, File.basename(filepath) + '_source_files' + EXTENSION_CORE_YAML )
   end
 
+  def form_test_build_cache_path(filepath)
+    return File.join( @configurator.project_test_build_cache_path, File.basename(filepath) )
+  end
+
   def form_pass_results_filepath(build_output_path, filepath)
     return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testpass.primary) )
   end

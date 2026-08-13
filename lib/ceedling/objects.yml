@@ -298,6 +298,7 @@ preprocessinator_includes_handler:
     - tool_executor
     - parsing_parcels
     - file_wrapper
+    - file_path_utils
     - yaml_wrapper
     - loginator
     - reportinator
