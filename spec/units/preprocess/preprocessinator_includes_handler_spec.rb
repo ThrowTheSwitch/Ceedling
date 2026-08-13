@@ -19,16 +19,20 @@ RSpec.describe PreprocessinatorIncludesHandler do
   let(:real_parsing_parcels) { ParsingParcels.new }
 
   before :each do
-    @configurator    = double('configurator')
-    @include_factory = double('include_factory')
-    @file_wrapper    = double('file_wrapper')
-    @yaml_wrapper    = double('yaml_wrapper')
-    @loginator       = double('loginator')
-    @reportinator    = double('reportinator')
+    @configurator     = double('configurator')
+    @include_factory  = double('include_factory')
+    @file_wrapper     = double('file_wrapper')
+    @file_path_utils  = double('file_path_utils')
+    @tool_executor    = double('tool_executor')
+    @yaml_wrapper     = double('yaml_wrapper')
+    @loginator        = double('loginator')
+    @reportinator     = double('reportinator')
     @preprocessinator_line_marker_includes_extractor =
       double('preprocessinator_line_marker_includes_extractor')
 
     allow(@loginator).to receive(:log)
+    allow(@loginator).to receive(:lazy)
+    allow(@loginator).to receive(:log_list)
     allow(@reportinator).to receive(:generate_module_progress).and_return('')
 
     # Include factory helpers: return typed Include objects based on the path
@@ -50,8 +54,9 @@ RSpec.describe PreprocessinatorIncludesHandler do
         include_factory:        @include_factory,
         preprocessinator_line_marker_includes_extractor:
           @preprocessinator_line_marker_includes_extractor,
-        tool_executor:          double('tool_executor'),
+        tool_executor:          @tool_executor,
         file_wrapper:           @file_wrapper,
+        file_path_utils:        @file_path_utils,
         yaml_wrapper:           @yaml_wrapper,
         parsing_parcels:        real_parsing_parcels,
         loginator:              @loginator,
@@ -63,6 +68,90 @@ RSpec.describe PreprocessinatorIncludesHandler do
   # Helper: yield StringIO of content from file_wrapper.open
   def stub_file_open(filepath, content)
     allow(@file_wrapper).to receive(:open).with(filepath, 'rb').and_yield(StringIO.new(content))
+  end
+
+
+  # ===========================================================================
+  describe '#extract_bare_includes' do
+  # ===========================================================================
+  # Extraction stages an isolated, sibling-free copy of the file being scanned before running
+  # GCC's bare-includes preprocessor pass, so that GCC's own directory-relative #include
+  # resolution has no real sibling header available to find and recurse into.
+
+    let(:test_name)         { 'test_other' }
+    let(:filepath)          { '/project/test/test_other.c' }
+    let(:isolation_parent)  { '/project/build/test/preprocess/files/test_other' }
+    let(:isolation_dir)     { "#{isolation_parent}/tmp1234" }
+    let(:isolated_filepath) { "#{isolation_dir}/test_other.c" }
+    let(:make_rules) do
+      "test_other.o: #{isolated_filepath} unity.h mock_foo_func.h other.h\n\n" \
+      "unity.h:\n\nmock_foo_func.h:\n\nother.h:\n"
+    end
+
+    before :each do
+      allow(@file_path_utils).to receive(:form_test_preprocess_files_path)
+        .with(test_name).and_return(isolation_parent)
+      allow(@file_wrapper).to receive(:mkdir_tmp)
+        .with(nil, isolation_parent).and_return(isolation_dir)
+      allow(@file_wrapper).to receive(:cp).with(filepath, isolated_filepath)
+      allow(@file_wrapper).to receive(:rm_rf).with(isolation_dir)
+
+      allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return(:bare_tool)
+
+      allow(@tool_executor).to receive(:build_command_line) do |tool, extra_args, fp, defs, flgs, paths|
+        { options: {}, tool: tool, filepath: fp, defines: defs, flags: flgs, search_paths: paths }
+      end
+
+      allow(@tool_executor).to receive(:exec).and_return(output: make_rules)
+    end
+
+    def call_it
+      subject.extract_bare_includes(
+        test: test_name, filepath: filepath, search_paths: [], flags: [], defines: []
+      )
+    end
+
+    it 'stages a copy of the file into an isolated, sibling-free directory before extraction' do
+      call_it()
+
+      expect(@file_wrapper).to have_received(:mkdir_tmp).with(nil, isolation_parent)
+      expect(@file_wrapper).to have_received(:cp).with(filepath, isolated_filepath)
+    end
+
+    it 'builds the bare-includes command against the isolated staged path, not the original' do
+      call_it()
+
+      expect(@tool_executor).to have_received(:build_command_line)
+        .with(:bare_tool, [], isolated_filepath, [], [], [])
+    end
+
+    it 'returns the includes parsed from the staged file make-rule output' do
+      result = call_it()
+      expect(result.map(&:filename)).to contain_exactly('unity.h', 'mock_foo_func.h', 'other.h')
+    end
+
+    it 'cleans up the isolation directory after a successful run' do
+      call_it()
+      expect(@file_wrapper).to have_received(:rm_rf).with(isolation_dir)
+    end
+
+    it 'cleans up the isolation directory even when the tool executor raises' do
+      allow(@tool_executor).to receive(:exec).and_raise(StandardError.new('boom'))
+
+      expect { call_it() }.to raise_error(StandardError, 'boom')
+
+      expect(@file_wrapper).to have_received(:rm_rf).with(isolation_dir)
+    end
+
+    it 'still cleans self-reference against the original filepath identity, not the staged copy' do
+      self_ref_rules =
+        "test_other.o: #{isolated_filepath} #{filepath} other.h\n\n#{filepath}:\n\nother.h:\n"
+      allow(@tool_executor).to receive(:exec).and_return(output: self_ref_rules)
+
+      result = call_it()
+      expect(result.map(&:filename)).to contain_exactly('other.h')
+    end
+
   end
 
 

@@ -9,6 +9,7 @@ require 'rubygems'
 require 'rake' # for FileList
 require 'fileutils'
 require 'pathname'
+require 'tmpdir'
 require 'ceedling/constants'
 
 
@@ -130,6 +131,13 @@ class FileWrapper
 
   def mkdir(folder)
     return FileUtils.mkdir_p(folder)
+  end
+
+  # Creates a uniquely-named, empty directory nested inside `parent` and returns its path.
+  # `parent` must already exist. Collision-free even across concurrent callers targeting
+  # the same `parent` -- Dir.mktmpdir retries internally on name clash.
+  def mkdir_tmp(prefix, parent)
+    return Dir.mktmpdir(prefix, parent)
   end
 
 end
