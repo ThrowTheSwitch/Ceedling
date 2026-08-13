@@ -18,18 +18,37 @@ class GeneratorHelper
 
     crash = false
 
-    # Unix Signal 11 ==> SIGSEGV
-    # Applies to Unix-like systems including MSYS on Windows
-    if (shell_result[:status].termsig == 11)
-      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do 
-        "#{runner} process terminated with SIGSEGV (Unix Signal 11)"
+    # Any signal death is unconditionally a crash, whatever text made it out beforehand.
+    # Broadened from a SIGSEGV(11)-only check: a sanitizer's halt_on_error (UBSan, ASan)
+    # raises SIGABRT, not SIGSEGV, and there's no reason to trust a process that a
+    # signal actually killed regardless of which one. Applies to Unix-like systems
+    # including MSYS on Windows -- native (non-MSYS) Windows Ruby never reports
+    # `signaled?` true at all, so this check is inert there rather than wrong; the
+    # stats-footer and stderr checks below already carry Windows crash detection.
+    if shell_result[:status] && shell_result[:status].signaled?
+      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do
+        "#{runner} process terminated by signal #{shell_result[:status].termsig}"
       end
       crash = true
     end
 
     # No test results found in test executable output
-    if (shell_result[:output] =~ PATTERNS::TEST_STDOUT_STATISTICS).nil?
+    stats_match = shell_result[:output].match( PATTERNS::TEST_STDOUT_STATISTICS )
+    if stats_match.nil?
       # No debug logging here because we log this condition in the error log handling below
+      crash = true
+    end
+
+    # A clean summary (0 failures) is not trustworthy if the real process still exited
+    # nonzero afterward -- e.g. LeakSanitizer detecting a leak during teardown, after
+    # every test case already printed and Unity's own summary already looked clean.
+    # A nonzero exit consistent with Unity's own reported failures (its exit code
+    # convention is one per failed test case) is an ordinary failing run, not a crash.
+    if stats_match && shell_result[:status] && !shell_result[:status].success? &&
+       !shell_result[:status].signaled? && stats_match[2].to_i == 0
+      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do
+        "#{runner} reported a clean summary but exited with real status #{shell_result[:status].exitstatus}"
+      end
       crash = true
     end
 

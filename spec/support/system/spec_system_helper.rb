@@ -185,6 +185,21 @@ def valgrind_available?
   tool_available?('valgrind --version 2>&1')
 end
 
+# Real UBSan support is Linux-specific in practice for this test suite -- macOS's
+# system `gcc` is really Clang under a compatibility shim with different sanitizer
+# runtime behavior, and MinGW gcc on Windows doesn't ship the sanitizer runtime at
+# all. Restricting to Linux avoids flaky, platform-dependent compiler probing.
+def ubsan_available?
+  return false unless RUBY_PLATFORM.downcase.include?('linux')
+
+  Dir.mktmpdir do |dir|
+    source = File.join(dir, 'ubsan_check.c')
+    binary = File.join(dir, 'ubsan_check')
+    File.write(source, "int main(void) { return 0; }\n")
+    tool_available?(%(gcc -fsanitize=undefined -o "#{binary}" "#{source}" 2>&1))
+  end
+end
+
 RSpec.shared_context "requires gdb" do
   before :all do
     @gdb_available = gdb_available?
@@ -202,5 +217,15 @@ RSpec.shared_context "requires valgrind" do
 
   before do
     skip "valgrind is not installed or not in PATH" unless @valgrind_available
+  end
+end
+
+RSpec.shared_context "requires gcc with UBSan" do
+  before :all do
+    @ubsan_available = ubsan_available?
+  end
+
+  before do
+    skip "gcc UBSan support not available (Linux + gcc -fsanitize=undefined required)" unless @ubsan_available
   end
 end
