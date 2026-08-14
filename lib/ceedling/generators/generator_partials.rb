@@ -82,8 +82,27 @@ class GeneratorPartials
       file << "#define #{guard}\n\n"
 
       anything_emitted = false
+      pending_macros = []
+
       c_module.element_sequence.each do |item|
-        next unless item.is_a?(CExtractorTypes::CStatement) && type_defining?(item, c_module)
+        next unless item.is_a?(CExtractorTypes::CStatement)
+
+        if c_module.macro_definitions.include?(item)
+          pending_macros << item
+          next
+        end
+
+        next unless type_defining?(item, c_module)
+
+        # A typedef/struct/enum moved here may depend on a macro (e.g. an array-size
+        # constant) that preceded it in the original source -- this header is #included
+        # before any macro generate_header later emits inline into the non-shared
+        # header, so that macro would otherwise be undefined here. Carrying it forward
+        # is safe: an identical #define may legally repeat, so generate_header's own
+        # unmodified inline copy causes no redefinition conflict.
+        pending_macros.each { |macro| file << macro.text << "\n" }
+        pending_macros.clear
+
         file << item.text << "\n"
         anything_emitted = true
       end

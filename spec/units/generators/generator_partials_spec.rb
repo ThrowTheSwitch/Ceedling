@@ -241,12 +241,13 @@ describe GeneratorPartials do
       expect(result).to be_nil
     end
 
-    it "writes only the typedefs and aggregate definitions, guarded and in element_sequence order, and returns the bare filename" do
+    it "writes the typedefs and aggregate definitions, guarded and in element_sequence order, carrying forward a macro that precedes one of them, and returns the bare filename" do
       file_contents = <<~CONTENTS
       #ifndef __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
       #define __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
 
       typedef uint8_t Byte;
+      #define FOO 1
       struct Config { int id; };
 
       #endif // __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
@@ -267,13 +268,15 @@ describe GeneratorPartials do
         .with(expected_filepath, 'wb')
         .and_yield(buf)
 
-      # A macro and a variable sit between the two type-defining statements in
-      # element_sequence; only the typedef and the aggregate belong in the shared
-      # types header, in their original relative order, and neither the macro nor
-      # the variable (which stay behind for generate_header) appear here at all.
+      # A variable and a macro sit between the two type-defining statements in
+      # element_sequence. The variable (which stays behind for generate_header) is
+      # entirely absent here, but the macro precedes the aggregate and is carried
+      # forward immediately before it -- the aggregate's definition may depend on it
+      # (e.g. an array-size constant), and this header is #included before
+      # generate_header's own later, inline copy of that same macro would exist.
       typedef_stmt   = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
-      macro_stmt     = CExtractorTypes::CStatement.new(text: "#define FOO 1", line_num: 2)
-      var_decl       = make_var(name: 'counter', type: 'int', text: 'int counter;', line_num: 3)
+      var_decl       = make_var(name: 'counter', type: 'int', text: 'int counter;', line_num: 2)
+      macro_stmt     = CExtractorTypes::CStatement.new(text: "#define FOO 1", line_num: 3)
       aggregate_stmt = CExtractorTypes::CStatement.new(text: "struct Config { int id; };", line_num: 4)
 
       c_module = CExtractorTypes::CModule.new(
@@ -281,7 +284,7 @@ describe GeneratorPartials do
         macro_definitions:     [macro_stmt],
         variable_declarations: [var_decl],
         aggregate_definitions: [aggregate_stmt],
-        element_sequence:      [typedef_stmt, macro_stmt, var_decl, aggregate_stmt]
+        element_sequence:      [typedef_stmt, var_decl, macro_stmt, aggregate_stmt]
       )
 
       result = @generator.generate_types(
@@ -293,6 +296,106 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
       expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'wb')
       expect(result).to eq(header_filename)
+    end
+
+    it "carries a macro forward directly before the single typedef it immediately precedes" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+      expected_filepath = File.join(output_path, header_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      macro_stmt   = CExtractorTypes::CStatement.new(text: "#define LOCAL_CAPACITY 4", line_num: 1)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef struct { int values[LOCAL_CAPACITY]; } Context;", line_num: 3)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:  [typedef_stmt],
+        macro_definitions: [macro_stmt],
+        element_sequence:  [macro_stmt, typedef_stmt]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to include( "#define LOCAL_CAPACITY 4\ntypedef struct { int values[LOCAL_CAPACITY]; } Context;\n" )
+    end
+
+    it "carries forward multiple macros preceding one type-defining item, in their own original relative order" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      macro_a      = CExtractorTypes::CStatement.new(text: "#define WIDTH 4", line_num: 1)
+      macro_b      = CExtractorTypes::CStatement.new(text: "#define HEIGHT 8", line_num: 2)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef int Grid[WIDTH][HEIGHT];", line_num: 3)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:  [typedef_stmt],
+        macro_definitions: [macro_a, macro_b],
+        element_sequence:  [macro_a, macro_b, typedef_stmt]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to include( "#define WIDTH 4\n#define HEIGHT 8\ntypedef int Grid[WIDTH][HEIGHT];\n" )
+    end
+
+    it "carries a macro forward only once, before the first type-defining item it precedes, not before a later one too" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      macro_stmt     = CExtractorTypes::CStatement.new(text: "#define FOO 1", line_num: 1)
+      typedef_stmt   = CExtractorTypes::CStatement.new(text: "typedef int Foo;", line_num: 2)
+      aggregate_stmt = CExtractorTypes::CStatement.new(text: "struct Bar { int x; };", line_num: 3)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:      [typedef_stmt],
+        macro_definitions:     [macro_stmt],
+        aggregate_definitions: [aggregate_stmt],
+        element_sequence:      [macro_stmt, typedef_stmt, aggregate_stmt]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string.scan("#define FOO 1").length ).to eq(1)
+    end
+
+    it "does not carry a macro into the shared header when it appears only after every type-defining item" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef int Foo;", line_num: 1)
+      macro_stmt   = CExtractorTypes::CStatement.new(text: "#define FOO 1", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:  [typedef_stmt],
+        macro_definitions: [macro_stmt],
+        element_sequence:  [typedef_stmt, macro_stmt]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to_not include("#define FOO 1")
     end
   end
 

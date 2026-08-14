@@ -17,6 +17,7 @@ This changelog is complemented by three other documents:
 ### Partials
 
 - Fixed shared generated Partial types header filename being derived from the test's name rather than partialized module's own name. Two modules Partialized in the same test could silently overwrite each other's content.
+- [#1210](https://github.com/ThrowTheSwitch/Ceedling/issues/1210) Fixed macros missing from shared Partial types header file emitted when two Partials both depend on the same types and related in common.
 
 ---
 
