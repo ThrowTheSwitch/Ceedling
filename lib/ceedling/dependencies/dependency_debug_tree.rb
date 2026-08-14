@@ -29,8 +29,8 @@ require 'ceedling/exceptions'
 # readable than escaped JSON strings would.
 class DependencyDebugTree
 
-  SNAPSHOT_FILENAME  = 'snapshot.yml'
-  DIAGNOSIS_FILENAME = 'diagnosis.yml'
+  SNAPSHOT_FILENAME  = 'snapshot.yml'  unless const_defined?(:SNAPSHOT_FILENAME, false)
+  DIAGNOSIS_FILENAME = 'diagnosis.yml' unless const_defined?(:DIAGNOSIS_FILENAME, false)
 
   constructor :file_wrapper, :yaml_wrapper
 

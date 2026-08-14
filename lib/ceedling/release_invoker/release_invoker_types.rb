@@ -30,6 +30,6 @@ module ReleaseInvokerTypes
       kwargs[:objects] ||= []
       super(**kwargs)
     end
-  end
+  end unless const_defined?(:ReleaseState, false)
 
 end

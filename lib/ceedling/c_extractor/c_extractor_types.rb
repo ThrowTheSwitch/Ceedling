@@ -17,7 +17,7 @@ module CExtractorTypes
     def initialize(text: nil, line_num: nil)
       super
     end
-  end
+  end unless const_defined?(:CStatement, false)
 
   # Data class representing all extracted content of C module
   CModule = Struct.new(
@@ -57,7 +57,7 @@ module CExtractorTypes
         element_sequence:      (self.element_sequence      + other.element_sequence)
       )
     end
-  end
+  end unless const_defined?(:CModule, false)
 
   # Data class representing an extracted C function declaration
   CFunctionDeclaration = Struct.new(
@@ -71,7 +71,7 @@ module CExtractorTypes
     def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil, line_num: nil)
       super
     end
-  end
+  end unless const_defined?(:CFunctionDeclaration, false)
 
   # Data class representing an extracted C function definition
   CFunctionDefinition = Struct.new(
@@ -100,7 +100,7 @@ module CExtractorTypes
       )
       super
     end
-  end
+  end unless const_defined?(:CFunctionDefinition, false)
 
   # Struct representing a single parsed C variable declaration
   CVariableDeclaration = Struct.new(
@@ -117,6 +117,6 @@ module CExtractorTypes
     def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil)
       super
     end
-  end
+  end unless const_defined?(:CVariableDeclaration, false)
 
 end

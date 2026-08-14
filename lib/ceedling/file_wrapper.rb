@@ -32,7 +32,7 @@ class FileWrapper
     windows: 260,
     macos:   1024,
     linux:   4096,
-  }.freeze
+  }.freeze unless const_defined?(:PATH_LENGTH_LIMITS, false)
 
   def self.generate_include_guard(name)
     # abc-XYZ.h --> _ABC_XYZ_H_
@@ -181,7 +181,7 @@ class FileWrapper
   # Path length gets flagged once it's within this many characters of the platform limit --
   # a fixed margin rather than a percentage, since a near-miss matters the same whether the
   # limit itself is Windows' cramped 260 or Linux's roomy 4096.
-  WARNING_MARGIN = 25
+  WARNING_MARGIN = 25 unless const_defined?(:WARNING_MARGIN, false)
 
   # Warn as a path's length approaches its platform's practical ceiling, and flag if it
   # reaches or exceeds it. Logging only -- never raises or blocks the caller's own

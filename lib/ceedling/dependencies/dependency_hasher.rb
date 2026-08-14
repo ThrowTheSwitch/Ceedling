@@ -27,8 +27,8 @@ require 'json'
 #   order) always hash the same.
 class DependencyHasher
 
-  HASH_ALGORITHM = 'sha256'.freeze
-  DIGEST_RE = /\A[0-9a-f]{64}\z/.freeze
+  HASH_ALGORITHM = 'sha256'.freeze unless const_defined?(:HASH_ALGORITHM, false)
+  DIGEST_RE = /\A[0-9a-f]{64}\z/.freeze unless const_defined?(:DIGEST_RE, false)
 
   constructor :file_wrapper
 

@@ -8,7 +8,7 @@
 module TestInvokerTypes
 
   # Partial build metadata for one test: config map plus accumulated output module names.
-  TestablePartials = Struct.new(:configs, :tests, :mocks, keyword_init: true)
+  TestablePartials = Struct.new(:configs, :tests, :mocks, keyword_init: true) unless const_defined?(:TestablePartials, false)
 
   # Carries all mutable state across the pipeline stages.
   PipelineState = Struct.new(
@@ -27,18 +27,18 @@ module TestInvokerTypes
       kwargs[:options] ||= []
       super(**kwargs)
     end
-  end
+  end unless const_defined?(:PipelineState, false)
 
   # A resolved mock: its own header's real, resolved location (`source`, also
   # duplicated onto `filepath`), the mirrored subdirectory it lives in below
   # this test's mock root (`path`), and whichever of the two the compiler
   # should actually read (`input` -- the raw header or its preprocessed
   # output, depending on whether mock preprocessing is enabled).
-  MockDetails = Struct.new(:name, :filepath, :path, :source, :input, keyword_init: true)
+  MockDetails = Struct.new(:name, :filepath, :path, :source, :input, keyword_init: true) unless const_defined?(:MockDetails, false)
 
   # A test's generated Unity runner: the C file to be compiled (`output_filepath`)
   # and the (possibly preprocessed) test file it was generated from (`input_filepath`).
-  RunnerInfo = Struct.new(:output_filepath, :input_filepath, keyword_init: true)
+  RunnerInfo = Struct.new(:output_filepath, :input_filepath, keyword_init: true) unless const_defined?(:RunnerInfo, false)
 
   # One partial header or source file's own preprocessing work, flattened out of its
   # owning testable for parallel processing (T1). `preprocessed_target` and `stale` are
@@ -46,7 +46,7 @@ module TestInvokerTypes
   PartialWork = Struct.new(
     :config, :testable, :directives_only_filepath, :preprocessed_target, :stale,
     keyword_init: true
-  )
+  ) unless const_defined?(:PartialWork, false)
 
   # One mock's own preprocessing/generation work, flattened out of its owning testable
   # for parallel processing (T2). `details` is this mock's own MockDetails; `preprocessed_target`
@@ -54,7 +54,7 @@ module TestInvokerTypes
   MockWork = Struct.new(
     :name, :details, :testable, :directives_only_filepath, :preprocessed_target, :stale,
     keyword_init: true
-  )
+  ) unless const_defined?(:MockWork, false)
 
   # Named record replacing the raw hash per test file. Fields are populated
   # across multiple stages; nil fields are valid until their stage sets them.
@@ -87,7 +87,7 @@ module TestInvokerTypes
       kwargs[:mock_search_paths]  ||= []
       super(**kwargs)
     end
-  end
+  end unless const_defined?(:Testable, false)
 
   # Describes one pipeline step — either a named build_step or a silent transform.
   # `condition` gates whether this stage's feature is in play at all for the project
@@ -110,6 +110,6 @@ module TestInvokerTypes
     def run?(state)
       enabled?(state) && !empty?(state)
     end
-  end
+  end unless const_defined?(:Stage, false)
 
 end

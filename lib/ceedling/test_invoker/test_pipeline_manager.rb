@@ -50,7 +50,7 @@ class TestPipelineManager
   # `:mocking`, `:test_runners`, `:sources_only`, and `:build_only` each name a single,
   # different point at which the pipeline stops -- supplying more than one at once is
   # ambiguous and rejected by `validate_stop_point_options!` below.
-  STOP_POINT_OPTIONS = %i[mocking test_runners sources_only build_only].freeze
+  STOP_POINT_OPTIONS = %i[mocking test_runners sources_only build_only].freeze unless const_defined?(:STOP_POINT_OPTIONS, false)
 
   # Validates `state.options`, then builds and runs the stage sequence against `state`.
   def run(state)

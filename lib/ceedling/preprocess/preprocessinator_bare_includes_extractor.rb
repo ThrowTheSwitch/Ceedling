@@ -50,11 +50,11 @@ require 'ceedling/includes/includes'
 class PreprocessinatorBareIncludesExtractor
 
     # Matcher for the first line of the make rule output
-    MAKE_RULE_MATCHER = /^\S+\.o:\s+.+$/  # <characters>.o: <characters>
-    
+    MAKE_RULE_MATCHER = /^\S+\.o:\s+.+$/ unless const_defined?(:MAKE_RULE_MATCHER, false)  # <characters>.o: <characters>
+
     # Matcher for the “phony“ make rule output lines for each #include dependency (.h, .c, etc.)
     # Capture file name before the colon
-    INCLUDE_MATCHER = /^(\S+\.\S+):\s*$/ # <characters>.<extension>:
+    INCLUDE_MATCHER = /^(\S+\.\S+):\s*$/ unless const_defined?(:INCLUDE_MATCHER, false) # <characters>.<extension>:
 
   def self.extract_includes(make_rules)
     # Extract the #include dependencies from the "phony" make rules, one per line

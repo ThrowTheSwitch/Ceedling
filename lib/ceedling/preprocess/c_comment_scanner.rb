@@ -25,7 +25,7 @@ class CCommentScanner
     def initialize(position: nil, length: nil, lines_removed: 0)
       super
     end
-  end
+  end unless const_defined?(:CommentInfo, false)
 
 
   # Given the Array<CommentInfo> from scan, return a copy of

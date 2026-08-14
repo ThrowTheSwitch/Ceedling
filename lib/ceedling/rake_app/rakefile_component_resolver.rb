@@ -17,12 +17,12 @@ module RakefileComponentResolver
     tasks_tests.rake
     rules_tests.rake
     tasks_generate.rake
-  ].freeze
+  ].freeze unless const_defined?(:STOCK_RAKE_FILES, false)
 
   RELEASE_RAKE_FILES = %w[
     rules_release.rake
     tasks_release.rake
-  ].freeze
+  ].freeze unless const_defined?(:RELEASE_RAKE_FILES, false)
 
   # Returns ordered plugin search paths: user-configured paths first, built-in Ceedling
   # plugins path last. This ordering lets user plugins shadow built-in plugins of the

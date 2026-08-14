@@ -16,16 +16,18 @@
 # than raising or silently producing nothing.
 class DependencyDiffer
 
-  begin
-    require 'diff/lcs'
-    DIFF_LCS_AVAILABLE = true
-  rescue LoadError
-    DIFF_LCS_AVAILABLE = false
+  unless const_defined?(:DIFF_LCS_AVAILABLE, false)
+    begin
+      require 'diff/lcs'
+      DIFF_LCS_AVAILABLE = true
+    rescue LoadError
+      DIFF_LCS_AVAILABLE = false
+    end
   end
 
   # First N bytes sniffed for a null byte to decide whether content is text
   # or binary -- a line-oriented diff on binary content is not "readable."
-  BINARY_SNIFF_BYTES = 8_000
+  BINARY_SNIFF_BYTES = 8_000 unless const_defined?(:BINARY_SNIFF_BYTES, false)
 
   # Explains why a piece of content changed, given `old_snapshot` (the Hash
   # loaded from a previously-written DependencyDebugTree snapshot, or nil if

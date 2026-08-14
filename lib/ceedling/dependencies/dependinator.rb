@@ -11,7 +11,7 @@
 # code only ever deals in build verbs, never cache mechanics.
 class Dependinator
 
-  CACHE_FILENAME = 'dep_cache.json'.freeze
+  CACHE_FILENAME = 'dep_cache.json'.freeze unless const_defined?(:CACHE_FILENAME, false)
 
   constructor :dependency_tracker
 

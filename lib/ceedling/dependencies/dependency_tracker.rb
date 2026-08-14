@@ -39,13 +39,13 @@ require 'ceedling/exceptions'
 # without creating a single real file.
 class DependencyTracker
 
-  DEBUG_TIERS = { none: 0, meta: 1, full: 2 }.freeze
+  DEBUG_TIERS = { none: 0, meta: 1, full: 2 }.freeze unless const_defined?(:DEBUG_TIERS, false)
 
   # Tier 2 (:full) captures raw dependency file content per target, per build --
   # a single huge generated header could otherwise blow up the cache file
   # silently. Content beyond this size is recorded as truncated (with its real
   # size) rather than either silently dropped or silently included in full.
-  DEBUG_FULL_CAPTURE_SIZE_CAP = 1_048_576 # 1 MiB
+  DEBUG_FULL_CAPTURE_SIZE_CAP = 1_048_576 unless const_defined?(:DEBUG_FULL_CAPTURE_SIZE_CAP, false) # 1 MiB
 
   constructor(
     :file_wrapper,

@@ -326,7 +326,10 @@ class TestBuildExecutor
       # Antecedents mirror stages 6/7's own targets for this same module's header/source --
       # Partial generation's actual inputs (the preprocessed content those stages produce or
       # recall) are already fully covered by the same file+flags/defines/search_paths.
-      antecedent_files = [config.header.filepath, config.source.filepath]
+      # A declaration-only Partial (a prototype with no matching definition) has no source
+      # file to find, leaving config.source.filepath legitimately nil -- compact it out
+      # before it reaches path normalization, which expects real paths only.
+      antecedent_files = [config.header.filepath, config.source.filepath].compact
       antecedent_meta  = {
         flags:                          testable.preprocess_flags,
         defines:                        testable.preprocess_defines,

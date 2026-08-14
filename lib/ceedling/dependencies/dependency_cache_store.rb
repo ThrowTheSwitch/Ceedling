@@ -54,7 +54,7 @@ require 'ceedling/dependencies/dependency_hasher'
 # only when it knows a run's registrations were comprehensive.
 class DependencyCacheStore
 
-  CACHE_SCHEMA_VERSION = 1
+  CACHE_SCHEMA_VERSION = 1 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
 
   constructor :file_wrapper, :loginator
 

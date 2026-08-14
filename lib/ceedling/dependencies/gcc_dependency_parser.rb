@@ -28,12 +28,12 @@ class GccDependencyParser
   # A logical line's target/prerequisite separator: a colon immediately
   # followed by whitespace or end-of-line. A colon immediately followed by
   # `\` or `/` (a Windows drive letter) does not match and is skipped over.
-  SEPARATOR_RE = /\A(.*?):(?=[ \t]|\z)[ \t]*(.*)\z/
+  SEPARATOR_RE = /\A(.*?):(?=[ \t]|\z)[ \t]*(.*)\z/ unless const_defined?(:SEPARATOR_RE, false)
 
   # A token is a maximal run of "escaped character" or "non-whitespace"
   # sequences -- this keeps an escaped space (`\ `) glued to its token instead
   # of splitting on it as a token boundary.
-  TOKEN_RE = /(?:\\.|\S)+/
+  TOKEN_RE = /(?:\\.|\S)+/ unless const_defined?(:TOKEN_RE, false)
 
   # Parses `content` (a String) and returns `{ target => [dep, ...] }`.
   # Returns `{}` for nil/blank content. Never raises on malformed input --

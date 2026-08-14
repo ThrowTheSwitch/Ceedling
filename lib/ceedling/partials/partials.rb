@@ -22,14 +22,14 @@ module Partials
     def initialize(filepath: nil, directives_only_filepath: nil, full_expansion_filepath: nil, includes: [])
       super
     end
-  end
+  end unless const_defined?(:ConfigFileInfo, false)
 
   # Data class representing a C partial to be generated
   Config = Struct.new(:module, :types, :header, :source, keyword_init: true) do
     def initialize(module:, types: [], header: ConfigFileInfo.new, source: ConfigFileInfo.new)
       super
     end
-  end
+  end unless const_defined?(:Config, false)
 
   # Data class representing a C function signature
   FunctionDeclaration = Struct.new(
@@ -44,7 +44,7 @@ module Partials
     def initialize(name: nil, signature: nil, source_filepath: nil, line_num: nil)
       super
     end
-  end
+  end unless const_defined?(:FunctionDeclaration, false)
 
   # Data class representing a C function with intentionally duplicated fields
   FunctionDefinition = Struct.new(
@@ -59,7 +59,7 @@ module Partials
     def initialize(name: nil, signature: nil, code_block: nil, source_filepath: nil, line_num: nil)
       super
     end
-  end
+  end unless const_defined?(:FunctionDefinition, false)
 
   def self.manufacture_function_declaration(line_num: nil, source_filepath: nil, name:, signature:)
     return FunctionDeclaration.new(

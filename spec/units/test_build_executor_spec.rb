@@ -972,6 +972,21 @@ describe TestBuildExecutor do
       @executor.stage_generate_partials( @state )
     end
 
+    it "never passes a nil filepath to the dependency tracker when a Partial has no paired source file" do
+      # A declaration-only Partial (a prototype with no matching .c definition) has
+      # no source file to find -- config.source.filepath legitimately stays nil.
+      @config.source = Partials::ConfigFileInfo.new( filepath: nil, includes: [] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+
+      expect(@dependinator).to receive(:register).at_least(:once) do |_target, files:, meta:|
+        expect( files ).to_not include( nil )
+      end
+
+      @executor.stage_generate_partials( @state )
+    end
+
     it "logs summary lines stating how many of each Partial artifact were recalled from cache" do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )

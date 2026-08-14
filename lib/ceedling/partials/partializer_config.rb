@@ -30,7 +30,7 @@ class PartializerConfig
     'MOCK_PARTIAL_ALL_MODULE',
     'TEST_PARTIAL_CONFIG',
     'MOCK_PARTIAL_CONFIG',
-  ].freeze
+  ].freeze unless const_defined?(:MACRO_NAMES, false)
 
   # Holds function-level extraction config for tests or mocks within a Partial.
   # type         -- :public, :private, or :accumulate (additions-driven); nil if unset
@@ -54,7 +54,7 @@ class PartializerConfig
       # DEDUCT: starts with all functions; zero subtractions is valid ("include everything")
       return true
     end
-  end
+  end unless const_defined?(:PartialFunctions, false)
 
   # Top-level Partial configuration for a single C module.
   Config = Struct.new(:module, :tests, :mocks, :header, :source, keyword_init: true) do
@@ -65,7 +65,7 @@ class PartializerConfig
                    source: Partials::ConfigFileInfo.new)
       super
     end
-  end
+  end unless const_defined?(:Config, false)
 
   # Extract partial configuration macros from a string.
   # Returns a hash of module_name => Config.
