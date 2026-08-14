@@ -187,7 +187,9 @@ class TestBuildExecutor
       # their own includes lists), so a module tested and mocked in the same test file gets
       # exactly one C definition of each of its typedefs and aggregate types.
       types_header = @generator.generate_partial_types(
-        name:        name,
+        name:        config.module, # Module name, not test name -- two modules Partialed
+                                     # in the same test file must not collide on one
+                                     # shared types header filename
         c_module:    module_contents,
         output_path: testable.paths[:partials]
       )
