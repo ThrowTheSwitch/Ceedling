@@ -32,9 +32,14 @@ describe FileWrapper do
 
   # Absolute paths throughout: check_path_length measures File.expand_path(path).length,
   # so a relative path would pick up the test-runner's own CWD and throw off the
-  # precise threshold arithmetic these examples depend on.
+  # precise threshold arithmetic these examples depend on. The padding is sized off
+  # File.expand_path('/')'s own actual length rather than assumed to be 1, since Windows
+  # expands a bare '/' by prepending a drive letter (e.g. "C:/") -- without probing that
+  # overhead first, expanded lengths on Windows would run a couple characters longer than
+  # intended and throw off the precise threshold boundaries these examples depend on.
   def path_of_length(n)
-    '/' + ('a' * (n - 1))
+    overhead = File.expand_path('/').length - 1
+    '/' + ('a' * (n - 1 - overhead))
   end
 
   describe '#check_path_length' do
