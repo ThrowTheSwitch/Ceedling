@@ -32,9 +32,12 @@ module DependencyTrackerSystemHelper
   # particular -- `store_path` is the caller's responsibility, typically
   # somewhere under a per-example temp directory (see `in_temp_dir`).
   def build_dependency_tracker(store_path:, debug_tier: nil)
-    file_wrapper = FileWrapper.new
-    system_wrapper = SystemWrapper.new
     loginator = double('loginator').as_null_object
+    file_wrapper = FileWrapper.new({
+      :loginator    => loginator,
+      :verbosinator => double('verbosinator').as_null_object
+    })
+    system_wrapper = SystemWrapper.new
 
     hasher = DependencyHasher.new( { :file_wrapper => file_wrapper } )
     normalizer = DependencyPathNormalizer.new( { :file_wrapper => file_wrapper } )
@@ -89,7 +92,11 @@ module DependencyTrackerSystemHelper
   end
 
   def debug_tree_for_specs
-    DependencyDebugTree.new( { :file_wrapper => FileWrapper.new, :yaml_wrapper => YamlWrapper.new } )
+    file_wrapper = FileWrapper.new({
+      :loginator    => double('loginator').as_null_object,
+      :verbosinator => double('verbosinator').as_null_object
+    })
+    DependencyDebugTree.new( { :file_wrapper => file_wrapper, :yaml_wrapper => YamlWrapper.new } )
   end
 
   # Runs `block` with a fresh, real temp directory, cleaned up afterward

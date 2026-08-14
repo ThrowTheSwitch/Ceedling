@@ -11,8 +11,13 @@
 #
 
 file_wrapper:
+  compose:
+    - loginator
+    - verbosinator
 
 yaml_wrapper:
+  compose:
+    - file_wrapper
 
 ruby_expandinator:
 
@@ -29,7 +34,6 @@ rake_task_registry:
 loginator:
   compose:
     - verbosinator
-    - file_wrapper
     - system_wrapper
 
 #

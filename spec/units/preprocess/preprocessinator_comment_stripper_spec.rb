@@ -15,13 +15,16 @@ RSpec.describe PreprocessinatorCommentStripper do
   before(:each) do
     @stripper = PreprocessinatorCommentStripper.new(
       {
-        c_comment_scanner: CCommentScanner.new
+        c_comment_scanner: CCommentScanner.new,
+        file_wrapper:      double('file_wrapper').as_null_object
       }
     )
 
     # PreprocessinatorCodeFinder is used to verify that stripped output preserves
     # correct source-line mapping via the marker-relative arithmetic it implements.
-    @finder = PreprocessinatorCodeFinder.new
+    @finder = PreprocessinatorCodeFinder.new({
+      file_wrapper: double('file_wrapper').as_null_object
+    })
   end
 
 
@@ -573,6 +576,55 @@ RSpec.describe PreprocessinatorCommentStripper do
         expect(@finder.find_in_preprpocessed_string(result, 'int init(void);')).to eq(6)
       end
 
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#strip_file' do
+  # ===========================================================================
+
+    before(:each) do
+      @file_wrapper = double('file_wrapper')
+      @stripper = PreprocessinatorCommentStripper.new(
+        {
+          c_comment_scanner: CCommentScanner.new,
+          file_wrapper:      @file_wrapper
+        }
+      )
+    end
+
+    it 'reads the file in binary mode and returns false without writing when there are no comments' do
+      content = "# 1 \"foo.c\"\nint x;\n"
+      allow(@file_wrapper).to receive(:open).with('foo.c', 'rb').and_yield(StringIO.new(content))
+
+      expect(@file_wrapper).not_to receive(:write)
+      expect(@stripper.strip_file('foo.c')).to be false
+    end
+
+    it 'writes stripped content back in binary mode and returns true when comments are found' do
+      content = "# 1 \"foo.c\"\n// comment\nint x;\n"
+      allow(@file_wrapper).to receive(:open).with('foo.c', 'rb').and_yield(StringIO.new(content))
+
+      expect(@file_wrapper).to receive(:write).with('foo.c', anything, 'wb')
+      expect(@stripper.strip_file('foo.c')).to be true
+    end
+
+    it 'wraps a read failure in a CeedlingException identifying the file' do
+      allow(@file_wrapper).to receive(:open).and_raise(Errno::ENOENT.new('no such file'))
+
+      expect { @stripper.strip_file('missing.c') }
+        .to raise_error(CeedlingException, /Failed to read 'missing\.c' for comment stripping/)
+    end
+
+    it 'wraps a write failure in a CeedlingException identifying the file' do
+      content = "# 1 \"foo.c\"\n// comment\nint x;\n"
+      allow(@file_wrapper).to receive(:open).with('foo.c', 'rb').and_yield(StringIO.new(content))
+      allow(@file_wrapper).to receive(:write).and_raise(Errno::EACCES.new('permission denied'))
+
+      expect { @stripper.strip_file('foo.c') }
+        .to raise_error(CeedlingException, /Failed to rewrite 'foo\.c' after comment stripping/)
     end
 
   end

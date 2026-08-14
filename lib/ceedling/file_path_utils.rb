@@ -406,13 +406,16 @@ class FilePathUtils
     parts << context.to_s if context
     parts << subdir
     parts << name if name
-    File.join( *parts )
+    path = File.join( *parts )
+    @file_wrapper.check_path_length( path, origin: 'FilePathUtils#form_build_context_path' )
+    return path
   end
 
   # Forms base/name[/subdir]
   def form_named_path(base, name, subdir: nil)
-    return File.join( base, name, subdir ) if subdir
-    File.join( base, name )
+    path = subdir ? File.join( base, name, subdir ) : File.join( base, name )
+    @file_wrapper.check_path_length( path, origin: 'FilePathUtils#form_named_path' )
+    return path
   end
 
   # The mirrored-subdirectory portion of a test's own identity, excluding its own basename

@@ -14,7 +14,7 @@ class Loginator
   attr_reader :project_logging
   attr_writer :decorators
 
-  constructor :verbosinator, :file_wrapper, :system_wrapper
+  constructor :verbosinator, :system_wrapper
 
   def setup()
     $loginator = self
@@ -419,7 +419,9 @@ class Loginator
     # <IO:$stdout> May  1 22:20:40 2024 | Compiling TestUsartModel::unity.c...
     # <IO:$stdout> May  1 22:20:40 2024 | Compiling TestUsartModel::cmock.c...
 
-    @file_wrapper.write( @log_filepath, output, 'a' )
+    # Raw File I/O, not FileWrapper#write -- FileWrapper's own path-length diagnostics log
+    # through this class, so depending on FileWrapper here would be circular.
+    File.open( @log_filepath, 'a' ) { |file| file.write( output ) }
   end
 
 end

@@ -15,7 +15,7 @@ require 'ceedling/config/configurator'
 describe GeneratorTestResultsSanityChecker do
   before(:each) do
     # These will always be mocked
-    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
+    @loginator = Loginator.new({:verbosinator => nil, :system_wrapper => nil})
     @configurator = Configurator.new({
       :configurator_setup => nil,
       :configurator_builder => nil,

@@ -11,7 +11,8 @@ require 'ceedling/preprocess/preprocessinator_code_finder'
 describe PreprocessinatorCodeFinder do
 
   before(:each) do
-    @finder = described_class.new
+    @file_wrapper = double('file_wrapper')
+    @finder = described_class.new({ file_wrapper: @file_wrapper })
   end
 
   context "#find_in_preprpocessed_string" do
@@ -356,6 +357,24 @@ describe PreprocessinatorCodeFinder do
       expect( @finder.find_in_c_string( content, "void reset(void) { counter = 0; }" ) ).to eq 5
     end
 
+  end
+
+  context "#find_in_preprpocessed_file" do
+    it "opens the file through FileWrapper in read mode and delegates to the string search" do
+      content = "# 1 \"source.c\"\nint foo(void) { return 0; }\n"
+      allow(@file_wrapper).to receive(:open).with('source.c', 'r').and_yield(StringIO.new(content))
+
+      expect( @finder.find_in_preprpocessed_file( 'source.c', 'int foo(void) { return 0; }' ) ).to eq 1
+    end
+  end
+
+  context "#find_in_c_file" do
+    it "opens the file through FileWrapper in read mode and delegates to the string search" do
+      content = "#include <stdint.h>\nvoid foo(void) {}\n"
+      allow(@file_wrapper).to receive(:open).with('source.c', 'r').and_yield(StringIO.new(content))
+
+      expect( @finder.find_in_c_file( 'source.c', 'void foo(void) {}' ) ).to eq 2
+    end
   end
 
 end

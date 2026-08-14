@@ -18,7 +18,7 @@ class CExtractor
   include CExtractorConstants
   include CExtractorTypes
 
-  constructor :c_extractor_code_text, :c_extractor_functions, :c_extractor_declarations, :c_extractor_preprocessing, :c_extractor_definitions, :configurator, :loginator
+  constructor :c_extractor_code_text, :c_extractor_functions, :c_extractor_declarations, :c_extractor_preprocessing, :c_extractor_definitions, :configurator, :loginator, :file_wrapper
 
   attr_writer :chunk_size, :max_buffer_length
 
@@ -45,7 +45,7 @@ class CExtractor
   #   CeedlingException: If file cannot be opened (permissions, doesn't exist, etc.)
   def from_file(filepath)
     begin
-      File.open(filepath, 'r') do |file|
+      @file_wrapper.open(filepath, 'r') do |file|
         return extract_contents( file, filepath )
       end
     rescue => ex

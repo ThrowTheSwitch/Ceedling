@@ -37,7 +37,8 @@ describe CExtractor do
             c_extractor_preprocessing: CExtractorPreprocessing.new({ c_extractor_code_text: CExtractorCodeText.new }),
             c_extractor_definitions:   CExtractorDefinitions.new({ c_extractor_code_text: CExtractorCodeText.new }),
             configurator:              configurator,
-            loginator:                 double('Loginator').as_null_object
+            loginator:                 double('Loginator').as_null_object,
+            file_wrapper:              double('FileWrapper').as_null_object
           }
         )
         extractor.setup()
@@ -111,7 +112,8 @@ describe CExtractor do
             # Bare double (no :partials_max_extraction_length stub) so #respond_to? is
             # false and CExtractor falls back to its own built-in default buffer length.
             configurator:             double('Configurator'),
-            loginator:                double('Loginator').as_null_object
+            loginator:                double('Loginator').as_null_object,
+            file_wrapper:             double('FileWrapper').as_null_object
           }
         )
         extractor.setup()

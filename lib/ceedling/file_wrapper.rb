@@ -11,9 +11,28 @@ require 'fileutils'
 require 'pathname'
 require 'tmpdir'
 require 'ceedling/constants'
+require 'ceedling/system_wrapper'
 
 
 class FileWrapper
+
+  constructor :loginator, :verbosinator
+
+  # Platform practical filepath length ceilings, used only as a diagnostic heuristic --
+  # neither Ruby nor the host OS exposes a portable, runtime-queryable API for this.
+  # POSIX pathconf(2) is the real mechanism (PATH_MAX can vary by filesystem/mount
+  # point, so it's a per-path query, not a system-wide sysconf() value), but Ruby's Etc
+  # module defines the PC_PATH_MAX/PC_NAME_MAX pathconf constants without exposing a
+  # pathconf method to use them. Windows has no Ruby-accessible equivalent at all
+  # without an FFI dependency. These are the stable, documented OS/libc defaults
+  # instead: Windows' legacy MAX_PATH, and macOS/Linux's PATH_MAX from their own libc
+  # headers (a project can opt into longer paths on some platforms, but that's not
+  # safely assumable here, so these stay conservative).
+  PATH_LENGTH_LIMITS = {
+    windows: 260,
+    macos:   1024,
+    linux:   4096,
+  }.freeze
 
   def self.generate_include_guard(name)
     # abc-XYZ.h --> _ABC_XYZ_H_
@@ -72,6 +91,7 @@ class FileWrapper
   end
 
   def cp(source, destination, options={})
+    check_path_length(destination, origin: 'FileWrapper#cp')
     FileUtils.cp(source, destination, **options)
   end
 
@@ -96,6 +116,9 @@ class FileWrapper
   end
 
   def open(filepath, flags)
+    # Only writing/creating/appending can run into a platform's filepath length ceiling --
+    # a read-mode open is against a path that (if it exists) already fit on disk.
+    check_path_length(filepath, origin: 'FileWrapper#open') if flags.to_s =~ /[wa+]/
     File.open(filepath, flags) do |file|
       yield(file)
     end
@@ -120,12 +143,14 @@ class FileWrapper
   end
 
   def write_blank_file(filepath)
+    check_path_length(filepath, origin: 'FileWrapper#write_blank_file')
     File.open(filepath, 'w') do |file|
       file.write("// Ceedling intentionally blank file\n\n")
     end
   end
 
   def write(filepath, contents, flags='w')
+    check_path_length(filepath, origin: 'FileWrapper#write')
     File.open(filepath, flags) do |file|
       file.write(contents)
     end
@@ -140,6 +165,7 @@ class FileWrapper
   end
 
   def mkdir(folder)
+    check_path_length(folder, origin: 'FileWrapper#mkdir')
     return FileUtils.mkdir_p(folder)
   end
 
@@ -147,7 +173,42 @@ class FileWrapper
   # `parent` must already exist. Collision-free even across concurrent callers targeting
   # the same `parent` -- Dir.mktmpdir retries internally on name clash.
   def mkdir_tmp(prefix, parent)
-    return Dir.mktmpdir(prefix, parent)
+    path = Dir.mktmpdir(prefix, parent)
+    check_path_length(path, origin: 'FileWrapper#mkdir_tmp')
+    return path
+  end
+
+  # Warn as a path's length approaches its platform's practical ceiling, and flag if it
+  # reaches or exceeds it. Logging only -- never raises or blocks the caller's own
+  # operation, which will surface its own real failure on its own if the OS actually
+  # rejects the path. The calling context (`origin:`) is only included at DEBUG
+  # verbosity -- otherwise the message stays plain, since the path itself is normally
+  # enough and repeated origin labels add noise at everyday verbosity levels.
+  def check_path_length(path, origin:)
+    limit  = path_length_limit
+    length = File.expand_path(path).length
+
+    prefix = @verbosinator.should_output?(Verbosity::DEBUG) ? "#{origin} ⏩️ " : ''
+
+    if length >= limit
+      @loginator.log(
+        "#{prefix}Path length (#{length}) reaches or exceeds this platform's practical limit (#{limit}): #{path}",
+        Verbosity::ERRORS
+      )
+    elsif length >= (limit * 0.95)
+      @loginator.log(
+        "#{prefix}Path length (#{length}) is approaching this platform's practical limit (#{limit}): #{path}",
+        Verbosity::COMPLAIN
+      )
+    end
+  end
+
+  private
+
+  def path_length_limit
+    return PATH_LENGTH_LIMITS[:windows] if SystemWrapper.windows?
+    return PATH_LENGTH_LIMITS[:macos] if SystemWrapper.macos?
+    return PATH_LENGTH_LIMITS[:linux]
   end
 
 end

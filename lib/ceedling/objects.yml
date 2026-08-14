@@ -10,12 +10,17 @@ application:
     - system_wrapper
 
 file_wrapper:
+  compose:
+    - loginator
+    - verbosinator
 
 file_system_wrapper:
 
 rake_wrapper:
 
 yaml_wrapper:
+  compose:
+    - file_wrapper
 
 ruby_expandinator:
 
@@ -113,7 +118,6 @@ configurator_builder:
 loginator:
   compose:
     - verbosinator
-    - file_wrapper
     - system_wrapper
 
 setupinator:
@@ -265,12 +269,14 @@ dependinator:
 preprocessinator_line_marker_includes_extractor:
   compose:
     - include_factory
+    - file_wrapper
 
 c_comment_scanner:
 
 preprocessinator_comment_stripper:
   compose:
     - c_comment_scanner
+    - file_wrapper
 
 preprocessinator_reconstructor:
   compose:
@@ -315,6 +321,8 @@ preprocessinator_file_assembler:
     - reportinator
 
 preprocessinator_code_finder:
+  compose:
+    - file_wrapper
 
 c_extractor_code_text:
 
@@ -343,6 +351,7 @@ c_extractor:
     - c_extractor_definitions
     - configurator
     - loginator
+    - file_wrapper
 
 partializer_config:
   compose:
@@ -507,3 +516,5 @@ dependency_tracker:
     - dependency_differ
 
 erb_wrapper:
+  compose:
+    - file_wrapper

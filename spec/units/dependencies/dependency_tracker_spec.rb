@@ -58,7 +58,7 @@ describe DependencyTracker do
     normalizer.setup()
     cache_store = DependencyCacheStore.new( { :file_wrapper => @file_wrapper, :loginator => @loginator } )
     gcc_parser = GccDependencyParser.new
-    debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+    debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new({ file_wrapper: double('file_wrapper').as_null_object }) } )
     differ = DependencyDiffer.new
 
     @tracker = described_class.new(
@@ -350,7 +350,7 @@ describe DependencyTracker do
       end
 
       def read_snapshot(path)
-        debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+        debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new({ file_wrapper: double('file_wrapper').as_null_object }) } )
         debug_tree.read_snapshot( @tracker.instance_variable_get(:@debug_root), path )
       end
 
@@ -570,7 +570,7 @@ describe DependencyTracker do
     # Reads back diagnosis.yml through the real DependencyDebugTree, proving
     # #diagnose actually persisted it (not just returned it in-memory).
     def read_diagnosis(target)
-      tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+      tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new({ file_wrapper: double('file_wrapper').as_null_object }) } )
       allow( @file_wrapper ).to receive(:read) { |path| @debug_files.fetch( path ) { raise "unstubbed read: #{path}" } }
       allow( @file_wrapper ).to receive(:read_binary) { |path| @debug_files.fetch( path ) { raise "unstubbed read_binary: #{path}" } }
       allow( @file_wrapper ).to receive(:exist?) { |path| @debug_files.key?( path ) }
@@ -720,12 +720,12 @@ describe DependencyTracker do
     end
 
     def seed_debug_snapshot(store_path, target)
-      debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+      debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new({ file_wrapper: double('file_wrapper').as_null_object }) } )
       debug_tree.write_snapshot( debug_root_for( store_path ), target, hash: 'a' * 64 )
     end
 
     def debug_snapshot_exists?(store_path, target)
-      debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+      debug_tree = DependencyDebugTree.new( { :file_wrapper => @file_wrapper, :yaml_wrapper => YamlWrapper.new({ file_wrapper: double('file_wrapper').as_null_object }) } )
       !debug_tree.read_snapshot( debug_root_for( store_path ), target ).nil?
     end
 

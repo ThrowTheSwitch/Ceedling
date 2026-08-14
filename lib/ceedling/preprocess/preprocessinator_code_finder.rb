@@ -9,6 +9,8 @@ require 'stringio'
 
 class PreprocessinatorCodeFinder
 
+  constructor :file_wrapper
+
   LINE_MARKER_REGEX = /^#\s+(\d+)\s+"[^"]+"[^\n]*\n/ unless const_defined?(:LINE_MARKER_REGEX)
 
   # Regex-special-character-immune string
@@ -18,7 +20,7 @@ class PreprocessinatorCodeFinder
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for production use where preprocessor output resides on disk.
   def find_in_preprpocessed_file(filepath, code)
-    File.open( filepath, 'r' ) do |file|
+    @file_wrapper.open( filepath, 'r' ) do |file|
       return find_in_preprocessed_content( io: file, search: code )
     end
   end
@@ -36,7 +38,7 @@ class PreprocessinatorCodeFinder
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for production use where C file resides on disk.
   def find_in_c_file(filepath, code)
-    File.open( filepath, 'r' ) do |file|
+    @file_wrapper.open( filepath, 'r' ) do |file|
       return find_in_c_code( io: file, search: code )
     end
   end
