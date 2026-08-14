@@ -30,7 +30,7 @@ In Ceedling’s early history simplicity won out with the assumption that every 
 Added support for multiple [file extensions](https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
 
 ### Filepath limit checks
-Platform filepath limits (especially Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. Filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit to help track down funny business.
+Platform filepath limits (especially Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
 
 ## ⚠️ Changed
 
