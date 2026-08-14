@@ -49,7 +49,8 @@ class Generator
     @loginator.log( msg )
 
     arg_hash = {
-      :name => name,
+      :name => partial, # Module name, not test name -- two modules Partialed in the same
+                        # test file must not collide on one shared types header filename
       :c_module => c_module,
       :output_path => output_path
     }
