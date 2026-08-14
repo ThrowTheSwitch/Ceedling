@@ -42,6 +42,16 @@ Because of the support added for handling paths and distinguishing duplicated fi
 
 ---
 
+# [1.1.5] — Prerelease
+
+## 💪 Fixed
+
+### Partials
+
+- Fixed shared generated Partial types header filename being derived from the test's name rather than partialized module's own name. Two modules Partialized in the same test could silently overwrite each other's content.
+
+---
+
 # [1.1.4] — 2026-08-13
 
 ## 💪 Fixed
