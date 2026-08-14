@@ -279,12 +279,20 @@ class TestBuildExecutor
 
   # Stage 8: Extract and generate partial implementation and interface files.
   #
-  # Always runs in full, for every partial, every invocation -- it does no
-  # subprocess work of its own (pure in-memory C parsing and file generation
-  # from whatever `config` already holds), and `testable.partials.tests`/
-  # `.mocks` need to be rebuilt from the current `config` state every run
-  # regardless of whether stages 6/7 did real preprocessing work or recalled
-  # it, since stage 14 reads those lists to decide compile sources.
+  # Extraction and validation below always run in full, for every partial, every
+  # invocation -- pure in-memory C parsing from whatever `config` already holds,
+  # cheap regardless of whether stages 6/7 did real preprocessing work or recalled
+  # it. `testable.partials.tests`/`.mocks` are rebuilt from that in-memory result
+  # every run too, since stage 14 reads those lists to decide compile sources
+  # regardless of whether anything on disk actually changed.
+  #
+  # The three disk writes below -- types header, implementation, interface -- are
+  # each independently optional (a module with no type/aggregate defs never gets
+  # a types header at all; implementation/interface are separately gated on
+  # extraction succeeding) and each gets its own DependencyTracker target rather
+  # than one combined target the way stage 6's three preprocessing passes share
+  # one: a target that's sometimes legitimately never written would never read
+  # back as fresh.
   def stage_generate_partials(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
 
@@ -295,6 +303,10 @@ class TestBuildExecutor
         partials << { config: config, testable: testable }
       end
     end
+
+    skipped_types      = 0
+    skipped_impl       = 0
+    skipped_interface  = 0
 
     @batchinator.exec(workload: :compile, things: partials) do |partial|
       config   = partial[:config]
@@ -311,15 +323,49 @@ class TestBuildExecutor
 
       @partializer.sanitize( module_contents )
 
+      # Antecedents mirror stages 6/7's own targets for this same module's header/source --
+      # Partial generation's actual inputs (the preprocessed content those stages produce or
+      # recall) are already fully covered by the same file+flags/defines/search_paths.
+      antecedent_files = [config.header.filepath, config.source.filepath]
+      antecedent_meta  = {
+        flags:                          testable.preprocess_flags,
+        defines:                        testable.preprocess_defines,
+        search_paths:                   testable.search_paths,
+        partials_max_extraction_length: @configurator.partials_max_extraction_length
+      }
+
       # Generated once and shared by the implementation and interface headers below (via
       # their own includes lists), so a module tested and mocked in the same test file gets
-      # exactly one C definition of each of its typedefs and aggregate types.
-      types_header = @generator.generate_partial_types(
-        name:        name,
-        partial:     config.module,
-        c_module:    module_contents,
-        output_path: testable.paths[:partials]
-      )
+      # exactly one C definition of each of its typedefs and aggregate types. Nothing to
+      # write (and therefore nothing to track) when the module has no typedefs or aggregate
+      # definitions -- recompute the bare filename the same deterministic way
+      # GeneratorPartials#generate_types would have, purely so the includes-remapping below
+      # still knows what to #include.
+      types_header = nil
+      if !module_contents.type_definitions.empty? || !module_contents.aggregate_definitions.empty?
+        types_header = @file_path_utils.form_partial_types_header_filename( config.module )
+        target       = File.join( testable.paths[:partials], types_header )
+
+        @dependinator.register( target, files: antecedent_files, meta: antecedent_meta )
+
+        if @dependinator.stale?( target )
+          @generator.generate_partial_types(
+            name:        name,
+            partial:     config.module,
+            c_module:    module_contents,
+            output_path: testable.paths[:partials]
+          )
+          @dependinator.mark_fresh( target )
+        else
+          msg = @reportinator.generate_module_progress(
+            operation:   'Skipping Partial types generation for',
+            module_name: name,
+            filename:    config.module
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+          state.lock.synchronize { skipped_types += 1 }
+        end
+      end
 
       implementation = @partializer.extract_implementation_functions(
         test:        name,
@@ -366,7 +412,27 @@ class TestBuildExecutor
       }
 
       unless implementation.nil?
-        @generator.generate_partial_implementation( **arg_hash )
+        # The header this same call writes alongside the source isn't itself an
+        # antecedent -- tracking it too catches an externally modified/deleted header
+        # even when the source's own antecedents look unchanged.
+        target        = File.join( testable.paths[:partials], @file_path_utils.form_partial_implementation_source_filename( config.module ) )
+        header_target = File.join( testable.paths[:partials], @file_path_utils.form_partial_implementation_header_filename( config.module ) )
+
+        @dependinator.register( target, files: antecedent_files + [header_target], meta: antecedent_meta )
+
+        if @dependinator.stale?( target )
+          @generator.generate_partial_implementation( **arg_hash )
+          @dependinator.mark_fresh( target )
+        else
+          msg = @reportinator.generate_module_progress(
+            operation:   'Skipping Partial implementation generation for',
+            module_name: name,
+            filename:    config.module
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+          state.lock.synchronize { skipped_impl += 1 }
+        end
+
         state.lock.synchronize { testable.partials.tests << config.module }
       end
 
@@ -387,10 +453,30 @@ class TestBuildExecutor
       }
 
       unless interface.nil?
-        @generator.generate_partial_interface( **arg_hash )
+        target = File.join( testable.paths[:partials], @file_path_utils.form_partial_interface_header_filename( config.module ) )
+
+        @dependinator.register( target, files: antecedent_files, meta: antecedent_meta )
+
+        if @dependinator.stale?( target )
+          @generator.generate_partial_interface( **arg_hash )
+          @dependinator.mark_fresh( target )
+        else
+          msg = @reportinator.generate_module_progress(
+            operation:   'Skipping Partial interface generation for',
+            module_name: name,
+            filename:    config.module
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+          state.lock.synchronize { skipped_interface += 1 }
+        end
+
         state.lock.synchronize { testable.partials.mocks << config.module }
       end
     end
+
+    log_skip_summary( task: "Partial types generation", count: skipped_types, noun: "types headers" )
+    log_skip_summary( task: "Partial implementation generation", count: skipped_impl, noun: "implementations" )
+    log_skip_summary( task: "Partial interface generation", count: skipped_interface, noun: "interfaces" )
   end
 
   # Stage 9: Preprocess header files to be mocked.

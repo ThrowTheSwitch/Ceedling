@@ -305,6 +305,9 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Linking /)
           expect(rebuild).to_not match(/^Running /)
           expect(rebuild).to_not match(/Generating mock for/)
+          expect(rebuild).to_not match(/Generating shared Partial types for/)
+          expect(rebuild).to_not match(/Generating Partial implementation for/)
+          expect(rebuild).to_not match(/Generating Partial mockable interface for/)
 
           expect(rebuild).to match(/TESTED:\s+67/)
           expect(rebuild).to match(/PASSED:\s+67/)

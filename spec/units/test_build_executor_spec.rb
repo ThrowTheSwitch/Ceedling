@@ -868,9 +868,15 @@ describe TestBuildExecutor do
       stub_batchinator_exec()
 
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@configurator).to receive(:partials_max_extraction_length).and_return( 5 )
 
-      module_contents = double( "CModule", function_definitions: [], function_declarations: [] )
-      allow(@partializer).to receive(:extract_module_contents).and_return( module_contents )
+      @module_contents = double( "CModule",
+        function_definitions:    [],
+        function_declarations:   [],
+        type_definitions:        [],
+        aggregate_definitions:   []
+      )
+      allow(@partializer).to receive(:extract_module_contents).and_return( @module_contents )
       allow(@partializer).to receive(:validate_config)
       allow(@partializer).to receive(:sanitize)
       allow(@partializer).to receive(:validate_extracted_functions)
@@ -880,6 +886,15 @@ describe TestBuildExecutor do
       allow(@generator).to receive(:generate_partial_types)
       allow(@generator).to receive(:generate_partial_implementation)
       allow(@generator).to receive(:generate_partial_interface)
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return( 'ceedling_partial_Foo_types.h' )
+      allow(@file_path_utils).to receive(:form_partial_implementation_source_filename).and_return( 'ceedling_partial_Foo_impl.c' )
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename).and_return( 'ceedling_partial_Foo_impl.h' )
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename).and_return( 'ceedling_partial_Foo_interface.h' )
+
+      allow(@dependinator).to receive(:register)
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
 
       @config = Partials::Config.new(
         module: 'Foo',
@@ -928,6 +943,46 @@ describe TestBuildExecutor do
 
       expect( @testable.partials.tests ).to eq( ['Foo'] )
       expect( @testable.partials.mocks ).to eq( [] )
+    end
+
+    it "skips writing types, implementation, and interface when the dependency tracker reports all three unchanged, but still updates tests/mocks bookkeeping" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@generator).to_not receive(:generate_partial_types)
+      expect(@generator).to_not receive(:generate_partial_implementation)
+      expect(@generator).to_not receive(:generate_partial_interface)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_generate_partials( @state )
+
+      expect( @testable.partials.tests ).to eq( ['Foo'] )
+      expect( @testable.partials.mocks ).to eq( ['Foo'] )
+    end
+
+    it "never registers or checks a types-header target when the module has no type or aggregate definitions" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@dependinator).to_not receive(:register).with( /_types\.h$/, any_args )
+      expect(@generator).to_not receive(:generate_partial_types)
+
+      @executor.stage_generate_partials( @state )
+    end
+
+    it "logs summary lines stating how many of each Partial artifact were recalled from cache" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping ... (nothing changed)..." )
+
+      expect(@loginator).to receive(:log).with( "Skipping ... (nothing changed)..." ).exactly(3).times
+
+      @executor.stage_generate_partials( @state )
     end
   end
 end
