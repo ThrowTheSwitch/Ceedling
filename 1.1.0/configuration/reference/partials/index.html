@@ -4204,22 +4204,23 @@
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">:max_extraction_length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
 </code></pre></div>
 <h2 id="max_extraction_length"><code>:max_extraction_length</code></h2>
-<p>Notes:
-- The default should be sufficient for nearly all test builds. Modification should only be necessary on error.
-- This configuration option is only available in Ceedling 1.1.4+.</p>
+<p>Notes:</p>
+<ul>
+<li>The default should be sufficient for nearly all test builds. Modification should only be necessary on error.</li>
+<li>This configuration option is only available in Ceedling 1.1.4+.</li>
+</ul>
 <p>Building a Partial requires Ceedling to extract each C construct — a
 variable declaration, a function, a macro, and so on — from your source
 files one at a time. Extraction reads a construct into a growing buffer
-until it finds that construct's natural end (a terminating <code>;</code>, a closing
+until it finds that construct’s natural end (a terminating <code>;</code>, a closing
 <code>}</code>, etc.). This setting bounds how large that buffer may grow before
-extraction fails outright, rather than continuing to search indefinitely
-into whatever else follows in the file.</p>
-<p>The value is a multiplier of 1000 characters, not a raw character count —
-<code>8000</code> means 8,000,000 characters. It must be a whole number no smaller
+extraction fails outright.</p>
+<p>The value is a multiplier of 1000 characters, not a raw character count. For example,
+<code>8000</code> means 8,000,000 characters (approx. 7.6MB). It must be a whole number no smaller
 than <code>10</code> (10,000 characters).</p>
 <p>Raise this value if Ceedling reports an extraction failure for a
-legitimately large single construct in your codebase — a sizable generated
-lookup table, for instance. There's ordinarily no reason to lower it.</p>
+legitimately large single construct in your codebase (e.g. a sizable
+lookup table). Ordinarily, there’s no reason to lower it.</p>
 <p><strong>Default</strong>: 5000 (5,000,000 characters)</p>
 <p><br/><br/></p>
 
