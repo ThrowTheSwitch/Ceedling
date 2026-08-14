@@ -44,7 +44,7 @@ module DependencyTrackerSystemHelper
     normalizer.setup()
     cache_store = DependencyCacheStore.new( { :file_wrapper => file_wrapper, :loginator => loginator } )
     gcc_parser = GccDependencyParser.new
-    debug_tree = DependencyDebugTree.new( { :file_wrapper => file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+    debug_tree = DependencyDebugTree.new( { :file_wrapper => file_wrapper, :yaml_wrapper => YamlWrapper.new({ file_wrapper: file_wrapper }) } )
     differ = DependencyDiffer.new
 
     tracker = DependencyTracker.new(
@@ -96,7 +96,7 @@ module DependencyTrackerSystemHelper
       :loginator    => double('loginator').as_null_object,
       :verbosinator => double('verbosinator').as_null_object
     })
-    DependencyDebugTree.new( { :file_wrapper => file_wrapper, :yaml_wrapper => YamlWrapper.new } )
+    DependencyDebugTree.new( { :file_wrapper => file_wrapper, :yaml_wrapper => YamlWrapper.new({ file_wrapper: file_wrapper }) } )
   end
 
   # Runs `block` with a fresh, real temp directory, cleaned up afterward
