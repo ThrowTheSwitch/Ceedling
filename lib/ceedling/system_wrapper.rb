@@ -17,6 +17,13 @@ class SystemWrapper
     @windows = (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|msys|ucrt/i) ? true : false
   end
 
+  # Memoized: host_os is fixed for the process lifetime.
+  # Guard against nil? rather than ||= so false (non-macOS) is cached correctly.
+  def self.macos?
+    return @macos unless @macos.nil?
+    @macos = (RbConfig::CONFIG['host_os'] =~ /darwin/i) ? true : false
+  end
+
   def self.time_stopwatch_s
     # Wall clock time that can be adjusted for a variety of reasons and lead to
     # unexpected negative durations -- only option on Windows.
@@ -34,6 +41,11 @@ class SystemWrapper
   # class method so as to be mockable for tests
   def windows?
     return SystemWrapper.windows?
+  end
+
+  # class method so as to be mockable for tests
+  def macos?
+    return SystemWrapper.macos?
   end
 
   def eval(string)

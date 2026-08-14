@@ -230,6 +230,7 @@ describe FilePathUtils do
     before(:each) do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
+      allow(@file_wrapper).to receive(:check_path_length)
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -277,6 +278,7 @@ describe FilePathUtils do
     before(:each) do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
+      allow(@file_wrapper).to receive(:check_path_length)
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -317,6 +319,7 @@ describe FilePathUtils do
     before(:each) do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
+      allow(@file_wrapper).to receive(:check_path_length)
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -348,6 +351,7 @@ describe FilePathUtils do
     before(:each) do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
+      allow(@file_wrapper).to receive(:check_path_length)
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -383,6 +387,7 @@ describe FilePathUtils do
     before(:each) do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
+      allow(@file_wrapper).to receive(:check_path_length)
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -410,7 +415,10 @@ describe FilePathUtils do
   describe '#form_release_build_objects_filelist' do
     before(:each) do
       @configurator = double('configurator')
-      @file_wrapper = FileWrapper.new
+      @file_wrapper = FileWrapper.new({
+        :loginator    => double('loginator').as_null_object,
+        :verbosinator => double('verbosinator').as_null_object
+      })
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -436,7 +444,10 @@ describe FilePathUtils do
   describe '#form_release_dependencies_filelist' do
     before(:each) do
       @configurator = double('configurator')
-      @file_wrapper = FileWrapper.new
+      @file_wrapper = FileWrapper.new({
+        :loginator    => double('loginator').as_null_object,
+        :verbosinator => double('verbosinator').as_null_object
+      })
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -457,7 +468,10 @@ describe FilePathUtils do
   describe '#form_test_build_objects_filelist' do
     before(:each) do
       @configurator = double('configurator')
-      @file_wrapper = FileWrapper.new
+      @file_wrapper = FileWrapper.new({
+        :loginator    => double('loginator').as_null_object,
+        :verbosinator => double('verbosinator').as_null_object
+      })
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -491,7 +505,10 @@ describe FilePathUtils do
   describe '#form_pass_results_filelist' do
     before(:each) do
       @configurator = double('configurator')
-      @file_wrapper = FileWrapper.new
+      @file_wrapper = FileWrapper.new({
+        :loginator    => double('loginator').as_null_object,
+        :verbosinator => double('verbosinator').as_null_object
+      })
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -519,6 +536,7 @@ describe FilePathUtils do
     before(:each) do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
+      allow(@file_wrapper).to receive(:check_path_length)
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -548,6 +566,50 @@ describe FilePathUtils do
       # distinct from those two generated headers so all three can coexist.
       expect( @fpu.form_partial_types_header_filename('LightSensor') )
         .to eq('ceedling_partial_LightSensor_types.h')
+    end
+  end
+
+  describe '#form_named_path' do
+    before(:each) do
+      @file_wrapper = double('file_wrapper')
+      allow(@file_wrapper).to receive(:check_path_length)
+      @fpu = described_class.new({
+        :configurator => double('configurator'),
+        :file_wrapper => @file_wrapper
+      })
+    end
+
+    # form_named_path is private -- exercised via #send, same as its callers do internally.
+    it 'checks the constructed path length, identifying itself as the origin' do
+      @fpu.send(:form_named_path, 'build/test/preprocess/files', 'test_foo')
+      expect(@file_wrapper).to have_received(:check_path_length)
+        .with('build/test/preprocess/files/test_foo', origin: 'FilePathUtils#form_named_path')
+    end
+
+    it 'checks the constructed path length including an optional subdir' do
+      @fpu.send(:form_named_path, 'build/test/preprocess/files', 'test_foo', subdir: 'full_expansion')
+      expect(@file_wrapper).to have_received(:check_path_length)
+        .with('build/test/preprocess/files/test_foo/full_expansion', origin: 'FilePathUtils#form_named_path')
+    end
+  end
+
+  describe '#form_build_context_path' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      allow(@file_wrapper).to receive(:check_path_length)
+      allow(@configurator).to receive(:project_build_root).and_return('build')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+    end
+
+    # form_build_context_path is private -- exercised via #send, same as its callers do internally.
+    it 'checks the constructed path length, identifying itself as the origin' do
+      @fpu.send(:form_build_context_path, 'out', name: 'TestFoo')
+      expect(@file_wrapper).to have_received(:check_path_length)
+        .with('build/out/TestFoo', origin: 'FilePathUtils#form_build_context_path')
     end
   end
 

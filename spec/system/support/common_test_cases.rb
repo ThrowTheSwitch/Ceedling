@@ -6,8 +6,18 @@
 # =========================================================================
 
 require 'rbconfig'
+require 'ceedling/file_wrapper'
+require 'ceedling/yaml_wrapper'
 
 module CommonSystemTestCases
+  def yaml_wrapper_for_test
+    file_wrapper = FileWrapper.new({
+      :loginator    => double('loginator').as_null_object,
+      :verbosinator => double('verbosinator').as_null_object
+    })
+    YamlWrapper.new({ file_wrapper: file_wrapper })
+  end
+
   def can_report_version_no_git_commit_sha
     @c.with_context do
       # Version without Git commit short SHA file in project
@@ -984,7 +994,7 @@ module CommonSystemTestCases
 
         result_file = './build/test/results/test_example_file_crash_sigsegv_with_param.fail'
         expect(File.exist?(result_file)).to be(true)
-        results = YamlWrapper.new.load(result_file)
+        results = yaml_wrapper_for_test.load(result_file)
 
         # Only the truly crashing test is reported as a failure/crash
         expect(results[:failures].map { |f| f[:test] }).to eq(['test_add_numbers_will_fail'])
@@ -1026,7 +1036,7 @@ module CommonSystemTestCases
 
         result_file = './build/test/results/test_example_file_crash_sigsegv_with_param.fail'
         expect(File.exist?(result_file)).to be(true)
-        results = YamlWrapper.new.load(result_file)
+        results = yaml_wrapper_for_test.load(result_file)
 
         # Only the truly crashing test is reported as a failure/crash
         expect(results[:failures].map { |f| f[:test] }).to eq(['test_add_numbers_will_fail'])

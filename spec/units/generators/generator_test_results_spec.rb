@@ -142,7 +142,11 @@ describe GeneratorTestResults do
       :ruby_expandinator    => nil
     })
 
-    @yaml_wrapper = YamlWrapper.new
+    @file_wrapper = FileWrapper.new({
+      :loginator    => @loginator,
+      :verbosinator => double('verbosinator').as_null_object
+    })
+    @yaml_wrapper = YamlWrapper.new({ :file_wrapper => @file_wrapper })
     @sanity_checker = GeneratorTestResultsSanityChecker.new({
       :configurator => @configurator,
       :loginator    => @loginator
@@ -154,7 +158,7 @@ describe GeneratorTestResults do
       :loginator                             => @loginator,
       :reportinator                          => @reportinator,
       :yaml_wrapper                          => @yaml_wrapper,
-      :file_wrapper                          => FileWrapper.new
+      :file_wrapper                          => @file_wrapper
     })
 
     @tmpdir = Dir.mktmpdir

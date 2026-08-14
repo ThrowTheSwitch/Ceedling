@@ -8,8 +8,10 @@
 require 'fileutils'
 require 'tmpdir'
 require 'open3'
-require 'ceedling/yaml_wrapper'
+# spec_helper pulls in the 'constructor' gem -- must load before any Ceedling
+# class using the `constructor` class macro, e.g. ceedling/yaml_wrapper below.
 require 'spec_helper'
+require 'ceedling/yaml_wrapper'
 require 'deep_merge'
 
 require_relative 'system_test_output'

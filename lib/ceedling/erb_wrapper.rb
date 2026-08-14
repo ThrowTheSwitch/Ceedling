@@ -8,8 +8,11 @@
 require 'erb'
 
 class ErbWrapper
+
+  constructor :file_wrapper
+
   def generate_file(template, data, output_file)
-    File.open(output_file, "w") do |f|
+    @file_wrapper.open(output_file, "w") do |f|
       f << ERB.new(template, trim_mode: "<>").result(binding)
     end
   end

@@ -22,6 +22,22 @@ describe SystemWrapper do
     "#{RbConfig.ruby} -e #{code.inspect}"
   end
 
+  # Portable across the whole CI platform matrix: asserts the regex classifies whatever
+  # host this test actually happens to run on, rather than hardcoding an expected result.
+  describe '.windows?' do
+    it 'matches the actual host_os of the machine running this test' do
+      expected = !!(RbConfig::CONFIG['host_os'] =~ /mswin|mingw|msys|ucrt/i)
+      expect(SystemWrapper.windows?).to eq(expected)
+    end
+  end
+
+  describe '.macos?' do
+    it 'matches the actual host_os of the machine running this test' do
+      expected = !!(RbConfig::CONFIG['host_os'] =~ /darwin/i)
+      expect(SystemWrapper.macos?).to eq(expected)
+    end
+  end
+
   describe '#shell_capture3' do
     context 'boom: false (the default, and how test-fixture execution always runs)' do
       it 'forces exit_code to 0 even though the real subprocess exited nonzero' do

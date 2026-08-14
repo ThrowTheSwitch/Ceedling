@@ -87,7 +87,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
   SYSTEM = :system  unless const_defined?(:SYSTEM)
   USER   = :user    unless const_defined?(:USER)
 
-  constructor :include_factory
+  constructor :include_factory, :file_wrapper
 
   # Parse preprocessor output from a file (production use)
   # @param filepath [String] Path to the preprocessor output file
@@ -107,7 +107,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
       # their first byte is 0x3C — ASCII '<' — regardless of the surrounding encoding.
       # NOTE: binary mode means \r\n line endings are NOT translated on Windows; the
       # extract_includes method calls line.chomp! before regex matching to handle this.
-      File.open(filepath, 'rb') do |file|
+      @file_wrapper.open(filepath, 'rb') do |file|
         includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth, test: test)
       end
     rescue StandardError => e

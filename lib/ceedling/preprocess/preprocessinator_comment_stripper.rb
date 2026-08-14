@@ -10,7 +10,7 @@ require 'ceedling/exceptions'
 
 class PreprocessinatorCommentStripper
 
-  constructor :c_comment_scanner
+  constructor :c_comment_scanner, :file_wrapper
 
 
   # Strip all C comments from a file. The file is unchanged if no comments 
@@ -25,7 +25,7 @@ class PreprocessinatorCommentStripper
       # Open in binary mode to avoid locale-dependent encoding failures.
       # GCC preprocessor output may contain localized strings (e.g. <組み込み> under ja_JP locale).
       # CCommentScanner already operates byte-accurately internally.
-      File.open(filepath, 'rb') do |buffer|
+      @file_wrapper.open(filepath, 'rb') do |buffer|
         stripped = strip(buffer)
       end
     rescue => e
@@ -37,7 +37,7 @@ class PreprocessinatorCommentStripper
 
     begin
       # Write in binary mode to match binary read — preserves original line endings exactly
-      File.write(filepath, stripped, mode: 'wb')
+      @file_wrapper.write(filepath, stripped, 'wb')
     rescue => e
       raise CeedlingException.new("Failed to rewrite '#{filepath}' after comment stripping ⏩️ #{e}")
     end

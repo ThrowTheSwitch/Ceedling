@@ -10,6 +10,8 @@ require 'ceedling/exceptions'
 
 class YamlWrapper
 
+  constructor :file_wrapper
+
   # Ceedling loads YAML from project config files, cache files, and generated test-result
   # files. `YAML.load` can instantiate arbitrary Ruby objects from that content, which is
   # unnecessary and unsafe -- `YAML.safe_load` restricts deserialization to plain data types
@@ -36,7 +38,7 @@ class YamlWrapper
 
   def load(filepath)
     begin
-      source = File.read(filepath)
+      source = @file_wrapper.read(filepath)
     rescue Errno::ENOENT
       raise YamlLoadException.new(
         reason: :not_found, source: filepath, original_error: nil,
@@ -89,7 +91,7 @@ class YamlWrapper
   end
 
   def dump(filepath, structure)
-    File.open(filepath, 'w') do |output|
+    @file_wrapper.open(filepath, 'w') do |output|
       YAML.dump(structure, output)
     end
   end

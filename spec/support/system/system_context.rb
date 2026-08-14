@@ -8,6 +8,9 @@
 require 'fileutils'
 require 'bundler'
 require 'ceedling/encodinator'
+require 'ceedling/file_wrapper'
+require 'ceedling/verbosinator'
+require 'ceedling/yaml_wrapper'
 require_relative 'gem_dir_layout'
 
 class SystemContext
@@ -170,8 +173,19 @@ class SystemContext
 
   ############################################################
   # Functions for manipulating project.yml files during tests:
+
+  # `self` here is a plain SystemContext instance, not an RSpec example, so
+  # RSpec::Mocks' `double` isn't reachable -- a trivial no-op stands in for it.
+  class NullLoginator
+    def log(*); end
+  end
+
   def merge_project_yml_for_test(settings, show_final=false)
-    yaml_wrapper = YamlWrapper.new
+    file_wrapper = FileWrapper.new({
+      :loginator    => NullLoginator.new,
+      :verbosinator => Verbosinator.new
+    })
+    yaml_wrapper = YamlWrapper.new({ file_wrapper: file_wrapper })
     project_hash = yaml_wrapper.load('project.yml')
     project_hash.deep_merge!(settings)
     puts "\n\n#{project_hash.to_yaml}\n\n" if show_final

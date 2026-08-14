@@ -15,7 +15,8 @@ describe DependencyDebugTree do
 
   before(:each) do
     @file_wrapper = instance_double('FileWrapper')
-    @yaml_wrapper = YamlWrapper.new # real: pure in-memory YAML (de)serialization, no FS of its own
+    # real: pure in-memory YAML (de)serialization via load_string only, no FS of its own
+    @yaml_wrapper = YamlWrapper.new({ file_wrapper: double('file_wrapper').as_null_object })
 
     # A tiny in-memory fake file store so writes and reads round-trip within
     # a single example, without ever touching a real disk.
