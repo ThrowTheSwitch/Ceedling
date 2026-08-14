@@ -50,14 +50,14 @@ describe FileWrapper do
       expect(@loginator).not_to have_received(:log)
     end
 
-    it 'logs a WARNING once length reaches 95% of the limit' do
-      # 4096 * 0.95 == 3891.2 -- 3892 is the first integer at/over threshold
-      @file_wrapper.check_path_length(path_of_length(3892), origin: 'Test')
+    it 'logs a WARNING once length is within the fixed margin (25) of the limit' do
+      # 4096 - 25 == 4071 -- the first length at/over threshold
+      @file_wrapper.check_path_length(path_of_length(4071), origin: 'Test')
       expect(@loginator).to have_received(:log).with(any_args, Verbosity::COMPLAIN)
     end
 
-    it 'does not yet log a WARNING one character under the 95% threshold' do
-      @file_wrapper.check_path_length(path_of_length(3891), origin: 'Test')
+    it 'does not yet log a WARNING one character under the margin threshold' do
+      @file_wrapper.check_path_length(path_of_length(4070), origin: 'Test')
       expect(@loginator).not_to have_received(:log)
     end
 

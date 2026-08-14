@@ -178,6 +178,11 @@ class FileWrapper
     return path
   end
 
+  # Path length gets flagged once it's within this many characters of the platform limit --
+  # a fixed margin rather than a percentage, since a near-miss matters the same whether the
+  # limit itself is Windows' cramped 260 or Linux's roomy 4096.
+  WARNING_MARGIN = 25
+
   # Warn as a path's length approaches its platform's practical ceiling, and flag if it
   # reaches or exceeds it. Logging only -- never raises or blocks the caller's own
   # operation, which will surface its own real failure on its own if the OS actually
@@ -195,7 +200,7 @@ class FileWrapper
         "#{prefix}Path length (#{length}) reaches or exceeds this platform's practical limit (#{limit}): #{path}",
         Verbosity::ERRORS
       )
-    elsif length >= (limit * 0.95)
+    elsif length >= (limit - WARNING_MARGIN)
       @loginator.log(
         "#{prefix}Path length (#{length}) is approaching this platform's practical limit (#{limit}): #{path}",
         Verbosity::COMPLAIN
