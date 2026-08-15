@@ -61,6 +61,19 @@ class IncludePathinator
     return headers
   end
 
+  # Header files reachable from an already-ordered directory priority list (e.g. a
+  # test's own search_paths), in that same order and deduplicated by first occurrence.
+  # This is the candidate list a compiler's own -I search would consult for a single
+  # test's #include resolution -- distinct from collection_all_headers, which is one
+  # global, project-wide list blind to any one test's own TEST_INCLUDE_PATH() priority.
+  def ordered_header_files(search_paths)
+    headers = []
+    search_paths.each do |path|
+      headers += @file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) )
+    end
+    return headers.uniq
+  end
+
   def augment_environment_header_files(headers)
     @configurator.redefine_element(:collection_all_headers, headers)
   end

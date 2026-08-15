@@ -427,6 +427,7 @@ test_build_planner:
     - reportinator
     - batchinator
     - test_context_extractor
+    - include_pathinator
     - partializer
     - file_finder
     - file_path_utils

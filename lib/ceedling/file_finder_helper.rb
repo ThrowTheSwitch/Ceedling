@@ -19,12 +19,25 @@ class FileFinderHelper
     found = PathMatcher.match(filename, file_list)
     return found unless found.nil?
 
-    matches = file_list.find_all {|v| v =~ /(?:\\|\/|^)#{Regexp.escape(filename)}$/i}
-    if (matches.length > 0)
-      blow_up(filename, "However, a filename having different capitalization was found: '#{matches[0]}'.")
+    return not_found_in_collection(filename, file_list, complain)
+  end
+
+  # As `#find_file_in_collection`, but never raises on ambiguity -- a query matching
+  # more than one file resolves to the first entry in `file_list`'s own order (which
+  # already reflects real project path priority), with an ℹ️ NOTICE naming what else
+  # matched so the choice isn't silent.
+  def resolve_file_in_collection(filename, file_list, complain)
+    found, others = PathMatcher.resolve(filename, file_list)
+    return not_found_in_collection(filename, file_list, complain) if found.nil?
+
+    unless others.empty?
+      msg = "Multiple files matched '#{filename}' but chose '#{found}' by search-path priority. " \
+            "Other candidates: #{others.join(', ')}. Add more path to '#{filename}' at its point " \
+            "of reference to select a different file."
+      @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
     end
 
-    return handle_missing_file(filename, complain)
+    return found
   end
 
   def find_best_path_in_collection(pathname, path_list, complain, description)
@@ -78,6 +91,20 @@ class FileFinderHelper
   ### Private ###
 
   private
+
+  # Shared by both #find_file_in_collection and #resolve_file_in_collection: neither
+  # can find any candidate at all, so the query's own basename gets one last check
+  # against every list entry case-insensitively -- catches the common slip of a
+  # filename typed with the wrong case before falling through to the caller's own
+  # not-found handling.
+  def not_found_in_collection(filename, file_list, complain)
+    matches = file_list.find_all {|v| v =~ /(?:\\|\/|^)#{Regexp.escape(filename)}$/i}
+    if (matches.length > 0)
+      blow_up(filename, "However, a filename having different capitalization was found: '#{matches[0]}'.")
+    end
+
+    return handle_missing_file(filename, complain)
+  end
 
   def blow_up(filename, extra_message="")
     error = ["Found no file `#{filename}` in search paths.", extra_message].join(' ').strip

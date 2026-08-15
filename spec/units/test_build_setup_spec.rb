@@ -68,6 +68,10 @@ describe TestBuildSetup do
     allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
     allow(@test_context_extractor).to receive(:ingest_includes)
 
+    # Harmless default -- individual examples needing a specific ordered header
+    # collection stub this again with a narrower `.with(...)` match.
+    allow(@include_pathinator).to receive(:ordered_header_files).and_return( [] )
+
     @setup = described_class.new(
       {
         :configurator           => @configurator,
@@ -351,6 +355,18 @@ describe TestBuildSetup do
         @setup.stage_collect_preprocessor_context( @state )
       end
 
+      it "resolves a mocked header's real source against the ordering collect_mock_search_paths (stage 2) originally saw for it -- this test's own search_paths minus its own mock_search_paths" do
+        @testable.search_paths      = ['build/test/mocks/a_test/drivers', 'src']
+        @testable.mock_search_paths = ['build/test/mocks/a_test/drivers']
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
+
+        expect(@include_pathinator).to receive(:ordered_header_files).with( ['src'] ).and_return( ['src/Foo.h'] )
+        expect(@file_finder).to receive(:resolve_mock).with( 'MockFoo.h', collection: ['src/Foo.h'] ).and_return( ['src/Foo.h', ''] )
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
       it "leaves an existing mocked header's stand-in path untouched, whether it holds real content or a prior stand-in" do
         allow(@file_wrapper).to receive(:exist?).and_return( true )
         allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
@@ -381,9 +397,58 @@ describe TestBuildSetup do
     end
   end
 
+  context "#stage_collect_preprocessor_context (reconciliation pass)" do
+    before(:each) do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+
+      # Isolates the reconciliation (third) pass from the first two: the bare-includes
+      # pass (first) actually extracts, so its result is a real, non-empty `bare` for
+      # reconcile to match against; the directives-only pass (second) is a cache hit,
+      # reusing the deterministic path it always computes regardless.
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/includes/Foo.c.yml').and_return( true )
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/raw/Foo.txt').and_return( false )
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('bar.h') ] )
+    end
+
+    it "logs an ℹ️ NOTICE naming the chosen file and every candidate passed over when reconciliation resolves an ambiguous #include" do
+      allow(@preprocessinator).to receive(:preprocess_user_includes).and_return(
+        [ UserInclude.new('foo/bar.h'), UserInclude.new('baz/bar.h') ]
+      )
+
+      expect(@loginator).to receive(:log).with(
+        a_string_matching(/foo\/bar\.h/).and(a_string_matching(/baz\/bar\.h/)).and(a_string_matching(/test\/TestFoo\.c/)),
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      @setup.stage_collect_preprocessor_context( @state )
+    end
+
+    it "logs no NOTICE when reconciliation resolves a bare #include uniquely" do
+      allow(@preprocessinator).to receive(:preprocess_user_includes).and_return(
+        [ UserInclude.new('foo/bar.h') ]
+      )
+
+      expect(@loginator).to_not receive(:log).with( anything, Verbosity::COMPLAIN, LogLabels::NOTICE )
+
+      @setup.stage_collect_preprocessor_context( @state )
+    end
+  end
+
   describe "#collect_mock_search_paths" do
     before(:each) do
       @testable.paths[:mocks] = 'build/test/mocks/a_test'
+
+      # collect_mock_search_paths rebuilds this test's own search_paths ordering directly
+      # (testable.search_paths doesn't exist yet -- see the method's own comment), so it
+      # needs the same collaborators #search_paths's own examples stub.
+      allow(@include_pathinator).to receive(:lookup_test_directive_include_paths).and_return( [] )
+      allow(@include_pathinator).to receive(:collect_test_include_paths).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_support).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_include).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_libraries).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
     end
 
     it "collects each non-Partial mocked header's own mirrored directory, deduplicated" do
@@ -391,19 +456,36 @@ describe TestBuildSetup do
       bar_mock = MockInclude.new('MockBar.h')
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [foo_mock, bar_mock] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h').and_return( ['src/drivers/foo.h', 'drivers'] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockBar.h').and_return( ['src/drivers/bar.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: []).and_return( ['src/drivers/foo.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockBar.h', collection: []).and_return( ['src/drivers/bar.h', 'drivers'] )
 
       result = @setup.collect_mock_search_paths( @testable )
 
       expect(result).to eq(['build/test/mocks/a_test/drivers'])
     end
 
+    it "resolves each mock's real header against this test's own TEST_INCLUDE_PATH()-then-configured-root ordering, with no mock_search_paths yet (that's what this call is computing)" do
+      allow(@include_pathinator).to receive(:lookup_test_directive_include_paths)
+        .with('test/TestFoo.c').and_return( ['other_inc'] )
+      allow(@configurator).to receive(:collection_paths_include).and_return( ['src'] )
+
+      foo_mock = MockInclude.new('MockFoo.h')
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+        .with('test/TestFoo.c').and_return( [foo_mock] )
+
+      expect(@include_pathinator).to receive(:ordered_header_files)
+        .with( ['build/test/mocks/a_test', 'other_inc', 'src'] ).and_return( ['other_inc/foo.h'] )
+      expect(@file_finder).to receive(:resolve_mock)
+        .with('MockFoo.h', collection: ['other_inc/foo.h']).and_return( ['other_inc/foo.h', ''] )
+
+      @setup.collect_mock_search_paths( @testable )
+    end
+
     it "uses the flat mock root itself for a header directly in a configured root" do
       foo_mock = MockInclude.new('MockFoo.h')
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [foo_mock] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h').and_return( ['src/foo.h', ''] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: []).and_return( ['src/foo.h', ''] )
 
       result = @setup.collect_mock_search_paths( @testable )
 

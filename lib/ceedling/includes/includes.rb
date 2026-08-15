@@ -174,10 +174,12 @@ class Includes
   # preprocessing resolved to a fuller real location than an unqualified bare #include
   # ever names). A bare entry matching more than one user/mock candidate (typically a
   # pathless bare entry corresponding to two same-named project files in different
-  # directories) is ambiguous and hard-errors naming every candidate, rather than silently
-  # keeping all of them or guessing one -- this is the one case reconciliation has enough
-  # information to actually tell apart two same-named candidates, and the same policy
-  # applies everywhere else a query is matched against a collection of real files.
+  # directories) resolves to the first candidate in `user`'s own order -- itself already
+  # real preprocessor-derived resolution order, so this mirrors the same first-by-known-
+  # priority policy applied everywhere else a query is matched against a collection of real
+  # files. `on_ambiguous`, when given, is called with the bare filepath, the chosen
+  # candidate, and every candidate passed over, so a caller with somewhere to log that
+  # (reconcile itself carries no logger) can surface it.
   #
   # System includes are still matched by filename alone: a system header commonly reaches
   # the same basename through more than one real file (a compiler-provided header
@@ -207,10 +209,10 @@ class Includes
   # includes are never resolved against a real file under `-nostdinc`, so its bare text
   # is always exactly what was written.
   #
-  # `test_filepath` plays no part in matching -- it's carried only so the ambiguity error
-  # below can name the one test file whose #include statement actually needs editing,
-  # since nothing further up the call stack adds that context on its own.
-  def self.reconcile(bare:, user:, system:, test_filepath: nil)
+  # `test_filepath` plays no part in matching -- it's carried only so a caller's own
+  # `on_ambiguous` block can name the one test file whose #include statement is worth a
+  # closer look, since nothing further up the call stack adds that context on its own.
+  def self.reconcile(bare:, user:, system:, test_filepath: nil, &on_ambiguous)
     # Validate input types
 
     # `bare` can only be base Include objects, no sub-classes.
@@ -255,24 +257,18 @@ class Includes
       # of the longer one's trailing segments must match.
       matched = user_filepaths.select { |filepath| paths_correspond?(bare_include.filepath, filepath) }
 
-      case matched.length
-      when 0
-        next
-      when 1
-        filepath = matched.first
-        next if seen.include?(filepath)
-        seen << filepath
-        # Deliberately not carrying an include_path override here -- see the class
-        # comment above `reconcile` for why that isn't safe for a user include the way
-        # it is for a system include. This renders filename-only, same as it always has.
-        user_includes << user_by_filepath[filepath]
-      else
-        location = test_filepath ? " within '#{test_filepath}'" : ''
-        raise CeedlingException.new(
-          "Ambiguous #include reference '#{bare_include.filepath}' found#{location}. " \
-          "Include more trailing path in that #include statement to distinguish among: #{matched.join(', ')}"
-        )
-      end
+      next if matched.empty?
+
+      filepath = matched.first
+      next if seen.include?(filepath)
+      seen << filepath
+
+      on_ambiguous&.call(bare_include.filepath, filepath, matched[1..]) if matched.length > 1
+
+      # Deliberately not carrying an include_path override here -- see the class
+      # comment above `reconcile` for why that isn't safe for a user include the way
+      # it is for a system include. This renders filename-only, same as it always has.
+      user_includes << user_by_filepath[filepath]
     end
 
     # Always system includes first (C best practice).

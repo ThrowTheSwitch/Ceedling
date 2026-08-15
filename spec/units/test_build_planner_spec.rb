@@ -28,6 +28,7 @@ describe TestBuildPlanner do
     @reportinator             = double( "Reportinator" )
     @batchinator               = double( "Batchinator" )
     @test_context_extractor     = double( "TestContextExtractor" )
+    @include_pathinator          = double( "IncludePathinator" )
     @partializer                 = double( "Partializer" )
     @file_finder                   = double( "FileFinder" )
     @file_path_utils                 = double( "FilePathUtils" )
@@ -38,6 +39,10 @@ describe TestBuildPlanner do
       things.each { |k, v| block.call(k, v) }
     end
 
+    # Harmless default -- individual examples needing a specific ordered header
+    # collection stub this again with a narrower `.with(...)` match.
+    allow(@include_pathinator).to receive(:ordered_header_files).and_return( [] )
+
     @planner = described_class.new(
       {
         :configurator           => @configurator,
@@ -45,6 +50,7 @@ describe TestBuildPlanner do
         :reportinator           => @reportinator,
         :batchinator            => @batchinator,
         :test_context_extractor => @test_context_extractor,
+        :include_pathinator     => @include_pathinator,
         :partializer            => @partializer,
         :file_finder            => @file_finder,
         :file_path_utils        => @file_path_utils,
@@ -54,10 +60,11 @@ describe TestBuildPlanner do
     )
 
     @testable = TestInvokerTypes::Testable.new(
-      :name     => 'a_test',
-      :filepath => 'test/TestFoo.c',
-      :paths    => { :build => 'build/test/out/a_test', :results => 'build/test/results/a_test' },
-      :mocks    => {}
+      :name         => 'a_test',
+      :filepath     => 'test/TestFoo.c',
+      :paths        => { :build => 'build/test/out/a_test', :results => 'build/test/results/a_test' },
+      :mocks        => {},
+      :search_paths => []
     )
     @state = TestInvokerTypes::PipelineState.new(
       :testables => { :a_test => @testable }, :context => :test, :options => [], :lock => Mutex.new
@@ -126,7 +133,7 @@ describe TestBuildPlanner do
           .with( 'test/TestFoo.c' ).and_return( [mock] )
         allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
         allow(@file_finder).to receive(:resolve_mock)
-          .with( 'MockFoo.h' ).and_return( ['src/drivers/foo.h', 'drivers'] )
+          .with( 'MockFoo.h', collection: [] ).and_return( ['src/drivers/foo.h', 'drivers'] )
         allow(@file_path_utils).to receive(:form_preprocessed_file_filepath)
           .with( 'src/drivers/foo.h', 'a_test' ).and_return( 'build/test/preprocess/files/a_test/full_expansion/foo.h' )
       end
@@ -388,7 +395,7 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [SystemInclude.new('stdio.h')] )
       expect(@file_finder).to_not receive(:find_header_file)
 
-      @planner.validate_header_includes( 'test/TestFoo.c' )
+      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
     end
 
     it "skips Unity's own header" do
@@ -396,7 +403,7 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('unity.h')] )
       expect(@file_finder).to_not receive(:find_header_file)
 
-      @planner.validate_header_includes( 'test/TestFoo.c' )
+      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
     end
 
     it "skips Ceedling's own Partials support header" do
@@ -404,7 +411,7 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('ceedling.h')] )
       expect(@file_finder).to_not receive(:find_header_file)
 
-      @planner.validate_header_includes( 'test/TestFoo.c' )
+      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
     end
 
     it "skips a Partial's own generated header" do
@@ -412,16 +419,19 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('ceedling_partial_foo_interface.h')] )
       expect(@file_finder).to_not receive(:find_header_file)
 
-      @planner.validate_header_includes( 'test/TestFoo.c' )
+      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
     end
 
-    it "resolves an ordinary header against the project's header collection, hard-erroring on no match or ambiguity" do
+    it "resolves an ordinary header against this test's own ordered search-path header collection, hard-erroring only on no match" do
       allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('drivers/foo.h')] )
+      @testable.search_paths = ['inc', 'src']
+      allow(@include_pathinator).to receive(:ordered_header_files)
+        .with( ['inc', 'src'] ).and_return( ['inc/drivers/foo.h'] )
 
-      expect(@file_finder).to receive(:find_header_file).with( 'drivers/foo.h', :error )
+      expect(@file_finder).to receive(:find_header_file).with( 'drivers/foo.h', :error, collection: ['inc/drivers/foo.h'] )
 
-      @planner.validate_header_includes( 'test/TestFoo.c' )
+      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
     end
   end
 

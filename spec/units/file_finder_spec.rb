@@ -19,6 +19,7 @@ describe FileFinder do
     @file_wrapper      = double( "FileWrapper" )
     @yaml_wrapper       = double( "YamlWrapper" )
     @loginator          = double( "Loginator" )
+    allow(@loginator).to receive(:log)
 
     # A real FileFinderHelper (already unit-tested on its own) so these specs exercise the
     # whole query -> FileFinder -> FileFinderHelper -> PathMatcher chain, not a mocked stub of it.
@@ -46,16 +47,28 @@ describe FileFinder do
       expect(@file_finder.find_header_file('baz')).to eq('baz.h')
     end
 
-    it 'raises a CeedlingException naming every candidate when a bare basename is ambiguous' do
-      expect { @file_finder.find_header_file('bar.h') }.to raise_error(CeedlingException) do |error|
-        expect(error.message).to include('unit/bar.h')
-        expect(error.message).to include('integration/bar.h')
+    it 'never raises on a bare, ambiguous basename -- resolves to the first candidate in collection order' do
+      expect(@file_finder.find_header_file('bar.h')).to eq('unit/bar.h')
+    end
+
+    it 'logs an ℹ️ NOTICE naming the passed-over candidate when a bare basename is ambiguous' do
+      expect(@loginator).to receive(:log) do |msg, verbosity, label|
+        expect(msg).to include('unit/bar.h')
+        expect(msg).to include('integration/bar.h')
+        expect(verbosity).to eq(Verbosity::COMPLAIN)
+        expect(label).to eq(LogLabels::NOTICE)
       end
+
+      @file_finder.find_header_file('bar.h')
     end
 
     it 'resolves an ambiguous basename when the query supplies enough path to disambiguate' do
       expect(@file_finder.find_header_file('unit/bar.h')).to eq('unit/bar.h')
       expect(@file_finder.find_header_file('integration/bar.h')).to eq('integration/bar.h')
+    end
+
+    it 'searches a caller-supplied collection instead of collection_all_headers when one is given' do
+      expect(@file_finder.find_header_file('baz.h', :error, collection: ['other/baz.h'])).to eq('other/baz.h')
     end
   end
 
@@ -71,11 +84,19 @@ describe FileFinder do
       expect(@file_finder.find_header_input_for_mock('Mockbaz.h')).to eq('baz.h')
     end
 
-    it 'raises a CeedlingException naming every candidate when a bare mock name is ambiguous' do
-      expect { @file_finder.find_header_input_for_mock('Mockbar.h') }.to raise_error(CeedlingException) do |error|
-        expect(error.message).to include('unit/bar.h')
-        expect(error.message).to include('integration/bar.h')
+    it 'never raises on a bare, ambiguous mock name -- resolves to the first candidate in collection order' do
+      expect(@file_finder.find_header_input_for_mock('Mockbar.h')).to eq('unit/bar.h')
+    end
+
+    it 'logs an ℹ️ NOTICE naming the passed-over candidate when a bare mock name is ambiguous' do
+      expect(@loginator).to receive(:log) do |msg, verbosity, label|
+        expect(msg).to include('unit/bar.h')
+        expect(msg).to include('integration/bar.h')
+        expect(verbosity).to eq(Verbosity::COMPLAIN)
+        expect(label).to eq(LogLabels::NOTICE)
       end
+
+      @file_finder.find_header_input_for_mock('Mockbar.h')
     end
 
     it 'resolves an ambiguous mock name when the query supplies enough path to disambiguate' do
@@ -83,10 +104,14 @@ describe FileFinder do
       expect(@file_finder.find_header_input_for_mock('integration/Mockbar.h')).to eq('integration/bar.h')
     end
 
-    it 'raises rather than silently matching just the basename when the given path is bogus' do
+    it 'still raises rather than silently matching just the basename when the given path is bogus (not-found, not ambiguity)' do
       expect {
         @file_finder.find_header_input_for_mock('nonexistent/dir/Mockbaz.h')
       }.to raise_error(CeedlingException)
+    end
+
+    it 'searches a caller-supplied collection instead of collection_all_headers when one is given' do
+      expect(@file_finder.find_header_input_for_mock('Mockbaz.h', collection: ['other/baz.h'])).to eq('other/baz.h')
     end
   end
 
@@ -120,8 +145,23 @@ describe FileFinder do
       expect(bare_subdir).to eq(pathed_subdir)
     end
 
-    it 'still raises on a bogus or ambiguous mock reference, exactly as find_header_input_for_mock does' do
+    it 'still raises on a bogus (not-found) mock reference, exactly as find_header_input_for_mock does' do
       expect { @file_finder.resolve_mock('nonexistent/dir/Mockfoo.h') }.to raise_error(CeedlingException)
+    end
+
+    it 'never raises on an ambiguous mock reference -- resolves to the first candidate in collection order' do
+      allow(@configurator).to receive(:collection_all_headers).and_return(
+        ['src/drivers/dup.h', 'src/other/dup.h']
+      )
+      source, subdir = @file_finder.resolve_mock('Mockdup.h')
+      expect(source).to eq('src/drivers/dup.h')
+      expect(subdir).to eq('drivers')
+    end
+
+    it 'searches a caller-supplied collection instead of collection_all_headers when one is given' do
+      source, subdir = @file_finder.resolve_mock('Mockfoo.h', collection: ['src/other/foo.h'])
+      expect(source).to eq('src/other/foo.h')
+      expect(subdir).to eq('other')
     end
   end
 
@@ -138,8 +178,19 @@ describe FileFinder do
       expect(@file_finder.find_source_file('foo/bar.c')).to eq('drivers/foo/bar.c')
     end
 
-    it 'raises a CeedlingException for a bare, ambiguous query' do
-      expect { @file_finder.find_source_file('bar.c') }.to raise_error(CeedlingException)
+    it 'never raises on a bare, ambiguous query -- resolves to the first candidate in collection order' do
+      expect(@file_finder.find_source_file('bar.c')).to eq('drivers/foo/bar.c')
+    end
+
+    it 'logs an ℹ️ NOTICE naming the passed-over candidate when a bare query is ambiguous' do
+      expect(@loginator).to receive(:log) do |msg, verbosity, label|
+        expect(msg).to include('drivers/foo/bar.c')
+        expect(msg).to include('drivers/baz/bar.c')
+        expect(verbosity).to eq(Verbosity::COMPLAIN)
+        expect(label).to eq(LogLabels::NOTICE)
+      end
+
+      @file_finder.find_source_file('bar.c')
     end
   end
 
@@ -149,6 +200,13 @@ describe FileFinder do
       allow(@configurator).to receive(:collection_all_assembly).and_return( ['src/foo.S'] )
 
       expect(@file_finder.find_assembly_file('foo')).to eq('src/foo.S')
+    end
+
+    it 'never raises on an ambiguous match -- resolves to the first candidate in collection order' do
+      allow(@configurator).to receive(:extension_assembly).and_return( FilenameExtension.new('.s') )
+      allow(@configurator).to receive(:collection_all_assembly).and_return( ['drivers/foo/bar.s', 'drivers/baz/bar.s'] )
+
+      expect(@file_finder.find_assembly_file('bar')).to eq('drivers/foo/bar.s')
     end
   end
 
@@ -192,17 +250,28 @@ describe FileFinder do
       allow(@configurator).to receive(:project_build_root).and_return('build')
     end
 
-    it 'raises a CeedlingException, rather than silently guessing, when two release sources share a basename' do
+    it 'never raises, rather than silently missing a build, when two release sources share a basename -- resolves to the first by project path order' do
       allow(@configurator).to receive(:collection_release_build_input).and_return(
         ['drivers/foo/bar.c', 'drivers/baz/bar.c']
       )
 
-      expect {
-        @file_finder.find_build_input_file( filepath: 'build/release/out/bar.o', complain: :error, context: RELEASE_SYM )
-      }.to raise_error(CeedlingException) do |error|
-        expect(error.message).to include('drivers/foo/bar.c')
-        expect(error.message).to include('drivers/baz/bar.c')
+      found = @file_finder.find_build_input_file( filepath: 'build/release/out/bar.o', complain: :error, context: RELEASE_SYM )
+      expect(found).to eq('drivers/foo/bar.c')
+    end
+
+    it 'logs an ℹ️ NOTICE naming the passed-over release source when ambiguous' do
+      allow(@configurator).to receive(:collection_release_build_input).and_return(
+        ['drivers/foo/bar.c', 'drivers/baz/bar.c']
+      )
+
+      expect(@loginator).to receive(:log) do |msg, verbosity, label|
+        expect(msg).to include('drivers/foo/bar.c')
+        expect(msg).to include('drivers/baz/bar.c')
+        expect(verbosity).to eq(Verbosity::COMPLAIN)
+        expect(label).to eq(LogLabels::NOTICE)
       end
+
+      @file_finder.find_build_input_file( filepath: 'build/release/out/bar.o', complain: :error, context: RELEASE_SYM )
     end
 
     it 'still resolves a genuinely unique release source by basename' do
@@ -356,6 +425,15 @@ describe FileFinder do
         filepath: 'build/test/out/TestFoo/bar.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('drivers/bar.c')
+    end
+
+    it 'never raises on a bare, ambiguous TEST_SOURCE_FILE()-style query -- resolves to the first candidate by project path order' do
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return(
+        ['drivers/foo/bar.c', 'drivers/baz/bar.c']
+      )
+
+      found = @file_finder.find_build_input_file( filepath: 'bar.c', complain: :ignore, context: TEST_SYM )
+      expect(found).to eq('drivers/foo/bar.c')
     end
 
     it 'preserves a source-tree-relative query\'s own path, rather than collapsing it to a bare basename' do

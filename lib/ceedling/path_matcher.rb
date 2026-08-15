@@ -32,6 +32,23 @@ class PathMatcher
     end
   end
 
+  # As `.match`, but never raises. When more than one candidate matches, the winner
+  # is simply the first entry in `collection`'s own order -- callers hand this method
+  # a collection whose order already reflects real priority (e.g. a project's own
+  # `:paths` configuration order, which mirrors the order a compiler's own search
+  # paths would consult), so the earliest-listed candidate is the one a real build
+  # would actually find first.
+  #
+  # Returns [winner, others] -- `winner` is the resolved file or nil; `others` is
+  # every remaining candidate passed over, empty unless genuinely ambiguous, so a
+  # caller can decide whether anything is worth telling the user about.
+  def self.resolve(query, collection)
+    found = candidates(query, collection)
+    winner = found.first
+    others = found[1..] || []
+    return [winner, others]
+  end
+
   # Every entry in `collection` that `query` could refer to.
   def self.candidates(query, collection)
     if absolute?(query)

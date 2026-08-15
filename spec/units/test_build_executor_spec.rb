@@ -1000,4 +1000,65 @@ describe TestBuildExecutor do
       @executor.stage_generate_partials( @state )
     end
   end
+
+  context "#validate_build_directive_source_files" do
+    before(:each) do
+      allow(@configurator).to receive(:extension_source).and_return( FilenameExtension.new('.c') )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+    end
+
+    it "does nothing when a test file has no TEST_SOURCE_FILE() directives" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/test_foo.c' ).and_return( [] )
+      expect(@file_finder).to_not receive(:find_build_input_file)
+
+      @executor.send( :validate_build_directive_source_files, test: 'test_foo', filepath: 'test/test_foo.c' )
+    end
+
+    it "raises when a TEST_SOURCE_FILE() entry does not carry the configured source extension" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/test_foo.c' ).and_return( ['foo.txt'] )
+
+      expect {
+        @executor.send( :validate_build_directive_source_files, test: 'test_foo', filepath: 'test/test_foo.c' )
+      }.to raise_error( CeedlingException, /'foo\.txt'.*TEST_SOURCE_FILE\(\).*test_foo.*not a .*\.c.*source file/ )
+    end
+
+    it "accepts an assembly extension alongside the source extension when test build assembly is enabled" do
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( true )
+      allow(@configurator).to receive(:extension_assembly).and_return( FilenameExtension.new('.s') )
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/test_foo.c' ).and_return( ['foo.s'] )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'foo.s', complain: :ignore, context: TEST_SYM ).and_return( 'src/foo.s' )
+
+      expect {
+        @executor.send( :validate_build_directive_source_files, test: 'test_foo', filepath: 'test/test_foo.c' )
+      }.to_not raise_error
+    end
+
+    it "raises when a validly-named TEST_SOURCE_FILE() entry cannot be found in the source file collection" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/test_foo.c' ).and_return( ['foo.c'] )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'foo.c', complain: :ignore, context: TEST_SYM ).and_return( nil )
+
+      expect {
+        @executor.send( :validate_build_directive_source_files, test: 'test_foo', filepath: 'test/test_foo.c' )
+      }.to raise_error( CeedlingException, /'foo\.c'.*TEST_SOURCE_FILE\(\).*test_foo.*cannot be found in the source file collection/ )
+    end
+
+    it "does not raise when every TEST_SOURCE_FILE() entry resolves" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/test_foo.c' ).and_return( ['foo.c', 'bar.c'] )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'foo.c', complain: :ignore, context: TEST_SYM ).and_return( 'src/foo.c' )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'bar.c', complain: :ignore, context: TEST_SYM ).and_return( 'src/dir/bar.c' )
+
+      expect {
+        @executor.send( :validate_build_directive_source_files, test: 'test_foo', filepath: 'test/test_foo.c' )
+      }.to_not raise_error
+    end
+  end
 end
