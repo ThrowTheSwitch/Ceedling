@@ -49,6 +49,16 @@ meant.
   to provide a path to distinguish source files of the same name to be 
   compiled and linked with a test executable.
 
+`TEST_SOURCE_FILE()` also takes precedence over the header/source correspondence
+convention above. If a test both `#include`s a header and separately names a
+same-named source via `TEST_SOURCE_FILE()`, the directive's own path wins outright
+— its source is the one compiled, and the header/source convention does not also
+compile whatever it would otherwise have found on its own for that same name. This
+holds even when the header's own `#include` was already unambiguous; a
+`TEST_SOURCE_FILE()` entry sharing that basename is always authoritative. (The
+header itself is still validated/resolved as usual — only which *source* file gets
+compiled for a shared basename is affected.)
+
 ### Test files (CLI test tasks)
 
 Execute [`ceedling test:` tasks][ceedling-test] at the command line with an

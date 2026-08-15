@@ -225,6 +225,12 @@ class TestBuildPlanner
       sources << @file_finder.find_build_input_file( filepath: source, complain: :ignore, context: context )
     end
 
+    # TEST_SOURCE_FILE() is authoritative: a directive-resolved source's own basename
+    # (extension-agnostic) takes precedence over whatever the implicit #include
+    # convention would separately resolve for a same-named header, so the two
+    # conventions never compile two different files for one logical module.
+    directive_stems = sources.compact.map { |path| File.basename(path).ext('') }
+
     _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename( filepath ).ext( EXTENSION_HEADER.primary ) }
 
     includes = @test_context_extractor.lookup_all_header_includes_list( test_filepath )
@@ -233,6 +239,7 @@ class TestBuildPlanner
       next if _basename == UNITY_H_FILE
       next if _basename.start_with?( CMOCK_MOCK_PREFIX )
       next if _support_headers.include?( _basename )
+      next if directive_stems.include?( File.basename(_basename).ext('') )
 
       sources << @file_finder.find_build_input_file( filepath: include.filepath, complain: :ignore, context: context )
     end

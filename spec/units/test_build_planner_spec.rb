@@ -579,5 +579,50 @@ describe TestBuildPlanner do
 
       expect(result).to include( 'build/test/partials/a_test/Baz.c' )
     end
+
+    it "skips the implicit header-driven resolution entirely when a TEST_SOURCE_FILE() entry already shares the header's own basename -- unconditionally, not only when the implicit resolution would otherwise be ambiguous" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/TestFoo.c' ).and_return( ['beta/foo.c'] )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'beta/foo.c', complain: :ignore, context: :test ).and_return( 'src/beta/foo.c' )
+      expect(@file_finder).to_not receive(:find_build_input_file)
+        .with( filepath: 'foo.h', complain: :ignore, context: :test )
+
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+
+      expect(result).to eq( ['src/beta/foo.c'] )
+    end
+
+    it "matches a TEST_SOURCE_FILE() entry to a header by basename stem alone, regardless of the directive's own real extension" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/TestFoo.c' ).and_return( ['beta/foo.cpp'] )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'beta/foo.cpp', complain: :ignore, context: :test ).and_return( 'src/beta/foo.cpp' )
+      expect(@file_finder).to_not receive(:find_build_input_file)
+        .with( filepath: 'foo.h', complain: :ignore, context: :test )
+
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+
+      expect(result).to eq( ['src/beta/foo.cpp'] )
+    end
+
+    it "leaves the implicit header-driven resolution untouched when a TEST_SOURCE_FILE() entry names an unrelated basename (the documented header-less use case)" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/TestFoo.c' ).and_return( ['calc.c'] )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'calc.c', complain: :ignore, context: :test ).and_return( 'src/calc.c' )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'foo.h', complain: :ignore, context: :test ).and_return( 'src/foo.c' )
+
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+
+      expect(result).to match_array( ['src/calc.c', 'src/foo.c'] )
+    end
   end
 end
