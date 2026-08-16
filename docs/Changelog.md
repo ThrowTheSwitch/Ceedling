@@ -34,11 +34,15 @@ Platform filepath limits (especially Windows) can lead to mysterious build failu
 
 ## ⚠️ Changed
 
-### `#include` relative paths & duplicate filename disambiguation
+### `#include` relative paths & duplicate filename disambiguation in test builds
 Because of the support added for handling paths and distinguishing duplicated filenames, the functional interface for testing has changed.
 
 1. The interface for test-build command line tasks has expanded. If you need to distinguish _foo/test_thing.c_ from _bar/test_thing.c_, you must now add a trailing path to disambiguate the tests — `ceedling test:foo/thing` and `ceedling test:bar/thing`. The trailing path is optional and is only required to distinguish test files of the same name in different subdirectories. Of course, the test files must both be in the collection created by your `:paths` and `:extension` configurations.
-1. Paths in `#include` directives are optional but now required to disambiguate header files of the same filename. 
+1. Paths in `#include` directives are optional but available to direct Ceedling to the proper header file for your test build needs. This is especially useful to distinguish header files of the same name in your project. Without a path in an `#include` directive, Ceedling works identically to a compiler, selecting the first file among ordered search paths.
+
+### Use `TEST_SOURCE_PATH()` to override Ceedling’s .c / .h correspondence convention in tests
+
+Historically, Ceedling automatically compiles and links into a test executable any C source file whose name matches an `#include`d header file. Sometimes this convention can select the wrong file among same-named files or compile and link an entirely unwanted source file whose name happens to match a header file.
 
 ---
 
