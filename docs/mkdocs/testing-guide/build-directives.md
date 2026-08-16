@@ -6,7 +6,7 @@ Ceedling supports a small number of build directive macros. At present,
 these macros are only for use in test files.
 
 By placing these macros in your test files, you may control aspects of an 
-individual test executable's build from within the test file itself.
+individual test executable’s build from within the test file itself.
 
 These macros are actually defined in Unity, but they evaluate to empty 
 strings. That is, the macros do nothing and only serve as text markers for 
@@ -16,14 +16,14 @@ test build.
 
 **_Notes:_**
 
-- Since these macros are defined in _unity.h_, it's essential to 
+- Since these macros are defined in _unity.h_, it’s essential to 
   `#include "unity.h"` before making use of them in your test file. 
   Typically, _unity.h_ is referenced at or near the top of a test file
   anyhow, but this is an important detail to call out.
 - **`TEST_SOURCE_FILE()` and `TEST_INCLUDE_PATH()`, new in Ceedling 
   1.0.0, are incompatible with enclosing conditional compilation C 
   preprocessing statements.** See
-  [Ceedling's preprocessing documentation](conventions.md#preprocessing-gotchas) 
+  [Ceedling’s preprocessing documentation](conventions.md#preprocessing-gotchas) 
   for more details.
 
 ## `TEST_SOURCE_FILE()`
@@ -31,7 +31,7 @@ test build.
 ### `TEST_SOURCE_FILE()` Purpose
 
 The `TEST_SOURCE_FILE()` build directive allows the simple injection of 
-a specific source file into a test executable's build.
+a specific source file into a test executable’s build.
 
 The Ceedling [convention](conventions.md) of compiling and linking 
 any C file that corresponds in name to an `#include`d header file does 
@@ -52,17 +52,33 @@ test executable—if assembly support is enabled for test builds.
 The argument for the `TEST_SOURCE_FILE()` build directive macro is a 
 single filename or filepath as a string enclosed in quotation marks. Use
 forward slashes for path separators. The filename or filepath must be 
-present within Ceedling's source file collection.
+present within Ceedling’s source file collection.
 
 To understand your source file collection:
 
 - See the documentation for project file configuration section 
   [`:paths`](../configuration/reference/paths.md).
-- Dump a listing your project's source files with the command line task
+- Dump a listing your project’s source files with the command line task
   `ceedling files:source`.
 
 Multiple uses of `TEST_SOURCE_FILE()` are perfectly fine. You'll likely
 want one per line within your test file.
+
+### `TEST_SOURCE_FILE()` & the Header/Source Convention
+
+`TEST_SOURCE_FILE()` takes precedence over Ceedling’s usual convention of
+compiling and linking whatever C file corresponds by name to an `#include`d
+header. If your test file both `#include`s a header and separately names a
+same-named source with `TEST_SOURCE_FILE()`, the directive’s own file is the
+one compiled. Ceedling does not also compile whatever the header/source
+convention would have found on its own.
+
+Ceedling logs an informational notice naming the winning `TEST_SOURCE_FILE()`
+entry and the `#include` it overrode, so the substitution is never silent.
+
+See [Distinguishing same-named files](conventions.md#header--source-files)
+for the full discussion of this and Ceedling’s other file-disambiguation
+conventions.
 
 ### `TEST_SOURCE_FILE()` Example
 
@@ -102,7 +118,7 @@ is necessary for every test executable build. That path can come from a `:paths`
 in a test file.
 
 Please see [Configuring Your Header File Search Paths](conventions.md#test-build-search-paths)
-for an overview of Ceedling's options and conventions for header file search paths.
+for an overview of Ceedling’s options and conventions for header file search paths.
 
 ### `TEST_INCLUDE_PATH()` Usage
 
@@ -134,7 +150,7 @@ per line within your test file.
 #include "unity.h"    // Contains TEST_INCLUDE_PATH() definition
 #include "somefile.h" // Needed symbols and macros
 
-// Add the following to the compiler's -I search paths used to
+// Add the following to the compiler’s -I search paths used to
 // compile all components comprising the test_mycode executable.
 TEST_INCLUDE_PATH("foo/bar/")
 TEST_INCLUDE_PATH("/usr/local/include/baz/")

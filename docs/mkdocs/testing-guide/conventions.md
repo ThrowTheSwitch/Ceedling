@@ -57,7 +57,10 @@ compile whatever it would otherwise have found on its own for that same name. Th
 holds even when the header's own `#include` was already unambiguous; a
 `TEST_SOURCE_FILE()` entry sharing that basename is always authoritative. (The
 header itself is still validated/resolved as usual — only which *source* file gets
-compiled for a shared basename is affected.)
+compiled for a shared basename is affected.) Like the search-path resolution
+above, this override is logged with an informational notice naming the winning
+`TEST_SOURCE_FILE()` entry and the `#include` it overrode, so the substitution
+is not silent either.
 
 ### Test files (CLI test tasks)
 
