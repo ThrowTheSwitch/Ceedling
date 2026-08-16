@@ -228,8 +228,12 @@ class TestBuildPlanner
     # TEST_SOURCE_FILE() is authoritative: a directive-resolved source's own basename
     # (extension-agnostic) takes precedence over whatever the implicit #include
     # convention would separately resolve for a same-named header, so the two
-    # conventions never compile two different files for one logical module.
-    directive_stems = sources.compact.map { |path| File.basename(path).ext('') }
+    # conventions never compile two different files for one logical module. Keyed
+    # by stem rather than a bare list so the override, when it applies, can name
+    # which directive-resolved file actually won.
+    directive_by_stem = sources.compact.each_with_object({}) do |path, hash|
+      hash[File.basename(path).ext('')] = path
+    end
 
     _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename( filepath ).ext( EXTENSION_HEADER.primary ) }
 
@@ -239,7 +243,14 @@ class TestBuildPlanner
       next if _basename == UNITY_H_FILE
       next if _basename.start_with?( CMOCK_MOCK_PREFIX )
       next if _support_headers.include?( _basename )
-      next if directive_stems.include?( File.basename(_basename).ext('') )
+
+      stem = File.basename(_basename).ext('')
+      if directive_by_stem.key?( stem )
+        msg = "TEST_SOURCE_FILE() '#{directive_by_stem[stem]}' overrides the source " \
+              "otherwise implicitly matched to '#{include.filepath}' in #{test_filepath}."
+        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        next
+      end
 
       sources << @file_finder.find_build_input_file( filepath: include.filepath, complain: :ignore, context: context )
     end

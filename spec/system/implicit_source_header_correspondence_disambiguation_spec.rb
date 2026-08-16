@@ -169,6 +169,12 @@ ceedling_system_tests do
             # not both. A duplicate-symbol link error would have failed the build otherwise.
             expect(File.exist?('build/test/out/test_dup_override/beta/dup.o')).to be true
             expect(File.exist?('build/test/out/test_dup_override/alpha/dup.o')).to be false
+
+            # A second, distinct NOTICE -- from extract_sources's own override, not the
+            # header-ambiguity NOTICE above -- names the winning TEST_SOURCE_FILE() entry
+            # and the #include it overrode.
+            expect(output).to match(/TEST_SOURCE_FILE\(\).*beta[\/\\]dup\.c/)
+            expect(output).to match(/dup\.h/)
           end
         end
       end

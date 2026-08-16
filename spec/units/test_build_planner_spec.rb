@@ -42,6 +42,7 @@ describe TestBuildPlanner do
     # Harmless default -- individual examples needing a specific ordered header
     # collection stub this again with a narrower `.with(...)` match.
     allow(@include_pathinator).to receive(:ordered_header_files).and_return( [] )
+    allow(@loginator).to receive(:log)
 
     @planner = described_class.new(
       {
@@ -580,7 +581,7 @@ describe TestBuildPlanner do
       expect(result).to include( 'build/test/partials/a_test/Baz.c' )
     end
 
-    it "skips the implicit header-driven resolution entirely when a TEST_SOURCE_FILE() entry already shares the header's own basename -- unconditionally, not only when the implicit resolution would otherwise be ambiguous" do
+    it "skips the implicit header-driven resolution entirely when a TEST_SOURCE_FILE() entry already shares the header's own basename -- unconditionally, not only when the implicit resolution would otherwise be ambiguous -- and logs a NOTICE naming the override" do
       allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
         .with( 'test/TestFoo.c' ).and_return( ['beta/foo.c'] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
@@ -589,13 +590,18 @@ describe TestBuildPlanner do
         .with( filepath: 'beta/foo.c', complain: :ignore, context: :test ).and_return( 'src/beta/foo.c' )
       expect(@file_finder).to_not receive(:find_build_input_file)
         .with( filepath: 'foo.h', complain: :ignore, context: :test )
+      expect(@loginator).to receive(:log).with(
+        a_string_matching(/src\/beta\/foo\.c/).and(a_string_matching(/foo\.h/)).and(a_string_matching(/test\/TestFoo\.c/)),
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
 
       result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
 
       expect(result).to eq( ['src/beta/foo.c'] )
     end
 
-    it "matches a TEST_SOURCE_FILE() entry to a header by basename stem alone, regardless of the directive's own real extension" do
+    it "matches a TEST_SOURCE_FILE() entry to a header by basename stem alone, regardless of the directive's own real extension, and logs a NOTICE naming the override" do
       allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
         .with( 'test/TestFoo.c' ).and_return( ['beta/foo.cpp'] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
@@ -604,13 +610,18 @@ describe TestBuildPlanner do
         .with( filepath: 'beta/foo.cpp', complain: :ignore, context: :test ).and_return( 'src/beta/foo.cpp' )
       expect(@file_finder).to_not receive(:find_build_input_file)
         .with( filepath: 'foo.h', complain: :ignore, context: :test )
+      expect(@loginator).to receive(:log).with(
+        a_string_matching(/src\/beta\/foo\.cpp/).and(a_string_matching(/foo\.h/)),
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
 
       result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
 
       expect(result).to eq( ['src/beta/foo.cpp'] )
     end
 
-    it "leaves the implicit header-driven resolution untouched when a TEST_SOURCE_FILE() entry names an unrelated basename (the documented header-less use case)" do
+    it "leaves the implicit header-driven resolution untouched, logging nothing, when a TEST_SOURCE_FILE() entry names an unrelated basename (the documented header-less use case)" do
       allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
         .with( 'test/TestFoo.c' ).and_return( ['calc.c'] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
@@ -619,6 +630,7 @@ describe TestBuildPlanner do
         .with( filepath: 'calc.c', complain: :ignore, context: :test ).and_return( 'src/calc.c' )
       allow(@file_finder).to receive(:find_build_input_file)
         .with( filepath: 'foo.h', complain: :ignore, context: :test ).and_return( 'src/foo.c' )
+      expect(@loginator).to_not receive(:log)
 
       result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
 
