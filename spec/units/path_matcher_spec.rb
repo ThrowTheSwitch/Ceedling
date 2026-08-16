@@ -81,4 +81,43 @@ describe PathMatcher do
     end
   end
 
+  describe '.resolve' do
+    it 'returns the single match and an empty passed-over list when a bare basename is unique' do
+      winner, others = described_class.resolve('a.c', COLLECTION)
+      expect(winner).to eq('some/dir/a.c')
+      expect(others).to eq([])
+    end
+
+    it 'returns nil and an empty passed-over list when nothing matches' do
+      winner, others = described_class.resolve('nope.c', COLLECTION)
+      expect(winner).to be_nil
+      expect(others).to eq([])
+    end
+
+    it 'never raises on an ambiguous bare basename -- picks the first candidate in collection order' do
+      winner, others = described_class.resolve('c.cpp', COLLECTION)
+      expect(winner).to eq('here/src/c.cpp')
+      expect(others).to eq(['copy/SRC/c.cpp'])
+    end
+
+    it 'still resolves via disambiguating trailing path exactly as .match does, with nothing passed over' do
+      winner, others = described_class.resolve('src/c.cpp', COLLECTION)
+      expect(winner).to eq('here/src/c.cpp')
+      expect(others).to eq([])
+    end
+
+    it 'picks the first of three or more ambiguous candidates, naming the rest as passed over' do
+      collection = ['b/x.h', 'a/x.h', 'c/x.h']
+      winner, others = described_class.resolve('x.h', collection)
+      expect(winner).to eq('b/x.h')
+      expect(others).to eq(['a/x.h', 'c/x.h'])
+    end
+
+    it 'resolves an empty collection to nil with nothing passed over' do
+      winner, others = described_class.resolve('a.c', [])
+      expect(winner).to be_nil
+      expect(others).to eq([])
+    end
+  end
+
 end

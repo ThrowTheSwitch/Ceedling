@@ -16,7 +16,12 @@ class FileFinder
   constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper
 
 
-  def find_header_input_for_mock(mock)
+  # `collection`, when given, is a caller's own already-ordered, per-test header list
+  # (see IncludePathinator#ordered_header_files) reflecting that one test's real search-path
+  # priority -- TEST_INCLUDE_PATH() ranked ahead of :support/:include, as a real compile would
+  # see it. Absent that (a caller with no single test in view, e.g. Partializer resolving a
+  # module generically), the project-wide collection_all_headers is the only sensible fallback.
+  def find_header_input_for_mock(mock, collection: nil)
     # Mock name/path => <mock prefix><header filename (.h)>, optionally preceded by however
     # much path the #include itself carried (e.g. 'Mockfoo.h' or 'drivers/Mockfoo.h').
     # Note: In some rare cases, a mock name may include a dot (ex. Sensor.44) because of versioning file naming convention
@@ -30,9 +35,9 @@ class FileFinder
     basename = File.basename(mock).delete_prefix(@configurator.cmock_mock_prefix)
     header   = dir == '.' ? basename : File.join(dir, basename)
 
-    found_path = @file_finder_helper.find_file_in_collection(
+    found_path = @file_finder_helper.resolve_file_in_collection(
       header,
-      @configurator.collection_all_headers,
+      collection || @configurator.collection_all_headers,
       :error
     )
 
@@ -45,16 +50,22 @@ class FileFinder
   # also needs (or can reuse) the header path it was derived from, and every caller placing
   # a mock's own files -- its search path, an early stand-in for it, or its real generated
   # content -- must agree on exactly the same subdirectory for that mock to ever compile.
-  def resolve_mock(mock)
-    source = find_header_input_for_mock(mock)
+  def resolve_mock(mock, collection: nil)
+    source = find_header_input_for_mock(mock, collection: collection)
     subdir = PathMirror.relative_subdir(source, @configurator.paths_test + @configurator.paths_support + @configurator.paths_include)
     return [source, subdir]
   end
 
 
   # Find test filepath from only the base name of a test file (e.g. 'test_foo')
+  #
+  # Deliberately strict, unlike every other lookup this class performs: a human typing
+  # a `ceedling test:<name>` command needs to be told outright when their own name is
+  # ambiguous, not have Ceedling silently guess which test they meant -- there's no
+  # compilation step downstream to catch a wrong guess the way there is for a header
+  # or source file resolved during a build.
   def find_test_file_from_name(name)
-    return find_first_candidate(name, @configurator.extension_source, @configurator.collection_all_tests, :error)
+    return find_first_candidate(name, @configurator.extension_source, @configurator.collection_all_tests, :error, strict: true)
   end
 
 
@@ -193,8 +204,10 @@ class FileFinder
   end
 
 
-  def find_header_file(filepath, complain = :error)
-    return find_first_candidate(filepath, @configurator.extension_header, @configurator.collection_all_headers, complain)
+  # `collection`, when given, overrides collection_all_headers with a caller's own
+  # already-ordered, per-test header list -- see find_header_input_for_mock's comment.
+  def find_header_file(filepath, complain = :error, collection: nil)
+    return find_first_candidate(filepath, @configurator.extension_header, collection || @configurator.collection_all_headers, complain)
   end
 
   def find_source_file(filepath, complain = :error)
@@ -284,41 +297,69 @@ class FileFinder
   # alone doesn't say which candidate filename actually exists. Every candidate but the
   # last is searched for quietly by plain exact match -- a miss there just means trying
   # the next spelling, not a real problem, and critically, must not go through
-  # find_file_in_collection at all: that helper's own case-insensitive "did you mean"
-  # fallback would otherwise fire on an early, expected miss (trying `.s` before `.S`, say)
-  # the moment ANY differently-cased candidate happens to exist on disk, well before every
-  # real candidate has had its turn. Only the true last candidate is searched under the
-  # caller's own complain-on-miss behavior, so a genuine failure still reports one sensible name.
-  def find_first_candidate(query, extension, collection, complain)
+  # find_file_in_collection/resolve_file_in_collection at all: that helper's own
+  # case-insensitive "did you mean" fallback would otherwise fire on an early, expected
+  # miss (trying `.s` before `.S`, say) the moment ANY differently-cased candidate
+  # happens to exist on disk, well before every real candidate has had its turn. Only
+  # the true last candidate is searched under the caller's own complain-on-miss
+  # behavior, so a genuine failure still reports one sensible name -- and, in non-strict
+  # mode, is the one place an ambiguity-resolution NOTICE gets logged (an ambiguity
+  # among the quietly-tried earlier spellings resolves silently; extension collections
+  # with only one configured spelling, the common case, always resolve via this last,
+  # logged attempt anyway).
+  #
+  # `strict:` selects which of the two ambiguity policies every attempt uses: raise
+  # (today's only behavior, still used by CLI test-name resolution) or resolve to the
+  # first match by collection order (everything else).
+  def find_first_candidate(query, extension, collection, complain, strict: false)
     candidates = extension.candidates(query)
 
     candidates[0...-1].each do |candidate|
-      found = match_candidate(candidate, collection)
+      found = match_candidate(candidate, collection, strict: strict)
       return found unless found.nil?
     end
 
-    return @file_finder_helper.find_file_in_collection(candidates.last, collection, complain)
+    if strict
+      return @file_finder_helper.find_file_in_collection(candidates.last, collection, complain)
+    else
+      return @file_finder_helper.resolve_file_in_collection(candidates.last, collection, complain)
+    end
   end
 
   # As `find_first_candidate`, but builds each candidate by plain string concatenation
   # rather than `String#ext` -- some legacy filenames carry a dotted version segment
   # (e.g. `foo.44`), and `.ext` would clobber that segment while re-adding the extension.
-  # Every candidate is searched for quietly; the caller decides how to react if none exist.
-  def try_extensions(basename, extension, collection)
-    extension.each do |ext|
-      found = match_candidate(basename + ext, collection)
+  # Mirrors find_first_candidate's quiet-until-the-last-spelling shape (see its own
+  # comment) -- the caller decides how to react if no spelling is ever found.
+  def try_extensions(basename, extension, collection, strict: false)
+    exts = extension.to_a
+
+    exts[0...-1].each do |ext|
+      found = match_candidate(basename + ext, collection, strict: strict)
       return found unless found.nil?
     end
 
-    return nil
+    last = basename + exts.last
+
+    if strict
+      return @file_finder_helper.find_file_in_collection(last, collection, :ignore)
+    else
+      return @file_finder_helper.resolve_file_in_collection(last, collection, :ignore)
+    end
   end
 
   # A single candidate query, matched against `collection` via the shared path-aware
-  # matcher, with no fuzzy fallback of any kind -- callers trying several candidate
-  # spellings in turn need each individual attempt to simply say yes or no (or raise on
-  # genuine ambiguity), not fall back to guessing partway through.
-  def match_candidate(candidate, collection)
-    return PathMatcher.match(candidate, collection)
+  # matcher. Strict mode raises on genuine ambiguity, exactly as today; non-strict mode
+  # silently takes the first match by collection order with no log of its own -- this
+  # quiet probe is for trying several candidate spellings in turn, not the caller's
+  # real resolution attempt (see find_first_candidate/try_extensions).
+  def match_candidate(candidate, collection, strict: false)
+    if strict
+      return PathMatcher.match(candidate, collection)
+    else
+      winner, _others = PathMatcher.resolve(candidate, collection)
+      return winner
+    end
   end
 
 end

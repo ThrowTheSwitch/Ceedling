@@ -1167,7 +1167,7 @@ describe "Includes reconciliation" do
       expect(result.map(&:filepath)).to include("foo/bar.h", "baz/bar.h")
     end
 
-    it "raises a CeedlingException, rather than silently guessing, when a pathless bare entry could correspond to either of two same-named candidates" do
+    it "never raises, resolving to the first candidate in user's own order, when a pathless bare entry could correspond to either of two same-named candidates" do
       bare = [Include.new("bar.h")]
 
       user = [
@@ -1177,15 +1177,13 @@ describe "Includes reconciliation" do
 
       system = []
 
-      expect {
-        Includes.reconcile(bare: bare, user: user, system: system)
-      }.to raise_error(CeedlingException) do |error|
-        expect(error.message).to include("foo/bar.h")
-        expect(error.message).to include("baz/bar.h")
-      end
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect(result.first.filepath).to eq("foo/bar.h")
     end
 
-    it "names the test file whose #include statement needs editing when test_filepath is given" do
+    it "calls on_ambiguous with the bare filepath, the chosen candidate, and every candidate passed over" do
       bare = [Include.new("bar.h")]
 
       user = [
@@ -1195,13 +1193,23 @@ describe "Includes reconciliation" do
 
       system = []
 
-      expect {
-        Includes.reconcile(bare: bare, user: user, system: system, test_filepath: "test/test_foo.c")
-      }.to raise_error(CeedlingException) do |error|
-        expect(error.message).to include("test/test_foo.c")
-        expect(error.message).to include("foo/bar.h")
-        expect(error.message).to include("baz/bar.h")
+      calls = []
+      Includes.reconcile(bare: bare, user: user, system: system) do |bare_filepath, chosen, passed_over|
+        calls << [bare_filepath, chosen, passed_over]
       end
+
+      expect(calls).to eq([["bar.h", "foo/bar.h", ["baz/bar.h"]]])
+    end
+
+    it "does not call on_ambiguous when a bare entry resolves uniquely" do
+      bare = [Include.new("bar.h")]
+      user = [UserInclude.new("foo/bar.h")]
+      system = []
+
+      calls = []
+      Includes.reconcile(bare: bare, user: user, system: system) { |*args| calls << args }
+
+      expect(calls).to be_empty
     end
 
     it "preserves a system include directive's original directory components instead of collapsing to its bare filename" do

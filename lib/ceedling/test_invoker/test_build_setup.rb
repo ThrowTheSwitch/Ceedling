@@ -270,7 +270,7 @@ class TestBuildSetup
         @preprocessinator.store_includes_list( test: name, filepath: filepath, includes: includes )
         @dependinator.mark_fresh( target )
 
-        generate_test_includes_standins( name, includes )
+        generate_test_includes_standins( testable, includes )
       else
         msg = @reportinator.generate_module_progress(
           operation:   'Skipping preprocessing for #includes in favor of cached #includes for',
@@ -405,7 +405,13 @@ class TestBuildSetup
         user:          user_includes,
         system:        system_includes,
         test_filepath: filepath
-      )
+      ) do |bare_filepath, chosen, passed_over|
+        msg = "Multiple files satisfy #include '#{bare_filepath}' within #{filepath}; chose '#{chosen}' " \
+              "by search-path priority. Other candidates passed over: #{passed_over.join(', ')}. If this " \
+              "choice is wrong, add more path to that #include statement to select a different file -- or " \
+              "watch for a compilation error naming the real mismatch."
+        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+      end
 
       header = "Extracted reconciled #include list from #{filepath}:"
       @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )
@@ -441,9 +447,17 @@ class TestBuildSetup
   # independent of whether anything the mock or partial actually depends on
   # changed. Whether real regeneration is warranted stays entirely up to each
   # later stage's own dependency-tracker check.
-  def generate_test_includes_standins(test, includes)
+  def generate_test_includes_standins(testable, includes)
+    test = testable.name
     mocks    = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
     partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )
+
+    # Reconstructs the mock-search-path-free ordering collect_mock_search_paths (stage 2)
+    # originally saw when it first resolved these same mocks' real headers -- this test's own
+    # generated mock directories weren't spliced into search_paths yet at that point.
+    collection = @include_pathinator.ordered_header_files(
+      testable.search_paths - testable.mock_search_paths
+    )
 
     mocks.each do |include|
       # A Partial mock is Ceedling's own generated content with no real header to resolve
@@ -454,7 +468,7 @@ class TestBuildSetup
       if mock_partial?( include )
         filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
       else
-        _source, subdir = @file_finder.resolve_mock( include.filepath )
+        _source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection )
         mock_dir = subdir.empty? ? test : File.join( test, subdir )
         filepath = @file_path_utils.form_mock_header_filepath( mock_dir, include.filename )
       end
@@ -498,10 +512,21 @@ class TestBuildSetup
   def collect_mock_search_paths(testable)
     return [] unless testable.paths[:mocks]
 
+    # testable.search_paths doesn't exist yet -- this method is itself one of that value's own
+    # inputs (stage 2, ahead of stage 3) -- so the ordering it needs is rebuilt directly, with
+    # mock_search_paths deliberately empty since none of this test's own mocks are placed yet.
+    # generate_test_includes_standins (stage 4) and stage_determine_files (stage 5) must
+    # resolve each of these same mocks identically, so both reconstruct this exact ordering by
+    # subtracting testable.mock_search_paths back out of the real testable.search_paths once it
+    # exists, rather than each independently re-deriving it.
+    collection = @include_pathinator.ordered_header_files(
+      search_paths( testable.filepath, testable.paths, [] )
+    )
+
     dirs = []
     @context_extractor.lookup_mock_header_includes_list( testable.filepath ).each do |include|
       next if mock_partial?( include )
-      _source, subdir = @file_finder.resolve_mock( include.filepath )
+      _source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection )
       dirs << (subdir.empty? ? testable.paths[:mocks] : File.join( testable.paths[:mocks], subdir ))
     end
     return dirs.uniq

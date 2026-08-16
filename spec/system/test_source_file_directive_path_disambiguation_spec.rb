@@ -18,16 +18,18 @@ require 'spec_system_helper'
 ## lookup in the project (test_build_planner.rb#extract_sources), so it was never
 ## given basename-only treatment to begin with: a uniquely-named source resolves
 ## whether given bare or with a path, while a source name that exists more than
-## once in the project is a hard ambiguity error unless enough trailing path is
-## given to identify exactly one.
+## once in the project resolves to the first candidate by :paths search-path
+## order (with an ℹ️ NOTICE naming what else matched) unless enough trailing path
+## is given to identify exactly one outright.
 ##
 ## These tests confirm that inheritance actually holds: a project with two
 ## same-named, header-less source files in different source directories
 ## (e.g. src/alpha/calc.c and src/beta/calc.c, both defining calc_value())
-## hard-errors naming both candidates when a test file's TEST_SOURCE_FILE("calc.c")
-## is bare, while TEST_SOURCE_FILE("alpha/calc.c") or TEST_SOURCE_FILE("beta/calc.c")
+## resolves a bare test file's TEST_SOURCE_FILE("calc.c") to src/alpha/calc.c
+## (first by search-path order) with a NOTICE naming src/beta/calc.c as passed
+## over, while TEST_SOURCE_FILE("alpha/calc.c") or TEST_SOURCE_FILE("beta/calc.c")
 ## (enough trailing path to identify one of them) compiles, links, and runs
-## correctly against exactly that one source.
+## correctly against exactly that one source, logging nothing.
 ##
 ## Test assets: assets/fixtures/test_source_file_duplicate_basenames/
 ##   - alpha/calc.c: calc_value() returning 111, no corresponding header
@@ -79,14 +81,16 @@ ceedling_system_tests do
         end
       end
 
-      it "hard-errors naming both candidates" do
+      it "resolves to the first candidate by search-path order, logging a NOTICE naming the other" do
         @c.with_context do
           Dir.chdir @proj_name do
             output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).not_to eq(0)
-            expect(output).to match(/Ambiguous/)
+            expect(@c.last_exit_status).to eq(0)
+            expect(output).to match(/Multiple files matched/)
             expect(output).to match(/alpha[\/\\]calc\.c/)
             expect(output).to match(/beta[\/\\]calc\.c/)
+            expect(output).to match(/TESTED:\s+1/)
+            expect(output).to match(/PASSED:\s+1/)
           end
         end
       end

@@ -17,10 +17,12 @@ require 'spec_system_helper'
 ## PathMatcher every other lookup in the project uses -- no rule-specific handling
 ## of its own was needed. These tests confirm that inheritance actually holds: a
 ## project with two same-named release sources in different source directories
-## (e.g. src/foo/bar.c and src/baz/bar.c) hard-errors naming both candidates when
-## `release:compile:bar.c` is invoked by bare basename, while `release:compile:foo/bar.c`
-## or `release:compile:baz/bar.c` (enough trailing path to identify one of them)
-## compiles exactly that one source to its own correctly mirrored object.
+## (e.g. src/foo/bar.c and src/baz/bar.c), `release:compile:bar.c` invoked by bare
+## basename resolves to the first candidate by :paths search-path order (src/baz/bar.c,
+## since "baz" sorts ahead of "foo" within :source's single src/** glob), logging an
+## ℹ️ NOTICE naming src/foo/bar.c as passed over, while `release:compile:foo/bar.c` or
+## `release:compile:baz/bar.c` (enough trailing path to identify one of them) compiles
+## exactly that one source to its own correctly mirrored object, logging nothing.
 ##
 ## `release:assemble:<file>` resolves through the identical FileFinder/PathMatcher
 ## path (find_assembly_file rather than find_source_file), so it is not separately
@@ -66,14 +68,18 @@ ceedling_system_tests do
     describe "A project with two same-named release sources in different source directories" do
     # =========================================================================
 
-      it "hard-errors naming both candidates when release:compile: is invoked by bare basename" do
+      it "resolves to the first candidate by search-path order when release:compile: is invoked by bare basename, logging a NOTICE naming the other" do
         @c.with_context do
           Dir.chdir @proj_name do
             output = @c.ceedling_build_exec("release:compile:bar.c")
-            expect(@c.last_exit_status).not_to eq(0)
-            expect(output).to match(/Ambiguous/)
+            expect(@c.last_exit_status).to eq(0)
+            expect(output).to match(/Multiple files matched/)
             expect(output).to match(/foo[\/\\]bar\.c/)
             expect(output).to match(/baz[\/\\]bar\.c/)
+            expect(output).to match(/^Compiling bar\.c/)
+
+            expect(File.exist?('build/release/out/baz/bar.o')).to be true
+            expect(File.exist?('build/release/out/foo/bar.o')).to be false
           end
         end
       end
