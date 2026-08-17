@@ -11,6 +11,7 @@ require 'ceedling/file_path_utils' # for class methods
 require 'ceedling/defaults'
 require 'ceedling/constants'       # for Verbosity constants class & base file paths
 require 'ceedling/filename_extension'
+require 'ceedling/rake_app/rakefile_component_resolver'
 
 class ConfiguratorBuilder
 
@@ -193,17 +194,15 @@ class ConfiguratorBuilder
 
   def set_rakefile_components(ceedling_lib_path, in_hash)
     out_hash = {
-      :project_rakefile_component_files => [
-         File.join( ceedling_lib_path, 'tasks_base.rake' ),
-         File.join( ceedling_lib_path, 'tasks_filesystem.rake' ),
-         File.join( ceedling_lib_path, 'tasks_tests.rake' ),
-         File.join( ceedling_lib_path, 'rules_tests.rake' ),
-         File.join( ceedling_lib_path, 'tasks_generate.rake' )
-         ]
+      :project_rakefile_component_files =>
+        ( RakefileComponentResolver.base_rakefiles( ceedling_lib_path ) +
+          RakefileComponentResolver.test_rakefiles( ceedling_lib_path )
+        )
       }
 
-    out_hash[:project_rakefile_component_files] << File.join( ceedling_lib_path, 'rules_release.rake' ) if (in_hash[:project_release_build])
-    out_hash[:project_rakefile_component_files] << File.join( ceedling_lib_path, 'tasks_release.rake' ) if (in_hash[:project_release_build])
+    if (in_hash[:project_release_build])
+      out_hash[:project_rakefile_component_files] += RakefileComponentResolver.release_rakefiles( ceedling_lib_path )
+    end
 
     return out_hash
   end

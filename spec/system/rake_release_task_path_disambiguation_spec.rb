@@ -11,7 +11,7 @@ require 'spec_system_helper'
 ## Rake Release Task Path Disambiguation
 ## =======================================
 ##
-## The ad hoc `release:compile:<file>` task (lib/ceedling/rules_release.rake) hands
+## The ad hoc `release:compile:<file>` task (lib/ceedling/rakefiles/release/rules_release.rake) hands
 ## its file argument straight to FileFinder without ever reducing it to a bare
 ## basename first, so it inherits path disambiguation for free from the same
 ## PathMatcher every other lookup in the project uses -- no rule-specific handling

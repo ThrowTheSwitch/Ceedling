@@ -5,24 +5,35 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/constants'
+
 # Resolves the ordered list of .rake files Ceedling will load for a given project
 # configuration. Callable from both bin/ (early, before do_setup) and lib/ (within
 # ConfiguratorPlugins). Config must be in structured (pre-flatten) format.
 module RakefileComponentResolver
   module_function
 
-  STOCK_RAKE_FILES = %w[
-    tasks_base.rake
-    tasks_filesystem.rake
-    tasks_tests.rake
-    rules_tests.rake
-    tasks_generate.rake
-  ].freeze unless const_defined?(:STOCK_RAKE_FILES, false)
+  RAKEFILES_DIR = 'rakefiles' unless const_defined?(:RAKEFILES_DIR, false)
 
-  RELEASE_RAKE_FILES = %w[
-    rules_release.rake
-    tasks_release.rake
-  ].freeze unless const_defined?(:RELEASE_RAKE_FILES, false)
+  # Every .rake file in lib/ceedling/rakefiles/<subdir>, sorted for deterministic,
+  # platform-independent ordering -- stock/release Rakefiles are discovered by role
+  # subdirectory rather than named individually, so adding or removing one there
+  # never requires updating a list anywhere else.
+  def gather_rakefiles(ceedling_lib_path, subdir)
+    Dir.glob( File.join(ceedling_lib_path, RAKEFILES_DIR, subdir, '*.rake') ).sort
+  end
+
+  def base_rakefiles(ceedling_lib_path)
+    gather_rakefiles(ceedling_lib_path, 'base')
+  end
+
+  def test_rakefiles(ceedling_lib_path)
+    gather_rakefiles(ceedling_lib_path, 'tests')
+  end
+
+  def release_rakefiles(ceedling_lib_path)
+    gather_rakefiles(ceedling_lib_path, 'release')
+  end
 
   # Returns ordered plugin search paths: user-configured paths first, built-in Ceedling
   # plugins path last. This ordering lets user plugins shadow built-in plugins of the
@@ -41,10 +52,10 @@ module RakefileComponentResolver
   #   - Conditional stock files (rules_release, tasks_release if release_build is enabled)
   #   - Plugin .rake files (first matching <root>/<plugin>/<plugin>.rake across load_paths)
   def resolve(config, ceedling_lib_path, ceedling_plugins_path)
-    paths = STOCK_RAKE_FILES.map { |f| File.join(ceedling_lib_path, f) }
+    paths = base_rakefiles(ceedling_lib_path) + test_rakefiles(ceedling_lib_path)
 
     if config.dig(:project, :release_build)
-      RELEASE_RAKE_FILES.each { |f| paths << File.join(ceedling_lib_path, f) }
+      paths.concat( release_rakefiles(ceedling_lib_path) )
     end
 
     paths.concat(

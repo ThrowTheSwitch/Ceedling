@@ -32,7 +32,7 @@ end
 
 # On Windows, a `rule()`-matched task name containing a *second* colon (e.g.
 # "release:compile:foo.c" from the ad hoc release:compile:<file>/release:assemble:<file>
-# tasks -- lib/ceedling/rules_release.rake) makes File.mtime raise Errno::EINVAL instead
+# tasks -- lib/ceedling/rakefiles/release/rules_release.rake) makes File.mtime raise Errno::EINVAL instead
 # of the Errno::ENOENT FileTask#needed?/#timestamp already rescue elsewhere. A rule()
 # match is never a real file -- Rake synthesizes a FileTask named after the literal
 # matched string -- so on POSIX, File.mtime on that nonexistent name correctly raises
