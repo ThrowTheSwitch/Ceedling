@@ -294,6 +294,8 @@ class Loginator
       prepend = '💼 '
     when LogLabels::REQUEST
       prepend = '🙏 '
+    when LogLabels::BUILT
+      prepend = '🔧 '
     end
 
     return prepend + str

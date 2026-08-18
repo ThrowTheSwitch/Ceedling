@@ -280,6 +280,41 @@ Both directory separator characters `/` and `\` are valid.
 
 ---
 
+### [`ceedling gen:mocks:all`](../getting-started/command-line.md#ceedling-genmocksall)
+
+Generate the mock files in the project build directory for all tests. The
+test build pipeline terminates after the mock generation stage.
+
+---
+
+### [`ceedling gen:mocks:*`](../getting-started/command-line.md#ceedling-genmocks)
+
+Generate the mock files in the project build directory for only the given 
+test or the named source file that has an accompanying test. The test 
+build pipeline terminates after the mock generation stage.
+Examples: `ceedling gen:mocks:foo`, `ceedling gen:mocks:foo.c` or 
+`ceedling gen:mocks:test_foo.c`
+
+---
+
+### [`ceedling gen:test_runner:all`](../getting-started/command-line.md#ceedling-gentest_runnerall)
+
+Generate up through test runners in the project build directory for all 
+tests. The test build pipeline terminates after the test runner generation 
+stage.
+
+---
+
+### [`ceedling gen:test_runner:*`](../getting-started/command-line.md#ceedling-gentest_runner)
+
+Generate the test runner files in the project build directory for only 
+the given test or the named source file that has an accompanying test. 
+The test build pipeline terminates after the test runner generation stage.
+Examples: `ceedling gen:test_runner:foo`, `ceedling gen:test_runner:foo.c`
+or `ceedling gen:test_runner:test_foo.c`
+
+---
+
 ### [`ceedling release`](../getting-started/command-line.md#ceedling-release)
 
 Build all source into a release artifact (if the release build option

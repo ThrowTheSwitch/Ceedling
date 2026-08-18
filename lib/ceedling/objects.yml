@@ -402,6 +402,7 @@ test_pipeline_manager:
     - configurator
     - batchinator
     - loginator
+    - plugin_reportinator
 
 test_build_setup:
   compose:

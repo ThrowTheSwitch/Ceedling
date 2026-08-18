@@ -12,6 +12,8 @@ This changelog is complemented by three other documents:
 
 # [1.2.0] — Prerelease
 
+Documentation is available within the repository markdown files and as a local HTML documentation bundle exported from Ceedling. New documentation has not yet been published to the documentation site.
+
 ## 🌟 Added
 
 - Support for the Bullseye commercial code coverage tool has been restored through updates to the temporarily disabled [Bullseye plugin](https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/).
@@ -28,6 +30,17 @@ In Ceedling’s early history simplicity won out with the assumption that every 
 
 ### Multiple file extensions per file type
 Added support for multiple [file extensions](https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
+
+### Dedicated mocks and test runner generation build tasks
+
+Some users have asked for the ability to run the test build pipeline only up through generating mocks or test runners without running the rest of a build. This is now possible.
+
+Tasks mirroring command line `test:` task invocation but with an early termination like `test:build_only` now exist:
+
+* `gen:mocks:<test>`
+* `gen:test_runner:<test>`
+
+Like with command line `test:` tasks, `<test>` can be `all`, a test file name, or a source file name that has a corresponding test file.
 
 ### Filepath limit checks
 Platform filepath limits (especially Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.

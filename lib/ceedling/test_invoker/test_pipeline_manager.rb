@@ -23,7 +23,8 @@ class TestPipelineManager
     :test_build_executor,
     :configurator,
     :batchinator,
-    :loginator
+    :loginator,
+    :plugin_reportinator
   )
 
   # `options:` (an Array of Symbols; see `TestInvoker#setup_and_invoke`) is a flat
@@ -33,7 +34,7 @@ class TestPipelineManager
   #                           stages 11-17 (test-file preprocessing, runner details/
   #                           generation, artifact determination, object compilation,
   #                           linking, execution).
-  #   :test_runners         — Stop the pipeline after stage 13 (Test Runners). Skips
+  #   :test_runner          — Stop the pipeline after stage 13 (Test Runners). Skips
   #                           stages 14-17 (artifact determination, object compilation,
   #                           linking, execution).
   #   :build_only           — Skip stage 17 (Executing) only. Compile and link test
@@ -47,14 +48,36 @@ class TestPipelineManager
   #                           for completeness: permits the dependency cache to prune
   #                           entries for targets this run didn't touch.
   #
-  # `:mocking`, `:test_runners`, `:sources_only`, and `:build_only` each name a single,
+  # `:mocking`, `:test_runner`, `:sources_only`, and `:build_only` each name a single,
   # different point at which the pipeline stops -- supplying more than one at once is
   # ambiguous and rejected by `validate_stop_point_options!` below.
-  STOP_POINT_OPTIONS = %i[mocking test_runners sources_only build_only].freeze unless const_defined?(:STOP_POINT_OPTIONS, false)
+  STOP_POINT_OPTIONS = %i[mocking test_runner sources_only build_only].freeze unless const_defined?(:STOP_POINT_OPTIONS, false)
+
+  # Read alongside STOP_POINT_OPTIONS above -- named per stop point so a mocks-only or
+  # runners-only run's quieter console output (fewer stage headings, no pass/fail
+  # summary) is never mistaken for a truncated or broken full test build.
+  STOP_POINT_ANNOUNCEMENTS = {
+    mocking:      "Generating mocks only -- no test runners, compiling, linking, or running.",
+    test_runner:  "Generating mocks and test runners only -- no compiling, linking, or running.",
+    build_only:   "Building test executables only -- not running them.",
+    sources_only: "Determining test sources only -- no generating, compiling, linking, or running.",
+  }.freeze unless const_defined?(:STOP_POINT_ANNOUNCEMENTS, false)
+
+  # Read alongside STOP_POINT_ANNOUNCEMENTS above -- header text for each stop point's
+  # own final completion banner (see announce_completion), so a mocks-only or
+  # runners-only run ends with a clear, deliberate signal of its own, the same way a
+  # full test run ends with its own "OVERALL TEST SUMMARY" banner.
+  STOP_POINT_BANNERS = {
+    mocking:      'MOCKS GENERATED',
+    test_runner:  'MOCKS & TEST RUNNERS GENERATED',
+    build_only:   'TEST EXECUTABLES BUILT',
+    sources_only: 'TEST SOURCES DETERMINED',
+  }.freeze unless const_defined?(:STOP_POINT_BANNERS, false)
 
   # Validates `state.options`, then builds and runs the stage sequence against `state`.
   def run(state)
     validate_stop_point_options!( state.options )
+    announce_run_scope( state.options )
 
     build_stage_sequence().each do |stage|
       next unless stage.enabled?( state )
@@ -72,6 +95,8 @@ class TestPipelineManager
         end
       end
     end
+
+    announce_completion( state.options )
   end
 
   private
@@ -87,13 +112,36 @@ class TestPipelineManager
     )
   end
 
+  # Silent for an ordinary full test build (no stop-point option present) -- only a
+  # partial run announces itself, so the announcement's mere presence is itself the
+  # signal something less than a full build is happening.
+  def announce_run_scope(options)
+    stop_point = STOP_POINT_OPTIONS.find { |key| options.include?( key ) }
+    return if stop_point.nil?
+
+    @loginator.log( STOP_POINT_ANNOUNCEMENTS[stop_point], Verbosity::NORMAL, LogLabels::NOTICE )
+  end
+
+  # A specific final step, mirroring how a full test run's own "OVERALL TEST SUMMARY"
+  # banner is generated (ReportTestsStdoutPlugin, via this identical
+  # PluginReportinator#generate_banner) -- silent for a full test build, whose own
+  # results banner covers that case through its own, separate mechanism.
+  def announce_completion(options)
+    stop_point = STOP_POINT_OPTIONS.find { |key| options.include?( key ) }
+    return if stop_point.nil?
+
+    header = @loginator.decorate( STOP_POINT_BANNERS[stop_point], LogLabels::BUILT )
+    banner = @plugin_reportinator.generate_banner( header )
+    @loginator.log( "\n" + banner, Verbosity::NORMAL, LogLabels::NONE )
+  end
+
   def build_stage_sequence
     use_preprocessing = -> (s) { @configurator.project_use_test_preprocessor_tests }
     use_partials      = -> (s) { @configurator.project_use_partials }
     use_mocks         = -> (s) { @configurator.project_use_mocks }
     use_mocks_preproc = -> (s) { @configurator.project_use_mocks && @configurator.project_use_test_preprocessor_mocks }
     not_mocking       = -> (s) { !s.options.include?(:mocking) }       # skip stages 11-17 (stop after stage 10)
-    not_test_runners  = -> (s) { !s.options.include?(:test_runners) }  # skip stages 14-17 (stop after stage 13)
+    not_test_runner   = -> (s) { !s.options.include?(:test_runner) }   # skip stages 14-17 (stop after stage 13)
     not_build_only    = -> (s) { !s.options.include?(:build_only) }    # skip stage 17 only
     not_sources_only  = -> (s) { !s.options.include?(:sources_only) }  # skip stages 15-17
 
@@ -190,45 +238,45 @@ class TestPipelineManager
             body: ->(s) { @test_build_executor.stage_collect_runner_details(s) }
       ),
 
-      # Stage 13 — skipped under :mocking. The :test_runners stop point runs
+      # Stage 13 — skipped under :mocking. The :test_runner stop point runs
       # through here, then halts.
       stage("Test Runners",
             condition: not_mocking,
             body: ->(s) { @test_build_executor.stage_generate_runners(s) }
       ),
 
-      # Stage 14 — skipped under :mocking or :test_runners.
+      # Stage 14 — skipped under :mocking or :test_runner.
       stage("Determining Artifacts to Be Built",
             heading: false,
-            condition: ->(s) { not_mocking.call(s) && not_test_runners.call(s) },
+            condition: ->(s) { not_mocking.call(s) && not_test_runner.call(s) },
             body: ->(s) { @test_build_planner.stage_determine_artifacts(s) }
       ),
 
       # Transform 3: Prepare objects for parallel processing — skipped under
-      # :mocking or :test_runners.
+      # :mocking or :test_runner.
       stage(transform: true,
-            condition: ->(s) { not_mocking.call(s) && not_test_runners.call(s) },
+            condition: ->(s) { not_mocking.call(s) && not_test_runner.call(s) },
             body: ->(s) { @test_build_planner.stage_flatten_objects_list(s) }
       ),
 
-      # Stage 15 — skipped under :mocking, :test_runners, or :sources_only
+      # Stage 15 — skipped under :mocking, :test_runner, or :sources_only
       # (no object compilation needed to determine which sources a test references).
       stage("Building Objects",
-            condition: ->(s) { not_mocking.call(s) && not_test_runners.call(s) && not_sources_only.call(s) },
+            condition: ->(s) { not_mocking.call(s) && not_test_runner.call(s) && not_sources_only.call(s) },
             body: ->(s) { @test_build_executor.stage_build_objects(s) }
       ),
 
-      # Stage 16 — skipped under :mocking, :test_runners, or :sources_only
+      # Stage 16 — skipped under :mocking, :test_runner, or :sources_only
       # (no linking needed either).
       stage("Building Test Executables",
-            condition: ->(s) { not_mocking.call(s) && not_test_runners.call(s) && not_sources_only.call(s) },
+            condition: ->(s) { not_mocking.call(s) && not_test_runner.call(s) && not_sources_only.call(s) },
             body: ->(s) { @test_build_executor.stage_build_executables(s) }
       ),
 
-      # Stage 17 — skipped under :mocking, :test_runners, :build_only, or :sources_only.
+      # Stage 17 — skipped under :mocking, :test_runner, :build_only, or :sources_only.
       stage("Executing",
             condition: ->(s) {
-              not_mocking.call(s) && not_test_runners.call(s) &&
+              not_mocking.call(s) && not_test_runner.call(s) &&
                 not_build_only.call(s) && not_sources_only.call(s)
             },
             body: ->(s) { @test_build_executor.stage_execute(s) }

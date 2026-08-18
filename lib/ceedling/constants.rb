@@ -41,6 +41,7 @@ class LogLabels
   DOCUMENTATION = 12  # decorator only
   COMMERCIAL    = 13  # decorator only
   REQUEST       = 14  # decorator only
+  BUILT         = 15  # decorator only
 
   # Verbosity levels ERRORS – DEBUG default to certain labels or lack thereof
   # The above label constants are available to override Loginator's default AUTO level as needed
@@ -170,6 +171,13 @@ RELEASE_SYM       = RELEASE_ROOT_NAME.to_sym unless defined?(RELEASE_SYM)
 UTILS_ROOT_NAME   = 'utils'                unless defined?(UTILS_ROOT_NAME)
 UTILS_TASK_ROOT   = UTILS_ROOT_NAME + ':'  unless defined?(UTILS_TASK_ROOT)
 UTILS_SYM         = UTILS_ROOT_NAME.to_sym unless defined?(UTILS_SYM)
+
+GEN_ROOT_NAME = 'gen'                unless defined?(GEN_ROOT_NAME)
+GEN_TASK_ROOT = GEN_ROOT_NAME + ':'  unless defined?(GEN_TASK_ROOT)
+GEN_SYM       = GEN_ROOT_NAME.to_sym unless defined?(GEN_SYM)
+
+GENERATE_MOCKS_TASK_ROOT       = GEN_TASK_ROOT + 'mocks:'       unless defined?(GENERATE_MOCKS_TASK_ROOT)
+GENERATE_TEST_RUNNER_TASK_ROOT = GEN_TASK_ROOT + 'test_runner:' unless defined?(GENERATE_TEST_RUNNER_TASK_ROOT)
 
 OPERATION_PREPROCESS_SYM  = :preprocess unless defined?(OPERATION_PREPROCESS_SYM)
 OPERATION_COMPILE_SYM     = :compile    unless defined?(OPERATION_COMPILE_SYM)

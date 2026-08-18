@@ -18,9 +18,12 @@ describe TestPipelineManager do
     @configurator         = double( "Configurator" )
     @batchinator          = double( "Batchinator" )
     @loginator            = double( "Loginator" )
+    @plugin_reportinator  = double( "PluginReportinator" )
 
     allow(@batchinator).to receive(:build_step) { |*_args, &block| block.call }
     allow(@loginator).to receive(:log)
+    allow(@loginator).to receive(:decorate) { |str, _label| "👷 #{str}" }
+    allow(@plugin_reportinator).to receive(:generate_banner) { |msg| "---\n#{msg}\n---\n" }
 
     allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
     allow(@configurator).to receive(:project_use_partials).and_return( false )
@@ -57,7 +60,8 @@ describe TestPipelineManager do
         :test_build_executor => @test_build_executor,
         :configurator        => @configurator,
         :batchinator         => @batchinator,
-        :loginator           => @loginator
+        :loginator           => @loginator,
+        :plugin_reportinator => @plugin_reportinator
       }
     )
   end
@@ -124,9 +128,28 @@ describe TestPipelineManager do
 
         @manager.run( state(options: [:mocking]) )
       end
+
+      it "announces this is a mocks-only run" do
+        expect(@loginator).to receive(:log)
+          .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:mocking], Verbosity::NORMAL, LogLabels::NOTICE )
+
+        @manager.run( state(options: [:mocking]) )
+      end
+
+      it "ends with a BUILT completion banner naming this a mocks-only run" do
+        expect(@loginator).to receive(:decorate)
+          .with( TestPipelineManager::STOP_POINT_BANNERS[:mocking], LogLabels::BUILT )
+          .and_return( "👷 #{TestPipelineManager::STOP_POINT_BANNERS[:mocking]}" )
+        expect(@plugin_reportinator).to receive(:generate_banner)
+          .with( "👷 #{TestPipelineManager::STOP_POINT_BANNERS[:mocking]}" )
+          .and_return( "banner" )
+        expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
+
+        @manager.run( state(options: [:mocking]) )
+      end
     end
 
-    context "with :test_runners" do
+    context "with :test_runner" do
       before(:each) do
         allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
         allow(@configurator).to receive(:project_use_partials).and_return( true )
@@ -146,7 +169,23 @@ describe TestPipelineManager do
         expect(@test_build_executor).to_not receive(:stage_build_executables)
         expect(@test_build_executor).to_not receive(:stage_execute)
 
-        @manager.run( state(options: [:test_runners]) )
+        @manager.run( state(options: [:test_runner]) )
+      end
+
+      it "announces this is a mocks-and-runners-only run" do
+        expect(@loginator).to receive(:log)
+          .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:test_runner], Verbosity::NORMAL, LogLabels::NOTICE )
+
+        @manager.run( state(options: [:test_runner]) )
+      end
+
+      it "ends with a BUILT completion banner naming this a mocks-and-runners-only run" do
+        expect(@plugin_reportinator).to receive(:generate_banner)
+          .with( a_string_including( TestPipelineManager::STOP_POINT_BANNERS[:test_runner] ) )
+          .and_return( "banner" )
+        expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
+
+        @manager.run( state(options: [:test_runner]) )
       end
     end
 
@@ -158,6 +197,22 @@ describe TestPipelineManager do
 
         @manager.run( state(options: [:build_only]) )
       end
+
+      it "announces this is a build-only run" do
+        expect(@loginator).to receive(:log)
+          .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:build_only], Verbosity::NORMAL, LogLabels::NOTICE )
+
+        @manager.run( state(options: [:build_only]) )
+      end
+
+      it "ends with a BUILT completion banner naming this a build-only run" do
+        expect(@plugin_reportinator).to receive(:generate_banner)
+          .with( a_string_including( TestPipelineManager::STOP_POINT_BANNERS[:build_only] ) )
+          .and_return( "banner" )
+        expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
+
+        @manager.run( state(options: [:build_only]) )
+      end
     end
 
     context "with :sources_only" do
@@ -166,6 +221,22 @@ describe TestPipelineManager do
         expect(@test_build_executor).to_not receive(:stage_build_objects)
         expect(@test_build_executor).to_not receive(:stage_build_executables)
         expect(@test_build_executor).to_not receive(:stage_execute)
+
+        @manager.run( state(options: [:sources_only]) )
+      end
+
+      it "announces this is a sources-only run" do
+        expect(@loginator).to receive(:log)
+          .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:sources_only], Verbosity::NORMAL, LogLabels::NOTICE )
+
+        @manager.run( state(options: [:sources_only]) )
+      end
+
+      it "ends with a BUILT completion banner naming this a sources-only run" do
+        expect(@plugin_reportinator).to receive(:generate_banner)
+          .with( a_string_including( TestPipelineManager::STOP_POINT_BANNERS[:sources_only] ) )
+          .and_return( "banner" )
+        expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
 
         @manager.run( state(options: [:sources_only]) )
       end
@@ -200,6 +271,20 @@ describe TestPipelineManager do
         expect(@test_build_executor).to receive(:stage_build_objects)
         expect(@test_build_executor).to receive(:stage_build_executables)
         expect(@test_build_executor).to receive(:stage_execute)
+
+        @manager.run( state(options: []) )
+      end
+
+      it "announces nothing -- a full build has no stop-point run scope to call out" do
+        TestPipelineManager::STOP_POINT_ANNOUNCEMENTS.each_value do |announcement|
+          expect(@loginator).to_not receive(:log).with( announcement, anything, anything )
+        end
+
+        @manager.run( state(options: []) )
+      end
+
+      it "logs no BUILT completion banner -- a full build's own test-results banner covers this separately" do
+        expect(@plugin_reportinator).to_not receive(:generate_banner)
 
         @manager.run( state(options: []) )
       end
