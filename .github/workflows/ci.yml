@@ -15,7 +15,9 @@
 #
 # Triggers:
 #   - Push to any branch
-#   - Pull request targeting master
+#   - Pull request targeting any branch (a PR can be opened against any
+#     integration branch, not just master, as the project matures multiple
+#     branches at once)
 #   - Manual dispatch (workflow_dispatch)
 #
 # Skip-CI:
@@ -32,21 +34,27 @@
 name: CI
 
 # Triggers the workflow on push to any branch (tag pushes excluded — handled by
-# prerelease.yml and release.yml), pull requests targeting master, or manual dispatch
+# prerelease.yml and release.yml), pull requests targeting any branch, or manual dispatch
 on:
   push:
     branches:
       - '**'             # All branches; branches: ['**'] scopes push to refs/heads/ only,
                          # excluding refs/tags/ pushes — see Skip-CI above
   pull_request:
-    branches: [master]
+    # No branch restriction: a PR merging into any branch gets checks. The one
+    # exclusion is gh-pages, which only ever receives generated site output and
+    # is never itself the target of a real code review.
+    branches-ignore: [gh-pages]
   workflow_dispatch:
 
 
-# Cancel any in-progress run on the same ref when a new push arrives,
-# preventing stale run pile-up on active branches
+# Cancel any in-progress run for the same unit of work when a new event arrives.
+# A push to a branch that also has an open PR fires both the push and pull_request
+# triggers for the very same commit; grouping by PR number when one exists (falling
+# back to the ref otherwise) means those two runs share one group instead of two,
+# so the second one to start cancels the first rather than both running to completion.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 
