@@ -15,6 +15,7 @@ describe Configurator do
 
   before(:each) do
     @ruby_expandinator = RubyExpandinator.new
+    @loginator = double('loginator').as_null_object
 
     @configurator = described_class.new({
       configurator_setup:   double('configurator_setup').as_null_object,
@@ -23,7 +24,7 @@ describe Configurator do
       config_walkinator:    double('config_walkinator').as_null_object,
       yaml_wrapper:         double('yaml_wrapper').as_null_object,
       system_wrapper:       double('system_wrapper').as_null_object,
-      loginator:            double('loginator').as_null_object,
+      loginator:            @loginator,
       reportinator:         double('reportinator').as_null_object,
       ruby_expandinator:    @ruby_expandinator,
     })
@@ -181,6 +182,78 @@ describe Configurator do
       @configurator.prepare_plugins_load_paths( 'plugins/path', config )
 
       expect( config[:plugins][:load_paths] ).to include( '2' )
+    end
+
+  end
+
+  describe "#populate_test_runner_generation_config" do
+
+    def runner_config
+      {
+        project:     { use_backtrace: :none },
+        cmock:       { mock_prefix: 'Mock', mock_suffix: '_x', enforce_strict_ordering: true },
+        unity:       { defines: ['UNITY_DEFINE'], use_param_tests: false, shuffle_tests: false },
+        test_runner: { cmdline_args: false, defines: ['RUNNER_DEFINE'] },
+      }
+    end
+
+    it "copies CMock options used by test runner generation" do
+      config = runner_config
+
+      @configurator.populate_test_runner_generation_config( config )
+
+      expect( config[:test_runner][:mock_prefix] ).to eq( 'Mock' )
+      expect( config[:test_runner][:mock_suffix] ).to eq( '_x' )
+      expect( config[:test_runner][:enforce_strict_ordering] ).to eq( true )
+    end
+
+    it "merges Unity defines and :use_param_tests into test runner config" do
+      config = runner_config
+      config[:unity][:use_param_tests] = true
+
+      @configurator.populate_test_runner_generation_config( config )
+
+      expect( config[:test_runner][:defines] ).to eq( ['RUNNER_DEFINE', 'UNITY_DEFINE'] )
+      expect( config[:test_runner][:use_param_tests] ).to eq( true )
+    end
+
+    it "carries :unity ↳ :shuffle_tests into test runner config when enabled" do
+      config = runner_config
+      config[:unity][:shuffle_tests] = true
+
+      @configurator.populate_test_runner_generation_config( config )
+
+      expect( config[:test_runner][:shuffle_tests] ).to eq( true )
+    end
+
+    it "carries :unity ↳ :shuffle_tests into test runner config when disabled" do
+      config = runner_config
+      config[:unity][:shuffle_tests] = false
+
+      @configurator.populate_test_runner_generation_config( config )
+
+      expect( config[:test_runner][:shuffle_tests] ).to eq( false )
+    end
+
+    it "forces :cmdline_args on and logs a notice when :use_backtrace is enabled" do
+      config = runner_config
+      config[:project][:use_backtrace] = :simple
+      config[:test_runner][:cmdline_args] = false
+
+      expect( @loginator ).to receive(:log).with( /:cmdline_args/, Verbosity::COMPLAIN, LogLabels::NOTICE )
+
+      @configurator.populate_test_runner_generation_config( config )
+
+      expect( config[:test_runner][:cmdline_args] ).to eq( true )
+    end
+
+    it "leaves :cmdline_args untouched when :use_backtrace is :none" do
+      config = runner_config
+      config[:test_runner][:cmdline_args] = false
+
+      @configurator.populate_test_runner_generation_config( config )
+
+      expect( config[:test_runner][:cmdline_args] ).to eq( false )
     end
 
   end

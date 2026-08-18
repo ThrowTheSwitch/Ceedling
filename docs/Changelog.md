@@ -17,6 +17,7 @@ Documentation is available within the repository markdown files and as a local H
 ## 🌟 Added
 
 - Support for the Bullseye commercial code coverage tool has been restored through updates to the temporarily disabled [Bullseye plugin](https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/).
+- Optional randomized order for Unity test case runs within a test executable ([PR #1041]https://github.com/ThrowTheSwitch/Ceedling/pull/1041) via `:unity` ↳ `:shuffle_tests` ⇒ `TRUE`.
 
 ### Delta builds
 Delta builds have been restored after a temporary hiatus following a major refactoring for 1.0.0 ([Restore delta test builds to Ceedling 1.0.0+](https://github.com/ThrowTheSwitch/Ceedling/issues/1143)).
