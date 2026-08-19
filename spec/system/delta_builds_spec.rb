@@ -278,6 +278,59 @@ ceedling_system_tests do
     end
   end
 
+  # :unity ↳ :shuffle_tests decides test-case execution order at runtime, inside
+  # the compiled executable's own main() -- not at compile or link time. So an
+  # executable delta builds correctly judge unchanged (same source, same flags,
+  # same generated runner) still needs to actually run again for shuffling to do
+  # anything at all; otherwise the previous run's cached result is reported
+  # forever and the shuffled order is never realized. --force-test-rerun is the
+  # same override, available on demand independent of shuffling.
+  describe "Delta builds: forcing test re-execution despite no changes (temp_sensor)" do
+    before do
+      @c.with_context do
+        output = @c.ceedling_appcmd_exec("example temp_sensor")
+        expect(output).to match(/created/)
+      end
+    end
+
+    it "--force-test-rerun reruns test executables and reports fresh results on an otherwise-unchanged rebuild" do
+      @c.with_context do
+        Dir.chdir "temp_sensor" do
+          @c.ceedling_build_exec("test:all")
+
+          rebuild = @c.ceedling_build_exec("test:all", "--force-test-rerun")
+
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to_not match(/^Linking /)
+          expect(rebuild).to match(/^Running /)
+
+          expect(rebuild).to match(/TESTED:\s+86/)
+          expect(rebuild).to match(/PASSED:\s+86/)
+        end
+      end
+    end
+
+    it ":unity ↳ :shuffle_tests automatically reruns test executables on an otherwise-unchanged rebuild" do
+      @c.with_context do
+        Dir.chdir "temp_sensor" do
+          settings = { :unity => { :shuffle_tests => true } }
+          @c.merge_project_yml_for_test(settings)
+
+          @c.ceedling_build_exec("test:all")
+
+          rebuild = @c.ceedling_build_exec("test:all")
+
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to_not match(/^Linking /)
+          expect(rebuild).to match(/^Running /)
+
+          expect(rebuild).to match(/TESTED:\s+86/)
+          expect(rebuild).to match(/PASSED:\s+86/)
+        end
+      end
+    end
+  end
+
   # Partials preprocessing (stages 6-8) gates its directives-only/preserve-macros/
   # full-expansion passes on their own DependencyTracker targets, one per partial
   # header and one per partial source -- separate from (and in addition to) the

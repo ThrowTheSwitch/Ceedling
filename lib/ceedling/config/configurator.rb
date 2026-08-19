@@ -17,7 +17,7 @@ require 'deep_merge'
 class Configurator
 
   attr_reader :project_config_hash, :programmatic_plugins, :rake_plugins
-  attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case
+  attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case, :force_test_rerun
 
   constructor :configurator_setup, :configurator_builder, :configurator_plugins, :config_walkinator, :yaml_wrapper, :system_wrapper, :loginator, :reportinator, :ruby_expandinator
 

@@ -312,6 +312,8 @@ module CeedlingTasks
                   :desc => "Filter for individual unit test names"
     method_option :exclude_test_case, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT,
                   :desc => "Prevent matched unit test names from running"
+    method_option :force_test_rerun, :type => :boolean, :default => false,
+                  :desc => "Run test executables and report fresh results even if unchanged"
     method_option :ruby_replacement, :type => :boolean, :default => false, :desc => DOC_RUBY_REPLACEMENT_FLAG
     # Include for consistency with other commands (override --verbosity)
     method_option :debug, :type => :boolean, :default => false, :hide => true
@@ -333,6 +335,11 @@ module CeedlingTasks
 
       • `--test-case` and its inverse `--exclude-test-case` set test case name
       matchers to run only a subset of the unit test suite. See docs for full details.
+
+      • `--force-test-rerun` runs test executables and reports fresh results
+      even when nothing changed since the last build. A test build with
+      `:unity` ↳ `:shuffle_tests` enabled does this automatically, since a
+      shuffled run order is only meaningful if the executable actually runs.
 
       • `If --log and --logfile are both specified, --logfile will set the log file path.
       If --no-log and --logfile are both specified, no logging will occur.
