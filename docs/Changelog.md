@@ -10,7 +10,7 @@ This changelog is complemented by three other documents:
 
 ---
 
-# [1.1.5] — Prerelease
+# [1.1.5] — 2026-08-19
 
 ## 💪 Fixed
 
