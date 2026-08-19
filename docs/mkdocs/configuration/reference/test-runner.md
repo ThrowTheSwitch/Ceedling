@@ -45,6 +45,19 @@ but Ceedling now automatically sets it for you in the scenarios requiring it.
     The idea of command line arguments passed to an executable is generally 
     only possible with desktop command line terminals.
 
+## `:test_runner` ↳ `:rng_seed`
+
+Seeds the randomization used by [`:unity` ↳ `:shuffle_tests`][unity-shuffle-tests]
+to shuffle the Unity runner test case execution order. `:rng_seed` has no 
+effect unless `:shuffle_tests` is enabled.
+
+Left at its default of `0`, Unity seeds the shuffle from the current time 
+causing a different execution order every time a test runner executes. Set 
+a fixed, nonzero value for a reproducible shuffled order (e.g. to debug 
+an order-dependent failure without test case order moving around run to run).
+
+**Default**: 0
+
 ## Example `:test_runner` YAML
 
 ```yaml
@@ -57,5 +70,6 @@ but Ceedling now automatically sets it for you in the scenarios requiring it.
 
 [ceedling-conventions]: ../../testing-guide/conventions.md
 [unity-runner-options]: https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityHelperScriptsGuide.md#options-accepted-by-generate_test_runnerrb
+[unity-shuffle-tests]: unity.md#shuffle_tests
 
 <br/><br/>

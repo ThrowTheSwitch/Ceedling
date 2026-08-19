@@ -361,7 +361,8 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
 
   :unity => {
     :defines => [],
-    :use_param_tests => false
+    :use_param_tests => false,
+    :shuffle_tests => false
     },
 
   :cmock => {
