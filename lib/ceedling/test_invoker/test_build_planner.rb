@@ -26,7 +26,8 @@ class TestBuildPlanner
     :file_finder,
     :file_path_utils,
     :file_wrapper,
-    :plugin_manager
+    :plugin_manager,
+    :test_source_file_directive_resolver
   )
 
   def setup()
@@ -220,10 +221,9 @@ class TestBuildPlanner
   def extract_sources(context, test_filepath, partials)
     sources = []
 
-    _sources = @test_context_extractor.lookup_build_directive_sources_list( test_filepath )
-    _sources.each do |source|
-      sources << @file_finder.find_build_input_file( filepath: source, complain: :ignore, context: context )
-    end
+    additive_directive_sources, subtractive_directive_sources =
+      @test_source_file_directive_resolver.resolve( test_filepath, context )
+    sources.concat( additive_directive_sources )
 
     # TEST_SOURCE_FILE() is authoritative: a directive-resolved source's own basename
     # (extension-agnostic) takes precedence over whatever the implicit #include
@@ -231,7 +231,7 @@ class TestBuildPlanner
     # conventions never compile two different files for one logical module. Keyed
     # by stem rather than a bare list so the override, when it applies, can name
     # which directive-resolved file actually won.
-    directive_by_stem = sources.compact.each_with_object({}) do |path, hash|
+    directive_by_stem = additive_directive_sources.each_with_object({}) do |path, hash|
       hash[File.basename(path).ext('')] = path
     end
 
@@ -260,7 +260,11 @@ class TestBuildPlanner
       sources << @file_finder.find_build_input_file( filepath: _module, complain: :ignore, context: context )
     end
 
-    return sources.compact.uniq
+    sources = sources.compact.uniq
+
+    return @test_source_file_directive_resolver.remove_subtracted(
+      sources, subtractive: subtractive_directive_sources, test_filepath: test_filepath
+    )
   end
 
   def fetch_shallow_source_includes(test_filepath)

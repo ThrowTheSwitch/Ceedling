@@ -34,6 +34,7 @@ describe TestBuildPlanner do
     @file_path_utils                 = double( "FilePathUtils" )
     @file_wrapper                     = double( "FileWrapper" )
     @plugin_manager                     = double( "PluginManager" )
+    @test_source_file_directive_resolver   = double( "TestSourceFileDirectiveResolver" )
 
     allow(@batchinator).to receive(:exec) do |workload:, things:, &block|
       things.each { |k, v| block.call(k, v) }
@@ -43,6 +44,14 @@ describe TestBuildPlanner do
     # collection stub this again with a narrower `.with(...)` match.
     allow(@include_pathinator).to receive(:ordered_header_files).and_return( [] )
     allow(@loginator).to receive(:log)
+
+    # Harmless default for #extract_sources examples that don't care about
+    # TEST_SOURCE_FILE() directives at all -- no additive or subtractive
+    # entries, and the final list passes through remove_subtracted untouched.
+    allow(@test_source_file_directive_resolver).to receive(:resolve).and_return( [[], {}] )
+    allow(@test_source_file_directive_resolver).to receive(:remove_subtracted) do |sources, subtractive:, test_filepath:|
+      sources - subtractive.keys
+    end
 
     @planner = described_class.new(
       {
@@ -56,7 +65,8 @@ describe TestBuildPlanner do
         :file_finder            => @file_finder,
         :file_path_utils        => @file_path_utils,
         :file_wrapper           => @file_wrapper,
-        :plugin_manager         => @plugin_manager
+        :plugin_manager         => @plugin_manager,
+        :test_source_file_directive_resolver => @test_source_file_directive_resolver
       }
     )
 
@@ -338,10 +348,8 @@ describe TestBuildPlanner do
 
     context "when a build-directive source is also a shallow-included source" do
       before(:each) do
-        allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
-          .with( 'test/TestFoo.c' ).and_return( ['Foo'] )
-        allow(@file_finder).to receive(:find_build_input_file)
-          .with( filepath: 'Foo', complain: :ignore, context: :test ).and_return( 'src/Foo.c' )
+        allow(@test_source_file_directive_resolver).to receive(:resolve)
+          .with( 'test/TestFoo.c', :test ).and_return( [['src/Foo.c'], {}] )
         allow(@test_context_extractor).to receive(:lookup_source_includes_list)
           .with( 'test/TestFoo.c' ).and_return( ['src/Foo.c'] )
       end
@@ -539,13 +547,11 @@ describe TestBuildPlanner do
       allow(@configurator).to receive(:collection_all_support).and_return( [] )
     end
 
-    it "resolves each build-directive source via the file finder" do
-      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
-        .with( 'test/TestFoo.c' ).and_return( ['Foo'] )
+    it "includes the additive build-directive sources the resolver returns" do
+      allow(@test_source_file_directive_resolver).to receive(:resolve)
+        .with( 'test/TestFoo.c', :test ).and_return( [['src/Foo.c'], {}] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [] )
-      allow(@file_finder).to receive(:find_build_input_file)
-        .with( filepath: 'Foo', complain: :ignore, context: :test ).and_return( 'src/Foo.c' )
 
       result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
 
@@ -553,8 +559,6 @@ describe TestBuildPlanner do
     end
 
     it "resolves each header #include's own source file, skipping Unity, mocks, and support headers" do
-      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
-        .with( 'test/TestFoo.c' ).and_return( [] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return(
           [UserInclude.new('unity.h'), MockInclude.new('MockFoo.h'), UserInclude.new('drivers/bar.h')]
@@ -568,8 +572,6 @@ describe TestBuildPlanner do
     end
 
     it "includes testable Partials' own generated sources, but not mock Partials" do
-      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
-        .with( 'test/TestFoo.c' ).and_return( [] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [] )
       @testable.partials.tests = ['Baz']
@@ -582,12 +584,10 @@ describe TestBuildPlanner do
     end
 
     it "skips the implicit header-driven resolution entirely when a TEST_SOURCE_FILE() entry already shares the header's own basename -- unconditionally, not only when the implicit resolution would otherwise be ambiguous -- and logs a NOTICE naming the override" do
-      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
-        .with( 'test/TestFoo.c' ).and_return( ['beta/foo.c'] )
+      allow(@test_source_file_directive_resolver).to receive(:resolve)
+        .with( 'test/TestFoo.c', :test ).and_return( [['src/beta/foo.c'], {}] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
-      allow(@file_finder).to receive(:find_build_input_file)
-        .with( filepath: 'beta/foo.c', complain: :ignore, context: :test ).and_return( 'src/beta/foo.c' )
       expect(@file_finder).to_not receive(:find_build_input_file)
         .with( filepath: 'foo.h', complain: :ignore, context: :test )
       expect(@loginator).to receive(:log).with(
@@ -602,12 +602,10 @@ describe TestBuildPlanner do
     end
 
     it "matches a TEST_SOURCE_FILE() entry to a header by basename stem alone, regardless of the directive's own real extension, and logs a NOTICE naming the override" do
-      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
-        .with( 'test/TestFoo.c' ).and_return( ['beta/foo.cpp'] )
+      allow(@test_source_file_directive_resolver).to receive(:resolve)
+        .with( 'test/TestFoo.c', :test ).and_return( [['src/beta/foo.cpp'], {}] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
-      allow(@file_finder).to receive(:find_build_input_file)
-        .with( filepath: 'beta/foo.cpp', complain: :ignore, context: :test ).and_return( 'src/beta/foo.cpp' )
       expect(@file_finder).to_not receive(:find_build_input_file)
         .with( filepath: 'foo.h', complain: :ignore, context: :test )
       expect(@loginator).to receive(:log).with(
@@ -622,12 +620,10 @@ describe TestBuildPlanner do
     end
 
     it "leaves the implicit header-driven resolution untouched, logging nothing, when a TEST_SOURCE_FILE() entry names an unrelated basename (the documented header-less use case)" do
-      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
-        .with( 'test/TestFoo.c' ).and_return( ['calc.c'] )
+      allow(@test_source_file_directive_resolver).to receive(:resolve)
+        .with( 'test/TestFoo.c', :test ).and_return( [['src/calc.c'], {}] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
-      allow(@file_finder).to receive(:find_build_input_file)
-        .with( filepath: 'calc.c', complain: :ignore, context: :test ).and_return( 'src/calc.c' )
       allow(@file_finder).to receive(:find_build_input_file)
         .with( filepath: 'foo.h', complain: :ignore, context: :test ).and_return( 'src/foo.c' )
       expect(@loginator).to_not receive(:log)
@@ -635,6 +631,41 @@ describe TestBuildPlanner do
       result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
 
       expect(result).to match_array( ['src/calc.c', 'src/foo.c'] )
+    end
+
+    it "removes a file added via the implicit header/source convention when the resolver names it subtractive" do
+      allow(@test_source_file_directive_resolver).to receive(:resolve)
+        .with( 'test/TestFoo.c', :test ).and_return( [[], { 'src/foo.c' => '-:foo.c' }] )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'foo.h', complain: :ignore, context: :test ).and_return( 'src/foo.c' )
+
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+
+      expect(result).to eq( [] )
+    end
+
+    it "removes a file added by a separate positive TEST_SOURCE_FILE() entry, proving removal isn't scoped to the header-convention case" do
+      allow(@test_source_file_directive_resolver).to receive(:resolve)
+        .with( 'test/TestFoo.c', :test ).and_return( [['src/extra.c'], { 'src/extra.c' => '-:extra.c' }] )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [] )
+
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+
+      expect(result).to eq( [] )
+    end
+
+    it "changes nothing when a subtractive entry names a file never in the assembled source list" do
+      allow(@test_source_file_directive_resolver).to receive(:resolve)
+        .with( 'test/TestFoo.c', :test ).and_return( [['src/keep.c'], { 'src/gone.c' => '-:gone.c' }] )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [] )
+
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+
+      expect(result).to eq( ['src/keep.c'] )
     end
   end
 end
