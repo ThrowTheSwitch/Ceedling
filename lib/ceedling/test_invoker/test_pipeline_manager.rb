@@ -24,7 +24,7 @@ class TestPipelineManager
     :configurator,
     :batchinator,
     :loginator,
-    :plugin_reportinator
+    :reportinator
   )
 
   # `options:` (an Array of Symbols; see `TestInvoker#setup_and_invoke`) is a flat
@@ -124,14 +124,14 @@ class TestPipelineManager
 
   # A specific final step, mirroring how a full test run's own "OVERALL TEST SUMMARY"
   # banner is generated (ReportTestsStdoutPlugin, via this identical
-  # PluginReportinator#generate_banner) -- silent for a full test build, whose own
+  # Reportinator#generate_banner) -- silent for a full test build, whose own
   # results banner covers that case through its own, separate mechanism.
   def announce_completion(options)
     stop_point = STOP_POINT_OPTIONS.find { |key| options.include?( key ) }
     return if stop_point.nil?
 
     header = @loginator.decorate( STOP_POINT_BANNERS[stop_point], LogLabels::BUILT )
-    banner = @plugin_reportinator.generate_banner( header )
+    banner = @reportinator.generate_banner( header )
     @loginator.log( "\n" + banner, Verbosity::NORMAL, LogLabels::NONE )
   end
 
