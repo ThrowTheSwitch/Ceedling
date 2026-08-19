@@ -204,6 +204,12 @@ class CliHandler
       default_tasks: default_tasks
     )
 
+    @helper.process_force_test_rerun(
+      force_test_rerun: options[:force_test_rerun],
+      tasks: tasks,
+      default_tasks: default_tasks
+    )
+
     logging_path = @helper.process_logging_path( config )
     log_filepath = @helper.process_log_filepath( logging_path, options[:log], options[:logfile] )
 
@@ -215,6 +221,7 @@ class CliHandler
     app_cfg.set_log_filepath( log_filepath )
     app_cfg.set_include_test_case( options[:test_case] )
     app_cfg.set_exclude_test_case( options[:exclude_test_case] )
+    app_cfg.set_force_test_rerun( options[:force_test_rerun] )
 
     # Set graceful_exit from command line & configuration options
     app_cfg.set_tests_graceful_fail(

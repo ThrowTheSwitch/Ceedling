@@ -55,6 +55,9 @@ class CeedlingAppConfig
       :include_test_case => '',
       :exclude_test_case => '',
 
+      # Default to trusting delta-build staleness tracking (no forced rerun)
+      :force_test_rerun => false,
+
       # Default to task categry other than build/plugin tasks
       :build_tasks? => false,
 
@@ -93,6 +96,10 @@ class CeedlingAppConfig
 
   def set_exclude_test_case(matcher)
     @app_cfg[:exclude_test_case] = matcher
+  end
+
+  def set_force_test_rerun(enable)
+    @app_cfg[:force_test_rerun] = enable
   end
 
   def set_build_tasks(enable)

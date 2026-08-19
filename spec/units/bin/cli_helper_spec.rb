@@ -19,20 +19,28 @@ $: << File.join(here, '../../../lib')
 
 require 'cli_helper'
 require 'ceedling/ruby_expandinator'
+# CliHelper#test_task? references RakeTaskRegistry::TAG_TEST, but only
+# bin/cli_handler.rb requires this file in the real bootstrap (loaded before
+# cli_helper.rb's methods are ever called) -- required directly here since this
+# spec exercises CliHelper in isolation.
+require 'ceedling/rake_app/rake_task_registry'
 
-# Scoped narrowly to #set_ruby_replacement, the new --ruby-replacement CLI flag
-# wiring. Broader CliHelper coverage is a pre-existing gap outside this feature's
-# scope (no spec file existed for this class before this feature).
+# Scoped narrowly to #set_ruby_replacement and #process_force_test_rerun, the
+# --ruby-replacement and --force-test-rerun CLI flags' wiring. Broader CliHelper
+# coverage (including the pre-existing #process_testcase_filters and
+# #process_graceful_fail this new method is modeled on) is a pre-existing gap
+# outside either feature's scope.
 describe CliHelper do
   before(:each) do
-    @ruby_expandinator = RubyExpandinator.new
+    @ruby_expandinator  = RubyExpandinator.new
+    @rake_task_registry = double('rake_task_registry').as_null_object
 
     @cli_helper = described_class.new({
       :file_wrapper       => double('file_wrapper').as_null_object,
       :actions_wrapper    => double('actions_wrapper').as_null_object,
       :config_walkinator  => double('config_walkinator').as_null_object,
       :path_validator     => double('path_validator').as_null_object,
-      :rake_task_registry => double('rake_task_registry').as_null_object,
+      :rake_task_registry => @rake_task_registry,
       :loginator          => double('loginator').as_null_object,
       :reportinator       => double('reportinator').as_null_object,
       :system_wrapper     => double('system_wrapper').as_null_object,
@@ -64,6 +72,40 @@ describe CliHelper do
       @cli_helper.set_ruby_replacement( false )
 
       expect(@ruby_expandinator.enabled?).to eq(true)
+    end
+  end
+
+  describe '#process_force_test_rerun' do
+    it 'does nothing when the flag is false, without even consulting the task registry' do
+      expect(@rake_task_registry).to_not receive(:task_is?)
+
+      expect {
+        @cli_helper.process_force_test_rerun( force_test_rerun: false, tasks: [], default_tasks: [] )
+      }.to_not raise_error
+    end
+
+    it 'raises when the flag is true and no test task is present in tasks or default_tasks' do
+      allow(@rake_task_registry).to receive(:task_is?).and_return( false )
+
+      expect {
+        @cli_helper.process_force_test_rerun( force_test_rerun: true, tasks: ['release'], default_tasks: ['test:all'] )
+      }.to raise_error( CeedlingException, /only applicable to test tasks/ )
+    end
+
+    it 'does not raise when the flag is true and a test task is present in tasks' do
+      allow(@rake_task_registry).to receive(:task_is?).with( 'test:all', RakeTaskRegistry::TAG_TEST ).and_return( true )
+
+      expect {
+        @cli_helper.process_force_test_rerun( force_test_rerun: true, tasks: ['test:all'], default_tasks: [] )
+      }.to_not raise_error
+    end
+
+    it 'does not raise when the flag is true, tasks is empty, and a test task is present in default_tasks' do
+      allow(@rake_task_registry).to receive(:task_is?).with( 'test:all', RakeTaskRegistry::TAG_TEST ).and_return( true )
+
+      expect {
+        @cli_helper.process_force_test_rerun( force_test_rerun: true, tasks: [], default_tasks: ['test:all'] )
+      }.to_not raise_error
     end
   end
 end

@@ -908,18 +908,27 @@ class TestBuildExecutor
   # An executable that didn't need relinking (see stage 16) still has valid
   # cached results on disk from whenever it was last built -- Generator#generate_test_results
   # reports those instead of actually (re)running it, per `skipped:` below.
+  #
+  # `:force_test_rerun` and `:unity ↳ :shuffle_tests` both override that skip:
+  # shuffled test-case order is decided at runtime inside the executable itself
+  # (Unity's generated `main()` reshuffles on every invocation), not at compile
+  # or link time, so an executable that's otherwise unchanged still needs to
+  # actually run again for shuffling to have any effect at all.
   def stage_execute(state)
     skipped = 0
+    force_rerun = @configurator.force_test_rerun || @configurator.unity_shuffle_tests
 
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
+        run_now = testable.executable_rebuilt || force_rerun
+
         # Clear out any stale prior result (e.g. a lingering `.fail` from a test
         # that now passes) immediately before an actual (re)run -- not upfront
         # for every test regardless of whether it's about to run, which would
         # destroy the still-valid cached result of a test left unchanged.
-        clean_test_results( testable.paths[:results], File.basename( testable.name ) ) if testable.executable_rebuilt
+        clean_test_results( testable.paths[:results], File.basename( testable.name ) ) if run_now
 
-        unless testable.executable_rebuilt
+        unless run_now
           msg = @reportinator.generate_module_progress(
             operation:   'Skipping test execution for',
             module_name: testable.name,
@@ -935,7 +944,7 @@ class TestBuildExecutor
           test_filepath: testable.filepath,
           executable:    testable.executable,
           result:        testable.results_pass,
-          skipped:       !testable.executable_rebuilt
+          skipped:       !run_now
         }
 
         run_fixture_now( **arg_hash )

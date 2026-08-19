@@ -50,6 +50,9 @@ class Setupinator
     @configurator.include_test_case = app_cfg[:include_test_case]
     @configurator.exclude_test_case = app_cfg[:exclude_test_case]
 
+    # Set special purpose forced test re-execution (from command line)
+    @configurator.force_test_rerun = app_cfg[:force_test_rerun]
+
     # Verbosity handling
     @configurator.set_verbosity( config_hash )
 

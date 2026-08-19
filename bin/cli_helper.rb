@@ -228,6 +228,16 @@ class CliHelper
   end
 
 
+  def process_force_test_rerun(force_test_rerun:, tasks:, default_tasks:)
+    # Do nothing if the flag wasn't set
+    return if !force_test_rerun
+
+    unless test_task?( tasks: (tasks.empty? ? default_tasks : tasks ) )
+      raise CeedlingException.new( "The force test rerun option is only applicable to test tasks. No test tasks were specified." )
+    end
+  end
+
+
   def process_graceful_fail(config:, cmdline_graceful_fail:, tasks:, default_tasks:)
     # Precedence
     #  1. Command line option

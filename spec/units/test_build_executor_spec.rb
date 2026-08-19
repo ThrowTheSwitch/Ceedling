@@ -45,6 +45,8 @@ describe TestBuildExecutor do
     allow(@configurator).to receive(:project_use_mocks).and_return( false )
     allow(@configurator).to receive(:project_use_exceptions).and_return( false )
     allow(@configurator).to receive(:collection_all_support).and_return( [] )
+    allow(@configurator).to receive(:force_test_rerun).and_return( false )
+    allow(@configurator).to receive(:unity_shuffle_tests).and_return( false )
 
     allow(@file_path_utils).to receive(:form_test_build_list_filepath).and_return( 'build/list' )
     allow(@file_path_utils).to receive(:form_test_dependencies_filepath).and_return( 'build/deps' )
@@ -296,6 +298,26 @@ describe TestBuildExecutor do
       @testable.executable_rebuilt = false
       expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: true ) )
       expect(@file_wrapper).to_not receive(:rm_f)
+
+      @executor.stage_execute( @state )
+    end
+
+    it "runs the test fixture and clears any stale prior result when :force_test_rerun is enabled, even though the executable is unchanged" do
+      @testable.executable_rebuilt = false
+      allow(@configurator).to receive(:force_test_rerun).and_return( true )
+      allow(@file_wrapper).to receive(:rm_f)
+      expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: false ) )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "runs the test fixture and clears any stale prior result when :unity ↳ :shuffle_tests is enabled, even though the executable is unchanged" do
+      @testable.executable_rebuilt = false
+      allow(@configurator).to receive(:unity_shuffle_tests).and_return( true )
+      allow(@file_wrapper).to receive(:rm_f)
+      expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: false ) )
 
       @executor.stage_execute( @state )
     end
