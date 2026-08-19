@@ -918,6 +918,17 @@ class TestBuildExecutor
     skipped = 0
     force_rerun = @configurator.force_test_rerun || @configurator.unity_shuffle_tests
 
+    overridden = state.testables.values.count { |t| !t.executable_rebuilt }
+
+    if @configurator.unity_shuffle_tests && overridden > 0
+      noun = overridden == 1 ? 'test executable' : 'test executables'
+      @loginator.log(
+        "Test shuffling is enabled -- rerunning #{overridden} already up-to-date #{noun} to randomize test case order.",
+        Verbosity::NORMAL,
+        LogLabels::NOTICE
+      )
+    end
+
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
         run_now = testable.executable_rebuilt || force_rerun

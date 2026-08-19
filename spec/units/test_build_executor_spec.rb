@@ -322,6 +322,40 @@ describe TestBuildExecutor do
       @executor.stage_execute( @state )
     end
 
+    it "logs a NOTICE that shuffling is overriding a delta-build skip when :unity ↳ :shuffle_tests is enabled and the executable is unchanged" do
+      @testable.executable_rebuilt = false
+      allow(@configurator).to receive(:unity_shuffle_tests).and_return( true )
+      allow(@generator).to receive(:generate_test_results)
+      allow(@file_wrapper).to receive(:rm_f)
+
+      expect(@loginator).to receive(:log)
+        .with( /1 already up-to-date test executable/, Verbosity::NORMAL, LogLabels::NOTICE )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "does not log the shuffling NOTICE when :unity ↳ :shuffle_tests is enabled but the executable was already rebuilt (nothing to override)" do
+      @testable.executable_rebuilt = true
+      allow(@configurator).to receive(:unity_shuffle_tests).and_return( true )
+      allow(@generator).to receive(:generate_test_results)
+      allow(@file_wrapper).to receive(:rm_f)
+
+      expect(@loginator).to_not receive(:log).with( /shuffl/i, any_args )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "does not log the shuffling NOTICE when :force_test_rerun (not shuffling) is what forces the rerun" do
+      @testable.executable_rebuilt = false
+      allow(@configurator).to receive(:force_test_rerun).and_return( true )
+      allow(@generator).to receive(:generate_test_results)
+      allow(@file_wrapper).to receive(:rm_f)
+
+      expect(@loginator).to_not receive(:log).with( /shuffl/i, any_args )
+
+      @executor.stage_execute( @state )
+    end
+
     it "always fires the post_test plugin hook, rebuilt or not" do
       @testable.executable_rebuilt = false
       allow(@generator).to receive(:generate_test_results)
