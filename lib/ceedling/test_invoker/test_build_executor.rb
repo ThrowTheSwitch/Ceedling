@@ -28,7 +28,8 @@ class TestBuildExecutor
     :file_path_utils,
     :file_finder,
     :file_wrapper,
-    :dependinator
+    :dependinator,
+    :test_source_file_directive_resolver
   )
 
   def setup()
@@ -726,7 +727,7 @@ class TestBuildExecutor
       end
 
       state.testables.each do |_, t|
-        validate_build_directive_source_files( test: name, filepath: t.filepath )
+        @test_source_file_directive_resolver.validate!( test: name, filepath: t.filepath )
       end
     end
 
@@ -1177,35 +1178,6 @@ class TestBuildExecutor
     return search_paths if _search_paths.empty?
 
     return _search_paths.uniq
-  end
-
-  def validate_build_directive_source_files(test:, filepath:)
-    sources = @test_context_extractor.lookup_build_directive_sources_list( filepath )
-
-    ext_message = @configurator.extension_source.to_s
-    if @configurator.test_build_use_assembly
-      ext_message += " or #{@configurator.extension_assembly}"
-    end
-
-    sources.each do |source|
-      valid_extension = true
-
-      if not @configurator.test_build_use_assembly
-        valid_extension = false unless @configurator.extension_source.match?( source )
-      else
-        valid_extension = false unless @configurator.extension_assembly.match?( source ) or @configurator.extension_source.match?( source )
-      end
-
-      if not valid_extension
-        error = "File '#{source}' specified with TEST_SOURCE_FILE() in #{test} is not a #{ext_message} source file"
-        raise CeedlingException.new( error )
-      end
-
-      if @file_finder.find_build_input_file( filepath: source, complain: :ignore, context: TEST_SYM ).nil?
-        error = "File '#{source}' specified with TEST_SOURCE_FILE() in #{test} cannot be found in the source file collection"
-        raise CeedlingException.new( error )
-      end
-    end
   end
 
   # A test runner's content comes from two configuration sections plus a flag

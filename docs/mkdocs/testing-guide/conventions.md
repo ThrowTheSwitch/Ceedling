@@ -62,6 +62,14 @@ above, this override is logged with an informational notice naming the winning
 `TEST_SOURCE_FILE()` entry and the `#include` it overrode, so the substitution
 is not silent either.
 
+A `TEST_SOURCE_FILE()` entry prefixed with `-:` goes further still, removing
+a named file from a test's compile/link list outright rather than winning an
+override — and, unlike the override above, it applies to the fully assembled
+list regardless of how a file arrived there (the header/source convention, a
+positive `TEST_SOURCE_FILE()` entry, or a Partial), not only to a same-basename
+match. See [`TEST_SOURCE_FILE()` Subtractive Notation][test-source-file-subtractive]
+for the full discussion.
+
 ### Test files (CLI test tasks)
 
 Execute [`ceedling test:` tasks][ceedling-test] at the command line with an
@@ -76,6 +84,7 @@ of matching candidates to help you provide path to disambiguate test files.
 
 [build-directive-macros]: build-directives.md
 [ceedling-test]: ../getting-started/command-line.md
+[test-source-file-subtractive]: build-directives.md#test_source_file-subtractive-notation
 
 ## Test build search paths
 

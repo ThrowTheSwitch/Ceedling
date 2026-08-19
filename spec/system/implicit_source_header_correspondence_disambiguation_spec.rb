@@ -29,13 +29,10 @@ require 'spec_system_helper'
 ## #include "beta/dup.h" (enough trailing path to identify one of them) compiles
 ## and links against exactly that one pair, logging nothing.
 ##
-## A test may also mix both conventions: #include a header (implicit convention)
-## alongside a TEST_SOURCE_FILE() entry sharing that header's own basename. In that
-## case TEST_SOURCE_FILE() is authoritative -- its own resolution wins outright and
-## the implicit convention's independent resolution for that basename is skipped
-## entirely, rather than both landing in the source list (which would fail to link:
-## two same-named files each defining the same functions). This holds even when the
-## implicit resolution would already have been unambiguous on its own.
+## Coverage for TEST_SOURCE_FILE() itself -- both mixing with this implicit
+## convention (overriding a same-basename match) and its own `-:` removal
+## notation -- lives together in spec/system/test_source_file_directive_spec.rb,
+## which reuses this same alpha/beta dup.{h,c} fixture pair.
 ##
 ## Test assets: assets/fixtures/implicit_source_header_correspondence/
 ##   - alpha/dup.h, alpha/dup.c: declares/defines dup_value() returning 111
@@ -43,9 +40,6 @@ require 'spec_system_helper'
 ##   - test_dup_bare.c: #include "dup.h" (bare), asserts 111
 ##   - test_dup_alpha.c: #include "alpha/dup.h", asserts 111
 ##   - test_dup_beta.c: #include "beta/dup.h", asserts 222
-##   - test_dup_override.c: #include "dup.h" (bare) + TEST_SOURCE_FILE("beta/dup.c"),
-##     asserts 222 -- the directive overrides what the bare #include would have
-##     implicitly resolved to on its own (alpha, 111)
 ##
 
 ceedling_system_tests do
@@ -133,48 +127,6 @@ ceedling_system_tests do
             expect(output).to_not match(/Multiple files matched/)
             expect(output).to match(/TESTED:\s+2/)
             expect(output).to match(/PASSED:\s+2/)
-          end
-        end
-      end
-
-    end
-
-    # =========================================================================
-    describe "A test file that both #includes a header and names a same-basename TEST_SOURCE_FILE()" do
-    # =========================================================================
-
-      before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_duplicate_dup_pairs(@proj_name)
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("implicit_source_header_correspondence/test_dup_override.c"), 'test/'
-          end
-        end
-      end
-
-      it "lets TEST_SOURCE_FILE() override the implicit convention's own resolution rather than compiling both same-named sources" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
-
-            # The bare #include "dup.h" is still itself ambiguous (validate_header_includes
-            # is untouched by the override), so its own NOTICE still fires -- but the
-            # correctly-linked pass above already proves only beta/dup.c was ever compiled,
-            # not both. A duplicate-symbol link error would have failed the build otherwise.
-            expect(File.exist?('build/test/out/test_dup_override/beta/dup.o')).to be true
-            expect(File.exist?('build/test/out/test_dup_override/alpha/dup.o')).to be false
-
-            # A second, distinct NOTICE -- from extract_sources's own override, not the
-            # header-ambiguity NOTICE above -- names the winning TEST_SOURCE_FILE() entry
-            # and the #include it overrode.
-            expect(output).to match(/TEST_SOURCE_FILE\(\).*beta[\/\\]dup\.c/)
-            expect(output).to match(/dup\.h/)
           end
         end
       end
