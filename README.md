@@ -1,41 +1,20 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-**Ceedling 1.1.3** is the latest and greatest.
+**Ceedling 1.2.0** is nearing release.
 
-See [_Release Notes_][release-notes], [_Changelog_](docs/Changelog.md), 
-[_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues].
+See [_Changelog_](docs/Changelog.md). [_Release Notes_][release-notes], 
+[_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues] are
+not yet updated.
 
 See [🚀 Getting Started](#-getting-started) for installation and new 
 project set up.
 
-**New goodies in 1.1.x:**
-* A [Partial][partials-docs] allows a test to mix mocked and real functions 
-from the same source module in a single test file and enables testing of 
-`static` and `inline` functions without modifying source code.
-* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site]
-  available both online and as a local bundle exported from Ceedling’s 
-  command line.
-* A new [Discourse community forum](https://throwtheswitch.discourse.group) to 
-  supersede the old, spammy Google Group and handful of disparate support channels.
-* More and expanded [example projects][example-projects].
-* New stock plugins for [Valgrind memory checking][valgrind-plugin] and 
-[Cppcheck static analysis][cppcheck-plugin].
-* The [GCov plugin][gcov-plugin]:
-   * Now supports coverage reports for all sources.
-   * Adds support for Modified Condition / Decision Coverage.
-* Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
-* Ceedling’s test preprocessing is once again compatible with Unity’s 
-  parameterized test cases (support was temporarily removed with 1.0.0).
-* Incorporates the latest updates to [CMock] and [Unity].
-
-[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
-[example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/
-[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
-[valgrind-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/
-[cppcheck-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/
-[gcov-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/
-[mixins-inline-yaml]: https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins/?h=mixins#-mixin-command-line-flags
+**New goodies in 1.2.0:**
+* **Delta builds** have been restored after a temporary hiatus following a major refactoring for 1.0.0. A delta build is simply a build run that only performs regeneration, compilation, or linking as needed because of changed files. Delta builds are automatic with no configuration needed and complement parallel builds introduced in 1.0.0 for build time speedups.
+* **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully supports relative paths in `#include` directives and `TEST_SOURCE_FILE()` build directive macros. Ceedling is now also able to distinguish files of the same name using paths in the preceding and at the command line to distinguish test files of the same name (e.g. `ceedling test:foo/file` vs. `ceedling test:bar/file`).
+* **Multiple file extensions per file type.** You may now provide a list of file types via `:extensions` to gather files into your project’s build. For instance, the extensions `.c` and `.cc` can now both be used together to collect all source file in your project.
+* **Dedicated mocks and test runner generation build tasks.** It is now possible to run the test build pipeline only up through generating mocks or test runners without running the rest of a build using `ceedling gen:mocks:<test>` and `ceedling gen:test_runner:<test>` mirroring the convention of `test:` tasks.
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 

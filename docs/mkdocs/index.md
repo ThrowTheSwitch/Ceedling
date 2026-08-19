@@ -19,15 +19,13 @@ for use on platforms from heavy duty workstations to teeny tiny microcontrollers
 Features handy for low-level development have made these tools popular with 
 embedded systems developers.
 
-!!! feature "New in Ceedling 1.1.0 — Partials"
-    A [_Partial_](testing-guide/partials/index.md) is your C code sliced and diced
-    to expose functional elements for testing that you could not otherwise 
-    access without rewriting your source code. Think of Partials as a scalpel 
-    for testing your code.
-
-    👀 See the [Changelog](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md)
-    for all the new goodness in 1.1.0.
-
+!!! feature "New goodness in Ceedling 1.2.0"
+    * **Delta builds** have been restored so that regeneration, compilation, or linking only occur because of changed files.
+    * **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully supports relative paths everywhere and can distinguish files of the same name in different directories.
+    * **Multiple file extensions per file type.** You may now provide a list of file types (e.g. `.c` and `.cc`) via `:extensions` to gather files into your project’s build.
+    * **Dedicated mocks and test runner generation build tasks.** It is now possible to run the test build pipeline only up through generating mocks or test runners without running the rest of a build.
+    
+    👀 See the [Changelog](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md).
 ---
 
 ## Overview
