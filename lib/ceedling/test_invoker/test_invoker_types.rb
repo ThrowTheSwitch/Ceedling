@@ -72,8 +72,7 @@ module TestInvokerTypes
     :runner,                                   # RunnerInfo
     :mocks,                                    # Hash — mock name (Symbol) → MockDetails
     :partials,                                 # TestablePartials — configs map + tests/mocks module name lists
-    :sources, :frameworks, :core, :objects, :executable,
-    :no_link_objects, :results_pass, :results_fail,
+    :sources, :frameworks, :core, :objects, :executable, :results_pass,
     :executable_rebuilt,                       # Boolean — set by stage 16, read by stage 17 to decide
                                                 # whether to run the fixture. Carried on the struct rather
                                                 # than re-querying the dependency tracker in stage 17: by
@@ -105,10 +104,6 @@ module TestInvokerTypes
 
     def empty?(state)
       !empty_condition.nil? && empty_condition.call(state)
-    end
-
-    def run?(state)
-      enabled?(state) && !empty?(state)
     end
   end unless const_defined?(:Stage, false)
 

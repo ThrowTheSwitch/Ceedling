@@ -103,6 +103,127 @@ describe TestBuildSetup do
     @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :context => :test, :options => [], :lock => Mutex.new )
   end
 
+  context "#stage_prepare_build_paths" do
+    before(:each) do
+      allow(@file_path_utils).to receive(:form_test_build_path).and_return( 'build/test/out/a_test' )
+      allow(@file_path_utils).to receive(:form_test_results_path).and_return( 'build/test/results/a_test' )
+      allow(@file_path_utils).to receive(:form_test_dependencies_path).and_return( 'build/test/dependencies/a_test' )
+      allow(@file_path_utils).to receive(:form_test_runners_path).and_return( 'build/test/runners/a_test' )
+      allow(@file_path_utils).to receive(:form_test_mocks_path).and_return( 'build/test/mocks/a_test' )
+      allow(@file_path_utils).to receive(:form_test_partials_path).and_return( 'build/test/partials/a_test' )
+      allow(@file_path_utils).to receive(:form_test_preprocess_includes_path).and_return( 'build/test/preprocess/includes/a_test' )
+      allow(@file_path_utils).to receive(:form_test_preprocess_files_path).and_return( 'build/test/preprocess/files/a_test' )
+      allow(@file_path_utils).to receive(:form_test_preprocess_files_full_expansion_path).and_return( 'build/test/preprocess/full/a_test' )
+      allow(@file_path_utils).to receive(:form_test_preprocess_files_directives_only_path).and_return( 'build/test/preprocess/directives/a_test' )
+      allow(@file_path_utils).to receive(:form_test_preprocess_files_raw_directives_only_path).and_return( 'build/test/preprocess/raw/a_test' )
+      allow(@file_path_utils).to receive(:form_test_preprocess_build_directives_path).and_return( 'build/test/preprocess/build_directives/a_test' )
+      allow(@file_wrapper).to receive(:mkdir)
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+      allow(@configurator).to receive(:project_use_partials).and_return( false )
+      allow(@configurator).to receive(:project_use_test_preprocessor).and_return( :none )
+    end
+
+    def prepare_state
+      TestInvokerTypes::PipelineState.new(
+        :tests => ['test/TestFoo.c'], :testables => {}, :context => :test, :options => [], :lock => Mutex.new
+      )
+    end
+
+    it "populates the testables hash keyed by the test's own symbolized name" do
+      state = prepare_state
+
+      @setup.stage_prepare_build_paths( state )
+
+      testable = state.testables[:TestFoo]
+      expect(testable.filepath).to eq( 'test/TestFoo.c' )
+      expect(testable.name).to eq( 'TestFoo' )
+    end
+
+    it "always assembles the build, results, dependencies, and runners paths" do
+      state = prepare_state
+
+      @setup.stage_prepare_build_paths( state )
+
+      paths = state.testables[:TestFoo].paths
+      expect(paths[:build]).to eq( 'build/test/out/a_test' )
+      expect(paths[:results]).to eq( 'build/test/results/a_test' )
+      expect(paths[:dependencies]).to eq( 'build/test/dependencies/a_test' )
+      expect(paths[:runners]).to eq( 'build/test/runners/a_test' )
+      expect(paths[:preprocess_build_directives]).to eq( 'build/test/preprocess/build_directives/a_test' )
+    end
+
+    it "omits the mocks path when the project has mocking disabled" do
+      state = prepare_state
+
+      @setup.stage_prepare_build_paths( state )
+
+      expect(state.testables[:TestFoo].paths).to_not have_key( :mocks )
+    end
+
+    it "assembles the mocks path when the project has mocking enabled" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      state = prepare_state
+
+      @setup.stage_prepare_build_paths( state )
+
+      expect(state.testables[:TestFoo].paths[:mocks]).to eq( 'build/test/mocks/a_test' )
+    end
+
+    it "omits the partials path when the project has Partials disabled" do
+      state = prepare_state
+
+      @setup.stage_prepare_build_paths( state )
+
+      expect(state.testables[:TestFoo].paths).to_not have_key( :partials )
+    end
+
+    it "assembles the partials path when the project has Partials enabled" do
+      allow(@configurator).to receive(:project_use_partials).and_return( true )
+      state = prepare_state
+
+      @setup.stage_prepare_build_paths( state )
+
+      expect(state.testables[:TestFoo].paths[:partials]).to eq( 'build/test/partials/a_test' )
+    end
+
+    it "omits the preprocessing paths and scratch state when preprocessing is off" do
+      state = prepare_state
+
+      @setup.stage_prepare_build_paths( state )
+
+      testable = state.testables[:TestFoo]
+      expect(testable.paths).to_not have_key( :preprocess_includes )
+      expect(testable.preprocess).to_not have_key( :includes )
+    end
+
+    it "assembles the preprocessing paths and scratch state when preprocessing is on" do
+      allow(@configurator).to receive(:project_use_test_preprocessor).and_return( :tests )
+      state = prepare_state
+
+      @setup.stage_prepare_build_paths( state )
+
+      testable = state.testables[:TestFoo]
+      expect(testable.paths[:preprocess_includes]).to eq( 'build/test/preprocess/includes/a_test' )
+      expect(testable.paths[:preprocess_files]).to eq( 'build/test/preprocess/files/a_test' )
+      expect(testable.paths[:preprocess_files_full_expansion]).to eq( 'build/test/preprocess/full/a_test' )
+      expect(testable.paths[:preprocess_files_directives_only]).to eq( 'build/test/preprocess/directives/a_test' )
+      expect(testable.paths[:preprocess_files_raw_directives_only]).to eq( 'build/test/preprocess/raw/a_test' )
+      expect(testable.preprocess[:includes]).to eq( [] )
+      expect(testable.preprocess[:directives_only]).to eq( { filepath: nil } )
+    end
+
+    it "creates every assembled build path on disk" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:project_use_partials).and_return( true )
+      allow(@configurator).to receive(:project_use_test_preprocessor).and_return( :tests )
+      state = prepare_state
+
+      expect(@file_wrapper).to receive(:mkdir).exactly(12).times
+
+      @setup.stage_prepare_build_paths( state )
+    end
+  end
+
   context "#stage_collect_test_context" do
     before(:each) do
       allow(@test_context_extractor).to receive(:collect_simple_context_from_file)
@@ -509,6 +630,77 @@ describe TestBuildSetup do
       result = @setup.collect_mock_search_paths( @testable )
 
       expect(result).to eq([])
+    end
+  end
+
+  describe "#validate_mocks_in_use" do
+    it "does not raise when the project has mocking enabled" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+
+      expect {
+        @setup.validate_mocks_in_use( filename: 'TestFoo.c', mocks: [MockInclude.new('MockFoo.h')] )
+      }.to_not raise_error
+    end
+
+    it "does not raise when mocking is disabled but the test #includes no mocks" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+
+      expect {
+        @setup.validate_mocks_in_use( filename: 'TestFoo.c', mocks: [] )
+      }.to_not raise_error
+    end
+
+    it "raises naming the #included mocks when mocking is disabled but the test #includes one anyway" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+
+      expect {
+        @setup.validate_mocks_in_use( filename: 'TestFoo.c', mocks: [MockInclude.new('MockFoo.h')] )
+      }.to raise_error( CeedlingException, /TestFoo\.c #includes MockFoo\.h/ )
+    end
+
+    it "raises naming every #included mock, bracketed, when more than one is present" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+      mocks = [MockInclude.new('MockFoo.h'), MockInclude.new('MockBar.h')]
+
+      expect {
+        @setup.validate_mocks_in_use( filename: 'TestFoo.c', mocks: mocks )
+      }.to raise_error( CeedlingException, /\[MockFoo\.h, MockBar\.h\]/ )
+    end
+  end
+
+  describe "#validate_partials_in_use" do
+    it "does not raise when the test uses no Partial features" do
+      allow(@configurator).to receive(:project_use_partials).and_return( false )
+
+      expect {
+        @setup.validate_partials_in_use( filename: 'TestFoo.c', partials_in_use: false, includes: [] )
+      }.to_not raise_error
+    end
+
+    it "raises when the test uses Partial features but the project has Partials disabled" do
+      allow(@configurator).to receive(:project_use_partials).and_return( false )
+      includes = [UserInclude.new(CEEDLING_HEADER_FILENAME)]
+
+      expect {
+        @setup.validate_partials_in_use( filename: 'TestFoo.c', partials_in_use: true, includes: includes )
+      }.to raise_error( CeedlingException, /not configured for Partials/ )
+    end
+
+    it "raises when the test uses Partial features but never #includes ceedling.h" do
+      allow(@configurator).to receive(:project_use_partials).and_return( true )
+
+      expect {
+        @setup.validate_partials_in_use( filename: 'TestFoo.c', partials_in_use: true, includes: [] )
+      }.to raise_error( CeedlingException, /without #including #{CEEDLING_HEADER_FILENAME}/ )
+    end
+
+    it "does not raise when the test uses Partial features and #includes ceedling.h with Partials enabled" do
+      allow(@configurator).to receive(:project_use_partials).and_return( true )
+      includes = [UserInclude.new(CEEDLING_HEADER_FILENAME)]
+
+      expect {
+        @setup.validate_partials_in_use( filename: 'TestFoo.c', partials_in_use: true, includes: includes )
+      }.to_not raise_error
     end
   end
 

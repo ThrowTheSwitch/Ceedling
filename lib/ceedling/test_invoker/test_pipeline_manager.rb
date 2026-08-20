@@ -233,7 +233,7 @@ class TestPipelineManager
       ),
 
       # Stage 12 — skipped under :mocking.
-      stage("Collecting More Test Context",
+      stage("Collecting Test Runner Details",
             condition: ->(s) { use_preprocessing.call(s) && not_mocking.call(s) },
             body: ->(s) { @test_build_executor.stage_collect_runner_details(s) }
       ),

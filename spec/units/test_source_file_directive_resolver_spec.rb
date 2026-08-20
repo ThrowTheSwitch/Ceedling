@@ -136,6 +136,44 @@ describe TestSourceFileDirectiveResolver do
         @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
       }.to raise_error( CeedlingException, /^File 'foo\.c'/ )
     end
+
+    context "when assembly support is enabled" do
+      before(:each) do
+        allow(@configurator).to receive(:test_build_use_assembly).and_return( true )
+        allow(@configurator).to receive(:extension_assembly).and_return( FilenameExtension.new('.asm') )
+      end
+
+      it "does not raise for an entry with the assembly extension" do
+        allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+          .with( 'test/TestFoo.c' ).and_return( ['foo.asm'] )
+        allow(@file_finder).to receive(:find_build_input_file)
+          .with( filepath: 'foo.asm', complain: :ignore, context: TEST_SYM ).and_return( 'src/foo.asm' )
+
+        expect {
+          @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+        }.to_not raise_error
+      end
+
+      it "still does not raise for an entry with the ordinary source extension" do
+        allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+          .with( 'test/TestFoo.c' ).and_return( ['foo.c'] )
+        allow(@file_finder).to receive(:find_build_input_file)
+          .with( filepath: 'foo.c', complain: :ignore, context: TEST_SYM ).and_return( 'src/foo.c' )
+
+        expect {
+          @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+        }.to_not raise_error
+      end
+
+      it "raises naming both accepted extensions for an entry matching neither" do
+        allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+          .with( 'test/TestFoo.c' ).and_return( ['foo.txt'] )
+
+        expect {
+          @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+        }.to raise_error( CeedlingException, /not a \.c or \.asm source file/ )
+      end
+    end
   end
 
   describe "#remove_subtracted" do

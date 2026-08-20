@@ -273,6 +273,83 @@ describe TestBuildExecutor do
     end
   end
 
+  context "#generate_executable" do
+    before(:each) do
+      allow(@file_path_utils).to receive(:form_test_build_map_filepath).and_return( 'build/map' )
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+    end
+
+    def build_args
+      {
+        context:    :test,
+        build_path: 'build/test',
+        executable: 'build/a_test.out',
+        objects:    ['build/foo.o'],
+        flags:      [],
+        lib_args:   [],
+        lib_paths:  []
+      }
+    end
+
+    it "re-raises a ShellException from the linker" do
+      ex = ShellException.new( shell_result: { output: 'some unrelated linker failure' }, name: 'linker' )
+      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
+      allow(@loginator).to receive(:log)
+
+      expect {
+        @executor.generate_executable( **build_args )
+      }.to raise_error( ShellException )
+    end
+
+    it "logs missing-symbols guidance when the shell output mentions a symbol, before re-raising" do
+      ex = ShellException.new( shell_result: { output: 'undefined reference to symbol foo' }, name: 'linker' )
+      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
+
+      expect(@loginator).to receive(:log).with(
+        a_string_matching(/missing symbols/i),
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      expect {
+        @executor.generate_executable( **build_args )
+      }.to raise_error( ShellException )
+    end
+
+    it "does not log guidance when the shell output does not mention a symbol" do
+      ex = ShellException.new( shell_result: { output: 'some unrelated linker failure' }, name: 'linker' )
+      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
+
+      expect(@loginator).to_not receive(:log)
+
+      expect {
+        @executor.generate_executable( **build_args )
+      }.to raise_error( ShellException )
+    end
+
+    it "includes mock-specific guidance only when the project uses mocks" do
+      ex = ShellException.new( shell_result: { output: 'missing symbol foo' }, name: 'linker' )
+      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+
+      expect(@loginator).to receive(:log).with(
+        a_string_matching(/needed mocks/i),
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      expect {
+        @executor.generate_executable( **build_args )
+      }.to raise_error( ShellException )
+    end
+
+    it "does not raise when the linker succeeds" do
+      allow(@generator).to receive(:generate_executable_file)
+
+      expect { @executor.generate_executable( **build_args ) }.to_not raise_error
+    end
+  end
+
   context "#stage_execute" do
     before(:each) do
       stub_batchinator_exec()
@@ -1065,6 +1142,88 @@ describe TestBuildExecutor do
       expect(@loginator).to receive(:log).with( "Skipping ... (nothing changed)..." ).exactly(3).times
 
       @executor.stage_generate_partials( @state )
+    end
+  end
+
+  context "#tailor_search_paths" do
+    PROJECT_BUILD_VENDOR_CMOCK_PATH      = 'build/vendor/cmock'      unless defined?(PROJECT_BUILD_VENDOR_CMOCK_PATH)
+    PROJECT_BUILD_VENDOR_CEXCEPTION_PATH = 'build/vendor/cexception' unless defined?(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH)
+
+    before(:each) do
+      allow(@configurator).to receive(:collection_paths_support).and_return( ['support'] )
+    end
+
+    it "returns the given search paths unchanged for an ordinary test source" do
+      result = @executor.send( :tailor_search_paths, filepath: 'src/Foo.c', search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['src', 'test'] )
+    end
+
+    it "swaps in the support paths plus Unity's own vendor path for Unity's own source" do
+      filepath = File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['support', PROJECT_BUILD_VENDOR_UNITY_PATH] )
+    end
+
+    it "swaps in the support, Unity, and CMock vendor paths for CMock's own source when mocks are in use" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      filepath = File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['support', PROJECT_BUILD_VENDOR_UNITY_PATH, PROJECT_BUILD_VENDOR_CMOCK_PATH] )
+    end
+
+    it "also folds in the CException vendor path for CMock's own source when exceptions are also in use" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:project_use_exceptions).and_return( true )
+      filepath = File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq(
+        ['support', PROJECT_BUILD_VENDOR_UNITY_PATH, PROJECT_BUILD_VENDOR_CMOCK_PATH, PROJECT_BUILD_VENDOR_CEXCEPTION_PATH]
+      )
+    end
+
+    it "leaves CMock's own source untouched when mocks are not in use, falling through to the given search paths" do
+      filepath = File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['src', 'test'] )
+    end
+
+    it "swaps in the support and CException vendor paths for CException's own source when exceptions are in use" do
+      allow(@configurator).to receive(:project_use_exceptions).and_return( true )
+      filepath = File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['support', PROJECT_BUILD_VENDOR_CEXCEPTION_PATH] )
+    end
+
+    it "adds the support and every in-use framework's own vendor path for a support file" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:project_use_exceptions).and_return( true )
+      allow(@configurator).to receive(:collection_all_support).and_return( ['test/support/CustomAsserts.c'] )
+
+      result = @executor.send( :tailor_search_paths, filepath: 'test/support/CustomAsserts.c', search_paths: ['src', 'test'] )
+
+      expect(result).to eq(
+        ['src', 'test', 'support', PROJECT_BUILD_VENDOR_UNITY_PATH, PROJECT_BUILD_VENDOR_CMOCK_PATH, PROJECT_BUILD_VENDOR_CEXCEPTION_PATH]
+      )
+    end
+
+    it "deduplicates the tailored search paths it assembles" do
+      allow(@configurator).to receive(:collection_paths_support).and_return( ['support', PROJECT_BUILD_VENDOR_UNITY_PATH] )
+      filepath = File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['support', PROJECT_BUILD_VENDOR_UNITY_PATH] )
     end
   end
 

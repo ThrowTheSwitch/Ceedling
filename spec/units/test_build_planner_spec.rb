@@ -306,7 +306,6 @@ describe TestBuildPlanner do
       end
       allow(@file_path_utils).to receive(:form_test_executable_filepath).and_return( 'build/test/out/a_test/TestFoo.exe' )
       allow(@file_path_utils).to receive(:form_pass_results_filepath).and_return( 'build/test/results/a_test/TestFoo.pass' )
-      allow(@file_path_utils).to receive(:form_fail_results_filepath).and_return( 'build/test/results/a_test/TestFoo.fail' )
     end
 
     it "resolves this test's sources, framework files, executable, and results paths" do
@@ -316,7 +315,6 @@ describe TestBuildPlanner do
       expect(@testable.frameworks).to eq( [File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )] )
       expect(@testable.executable).to eq( 'build/test/out/a_test/TestFoo.exe' )
       expect(@testable.results_pass).to eq( 'build/test/results/a_test/TestFoo.pass' )
-      expect(@testable.results_fail).to eq( 'build/test/results/a_test/TestFoo.fail' )
     end
 
     it "includes the runner's own generated source among the compiled objects" do
@@ -358,7 +356,6 @@ describe TestBuildPlanner do
         @planner.stage_determine_artifacts( @state )
 
         expect(@testable.sources).to include( 'src/Foo.c' )
-        expect(@testable.no_link_objects).to eq( ['src/Foo.o'] )
         expect(@testable.objects).to_not include( 'src/Foo.o' )
       end
     end

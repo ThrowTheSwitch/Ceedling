@@ -147,6 +147,28 @@ describe TestPipelineManager do
 
         @manager.run( state(options: [:mocking]) )
       end
+
+      context "when the project has mocks disabled" do
+        before(:each) do
+          allow(@configurator).to receive(:project_use_mocks).and_return( false )
+        end
+
+        it "skips Mocking itself but still announces and banners a mocks-only run" do
+          expect(@test_build_executor).to_not receive(:stage_generate_mocks)
+
+          expect(@loginator).to receive(:log)
+            .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:mocking], Verbosity::NORMAL, LogLabels::NOTICE )
+          expect(@loginator).to receive(:decorate)
+            .with( TestPipelineManager::STOP_POINT_BANNERS[:mocking], LogLabels::BUILT )
+            .and_return( "👷 #{TestPipelineManager::STOP_POINT_BANNERS[:mocking]}" )
+          expect(@reportinator).to receive(:generate_banner)
+            .with( "👷 #{TestPipelineManager::STOP_POINT_BANNERS[:mocking]}" )
+            .and_return( "banner" )
+          expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
+
+          @manager.run( state(options: [:mocking]) )
+        end
+      end
     end
 
     context "with :test_runner" do

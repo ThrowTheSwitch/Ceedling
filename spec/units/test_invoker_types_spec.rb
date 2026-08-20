@@ -114,21 +114,6 @@ describe "TestInvokerTypes" do
   end
 
   describe TestInvokerTypes::Stage do
-    it "always runs when given no condition" do
-      stage = TestInvokerTypes::Stage.new( name: 'A stage', body: ->(_s) {} )
-
-      expect(stage.run?( nil )).to be true
-    end
-
-    it "runs only when its condition returns true for the given state" do
-      stage = TestInvokerTypes::Stage.new(
-        name: 'A stage', condition: ->(s) { s.options.include?(:build_only) }, body: ->(_s) {}
-      )
-
-      expect(stage.run?( TestInvokerTypes::PipelineState.new( options: [:build_only] ) )).to be true
-      expect(stage.run?( TestInvokerTypes::PipelineState.new( options: [] ) )).to be false
-    end
-
     describe "#enabled? and #empty?" do
       it "is enabled whenever its condition returns true, regardless of empty_condition" do
         stage = TestInvokerTypes::Stage.new(
@@ -159,7 +144,7 @@ describe "TestInvokerTypes" do
         expect(stage.empty?( TestInvokerTypes::PipelineState.new( mocks_list: [double("Mock")] ) )).to be false
       end
 
-      it "does not run when enabled but empty, though it remains enabled" do
+      it "remains enabled even when empty" do
         stage = TestInvokerTypes::Stage.new(
           name: 'A stage',
           condition:       ->(_s) { true },
@@ -170,10 +155,9 @@ describe "TestInvokerTypes" do
 
         expect(stage.enabled?( state )).to be true
         expect(stage.empty?( state )).to be true
-        expect(stage.run?( state )).to be false
       end
 
-      it "does not run when disabled, even if it would otherwise have work to do" do
+      it "is disabled regardless of whether it would otherwise have work to do" do
         stage = TestInvokerTypes::Stage.new(
           name: 'A stage',
           condition:       ->(_s) { false },
@@ -183,7 +167,6 @@ describe "TestInvokerTypes" do
         state = TestInvokerTypes::PipelineState.new( mocks_list: [double("Mock")] )
 
         expect(stage.enabled?( state )).to be false
-        expect(stage.run?( state )).to be false
       end
     end
   end
