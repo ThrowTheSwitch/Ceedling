@@ -12,12 +12,14 @@ require 'ceedling/includes/includes'
 require 'ceedling/partials/partials'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_pipeline_helpers'
+require 'ceedling/test_invoker/test_build_validations'
 require 'ceedling/path_mirror'
 
 class TestBuildSetup
 
   include TestInvokerTypes
   include TestPipelineHelpers
+  include TestBuildValidations
 
   constructor(
     :configurator,
@@ -524,35 +526,6 @@ class TestBuildSetup
       dirs << (subdir.empty? ? testable.paths[:mocks] : File.join( testable.paths[:mocks], subdir ))
     end
     return dirs.uniq
-  end
-
-  def validate_mocks_in_use(filename:, mocks:)
-    if !@configurator.project_use_mocks and !mocks.empty?
-      _mocks = mocks.map { |include| include.filename }
-
-      if _mocks.length > 1
-        _mocks = "[#{_mocks.join(', ')}]"
-      else
-        _mocks = _mocks[0]
-      end
-
-      msg = "Your project is not configured for mocking, but #{filename} #includes #{_mocks}"
-      raise CeedlingException.new( msg )
-    end
-  end
-
-  def validate_partials_in_use(filename:, partials_in_use:, includes:)
-    partials_header_in_use = Includes.contains?( includes, CEEDLING_HEADER_FILENAME )
-
-    if partials_in_use && !@configurator.project_use_partials
-      msg = "Your project is not configured for Partials, but #{filename} is attempting to use Partial features"
-      raise CeedlingException.new( msg )
-    end
-
-    if partials_in_use && !partials_header_in_use
-      msg = "Your test file #{filename} is attempting to use Partial features without #including #{CEEDLING_HEADER_FILENAME}"
-      raise CeedlingException.new( msg )
-    end
   end
 
   def search_paths(filepath, paths, mock_search_paths = [])

@@ -8,12 +8,14 @@
 require 'ceedling/constants'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_pipeline_helpers'
+require 'ceedling/test_invoker/test_build_validations'
 require 'ceedling/includes/includes'
 
 class TestBuildPlanner
 
   include TestInvokerTypes
   include TestPipelineHelpers
+  include TestBuildValidations
 
   constructor(
     :configurator,
@@ -276,33 +278,6 @@ class TestBuildPlanner
   # one mock.
   def ordered_mock_header_collection(testable)
     @include_pathinator.ordered_header_files( testable.search_paths - testable.mock_search_paths )
-  end
-
-  # Every #include naming a real project header -- other than a mock (validated separately,
-  # as part of resolving it via FileFinder#resolve_mock), a system header, Unity's or
-  # Ceedling's own header, or a Partial (Ceedling's own generated content, not a project file
-  # to validate) -- must resolve to exactly one file, existence-wise, among this test's own
-  # search_paths (the same directory priority the compiler itself consults): ambiguity among
-  # same-named candidates resolves quietly to the first by that order, exactly as the real
-  # compile would find it; only a genuinely unresolvable name still halts the build here. A
-  # bogus or merely-unmatched path is otherwise never actually checked against real project
-  # headers -- only its potential corresponding source file is, tolerantly, elsewhere. Unity's
-  # and Ceedling's own headers live in the build's vendor directories, outside every configured
-  # :test/:source/:support/:include root a test's search_paths is built from, so neither could
-  # ever resolve there.
-  def validate_header_includes(test_filepath:, testable:)
-    includes = @context_extractor.lookup_nonmock_header_includes_list( test_filepath )
-
-    collection = @include_pathinator.ordered_header_files( testable.search_paths )
-
-    includes.each do |include|
-      next if include.is_a?( SystemInclude )
-      next if include.filename == UNITY_H_FILE
-      next if include.filename == CEEDLING_HEADER_FILENAME
-      next if include.filename.start_with?( PARTIAL_FILENAME_PREFIX )
-
-      @file_finder.find_header_file( include.filepath, :error, collection: collection )
-    end
   end
 
   def generate_header_input_for_mock_partial(mock, test)
