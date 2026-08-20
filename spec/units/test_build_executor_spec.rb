@@ -979,6 +979,17 @@ describe TestBuildExecutor do
       expect( @config.full_expansion_filepath ).to eq( 'build/preprocess/full_expansion/Foo.c' )
     end
 
+    it "does nothing for the directives-only pass when directives-only preprocessing is unavailable for this toolchain, but still runs preserve-macros and full-expansion" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@preprocessinator).to_not receive(:generate_directives_only_output)
+      expect(@preprocessinator).to receive(:preprocess_partial_source_file_preserve_macros)
+      expect(@preprocessinator).to receive(:preprocess_partial_source_expand_macros)
+
+      @executor.stage_preprocess_partial_sources( @state )
+    end
+
     it "logs a NORMAL progress line for a source that needs preprocessing, and no OBNOXIOUS skip line" do
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
       allow(@dependinator).to receive(:stale?).and_return( true )
