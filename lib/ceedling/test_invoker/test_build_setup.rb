@@ -244,7 +244,7 @@ class TestBuildSetup
       @dependinator.register(
         target,
         files: [filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       if @dependinator.stale?( target )
@@ -306,7 +306,7 @@ class TestBuildSetup
       @dependinator.register(
         target,
         files: [filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       unless @dependinator.stale?( target )

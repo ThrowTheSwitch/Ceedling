@@ -27,6 +27,14 @@ module TestPipelineHelpers
     [@configurator.project_build_vendor_ceedling_path]
   end
 
+  # A dependency-tracker target's staleness is only as accurate as the meta it's
+  # registered with -- flags, defines, and search paths all affect a preprocess or
+  # compile target's actual output, so all three ride along as meta everywhere a
+  # target derived from any of them is registered.
+  def dependency_meta(flags:, defines:, search_paths:)
+    { flags: flags, defines: defines, search_paths: search_paths }
+  end
+
   # A Partial's own module name doubles as its generated source file's basename, so an
   # object list built from #include-derived sources can end up carrying an object for a
   # module that a Partial has already taken over -- this removes those, leaving the

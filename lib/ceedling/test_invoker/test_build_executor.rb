@@ -69,7 +69,7 @@ class TestBuildExecutor
       @dependinator.register(
         target,
         files: [config.filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       details.preprocessed_target = target
@@ -182,7 +182,7 @@ class TestBuildExecutor
       @dependinator.register(
         target,
         files: [config.filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       details.preprocessed_target = target
@@ -667,7 +667,7 @@ class TestBuildExecutor
       @dependinator.register(
         target,
         files: [filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       stale = @dependinator.stale?( target )
@@ -1143,7 +1143,7 @@ class TestBuildExecutor
   # the only header list available before this run's compile has happened --
   # if headers changed, that's exactly what makes this stale.
   def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:)
-    @dependinator.register( object, files: [source], meta: { flags: flags, defines: defines, search_paths: search_paths } )
+    @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths ) )
     @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.stale?( object )
   end
