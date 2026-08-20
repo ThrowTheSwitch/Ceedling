@@ -317,7 +317,7 @@ class TestBuildExecutor
       module_contents = @partializer.extract_module_contents(
         name,
         config,
-        !directives_only
+        fallback: !directives_only
       )
 
       @partializer.validate_config( c_module: module_contents, config: config, name: name )

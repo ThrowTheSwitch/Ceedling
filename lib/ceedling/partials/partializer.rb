@@ -186,17 +186,18 @@ class Partializer
     return _includes
   end
 
-  # Extracts and combines C code contents from header and source files
+  # Extracts and combines C code contents from a Partial config's header and source files
   #
   # This method uses CExtractor to parse C files and extract their contents including
   # function definitions, function declarations, and variable declarations. If both
   # header and source files are provided, their contents are merged into a single
   # CModule structure.
   #
-  # @param header_filepath [String, nil] Path to the header file to extract from.
-  #   If nil, no header content is extracted.
-  # @param source_filepath [String, nil] Path to the source file to extract from.
-  #   If nil, no source content is extracted.
+  # @param name [String] The test this extraction is running for (log/error context).
+  # @param config [Partials::ModuleConfig] The Partial's own config, carrying `header`/
+  #   `source` (each a ConfigFileInfo) and `module`, the module name.
+  # @param fallback [Boolean] Passed through to `associate_function_line_numbers` --
+  #   whether to fall back to plain (non-directives-only) line-number association.
   #
   # @return [CExtractorTypes::CModule] A merged CModule containing all extracted contents
   #   from both files. The structure includes:
@@ -206,7 +207,7 @@ class Partializer
   #
   # @note The method always starts with an empty CModule and merges in contents
   #   from any provided files using the CModule's + operator for combining structures.
-  def extract_module_contents(name, config, fallback)
+  def extract_module_contents(name, config, fallback:)
     # Array for CModule structs
     contents = [CExtractorTypes::CModule.new()]
 
