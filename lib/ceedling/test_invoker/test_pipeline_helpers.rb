@@ -35,6 +35,14 @@ module TestPipelineHelpers
     { flags: flags, defines: defines, search_paths: search_paths }
   end
 
+  # A preprocessing pass falls back to plain, non-directives-only handling either when
+  # directives-only support isn't available at all for this toolchain, or when this
+  # particular target's own directives-only output failed to generate (see
+  # generate_directives_only_output) despite support existing project-wide.
+  def directives_only_fallback?(directives_only, directives_only_filepath)
+    !directives_only or directives_only_filepath.nil?
+  end
+
   # A Partial mock is Ceedling's own generated content, identifiable by its own naming
   # convention rather than by any real header it corresponds to (it has none).
   def mock_partial?(include)

@@ -398,6 +398,7 @@ test_pipeline_manager:
   compose:
     - test_build_setup
     - test_build_planner
+    - partials_manager
     - test_build_executor
     - configurator
     - batchinator
@@ -450,7 +451,6 @@ test_build_executor:
     - reportinator
     - batchinator
     - preprocessinator
-    - partializer
     - generator
     - test_context_extractor
     - plugin_manager
@@ -459,6 +459,18 @@ test_build_executor:
     - file_wrapper
     - dependinator
     - test_source_file_directive_resolver
+
+partials_manager:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
+    - partializer
+    - generator
+    - dependinator
+    - file_path_utils
 
 release_invoker:
   compose:
