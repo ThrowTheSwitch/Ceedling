@@ -401,7 +401,7 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [SystemInclude.new('stdio.h')] )
       expect(@file_finder).to_not receive(:find_header_file)
 
-      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
+      @planner.validate_header_includes( test_filepath: 'test/TestFoo.c', testable: @testable )
     end
 
     it "skips Unity's own header" do
@@ -409,7 +409,7 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('unity.h')] )
       expect(@file_finder).to_not receive(:find_header_file)
 
-      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
+      @planner.validate_header_includes( test_filepath: 'test/TestFoo.c', testable: @testable )
     end
 
     it "skips Ceedling's own Partials support header" do
@@ -417,7 +417,7 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('ceedling.h')] )
       expect(@file_finder).to_not receive(:find_header_file)
 
-      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
+      @planner.validate_header_includes( test_filepath: 'test/TestFoo.c', testable: @testable )
     end
 
     it "skips a Partial's own generated header" do
@@ -425,7 +425,7 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('ceedling_partial_foo_interface.h')] )
       expect(@file_finder).to_not receive(:find_header_file)
 
-      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
+      @planner.validate_header_includes( test_filepath: 'test/TestFoo.c', testable: @testable )
     end
 
     it "resolves an ordinary header against this test's own ordered search-path header collection, hard-erroring only on no match" do
@@ -437,7 +437,7 @@ describe TestBuildPlanner do
 
       expect(@file_finder).to receive(:find_header_file).with( 'drivers/foo.h', :error, collection: ['inc/drivers/foo.h'] )
 
-      @planner.validate_header_includes( 'test/TestFoo.c', @testable )
+      @planner.validate_header_includes( test_filepath: 'test/TestFoo.c', testable: @testable )
     end
   end
 
