@@ -43,6 +43,9 @@ Tasks mirroring command line `test:` task invocation but with an early terminati
 
 Like with command line `test:` tasks, `<test>` can be `all`, a test file name, or a source file name that has a corresponding test file.
 
+### Subtractive paths in `TEST_SOURCE_FILE()`
+The `TEST_SOURCE_FILE()` build directive macro can now be used to remove source files from a test executable build using the same `-:` filepath decorator as available in `:paths` project configuration (ex. `TEST_SOURCE_FILE("-:foo/bar/file.c")`). This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
+
 ### Filepath limit checks
 Platform filepath limits (especially Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
 

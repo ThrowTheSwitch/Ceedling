@@ -275,7 +275,7 @@ Subtractive paths may be simple paths or globs just like any other path entry.
     paths with Mixins to your heart’s content. The subtractive paths are not
     removed until all Mixins have been merged.
 
-!!! tip "The same `+:`/`-:` convention is available in test files"
+!!! tip "The same `+:` / `-:` convention is available in test files"
     The [`TEST_SOURCE_FILE()` build directive macro][test-source-file-subtractive]
     supports this identical notation for removing a specific source file from
     a test executable’s own compile/link list.

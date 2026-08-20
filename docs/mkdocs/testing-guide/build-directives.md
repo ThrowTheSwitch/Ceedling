@@ -84,25 +84,27 @@ conventions.
 
 A `TEST_SOURCE_FILE()` entry can also be prefixed with `-:` to remove a
 named file from a test executable’s compile/link list outright, rather
-than add one. This uses the same `+:`/`-:` convention available for
+than add one. This uses the same `+:` / `-:` convention available for
 [`:paths` list entries](../configuration/reference/paths.md#subtractive-entries).
 
-Unlike the override behavior above — which only cancels the one file the
-header/source convention would otherwise have matched to a same-named
-`#include` — a `-:` entry applies to the fully assembled list for a test,
-after every other source has already been added to it. It removes the
-named file regardless of how that file got there: the implicit
-header/source convention, a positive `TEST_SOURCE_FILE()` entry, or a
-[Partial](partials/index.md).
+Unlike the override behavior above that only modifies the header/source 
+convention for same-named files, a `-:` decorated entry applies to the fully 
+assembled list for a test. It removes the named file regardless of how 
+that file was added to the list and acts only after every other source 
+has already been added to the list.
 
 This is useful whenever Ceedling’s convention of compiling and linking any
 `.c` file matching an `#include`d header’s name pulls in a file that
-shouldn’t be part of a particular test executable — for instance, a
-same-named file elsewhere in the project that defines a conflicting
-symbol and would otherwise break the link.
+should not be part of a particular test executable. Certain splits of 
+headers, source, and arranging of symbols can lead to duplicate symbols
+if Ceedling’s convention operates without intervention.
 
 As with the override behavior, Ceedling logs an informational notice
 naming the removed file, so a `-:` entry is never silent.
+
+Like in `:paths` entries, a `+:` decorator is assumed. That is omitting any
+decorator yields an additive file path. The `+:` decorator is available
+solely for formatting or self-documentation purposes.
 
 ### `TEST_SOURCE_FILE()` Example
 

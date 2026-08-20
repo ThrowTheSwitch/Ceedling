@@ -62,14 +62,6 @@ above, this override is logged with an informational notice naming the winning
 `TEST_SOURCE_FILE()` entry and the `#include` it overrode, so the substitution
 is not silent either.
 
-A `TEST_SOURCE_FILE()` entry prefixed with `-:` goes further still, removing
-a named file from a test's compile/link list outright rather than winning an
-override — and, unlike the override above, it applies to the fully assembled
-list regardless of how a file arrived there (the header/source convention, a
-positive `TEST_SOURCE_FILE()` entry, or a Partial), not only to a same-basename
-match. See [`TEST_SOURCE_FILE()` Subtractive Notation][test-source-file-subtractive]
-for the full discussion.
-
 ### Test files (CLI test tasks)
 
 Execute [`ceedling test:` tasks][ceedling-test] at the command line with an
@@ -230,6 +222,13 @@ present in `file_xyz.c`. In these cases, you can use the test
 directive macro `TEST_SOURCE_FILE(...)` to tell Ceedling to compile 
 and link the desired source file into the test executable (see 
 [macro documentation](build-directives.md)).
+
+Conversely, sometimes you may need to remove from a test executable 
+build a source file that corresponds to an `#include` directive in your
+test file. A `TEST_SOURCE_FILE()` entry prefixed with a `-:` decorator 
+removes a named file from a test‘s compile/link list. See 
+[`TEST_SOURCE_FILE()` Subtractive Notation][test-source-file-subtractive]
+for the full discussion.
 
 That was a lot of information and many clauses in a very few 
 sentences; the commented example test file code that follows in a 
