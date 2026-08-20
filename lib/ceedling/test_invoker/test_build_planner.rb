@@ -182,14 +182,14 @@ class TestBuildPlanner
 
   # Transform T3: Flatten testable objects into a parallel-processing-friendly list.
   def stage_flatten_objects_list(state)
-    state.objects_list = state.testables.map do |_, testable|
+    state.objects_list = state.testables.flat_map do |_, testable|
       testable.objects.map do |obj|
         {
           test: testable.name,
           obj:  obj
         }
       end
-    end.flatten
+    end
   end
 
   # -----------------------------------------------------------------------
