@@ -19,6 +19,28 @@ module TestPipelineHelpers
     @loginator.log( msg ) unless msg.nil?
   end
 
+  # Ceedling's own vendor headers/sources (Unity, CMock, CException, the generated
+  # ceedling.h) live outside every configured :test/:source/:support/:include root, so
+  # any preprocessor invocation resolving a test's own #includes needs this path handed
+  # to it directly alongside those configured roots, or it would never find them.
+  def vendor_search_paths()
+    [@configurator.project_build_vendor_ceedling_path]
+  end
+
+  # A dependency-tracker target's staleness is only as accurate as the meta it's
+  # registered with -- flags, defines, and search paths all affect a preprocess or
+  # compile target's actual output, so all three ride along as meta everywhere a
+  # target derived from any of them is registered.
+  def dependency_meta(flags:, defines:, search_paths:)
+    { flags: flags, defines: defines, search_paths: search_paths }
+  end
+
+  # A Partial mock is Ceedling's own generated content, identifiable by its own naming
+  # convention rather than by any real header it corresponds to (it has none).
+  def mock_partial?(include)
+    include.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
+  end
+
   # A Partial's own module name doubles as its generated source file's basename, so an
   # object list built from #include-derived sources can end up carrying an object for a
   # module that a Partial has already taken over -- this removes those, leaving the

@@ -51,7 +51,7 @@ class TestBuildPlanner
         input  = nil
         subdir = ''
 
-        if is_mock_partial?( include )
+        if mock_partial?( include )
           source = generate_header_input_for_mock_partial( include, test )
           input  = source
         else
@@ -182,14 +182,11 @@ class TestBuildPlanner
 
   # Transform T3: Flatten testable objects into a parallel-processing-friendly list.
   def stage_flatten_objects_list(state)
-    state.objects_list = state.testables.map do |_, testable|
+    state.objects_list = state.testables.flat_map do |_, testable|
       testable.objects.map do |obj|
-        {
-          test: testable.name,
-          obj:  obj
-        }
+        ObjectWork.new( test: testable.name, obj: obj )
       end
-    end.flatten
+    end
   end
 
   # -----------------------------------------------------------------------
@@ -279,10 +276,6 @@ class TestBuildPlanner
   # one mock.
   def ordered_mock_header_collection(testable)
     @include_pathinator.ordered_header_files( testable.search_paths - testable.mock_search_paths )
-  end
-
-  def is_mock_partial?(mock)
-    return mock.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
   end
 
   # Every #include naming a real project header -- other than a mock (validated separately,

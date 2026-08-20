@@ -113,6 +113,15 @@ describe "TestInvokerTypes" do
     end
   end
 
+  describe TestInvokerTypes::ObjectWork do
+    it "carries which test an object belongs to and the object's own filepath" do
+      work = TestInvokerTypes::ObjectWork.new( test: :a_test, obj: 'build/test/out/a_test/Foo.o' )
+
+      expect(work.test).to eq( :a_test )
+      expect(work.obj).to eq( 'build/test/out/a_test/Foo.o' )
+    end
+  end
+
   describe TestInvokerTypes::Stage do
     describe "#enabled? and #empty?" do
       it "is enabled whenever its condition returns true, regardless of empty_condition" do

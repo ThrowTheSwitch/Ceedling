@@ -69,7 +69,7 @@ class TestBuildExecutor
       @dependinator.register(
         target,
         files: [config.filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       details.preprocessed_target = target
@@ -112,7 +112,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -132,10 +132,10 @@ class TestBuildExecutor
         test:                     name,
         filepath:                 config.filepath,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!directives_only or directives_only_filepath.nil?),
+        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines
       }
 
@@ -155,7 +155,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -182,7 +182,7 @@ class TestBuildExecutor
       @dependinator.register(
         target,
         files: [config.filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       details.preprocessed_target = target
@@ -225,7 +225,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -245,10 +245,10 @@ class TestBuildExecutor
         test:                     name,
         filepath:                 config.filepath,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!directives_only or directives_only_filepath.nil?),
+        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines
       }
 
@@ -268,7 +268,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -317,7 +317,7 @@ class TestBuildExecutor
       module_contents = @partializer.extract_module_contents(
         name,
         config,
-        !directives_only
+        fallback: !directives_only
       )
 
       @partializer.validate_config( c_module: module_contents, config: config, name: name )
@@ -539,7 +539,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -565,10 +565,10 @@ class TestBuildExecutor
         test:                     testable.name,
         filepath:                 details.source,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!directives_only or directives_only_filepath.nil?),
+        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines,
         extras:                   extras
       }
@@ -658,7 +658,7 @@ class TestBuildExecutor
       name                     = testable.name
       directives_only_filepath = testable.preprocess[:directives_only][:filepath]
 
-      fallback = (!directives_only or directives_only_filepath.nil?)
+      fallback = directives_only_fallback?( directives_only, directives_only_filepath )
 
       # form_preprocessed_file_filepath is deterministic (same call
       # preprocess_test_file itself uses internally), so it can be registered
@@ -667,7 +667,7 @@ class TestBuildExecutor
       @dependinator.register(
         target,
         files: [filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       stale = @dependinator.stale?( target )
@@ -681,7 +681,7 @@ class TestBuildExecutor
           includes:                 @context_extractor.lookup_all_header_includes_list( testable.filepath ),
           flags:                    testable.preprocess_flags,
           include_paths:            testable.search_paths,
-          vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+          vendor_paths:             vendor_search_paths(),
           defines:                  testable.preprocess_defines
         }
 
@@ -840,12 +840,12 @@ class TestBuildExecutor
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.objects_list) do |obj|
-      src = @file_finder.find_build_input_file( filepath: obj[:obj], context: state.context, test: obj[:test] )
+      src = @file_finder.find_build_input_file( filepath: obj.obj, context: state.context, test: obj.test )
       compiled = compile_test_component(
         context: state.context,
-        test:    obj[:test],
+        test:    obj.test,
         source:  src,
-        object:  obj[:obj],
+        object:  obj.obj,
         state:   state
       )
       state.lock.synchronize { skipped += 1 } unless compiled
@@ -959,7 +959,7 @@ class TestBuildExecutor
           skipped:       !run_now
         }
 
-        run_fixture_now( **arg_hash )
+        run_fixture( **arg_hash )
 
       ensure
         @plugin_manager.post_test( testable.filepath )
@@ -1023,7 +1023,7 @@ class TestBuildExecutor
     @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
   end
 
-  def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, skipped: false)
+  def run_fixture(context:, test_name:, test_filepath:, executable:, result:, skipped: false)
     @generator.generate_test_results(
       tool:          @configurator.tools_test_fixture,
       context:       context,
@@ -1052,6 +1052,14 @@ class TestBuildExecutor
   end
 
   private
+
+  # A preprocessing pass falls back to plain, non-directives-only handling either when
+  # directives-only support isn't available at all for this toolchain, or when this
+  # particular target's own directives-only output failed to generate (see
+  # generate_directives_only_output) despite support existing project-wide.
+  def directives_only_fallback?(directives_only, directives_only_filepath)
+    !directives_only or directives_only_filepath.nil?
+  end
 
   # Compile a single C or assembly source file into an object file. Returns
   # whether a real compile actually happened, so the caller can report how
@@ -1143,41 +1151,57 @@ class TestBuildExecutor
   # the only header list available before this run's compile has happened --
   # if headers changed, that's exactly what makes this stale.
   def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:)
-    @dependinator.register( object, files: [source], meta: { flags: flags, defines: defines, search_paths: search_paths } )
+    @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths ) )
     @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.stale?( object )
   end
 
+  # Each framework/support source needs its own vendor path (and, for CMock and a
+  # support file, other frameworks' vendor paths too, when those frameworks are also in
+  # play) spliced in ahead of a test's ordinary search paths -- the vendor sources
+  # themselves live outside any configured :test/:source/:support/:include root, so
+  # without this they'd never resolve. An ordinary test source matches none of the
+  # cases below and falls through to `search_paths` unchanged.
   def tailor_search_paths(filepath:, search_paths:)
-    _search_paths = []
-
-    if filepath == File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
-
-    elsif @configurator.project_use_mocks and
-          (filepath == File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE ))
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
-      _search_paths << PROJECT_BUILD_VENDOR_CMOCK_PATH
-      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
-
-    elsif @configurator.project_use_exceptions and
-          (filepath == File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE ))
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH
-
-    elsif @configurator.collection_all_support.include?( filepath )
-      _search_paths  = search_paths
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
-      _search_paths << PROJECT_BUILD_VENDOR_CMOCK_PATH      if @configurator.project_use_mocks
-      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
-    end
+    _search_paths =
+      if filepath == File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
+        unity_search_paths()
+      elsif @configurator.project_use_mocks and
+            (filepath == File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE ))
+        cmock_search_paths()
+      elsif @configurator.project_use_exceptions and
+            (filepath == File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE ))
+        cexception_search_paths()
+      elsif @configurator.collection_all_support.include?( filepath )
+        support_file_search_paths( search_paths )
+      else
+        []
+      end
 
     return search_paths if _search_paths.empty?
 
     return _search_paths.uniq
+  end
+
+  def unity_search_paths()
+    @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_UNITY_PATH]
+  end
+
+  def cmock_search_paths()
+    paths = @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_UNITY_PATH, PROJECT_BUILD_VENDOR_CMOCK_PATH]
+    paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+    paths
+  end
+
+  def cexception_search_paths()
+    @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_CEXCEPTION_PATH]
+  end
+
+  def support_file_search_paths(search_paths)
+    paths = search_paths + @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_UNITY_PATH]
+    paths << PROJECT_BUILD_VENDOR_CMOCK_PATH      if @configurator.project_use_mocks
+    paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+    paths
   end
 
   # A test runner's content comes from two configuration sections plus a flag

@@ -1104,7 +1104,7 @@ describe Partializer do
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
       expect(@partializer_helper).not_to receive(:extract_function_scope_static_vars)
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq([])
       expect(result.variable_declarations).to eq([])
@@ -1128,7 +1128,7 @@ describe Partializer do
         name: @name, funcs: header_funcs, filepath: '/path/to/header.h', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq(header_funcs)
       expect(result.variable_declarations).to eq([])
@@ -1152,7 +1152,7 @@ describe Partializer do
         name: @name, funcs: source_funcs, filepath: '/path/to/source.c', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq(source_funcs)
       expect(result.variable_declarations).to eq([])
@@ -1185,7 +1185,7 @@ describe Partializer do
         name: @name, funcs: header_funcs, filepath: '/path/to/header.h', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq(header_funcs + source_funcs)
       expect(result.variable_declarations).to eq(header_contents.variable_declarations + source_contents.variable_declarations)
@@ -1208,7 +1208,7 @@ describe Partializer do
         name: @name, funcs: source_funcs, filepath: '/src/module1.c', fallback: false
       )
 
-      @partializer.extract_module_contents(@name, config, false)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
     it "passes extraction name through to associate_function_line_numbers" do
@@ -1227,7 +1227,7 @@ describe Partializer do
         name: 'SpecificTestName', funcs: source_funcs, filepath: '/src/module1.c', fallback: false
       )
 
-      @partializer.extract_module_contents('SpecificTestName', config, false)
+      @partializer.extract_module_contents('SpecificTestName', config, fallback: false)
     end
 
     it "returns empty CModule when a preprocessed file has no contents" do
@@ -1244,7 +1244,7 @@ describe Partializer do
         name: @name, funcs: [], filepath: '/path/to/header.h', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq([])
       expect(result.variable_declarations).to eq([])
@@ -1265,7 +1265,7 @@ describe Partializer do
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
       allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([promoted_var1, promoted_var2])
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.element_sequence).to eq([promoted_var1, promoted_var2])
       expect(result.element_sequence[0]).to equal(promoted_var1)
@@ -1297,7 +1297,7 @@ describe Partializer do
         file_type:               'source'
       )
 
-      @partializer.extract_module_contents(@name, config, false)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
     it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on header" do
@@ -1325,7 +1325,7 @@ describe Partializer do
         file_type:               'header'
       )
 
-      @partializer.extract_module_contents(@name, config, false)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
     it "does not call update_signatures_from_full_expansion when full_expansion_filepath is nil" do
@@ -1347,7 +1347,7 @@ describe Partializer do
 
       expect(@partializer_helper).not_to receive(:update_signatures_from_full_expansion)
 
-      @partializer.extract_module_contents(@name, config, false)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
   end
 

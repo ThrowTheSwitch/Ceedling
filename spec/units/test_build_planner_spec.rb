@@ -372,26 +372,26 @@ describe TestBuildPlanner do
       @planner.stage_flatten_objects_list( @state )
 
       expect(@state.objects_list).to contain_exactly(
-        { test: 'a_test', obj: 'build/test/out/a_test/TestFoo.o' },
-        { test: 'a_test', obj: 'build/test/out/a_test/Foo.o' },
-        { test: 'b_test', obj: 'build/test/out/b_test/TestBar.o' }
+        TestInvokerTypes::ObjectWork.new( test: 'a_test', obj: 'build/test/out/a_test/TestFoo.o' ),
+        TestInvokerTypes::ObjectWork.new( test: 'a_test', obj: 'build/test/out/a_test/Foo.o' ),
+        TestInvokerTypes::ObjectWork.new( test: 'b_test', obj: 'build/test/out/b_test/TestBar.o' )
       )
     end
   end
 
-  describe "#is_mock_partial?" do
+  describe "#mock_partial?" do
     before(:each) do
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
     end
 
     it "is true for a mock whose filename carries the Partial prefix after the mock prefix" do
       mock = MockInclude.new( 'Mockceedling_partial_foo_interface.h' )
-      expect(@planner.is_mock_partial?( mock )).to be true
+      expect(@planner.mock_partial?( mock )).to be true
     end
 
     it "is false for an ordinary mock" do
       mock = MockInclude.new( 'MockFoo.h' )
-      expect(@planner.is_mock_partial?( mock )).to be false
+      expect(@planner.mock_partial?( mock )).to be false
     end
   end
 

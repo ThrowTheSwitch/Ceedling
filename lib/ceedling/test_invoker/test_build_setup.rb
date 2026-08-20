@@ -244,14 +244,14 @@ class TestBuildSetup
       @dependinator.register(
         target,
         files: [filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       if @dependinator.stale?( target )
         arg_hash = {
           test:         name,
           filepath:     filepath,
-          search_paths: [@configurator.project_build_vendor_ceedling_path],
+          search_paths: vendor_search_paths(),
           flags:        testable.preprocess_flags,
           defines:      testable.preprocess_defines
         }
@@ -306,7 +306,7 @@ class TestBuildSetup
       @dependinator.register(
         target,
         files: [filepath],
-        meta:  { flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths }
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
       )
 
       unless @dependinator.stale?( target )
@@ -327,7 +327,7 @@ class TestBuildSetup
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -497,12 +497,6 @@ class TestBuildSetup
       @loginator.log( msg, Verbosity::DEBUG )
       @file_wrapper.write_blank_file( filepath )
     end
-  end
-
-  # A Partial mock is Ceedling's own generated content, identifiable by its own naming
-  # convention rather than by any real header it corresponds to (it has none).
-  def mock_partial?(include)
-    include.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
   end
 
   # Every mocked header's own mirrored directory below this test's mock root -- a mock is
