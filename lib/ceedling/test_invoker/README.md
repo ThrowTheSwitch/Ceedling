@@ -6,15 +6,16 @@ Every test file in a run gets its own `Testable` record, and every `Testable` in
 
 ## The pipeline's shape
 
-Four classes divide the work, and each owns a different concern:
+Five classes divide the work, and each owns a different concern:
 
 - **`TestInvoker`** owns one test-build *run*, top to bottom. It opens the dependency cache before the run and flushes it afterward, fires the `pre_test_build`/`post_test_build` plugin hooks around it, and if anything anywhere in the pipeline raises, it's the one that catches the exception, logs it, and registers the run as a failed build rather than letting the exception escape. It also answers a couple of narrow questions once a run has finished -- which sources a given test pulled in, mainly for callers outside the pipeline that only care about dependency information and never asked for a real build.
 - **`TestPipelineManager`** owns the *stage sequence* itself: the fixed list of stages in the order below, and the handful of feature-toggle and stop-point conditions that let a stage recognize it has nothing to do on a given run. It has no idea how any stage actually accomplishes its work -- it only decides whether a given stage runs at all.
 - **`TestBuildSetup`** does the early, per-test *groundwork*: creating build directories, extracting a test file's `#include`s and build directives, and working out the flags, defines, and search paths every later stage will need.
 - **`TestBuildPlanner`** decides *what* needs to be generated and built -- which mocks a test needs, what its generated runner and Partials will look like, and, once everything upstream has run, the final list of sources, objects, and artifacts that have to be compiled and linked.
-- **`TestBuildExecutor`** does the actual *work* the planner decided on: preprocessing, generating mocks and Partials, compiling objects, linking executables, and running the resulting test fixtures.
+- **`PartialsManager`** preprocesses each Partial's header and source files and generates its actual implementation, interface, and (when needed) types-header content, calling into `Partializer` (`lib/ceedling/partials/`) for the underlying C-parsing/extraction work.
+- **`TestBuildExecutor`** does the rest of the actual *work* the planner decided on: generating mocks, compiling objects, linking executables, and running the resulting test fixtures.
 
-`TestBuildSetup`, `TestBuildPlanner`, and `TestBuildExecutor` never call each other directly -- `TestPipelineManager` is the only thing that sequences them, and it does so purely by calling each stage's method against the shared `PipelineState` in turn.
+`TestBuildSetup`, `TestBuildPlanner`, `PartialsManager`, and `TestBuildExecutor` never call each other directly -- `TestPipelineManager` is the only thing that sequences them, and it does so purely by calling each stage's method against the shared `PipelineState` in turn.
 
 ## `PipelineState` and `Testable`
 
@@ -35,7 +36,7 @@ Four classes divide the work, and each owns a different concern:
 
 **Planning (stage 5)** is where `TestBuildPlanner` decides what this test needs generated: which of its includes are mocks and where each one's real header actually resolves to, what its Partials configuration looks like, and where its generated test runner will live. Nothing is generated yet -- stage 5 only decides.
 
-**Partials (stages 6-8)**, run only when a project uses Partials at all, and only when this particular run actually has any. A transform first flattens every test's Partials configuration into two flat lists -- one for partial header files, one for partial source files -- so stages 6 and 7 can preprocess every partial file across every test as a single parallel batch rather than nesting per-test loops. Stage 8 then extracts and generates each partial's actual implementation and interface content from whatever those preprocessing passes produced.
+**Partials (stages 6-8)**, owned by `PartialsManager` and run only when a project uses Partials at all, and only when this particular run actually has any. A transform first flattens every test's Partials configuration into two flat lists -- one for partial header files, one for partial source files -- so stages 6 and 7 can preprocess every partial file across every test as a single parallel batch rather than nesting per-test loops. Stage 8 then extracts and generates each partial's actual implementation and interface content from whatever those preprocessing passes produced.
 
 **Mocks (stages 9-10)**, run only when a project uses mocks at all, and only when this particular run actually has any. A transform flattens every test's planned mocks into one flat list the same way Partials' own transform does. Stage 9, when mock preprocessing is enabled, preprocesses each header to be mocked. Stage 10 generates the actual mock source and header CMock will compile in. This is also the pipeline's first stop point: a run that only wants mocks regenerated (a `--mocking-only`-style build) stops right after this stage.
 

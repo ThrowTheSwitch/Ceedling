@@ -14,6 +14,7 @@ describe TestPipelineManager do
   before(:each) do
     @test_build_setup     = double( "TestBuildSetup" )
     @test_build_planner   = double( "TestBuildPlanner" )
+    @partials_manager     = double( "PartialsManager" )
     @test_build_executor  = double( "TestBuildExecutor" )
     @configurator         = double( "Configurator" )
     @batchinator          = double( "Batchinator" )
@@ -41,9 +42,9 @@ describe TestPipelineManager do
     allow(@test_build_planner).to receive(:stage_determine_artifacts)
     allow(@test_build_planner).to receive(:stage_flatten_objects_list)
 
-    allow(@test_build_executor).to receive(:stage_preprocess_partial_headers)
-    allow(@test_build_executor).to receive(:stage_preprocess_partial_sources)
-    allow(@test_build_executor).to receive(:stage_generate_partials)
+    allow(@partials_manager).to receive(:stage_preprocess_partial_headers)
+    allow(@partials_manager).to receive(:stage_preprocess_partial_sources)
+    allow(@partials_manager).to receive(:stage_generate_partials)
     allow(@test_build_executor).to receive(:stage_preprocess_mocks)
     allow(@test_build_executor).to receive(:stage_generate_mocks)
     allow(@test_build_executor).to receive(:stage_preprocess_test_files)
@@ -57,6 +58,7 @@ describe TestPipelineManager do
       {
         :test_build_setup    => @test_build_setup,
         :test_build_planner  => @test_build_planner,
+        :partials_manager    => @partials_manager,
         :test_build_executor => @test_build_executor,
         :configurator        => @configurator,
         :batchinator         => @batchinator,
@@ -110,9 +112,9 @@ describe TestPipelineManager do
         expect(@test_build_setup).to receive(:stage_collect_preprocessor_context)
         expect(@test_build_planner).to receive(:stage_determine_files)
         expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
-        expect(@test_build_executor).to receive(:stage_preprocess_partial_headers)
-        expect(@test_build_executor).to receive(:stage_preprocess_partial_sources)
-        expect(@test_build_executor).to receive(:stage_generate_partials)
+        expect(@partials_manager).to receive(:stage_preprocess_partial_headers)
+        expect(@partials_manager).to receive(:stage_preprocess_partial_sources)
+        expect(@partials_manager).to receive(:stage_generate_partials)
         expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
         expect(@test_build_executor).to receive(:stage_preprocess_mocks)
         expect(@test_build_executor).to receive(:stage_generate_mocks)
@@ -279,9 +281,9 @@ describe TestPipelineManager do
         expect(@test_build_setup).to receive(:stage_collect_preprocessor_context)
         expect(@test_build_planner).to receive(:stage_determine_files)
         expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
-        expect(@test_build_executor).to receive(:stage_preprocess_partial_headers)
-        expect(@test_build_executor).to receive(:stage_preprocess_partial_sources)
-        expect(@test_build_executor).to receive(:stage_generate_partials)
+        expect(@partials_manager).to receive(:stage_preprocess_partial_headers)
+        expect(@partials_manager).to receive(:stage_preprocess_partial_sources)
+        expect(@partials_manager).to receive(:stage_generate_partials)
         expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
         expect(@test_build_executor).to receive(:stage_preprocess_mocks)
         expect(@test_build_executor).to receive(:stage_generate_mocks)
@@ -330,9 +332,9 @@ describe TestPipelineManager do
         allow(@configurator).to receive(:project_use_partials).and_return( false )
 
         expect(@test_build_planner).to_not receive(:stage_flatten_partials_lists)
-        expect(@test_build_executor).to_not receive(:stage_preprocess_partial_headers)
-        expect(@test_build_executor).to_not receive(:stage_preprocess_partial_sources)
-        expect(@test_build_executor).to_not receive(:stage_generate_partials)
+        expect(@partials_manager).to_not receive(:stage_preprocess_partial_headers)
+        expect(@partials_manager).to_not receive(:stage_preprocess_partial_sources)
+        expect(@partials_manager).to_not receive(:stage_generate_partials)
         expect(@test_build_planner).to receive(:stage_determine_files)
         expect(@loginator).to_not receive(:log)
 
@@ -359,9 +361,9 @@ describe TestPipelineManager do
         allow(@configurator).to receive(:project_use_partials).and_return( true )
 
         expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
-        expect(@test_build_executor).to_not receive(:stage_preprocess_partial_headers)
-        expect(@test_build_executor).to_not receive(:stage_preprocess_partial_sources)
-        expect(@test_build_executor).to_not receive(:stage_generate_partials)
+        expect(@partials_manager).to_not receive(:stage_preprocess_partial_headers)
+        expect(@partials_manager).to_not receive(:stage_preprocess_partial_sources)
+        expect(@partials_manager).to_not receive(:stage_generate_partials)
 
         expect(@loginator).to receive(:log)
           .with( "Preprocessing for Testing & Mocking Partials: no Partials to process", Verbosity::OBNOXIOUS )

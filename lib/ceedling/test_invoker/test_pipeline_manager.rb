@@ -20,6 +20,7 @@ class TestPipelineManager
   constructor(
     :test_build_setup,
     :test_build_planner,
+    :partials_manager,
     :test_build_executor,
     :configurator,
     :batchinator,
@@ -185,7 +186,7 @@ class TestPipelineManager
             condition:       use_partials,
             empty_condition: ->(s) { s.partials_headers.empty? },
             empty_notice:    "no Partials to process",
-            body: ->(s) { @test_build_executor.stage_preprocess_partial_headers(s) }
+            body: ->(s) { @partials_manager.stage_preprocess_partial_headers(s) }
       ),
 
       # Stage 7
@@ -193,7 +194,7 @@ class TestPipelineManager
             condition:       use_partials,
             empty_condition: ->(s) { s.partials_sources.empty? },
             empty_notice:    "no Partials to process",
-            body: ->(s) { @test_build_executor.stage_preprocess_partial_sources(s) }
+            body: ->(s) { @partials_manager.stage_preprocess_partial_sources(s) }
       ),
 
       # Stage 8
@@ -201,7 +202,7 @@ class TestPipelineManager
             condition:       use_partials,
             empty_condition: ->(s) { s.partials_headers.empty? && s.partials_sources.empty? },
             empty_notice:    "no Partials to generate",
-            body: ->(s) { @test_build_executor.stage_generate_partials(s) }
+            body: ->(s) { @partials_manager.stage_generate_partials(s) }
       ),
 
       # Transform 2: Prepare mocks for parallel processing
