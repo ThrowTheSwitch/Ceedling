@@ -52,7 +52,7 @@ class TestBuildPlanner
         subdir = ''
 
         if is_mock_partial?( include )
-          source = gnerate_header_input_for_mock_partial( include, test )
+          source = generate_header_input_for_mock_partial( include, test )
           input  = source
         else
           source, subdir     = @file_finder.resolve_mock( include.filepath, collection: ordered_mock_header_collection( testable ) )
@@ -82,6 +82,9 @@ class TestBuildPlanner
         partials_configs = assemble_partials_config( filepath: filepath )
       end
 
+      # `pre_test` runs outside the lock -- it's a plugin hook, not a write into
+      # shared state, and holding the shared mutex around arbitrary plugin code
+      # would serialize every test's hook invocation behind one global lock.
       state.lock.synchronize do
         testable.runner = RunnerInfo.new(
           output_filepath: runner_filepath,
@@ -89,9 +92,9 @@ class TestBuildPlanner
         )
         testable.mocks    = mocks
         testable.partials.configs = partials_configs
-
-        @plugin_manager.pre_test( filepath )
       end
+
+      @plugin_manager.pre_test( filepath )
     end
   end
 
@@ -157,7 +160,6 @@ class TestBuildPlanner
       test_objects     = @file_path_utils.form_test_build_objects_filelist( testable.paths[:build], compilations )
       test_executable  = @file_path_utils.form_test_executable_filepath( testable.paths[:build], filepath )
       test_pass        = @file_path_utils.form_pass_results_filepath( testable.paths[:results], filepath )
-      test_fail        = @file_path_utils.form_fail_results_filepath( testable.paths[:results], filepath )
 
       test_no_link_objects =
         @file_path_utils.form_test_build_objects_filelist(
@@ -173,9 +175,7 @@ class TestBuildPlanner
         testable.core            = test_core
         testable.objects         = test_objects
         testable.executable      = test_executable
-        testable.no_link_objects = test_no_link_objects
         testable.results_pass    = test_pass
-        testable.results_fail    = test_fail
       end
     end
   end
@@ -271,10 +271,6 @@ class TestBuildPlanner
     return @test_context_extractor.lookup_source_includes_list( test_filepath )
   end
 
-  def fetch_include_search_paths_for_test_file(test_filepath)
-    return @test_context_extractor.lookup_include_paths_list( test_filepath )
-  end
-
   # Reconstructs the ordering collect_mock_search_paths (TestBuildSetup, stage 2) originally
   # saw when it first resolved this same mock's real header -- before this testable's own
   # generated mock directories existed to splice into search_paths. Every call site resolving
@@ -316,15 +312,11 @@ class TestBuildPlanner
     end
   end
 
-  def gnerate_header_input_for_mock_partial(mock, test)
+  def generate_header_input_for_mock_partial(mock, test)
     return @file_path_utils.form_partial_header_filepath(
       test,
       mock.filename.delete_prefix( @configurator.cmock_mock_prefix )
     )
-  end
-
-  def form_partials_filenames(partials)
-    return partials.map { |partial| @file_path_utils.form_partial_implementation_source_filename( partial ) }
   end
 
   def remove_mock_original_headers(filelist, mocklist)
