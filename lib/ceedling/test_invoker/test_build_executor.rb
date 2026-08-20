@@ -37,245 +37,25 @@ class TestBuildExecutor
   end
 
   # Stage 6: Preprocess partial header files for extract-and-generate pass.
-  #
-  # A partial header's three preprocessing passes below (directives-only
-  # generation, preserve-macros preprocessing, full-expansion) all derive
-  # from the same antecedent file and the same preprocess flags/defines/
-  # search paths, so they're stale or fresh together as a single unit --
-  # one DependencyTracker target per header per test covers all three.
-  #
-  # Settling every target's staleness in its own sequential pass first
-  # (cheap, no subprocess work) is what lets the three parallel batches
-  # below each just check `details.stale` instead of duplicating the
-  # register/stale? call three times over. On a stale target, all three
-  # passes run and populate `config` as they do today. On a fresh target,
-  # the two preprocessed output filepaths are recomputed the same
-  # deterministic way the preprocessor methods themselves compute them, and
-  # `config.includes` is recalled from the on-disk list a prior stale run
-  # wrote -- so `config` ends up populated identically either way, and
-  # stage 8 (which reads only `config`) needs no knowledge of which path
-  # produced it.
   def stage_preprocess_partial_headers(state)
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-    skipped = 0
-
-    state.partials_headers.each do |details|
-      config   = details.config
-      testable = details.testable
-      name     = testable.name
-
-      target = @file_path_utils.form_preprocessed_file_filepath( config.filepath, name )
-
-      @dependinator.register(
-        target,
-        files: [config.filepath],
-        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
-      )
-
-      details.preprocessed_target = target
-      details.stale               = @dependinator.stale?( target )
-
-      if details.stale
-        msg = @reportinator.generate_module_progress(
-          operation:   'Preprocessing partial header for',
-          module_name: name,
-          filename:    File.basename( config.filepath )
-        )
-        @loginator.log( msg )
-      else
-        msg = @reportinator.generate_module_progress(
-          operation:   'Skipping partial header preprocessing for',
-          module_name: name,
-          filename:    File.basename( config.filepath )
-        )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-        skipped += 1
-
-        config.directives_only_filepath = target
-        config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
-        config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
-      end
-    end
-
-    log_skip_summary( task: "partial header preprocessing", count: skipped, noun: "headers" )
-
-    # Generate directive-only preprocessor output if available
-    @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
-      next unless details.stale
-
-      config   = details.config
-      testable = details.testable
-      name     = testable.name
-
-      arg_hash = {
-        filepath:      config.filepath,
-        test:          name,
-        flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
-        vendor_paths:  vendor_search_paths(),
-        defines:       testable.preprocess_defines
-      }
-
-      details.directives_only_filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-    end if directives_only
-
-    # Preprocess and assemble header files
-    @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
-      next unless details.stale
-
-      config                   = details.config
-      testable                 = details.testable
-      name                     = testable.name
-      directives_only_filepath = details.directives_only_filepath
-
-      arg_hash = {
-        test:                     name,
-        filepath:                 config.filepath,
-        directives_only_filepath: directives_only_filepath,
-        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
-        flags:                    testable.preprocess_flags,
-        include_paths:            testable.search_paths,
-        vendor_paths:             vendor_search_paths(),
-        defines:                  testable.preprocess_defines
-      }
-
-      config.directives_only_filepath, config.includes = @preprocessinator.preprocess_partial_header_file_preserve_macros( **arg_hash )
-    end
-
-    # Full-preprocess partial header files for expanded signature extraction.
-    @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
-      next unless details.stale
-
-      config   = details.config
-      testable = details.testable
-      name     = testable.name
-
-      arg_hash = {
-        filepath:      config.filepath,
-        test:          name,
-        flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
-        vendor_paths:  vendor_search_paths(),
-        defines:       testable.preprocess_defines
-      }
-
-      config.full_expansion_filepath = @preprocessinator.preprocess_partial_header_expand_macros( **arg_hash )
-
-      @dependinator.mark_fresh( details.preprocessed_target )
-    end
+    preprocess_partials(
+      items:                  state.partials_headers,
+      kind:                   'header',
+      noun:                   'headers',
+      preserve_macros_method: :preprocess_partial_header_file_preserve_macros,
+      expand_macros_method:   :preprocess_partial_header_expand_macros
+    )
   end
 
   # Stage 7: Preprocess partial source files for extract-and-generate pass.
-  # Mirrors stage 6 exactly, against `state.partials_sources` and each
-  # partial's source file rather than its header.
   def stage_preprocess_partial_sources(state)
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-    skipped = 0
-
-    state.partials_sources.each do |details|
-      config   = details.config
-      testable = details.testable
-      name     = testable.name
-
-      target = @file_path_utils.form_preprocessed_file_filepath( config.filepath, name )
-
-      @dependinator.register(
-        target,
-        files: [config.filepath],
-        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
-      )
-
-      details.preprocessed_target = target
-      details.stale               = @dependinator.stale?( target )
-
-      if details.stale
-        msg = @reportinator.generate_module_progress(
-          operation:   'Preprocessing partial source for',
-          module_name: name,
-          filename:    File.basename( config.filepath )
-        )
-        @loginator.log( msg )
-      else
-        msg = @reportinator.generate_module_progress(
-          operation:   'Skipping partial source preprocessing for',
-          module_name: name,
-          filename:    File.basename( config.filepath )
-        )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-        skipped += 1
-
-        config.directives_only_filepath = target
-        config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
-        config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
-      end
-    end
-
-    log_skip_summary( task: "partial source preprocessing", count: skipped, noun: "sources" )
-
-    # Generate directive-only preprocessor output if available
-    @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
-      next unless details.stale
-
-      config   = details.config
-      testable = details.testable
-      name     = testable.name
-
-      arg_hash = {
-        filepath:      config.filepath,
-        test:          name,
-        flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
-        vendor_paths:  vendor_search_paths(),
-        defines:       testable.preprocess_defines
-      }
-
-      details.directives_only_filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-    end if directives_only
-
-    # Preprocess and assemble source files
-    @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
-      next unless details.stale
-
-      config                   = details.config
-      testable                 = details.testable
-      name                     = testable.name
-      directives_only_filepath = details.directives_only_filepath
-
-      arg_hash = {
-        test:                     name,
-        filepath:                 config.filepath,
-        directives_only_filepath: directives_only_filepath,
-        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
-        flags:                    testable.preprocess_flags,
-        include_paths:            testable.search_paths,
-        vendor_paths:             vendor_search_paths(),
-        defines:                  testable.preprocess_defines
-      }
-
-      config.directives_only_filepath, config.includes = @preprocessinator.preprocess_partial_source_file_preserve_macros( **arg_hash )
-    end
-
-    # Full-preprocess partial source files for expanded signature extraction.
-    @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
-      next unless details.stale
-
-      config   = details.config
-      testable = details.testable
-      name     = testable.name
-
-      arg_hash = {
-        filepath:      config.filepath,
-        test:          name,
-        flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
-        vendor_paths:  vendor_search_paths(),
-        defines:       testable.preprocess_defines
-      }
-
-      config.full_expansion_filepath = @preprocessinator.preprocess_partial_source_expand_macros( **arg_hash )
-
-      @dependinator.mark_fresh( details.preprocessed_target )
-    end
+    preprocess_partials(
+      items:                  state.partials_sources,
+      kind:                   'source',
+      noun:                   'sources',
+      preserve_macros_method: :preprocess_partial_source_file_preserve_macros,
+      expand_macros_method:   :preprocess_partial_source_expand_macros
+    )
   end
 
   # Stage 8: Extract and generate partial implementation and interface files.
@@ -1059,6 +839,136 @@ class TestBuildExecutor
   # generate_directives_only_output) despite support existing project-wide.
   def directives_only_fallback?(directives_only, directives_only_filepath)
     !directives_only or directives_only_filepath.nil?
+  end
+
+  # Shared body for stages 6 and 7 -- a partial's header and source files go through
+  # identical preprocessing, differing only in which of `state.partials_headers`/
+  # `state.partials_sources` supplies the work and which Preprocessinator methods
+  # `kind` (a header or a source) is actually preprocessed by.
+  #
+  # A partial file's three preprocessing passes below (directives-only generation,
+  # preserve-macros preprocessing, full-expansion) all derive from the same
+  # antecedent file and the same preprocess flags/defines/search paths, so they're
+  # stale or fresh together as a single unit -- one DependencyTracker target per
+  # file per test covers all three.
+  #
+  # Settling every target's staleness in its own sequential pass first (cheap, no
+  # subprocess work) is what lets the three parallel batches below each just check
+  # `details.stale` instead of duplicating the register/stale? call three times
+  # over. On a stale target, all three passes run and populate `config` as they do
+  # today. On a fresh target, the two preprocessed output filepaths are recomputed
+  # the same deterministic way the preprocessor methods themselves compute them,
+  # and `config.includes` is recalled from the on-disk list a prior stale run wrote
+  # -- so `config` ends up populated identically either way, and stage 8 (which
+  # reads only `config`) needs no knowledge of which path produced it.
+  def preprocess_partials(items:, kind:, noun:, preserve_macros_method:, expand_macros_method:)
+    directives_only = @configurator.test_build_preprocess_directives_only_available
+    skipped = 0
+
+    items.each do |details|
+      config   = details.config
+      testable = details.testable
+      name     = testable.name
+
+      target = @file_path_utils.form_preprocessed_file_filepath( config.filepath, name )
+
+      @dependinator.register(
+        target,
+        files: [config.filepath],
+        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
+      )
+
+      details.preprocessed_target = target
+      details.stale               = @dependinator.stale?( target )
+
+      if details.stale
+        msg = @reportinator.generate_module_progress(
+          operation:   "Preprocessing partial #{kind} for",
+          module_name: name,
+          filename:    File.basename( config.filepath )
+        )
+        @loginator.log( msg )
+      else
+        msg = @reportinator.generate_module_progress(
+          operation:   "Skipping partial #{kind} preprocessing for",
+          module_name: name,
+          filename:    File.basename( config.filepath )
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        skipped += 1
+
+        config.directives_only_filepath = target
+        config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
+        config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+      end
+    end
+
+    log_skip_summary( task: "partial #{kind} preprocessing", count: skipped, noun: noun )
+
+    # Generate directive-only preprocessor output if available
+    @batchinator.exec(workload: :compile, things: items) do |details|
+      next unless details.stale
+
+      config   = details.config
+      testable = details.testable
+      name     = testable.name
+
+      arg_hash = {
+        filepath:      config.filepath,
+        test:          name,
+        flags:         testable.preprocess_flags,
+        include_paths: testable.search_paths,
+        vendor_paths:  vendor_search_paths(),
+        defines:       testable.preprocess_defines
+      }
+
+      details.directives_only_filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
+    end if directives_only
+
+    # Preprocess and assemble files
+    @batchinator.exec(workload: :compile, things: items) do |details|
+      next unless details.stale
+
+      config                   = details.config
+      testable                 = details.testable
+      name                     = testable.name
+      directives_only_filepath = details.directives_only_filepath
+
+      arg_hash = {
+        test:                     name,
+        filepath:                 config.filepath,
+        directives_only_filepath: directives_only_filepath,
+        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
+        flags:                    testable.preprocess_flags,
+        include_paths:            testable.search_paths,
+        vendor_paths:             vendor_search_paths(),
+        defines:                  testable.preprocess_defines
+      }
+
+      config.directives_only_filepath, config.includes = @preprocessinator.public_send( preserve_macros_method, **arg_hash )
+    end
+
+    # Full-preprocess files for expanded signature extraction.
+    @batchinator.exec(workload: :compile, things: items) do |details|
+      next unless details.stale
+
+      config   = details.config
+      testable = details.testable
+      name     = testable.name
+
+      arg_hash = {
+        filepath:      config.filepath,
+        test:          name,
+        flags:         testable.preprocess_flags,
+        include_paths: testable.search_paths,
+        vendor_paths:  vendor_search_paths(),
+        defines:       testable.preprocess_defines
+      }
+
+      config.full_expansion_filepath = @preprocessinator.public_send( expand_macros_method, **arg_hash )
+
+      @dependinator.mark_fresh( details.preprocessed_target )
+    end
   end
 
   # Compile a single C or assembly source file into an object file. Returns
