@@ -959,7 +959,7 @@ class TestBuildExecutor
           skipped:       !run_now
         }
 
-        run_fixture_now( **arg_hash )
+        run_fixture( **arg_hash )
 
       ensure
         @plugin_manager.post_test( testable.filepath )
@@ -1023,7 +1023,7 @@ class TestBuildExecutor
     @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
   end
 
-  def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, skipped: false)
+  def run_fixture(context:, test_name:, test_filepath:, executable:, result:, skipped: false)
     @generator.generate_test_results(
       tool:          @configurator.tools_test_fixture,
       context:       context,
