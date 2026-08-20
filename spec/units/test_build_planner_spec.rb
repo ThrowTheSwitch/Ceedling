@@ -379,19 +379,19 @@ describe TestBuildPlanner do
     end
   end
 
-  describe "#is_mock_partial?" do
+  describe "#mock_partial?" do
     before(:each) do
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
     end
 
     it "is true for a mock whose filename carries the Partial prefix after the mock prefix" do
       mock = MockInclude.new( 'Mockceedling_partial_foo_interface.h' )
-      expect(@planner.is_mock_partial?( mock )).to be true
+      expect(@planner.mock_partial?( mock )).to be true
     end
 
     it "is false for an ordinary mock" do
       mock = MockInclude.new( 'MockFoo.h' )
-      expect(@planner.is_mock_partial?( mock )).to be false
+      expect(@planner.mock_partial?( mock )).to be false
     end
   end
 

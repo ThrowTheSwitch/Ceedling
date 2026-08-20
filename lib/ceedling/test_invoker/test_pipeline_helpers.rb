@@ -35,6 +35,12 @@ module TestPipelineHelpers
     { flags: flags, defines: defines, search_paths: search_paths }
   end
 
+  # A Partial mock is Ceedling's own generated content, identifiable by its own naming
+  # convention rather than by any real header it corresponds to (it has none).
+  def mock_partial?(include)
+    include.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
+  end
+
   # A Partial's own module name doubles as its generated source file's basename, so an
   # object list built from #include-derived sources can end up carrying an object for a
   # module that a Partial has already taken over -- this removes those, leaving the

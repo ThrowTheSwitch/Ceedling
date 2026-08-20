@@ -499,12 +499,6 @@ class TestBuildSetup
     end
   end
 
-  # A Partial mock is Ceedling's own generated content, identifiable by its own naming
-  # convention rather than by any real header it corresponds to (it has none).
-  def mock_partial?(include)
-    include.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
-  end
-
   # Every mocked header's own mirrored directory below this test's mock root -- a mock is
   # only ever findable by the compiler via a search path pointing directly at wherever it
   # actually lives, since C's own #include resolution has no notion of a recursive search

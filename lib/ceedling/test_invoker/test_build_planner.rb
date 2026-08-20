@@ -51,7 +51,7 @@ class TestBuildPlanner
         input  = nil
         subdir = ''
 
-        if is_mock_partial?( include )
+        if mock_partial?( include )
           source = generate_header_input_for_mock_partial( include, test )
           input  = source
         else
@@ -276,10 +276,6 @@ class TestBuildPlanner
   # one mock.
   def ordered_mock_header_collection(testable)
     @include_pathinator.ordered_header_files( testable.search_paths - testable.mock_search_paths )
-  end
-
-  def is_mock_partial?(mock)
-    return mock.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
   end
 
   # Every #include naming a real project header -- other than a mock (validated separately,
