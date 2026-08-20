@@ -251,7 +251,7 @@ class TestBuildSetup
         arg_hash = {
           test:         name,
           filepath:     filepath,
-          search_paths: [@configurator.project_build_vendor_ceedling_path],
+          search_paths: vendor_search_paths(),
           flags:        testable.preprocess_flags,
           defines:      testable.preprocess_defines
         }
@@ -327,7 +327,7 @@ class TestBuildSetup
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 

@@ -112,7 +112,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -135,7 +135,7 @@ class TestBuildExecutor
         fallback:                 (!directives_only or directives_only_filepath.nil?),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines
       }
 
@@ -155,7 +155,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -225,7 +225,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -248,7 +248,7 @@ class TestBuildExecutor
         fallback:                 (!directives_only or directives_only_filepath.nil?),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines
       }
 
@@ -268,7 +268,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -539,7 +539,7 @@ class TestBuildExecutor
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -568,7 +568,7 @@ class TestBuildExecutor
         fallback:                 (!directives_only or directives_only_filepath.nil?),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines,
         extras:                   extras
       }
@@ -681,7 +681,7 @@ class TestBuildExecutor
           includes:                 @context_extractor.lookup_all_header_includes_list( testable.filepath ),
           flags:                    testable.preprocess_flags,
           include_paths:            testable.search_paths,
-          vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+          vendor_paths:             vendor_search_paths(),
           defines:                  testable.preprocess_defines
         }
 

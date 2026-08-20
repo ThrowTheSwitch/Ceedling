@@ -19,6 +19,14 @@ module TestPipelineHelpers
     @loginator.log( msg ) unless msg.nil?
   end
 
+  # Ceedling's own vendor headers/sources (Unity, CMock, CException, the generated
+  # ceedling.h) live outside every configured :test/:source/:support/:include root, so
+  # any preprocessor invocation resolving a test's own #includes needs this path handed
+  # to it directly alongside those configured roots, or it would never find them.
+  def vendor_search_paths()
+    [@configurator.project_build_vendor_ceedling_path]
+  end
+
   # A Partial's own module name doubles as its generated source file's basename, so an
   # object list built from #include-derived sources can end up carrying an object for a
   # module that a Partial has already taken over -- this removes those, leaving the
