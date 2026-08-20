@@ -75,7 +75,7 @@ class TestBuildPlanner
         )
       end
 
-      validate_header_includes( filepath, testable )
+      validate_header_includes( test_filepath: filepath, testable: testable )
 
       partials_configs = {}
       if @configurator.project_use_partials
@@ -290,7 +290,7 @@ class TestBuildPlanner
   # and Ceedling's own headers live in the build's vendor directories, outside every configured
   # :test/:source/:support/:include root a test's search_paths is built from, so neither could
   # ever resolve there.
-  def validate_header_includes(test_filepath, testable)
+  def validate_header_includes(test_filepath:, testable:)
     includes = @context_extractor.lookup_nonmock_header_includes_list( test_filepath )
 
     collection = @include_pathinator.ordered_header_files( testable.search_paths )
