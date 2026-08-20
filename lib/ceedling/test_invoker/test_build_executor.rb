@@ -1156,36 +1156,52 @@ class TestBuildExecutor
     @dependinator.stale?( object )
   end
 
+  # Each framework/support source needs its own vendor path (and, for CMock and a
+  # support file, other frameworks' vendor paths too, when those frameworks are also in
+  # play) spliced in ahead of a test's ordinary search paths -- the vendor sources
+  # themselves live outside any configured :test/:source/:support/:include root, so
+  # without this they'd never resolve. An ordinary test source matches none of the
+  # cases below and falls through to `search_paths` unchanged.
   def tailor_search_paths(filepath:, search_paths:)
-    _search_paths = []
-
-    if filepath == File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
-
-    elsif @configurator.project_use_mocks and
-          (filepath == File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE ))
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
-      _search_paths << PROJECT_BUILD_VENDOR_CMOCK_PATH
-      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
-
-    elsif @configurator.project_use_exceptions and
-          (filepath == File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE ))
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH
-
-    elsif @configurator.collection_all_support.include?( filepath )
-      _search_paths  = search_paths
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
-      _search_paths << PROJECT_BUILD_VENDOR_CMOCK_PATH      if @configurator.project_use_mocks
-      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
-    end
+    _search_paths =
+      if filepath == File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
+        unity_search_paths()
+      elsif @configurator.project_use_mocks and
+            (filepath == File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE ))
+        cmock_search_paths()
+      elsif @configurator.project_use_exceptions and
+            (filepath == File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE ))
+        cexception_search_paths()
+      elsif @configurator.collection_all_support.include?( filepath )
+        support_file_search_paths( search_paths )
+      else
+        []
+      end
 
     return search_paths if _search_paths.empty?
 
     return _search_paths.uniq
+  end
+
+  def unity_search_paths()
+    @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_UNITY_PATH]
+  end
+
+  def cmock_search_paths()
+    paths = @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_UNITY_PATH, PROJECT_BUILD_VENDOR_CMOCK_PATH]
+    paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+    paths
+  end
+
+  def cexception_search_paths()
+    @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_CEXCEPTION_PATH]
+  end
+
+  def support_file_search_paths(search_paths)
+    paths = search_paths + @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_UNITY_PATH]
+    paths << PROJECT_BUILD_VENDOR_CMOCK_PATH      if @configurator.project_use_mocks
+    paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+    paths
   end
 
   # A test runner's content comes from two configuration sections plus a flag
