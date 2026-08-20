@@ -254,6 +254,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 
 ## 👋 Removed
 
+- `:use_deep_preprocessor` was a short-lived workaround option added after 1.0.0 for certain preprpocessing limitations. Those limitations are fully resolved, and test preprocessor options are now only `:use_test_preprocessor` and `:preprocess_force_fallback`. The latter should rarely be needed, leaving only the former as the only preprocessing feature toggle in Ceedling.
 - _CeedlingPacket.md_ user manual (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
 - _PluginDevelopmentGuide.md_ (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
 
