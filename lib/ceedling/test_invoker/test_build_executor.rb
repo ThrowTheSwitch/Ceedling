@@ -132,7 +132,7 @@ class TestBuildExecutor
         test:                     name,
         filepath:                 config.filepath,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!directives_only or directives_only_filepath.nil?),
+        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
         vendor_paths:             vendor_search_paths(),
@@ -245,7 +245,7 @@ class TestBuildExecutor
         test:                     name,
         filepath:                 config.filepath,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!directives_only or directives_only_filepath.nil?),
+        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
         vendor_paths:             vendor_search_paths(),
@@ -565,7 +565,7 @@ class TestBuildExecutor
         test:                     testable.name,
         filepath:                 details.source,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!directives_only or directives_only_filepath.nil?),
+        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
         vendor_paths:             vendor_search_paths(),
@@ -658,7 +658,7 @@ class TestBuildExecutor
       name                     = testable.name
       directives_only_filepath = testable.preprocess[:directives_only][:filepath]
 
-      fallback = (!directives_only or directives_only_filepath.nil?)
+      fallback = directives_only_fallback?( directives_only, directives_only_filepath )
 
       # form_preprocessed_file_filepath is deterministic (same call
       # preprocess_test_file itself uses internally), so it can be registered
@@ -1052,6 +1052,14 @@ class TestBuildExecutor
   end
 
   private
+
+  # A preprocessing pass falls back to plain, non-directives-only handling either when
+  # directives-only support isn't available at all for this toolchain, or when this
+  # particular target's own directives-only output failed to generate (see
+  # generate_directives_only_output) despite support existing project-wide.
+  def directives_only_fallback?(directives_only, directives_only_filepath)
+    !directives_only or directives_only_filepath.nil?
+  end
 
   # Compile a single C or assembly source file into an object file. Returns
   # whether a real compile actually happened, so the caller can report how
