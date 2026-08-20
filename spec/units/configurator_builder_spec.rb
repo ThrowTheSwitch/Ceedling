@@ -13,7 +13,6 @@ require 'ceedling/config/configurator_builder'
 require 'ceedling/filename_extension'
 
 describe ConfiguratorBuilder do
-	xit "is scary"
 
   describe '#normalize_filename_extensions' do
     let(:builder) { ConfiguratorBuilder.new(file_path_collection_utils: nil, loginator: nil, file_wrapper: nil, system_wrapper: nil) }
