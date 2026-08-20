@@ -372,9 +372,9 @@ describe TestBuildPlanner do
       @planner.stage_flatten_objects_list( @state )
 
       expect(@state.objects_list).to contain_exactly(
-        { test: 'a_test', obj: 'build/test/out/a_test/TestFoo.o' },
-        { test: 'a_test', obj: 'build/test/out/a_test/Foo.o' },
-        { test: 'b_test', obj: 'build/test/out/b_test/TestBar.o' }
+        TestInvokerTypes::ObjectWork.new( test: 'a_test', obj: 'build/test/out/a_test/TestFoo.o' ),
+        TestInvokerTypes::ObjectWork.new( test: 'a_test', obj: 'build/test/out/a_test/Foo.o' ),
+        TestInvokerTypes::ObjectWork.new( test: 'b_test', obj: 'build/test/out/b_test/TestBar.o' )
       )
     end
   end

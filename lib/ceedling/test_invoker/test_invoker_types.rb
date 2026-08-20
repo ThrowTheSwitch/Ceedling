@@ -19,7 +19,7 @@ module TestInvokerTypes
     :partials_headers,  # Array<PartialWork> — produced by T1; consumed by stages 6 & 7
     :partials_sources,  # Array<PartialWork> — produced by T1; consumed by stages 6 & 7
     :mocks_list,        # Array<MockWork> — produced by T2; consumed by stages 9 & 10
-    :objects_list,      # Produced by T3; consumed by stage 15
+    :objects_list,      # Array<ObjectWork> — produced by T3; consumed by stage 15
     :lock,              # Mutex for thread-safe testable writes
     keyword_init: true
   ) do
@@ -55,6 +55,10 @@ module TestInvokerTypes
     :name, :details, :testable, :directives_only_filepath, :preprocessed_target, :stale,
     keyword_init: true
   ) unless const_defined?(:MockWork, false)
+
+  # One object file's own compile work, flattened out of its owning testable's object
+  # list for parallel processing (T3) -- `test` names which testable it came back to.
+  ObjectWork = Struct.new(:test, :obj, keyword_init: true) unless const_defined?(:ObjectWork, false)
 
   # Named record replacing the raw hash per test file. Fields are populated
   # across multiple stages; nil fields are valid until their stage sets them.

@@ -202,7 +202,7 @@ describe TestBuildExecutor do
       )
       @state = TestInvokerTypes::PipelineState.new(
         :testables   => { :a_test => @testable },
-        :objects_list => [ { test: :a_test, obj: 'build/foo.o' } ],
+        :objects_list => [ TestInvokerTypes::ObjectWork.new( test: :a_test, obj: 'build/foo.o' ) ],
         :lock => Mutex.new, :context => :test, :options => []
       )
     end

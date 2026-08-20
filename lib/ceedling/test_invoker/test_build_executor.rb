@@ -840,12 +840,12 @@ class TestBuildExecutor
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.objects_list) do |obj|
-      src = @file_finder.find_build_input_file( filepath: obj[:obj], context: state.context, test: obj[:test] )
+      src = @file_finder.find_build_input_file( filepath: obj.obj, context: state.context, test: obj.test )
       compiled = compile_test_component(
         context: state.context,
-        test:    obj[:test],
+        test:    obj.test,
         source:  src,
-        object:  obj[:obj],
+        object:  obj.obj,
         state:   state
       )
       state.lock.synchronize { skipped += 1 } unless compiled
