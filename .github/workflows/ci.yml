@@ -111,9 +111,18 @@ jobs:
       # Run unit tests immediately after gem install — before the slower external tool
       # installation steps — so unit failures surface as quickly as possible.
       # Unit tests have no dependency on gdb, valgrind, cppcheck, gcovr, or ReportGenerator.
+      #
+      # Coverage instrumentation (CEEDLING_TEST_COVERAGE) only runs on one leg of this
+      # matrix -- Ruby 3.3, matching the other Linux-only singleton jobs' pinned version
+      # -- rather than a separate job, so the combined unit+system report reuses the
+      # tool installs this job already pays for instead of duplicating them. The value
+      # ('units' here, 'system' on the Run System Tests step below) tells spec_helper.rb
+      # which suite is instrumenting -- see spec_helper.rb's own comment for why a bare
+      # on/off flag isn't enough.
       - name: Run Unit Tests
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
+          CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'units' || 'false' }}
         run: rake specs:units
 
       # Install gdb for backtrace feature testing
@@ -174,6 +183,22 @@ jobs:
         uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
+          coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
+
+      # Merges the resultset both prior steps accumulated (see Run Unit Tests above)
+      # into one HTML report and uploads it, downloadable from this run's own Actions
+      # summary page. Ruby-3.3-only, same leg the two steps above instrumented.
+      - name: Generate Combined Coverage Report
+        if: matrix.ruby == '3.3'
+        run: rake coverage:report
+
+      - name: Upload Combined Coverage Report
+        if: matrix.ruby == '3.3'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: error
 
       # Common plugin test steps
       - name: Run Plugin Tests

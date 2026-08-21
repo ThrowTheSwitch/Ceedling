@@ -43,6 +43,29 @@ task 'specs:system:debug' do
   Rake::Task['specs:system'].invoke
 end
 
+# Formats the combined unit+system coverage resultset that CEEDLING_TEST_COVERAGE
+# test runs accumulate into one shared coverage/.resultset.json (see .simplecov and
+# spec/support/system/simplecov_boot.rb) into a single HTML report. Run after both
+# `specs:units` and `specs:system`/`specs:system:debug` have completed with that env
+# var set -- this task only reads back what they already wrote, it doesn't run any
+# specs itself. `require 'simplecov'` here briefly starts SimpleCov for this task's
+# own process too (via .simplecov's own autoload) -- overriding at_exit the same way
+# spec_helper.rb/simplecov_boot.rb do keeps that from redundantly re-merging and
+# reformatting a second time after the explicit format below already ran.
+desc "Merge and format the combined unit+system SimpleCov coverage report"
+task 'coverage:report' do
+  require 'simplecov'
+  SimpleCov.at_exit { SimpleCov.result }
+
+  result = SimpleCov::ResultMerger.merged_result
+  raise "No coverage data found in #{SimpleCov.coverage_path} -- " \
+        "run specs:units and specs:system with CEEDLING_TEST_COVERAGE set first" if result.nil?
+
+  SimpleCov::Formatter::HTMLFormatter.new.format(result)
+  puts "Combined coverage: #{result.covered_percent.round(2)}% " \
+       "(#{result.covered_lines}/#{result.total_lines} lines)"
+end
+
 # Individual unit specs
 Dir['spec/units/**/*_spec.rb'].each do |p|
   base = File.basename(p,'.*').gsub('_spec','')

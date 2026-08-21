@@ -18,6 +18,9 @@ systest.pass.*
 systest.fail.*
 systests/
 
+# Coverage report output (CEEDLING_TEST_COVERAGE test runs)
+/coverage/
+
 # Generated documentation site builds
 site-web/
 site-local/

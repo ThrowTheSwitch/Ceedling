@@ -21,6 +21,10 @@ inputs:
   ruby:
     description: 'Ruby version (used in failure artifact name)'
     required: true
+  coverage:
+    description: "Set to 'system' to instrument each system-test child process with coverage (see spec/support/system/simplecov_boot.rb) -- the literal value matters, not just truthiness, so this same run's own outer rspec process doesn't also claim the unit suite's SimpleCov resultset entry"
+    required: false
+    default: 'false'
 
 runs:
   using: "composite"
@@ -41,6 +45,7 @@ runs:
       shell: bash
       env:
         CI_RSPEC_PROGRESS_FORMAT: true
+        CEEDLING_TEST_COVERAGE: ${{ inputs.coverage }}
       run: rake specs:system:debug
 
     # Upload system test failure logs and temp project directories on test job failure.
