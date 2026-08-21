@@ -83,8 +83,12 @@ jobs:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4', '3.5']
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
+      #
+      # checkout/cache/upload-artifact/download-artifact throughout this workflow are pinned
+      # to their latest majors (not v4) for Node 24 runner support -- GitHub Actions runners
+      # now force Node 24 regardless, and v4 still targets the deprecated Node 20.
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -140,9 +144,23 @@ jobs:
       # Build cppcheck from source at a pinned version so all plugin options
       # (including SARIF, which requires 2.16+) are available for testing.
       # The installed binary is cached by version to avoid rebuilding on every run.
+      #
+      # actions/cache's restore step runs unprivileged and needs write access to recreate
+      # cached paths on a fresh runner VM. /usr/local/bin is already writable on this runner
+      # image, but /usr/local/share is not -- extracting the cached cppcheck subtree into it
+      # fails with "Cannot mkdir: Permission denied" otherwise. This has to run before every
+      # restore, on every run, since each job starts on a fresh ephemeral VM with the base
+      # image's permissions reset -- nothing from a prior run's chown carries forward. Saving
+      # the cache itself only ever needed read access (root-owned files are world-readable),
+      # so this doesn't change how or where cppcheck ultimately gets installed below.
+      - name: Ensure cppcheck Cache Destination Is Writable
+        run: |
+          sudo mkdir -p /usr/local/share/cppcheck
+          sudo chown -R "$(id -u):$(id -g)" /usr/local/share/cppcheck
+
       - name: Cache cppcheck binary and data files
         id: cache-cppcheck
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             /usr/local/bin/cppcheck
@@ -194,7 +212,7 @@ jobs:
 
       - name: Upload Combined Coverage Report
         if: matrix.ruby == '3.3'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage/
@@ -218,7 +236,7 @@ jobs:
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -300,7 +318,7 @@ jobs:
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -333,8 +351,15 @@ jobs:
       # valgrind is unavailable on macOS — valgrind specs already skip via @valgrind_available guard
 
       # Install cppcheck via Homebrew
+      #
+      # aws/tap is pre-tapped on GitHub's hosted macOS runner image (unrelated to anything
+      # this repo uses) -- newer Homebrew warns about every untrusted tap present on any
+      # `brew install`, not just ones involved in that install, so it's untapped here rather
+      # than trusted or having tap-trust checks disabled outright. `|| true` in case a future
+      # runner image doesn't have it pre-tapped.
       - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
         run: |
+          brew untap aws/tap || true
           brew install cppcheck
 
       # --break-system-packages required on macOS 14+ (PEP 668 prevents pip from installing
@@ -374,7 +399,7 @@ jobs:
     name: "Linux Test Suite (ja_JP.UTF-8 Locale)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -382,7 +407,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -427,7 +452,7 @@ jobs:
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: systest-failures-locale-ruby-3.3
           path: systests/
@@ -445,7 +470,7 @@ jobs:
     name: "Linux Encoding Stress Test (C/POSIX)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -453,7 +478,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -499,7 +524,7 @@ jobs:
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: systest-failures-encoding-stress-ruby-3.3
           path: systests/
@@ -522,7 +547,7 @@ jobs:
     steps:
       # Use a cache for our tools to speed up builds
       # No matrix here; Ruby version is hardcoded to match the cache key format used by test jobs
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -530,7 +555,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -545,7 +570,7 @@ jobs:
 
       # Download HTML docs bundle built by generate-docs job to validate docs ingestion in gem build
       - name: Download HTML Documentation Bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gem-docs-site-local
           path: site-local/
@@ -556,7 +581,7 @@ jobs:
 
       # Upload the built gem as a workflow artifact (downloadable from the Actions UI)
       - name: Upload Built Gem Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ceedling-gem
           path: ceedling-*.gem
