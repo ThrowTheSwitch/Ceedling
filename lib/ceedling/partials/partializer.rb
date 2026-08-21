@@ -125,8 +125,15 @@ class Partializer
 
     partials.each do |_module, config|
       # Remap mockable interface headers that will be injected into generated partial implementation
+      #
+      # Any real (non-nil) mock mode means this module has a generated mock interface header
+      # to redirect to -- PUBLIC/PRIVATE alone once covered every mode that existed, but DEDUCT
+      # (MOCK_PARTIAL_ALL_MODULE) and ACCUMULATE (MOCK_PARTIAL_MODULE) were added later without
+      # updating this check, so a module mocked via either of those was silently never
+      # redirected: its real header (and any static inline/static function bodies in it) stayed
+      # #include'd verbatim, compiling straight past the mock instead of being replaced by it.
       if includes.any? { |include| include.filename.ext().downcase() == _module.downcase() }
-        if [PUBLIC, PRIVATE].include?( config.mocks.type )
+        if !config.mocks.type.nil?
           # Insert mockable interface header from remapping of module name
           _includes << UserInclude.new(
             @file_path_utils.form_partial_interface_header_filename(_module)

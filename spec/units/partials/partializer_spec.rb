@@ -871,6 +871,75 @@ describe Partializer do
       expect(result).not_to include(UserInclude.new('partial_module.h'))
     end
 
+    # Regression test for #1215: PUBLIC/PRIVATE were once the only mock modes that existed,
+    # so this method's own "does this module have a mock to redirect to" check only ever
+    # listed those two. DEDUCT (MOCK_PARTIAL_ALL_MODULE) was added later without updating
+    # this check, so a module mocked via MOCK_PARTIAL_ALL_MODULE -- e.g. a vendor header
+    # whose only mockable functions are static inline, which requires DEDUCT to select at
+    # all -- was silently never redirected to its mock interface header.
+    it "remaps mockable deduct (ALL_MODULE) partial to interface header" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
+      partials = {
+        'partial_module' => make_partial_config(mocks_type: Partials::DEDUCT)
+      }
+      impl_filename = 'module_impl.h'
+      interface_filename = 'partial_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header = UserInclude.new(interface_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module')
+        .and_return(impl_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('partial_module')
+        .and_return(interface_filename)
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+
+      expect(result).to include(impl_header)
+      expect(result).to include(interface_header)
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('partial_module.h'))
+    end
+
+    # Same regression as the DEDUCT case above, for ACCUMULATE (MOCK_PARTIAL_MODULE).
+    it "remaps mockable accumulate partial to interface header" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
+      partials = {
+        'partial_module' => make_partial_config(mocks_type: Partials::ACCUMULATE)
+      }
+      impl_filename = 'module_impl.h'
+      interface_filename = 'partial_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header = UserInclude.new(interface_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module')
+        .and_return(impl_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('partial_module')
+        .and_return(interface_filename)
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+
+      expect(result).to include(impl_header)
+      expect(result).to include(interface_header)
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('partial_module.h'))
+    end
+
     it "remaps multiple mockable partials to interface headers" do
       includes = [
         UserInclude.new('header1.h'),

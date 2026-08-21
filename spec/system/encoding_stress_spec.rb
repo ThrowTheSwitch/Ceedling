@@ -131,8 +131,8 @@ ceedling_system_tests do
           @c.merge_project_yml_for_test({ :test_build => { :preprocess_force_fallback => false } })
           output = @c.ceedling_build_exec("test:all")
           expect(@c.last_exit_status).to eq(0)
-          expect(output).to match(/TESTED:\s+67/)
-          expect(output).to match(/PASSED:\s+67/)
+          expect(output).to match(/TESTED:\s+68/)
+          expect(output).to match(/PASSED:\s+68/)
         end
       end
     end
@@ -144,8 +144,8 @@ ceedling_system_tests do
           @c.merge_project_yml_for_test({ :test_build => { :preprocess_force_fallback => true } })
           output = @c.ceedling_build_exec("test:all")
           expect(@c.last_exit_status).to eq(0)
-          expect(output).to match(/TESTED:\s+67/)
-          expect(output).to match(/PASSED:\s+67/)
+          expect(output).to match(/TESTED:\s+68/)
+          expect(output).to match(/PASSED:\s+68/)
         end
       end
     end
