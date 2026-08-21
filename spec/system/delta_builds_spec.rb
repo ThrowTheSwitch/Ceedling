@@ -350,8 +350,8 @@ ceedling_system_tests do
       @c.with_context do
         Dir.chdir "wondrous_forest" do
           baseline = @c.ceedling_build_exec("test:all")
-          expect(baseline).to match(/TESTED:\s+67/)
-          expect(baseline).to match(/PASSED:\s+67/)
+          expect(baseline).to match(/TESTED:\s+68/)
+          expect(baseline).to match(/PASSED:\s+68/)
 
           rebuild = @c.ceedling_build_exec("test:all")
           expect(rebuild).to_not match(/^Compiling /)
@@ -362,8 +362,8 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/Generating Partial implementation for/)
           expect(rebuild).to_not match(/Generating Partial mockable interface for/)
 
-          expect(rebuild).to match(/TESTED:\s+67/)
-          expect(rebuild).to match(/PASSED:\s+67/)
+          expect(rebuild).to match(/TESTED:\s+68/)
+          expect(rebuild).to match(/PASSED:\s+68/)
         end
       end
     end
@@ -388,8 +388,8 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Linking TestEventQueue/)
           expect(rebuild).to_not match(/^Linking TestForestMonitor/)
 
-          expect(rebuild).to match(/TESTED:\s+67/)
-          expect(rebuild).to match(/PASSED:\s+67/)
+          expect(rebuild).to match(/TESTED:\s+68/)
+          expect(rebuild).to match(/PASSED:\s+68/)
         end
       end
     end
@@ -419,8 +419,8 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Linking TestSoilMoisture/)
           expect(rebuild).to_not match(/^Linking TestTemperatureSensor/)
 
-          expect(rebuild).to match(/TESTED:\s+67/)
-          expect(rebuild).to match(/PASSED:\s+67/)
+          expect(rebuild).to match(/TESTED:\s+68/)
+          expect(rebuild).to match(/PASSED:\s+68/)
         end
       end
     end
@@ -460,8 +460,8 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Linking /)
           expect(rebuild).to_not match(/^Running /)
 
-          expect(rebuild).to match(/TESTED:\s+67/)
-          expect(rebuild).to match(/PASSED:\s+67/)
+          expect(rebuild).to match(/TESTED:\s+68/)
+          expect(rebuild).to match(/PASSED:\s+68/)
         end
       end
     end

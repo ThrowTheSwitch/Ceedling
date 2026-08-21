@@ -61,6 +61,12 @@ Because of the support added for handling paths and distinguishing duplicated fi
 
 Historically, Ceedling automatically compiles and links into a test executable any C source file whose name matches an `#include`d header file. Sometimes this convention can select the wrong file among same-named files or compile and link an entirely unwanted source file whose name happens to match a header file.
 
+## 💪 Fixed
+
+### Partials
+
+- [#1215](https://github.com/ThrowTheSwitch/Ceedling/issues/1215) Fixed `MOCK_PARTIAL_ALL_MODULE()`/`MOCK_PARTIAL_MODULE()` silently failing to partialize `inline` functions in some circumstances leading to duplicated symbols breaking compilation.
+
 ---
 
 # [1.1.5] — Prerelease
