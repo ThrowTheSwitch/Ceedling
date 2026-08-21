@@ -10,9 +10,10 @@
 
 #include "Types.h"
 
-void  TemperatureSensor_Init(float calibration_offset_celsius);
-bool  TemperatureSensor_Sample(void);
-int32 TemperatureSensor_GetMilliCelsius(void);
-bool  TemperatureSensor_IsValid(void);
+void   TemperatureSensor_Init(float calibration_offset_celsius);
+bool   TemperatureSensor_Sample(void);
+int32  TemperatureSensor_GetMilliCelsius(void);
+bool   TemperatureSensor_IsValid(void);
+uint16 TemperatureSensor_GetStatusRegister(void);
 
 #endif /* TEMPERATURE_SENSOR_H */

@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'fileutils'
+require 'bundler'
 require 'ceedling/encodinator'
 require_relative 'gem_dir_layout'
 
@@ -44,16 +45,26 @@ class SystemContext
     )
 
     Dir.chdir(shared_dir) do
-      saved = ENV.to_hash
       begin
-        %w{BUNDLE_GEMFILE BUNDLE_BIN_PATH RUBYOPT}.each { |k| ENV.delete(k) }
-        deploy_output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
-        # --prefer-local: Without it, Bundler resolves gems (e.g. `erb`) fresh from
-        # rubygems repository even when Ruby's default-gem copy satisfies the Gemfile constraint.
-        deploy_output += `bundle install --prefer-local 2>&1`
+        # Bundler.with_unbundled_env restores the pre-`bundle exec` environment for this
+        # block -- clearing not just BUNDLE_GEMFILE/BUNDLE_BIN_PATH/RUBYOPT (the previous,
+        # incomplete hand-rolled list here) but also GEM_HOME/GEM_PATH/RUBYLIB/PATH and every
+        # other var Bundler sets when this spec suite itself runs under `bundle exec` against
+        # a non-default GEM_HOME (e.g. `bundle install --path vendor/bundle`). Any one of
+        # those left in place is enough on its own for the `bundle exec ruby -S ceedling
+        # version` verification below to load the *outer* project's bundler/gems instead of
+        # this shared gem's own `--local path` install, and fail to find this Gemfile's exact
+        # pinned versions there.
+        deploy_output = Bundler.with_unbundled_env do
+          output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
+          # --prefer-local: Without it, Bundler resolves gems (e.g. `erb`) fresh from
+          # rubygems repository even when Ruby's default-gem copy satisfies the Gemfile constraint.
+          output += `bundle install --prefer-local 2>&1`
+          output
+        end
         raise VerificationFailed, "bundle install failed:\n#{deploy_output}" unless $?.success?
 
-        verify = `bundle exec ruby -S ceedling version 2>&1`
+        verify = Bundler.with_unbundled_env { `bundle exec ruby -S ceedling version 2>&1` }
         unless $?.success?
           raise VerificationFailed,
             "Ceedling does not appear to be installed or ready for use.\n" \
@@ -62,8 +73,6 @@ class SystemContext
       rescue
         FileUtils.rm_rf(shared_dir)
         raise
-      ensure
-        ENV.replace(saved)
       end
     end
 
