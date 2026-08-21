@@ -92,7 +92,17 @@ task 'coverage:report' do
       next
     end
 
-    result = SimpleCov::ResultMerger.merge_results(*files)
+    # ignore_timeout: SimpleCov's default 10-minute merge_timeout exists to keep
+    # live, in-process merges from combining coverage across unrelated runs -- it
+    # doesn't apply here, where every file being merged is one CI step's already-
+    # finished output, deliberately read back after the fact (the same reasoning
+    # SimpleCov.collate's own API uses this same override for). Without it, a
+    # system-test suite that legitimately runs longer than 10 minutes leaves the
+    # early "units" file (and any early "system" files) older than the cutoff by
+    # the time this task runs last, so they'd get silently dropped -- for units
+    # alone (only ever one file) that's a full wipeout, nil coverage, and a crash
+    # in HTMLFormatter#format on a nil result.
+    result = SimpleCov::ResultMerger.merge_results(*files, ignore_timeout: true)
 
     SimpleCov.coverage_dir(File.join('coverage', label))
     SimpleCov::Formatter::HTMLFormatter.new.format(result)
