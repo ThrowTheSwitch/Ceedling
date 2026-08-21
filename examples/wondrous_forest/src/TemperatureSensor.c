@@ -9,9 +9,10 @@
 #include "TemperatureSensor.h"
 #include "SensorHal.h"
 
-static float s_calibration_offset;
-static int32 s_last_milli_celsius;
-static bool  s_reading_valid;
+static float  s_calibration_offset;
+static int32  s_last_milli_celsius;
+static bool   s_reading_valid;
+static uint16 s_last_status_register;
 
 /* Linearized approximation: full-scale 4095 counts maps 0 C to 85 C. */
 static int32 TemperatureSensor__RawToMilliCelsius(uint16 raw_counts)
@@ -45,8 +46,9 @@ bool TemperatureSensor_Sample(void)
 
     if (!SensorHal_IsChannelReady(SENSOR_CHANNEL_TEMP)) { return false; }
 
-    raw     = SensorHal_ReadChannel(SENSOR_CHANNEL_TEMP);
-    milli_c = TemperatureSensor__RawToMilliCelsius(raw);
+    raw                    = SensorHal_ReadChannel(SENSOR_CHANNEL_TEMP);
+    s_last_status_register = SensorHal_RawStatusRegister(SENSOR_CHANNEL_TEMP);
+    milli_c                = TemperatureSensor__RawToMilliCelsius(raw);
     milli_c += (int32)(s_calibration_offset * 1000.0f);
 
     s_reading_valid      = TemperatureSensor__IsInRange(milli_c);
@@ -64,4 +66,9 @@ int32 TemperatureSensor_GetMilliCelsius(void)
 bool TemperatureSensor_IsValid(void)
 {
     return s_reading_valid;
+}
+
+uint16 TemperatureSensor_GetStatusRegister(void)
+{
+    return s_last_status_register;
 }
