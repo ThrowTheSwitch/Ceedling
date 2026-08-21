@@ -50,11 +50,14 @@ on:
 
 # Cancel any in-progress run for the same unit of work when a new event arrives.
 # A push to a branch that also has an open PR fires both the push and pull_request
-# triggers for the very same commit; grouping by PR number when one exists (falling
-# back to the ref otherwise) means those two runs share one group instead of two,
-# so the second one to start cancels the first rather than both running to completion.
+# triggers for the very same commit; github.head_ref carries the bare source branch
+# name for a pull_request event and is empty for a push, while github.ref_name carries
+# that same bare branch name for a push (and an unrelated merge-ref name for a
+# pull_request, which is why it's only ever reached as the fallback here) -- so
+# `head_ref || ref_name` resolves to the identical string for both event types on the
+# same branch, landing both runs in one group so the second to start cancels the first.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 
