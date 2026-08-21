@@ -21,6 +21,11 @@ gem "require_all"
 # ceedling.gemspec, so it is never a hard requirement for an installed release gem.
 gem "diff-lcs", "~> 1.5"
 
+# Dev-only: code coverage for CI's combined unit+system test coverage report.
+# require: false since it's only ever loaded when CEEDLING_TEST_COVERAGE is set --
+# deliberately NOT declared in ceedling.gemspec, same as diff-lcs above.
+gem "simplecov", "~> 0.22", require: false
+
 # Ceedling dependencies
 gem "diy", "~> 1.1"
 gem "constructor", "~> 2"

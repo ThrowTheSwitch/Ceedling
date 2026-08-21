@@ -50,11 +50,14 @@ on:
 
 # Cancel any in-progress run for the same unit of work when a new event arrives.
 # A push to a branch that also has an open PR fires both the push and pull_request
-# triggers for the very same commit; grouping by PR number when one exists (falling
-# back to the ref otherwise) means those two runs share one group instead of two,
-# so the second one to start cancels the first rather than both running to completion.
+# triggers for the very same commit; github.head_ref carries the bare source branch
+# name for a pull_request event and is empty for a push, while github.ref_name carries
+# that same bare branch name for a push (and an unrelated merge-ref name for a
+# pull_request, which is why it's only ever reached as the fallback here) -- so
+# `head_ref || ref_name` resolves to the identical string for both event types on the
+# same branch, landing both runs in one group so the second to start cancels the first.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 
@@ -80,8 +83,12 @@ jobs:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4', '3.5']
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
+      #
+      # checkout/cache/upload-artifact/download-artifact throughout this workflow are pinned
+      # to their latest majors (not v4) for Node 24 runner support -- GitHub Actions runners
+      # now force Node 24 regardless, and v4 still targets the deprecated Node 20.
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -108,9 +115,18 @@ jobs:
       # Run unit tests immediately after gem install — before the slower external tool
       # installation steps — so unit failures surface as quickly as possible.
       # Unit tests have no dependency on gdb, valgrind, cppcheck, gcovr, or ReportGenerator.
+      #
+      # Coverage instrumentation (CEEDLING_TEST_COVERAGE) only runs on one leg of this
+      # matrix -- Ruby 3.3, matching the other Linux-only singleton jobs' pinned version
+      # -- rather than a separate job, so the combined unit+system report reuses the
+      # tool installs this job already pays for instead of duplicating them. The value
+      # ('units' here, 'system' on the Run System Tests step below) tells spec_helper.rb
+      # which suite is instrumenting -- see spec_helper.rb's own comment for why a bare
+      # on/off flag isn't enough.
       - name: Run Unit Tests
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
+          CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'units' || 'false' }}
         run: rake specs:units
 
       # Install gdb for backtrace feature testing
@@ -128,9 +144,23 @@ jobs:
       # Build cppcheck from source at a pinned version so all plugin options
       # (including SARIF, which requires 2.16+) are available for testing.
       # The installed binary is cached by version to avoid rebuilding on every run.
+      #
+      # actions/cache's restore step runs unprivileged and needs write access to recreate
+      # cached paths on a fresh runner VM. /usr/local/bin is already writable on this runner
+      # image, but /usr/local/share is not -- extracting the cached cppcheck subtree into it
+      # fails with "Cannot mkdir: Permission denied" otherwise. This has to run before every
+      # restore, on every run, since each job starts on a fresh ephemeral VM with the base
+      # image's permissions reset -- nothing from a prior run's chown carries forward. Saving
+      # the cache itself only ever needed read access (root-owned files are world-readable),
+      # so this doesn't change how or where cppcheck ultimately gets installed below.
+      - name: Ensure cppcheck Cache Destination Is Writable
+        run: |
+          sudo mkdir -p /usr/local/share/cppcheck
+          sudo chown -R "$(id -u):$(id -g)" /usr/local/share/cppcheck
+
       - name: Cache cppcheck binary and data files
         id: cache-cppcheck
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             /usr/local/bin/cppcheck
@@ -171,6 +201,22 @@ jobs:
         uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
+          coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
+
+      # Merges the resultset both prior steps accumulated (see Run Unit Tests above)
+      # into one HTML report and uploads it, downloadable from this run's own Actions
+      # summary page. Ruby-3.3-only, same leg the two steps above instrumented.
+      - name: Generate Combined Coverage Report
+        if: matrix.ruby == '3.3'
+        run: rake coverage:report
+
+      - name: Upload Combined Coverage Report
+        if: matrix.ruby == '3.3'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: error
 
       # Common plugin test steps
       - name: Run Plugin Tests
@@ -190,7 +236,7 @@ jobs:
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -272,7 +318,7 @@ jobs:
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -305,8 +351,15 @@ jobs:
       # valgrind is unavailable on macOS — valgrind specs already skip via @valgrind_available guard
 
       # Install cppcheck via Homebrew
+      #
+      # aws/tap is pre-tapped on GitHub's hosted macOS runner image (unrelated to anything
+      # this repo uses) -- newer Homebrew warns about every untrusted tap present on any
+      # `brew install`, not just ones involved in that install, so it's untapped here rather
+      # than trusted or having tap-trust checks disabled outright. `|| true` in case a future
+      # runner image doesn't have it pre-tapped.
       - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
         run: |
+          brew untap aws/tap || true
           brew install cppcheck
 
       # --break-system-packages required on macOS 14+ (PEP 668 prevents pip from installing
@@ -346,7 +399,7 @@ jobs:
     name: "Linux Test Suite (ja_JP.UTF-8 Locale)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -354,7 +407,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -399,7 +452,7 @@ jobs:
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: systest-failures-locale-ruby-3.3
           path: systests/
@@ -417,7 +470,7 @@ jobs:
     name: "Linux Encoding Stress Test (C/POSIX)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -425,7 +478,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -471,7 +524,7 @@ jobs:
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: systest-failures-encoding-stress-ruby-3.3
           path: systests/
@@ -494,7 +547,7 @@ jobs:
     steps:
       # Use a cache for our tools to speed up builds
       # No matrix here; Ruby version is hardcoded to match the cache key format used by test jobs
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -502,7 +555,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -517,7 +570,7 @@ jobs:
 
       # Download HTML docs bundle built by generate-docs job to validate docs ingestion in gem build
       - name: Download HTML Documentation Bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gem-docs-site-local
           path: site-local/
@@ -528,7 +581,7 @@ jobs:
 
       # Upload the built gem as a workflow artifact (downloadable from the Actions UI)
       - name: Upload Built Gem Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ceedling-gem
           path: ceedling-*.gem

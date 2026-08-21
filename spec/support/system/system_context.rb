@@ -24,6 +24,7 @@ class SystemContext
   # Eliminates redundant `bundle install` runs (one per describe group → one per suite).
   @@shared_gem_dir = nil
   @@shared_gem     = nil
+  @@git_repo       = nil
 
   def self.setup_shared_gem!
     return if @@shared_gem_dir
@@ -32,19 +33,24 @@ class SystemContext
     shared_gem = GemDirLayout.new(shared_dir)
 
     git_repo = File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..'))
-    File.write(
-      File.join(shared_dir, 'Gemfile'),
-      [
-        %Q{source "http://rubygems.org/"},
-        %Q{gem "rake"},
-        %Q{gem "constructor"},
-        %Q{gem "diy"},
-        %Q{gem "thor"},
-        %Q{gem "deep_merge"},
-        %Q{gem "unicode-display_width"},
-        %Q{gem "ceedling", :path => '#{git_repo}'}
-      ].join("\n")
-    )
+    gemfile_lines = [
+      %Q{source "http://rubygems.org/"},
+      %Q{gem "rake"},
+      %Q{gem "constructor"},
+      %Q{gem "diy"},
+      %Q{gem "thor"},
+      %Q{gem "deep_merge"},
+      %Q{gem "unicode-display_width"},
+      %Q{gem "ceedling", :path => '#{git_repo}'}
+    ]
+    # This machine-generated Gemfile is never committed -- adding simplecov here only
+    # when coverage mode is on keeps every other run's deployed environment identical
+    # to what a real installed gem's own dependencies actually are. Pinned to the same
+    # constraint as the main Gemfile so both processes run the identical SimpleCov
+    # version -- an unpinned resolve here could otherwise drift to whatever's newest on
+    # rubygems.org independent of the main Gemfile.lock.
+    gemfile_lines << %Q{gem "simplecov", "~> 0.22"} if ENV['CEEDLING_TEST_COVERAGE'] == 'system'
+    File.write( File.join(shared_dir, 'Gemfile'), gemfile_lines.join("\n") )
 
     Dir.chdir(shared_dir) do
       begin
@@ -78,12 +84,14 @@ class SystemContext
 
     @@shared_gem_dir = shared_dir
     @@shared_gem     = shared_gem
+    @@git_repo       = git_repo
   end
 
   def self.cleanup_shared_gem!
     FileUtils.rm_rf(@@shared_gem_dir) if @@shared_gem_dir
     @@shared_gem_dir = nil
     @@shared_gem     = nil
+    @@git_repo       = nil
   end
 
   def initialize
@@ -148,6 +156,18 @@ class SystemContext
         ENV['BUNDLE_GEMFILE'] = File.join(@@shared_gem_dir, 'Gemfile') if @@shared_gem_dir
         ENV['RUBYLIB'] = @gem.lib
         ENV['RUBYPATH'] = @gem.bin
+
+        # RUBYOPT survives Bundler's env-stripping above only because it's set here,
+        # inside this block, rather than by whatever called into this method -- forces
+        # spec/support/system/simplecov_boot.rb to load before the child process's own
+        # requires run, the same way a coverage tool would hook any externally invoked
+        # CLI. CEEDLING_TEST_COVERAGE_ROOT tells that boot script where this repo (and
+        # its shared .simplecov config) actually live, since the child's own CWD is
+        # this ephemeral deployed project directory, not the repo.
+        if ENV['CEEDLING_TEST_COVERAGE'] == 'system'
+          ENV['RUBYOPT'] = "-r#{File.join(File.dirname(__FILE__), 'simplecov_boot.rb')}"
+          ENV['CEEDLING_TEST_COVERAGE_ROOT'] = @@git_repo
+        end
 
         ENV['LANG'] = 'en_US.UTF-8'
         ENV['LANGUAGE'] = 'en_US.UTF-8'
