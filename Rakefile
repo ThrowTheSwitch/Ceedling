@@ -44,17 +44,24 @@ task 'specs:system:debug' do
 end
 
 # Formats three HTML reports -- units alone, system alone, and both combined --
-# from the one shared coverage/.resultset.json that CEEDLING_TEST_COVERAGE test
-# runs accumulate into (see .simplecov and spec/support/system/simplecov_boot.rb).
-# Run after both `specs:units` and `specs:system`/`specs:system:debug` have
-# completed with that env var set -- this task only reads back what they already
-# wrote, it doesn't run any specs itself. Each report is just a different subset
-# of the same resultset hash, built with the identical merge machinery
-# SimpleCov's own merged_result uses internally, one subset per report:
-#   units    -- the lone entry named exactly "units" (spec_helper.rb)
-#   system   -- every entry named "system-<pid>-<timestamp>" (simplecov_boot.rb,
-#               one per system-test child process)
-#   combined -- every entry, regardless of name
+# from the raw coverage data that CEEDLING_TEST_COVERAGE test runs accumulate
+# (see .simplecov and spec/support/system/simplecov_boot.rb). Run after both
+# `specs:units` and `specs:system`/`specs:system:debug` have completed with that
+# env var set -- this task only reads back what they already wrote, it doesn't
+# run any specs itself. Sources, one per report:
+#   units    -- coverage/.resultset.json, written directly by the one unit-test
+#               process (spec_helper.rb)
+#   system   -- coverage/raw/system-<pid>-<timestamp>/.resultset.json, one small
+#               file per system-test child process (simplecov_boot.rb). Each
+#               process gets its own file rather than all sharing one growing
+#               coverage/.resultset.json -- sharing one file means every single
+#               process's exit re-reads, re-merges, and rewrites the *entire*
+#               accumulated file so far, a cost that grows with every process
+#               that ran before it and compounds across a full system-test run.
+#               merge_results below reads each small file once, the same
+#               approach SimpleCov itself recommends for "big CI setups" with
+#               many result files.
+#   combined -- the units file plus every system file
 #
 # `require 'simplecov'` here briefly starts SimpleCov for this task's own process
 # too (via .simplecov's own autoload) -- overriding at_exit to a no-op keeps that
@@ -66,24 +73,26 @@ task 'coverage:report' do
   require 'simplecov'
   SimpleCov.at_exit { }
 
-  resultset = SimpleCov::ResultMerger.read_resultset
-  raise "No coverage data found in #{SimpleCov.coverage_path} -- " \
-        "run specs:units and specs:system with CEEDLING_TEST_COVERAGE set first" if resultset.empty?
+  units_file  = File.join('coverage', '.resultset.json')
+  system_files = Dir[File.join('coverage', 'raw', 'system-*', '.resultset.json')]
+
+  raise "No coverage data found under coverage/ -- " \
+        "run specs:units and specs:system with CEEDLING_TEST_COVERAGE set first" \
+        if !File.exist?(units_file) && system_files.empty?
 
   reports = {
-    'units'    => resultset.select { |name, _| name == 'units' },
-    'system'   => resultset.select { |name, _| name.start_with?('system-') },
-    'combined' => resultset
+    'units'    => File.exist?(units_file) ? [units_file] : [],
+    'system'   => system_files,
+    'combined' => (File.exist?(units_file) ? [units_file] : []) + system_files
   }
 
-  reports.each do |label, subset|
-    if subset.empty?
+  reports.each do |label, files|
+    if files.empty?
       puts "Skipping #{label} report -- no matching coverage data (run with CEEDLING_TEST_COVERAGE=#{label == 'combined' ? 'units/system' : label} first)"
       next
     end
 
-    command_names, coverage = SimpleCov::ResultMerger.merge_valid_results(subset)
-    result = SimpleCov::ResultMerger.create_result(command_names, coverage)
+    result = SimpleCov::ResultMerger.merge_results(*files)
 
     SimpleCov.coverage_dir(File.join('coverage', label))
     SimpleCov::Formatter::HTMLFormatter.new.format(result)

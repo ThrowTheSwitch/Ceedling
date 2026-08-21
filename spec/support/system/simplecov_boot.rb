@@ -21,19 +21,28 @@ if ENV['CEEDLING_TEST_COVERAGE_ROOT']
   SimpleCov.root(ENV['CEEDLING_TEST_COVERAGE_ROOT'])
   load File.join(ENV['CEEDLING_TEST_COVERAGE_ROOT'], '.simplecov')
 
-  # SimpleCov's resultset stores one entry per command_name, and a new result under
-  # an already-used name *replaces* rather than accumulates with the previous one --
-  # a shared name across the many sequential child processes a full system-test run
-  # spawns would silently keep only the last one's coverage. PID alone isn't enough
-  # (a long run can cycle through enough child processes, each itself spawning
-  # further subprocesses for compiles/links/etc., to plausibly repeat a PID);
-  # PID plus a microsecond timestamp is.
-  SimpleCov.command_name "system-#{Process.pid}-#{Time.now.strftime('%Y%m%d%H%M%S%6N')}"
+  # A unique name per process, still useful for identifying which process a given
+  # raw result file came from. PID alone isn't enough (a long run can cycle through
+  # enough child processes, each itself spawning further subprocesses for
+  # compiles/links/etc., to plausibly repeat a PID); PID plus a microsecond
+  # timestamp is.
+  name = "system-#{Process.pid}-#{Time.now.strftime('%Y%m%d%H%M%S%6N')}"
+  SimpleCov.command_name name
+
   # Each of potentially hundreds of these child processes across a full system-test
-  # run only needs to merge its own coverage into the shared resultset -- the
-  # formatted HTML report is generated once, explicitly, by `rake coverage:report`
-  # after both suites finish, not redundantly by every child process's own exit.
-  #
+  # run gets its own raw resultset file under coverage/raw/ rather than sharing one
+  # -- `rake coverage:report` merges them all afterward. Sharing a single
+  # coverage/.resultset.json here would mean every process's exit re-reads,
+  # re-merges, and rewrites the *entire* accumulated file (SimpleCov::ResultMerger
+  # locks it, reads it whole, and rewrites it whole on every store, then reads and
+  # merges it whole *again* on the same call for a return value nothing here even
+  # uses) -- cost growing with every process that ran before it, compounding into a
+  # full system-test run taking dramatically longer than it should the more
+  # processes pile up. A dedicated directory per process makes each one's own
+  # store trivial (a brand-new, single-entry file), turning that growing cost back
+  # into a flat one.
+  SimpleCov.coverage_dir(File.join('coverage', 'raw', name))
+
   # `.simplecov`'s own track_files glob (backfilling files this particular process
   # never happened to require, so they show as 0% instead of silently vanishing
   # from the total) resolves relative to the process's actual working directory at
