@@ -43,27 +43,53 @@ task 'specs:system:debug' do
   Rake::Task['specs:system'].invoke
 end
 
-# Formats the combined unit+system coverage resultset that CEEDLING_TEST_COVERAGE
-# test runs accumulate into one shared coverage/.resultset.json (see .simplecov and
-# spec/support/system/simplecov_boot.rb) into a single HTML report. Run after both
-# `specs:units` and `specs:system`/`specs:system:debug` have completed with that env
-# var set -- this task only reads back what they already wrote, it doesn't run any
-# specs itself. `require 'simplecov'` here briefly starts SimpleCov for this task's
-# own process too (via .simplecov's own autoload) -- overriding at_exit the same way
-# spec_helper.rb/simplecov_boot.rb do keeps that from redundantly re-merging and
-# reformatting a second time after the explicit format below already ran.
-desc "Merge and format the combined unit+system SimpleCov coverage report"
+# Formats three HTML reports -- units alone, system alone, and both combined --
+# from the one shared coverage/.resultset.json that CEEDLING_TEST_COVERAGE test
+# runs accumulate into (see .simplecov and spec/support/system/simplecov_boot.rb).
+# Run after both `specs:units` and `specs:system`/`specs:system:debug` have
+# completed with that env var set -- this task only reads back what they already
+# wrote, it doesn't run any specs itself. Each report is just a different subset
+# of the same resultset hash, built with the identical merge machinery
+# SimpleCov's own merged_result uses internally, one subset per report:
+#   units    -- the lone entry named exactly "units" (spec_helper.rb)
+#   system   -- every entry named "system-<pid>-<timestamp>" (simplecov_boot.rb,
+#               one per system-test child process)
+#   combined -- every entry, regardless of name
+#
+# `require 'simplecov'` here briefly starts SimpleCov for this task's own process
+# too (via .simplecov's own autoload) -- overriding at_exit to a no-op keeps that
+# process's own trivial self-coverage from being written anywhere at all, since
+# this task reformats coverage_dir multiple times over its own run and has
+# nothing of its own worth preserving.
+desc "Merge and format units-only, system-only, and combined SimpleCov coverage reports"
 task 'coverage:report' do
   require 'simplecov'
-  SimpleCov.at_exit { SimpleCov.result }
+  SimpleCov.at_exit { }
 
-  result = SimpleCov::ResultMerger.merged_result
+  resultset = SimpleCov::ResultMerger.read_resultset
   raise "No coverage data found in #{SimpleCov.coverage_path} -- " \
-        "run specs:units and specs:system with CEEDLING_TEST_COVERAGE set first" if result.nil?
+        "run specs:units and specs:system with CEEDLING_TEST_COVERAGE set first" if resultset.empty?
 
-  SimpleCov::Formatter::HTMLFormatter.new.format(result)
-  puts "Combined coverage: #{result.covered_percent.round(2)}% " \
-       "(#{result.covered_lines}/#{result.total_lines} lines)"
+  reports = {
+    'units'    => resultset.select { |name, _| name == 'units' },
+    'system'   => resultset.select { |name, _| name.start_with?('system-') },
+    'combined' => resultset
+  }
+
+  reports.each do |label, subset|
+    if subset.empty?
+      puts "Skipping #{label} report -- no matching coverage data (run with CEEDLING_TEST_COVERAGE=#{label == 'combined' ? 'units/system' : label} first)"
+      next
+    end
+
+    command_names, coverage = SimpleCov::ResultMerger.merge_valid_results(subset)
+    result = SimpleCov::ResultMerger.create_result(command_names, coverage)
+
+    SimpleCov.coverage_dir(File.join('coverage', label))
+    SimpleCov::Formatter::HTMLFormatter.new.format(result)
+    puts "#{label.capitalize} coverage: #{result.covered_percent.round(2)}% " \
+         "(#{result.covered_lines}/#{result.total_lines} lines)"
+  end
 end
 
 # Individual unit specs

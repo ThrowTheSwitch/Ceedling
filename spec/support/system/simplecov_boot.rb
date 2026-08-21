@@ -33,5 +33,16 @@ if ENV['CEEDLING_TEST_COVERAGE_ROOT']
   # run only needs to merge its own coverage into the shared resultset -- the
   # formatted HTML report is generated once, explicitly, by `rake coverage:report`
   # after both suites finish, not redundantly by every child process's own exit.
-  SimpleCov.at_exit { SimpleCov.result }
+  #
+  # `.simplecov`'s own track_files glob (backfilling files this particular process
+  # never happened to require, so they show as 0% instead of silently vanishing
+  # from the total) resolves relative to the process's actual working directory at
+  # the moment coverage is finalized, not SimpleCov.root -- SimpleCov.root only
+  # governs how already-covered files get reported, not where that glob itself
+  # looks. Left alone, that resolves against this process's own throwaway deployed
+  # project directory (still the real CWD here, unrelated to the repo), backfilling
+  # nothing. Chdir'ing into the repo just for this one call is enough to make the
+  # glob agree with SimpleCov.root above without disturbing the rest of this
+  # process's own work, which depends on staying in its own deployed directory.
+  SimpleCov.at_exit { Dir.chdir(ENV['CEEDLING_TEST_COVERAGE_ROOT']) { SimpleCov.result } }
 end

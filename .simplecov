@@ -14,13 +14,26 @@
 #
 # track_files (rather than only reporting files a run actually happened to require)
 # means a file no test ever touches still shows up at 0% instead of being silently
-# absent from the total -- lib/ and bin/ are what the gem actually ships and what
-# both test suites exercise; vendor/ is CMock/Unity/CException's own separately
-# tested source, not this repo's.
+# absent from the total -- lib/, bin/, and plugins/ are what the gem actually ships
+# and what both test suites exercise; vendor/ is CMock/Unity/CException's own
+# separately tested source, not this repo's. The /spec/ and /vendor/ filters below
+# also cover the handful of plugins with their own nested spec/vendor code (e.g.
+# plugins/fff/spec/, plugins/fff/vendor/fff/), not just this repo's own top-level
+# spec/ and vendor/.
+#
+# One track_files call with a brace-glob covering all three trees, not three
+# separate calls -- track_files stores a single glob rather than accumulating one,
+# so each call replaces whatever the previous call set rather than adding to it.
+#
+# Grouped into the same three trees as a report's own tabs, so a report reads as
+# "how well is each shipped piece covered" rather than one flat file list.
 SimpleCov.start do
-  track_files 'lib/**/*.rb'
-  track_files 'bin/**/*.rb'
+  track_files '{lib,bin,plugins}/**/*.rb'
 
   add_filter '/spec/'
   add_filter '/vendor/'
+
+  add_group 'bin', '/bin/'
+  add_group 'lib', '/lib/'
+  add_group 'plugins', '/plugins/'
 end
