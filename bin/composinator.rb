@@ -5,12 +5,11 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'deep_merge'
 require 'ceedling/constants'
 
 class Composinator
 
-  constructor :config_walkinator, :projectinator, :mixinator
+  constructor :config_walkinator, :projectinator, :mixin_resolvinator, :mixinator
 
   def loadinate(builtin_load_paths:[], filepath:nil, mixins:[], env:{}, silent:false)
     # Aliases for clarity
@@ -21,7 +20,7 @@ class Composinator
     project_filepath, config = @projectinator.load( filepath:cmdline_filepath, env:env, silent:silent )
 
     # Extract cfg_enabled_mixins mixins list plus load paths list from config
-    cfg_enabled_mixins, cfg_load_paths = @projectinator.extract_mixins( config: config )
+    cfg_enabled_mixins, cfg_load_paths = @mixin_resolvinator.extract_mixins( config: config )
 
     # Get our YAML file extension
     yaml_ext = @projectinator.lookup_yaml_extension( config:config )
@@ -59,10 +58,10 @@ class Composinator
     cmdline_file_values.uniq!
 
     # Validate :cfg_load_paths from :mixins section of project configuration
-    @projectinator.validate_mixin_load_paths( cfg_load_paths )
+    @mixin_resolvinator.validate_mixin_load_paths( cfg_load_paths )
 
     # Validate enabled mixins from :mixins section of project configuration
-    if not @projectinator.validate_mixins(
+    if not @mixin_resolvinator.validate_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
       source: 'Config :mixins ↳ :enabled =>',
@@ -72,7 +71,7 @@ class Composinator
     end
 
     # Validate only file-based cmdline entries; inline YAML is validated separately below
-    if not @projectinator.validate_mixins(
+    if not @mixin_resolvinator.validate_mixins(
       mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
       source: 'Mixin',
@@ -86,7 +85,7 @@ class Composinator
 
     # Find mixins in project file among load paths
     # Return ordered list of filepaths
-    config_mixins = @projectinator.lookup_mixins(
+    config_mixins = @mixin_resolvinator.lookup_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
       yaml_extension: yaml_ext
@@ -102,7 +101,7 @@ class Composinator
     # Resolve file-based names/paths to canonical filepaths.
     # Returns values in the same order as the input; zip them back into a hash for
     # O(1) lookup when reconstructing positional order below.
-    resolved_file_values = @projectinator.lookup_mixins(
+    resolved_file_values = @mixin_resolvinator.lookup_mixins(
       mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
       yaml_extension: yaml_ext
@@ -166,8 +165,10 @@ class Composinator
       # Update method parameter to config value
       default_tasks = value.dup()
     else
-      # Set key/value in config if it's not set
-      config.deep_merge( {:project => {:default_tasks => default_tasks}} )
+      # Set key/value in config if it's not set, without disturbing any other
+      # existing :project keys
+      config[:project] ||= {}
+      config[:project][:default_tasks] = default_tasks
     end
 
     return default_tasks

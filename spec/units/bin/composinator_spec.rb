@@ -9,20 +9,21 @@ require 'spec_helper'
 require 'composinator'
 require 'ceedling/constants'
 require 'ceedling/config/config_walkinator'
-require 'deep_merge'
 
 describe Composinator do
   before(:each) do
     # Real instance -- simple utility class with no dependencies of its own,
     # and #default_tasks's behavior is easiest to verify accurately this way.
-    @config_walkinator = ConfigWalkinator.new
+    @config_walkinator  = ConfigWalkinator.new
     @projectinator      = double('projectinator')
+    @mixin_resolvinator = double('mixin_resolvinator')
     @mixinator          = double('mixinator')
 
     @composinator = described_class.new({
-      :config_walkinator => @config_walkinator,
-      :projectinator     => @projectinator,
-      :mixinator         => @mixinator,
+      :config_walkinator  => @config_walkinator,
+      :projectinator      => @projectinator,
+      :mixin_resolvinator => @mixin_resolvinator,
+      :mixinator          => @mixinator,
     })
   end
 
@@ -31,11 +32,11 @@ describe Composinator do
   # a real project file, real mixin files, or real YAML.
   def stub_loadinate_pipeline(config: {})
     allow(@projectinator).to receive(:load).and_return( ['/proj/project.yml', config] )
-    allow(@projectinator).to receive(:extract_mixins).and_return( [[], []] )
     allow(@projectinator).to receive(:lookup_yaml_extension).and_return( '.yml' )
-    allow(@projectinator).to receive(:validate_mixin_load_paths)
-    allow(@projectinator).to receive(:validate_mixins).and_return( true )
-    allow(@projectinator).to receive(:lookup_mixins) {|mixins:, **| mixins }
+    allow(@mixin_resolvinator).to receive(:extract_mixins).and_return( [[], []] )
+    allow(@mixin_resolvinator).to receive(:validate_mixin_load_paths)
+    allow(@mixin_resolvinator).to receive(:validate_mixins).and_return( true )
+    allow(@mixin_resolvinator).to receive(:lookup_mixins) {|mixins:, **| mixins }
     allow(@mixinator).to receive(:validate_cmdline_yaml_strings)
     allow(@mixinator).to receive(:fetch_env_filepaths).and_return( [] )
     allow(@mixinator).to receive(:validate_env_filepaths)
@@ -176,10 +177,10 @@ describe Composinator do
   describe '#loadinate -- load path precedence' do
     it 'orders load paths as user :load_paths, then project directory, then built-in paths' do
       stub_loadinate_pipeline
-      allow(@projectinator).to receive(:extract_mixins).and_return( [[], ['user/path']] )
+      allow(@mixin_resolvinator).to receive(:extract_mixins).and_return( [[], ['user/path']] )
 
       captured_load_paths = nil
-      allow(@projectinator).to receive(:lookup_mixins) do |load_paths:, **|
+      allow(@mixin_resolvinator).to receive(:lookup_mixins) do |load_paths:, **|
         captured_load_paths = load_paths
         []
       end

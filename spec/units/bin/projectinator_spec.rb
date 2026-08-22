@@ -11,8 +11,8 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 
 # Covers Projectinator's namesake responsibility -- discovering and loading the
-# project file itself -- as opposed to projectinator_mixin_spec.rb, which
-# covers its :mixins section handling.
+# project file itself. Its former :mixins section handling now lives on
+# MixinResolvinator (see mixin_resolvinator_spec.rb).
 describe Projectinator do
   before(:each) do
     @loginator = double('loginator')
@@ -29,27 +29,27 @@ describe Projectinator do
 
     @yaml_wrapper = double('yaml_wrapper')
 
-    @system_wrapper = double('system_wrapper')
-    @ruby_expandinator = double('ruby_expandinator')
-
     @projectinator = described_class.new({
       :file_wrapper      => @file_wrapper,
       :path_validator    => @path_validator,
       :yaml_wrapper      => @yaml_wrapper,
       :loginator         => @loginator,
-      :system_wrapper    => @system_wrapper,
-      :ruby_expandinator => @ruby_expandinator,
     })
   end
 
   # =========================================================================
   describe '#load' do
     it 'loads from an explicit filepath argument at highest priority' do
-      allow(@yaml_wrapper).to receive(:load).with('/abs/custom.yml').and_return({:project => {}})
+      # A leading `/` is already absolute on POSIX but means "root of the
+      # current drive" on Windows, so File.expand_path prepends a drive
+      # letter there -- compute the real expanded value instead of assuming
+      # the input string is left unchanged.
+      expanded = File.expand_path('/abs/custom.yml')
+      allow(@yaml_wrapper).to receive(:load).with(expanded).and_return({:project => {}})
 
       filepath, config = @projectinator.load( filepath: '/abs/custom.yml', env: {'CEEDLING_PROJECT_FILE' => 'ignored.yml'} )
 
-      expect(filepath).to eq('/abs/custom.yml')
+      expect(filepath).to eq(expanded)
       expect(config[:project]).to eq({})
     end
 
@@ -66,11 +66,14 @@ describe Projectinator do
     end
 
     it 'falls back to the environment variable when no filepath argument is given' do
-      allow(@yaml_wrapper).to receive(:load).with('/abs/env_project.yml').and_return({:project => {}})
+      # Same platform-dependent File.expand_path behavior as the cmdline
+      # argument case above.
+      expanded = File.expand_path('/abs/env_project.yml')
+      allow(@yaml_wrapper).to receive(:load).with(expanded).and_return({:project => {}})
 
       filepath, config = @projectinator.load( env: {'CEEDLING_PROJECT_FILE' => '/abs/env_project.yml'} )
 
-      expect(filepath).to eq('/abs/env_project.yml')
+      expect(filepath).to eq(expanded)
       expect(config[:history][:config].first[:mechanism]).to eq(:project)
     end
 

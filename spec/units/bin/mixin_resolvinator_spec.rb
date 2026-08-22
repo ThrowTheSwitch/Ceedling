@@ -6,12 +6,12 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'projectinator'
+require 'mixin_resolvinator'
 require 'ceedling/constants'
 require 'ceedling/ruby_expandinator'
 require 'ceedling/exceptions'
 
-describe Projectinator do
+describe MixinResolvinator do
   before(:each) do
     @loginator = double('loginator')
     allow(@loginator).to receive(:lazy)
@@ -31,22 +31,16 @@ describe Projectinator do
     allow(@path_validator).to receive(:filepath?).and_return(false)
     allow(@path_validator).to receive(:validate).and_return(true)
 
-    @yaml_wrapper = double('yaml_wrapper')
-
-    @system_wrapper = double('system_wrapper')
-
     # Default pass-through stub mirrors RubyExpandinator#expand's real behavior for
     # strings without a `#{...}` pattern (the common case in these specs). Individual
     # tests override with a tighter `.with(...)` expectation where expansion matters.
     @ruby_expandinator = double('ruby_expandinator')
     allow(@ruby_expandinator).to receive(:expand) { |s, source:| s }
 
-    @projectinator = described_class.new({
-      :file_wrapper   => @file_wrapper,
-      :path_validator => @path_validator,
-      :yaml_wrapper   => @yaml_wrapper,
-      :loginator      => @loginator,
-      :system_wrapper => @system_wrapper,
+    @mixin_resolvinator = described_class.new({
+      :file_wrapper      => @file_wrapper,
+      :path_validator    => @path_validator,
+      :loginator         => @loginator,
       :ruby_expandinator => @ruby_expandinator
     })
   end
@@ -55,7 +49,7 @@ describe Projectinator do
   describe '#extract_mixins' do
     it 'returns empty lists and leaves config unchanged when no :mixins key present' do
       config = {:project => {:build_root => 'build'}}
-      enabled, load_paths = @projectinator.extract_mixins(config: config)
+      enabled, load_paths = @mixin_resolvinator.extract_mixins(config: config)
 
       expect(enabled).to eq([])
       expect(load_paths).to eq([])
@@ -69,7 +63,7 @@ describe Projectinator do
         }
       }
 
-      enabled, load_paths = @projectinator.extract_mixins(config: config)
+      enabled, load_paths = @mixin_resolvinator.extract_mixins(config: config)
 
       expect(enabled).to eq(['mixin_a', 'path/to/mixin_b.yml'])
       expect(load_paths).to eq([])
@@ -82,7 +76,7 @@ describe Projectinator do
         }
       }
 
-      enabled, load_paths = @projectinator.extract_mixins(config: config)
+      enabled, load_paths = @mixin_resolvinator.extract_mixins(config: config)
 
       expect(enabled).to eq([])
       expect(load_paths).to eq(['support/mixins', 'vendor/mixins'])
@@ -96,7 +90,7 @@ describe Projectinator do
         }
       }
 
-      enabled, load_paths = @projectinator.extract_mixins(config: config)
+      enabled, load_paths = @mixin_resolvinator.extract_mixins(config: config)
 
       expect(enabled).to eq(['mixin_a'])
       expect(load_paths).to eq(['support/mixins'])
@@ -108,7 +102,7 @@ describe Projectinator do
         :mixins  => {:enabled => ['mixin_a'], :load_paths => ['support']}
       }
 
-      @projectinator.extract_mixins(config: config)
+      @mixin_resolvinator.extract_mixins(config: config)
 
       expect(config).not_to have_key(:mixins)
       expect(config).to have_key(:project)
@@ -125,7 +119,7 @@ describe Projectinator do
         .with('#{ENV["MIXIN_NAME"]}', source: ':mixins ↳ :enabled')
         .and_return('resolved_mixin_name')
 
-      enabled, _ = @projectinator.extract_mixins(config: config)
+      enabled, _ = @mixin_resolvinator.extract_mixins(config: config)
 
       expect(enabled).to eq(['resolved_mixin_name'])
     end
@@ -141,7 +135,7 @@ describe Projectinator do
         .with('#{File.join(Dir.pwd, "mixins")}', source: ':mixins ↳ :load_paths')
         .and_return('/project/mixins')
 
-      _, load_paths = @projectinator.extract_mixins(config: config)
+      _, load_paths = @mixin_resolvinator.extract_mixins(config: config)
 
       expect(load_paths).to eq(['/project/mixins'])
     end
@@ -154,7 +148,7 @@ describe Projectinator do
         }
       }
 
-      enabled, load_paths = @projectinator.extract_mixins(config: config)
+      enabled, load_paths = @mixin_resolvinator.extract_mixins(config: config)
 
       expect(enabled).to eq(['plain_mixin'])
       expect(load_paths).to eq(['plain/path'])
@@ -168,7 +162,7 @@ describe Projectinator do
         }
       }
 
-      enabled, _ = @projectinator.extract_mixins(config: config)
+      enabled, _ = @mixin_resolvinator.extract_mixins(config: config)
 
       expect(enabled).to eq(['mixin/dir/clang.yml'])
     end
@@ -181,25 +175,23 @@ describe Projectinator do
         }
       }
 
-      _, load_paths = @projectinator.extract_mixins(config: config)
+      _, load_paths = @mixin_resolvinator.extract_mixins(config: config)
 
       expect(load_paths).to eq(['support/mixins'])
     end
 
     it 'raises CeedlingException when an entry contains inline Ruby and the feature is disabled' do
       real_ruby_expandinator = RubyExpandinator.new # disabled by default
-      projectinator = described_class.new({
-        :file_wrapper   => @file_wrapper,
-        :path_validator => @path_validator,
-        :yaml_wrapper   => @yaml_wrapper,
-        :loginator      => @loginator,
-        :system_wrapper => @system_wrapper,
+      mixin_resolvinator = described_class.new({
+        :file_wrapper      => @file_wrapper,
+        :path_validator    => @path_validator,
+        :loginator         => @loginator,
         :ruby_expandinator => real_ruby_expandinator
       })
       config = { :mixins => { :enabled => ['#{ENV["MIXIN_NAME"]}'], :load_paths => [] } }
 
       expect {
-        projectinator.extract_mixins(config: config)
+        mixin_resolvinator.extract_mixins(config: config)
       }.to raise_error(CeedlingException, /:mixins/)
     end
   end
@@ -209,7 +201,7 @@ describe Projectinator do
     let(:yaml_extension) { '.yml' }
 
     it 'returns empty array for an empty mixin list' do
-      result = @projectinator.lookup_mixins(
+      result = @mixin_resolvinator.lookup_mixins(
         mixins:         [],
         load_paths:     ['support/mixins'],
         yaml_extension: yaml_extension
@@ -220,7 +212,7 @@ describe Projectinator do
     it 'returns an explicit filepath as-is without searching load_paths' do
       allow(@path_validator).to receive(:filepath?).with('path/to/mixin.yml').and_return(true)
 
-      result = @projectinator.lookup_mixins(
+      result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['path/to/mixin.yml'],
         load_paths:     ['support/mixins'],
         yaml_extension: yaml_extension
@@ -232,7 +224,7 @@ describe Projectinator do
       allow(@path_validator).to receive(:filepath?).with('my_mixin').and_return(false)
       allow(@file_wrapper).to receive(:exist?).with('first/path/my_mixin.yml').and_return(true)
 
-      result = @projectinator.lookup_mixins(
+      result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['my_mixin'],
         load_paths:     ['first/path', 'second/path'],
         yaml_extension: yaml_extension
@@ -245,7 +237,7 @@ describe Projectinator do
       allow(@file_wrapper).to receive(:exist?).with('first/path/my_mixin.yml').and_return(false)
       allow(@file_wrapper).to receive(:exist?).with('second/path/my_mixin.yml').and_return(true)
 
-      result = @projectinator.lookup_mixins(
+      result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['my_mixin'],
         load_paths:     ['first/path', 'second/path'],
         yaml_extension: yaml_extension
@@ -257,7 +249,7 @@ describe Projectinator do
       allow(@path_validator).to receive(:filepath?).with('unresolved_name').and_return(false)
       allow(@file_wrapper).to receive(:exist?).and_return(false)
 
-      result = @projectinator.lookup_mixins(
+      result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['unresolved_name'],
         load_paths:     ['support/mixins'],
         yaml_extension: yaml_extension
@@ -270,7 +262,7 @@ describe Projectinator do
       allow(@path_validator).to receive(:filepath?).with('named_mixin').and_return(false)
       allow(@file_wrapper).to receive(:exist?).with('support/named_mixin.yml').and_return(true)
 
-      result = @projectinator.lookup_mixins(
+      result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['explicit.yml', 'named_mixin'],
         load_paths:     ['support'],
         yaml_extension: yaml_extension
@@ -287,7 +279,7 @@ describe Projectinator do
       allow(@path_validator).to receive(:filepath?).with('path/to/mixin.yml').and_return(true)
       allow(@file_wrapper).to receive(:exist?).with('path/to/mixin.yml').and_return(true)
 
-      result = @projectinator.validate_mixins(
+      result = @mixin_resolvinator.validate_mixins(
         mixins:         ['path/to/mixin.yml'],
         load_paths:     [],
         source:         'Test',
@@ -305,7 +297,7 @@ describe Projectinator do
         anything
       )
 
-      result = @projectinator.validate_mixins(
+      result = @mixin_resolvinator.validate_mixins(
         mixins:         ['missing/mixin.yml'],
         load_paths:     [],
         source:         'Test',
@@ -318,7 +310,7 @@ describe Projectinator do
       allow(@path_validator).to receive(:filepath?).with('my_mixin').and_return(false)
       allow(@file_wrapper).to receive(:exist?).with('support/my_mixin.yml').and_return(true)
 
-      result = @projectinator.validate_mixins(
+      result = @mixin_resolvinator.validate_mixins(
         mixins:         ['my_mixin'],
         load_paths:     ['support'],
         source:         'Test',
@@ -336,7 +328,7 @@ describe Projectinator do
         anything
       )
 
-      result = @projectinator.validate_mixins(
+      result = @mixin_resolvinator.validate_mixins(
         mixins:         ['unknown_mixin'],
         load_paths:     ['support'],
         source:         'Test',
@@ -354,7 +346,7 @@ describe Projectinator do
 
       allow(@loginator).to receive(:log)
 
-      result = @projectinator.validate_mixins(
+      result = @mixin_resolvinator.validate_mixins(
         mixins:         ['good/mixin.yml', 'bad/mixin.yml'],
         load_paths:     [],
         source:         'Test',

@@ -93,13 +93,19 @@ projectinator:
     - path_validator
     - yaml_wrapper
     - loginator
-    - system_wrapper
+
+mixin_resolvinator:
+  compose:
+    - file_wrapper
+    - path_validator
+    - loginator
     - ruby_expandinator
 
 composinator:
   compose:
     - config_walkinator
     - projectinator
+    - mixin_resolvinator
     - mixinator
 
 
