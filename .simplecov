@@ -33,7 +33,11 @@ SimpleCov.start do
   add_filter '/spec/'
   add_filter '/vendor/'
 
-  add_group 'bin', '/bin/'
-  add_group 'lib', '/lib/'
-  add_group 'plugins', '/plugins/'
+  # Anchored to the root of each tree -- a plain substring match (e.g. '/lib/')
+  # would also catch lib/ceedling/plugins/plugin_manager.rb (a real lib/
+  # subdirectory) into the plugins group, or plugins/gcov/lib/gcov.rb (a
+  # plugin's own lib/ subdirectory) into the lib group.
+  add_group 'bin', %r{\A/bin/}
+  add_group 'lib', %r{\A/lib/}
+  add_group 'plugins', %r{\A/plugins/}
 end
