@@ -183,7 +183,7 @@ class CliHandler
     options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
     options[:logfile] = @path_validator.standardize_paths( options[:logfile] ).first
 
-    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
@@ -283,7 +283,7 @@ class CliHandler
     filepath = @path_validator.standardize_paths( filepath ).first
     options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.console_project_name( config )
 
@@ -322,7 +322,7 @@ class CliHandler
 
     options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
@@ -353,7 +353,7 @@ class CliHandler
 
     options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.console_project_name( config )
 
@@ -574,7 +574,6 @@ class CliHandler
   def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[], silent:false)
     _, config = 
       @composinator.loadinate(
-        builtin_mixins:BUILTIN_MIXINS,
         builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS,
         filepath: filepath,
         mixins: mixins,

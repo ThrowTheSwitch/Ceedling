@@ -35,7 +35,8 @@
 ##   Single value merged into a config list:
 ##     The mixin's single value is wrapped in a one-element list and then
 ##     placed BEFORE the config list entries, consistent with the general
-##     list rule above.
+##     list rule above. The same [:tools, <tool name>, :arguments] exception
+##     applies here too: a single value at that path is appended instead.
 ##
 ##   List merged into a config single value:
 ##     The mixin's list replaces the config value outright. This is flagged
@@ -87,6 +88,11 @@ class RecursiveMerger
             # appears first in the combined list (e.g. include search paths).
             config[key] = mixin_val + config_val
           end
+        elsif tool_arguments_path?(current_path)
+          # EXCEPTION: same left-to-right override guarantee as the list + list
+          # case above applies here too, even though this mixin value is a
+          # single value rather than the expected Array.
+          config[key] = config_val + [mixin_val]
         else
           # Mixin has a single value (or hash treated as a value) where config
           # has a list. Wrap the mixin value in a one-element list and prepend

@@ -16,17 +16,6 @@ class Mixinator
     @standardinator = @mixin_standardizer
   end
 
-  def validate_cmdline_filepaths(paths)
-    validated = @path_validator.validate(
-      paths: paths,
-      source: 'Filepath argument',
-    )
-
-    if !validated
-      raise 'Mixins command line failed validation'
-    end
-  end
-
   def validate_cmdline_yaml_strings(yaml_strings)
     # Validate a list of inline YAML strings from --mixin "=..." command line arguments.
     # Errors are accumulated so the user sees all problems before the run aborts.
@@ -68,13 +57,21 @@ class Mixinator
   def fetch_env_filepaths(env)
     var_names = []
 
-    env.each do |var, filepath|
-      # Explicitly ignores CEEDLING_MIXIN_0
-      var_names << var if var =~ /CEEDLING_MIXIN_[1-9]\d*/
+    env.each_key do |var|
+      next unless var.start_with?( 'CEEDLING_MIXIN_' )
+
+      suffix = var.sub( 'CEEDLING_MIXIN_', '' )
+      unless suffix.match?( /\A\d+\z/ )
+        raise "Malformed mixin environment variable name '#{var}' — expected CEEDLING_MIXIN_<number>"
+      end
+
+      # Explicitly ignores CEEDLING_MIXIN_0 (a leading zero, e.g. CEEDLING_MIXIN_01,
+      # is otherwise treated the same as no leading zero)
+      var_names << var unless suffix.to_i() == 0
     end
 
-    # Extract numeric string (guranteed to exist) and convert to integer for ascending sorting
-    var_names.sort_by! {|name| name.match(/\d+$/)[0].to_i() }
+    # Ascending numeric order; to_i() ignores leading zeros so CEEDLING_MIXIN_01 sorts as 1
+    var_names.sort_by! {|name| name.sub( 'CEEDLING_MIXIN_', '' ).to_i() }
 
     _vars = []
     # Iterate over sorted environment variable names
@@ -154,7 +151,7 @@ class Mixinator
     return config_entries + env_entries + cmdline_entries
   end
 
-  def mixin(builtins:, config:, mixins:)
+  def mixin(config:, mixins:)
     mixins.each do |mixin|
       source = mixin.keys.first
       filepath = mixin.values.first
@@ -190,12 +187,11 @@ class Mixinator
         # Log what filepath we used for this mixin
         @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging #{'(empty) ' if _mixin.nil?}#{source} mixin using #{filepath}" }
 
-      # Reference mixin from built-in hash-based mixins
+      # lookup_mixins() only ever hands back inline YAML or a real filepath for
+      # validated input -- reaching here means something upstream let an
+      # unresolved bare name through.
       else
-        _mixin = builtins[filepath.to_sym()]
-
-        # Log built-in mixin we used
-        @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging built-in mixin '#{filepath}' from #{source}" }
+        raise "Mixin '#{filepath}' from #{source} could not be resolved to a file"
       end
 
       # Hnadle an empty mixin (it's unlikely but logically coherent and a good safety check)

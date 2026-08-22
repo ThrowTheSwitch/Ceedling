@@ -12,7 +12,7 @@ class Composinator
 
   constructor :config_walkinator, :projectinator, :mixinator
 
-  def loadinate(builtin_mixins:, builtin_load_paths:[], filepath:nil, mixins:[], env:{}, silent:false)
+  def loadinate(builtin_load_paths:[], filepath:nil, mixins:[], env:{}, silent:false)
     # Aliases for clarity
     cmdline_filepath = filepath
     cmdline_mixins = mixins || []
@@ -65,7 +65,6 @@ class Composinator
     if not @projectinator.validate_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
-      builtins: builtin_mixins,
       source: 'Config :mixins ↳ :enabled =>',
       yaml_extension: yaml_ext
     )
@@ -76,7 +75,6 @@ class Composinator
     if not @projectinator.validate_mixins(
       mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
-      builtins: builtin_mixins,
       source: 'Mixin',
       yaml_extension: yaml_ext
     )
@@ -86,12 +84,11 @@ class Composinator
     # Validate inline YAML strings: must parse cleanly and produce a Hash
     @mixinator.validate_cmdline_yaml_strings( cmdline_yaml_values )
 
-    # Find mixins in project file among load paths or built-in mixins
-    # Return ordered list of filepaths or built-in mixin names
+    # Find mixins in project file among load paths
+    # Return ordered list of filepaths
     config_mixins = @projectinator.lookup_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
-      builtins: builtin_mixins,
       yaml_extension: yaml_ext
     )
 
@@ -102,32 +99,41 @@ class Composinator
       {'project configuration' => path, :_input => name}
     end
 
-    # Resolve file-based names/paths to canonical filepaths (or built-in keys).
+    # Resolve file-based names/paths to canonical filepaths.
     # Returns values in the same order as the input; zip them back into a hash for
     # O(1) lookup when reconstructing positional order below.
     resolved_file_values = @projectinator.lookup_mixins(
       mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
-      builtins: builtin_mixins,
       yaml_extension: yaml_ext
     )
     file_resolution_map = Hash[cmdline_file_values.zip(resolved_file_values)]
 
+    # A repeated raw --mixin value (e.g. `--mixin foo.yml --mixin bar.yml
+    # --mixin foo.yml`) must resolve using its LAST occurrence's position, not
+    # its first, so the user's actual last-typed flag ends up last (highest
+    # priority) -- matching ordinary left-to-right command line override
+    # semantics. Record the index of each file value's last occurrence so the
+    # reconstruction below can keep only that one.
+    last_file_index = {}
+    tagged_cmdline.each_with_index do |e, idx|
+      last_file_index[e[:value]] = idx if e[:type] == :file
+    end
+
     # Reconstruct the full cmdline sequence in original left-to-right order,
     # replacing stripped file values with their resolved forms and tagging each
     # entry with a source label that mixin() uses to select the load strategy.
-    # File entries that were deduplicated (absent from map after first use) are
-    # skipped — delete after first fetch enforces single-use per unique value.
-    cmdline_ordered = tagged_cmdline.each_with_object([]) do |e, arr|
+    # An earlier occurrence of a file value superseded by a later, identical
+    # one is skipped entirely -- only the last occurrence's position survives.
+    cmdline_ordered = tagged_cmdline.each_with_index.each_with_object([]) do |(e, idx), arr|
       if e[:type] == :yaml
         # Inline YAML: source label 'command line (inline)' triggers load_string() in mixin()
         # :_input carries the raw YAML string as the original user value for history traceability
         arr << {'command line (inline)' => e[:value], :_input => e[:value]}
-      elsif (resolved = file_resolution_map[e[:value]])
+      elsif idx == last_file_index[e[:value]]
         # File/name: source label 'command line' triggers existing file/builtin dispatch in mixin()
         # :_input carries the original user-provided value (before load-path resolution) for history
-        arr << {'command line' => resolved, :_input => e[:value]}
-        file_resolution_map.delete(e[:value])  # consume so duplicate raw values are skipped
+        arr << {'command line' => file_resolution_map[e[:value]], :_input => e[:value]}
       end
     end
 
@@ -147,7 +153,7 @@ class Composinator
     )
 
     # Merge mixins
-    @mixinator.mixin( builtins:builtin_mixins, config:config, mixins:mixins_assembled )
+    @mixinator.mixin( config:config, mixins:mixins_assembled )
 
     return project_filepath, config
   end
