@@ -49,6 +49,16 @@ The `TEST_SOURCE_FILE()` build directive macro can now be used to remove source 
 ### Filepath limit checks
 Platform filepath limits (especially Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
 
+## 💪 Fixed
+
+- A CLI parameter string mutation issue that could corrupt certain build or plugin task invocations.
+
+### Mixins
+
+- Fixed priority / precedence issues with command line mixin edge case (same mixin provided multiple times).
+- Fixed mixin environment variable name matching issues such as a leading zero for `01` numbering or improperly matching on an environment variable similar to the mixin convention.
+- Fixed an edge case for `tools:` argument special handling merging involving a single string argument instead of list of arguments.
+
 ## ⚠️ Changed
 
 ### `#include` relative paths & duplicate filename disambiguation in test builds
@@ -61,12 +71,9 @@ Because of the support added for handling paths and distinguishing duplicated fi
 
 Historically, Ceedling automatically compiles and links into a test executable any C source file whose name matches an `#include`d header file. Sometimes this convention can select the wrong file among same-named files or compile and link an entirely unwanted source file whose name happens to match a header file.
 
+# [1.1.6] — Prerelease
+
 ## 💪 Fixed
-
-### 1.1.6
-
-1.1.6 is a `master` patch release shipping before 1.2.0; every fix below also
-ships there and is folded into this 1.2.0 prerelease as well.
 
 - [#1223](https://github.com/ThrowTheSwitch/Ceedling/issues/1223) Fixed a conditional `#include` silently dropping out of generated code derived from preprocessed code, breaking compilation with an undeclared identifier error. The specific case involves a macro defined by another header included earlier in the same file.
 - [#1216](https://github.com/ThrowTheSwitch/Ceedling/issues/1216) Fixed self-test issue that caused docs-related failures when the local documentation was unavailable (generated in CI but not necessarily present during self tests).
@@ -77,7 +84,7 @@ ships there and is folded into this 1.2.0 prerelease as well.
 
 ---
 
-# [1.1.5] — Prerelease
+# [1.1.5] — 2026-08-19
 
 ## 💪 Fixed
 
