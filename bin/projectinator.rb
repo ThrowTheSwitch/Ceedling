@@ -140,7 +140,7 @@ class Projectinator
 
 
   # Validate mixins list
-  def validate_mixins(mixins:, load_paths:, builtins:, source:, yaml_extension:)
+  def validate_mixins(mixins:, load_paths:, source:, yaml_extension:)
     validated = true
 
     mixins.each do |mixin|
@@ -151,7 +151,7 @@ class Projectinator
           validated = false
         end
 
-      # Otherwise, validate that mixin name can be found in load paths or builtins
+      # Otherwise, validate that mixin name can be found in load paths
       else
         found = false
         load_paths.each do |path|
@@ -161,10 +161,8 @@ class Projectinator
           end
         end
 
-        builtins.keys.each {|key| found = true if (mixin == key.to_s)}
-
         if !found
-          msg = "#{source} '#{mixin}' cannot be found in mixin load paths as '#{mixin + yaml_extension}' or among built-in mixins"
+          msg = "#{source} '#{mixin}' cannot be found in mixin load paths as '#{mixin + yaml_extension}'"
           @loginator.log( msg, Verbosity::ERRORS )
           validated = false
         end
@@ -175,15 +173,13 @@ class Projectinator
   end
 
 
-  # Yield ordered list of filepaths or built-in mixin names
-  def lookup_mixins(mixins:, load_paths:, builtins:, yaml_extension:)
+  # Yield ordered list of filepaths
+  def lookup_mixins(mixins:, load_paths:, yaml_extension:)
     _mixins = []
 
-    # Already validated, so we know:
-    #  1. Any mixin filepaths exists
-    #  2. Built-in mixin names exist in the internal hash
+    # Already validated, so we know any mixin filepath or name is found in load_paths
 
-    # Fill filepaths array with filepaths or builtin names
+    # Fill filepaths array with filepaths
     mixins.each do |mixin|
       # Handle explicit filepaths
       if @path_validator.filepath?( mixin )
@@ -201,7 +197,7 @@ class Projectinator
       end
 
       # Finally, fall through to simply add the unmodified name to the list.
-      # It's a built-in mixin.
+      # validate_mixins() should have already confirmed it exists in load_paths.
       _mixins << mixin
     end
 

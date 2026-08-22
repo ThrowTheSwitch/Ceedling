@@ -49,7 +49,6 @@ describe Composinator do
       end
 
       @composinator.loadinate(
-        builtin_mixins: {},
         filepath: 'project.yml',
         mixins: ['foo.yml', 'bar.yml', 'foo.yml'],
         env: {}
@@ -71,7 +70,6 @@ describe Composinator do
       end
 
       @composinator.loadinate(
-        builtin_mixins: {},
         filepath: 'project.yml',
         mixins: ['foo.yml', 'bar.yml', 'baz.yml'],
         env: {}

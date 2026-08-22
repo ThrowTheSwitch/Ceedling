@@ -206,14 +206,12 @@ describe Projectinator do
 
   # =========================================================================
   describe '#lookup_mixins' do
-    let(:builtins)       { {:builtin_mixin => {:foo => :bar}} }
     let(:yaml_extension) { '.yml' }
 
     it 'returns empty array for an empty mixin list' do
       result = @projectinator.lookup_mixins(
         mixins:         [],
         load_paths:     ['support/mixins'],
-        builtins:       builtins,
         yaml_extension: yaml_extension
       )
       expect(result).to eq([])
@@ -225,7 +223,6 @@ describe Projectinator do
       result = @projectinator.lookup_mixins(
         mixins:         ['path/to/mixin.yml'],
         load_paths:     ['support/mixins'],
-        builtins:       builtins,
         yaml_extension: yaml_extension
       )
       expect(result).to eq(['path/to/mixin.yml'])
@@ -238,7 +235,6 @@ describe Projectinator do
       result = @projectinator.lookup_mixins(
         mixins:         ['my_mixin'],
         load_paths:     ['first/path', 'second/path'],
-        builtins:       builtins,
         yaml_extension: yaml_extension
       )
       expect(result).to eq(['first/path/my_mixin.yml'])
@@ -252,23 +248,21 @@ describe Projectinator do
       result = @projectinator.lookup_mixins(
         mixins:         ['my_mixin'],
         load_paths:     ['first/path', 'second/path'],
-        builtins:       builtins,
         yaml_extension: yaml_extension
       )
       expect(result).to eq(['second/path/my_mixin.yml'])
     end
 
-    it 'returns the name unchanged when not found in any load_path (treated as builtin)' do
-      allow(@path_validator).to receive(:filepath?).with('builtin_mixin').and_return(false)
+    it 'returns the name unchanged when not found in any load_path' do
+      allow(@path_validator).to receive(:filepath?).with('unresolved_name').and_return(false)
       allow(@file_wrapper).to receive(:exist?).and_return(false)
 
       result = @projectinator.lookup_mixins(
-        mixins:         ['builtin_mixin'],
+        mixins:         ['unresolved_name'],
         load_paths:     ['support/mixins'],
-        builtins:       builtins,
         yaml_extension: yaml_extension
       )
-      expect(result).to eq(['builtin_mixin'])
+      expect(result).to eq(['unresolved_name'])
     end
 
     it 'preserves input ordering across a mix of filepaths and simple names' do
@@ -279,7 +273,6 @@ describe Projectinator do
       result = @projectinator.lookup_mixins(
         mixins:         ['explicit.yml', 'named_mixin'],
         load_paths:     ['support'],
-        builtins:       builtins,
         yaml_extension: yaml_extension
       )
       expect(result).to eq(['explicit.yml', 'support/named_mixin.yml'])
@@ -288,7 +281,6 @@ describe Projectinator do
 
   # =========================================================================
   describe '#validate_mixins' do
-    let(:builtins)       { {:builtin_mixin => {:foo => :bar}} }
     let(:yaml_extension) { '.yml' }
 
     it 'returns true for a mixin filepath that exists' do
@@ -298,7 +290,6 @@ describe Projectinator do
       result = @projectinator.validate_mixins(
         mixins:         ['path/to/mixin.yml'],
         load_paths:     [],
-        builtins:       builtins,
         source:         'Test',
         yaml_extension: yaml_extension
       )
@@ -317,7 +308,6 @@ describe Projectinator do
       result = @projectinator.validate_mixins(
         mixins:         ['missing/mixin.yml'],
         load_paths:     [],
-        builtins:       builtins,
         source:         'Test',
         yaml_extension: yaml_extension
       )
@@ -331,21 +321,6 @@ describe Projectinator do
       result = @projectinator.validate_mixins(
         mixins:         ['my_mixin'],
         load_paths:     ['support'],
-        builtins:       builtins,
-        source:         'Test',
-        yaml_extension: yaml_extension
-      )
-      expect(result).to be true
-    end
-
-    it 'returns true for a simple mixin name matching a builtin key' do
-      allow(@path_validator).to receive(:filepath?).with('builtin_mixin').and_return(false)
-      allow(@file_wrapper).to receive(:exist?).and_return(false)
-
-      result = @projectinator.validate_mixins(
-        mixins:         ['builtin_mixin'],
-        load_paths:     [],
-        builtins:       builtins,
         source:         'Test',
         yaml_extension: yaml_extension
       )
@@ -364,7 +339,6 @@ describe Projectinator do
       result = @projectinator.validate_mixins(
         mixins:         ['unknown_mixin'],
         load_paths:     ['support'],
-        builtins:       builtins,
         source:         'Test',
         yaml_extension: yaml_extension
       )
@@ -383,7 +357,6 @@ describe Projectinator do
       result = @projectinator.validate_mixins(
         mixins:         ['good/mixin.yml', 'bad/mixin.yml'],
         load_paths:     [],
-        builtins:       builtins,
         source:         'Test',
         yaml_extension: yaml_extension
       )

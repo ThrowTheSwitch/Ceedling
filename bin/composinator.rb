@@ -12,7 +12,7 @@ class Composinator
 
   constructor :config_walkinator, :projectinator, :mixinator
 
-  def loadinate(builtin_mixins:, builtin_load_paths:[], filepath:nil, mixins:[], env:{}, silent:false)
+  def loadinate(builtin_load_paths:[], filepath:nil, mixins:[], env:{}, silent:false)
     # Aliases for clarity
     cmdline_filepath = filepath
     cmdline_mixins = mixins || []
@@ -65,7 +65,6 @@ class Composinator
     if not @projectinator.validate_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
-      builtins: builtin_mixins,
       source: 'Config :mixins ↳ :enabled =>',
       yaml_extension: yaml_ext
     )
@@ -76,7 +75,6 @@ class Composinator
     if not @projectinator.validate_mixins(
       mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
-      builtins: builtin_mixins,
       source: 'Mixin',
       yaml_extension: yaml_ext
     )
@@ -86,12 +84,11 @@ class Composinator
     # Validate inline YAML strings: must parse cleanly and produce a Hash
     @mixinator.validate_cmdline_yaml_strings( cmdline_yaml_values )
 
-    # Find mixins in project file among load paths or built-in mixins
-    # Return ordered list of filepaths or built-in mixin names
+    # Find mixins in project file among load paths
+    # Return ordered list of filepaths
     config_mixins = @projectinator.lookup_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
-      builtins: builtin_mixins,
       yaml_extension: yaml_ext
     )
 
@@ -102,13 +99,12 @@ class Composinator
       {'project configuration' => path, :_input => name}
     end
 
-    # Resolve file-based names/paths to canonical filepaths (or built-in keys).
+    # Resolve file-based names/paths to canonical filepaths.
     # Returns values in the same order as the input; zip them back into a hash for
     # O(1) lookup when reconstructing positional order below.
     resolved_file_values = @projectinator.lookup_mixins(
       mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
-      builtins: builtin_mixins,
       yaml_extension: yaml_ext
     )
     file_resolution_map = Hash[cmdline_file_values.zip(resolved_file_values)]
@@ -157,7 +153,7 @@ class Composinator
     )
 
     # Merge mixins
-    @mixinator.mixin( builtins:builtin_mixins, config:config, mixins:mixins_assembled )
+    @mixinator.mixin( config:config, mixins:mixins_assembled )
 
     return project_filepath, config
   end

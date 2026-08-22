@@ -405,7 +405,6 @@ describe Mixinator do
   # =========================================================================
   describe '#mixin' do
     let(:base_config) { {:project => {:build_root => 'build'}} }
-    let(:builtins)    { {:my_builtin => {:foo => :bar}} }
 
     it 'loads a filepath mixin via yaml_wrapper and merges it into config' do
       mixin_filepath = 'path/to/mixin.yml'
@@ -418,22 +417,21 @@ describe Mixinator do
       ).and_return(true)
 
       @mixinator.mixin(
-        builtins: builtins,
         config:   base_config,
         mixins:   [{'command line' => mixin_filepath}]
       )
     end
 
-    it 'looks up a builtin mixin by name and merges its content into config' do
-      expect(@merginator).to receive(:merge).with(
-        hash_including(mixin: {:foo => :bar})
-      ).and_return(true)
-
-      @mixinator.mixin(
-        builtins: builtins,
-        config:   base_config,
-        mixins:   [{'command line' => 'my_builtin'}]
-      )
+    it 'raises when a mixin entry resolves to neither inline YAML nor a filepath' do
+      # lookup_mixins() only ever hands back inline YAML or a real filepath for
+      # validated input -- reaching neither here means something upstream let
+      # an unresolved bare name through.
+      expect {
+        @mixinator.mixin(
+          config: base_config,
+          mixins: [{'command line' => 'unresolved_name'}]
+        )
+      }.to raise_error( /unresolved_name/ )
     end
 
     it 'logs a WARNING when a loaded mixin contains a :mixins section' do
@@ -450,7 +448,6 @@ describe Mixinator do
       )
 
       @mixinator.mixin(
-        builtins: builtins,
         config:   base_config,
         mixins:   [{'command line' => mixin_filepath}]
       )
@@ -471,7 +468,6 @@ describe Mixinator do
       end
 
       @mixinator.mixin(
-        builtins: builtins,
         config:   base_config,
         mixins:   [{'command line' => mixin_filepath}]
       )
@@ -490,7 +486,6 @@ describe Mixinator do
 
       expect {
         @mixinator.mixin(
-          builtins: builtins,
           config:   base_config,
           mixins:   [{'command line' => mixin_filepath}]
         )
@@ -502,7 +497,6 @@ describe Mixinator do
 
       expect {
         @mixinator.mixin(
-          builtins: builtins,
           config:   {},
           mixins:   [{'command line' => 'path/to/mixin.yml'}]
         )
@@ -520,7 +514,6 @@ describe Mixinator do
       expect(@loginator).to receive(:log).at_least(:twice)
 
       @mixinator.mixin(
-        builtins: builtins,
         config:   base_config,
         mixins:   [{'command line' => mixin_filepath}]
       )
@@ -541,7 +534,6 @@ describe Mixinator do
       )
 
       @mixinator.mixin(
-        builtins: builtins,
         config:   base_config,
         mixins:   [{'command line' => mixin_filepath}]
       )
@@ -560,7 +552,6 @@ describe Mixinator do
       ).and_return(true)
 
       @mixinator.mixin(
-        builtins: builtins,
         config:   base_config,
         mixins:   [{'command line (inline)' => yaml_string}]
       )
@@ -571,7 +562,6 @@ describe Mixinator do
       allow(@yaml_wrapper).to receive(:load_string).and_return({:defines => {:release => ['MY_SYM']}})
 
       @mixinator.mixin(
-        builtins: builtins,
         config:   base_config,
         mixins:   [{'command line (inline)' => yaml_string, :_input => yaml_string}]
       )
@@ -601,7 +591,6 @@ describe Mixinator do
       )
 
       @mixinator.mixin(
-        builtins: builtins,
         config:   base_config,
         mixins:   [{'command line (inline)' => yaml_string}]
       )

@@ -162,7 +162,7 @@ class Mixinator
     return config_entries + env_entries + cmdline_entries
   end
 
-  def mixin(builtins:, config:, mixins:)
+  def mixin(config:, mixins:)
     mixins.each do |mixin|
       source = mixin.keys.first
       filepath = mixin.values.first
@@ -198,12 +198,11 @@ class Mixinator
         # Log what filepath we used for this mixin
         @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging #{'(empty) ' if _mixin.nil?}#{source} mixin using #{filepath}" }
 
-      # Reference mixin from built-in hash-based mixins
+      # lookup_mixins() only ever hands back inline YAML or a real filepath for
+      # validated input -- reaching here means something upstream let an
+      # unresolved bare name through.
       else
-        _mixin = builtins[filepath.to_sym()]
-
-        # Log built-in mixin we used
-        @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging built-in mixin '#{filepath}' from #{source}" }
+        raise "Mixin '#{filepath}' from #{source} could not be resolved to a file"
       end
 
       # Hnadle an empty mixin (it's unlikely but logically coherent and a good safety check)
