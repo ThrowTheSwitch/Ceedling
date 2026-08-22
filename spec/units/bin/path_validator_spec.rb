@@ -56,36 +56,43 @@ describe PathValidator do
   end
 
   describe '#standardize_paths' do
-    # Current behavior: converts backslashes in place via String#gsub!, mutating
-    # the caller's own String objects rather than returning new ones.
-    it 'converts backslashes to forward slashes in place' do
+    it 'returns backslashes converted to forward slashes, as a new value' do
       path = 'some\\windows\\path.yml'
+
+      result = @path_validator.standardize_paths( path )
+
+      expect(result).to eq( ['some/windows/path.yml'] )
+    end
+
+    it 'does not mutate the argument given' do
+      path = 'some\\windows\\path.yml'
+      original_object_id = path.object_id
 
       @path_validator.standardize_paths( path )
 
-      expect(path).to eq( 'some/windows/path.yml' )
+      expect(path).to eq( 'some\\windows\\path.yml' )
+      expect(path.object_id).to eq( original_object_id )
     end
 
-    it 'mutates every argument given' do
+    it 'returns every argument given, standardized, in the same order' do
       a = 'one\\two'
       b = 'three\\four'
 
-      @path_validator.standardize_paths( a, b )
+      result = @path_validator.standardize_paths( a, b )
 
-      expect(a).to eq( 'one/two' )
-      expect(b).to eq( 'three/four' )
+      expect(result).to eq( ['one/two', 'three/four'] )
     end
 
-    it 'leaves already-forward-slash paths unchanged' do
+    it 'returns already-forward-slash paths unchanged' do
       path = 'already/unix/style.yml'
 
-      @path_validator.standardize_paths( path )
+      result = @path_validator.standardize_paths( path )
 
-      expect(path).to eq( 'already/unix/style.yml' )
+      expect(result).to eq( ['already/unix/style.yml'] )
     end
 
-    it 'skips nil and empty arguments without raising' do
-      expect { @path_validator.standardize_paths( nil, '' ) }.to_not raise_error
+    it 'passes nil and empty arguments through unchanged, without raising' do
+      expect(@path_validator.standardize_paths( nil, '' )).to eq( [nil, ''] )
     end
   end
 

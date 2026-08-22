@@ -79,11 +79,8 @@ class Mixinator
     _vars = []
     # Iterate over sorted environment variable names
     var_names.each do |name|
-      # Duplicate the filepath string to get unfrozen copy
-      # Handle any Windows path shenanigans
-      # Insert in array {env var name => filepath}
-      path = env[name].dup()
-      @path_validator.standardize_paths( path )
+      # Handle any Windows path shenanigans; insert in array {env var name => filepath}
+      path = @path_validator.standardize_paths( env[name] ).first
       _vars << {name => path}
     end
 

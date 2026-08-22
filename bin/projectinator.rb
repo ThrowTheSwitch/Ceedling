@@ -27,7 +27,7 @@ class Projectinator
   def load(filepath:nil, env:{}, silent:false)
     # Highest priority: command line argument
     if filepath
-      @path_validator.standardize_paths( filepath )
+      filepath = @path_validator.standardize_paths( filepath ).first
       _filepath = File.expand_path( filepath )
       config = load_and_log( _filepath, 'from command line argument', silent )
       config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
@@ -35,9 +35,7 @@ class Projectinator
 
     # Next priority: environment variable
     elsif env[PROJECT_FILEPATH_ENV_VAR]
-      # ENV lookup is frozen so dup() to operate on the string
-      filepath = env[PROJECT_FILEPATH_ENV_VAR].dup()
-      @path_validator.standardize_paths( filepath )
+      filepath = @path_validator.standardize_paths( env[PROJECT_FILEPATH_ENV_VAR] ).first
       _filepath = File.expand_path( filepath )
       config = load_and_log(
         _filepath,

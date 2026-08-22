@@ -22,6 +22,10 @@ $: << File.join(here, '../../../lib')
 require 'ceedling/constants'
 require 'cli_handler'
 require 'app_cfg'
+require 'path_validator'
+require 'cli_helper'
+require 'ceedling/ruby_expandinator'
+require 'ceedling/rake_app/rake_task_registry'
 
 # Most of CliHandler's public methods (build, dumpconfig, check, environment,
 # new_project, upgrade_project, create_example, list_rake_tasks) are thin
@@ -31,7 +35,9 @@ require 'app_cfg'
 # mirror the implementation rather than guard behavior -- they're exercised
 # end-to-end by system tests instead. Coverage here is scoped to methods with
 # real, self-contained branching logic: #inspect, #validate_string_param,
-# #version, and #list_examples.
+# #version, #list_examples, and the private #standardize_project_and_mixins
+# helper (real collaborators, not doubles, since testing it meaningfully means
+# exercising the real filtering/standardizing behavior it coordinates).
 describe CliHandler do
   before(:each) do
     @loginator = double('loginator').as_null_object
@@ -133,6 +139,66 @@ describe CliHandler do
       listing = messages.join
       expect(listing).to include( 'blinky' )
       expect(listing).to include( 'temp_sensor' )
+    end
+  end
+
+  describe '#standardize_project_and_mixins (private)' do
+    before(:each) do
+      real_path_validator = PathValidator.new({
+        :file_wrapper => double('file_wrapper').as_null_object,
+        :loginator    => double('loginator').as_null_object,
+      })
+      real_cli_helper = CliHelper.new({
+        :file_wrapper       => double('file_wrapper').as_null_object,
+        :actions_wrapper    => double('actions_wrapper').as_null_object,
+        :config_walkinator  => double('config_walkinator').as_null_object,
+        :path_validator     => real_path_validator,
+        :rake_task_registry => double('rake_task_registry').as_null_object,
+        :loginator          => double('loginator').as_null_object,
+        :reportinator       => double('reportinator').as_null_object,
+        :system_wrapper     => double('system_wrapper').as_null_object,
+        :ruby_expandinator  => RubyExpandinator.new,
+      })
+
+      @cli_handler_real = described_class.new({
+        :composinator       => double('composinator').as_null_object,
+        :projectinator      => double('projectinator').as_null_object,
+        :cli_helper         => real_cli_helper,
+        :path_validator     => real_path_validator,
+        :rake_task_registry => double('rake_task_registry').as_null_object,
+        :actions_wrapper    => double('actions_wrapper').as_null_object,
+        :loginator          => double('loginator').as_null_object,
+      })
+    end
+
+    def standardize(project, mixins)
+      @cli_handler_real.send( :standardize_project_and_mixins, project, mixins )
+    end
+
+    it 'standardizes backslashes in the project path' do
+      project, _mixins = standardize( 'some\\project.yml', [] )
+
+      expect(project).to eq( 'some/project.yml' )
+    end
+
+    it 'standardizes filepath/name mixin entries but leaves inline YAML entries untouched' do
+      inline_yaml = "=:project:\n  :build_root: some\\path"
+
+      _project, mixins = standardize( nil, ['mixin\\dir\\clang.yml', inline_yaml] )
+
+      expect(mixins).to eq( ['mixin/dir/clang.yml', inline_yaml] )
+    end
+
+    it 'standardizes each occurrence of a repeated mixin value independently' do
+      _project, mixins = standardize( nil, ['dup\\path.yml', 'other\\path.yml', 'dup\\path.yml'] )
+
+      expect(mixins).to eq( ['dup/path.yml', 'other/path.yml', 'dup/path.yml'] )
+    end
+
+    it 'passes a nil project through unchanged' do
+      project, _mixins = standardize( nil, [] )
+
+      expect(project).to be_nil
     end
   end
 end

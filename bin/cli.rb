@@ -206,11 +206,8 @@ module CeedlingTasks
         "--project is missing a required filepath parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
       _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
       # Call application help with block to execute Thor's built-in help in the help logic
@@ -243,13 +240,12 @@ module CeedlingTasks
     def new(dest=nil)
       require 'version' # lib/version.rb for TAG constant
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _dest = dest.dup() if !dest.nil?
 
       _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
 
-      @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, _dest )
+      @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, dest )
     end
 
     desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project at PATH"
@@ -286,14 +282,12 @@ module CeedlingTasks
         "--project is missing a required filename parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup()
-      _path = path.dup()
 
       _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
 
-      @handler.upgrade_project( ENV, @app_cfg, _options, _path )
+      @handler.upgrade_project( ENV, @app_cfg, _options, path )
     end
 
 
@@ -378,13 +372,9 @@ module CeedlingTasks
         "--exclude-test-case is missing a required test case name parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
       _options[:verbosity] = Verbosity::DEBUG if options[:debug]
-      _options[:logfile] = options[:logfile].dup()
 
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )
     end
@@ -427,16 +417,12 @@ module CeedlingTasks
         "--project is missing a required filepath parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
-      _filepath = filepath.dup()
 
       _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
 
-      @handler.dumpconfig( ENV, @app_cfg, _options, _filepath, sections )
+      @handler.dumpconfig( ENV, @app_cfg, _options, filepath, sections )
     end
 
 
@@ -468,11 +454,8 @@ module CeedlingTasks
         "--project is missing a required filepath parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
       _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::NORMAL
 
@@ -504,11 +487,8 @@ module CeedlingTasks
         "--project is missing a required filepath parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
       _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
 
@@ -561,13 +541,12 @@ module CeedlingTasks
       LONGDESC
     ) )
     def example(name, dest=nil)
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _dest = dest.dup() if !dest.nil?
 
       _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : nil
 
-      @handler.create_example( ENV, @app_cfg, _options, name, _dest )
+      @handler.create_example( ENV, @app_cfg, _options, name, dest )
     end
 
 
