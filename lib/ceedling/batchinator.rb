@@ -84,7 +84,13 @@ class Batchinator
       when :test
         workers = @configurator.project_test_threads
       else
-        raise NameError.new("Unrecognized batch workload type: #{workload}")
+        # Explicit ::ArgumentError, not the bare name: this class mixes in
+        # the `constructor` gem's Constructor module, which defines its own
+        # Constructor::ArgumentError ahead of the real one in this class's
+        # ancestor chain. A bare ArgumentError reference here would silently
+        # resolve to that one instead, which expects an Array and not a
+        # String and breaks accordingly.
+        raise ::ArgumentError.new("Unrecognized batch workload type: #{workload}")
       end
 
       # Perform the actual parallelized work and collect the results and timing

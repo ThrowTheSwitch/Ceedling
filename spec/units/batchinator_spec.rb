@@ -99,6 +99,12 @@ describe Batchinator do
         @batchinator.exec(workload: :compile, things: []) {|item| item }
       }.to_not raise_error
     end
+
+    it 'raises ArgumentError for an unrecognized workload' do
+      expect {
+        @batchinator.exec(workload: :bogus, things: [1]) {|item| item }
+      }.to raise_error(ArgumentError, /Unrecognized batch workload type/)
+    end
   end
 
   # =========================================================================
