@@ -11,8 +11,8 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 
 # Covers Projectinator's namesake responsibility -- discovering and loading the
-# project file itself -- as opposed to projectinator_mixin_spec.rb, which
-# covers its :mixins section handling.
+# project file itself. Its former :mixins section handling now lives on
+# MixinResolvinator (see mixin_resolvinator_spec.rb).
 describe Projectinator do
   before(:each) do
     @loginator = double('loginator')
@@ -29,16 +29,11 @@ describe Projectinator do
 
     @yaml_wrapper = double('yaml_wrapper')
 
-    @system_wrapper = double('system_wrapper')
-    @ruby_expandinator = double('ruby_expandinator')
-
     @projectinator = described_class.new({
       :file_wrapper      => @file_wrapper,
       :path_validator    => @path_validator,
       :yaml_wrapper      => @yaml_wrapper,
       :loginator         => @loginator,
-      :system_wrapper    => @system_wrapper,
-      :ruby_expandinator => @ruby_expandinator,
     })
   end
 
