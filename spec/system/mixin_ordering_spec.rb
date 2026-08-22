@@ -252,6 +252,60 @@ ceedling_system_tests do
       expect(pos_1).to be < pos_2
       expect(pos_2).to be < pos_3
     end
+
+    it 'reflects ascending env var merge order in the actual merged array content, not just log position' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          File.write('mixin/array_mixin_1.yml', ARRAY_MIXIN_1)
+          File.write('mixin/array_mixin_2.yml', ARRAY_MIXIN_2)
+          File.write('mixin/array_mixin_3.yml', ARRAY_MIXIN_3)
+          ENV['CEEDLING_MIXIN_1'] = convert_slashes('mixin/array_mixin_1.yml')
+          ENV['CEEDLING_MIXIN_2'] = convert_slashes('mixin/array_mixin_2.yml')
+          ENV['CEEDLING_MIXIN_3'] = convert_slashes('mixin/array_mixin_3.yml')
+
+          dump_file = 'dump_array_order.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file}")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+
+      # Each higher-priority (later-merged) mixin's list entries are prepended
+      # ahead of everything already accumulated, so the highest-numbered env
+      # var's marker ends up earliest in the final array.
+      enabled = @dump_config.dig(:plugins, :enabled)
+      expect(enabled.index('marker_from_mixin_3')).to be < enabled.index('marker_from_mixin_2')
+      expect(enabled.index('marker_from_mixin_2')).to be < enabled.index('marker_from_mixin_1')
+    end
+  end
+
+  # =========================================================================
+  describe 'Mixin loading :: same-source duplicate --mixin ordering' do
+    before do
+      @c.with_context do
+        @c.ceedling_appcmd_exec('example temp_sensor')
+      end
+    end
+
+    it 'resolves a repeated --mixin value at its last-typed position, not its first' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          File.write('mixin/mixin_foo.yml', SCALAR_MIXIN_LOW)
+          File.write('mixin/mixin_bar.yml', SCALAR_MIXIN_HIGH)
+
+          dump_file = 'dump_duplicate_ordering.yml'
+          @c.ceedling_appcmd_exec(
+            "dumpconfig --no-app #{dump_file}" \
+            " --mixin #{convert_slashes('mixin/mixin_foo.yml')}" \
+            " --mixin #{convert_slashes('mixin/mixin_bar.yml')}" \
+            " --mixin #{convert_slashes('mixin/mixin_foo.yml')}"
+          )
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      # mixin_foo.yml was the user's actual last-typed flag -- its value (build_low)
+      # must win, even though mixin_bar.yml (build_high) is the second, distinct flag.
+      expect(@dump_config.dig(:project, :build_root)).to eq('build_low')
+    end
   end
 
   # =========================================================================
@@ -417,6 +471,66 @@ ceedling_system_tests do
   end
 
   # =========================================================================
+  describe 'Mixin loading :: --mixin @ sigil (explicit file/name reference)' do
+    before do
+      @c.with_context do
+        @c.ceedling_appcmd_exec('example temp_sensor')
+      end
+    end
+
+    it 'loads a file the same way an unprefixed --mixin value would' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          File.write('mixin/at_sigil.yml', SCALAR_MIXIN_HIGH)
+
+          dump_file = 'dump_at_sigil.yml'
+          @c.ceedling_appcmd_exec(
+            "dumpconfig --no-app #{dump_file} --mixin @#{convert_slashes('mixin/at_sigil.yml')}"
+          )
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      expect(@dump_config.dig(:project, :build_root)).to eq('build_high')
+    end
+  end
+
+  # =========================================================================
+  describe 'Mixin loading :: :tools arguments append exception' do
+    before do
+      @c.with_context do
+        @c.ceedling_appcmd_exec('example temp_sensor')
+      end
+    end
+
+    it 'appends mixin :arguments after existing config :arguments instead of prepending' do
+      mixin_content = <<~YAML
+        :tools:
+          :test_compiler:
+            :arguments:
+              - -DMIXIN_ARG
+      YAML
+
+      @c.with_context do
+        Dir.chdir @proj_name do
+          File.write('mixin/tool_args.yml', mixin_content)
+          @c.merge_project_yml_for_test({
+            tools: {test_compiler: {arguments: ['-DBASE_ARG']}}
+          })
+
+          dump_file = 'dump_tool_args.yml'
+          @c.ceedling_appcmd_exec(
+            "dumpconfig --no-app #{dump_file} --mixin #{convert_slashes('mixin/tool_args.yml')}"
+          )
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      # -DMIXIN_ARG must come after -DBASE_ARG so it takes effect left-to-right
+      arguments = @dump_config.dig(:tools, :test_compiler, :arguments)
+      expect(arguments.index('-DBASE_ARG')).to be < arguments.index('-DMIXIN_ARG')
+    end
+  end
+
+  # =========================================================================
   describe 'Mixin loading :: project directory as default load path' do
     before do
       @c.with_context do
@@ -431,6 +545,7 @@ ceedling_system_tests do
         Dir.chdir @proj_name do
           FileUtils.rm_f('no_stdlib.yml')
           FileUtils.rm_f('project_mixin.yml')
+          FileUtils.rm_rf('user_mixins')
         end
       end
     end
@@ -462,6 +577,28 @@ ceedling_system_tests do
       defines_test = @dump_config.dig(:defines, :test)
       defines_list = defines_test.is_a?(Hash) ? defines_test.values.flatten : Array(defines_test)
       expect(defines_list).to include('PROJECT_DIR_GCC64_WINS')
+      expect(defines_list).not_to include('UNITY_EXCLUDE_STDINT_H')
+    end
+
+    it 'user-configured :load_paths wins over both the project directory and unity/targets for the same name' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          FileUtils.mkdir_p('user_mixins')
+          File.write('user_mixins/no_stdlib.yml', ":defines:\n  :test:\n    - USER_LOAD_PATH_WINS\n")
+          # Also shadow the same name in the project directory to confirm the
+          # user load path -- checked first -- still takes priority over it.
+          File.write('no_stdlib.yml', ":defines:\n  :test:\n    - PROJECT_DIR_GCC64_WINS\n")
+          @c.merge_project_yml_for_test({mixins: {load_paths: ['user_mixins']}})
+
+          dump_file = 'dump_user_load_path_wins.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file} --mixin no_stdlib")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      defines_test = @dump_config.dig(:defines, :test)
+      defines_list = defines_test.is_a?(Hash) ? defines_test.values.flatten : Array(defines_test)
+      expect(defines_list).to include('USER_LOAD_PATH_WINS')
+      expect(defines_list).not_to include('PROJECT_DIR_GCC64_WINS')
       expect(defines_list).not_to include('UNITY_EXCLUDE_STDINT_H')
     end
   end
@@ -504,6 +641,62 @@ ceedling_system_tests do
       defines_test = @dump_config.dig(:defines, :test)
       defines_list = defines_test.is_a?(Hash) ? defines_test.values.flatten : Array(defines_test)
       expect(defines_list).to include('UNITY_EXCLUDE_STDINT_H')
+    end
+
+    # Each named built-in toolchain target under vendor/unity/test/targets/,
+    # loaded by name with no :load_paths configuration -- one distinctive
+    # setting per target confirms the right file was actually found and merged.
+    {
+      'clang'         => [[:tools, :test_compiler, :executable], 'clang'],
+      'gcc'           => [[:tools, :test_compiler, :executable], 'gcc'],
+      'hitech_picc18' => [[:tools, :test_compiler, :executable], 'cd build && picc18'],
+      'iar_arm'       => [[:iar_config], nil],
+    }.each do |target_name, (key_path, expected)|
+      it "loads the built-in '#{target_name}' toolchain target by name" do
+        @c.with_context do
+          Dir.chdir @proj_name do
+            dump_file = "dump_target_#{target_name}.yml"
+            @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file} --mixin #{target_name}")
+            @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+          end
+        end
+        if expected.nil?
+          expect(@dump_config.dig(*key_path)).to_not be_nil
+        else
+          expect(@dump_config.dig(*key_path)).to eq(expected)
+        end
+      end
+    end
+  end
+
+  # =========================================================================
+  describe 'Mixin loading :: :extension ↳ :yaml override' do
+    before do
+      @c.with_context do
+        @c.ceedling_appcmd_exec('example temp_sensor')
+      end
+    end
+
+    after do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          FileUtils.rm_f('custom_ext_mixin.yaml')
+        end
+      end
+    end
+
+    it 'finds a mixin by name using the configured :extension ↳ :yaml, not the default .yml' do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          File.write('custom_ext_mixin.yaml', ":project:\n  :build_root: from_custom_extension\n")
+          @c.merge_project_yml_for_test({extension: {yaml: '.yaml'}})
+
+          dump_file = 'dump_custom_extension.yml'
+          @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file} --mixin custom_ext_mixin")
+          @dump_config = File.exist?(dump_file) ? YAML.load(File.read(dump_file)) : {}
+        end
+      end
+      expect(@dump_config.dig(:project, :build_root)).to eq('from_custom_extension')
     end
   end
 
