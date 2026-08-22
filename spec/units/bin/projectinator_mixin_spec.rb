@@ -22,7 +22,12 @@ describe Projectinator do
     allow(@file_wrapper).to receive(:directory?).and_return(false)
 
     @path_validator = double('path_validator')
-    allow(@path_validator).to receive(:standardize_paths)
+    # Mirrors PathValidator#standardize_paths's real backslash-to-forward-slash
+    # behavior closely enough for these specs -- most fixtures have no
+    # backslashes, so this is a no-op pass-through for them.
+    allow(@path_validator).to receive(:standardize_paths) do |*paths|
+      paths.map {|p| (p.nil? || p.empty?) ? p : p.gsub("\\", '/') }
+    end
     allow(@path_validator).to receive(:filepath?).and_return(false)
     allow(@path_validator).to receive(:validate).and_return(true)
 
@@ -153,6 +158,32 @@ describe Projectinator do
 
       expect(enabled).to eq(['plain_mixin'])
       expect(load_paths).to eq(['plain/path'])
+    end
+
+    it 'standardizes Windows backslashes in :enabled entries, matching cmdline/env mixin handling' do
+      config = {
+        :mixins => {
+          :enabled    => ['mixin\\dir\\clang.yml'],
+          :load_paths => []
+        }
+      }
+
+      enabled, _ = @projectinator.extract_mixins(config: config)
+
+      expect(enabled).to eq(['mixin/dir/clang.yml'])
+    end
+
+    it 'standardizes Windows backslashes in :load_paths entries, matching cmdline/env mixin handling' do
+      config = {
+        :mixins => {
+          :enabled    => [],
+          :load_paths => ['support\\mixins']
+        }
+      }
+
+      _, load_paths = @projectinator.extract_mixins(config: config)
+
+      expect(load_paths).to eq(['support/mixins'])
     end
 
     it 'raises CeedlingException when an entry contains inline Ruby and the feature is disabled' do

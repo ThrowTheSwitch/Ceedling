@@ -105,13 +105,17 @@ class Projectinator
     enabled = _mixins[:enabled] || []
     enabled = enabled.clone # Ensure it's a copy of configuration section
 
-    # Handle any inline Ruby string expansion
+    # Handle any inline Ruby string expansion, then standardize Windows backslashes --
+    # cmdline and env var mixin paths already go through standardize_paths elsewhere,
+    # so config :mixins section paths need the same treatment for consistency.
     load_paths.each do |load_path|
       load_path.replace( @ruby_expandinator.expand( load_path, source: ":mixins ↳ :load_paths" ) )
+      load_path.replace( @path_validator.standardize_paths( load_path ).first )
     end
 
     enabled.each do |mixin|
       mixin.replace( @ruby_expandinator.expand( mixin, source: ":mixins ↳ :enabled" ) )
+      mixin.replace( @path_validator.standardize_paths( mixin ).first )
     end
 
     # Remove the :mixins section of the configuration
