@@ -45,11 +45,16 @@ describe Projectinator do
   # =========================================================================
   describe '#load' do
     it 'loads from an explicit filepath argument at highest priority' do
-      allow(@yaml_wrapper).to receive(:load).with('/abs/custom.yml').and_return({:project => {}})
+      # A leading `/` is already absolute on POSIX but means "root of the
+      # current drive" on Windows, so File.expand_path prepends a drive
+      # letter there -- compute the real expanded value instead of assuming
+      # the input string is left unchanged.
+      expanded = File.expand_path('/abs/custom.yml')
+      allow(@yaml_wrapper).to receive(:load).with(expanded).and_return({:project => {}})
 
       filepath, config = @projectinator.load( filepath: '/abs/custom.yml', env: {'CEEDLING_PROJECT_FILE' => 'ignored.yml'} )
 
-      expect(filepath).to eq('/abs/custom.yml')
+      expect(filepath).to eq(expanded)
       expect(config[:project]).to eq({})
     end
 
@@ -66,11 +71,14 @@ describe Projectinator do
     end
 
     it 'falls back to the environment variable when no filepath argument is given' do
-      allow(@yaml_wrapper).to receive(:load).with('/abs/env_project.yml').and_return({:project => {}})
+      # Same platform-dependent File.expand_path behavior as the cmdline
+      # argument case above.
+      expanded = File.expand_path('/abs/env_project.yml')
+      allow(@yaml_wrapper).to receive(:load).with(expanded).and_return({:project => {}})
 
       filepath, config = @projectinator.load( env: {'CEEDLING_PROJECT_FILE' => '/abs/env_project.yml'} )
 
-      expect(filepath).to eq('/abs/env_project.yml')
+      expect(filepath).to eq(expanded)
       expect(config[:history][:config].first[:mechanism]).to eq(:project)
     end
 
