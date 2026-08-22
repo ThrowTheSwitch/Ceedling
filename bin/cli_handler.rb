@@ -9,7 +9,7 @@ require 'thor'
 require 'mixins' # Built-in Mixins
 require 'ceedling/constants' # From Ceedling application
 require 'ceedling/rake_app/rake_task_registry' # From Ceedling application
-require 'versionator' # Outisde DIY context
+require 'versionator' # Outside DIY context
 
 class CliHandler
 
@@ -20,7 +20,7 @@ class CliHandler
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
   def inspect
-    return this.class.name
+    return self.class.name
   end
 
 
@@ -53,9 +53,6 @@ class CliHandler
 
     # Display Thor-generated help listing
     thor_help.call( command ) if block_given?
-
-    # If it was help for a specific command, we're done
-    return if !command.nil?
 
     # If project configuration is available, also display Rake tasks
     @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
@@ -379,10 +376,10 @@ class CliHandler
     end
 
     # Process environment created by configuration
-    config[:environment].each do |env|
-      env.each_key do |key|
+    config[:environment].each do |section|
+      section.each_key do |key|
         name = key.to_s.upcase
-        env_list << "#{name}: \"#{env[key]}\""
+        env_list << "#{name}: \"#{section[key]}\""
       end
     end
 

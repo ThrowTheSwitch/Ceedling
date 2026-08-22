@@ -74,8 +74,8 @@ class Versionator
         raise CeedlingException.new( "Could not collect version information for vendor component ⏩️ #{filename}" )
       end
 
-      # Splat version and evaluate it to create Versionator object accessor
-      eval("@#{name.downcase}_tag = '#{version.join(".")}'")
+      # Set the version tag accessor directly instead of building and evaling a string
+      instance_variable_set("@#{name.downcase}_tag", version.join('.'))
     end
   end
 end

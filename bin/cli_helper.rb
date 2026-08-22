@@ -11,7 +11,7 @@ require 'app_cfg'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/rake_app/rakefile_component_resolver'
-require 'versionator' # Outisde DIY context
+require 'versionator' # Outside DIY context
 
 class CliHelper
 
@@ -289,7 +289,7 @@ class CliHelper
     # If logging is enabled without a filepath in --logfile, then set up the default path
     elsif log
       filepath = File.join( logging_path, DEFAULT_CEEDLING_LOGFILE )
-    elsif logfile.empty?
+    else
       return ''
     end
 

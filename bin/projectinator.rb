@@ -59,9 +59,6 @@ class Projectinator
     else
       raise "No project filepath provided and default #{DEFAULT_PROJECT_FILEPATH} not found"
     end
-
-    # We'll never get here but return nil/empty for completeness
-    return nil, {}
   end
 
 

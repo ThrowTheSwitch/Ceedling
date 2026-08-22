@@ -106,6 +106,7 @@ configuration. If no tasks are provided, built-in default tasks or your
 | `--graceful-fail` | | Force exit code of 0 for unit test failures | unset |
 | `--test-case` | | Filter for individual unit test names | `''` (none) |
 | `--exclude-test-case` | | Prevent matched unit test names from running | `''` (none) |
+| `--force-test-rerun` | | Run test executables and report fresh results even if unchanged | `false` (disabled) |
 | `--ruby-replacement` | | Enables inline Ruby string expansion (`#{...}`) in project configuration | `false` (disabled) |
 
 ---
