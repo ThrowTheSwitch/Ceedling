@@ -35,9 +35,8 @@ SimpleCov.start do
 
   # Anchored to the root of each tree -- a plain substring match (e.g. '/lib/')
   # would also catch lib/ceedling/plugins/plugin_manager.rb (a real lib/
-  # subdirectory) into the plugins group, or plugins/gcov/lib/gcov.rb (a
-  # plugin's own lib/ subdirectory) into the lib group.
+  # subdirectory) into the plugins group, etc.
   add_group 'bin', %r{\A/bin/}
-  add_group 'lib', %r{\A/lib/}
+  add_group 'lib', %r{\A/lib/ceedling/}
   add_group 'plugins', %r{\A/plugins/}
 end
