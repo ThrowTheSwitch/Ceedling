@@ -35,8 +35,19 @@ describe Batchinator do
       :reportinator => @reportinator,
     })
 
-    allow(Parallel).to receive(:map) do |things, **_opts, &block|
-      things.map(&block)
+    # Mirrors the real gem's contract closely enough for these specs: runs
+    # serially (no real threading), calls the given block once per item in
+    # order, and invokes start:/finish: around each call the same way the
+    # real gem does, if given. block.call(item) (not block.call(*item)) so
+    # Ruby's own proc auto-splat -- not this stub -- is what decomposes a
+    # Hash pair into |key, value|, same as production.
+    allow(Parallel).to receive(:map) do |things, in_threads: nil, start: nil, finish: nil, &block|
+      things.to_a.each_with_index.map do |item, index|
+        start.call( item, index ) if start
+        result = block.call( item )
+        finish.call( item, index, result ) if finish
+        result
+      end
     end
   end
 
@@ -46,7 +57,7 @@ describe Batchinator do
       allow(@configurator).to receive(:project_compile_threads).and_return(3)
 
       captured_workers = nil
-      allow(Parallel).to receive(:map) do |things, in_threads:, &block|
+      allow(Parallel).to receive(:map) do |things, in_threads:, **_opts, &block|
         captured_workers = in_threads
         things.map(&block)
       end
@@ -60,7 +71,7 @@ describe Batchinator do
       allow(@configurator).to receive(:project_test_threads).and_return(7)
 
       captured_workers = nil
-      allow(Parallel).to receive(:map) do |things, in_threads:, &block|
+      allow(Parallel).to receive(:map) do |things, in_threads:, **_opts, &block|
         captured_workers = in_threads
         things.map(&block)
       end
@@ -104,6 +115,58 @@ describe Batchinator do
       expect {
         @batchinator.exec(workload: :bogus, things: [1]) {|item| item }
       }.to raise_error(ArgumentError, /Unrecognized batch workload type/)
+    end
+
+    it 'returns the job block per-item results directly, with no timing wrapper' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(2)
+
+      result = @batchinator.exec(workload: :compile, things: [1, 2, 3]) {|item| item * 10 }
+
+      expect(result).to eq([10, 20, 30])
+    end
+
+    it 'times each item using Parallel.map start:/finish: callbacks, once per item' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(2)
+
+      start_indexes = []
+      finish_indexes = []
+      allow(Parallel).to receive(:map) do |things, in_threads:, start:, finish:, &block|
+        things.each_with_index.map do |item, index|
+          start.call( item, index )
+          start_indexes << index
+          result = block.call( item )
+          finish.call( item, index, result )
+          finish_indexes << index
+          result
+        end
+      end
+
+      @batchinator.exec(workload: :compile, things: [10, 20, 30]) {|item| item }
+
+      expect(start_indexes).to eq([0, 1, 2])
+      expect(finish_indexes).to eq([0, 1, 2])
+    end
+
+    it 'logs a well-formed batch elapsed summary after processing' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(2)
+
+      logged_message = nil
+      allow(@loginator).to receive(:lazy) {|_verbosity, &blk| logged_message = blk.call }
+
+      @batchinator.exec(workload: :compile, things: [1, 2]) {|item| item }
+
+      expect(logged_message).to match(/Batch Elapsed: \(All: [\d.]+sec Sum: [\d.]+sec\)/)
+    end
+
+    it 'logs a sane batch elapsed summary for an empty things collection' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(2)
+
+      logged_message = nil
+      allow(@loginator).to receive(:lazy) {|_verbosity, &blk| logged_message = blk.call }
+
+      @batchinator.exec(workload: :compile, things: []) {|item| item }
+
+      expect(logged_message).to match(/Batch Elapsed: \(All: [\d.]+sec Sum: 0\.000sec\)/)
     end
   end
 
