@@ -6,7 +6,7 @@ A C preprocessor’s job is to resolve conditionals, expand macros, and pull in 
 
 Ceedling asks the preprocessor four different kinds of questions, and each one gets its own mode of invocation.
 
-- **Bare-includes mode** finds every header a file depends on, without opening a single one of them. It exists to produce a trustworthy, top-level include list.
+- **Bare-includes mode** finds every header a file depends on, without opening a single one of them. It exists to produce a trustworthy, top-level include list. It is actually two techniques working together: a real preprocessor pass, and a plain text scan that catches what the preprocessor pass alone cannot see.
 - **Directives-only mode** resolves conditionals and follows real includes, but leaves macro directives and comments in the output untouched. It exists to categorize includes as user or system headers, and to produce a version of a file with its macros still intact for later text extraction.
 - **Full-expansion mode** resolves everything a preprocessor can resolve, including every macro use in the body of a file. It exists for the case where a macro is hiding something a later step needs to see plainly, such as a function’s true signature or visibility.
 - **Text-scan fallback** does not invoke a preprocessor at all. It exists for the times a real preprocessor pass is unavailable or fails, scanning the original file’s text directly as a less certain but always-available substitute.
@@ -39,7 +39,7 @@ Knowing exactly which headers a file includes, and whether each one is a user he
 
 Ceedling solves this with two separate preprocessor passes that are then reconciled together. A class called `PreprocessinatorIncludesHandler` runs both passes and hands each one’s raw output to a small parser built just for it. `PreprocessinatorBareIncludesExtractor` reads the first pass’s output. `PreprocessinatorLineMarkerIncludesExtractor`, already named above, reads the second.
 
-The first pass runs the preprocessor in bare-includes mode, a mode meant only to report dependencies, deliberately pointed at no real project search paths at all. Because no real header can be found this way, none are ever opened, so no include guard can ever suppress anything. This pass is not troubled by nesting or guards, and it reliably reports the complete, accurate list of every file referenced in an `#include` directive within the preprocessed file, given its current macro definitions. What it cannot do is say whether any one of those includes is a user header or a system header.
+The first pass runs the preprocessor in bare-includes mode, a mode meant only to report dependencies, deliberately pointed at no real project search paths at all. Because no real header can be found this way, none are ever opened, so no include guard can ever suppress anything. This pass is not troubled by nesting or guards. What it cannot do is say whether any one of those includes is a user header or a system header.
 
 Restricting search paths is not by itself enough to guarantee that no real header is ever opened. A C preprocessor’s quoted `#include` resolution always additionally checks the directory of the file it is currently processing, independent of whatever search paths were given. A header sitting alongside the file being scanned, a same-directory sibling, gets opened and recursed into anyway, regardless of the restricted search paths above. Left unaddressed, this leaks past the pass’s own guarantee: a header reached only through this directory-relative side channel looks the same as a genuine top-level include, which can lead `Includes.reconcile` to keep a mocked header’s own real source in a test’s build when nothing about the test actually needed it there.
 
@@ -57,6 +57,16 @@ Its output is not C code at all. It is a make-style dependency rule, listing the
 test_module.o: test_module.c unity.h module.h \
   mock_dependency.h
 ```
+
+### The Gap a Real Preprocessor Pass Cannot Close Alone
+
+Bare-includes mode has one more limitation. It only keeps an `#include` if the preprocessor's own conditional evaluation resolves that way. But bare-includes mode never opens any header, so it cannot see a macro some other header defines. When a conditional depends on a macro like that, the preprocessor treats it as undefined. The conditional resolves the wrong way. A real, always-present `#include` silently disappears from this pass's own output.
+
+Ceedling closes this gap with a second, simpler technique: a plain scan of the file's own text for anything that looks like an `#include` line, no matter what conditional surrounds it. This scan runs no preprocessor and evaluates no conditionals. It only needs to notice that an `#include` line exists in the file's own text. `PreprocessinatorIncludesHandler#extract_bare_includes_from_text` does this scanning. Its result is unioned with the real bare-includes pass's own result before reconciliation runs.
+
+This union is safe. `Includes.reconcile` still checks every candidate against the accurate, second pass before keeping it. A line the text scan notices but the accurate pass never actually resolved is still discarded, exactly as before. The union only restores an entry both a literal reading of the file and a real preprocessor agree belongs there.
+
+Neither technique replaces the other. The real preprocessor pass can resolve an `#include` whose own target is a macro, something like `#include SOME_HEADER_NAME`, since that requires expanding a macro before any filename exists at all. The text scan has no filename to find in a case like that. The text scan, in turn, sees past a conditional the preprocessor pass cannot evaluate, since it never tries to evaluate conditionals in the first place. Each covers a gap the other cannot.
 
 The second pass runs the preprocessor in directives-only mode, with full search paths, and reads the resulting line markers, exactly as described above, to learn which included files are user headers and which are system headers. This pass sees real nesting and real include guards, so its own list cannot be fully trusted as a top-level list on its own.
 
