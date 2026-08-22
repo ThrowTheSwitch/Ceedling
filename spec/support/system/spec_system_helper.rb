@@ -150,6 +150,17 @@ def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', asset_file_name)
 end
 
+# `ceedling new`/`upgrade` only populates a project's docs/ceedling/ by copying this
+# repo's own site-local/ -- the local mkdocs HTML bundle, built only by `rake
+# docs:build:local` (see bin/cli_helper.rb's own identical check). That's a step CI
+# runs in a dedicated job before the test suite, but a plain local `bundle install &&
+# rspec` never runs at all, so docs/ceedling/ is legitimately absent there. Tests
+# asserting a deployed project's doc contents check this first rather than hardcoding
+# an assumption that only ever holds in CI's own environment (issue #1216).
+def html_docs_bundle_available?
+  Dir.exist?(File.join(File.dirname(__FILE__), '..', '..', '..', 'site-local'))
+end
+
 def unique_proj_name(prefix)
   safe = RSpec.current_example.description
     .downcase
