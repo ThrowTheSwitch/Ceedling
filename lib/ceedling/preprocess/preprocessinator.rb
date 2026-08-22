@@ -565,6 +565,28 @@ class Preprocessinator
       defines:       defines
     )
 
+    # Supplement with a literal text scan of the original file's own #include
+    # lines -- the gcc-based bare pass above runs against an isolated copy that
+    # can never open another header, so a conditional #include whose guard
+    # depends on a macro defined by an *earlier #include in this same file*
+    # evaluates false there and silently drops out. Unioning in this text-based
+    # pass's result only ever adds candidates for Includes.reconcile below to
+    # match against the accurate directives-only pass -- it can't introduce a
+    # spurious entry on its own, since reconcile still requires the accurate
+    # pass to also report it.
+    #
+    # This supplements the gcc-based pass rather than replacing it: gcc can
+    # resolve an #include whose target is itself a macro (e.g. the
+    # MOCK_PARTIAL_ALL_MODULE()-style directives this project's own generated
+    # test files use), since a command-line -D define is visible even to the
+    # isolated copy -- a literal text scan has no filename there to find at
+    # all, since none exists until a real preprocessor expands the macro. The
+    # two passes catch different, non-overlapping failure modes; keeping both
+    # covers both.
+    bare_includes = (
+      bare_includes + @includes_handler.extract_bare_includes_from_text( filepath: filepath )
+    ).uniq( &:filename )
+
     # Extract user includes
     user_includes = preprocess_user_includes(
       name:                     test,

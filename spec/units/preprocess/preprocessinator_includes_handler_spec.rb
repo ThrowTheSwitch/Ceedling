@@ -340,6 +340,67 @@ RSpec.describe PreprocessinatorIncludesHandler do
 
 
   # ===========================================================================
+  describe '#extract_bare_includes_from_text' do
+  # ===========================================================================
+
+    let(:filepath) { '/src/module.c' }
+
+    it 'extracts a simple user include' do
+      stub_file_open(filepath, "#include \"foo.h\"\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to include('foo.h')
+    end
+
+    it 'extracts a system include too, unlike extract_user_includes_from_text' do
+      stub_file_open(filepath, "#include <stdio.h>\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to include('stdio.h')
+    end
+
+    it 'returns plain Include objects, not UserInclude/SystemInclude' do
+      stub_file_open(filepath, "#include \"foo.h\"\n#include <stdio.h>\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result).to all( be_an_instance_of(Include) )
+    end
+
+    it 'ignores includes inside line comments' do
+      stub_file_open(filepath, "// #include \"commented_out.h\"\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result).to be_empty
+    end
+
+    it 'ignores includes inside block comments' do
+      content = "/* #include \"in_block.h\" */\n#include \"real.h\"\n"
+      stub_file_open(filepath, content)
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to contain_exactly('real.h')
+    end
+
+    # The defining difference from extract_user_includes_from_text: no conditional
+    # tracking at all -- an #include inside an #ifdef for an undefined macro is
+    # still captured, since this method's whole purpose is to see past a guard
+    # whose condition can't be evaluated without opening another header (issue #1223).
+    it 'captures a conditionally-guarded include regardless of whether the guard could be evaluated true' do
+      content = <<~C
+        #ifdef UNDEFINED_MACRO
+        #include "conditional.h"
+        #endif
+      C
+      stub_file_open(filepath, content)
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to include('conditional.h')
+    end
+
+    it 'removes a self-referential include matching the file being scanned' do
+      stub_file_open(filepath, "#include \"#{filepath}\"\n#include \"foo.h\"\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to contain_exactly('foo.h')
+    end
+
+  end
+
+
+  # ===========================================================================
   describe '#extract_system_includes_from_text' do
   # ===========================================================================
 

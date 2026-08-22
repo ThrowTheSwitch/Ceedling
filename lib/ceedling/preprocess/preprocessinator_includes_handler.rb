@@ -115,6 +115,39 @@ class PreprocessinatorIncludesHandler
     return includes
   end
 
+  # Scan the original file's own text for every #include line, unconditionally --
+  # no #if/#ifdef tracking at all, just literal presence. Supplements the gcc-based
+  # bare pass (`extract_bare_includes`), which runs against an isolated, sibling-free
+  # copy of the file and so can never open another header to resolve a conditional
+  # that depends on a macro that header defines (e.g. `#if SOME_MACRO_FROM_ANOTHER_HEADER`)
+  # -- GCC treats the macro as undefined there and silently drops the #include line
+  # from that pass's output even though it's a perfectly ordinary, real, top-level
+  # #include once actually evaluated with the real file in place. This method's result
+  # is meant to be unioned with the gcc-based bare pass's own result (see
+  # Preprocessinator#preprocess_file_includes_common), not used on its own -- an
+  # `Includes.reconcile` call downstream still only keeps an entry here if the
+  # accurate directives-only pass also reports it, so unconditionally capturing every
+  # literal #include line (regardless of whether its own guard is really true) is
+  # safe: it can only ever let back in an entry the accurate pass already confirmed,
+  # never introduce a spurious one on its own. A supplement, not a replacement --
+  # the gcc pass can still do something this literal scan structurally can't: resolve
+  # an #include whose own target is a macro rather than a literal filename.
+  def extract_bare_includes_from_text(filepath:)
+    includes = []
+
+    # Open in binary mode: code_lines applies clean_encoding per-line, but each_line
+    # itself can raise on invalid byte sequences before clean_encoding is reached.
+    @file_wrapper.open(filepath, 'rb') do |input|
+      @parsing_parcels.code_lines( input ) do |line|
+        _include = @include_factory.user_include_from_directive( line ) ||
+                   @include_factory.system_include_from_directive( line )
+        includes << Include.new( _include.filepath ) if !_include.nil?
+      end
+    end
+
+    return clean_self_reference( filepath, includes )
+  end
+
   def extract_user_includes_preprocess(name:, filepath:, preprocessed_filepath:)
     includes = []
 
