@@ -9,7 +9,6 @@ require 'spec_helper'
 require 'composinator'
 require 'ceedling/constants'
 require 'ceedling/config/config_walkinator'
-require 'deep_merge'
 
 describe Composinator do
   before(:each) do

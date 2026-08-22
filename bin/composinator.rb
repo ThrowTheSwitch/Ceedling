@@ -5,7 +5,6 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'deep_merge'
 require 'ceedling/constants'
 
 class Composinator
@@ -166,8 +165,10 @@ class Composinator
       # Update method parameter to config value
       default_tasks = value.dup()
     else
-      # Set key/value in config if it's not set
-      config.deep_merge( {:project => {:default_tasks => default_tasks}} )
+      # Set key/value in config if it's not set, without disturbing any other
+      # existing :project keys
+      config[:project] ||= {}
+      config[:project][:default_tasks] = default_tasks
     end
 
     return default_tasks
