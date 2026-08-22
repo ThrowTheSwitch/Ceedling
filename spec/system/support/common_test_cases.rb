@@ -124,7 +124,11 @@ module CommonSystemTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         all_docs = Dir["docs/*"]
-        expect(all_docs).to contain_exactly('docs/ceedling', 'docs/unity', 'docs/cmock', 'docs/c_exception', 'docs/license.txt')
+        # docs/ceedling only exists when this repo's own local HTML docs bundle
+        # (site-local/) was available to copy in -- see html_docs_bundle_available?.
+        expected = ['docs/unity', 'docs/cmock', 'docs/c_exception', 'docs/license.txt']
+        expected << 'docs/ceedling' if html_docs_bundle_available?
+        expect(all_docs).to contain_exactly(*expected)
       end
     end
   end
