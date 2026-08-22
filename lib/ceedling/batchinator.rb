@@ -22,12 +22,8 @@ class Batchinator
 
   constructor :configurator, :loginator, :reportinator
 
-  def setup
-    @queue = Queue.new
-  end
-
   # Neaten up a build step with progress message and some scope encapsulation
-  def build_step(msg, heading: true, &block)
+  def build_step(msg, heading: true)
     if heading
       msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
     else # Progress message
