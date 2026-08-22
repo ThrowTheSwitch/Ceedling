@@ -79,11 +79,8 @@ class Mixinator
     _vars = []
     # Iterate over sorted environment variable names
     var_names.each do |name|
-      # Duplicate the filepath string to get unfrozen copy
-      # Handle any Windows path shenanigans
-      # Insert in array {env var name => filepath}
-      path = env[name].dup()
-      @path_validator.standardize_paths( path )
+      # Handle any Windows path shenanigans; insert in array {env var name => filepath}
+      path = @path_validator.standardize_paths( env[name] ).first
       _vars << {name => path}
     end
 
@@ -121,11 +118,11 @@ class Mixinator
     #   3. Project configuration :enabled mixins (last → lowest dedup priority)
     #
     dedup = []
-    # cmdline entries are pre-tagged {source_label => value} hashes from configinator;
+    # cmdline entries are pre-tagged {source_label => value} hashes from composinator;
     # they carry either 'command line' (file/builtin) or 'command line (inline)' (YAML string)
     cmdline.each {|mixin| dedup << mixin}
     dedup += env
-    # config entries arrive pre-built from configinator as {'project configuration' => path, :_input => name}
+    # config entries arrive pre-built from composinator as {'project configuration' => path, :_input => name}
     config.each  {|entry| dedup << entry}
 
     # Remove duplicate mixins, keeping the highest-priority (first) occurrence.

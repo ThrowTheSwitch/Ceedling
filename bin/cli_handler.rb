@@ -9,18 +9,18 @@ require 'thor'
 require 'mixins' # Built-in Mixins
 require 'ceedling/constants' # From Ceedling application
 require 'ceedling/rake_app/rake_task_registry' # From Ceedling application
-require 'versionator' # Outisde DIY context
+require 'versionator' # Outside DIY context
 
 class CliHandler
 
   DOCS_SUBDIR = 'docs'
 
-  constructor :configinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actions_wrapper, :loginator
+  constructor :composinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actions_wrapper, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
   def inspect
-    return this.class.name
+    return self.class.name
   end
 
 
@@ -54,11 +54,8 @@ class CliHandler
     # Display Thor-generated help listing
     thor_help.call( command ) if block_given?
 
-    # If it was help for a specific command, we're done
-    return if !command.nil?
-
     # If project configuration is available, also display Rake tasks
-    @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
     if @projectinator.config_available?( filepath:options[:project], env:env )
       list_rake_tasks(
         env:env,
@@ -91,7 +88,7 @@ class CliHandler
   def new_project(env, app_cfg, ceedling_tag, options, dest)
     @helper.set_verbosity( options[:verbosity] )
 
-    @path_validator.standardize_paths( dest )
+    dest = @path_validator.standardize_paths( dest ).first
 
     # If destination is nil, assume it's the working directory
     dest ||= '.'
@@ -142,7 +139,7 @@ class CliHandler
   def upgrade_project(env, app_cfg, options, path)
     @helper.set_verbosity( options[:verbosity] )
 
-    @path_validator.standardize_paths( path, options[:project] )
+    path, options[:project] = @path_validator.standardize_paths( path, options[:project] )
 
     # Check for existing project
     if !@helper.project_exists?( path, :&, options[:project], 'vendor/ceedling/lib/version.rb' )
@@ -183,9 +180,10 @@ class CliHandler
     @helper.set_verbosity( _verbosity, override: false )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    @path_validator.standardize_paths( options[:project], options[:logfile], *@helper.process_mixin_filepaths(options[:mixin]) )
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
+    options[:logfile] = @path_validator.standardize_paths( options[:logfile] ).first
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
@@ -194,7 +192,7 @@ class CliHandler
     # after all .rake files are loaded with constants fully resolved.
     @helper.build_rake_task_registry( config:config )
 
-    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+    default_tasks = @composinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
     @helper.process_testcase_filters(
       config: config,
@@ -282,9 +280,10 @@ class CliHandler
     @helper.set_verbosity( options[:verbosity] )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    @path_validator.standardize_paths( filepath, options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
+    filepath = @path_validator.standardize_paths( filepath ).first
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.console_project_name( config )
 
@@ -292,7 +291,7 @@ class CliHandler
     begin
       # If enabled, process the configuration through Ceedling automatic settings, defaults, plugins, etc.
       if options[:app]
-        default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+        default_tasks = @composinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
         # Save references
         app_cfg.set_project_config( config )
@@ -321,13 +320,13 @@ class CliHandler
     @helper.set_verbosity( options[:verbosity] )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
-    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+    default_tasks = @composinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
     # Save references; explicitly disable log file output
     app_cfg.set_project_config( config )
@@ -352,9 +351,9 @@ class CliHandler
     @helper.set_verbosity( options[:verbosity] )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.console_project_name( config )
 
@@ -379,10 +378,10 @@ class CliHandler
     end
 
     # Process environment created by configuration
-    config[:environment].each do |env|
-      env.each_key do |key|
+    config[:environment].each do |section|
+      section.each_key do |key|
         name = key.to_s.upcase
-        env_list << "#{name}: \"#{env[key]}\""
+        env_list << "#{name}: \"#{section[key]}\""
       end
     end
 
@@ -431,7 +430,7 @@ class CliHandler
   def create_example(env, app_cfg, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
 
-    @path_validator.standardize_paths( dest )
+    dest = @path_validator.standardize_paths( dest ).first
 
     # Process which_ceedling for app_cfg modifications but ignore return values
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
@@ -554,9 +553,27 @@ class CliHandler
 
   private
 
+  # Standardizes a project filepath and a mixins list together. PathValidator's
+  # standardize_paths() returns new values rather than updating its arguments in
+  # place, so the mixins list can't just be passed through it directly -- inline
+  # YAML mixin entries aren't filepaths at all and must be left untouched, and
+  # only the filepath/name entries come back out standardized. Matches entries
+  # by object identity rather than value so repeated identical mixin values are
+  # each replaced correctly.
+  def standardize_project_and_mixins(project, mixins)
+    _project = @path_validator.standardize_paths( project ).first
+
+    file_mixins = @helper.process_mixin_filepaths( mixins )
+    standardized = @path_validator.standardize_paths( *file_mixins )
+    replacements = file_mixins.each_with_index.to_h {|m, i| [m.object_id, standardized[i]] }
+    _mixins = mixins.map {|m| replacements.fetch( m.object_id, m ) }
+
+    return _project, _mixins
+  end
+
   def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[], silent:false)
     _, config = 
-      @configinator.loadinate(
+      @composinator.loadinate(
         builtin_mixins:BUILTIN_MIXINS,
         builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS,
         filepath: filepath,

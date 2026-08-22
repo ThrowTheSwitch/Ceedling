@@ -36,12 +36,13 @@ class PathValidator
     return validated
   end
 
-  # Ensure any Windows backslashes are converted to Ruby path forward slashes
-  # Santization happens inline
+  # Ensure any Windows backslashes are converted to Ruby path forward slashes.
+  # Returns new values in the same order as the arguments given, rather than
+  # mutating the caller's own String objects in place.
   def standardize_paths( *paths )
-    paths.each do |path|
-      next if path.nil? or path.empty?
-      path.gsub!( "\\", '/' )
+    paths.map do |path|
+      next path if path.nil? or path.empty?
+      path.gsub( "\\", '/' )
     end
   end
 
