@@ -171,6 +171,44 @@ describe Batchinator do
   end
 
   # =========================================================================
+  # Real threading, no Parallel.map stub. These exist only to catch a broken
+  # integration with the actual `parallel` gem -- something the Layer 1 stub
+  # above can't see, since it never touches real threads at all. On purpose,
+  # these assert only outcomes that hold true no matter how the threads
+  # happen to get scheduled: every item processed once, results in input
+  # order, elapsed time not negative. They never assert exact timing values
+  # or the order threads actually ran in, since both are inherently
+  # nondeterministic.
+  describe '#exec real threading (smoke)' do
+    before(:each) do
+      allow(Parallel).to receive(:map).and_call_original
+    end
+
+    it 'processes every item exactly once and returns results in input order' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(4)
+
+      result = @batchinator.exec(workload: :compile, things: [1, 2, 3, 4, 5]) do |item|
+        item * 10
+      end
+
+      expect(result).to eq([10, 20, 30, 40, 50])
+    end
+
+    it 'reports a non-negative elapsed summary' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(4)
+
+      logged_message = nil
+      allow(@loginator).to receive(:lazy) {|_verbosity, &blk| logged_message = blk.call }
+
+      @batchinator.exec(workload: :compile, things: [1, 2, 3, 4, 5]) {|item| item }
+
+      all_sec, sum_sec = logged_message.match(/All: ([\d.]+)sec Sum: ([\d.]+)sec/).captures.map(&:to_f)
+      expect(all_sec).to be >= 0
+      expect(sum_sec).to be >= 0
+    end
+  end
+
+  # =========================================================================
   describe '#build_step' do
     it 'logs a heading message by default' do
       expect(@reportinator).to receive(:generate_heading)
