@@ -98,6 +98,36 @@ describe Mixinator do
         expect(result.first.keys.first).to eq('CEEDLING_MIXIN_1')
       end
     end
+
+    it 'treats a leading zero the same as no leading zero' do
+      env = {'CEEDLING_MIXIN_01' => 'path/to/mixin.yml'}
+      result = @mixinator.fetch_env_filepaths(env)
+      expect(result).to eq([{'CEEDLING_MIXIN_01' => 'path/to/mixin.yml'}])
+    end
+
+    it 'sorts a leading-zero variable numerically alongside ordinary ones' do
+      env = {
+        'CEEDLING_MIXIN_10' => 'path/mixin10.yml',
+        'CEEDLING_MIXIN_01' => 'path/mixin01.yml',
+        'CEEDLING_MIXIN_2'  => 'path/mixin2.yml',
+      }
+      result = @mixinator.fetch_env_filepaths(env)
+      expect(result.map { |e| e.keys.first }).to eq([
+        'CEEDLING_MIXIN_01',
+        'CEEDLING_MIXIN_2',
+        'CEEDLING_MIXIN_10'
+      ])
+    end
+
+    it 'raises a clear error for a malformed mixin variable name instead of crashing' do
+      env = {'CEEDLING_MIXIN_1_OLD' => 'path/to/mixin.yml'}
+      expect { @mixinator.fetch_env_filepaths(env) }.to raise_error( /CEEDLING_MIXIN_1_OLD/ )
+    end
+
+    it 'raises a clear error for a non-numeric mixin variable suffix' do
+      env = {'CEEDLING_MIXIN_ABC' => 'path/to/mixin.yml'}
+      expect { @mixinator.fetch_env_filepaths(env) }.to raise_error( /CEEDLING_MIXIN_ABC/ )
+    end
   end
 
   # =========================================================================

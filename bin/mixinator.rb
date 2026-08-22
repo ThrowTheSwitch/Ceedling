@@ -68,13 +68,21 @@ class Mixinator
   def fetch_env_filepaths(env)
     var_names = []
 
-    env.each do |var, filepath|
-      # Explicitly ignores CEEDLING_MIXIN_0
-      var_names << var if var =~ /CEEDLING_MIXIN_[1-9]\d*/
+    env.each_key do |var|
+      next unless var.start_with?( 'CEEDLING_MIXIN_' )
+
+      suffix = var.sub( 'CEEDLING_MIXIN_', '' )
+      unless suffix.match?( /\A\d+\z/ )
+        raise "Malformed mixin environment variable name '#{var}' — expected CEEDLING_MIXIN_<number>"
+      end
+
+      # Explicitly ignores CEEDLING_MIXIN_0 (a leading zero, e.g. CEEDLING_MIXIN_01,
+      # is otherwise treated the same as no leading zero)
+      var_names << var unless suffix.to_i() == 0
     end
 
-    # Extract numeric string (guranteed to exist) and convert to integer for ascending sorting
-    var_names.sort_by! {|name| name.match(/\d+$/)[0].to_i() }
+    # Ascending numeric order; to_i() ignores leading zeros so CEEDLING_MIXIN_01 sorts as 1
+    var_names.sort_by! {|name| name.sub( 'CEEDLING_MIXIN_', '' ).to_i() }
 
     _vars = []
     # Iterate over sorted environment variable names
