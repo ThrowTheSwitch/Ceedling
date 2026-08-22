@@ -212,7 +212,7 @@ describe Mixinator do
     end
 
     it 'returns pre-tagged cmdline entry when only cmdline is provided' do
-      # cmdline entries arrive as pre-tagged hashes from configinator
+      # cmdline entries arrive as pre-tagged hashes from composinator
       result = @mixinator.assemble_mixins(
         config:  [],
         env:     [],

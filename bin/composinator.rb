@@ -8,7 +8,7 @@
 require 'deep_merge'
 require 'ceedling/constants'
 
-class Configinator
+class Composinator
 
   constructor :config_walkinator, :projectinator, :mixinator
 

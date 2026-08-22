@@ -15,7 +15,7 @@ class CliHandler
 
   DOCS_SUBDIR = 'docs'
 
-  constructor :configinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actions_wrapper, :loginator
+  constructor :composinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actions_wrapper, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
@@ -185,7 +185,7 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], options[:logfile], *@helper.process_mixin_filepaths(options[:mixin]) )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
@@ -194,7 +194,7 @@ class CliHandler
     # after all .rake files are loaded with constants fully resolved.
     @helper.build_rake_task_registry( config:config )
 
-    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+    default_tasks = @composinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
     @helper.process_testcase_filters(
       config: config,
@@ -284,7 +284,7 @@ class CliHandler
 
     @path_validator.standardize_paths( filepath, options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.console_project_name( config )
 
@@ -292,7 +292,7 @@ class CliHandler
     begin
       # If enabled, process the configuration through Ceedling automatic settings, defaults, plugins, etc.
       if options[:app]
-        default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+        default_tasks = @composinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
         # Save references
         app_cfg.set_project_config( config )
@@ -323,11 +323,11 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
-    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+    default_tasks = @composinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
     # Save references; explicitly disable log file output
     app_cfg.set_project_config( config )
@@ -354,7 +354,7 @@ class CliHandler
 
     @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_mixins:BUILTIN_MIXINS, builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.console_project_name( config )
 
@@ -556,7 +556,7 @@ class CliHandler
 
   def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[], silent:false)
     _, config = 
-      @configinator.loadinate(
+      @composinator.loadinate(
         builtin_mixins:BUILTIN_MIXINS,
         builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS,
         filepath: filepath,

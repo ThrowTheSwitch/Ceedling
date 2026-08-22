@@ -46,7 +46,7 @@ actions_wrapper:
 # Separation of logic from CLI user interface
 cli_handler:
   compose:
-    - configinator
+    - composinator
     - projectinator
     - cli_helper
     - path_validator
@@ -96,7 +96,7 @@ projectinator:
     - system_wrapper
     - ruby_expandinator
 
-configinator:
+composinator:
   compose:
     - config_walkinator
     - projectinator

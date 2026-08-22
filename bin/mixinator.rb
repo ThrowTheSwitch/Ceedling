@@ -121,11 +121,11 @@ class Mixinator
     #   3. Project configuration :enabled mixins (last → lowest dedup priority)
     #
     dedup = []
-    # cmdline entries are pre-tagged {source_label => value} hashes from configinator;
+    # cmdline entries are pre-tagged {source_label => value} hashes from composinator;
     # they carry either 'command line' (file/builtin) or 'command line (inline)' (YAML string)
     cmdline.each {|mixin| dedup << mixin}
     dedup += env
-    # config entries arrive pre-built from configinator as {'project configuration' => path, :_input => name}
+    # config entries arrive pre-built from composinator as {'project configuration' => path, :_input => name}
     config.each  {|entry| dedup << entry}
 
     # Remove duplicate mixins, keeping the highest-priority (first) occurrence.
