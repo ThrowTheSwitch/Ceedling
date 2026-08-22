@@ -112,10 +112,9 @@ class MixinStandardizer
 
     # Promote config value list to all-matches matcher hash
     if config_value.is_a?(Array) && mixin_value.is_a?(Hash)
-      # Ensure all-matches matcher key is a symbol and not a string
-      if (deleted = mixin_value.delete( '*' ))
-        mixin_value[:*] = deleted
-      end
+      # mixin_value's own keys need no symbol/string normalization here --
+      # Mixinator#mixin already symbolizes every mixin key before this method
+      # ever runs, so a string '*' key is not possible on this side.
 
       # Replace the value of a simple array list with a matcher hash that stores the original list
       config_parent[key] = {:* => config_value}

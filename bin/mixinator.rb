@@ -16,17 +16,6 @@ class Mixinator
     @standardinator = @mixin_standardizer
   end
 
-  def validate_cmdline_filepaths(paths)
-    validated = @path_validator.validate(
-      paths: paths,
-      source: 'Filepath argument',
-    )
-
-    if !validated
-      raise 'Mixins command line failed validation'
-    end
-  end
-
   def validate_cmdline_yaml_strings(yaml_strings)
     # Validate a list of inline YAML strings from --mixin "=..." command line arguments.
     # Errors are accumulated so the user sees all problems before the run aborts.

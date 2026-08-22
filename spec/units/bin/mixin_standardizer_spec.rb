@@ -152,8 +152,9 @@ describe MixinStandardizer do
         :flags => {
           :test => {
             :compile => {
-              # All-matches string-based matcher hash that could occur in wild (:* is preferred)
-              '*' => ['-pedantic']
+              # By the time smart_standardize runs, Mixinator#mixin has already
+              # symbolized every mixin key, so this is always :* here, never '*'
+              :* => ['-pedantic']
             }
           }
         },
@@ -203,7 +204,7 @@ describe MixinStandardizer do
         :flags => {
           :test => {
             :compile => {
-              # Unchanged compilation flag matcher hash but standardized to use matcher symbol key
+              # Unchanged compilation flag matcher hash
               :* => ['-pedantic']
             }
           }
