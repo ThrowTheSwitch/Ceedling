@@ -1,4 +1,4 @@
-p# 🌱 Ceedling Changelog
+# 🌱 Ceedling Changelog
 
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -13,6 +13,8 @@ This changelog is complemented by three other documents:
 # [1.1.5] — 2026-08-19
 
 ## 💪 Fixed
+
+- [#1223](https://github.com/ThrowTheSwitch/Ceedling/issues/1223) Fixed a conditional `#include` silently dropping out of generated mock and Partial code whenever its condition depended on a macro defined by another header included earlier in the same file, breaking compilation with an undeclared identifier error.
 
 ### Partials
 
