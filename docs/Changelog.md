@@ -1,4 +1,4 @@
-p# 🌱 Ceedling Changelog
+# 🌱 Ceedling Changelog
 
 This format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -10,6 +10,18 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.1.6] — Prerelease
+
+## 💪 Fixed
+
+- [#1223](https://github.com/ThrowTheSwitch/Ceedling/issues/1223) Fixed a conditional `#include` silently dropping out of generated code derived from preprocessed code, breaking compilation with an undeclared identifier error. The specific case involves a macro defined by another header included earlier in the same file.
+
+### Partials
+
+- [#1215](https://github.com/ThrowTheSwitch/Ceedling/issues/1215) Fixed `MOCK_PARTIAL_ALL_MODULE()`/`MOCK_PARTIAL_MODULE()` silently failing to partialize `inline` functions in some circumstances leading to duplicated symbols breaking compilation.
+
+---
+
 # [1.1.5] — 2026-08-19
 
 ## 💪 Fixed
@@ -18,7 +30,6 @@ This changelog is complemented by three other documents:
 
 - Fixed shared generated Partial types header filename being derived from the test's name rather than partialized module's own name. Two modules Partialized in the same test could silently overwrite each other's content.
 - [#1210](https://github.com/ThrowTheSwitch/Ceedling/issues/1210) Fixed macros missing from shared Partial types header file emitted when two Partials both depend on the same types and related in common.
-- [#1215](https://github.com/ThrowTheSwitch/Ceedling/issues/1215) Fixed `MOCK_PARTIAL_ALL_MODULE()`/`MOCK_PARTIAL_MODULE()` silently failing to partialize `inline` functions in some circumstances leading to duplicated symbols breaking compilation.
 
 ---
 
