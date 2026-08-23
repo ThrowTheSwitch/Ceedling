@@ -162,7 +162,7 @@ class PartializerUtils
   # @param preprocessed_filepath [String] Path to the preprocessed directives-only file
   # @return [Integer, nil] 1-indexed source line number, or nil if not found
   def locate_function_via_preprocessed(code_block:, filepath:, preprocessed_filepath:)
-    line_num = @code_finder.find_in_preprpocessed_file(preprocessed_filepath, code_block)
+    line_num = @code_finder.find_in_preprocessed_file(preprocessed_filepath, code_block)
     return line_num unless line_num.nil?
 
     msg = "Using fallback C function location search for #{filepath}"

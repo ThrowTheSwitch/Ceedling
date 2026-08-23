@@ -15,14 +15,14 @@ describe PreprocessinatorCodeFinder do
     @finder = described_class.new({ file_wrapper: @file_wrapper })
   end
 
-  context "#find_in_preprpocessed_string" do
+  context "#find_in_preprocessed_string" do
 
     # -----------------------------------------------------------------------
     # nil cases
     # -----------------------------------------------------------------------
 
     it "returns nil for empty content" do
-      expect( @finder.find_in_preprpocessed_string( "", "int foo(void);" ) ).to be_nil
+      expect( @finder.find_in_preprocessed_string( "", "int foo(void);" ) ).to be_nil
     end
 
     it "returns nil when the search string is not present in the content" do
@@ -31,7 +31,7 @@ describe PreprocessinatorCodeFinder do
         int foo(void) { return 0; }
       PREPROCESSED
 
-      expect( @finder.find_in_preprpocessed_string( content, "int bar(void);" ) ).to be_nil
+      expect( @finder.find_in_preprocessed_string( content, "int bar(void);" ) ).to be_nil
     end
 
     it "returns nil when no line marker precedes the match" do
@@ -42,7 +42,7 @@ describe PreprocessinatorCodeFinder do
         int bar(void) { return 1; }
       PREPROCESSED
 
-      expect( @finder.find_in_preprpocessed_string( content, "int foo(void) { return 0; }" ) ).to be_nil
+      expect( @finder.find_in_preprocessed_string( content, "int foo(void) { return 0; }" ) ).to be_nil
     end
 
     # -----------------------------------------------------------------------
@@ -55,7 +55,7 @@ describe PreprocessinatorCodeFinder do
         int foo(void) { return 0; }
       PREPROCESSED
 
-      expect( @finder.find_in_preprpocessed_string( content, "int foo(void) { return 0; }" ) ).to eq 5
+      expect( @finder.find_in_preprocessed_string( content, "int foo(void) { return 0; }" ) ).to eq 5
     end
 
     it "returns the marker line number when code immediately follows the marker" do
@@ -64,7 +64,7 @@ describe PreprocessinatorCodeFinder do
         int foo(void) { return 0; }
       PREPROCESSED
 
-      expect( @finder.find_in_preprpocessed_string( content, "int foo(void) { return 0; }" ) ).to eq 5
+      expect( @finder.find_in_preprocessed_string( content, "int foo(void) { return 0; }" ) ).to eq 5
     end
 
     it "handles a line marker carrying a single flag" do
@@ -73,7 +73,7 @@ describe PreprocessinatorCodeFinder do
         void process(void);
       PREPROCESSED
 
-      expect( @finder.find_in_preprpocessed_string( content, "void process(void);" ) ).to eq 7
+      expect( @finder.find_in_preprocessed_string( content, "void process(void);" ) ).to eq 7
     end
 
     it "handles a line marker carrying multiple flags" do
@@ -84,7 +84,7 @@ describe PreprocessinatorCodeFinder do
         void init(uint32_t value);
       PREPROCESSED
 
-      expect( @finder.find_in_preprpocessed_string( content, "void init(uint32_t value);" ) ).to eq 4
+      expect( @finder.find_in_preprocessed_string( content, "void init(uint32_t value);" ) ).to eq 4
     end
 
     # -----------------------------------------------------------------------
@@ -105,7 +105,7 @@ describe PreprocessinatorCodeFinder do
         }
       PREPROCESSED
 
-      expect( @finder.find_in_preprpocessed_string( content, "int compute(int x) { return x * 2; }" ) ).to eq 12
+      expect( @finder.find_in_preprocessed_string( content, "int compute(int x) { return x * 2; }" ) ).to eq 12
     end
 
     # -----------------------------------------------------------------------
@@ -121,7 +121,7 @@ describe PreprocessinatorCodeFinder do
       PREPROCESSED
 
       # The second marker (line 20) is the last one before the match
-      expect( @finder.find_in_preprpocessed_string( content, "int foo(void) { return 0; }" ) ).to eq 20
+      expect( @finder.find_in_preprocessed_string( content, "int foo(void) { return 0; }" ) ).to eq 20
     end
 
     it "ignores line markers that appear after the match position" do
@@ -133,7 +133,7 @@ describe PreprocessinatorCodeFinder do
       PREPROCESSED
 
       # The # 10 marker follows the match and must not influence the result
-      expect( @finder.find_in_preprpocessed_string( content, "int found_here(void);" ) ).to eq 3
+      expect( @finder.find_in_preprocessed_string( content, "int found_here(void);" ) ).to eq 3
     end
 
     it "handles large line numbers correctly" do
@@ -144,7 +144,7 @@ describe PreprocessinatorCodeFinder do
         static void internal_helper(void) {}
       PREPROCESSED
 
-      expect( @finder.find_in_preprpocessed_string( content, "static void internal_helper(void) {}" ) ).to eq 247
+      expect( @finder.find_in_preprocessed_string( content, "static void internal_helper(void) {}" ) ).to eq 247
     end
 
     # -----------------------------------------------------------------------
@@ -167,7 +167,7 @@ describe PreprocessinatorCodeFinder do
         }
       FUNCTION
 
-      expect( @finder.find_in_preprpocessed_string( content, func ) ).to eq 15
+      expect( @finder.find_in_preprocessed_string( content, func ) ).to eq 15
     end
 
     it "reports the correct offset for a multiline match several lines after the marker" do
@@ -189,7 +189,7 @@ describe PreprocessinatorCodeFinder do
         }
       FUNCTION
 
-      expect( @finder.find_in_preprpocessed_string( content, func ) ).to eq 32
+      expect( @finder.find_in_preprocessed_string( content, func ) ).to eq 32
     end
 
     # -----------------------------------------------------------------------
@@ -214,7 +214,7 @@ describe PreprocessinatorCodeFinder do
       PREPROCESSED
 
       # After "# 5 "source.c" 2": line 5 = #include, line 6 = counter, line 7 = increment
-      expect( @finder.find_in_preprpocessed_string( content, "void increment(uint32_t *p) { (*p)++; }" ) ).to eq 7
+      expect( @finder.find_in_preprocessed_string( content, "void increment(uint32_t *p) { (*p)++; }" ) ).to eq 7
     end
 
   end
@@ -359,12 +359,12 @@ describe PreprocessinatorCodeFinder do
 
   end
 
-  context "#find_in_preprpocessed_file" do
+  context "#find_in_preprocessed_file" do
     it "opens the file through FileWrapper in read mode and delegates to the string search" do
       content = "# 1 \"source.c\"\nint foo(void) { return 0; }\n"
       allow(@file_wrapper).to receive(:open).with('source.c', 'r').and_yield(StringIO.new(content))
 
-      expect( @finder.find_in_preprpocessed_file( 'source.c', 'int foo(void) { return 0; }' ) ).to eq 1
+      expect( @finder.find_in_preprocessed_file( 'source.c', 'int foo(void) { return 0; }' ) ).to eq 1
     end
   end
 
