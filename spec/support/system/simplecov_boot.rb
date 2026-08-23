@@ -11,7 +11,12 @@
 # subprocess spawned while coverage mode is on, not just the one build/appcmd call
 # actually being measured, so this re-checks its own gate rather than assuming it's
 # only ever loaded when wanted.
-if ENV['CEEDLING_TEST_COVERAGE_ROOT']
+#
+# Checked for blank, not just nil: GitHub Actions' own `env:` mapping (see
+# run-plugin-tests/action.yml) can't conditionally omit a key entirely, so a
+# non-coverage run still sets this to an empty string rather than leaving it
+# unset -- and an empty string is truthy in Ruby, unlike nil/false.
+if !ENV['CEEDLING_TEST_COVERAGE_ROOT'].to_s.empty?
   require 'simplecov'
 
   # This process's own CWD is a throwaway deployed project directory, not this repo,

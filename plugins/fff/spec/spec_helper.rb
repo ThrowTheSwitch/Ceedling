@@ -11,7 +11,12 @@
 # RUBYOPT-injection approach spec/support/system/simplecov_boot.rb uses
 # doesn't apply here: that file instruments a `ceedling` *subprocess* this
 # repo's other tests spawn, whereas this is the RSpec process itself.
-if ENV['CEEDLING_TEST_COVERAGE_ROOT']
+#
+# Checked for blank, not just nil: GitHub Actions' own `env:` mapping can't
+# conditionally omit a key entirely, so a non-coverage run still sets this to
+# an empty string rather than leaving it unset -- and an empty string is
+# truthy in Ruby, unlike nil/false.
+if !ENV['CEEDLING_TEST_COVERAGE_ROOT'].to_s.empty?
   require 'simplecov'
 
   # This process's own CWD is plugins/fff, not the repo root, so the require
