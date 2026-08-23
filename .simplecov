@@ -42,7 +42,10 @@ SimpleCov.configure do
   # Root-of-lib/ files (lib/snapshot.rb, lib/ceedling.rb, lib/version.rb) are
   # tiny require/entry-point shims, not business logic -- anchored so it
   # doesn't also catch lib/ceedling/**, which is exactly what should still count.
-  skip %r{\A/lib/[^/]+\.rb\z}
+  # No leading "/": SimpleCov 1.x's project_filename is root-relative WITHOUT
+  # one (e.g. "lib/version.rb", not "/lib/version.rb", unlike 0.22) -- an
+  # anchor expecting a leading slash never matches anything, silently.
+  skip %r{\Alib/[^/]+\.rb\z}
 
   # Thin adapters over Ruby stdlib/OS calls (file_wrapper.rb, system_wrapper.rb,
   # yaml_wrapper.rb, bin/actions_wrapper.rb, etc.) -- existing tests stub around
@@ -55,10 +58,11 @@ SimpleCov.configure do
   # (file_wrapper.rb), not a whole one, and needs a true substring match.
   skip(/_wrapper/)
 
-  # Anchored to the root of each tree -- a plain substring match (e.g. '/lib/')
+  # Anchored to the root of each tree -- a plain substring match (e.g. 'lib/')
   # would also catch lib/ceedling/plugins/plugin_manager.rb (a real lib/
-  # subdirectory) into the plugins group, etc.
-  group 'bin', %r{\A/bin/}
-  group 'lib', %r{\A/lib/ceedling/}
-  group 'plugins', %r{\A/plugins/}
+  # subdirectory) into the plugins group, etc. No leading "/" in the anchor,
+  # same reasoning as the skip filter above -- project_filename never has one.
+  group 'bin', %r{\Abin/}
+  group 'lib', %r{\Alib/ceedling/}
+  group 'plugins', %r{\Aplugins/}
 end
