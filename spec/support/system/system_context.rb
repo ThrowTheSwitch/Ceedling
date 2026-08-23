@@ -46,10 +46,13 @@ class SystemContext
     # This machine-generated Gemfile is never committed -- adding simplecov here only
     # when coverage mode is on keeps every other run's deployed environment identical
     # to what a real installed gem's own dependencies actually are. Pinned to the same
-    # constraint as the main Gemfile so both processes run the identical SimpleCov
-    # version -- an unpinned resolve here could otherwise drift to whatever's newest on
-    # rubygems.org independent of the main Gemfile.lock.
-    gemfile_lines << %Q{gem "simplecov", "~> 0.22"} if ENV['CEEDLING_TEST_COVERAGE'] == 'system'
+    # constraint as the main Gemfile's Ruby->=3.2 branch so both processes run the
+    # identical SimpleCov version -- an unpinned resolve here could otherwise drift to
+    # whatever's newest on rubygems.org independent of the main Gemfile.lock. No
+    # RUBY_VERSION branch needed here (unlike the main Gemfile): this line only ever
+    # runs at all when CEEDLING_TEST_COVERAGE == 'system', itself only ever set on the
+    # Ruby 3.3 CI leg.
+    gemfile_lines << %Q{gem "simplecov", "~> 1.1"} if ENV['CEEDLING_TEST_COVERAGE'] == 'system'
     File.write( File.join(shared_dir, 'Gemfile'), gemfile_lines.join("\n") )
 
     Dir.chdir(shared_dir) do

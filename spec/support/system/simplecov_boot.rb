@@ -21,6 +21,10 @@ if ENV['CEEDLING_TEST_COVERAGE_ROOT']
   SimpleCov.root(ENV['CEEDLING_TEST_COVERAGE_ROOT'])
   load File.join(ENV['CEEDLING_TEST_COVERAGE_ROOT'], '.simplecov')
 
+  # .simplecov (just loaded above) is configuration only -- this explicit
+  # call is what actually begins tracking for this process.
+  SimpleCov.start
+
   # A unique name per process, still useful for identifying which process a given
   # raw result file came from. PID alone isn't enough (a long run can cycle through
   # enough child processes, each itself spawning further subprocesses for
@@ -43,7 +47,7 @@ if ENV['CEEDLING_TEST_COVERAGE_ROOT']
   # into a flat one.
   SimpleCov.coverage_dir(File.join('coverage', 'raw', name))
 
-  # `.simplecov`'s own track_files glob (backfilling files this particular process
+  # `.simplecov`'s own cover glob (backfilling files this particular process
   # never happened to require, so they show as 0% instead of silently vanishing
   # from the total) resolves relative to the process's actual working directory at
   # the moment coverage is finalized, not SimpleCov.root -- SimpleCov.root only

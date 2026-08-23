@@ -175,6 +175,7 @@ module CeedlingTasks
     end
 
 
+    # simplecov:disable line
     # Override Thor help to list Rake tasks as well
     desc "help [COMMAND]", "Describe available commands and list build operations"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
@@ -215,8 +216,10 @@ module CeedlingTasks
       # Call application help with block to execute Thor's built-in help in the help logic
       @handler.app_help( ENV, @app_cfg, _options, command ) { |command| super(command) }
     end
+    # simplecov:enable line
 
- 
+
+    # simplecov:disable line
     desc "new [DEST]", "Create a new project structure at optional DEST path (default is current directory)"
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
@@ -250,7 +253,9 @@ module CeedlingTasks
 
       @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, dest )
     end
+    # simplecov:enable line
 
+    # simplecov:disable line
     desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project at PATH"
     method_option :project, :type => :string, :default => DEFAULT_PROJECT_FILENAME, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :desc => "Project filename"
     method_option :debug, :type => :boolean, :default => false, :hide => true
@@ -293,8 +298,10 @@ module CeedlingTasks
 
       @handler.upgrade_project( ENV, @app_cfg, _options, path )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "build [TASKS...]", "Run build tasks (`build` keyword not required)"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
@@ -382,8 +389,10 @@ module CeedlingTasks
 
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and write final config to a YAML file"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
                   :desc => DOC_PROJECT_FLAG
@@ -429,8 +438,10 @@ module CeedlingTasks
 
       @handler.dumpconfig( ENV, @app_cfg, _options, filepath, sections )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "check", "Process project configuration with full logging"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
@@ -467,8 +478,10 @@ module CeedlingTasks
 
       @handler.check( ENV, @app_cfg, _options )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "environment", "List all configured environment variable names with values."
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
                   :desc => DOC_PROJECT_FLAG
@@ -501,8 +514,10 @@ module CeedlingTasks
 
       @handler.environment( ENV, @app_cfg, _options )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "examples", "List available example projects"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
@@ -521,8 +536,10 @@ module CeedlingTasks
 
       @handler.list_examples( ENV, @app_cfg, _options )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "example NAME [DEST]", "Create named example project in optional DEST path"
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
@@ -555,8 +572,10 @@ module CeedlingTasks
 
       @handler.create_example( ENV, @app_cfg, _options, name, dest )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "docs [DEST]", "Export documentation at optional destination (default is current directory)"
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
@@ -570,8 +589,10 @@ module CeedlingTasks
       _dest = dest.dup() if !dest.nil?
       @handler.docs( @app_cfg, _dest )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "version", "Display version details of Ceedling components"
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
@@ -602,6 +623,7 @@ module CeedlingTasks
     def version()
       @handler.version( ENV, @app_cfg )
     end
+    # simplecov:enable line
 
   end
 end
