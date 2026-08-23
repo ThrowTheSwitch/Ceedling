@@ -203,9 +203,19 @@ jobs:
           ruby: ${{ matrix.ruby }}
           coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
 
-      # Merges the resultset both prior steps accumulated (see Run Unit Tests above)
-      # into one HTML report and uploads it, downloadable from this run's own Actions
-      # summary page. Ruby-3.3-only, same leg the two steps above instrumented.
+      # Common plugin test steps. Runs before Generate Combined Coverage Report below --
+      # each plugin's own coverage/raw/system-*/ resultsets (see run-plugin-tests'
+      # own coverage input) must exist on disk before that step merges/formats the
+      # report, or they'd be silently excluded from it.
+      - name: Run Plugin Tests
+        uses: ./.github/actions/run-plugin-tests
+        with:
+          coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
+
+      # Merges the resultset all prior coverage-instrumented steps accumulated (see
+      # Run Unit Tests, Run System Tests, and Run Plugin Tests above) into one HTML
+      # report and uploads it, downloadable from this run's own Actions summary page.
+      # Ruby-3.3-only, same leg those steps instrumented.
       - name: Generate Combined Coverage Report
         if: matrix.ruby == '3.3'
         run: rake coverage:report
@@ -217,10 +227,6 @@ jobs:
           name: coverage-report
           path: coverage/
           if-no-files-found: error
-
-      # Common plugin test steps
-      - name: Run Plugin Tests
-        uses: ./.github/actions/run-plugin-tests
 
 
   # Job: Windows test suite
