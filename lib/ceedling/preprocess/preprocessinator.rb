@@ -513,6 +513,11 @@ class Preprocessinator
       defines,
       (include_paths + vendor_paths)
     )
+    # Without this, ToolExecutor#exec's default boom: true raises ShellException
+    # on a nonzero exit code before the graceful-fallback check below ever runs,
+    # crashing the build instead of falling back to directives-only signatures
+    # as documented.
+    command[:options][:boom] = false
     result = @tool_executor.exec( command )
 
     if result[:exit_code] != 0
