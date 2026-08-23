@@ -133,4 +133,65 @@ RSpec.describe Preprocessinator do
 
   end
 
+  # ===========================================================================
+  describe '#preprocess_partial_header_expand_macros / #preprocess_partial_source_expand_macros' do
+  # ===========================================================================
+  # Both public methods funnel through the same private _preprocess_partial_expand_macros.
+
+    let(:filepath) { '/src/module.c' }
+
+    def call_it(method: :preprocess_partial_header_expand_macros)
+      subject.send(
+        method,
+        filepath:      filepath,
+        test:          'test',
+        flags:         [],
+        include_paths: [],
+        vendor_paths:  [],
+        defines:       []
+      )
+    end
+
+    before do
+      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return('/build/full_expansion/module.c')
+      allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return({})
+      allow(@tool_executor).to receive(:build_command_line).and_return({ options: {} })
+    end
+
+    # This is the actual bug: without boom: false, the real ToolExecutor#exec
+    # (not this double) raises ShellException on a nonzero exit code before
+    # the "if result[:exit_code] != 0 ... return nil" fallback below it ever
+    # runs, crashing the build instead of gracefully degrading as documented.
+    it "sets boom: false on the command before invoking the full preprocessor" do
+      captured_command = nil
+      allow(@tool_executor).to receive(:exec) do |command|
+        captured_command = command
+        { exit_code: 0 }
+      end
+      allow(@file_assembler).to receive(:collect_file_contents_from_full_expansion).and_return([])
+      allow(@file_assembler).to receive(:assemble_preprocessed_code_file)
+
+      call_it()
+
+      expect(captured_command[:options][:boom]).to eq(false)
+    end
+
+    it "returns nil without raising when the full preprocessor invocation fails" do
+      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 1 })
+
+      result = nil
+      expect { result = call_it() }.to_not raise_error
+      expect(result).to be_nil
+    end
+
+    it "returns nil without raising via preprocess_partial_source_expand_macros too" do
+      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 1 })
+
+      result = nil
+      expect { result = call_it(method: :preprocess_partial_source_expand_macros) }.to_not raise_error
+      expect(result).to be_nil
+    end
+
+  end
+
 end

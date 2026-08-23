@@ -175,6 +175,21 @@ RSpec.describe CPreprocessorConditionals do
       expect(t.active?).to be true
     end
 
+    it 'treats #if defined(A) && defined(B) as active even when A is not defined' do
+      # A coincidentally-passing version of this case with A defined exists above --
+      # it can't distinguish "correctly conservative" from "matched defined(A) alone
+      # and A happens to be true." Only an undefined first macro tells them apart.
+      t = CPreprocessorConditionals.new([])
+      t.process_directive('#if defined(A) && defined(B)')
+      expect(t.active?).to be true
+    end
+
+    it 'treats #if !defined(A) || defined(B) as active even when A is defined' do
+      t = CPreprocessorConditionals.new(['A'])
+      t.process_directive('#if !defined(A) || defined(B)')
+      expect(t.active?).to be true
+    end
+
   end
 
 
@@ -267,6 +282,13 @@ RSpec.describe CPreprocessorConditionals do
       t = CPreprocessorConditionals.new([])
       t.process_directive('#if 0')
       t.process_directive('#elif VERSION > 3')
+      expect(t.active?).to be true
+    end
+
+    it 'treats #elif defined(A) && defined(B) as active when prior branch inactive, even when A is not defined' do
+      t = CPreprocessorConditionals.new([])
+      t.process_directive('#if 0')
+      t.process_directive('#elif defined(A) && defined(B)')
       expect(t.active?).to be true
     end
 

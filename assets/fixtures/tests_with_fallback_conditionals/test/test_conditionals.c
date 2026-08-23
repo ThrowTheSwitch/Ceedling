@@ -29,10 +29,17 @@ void tearDown(void)
 {
 }
 
-/* Test with feature enabled: partial includes OptionalDep_DoWork() call — naïve test. */
+/* Test with feature enabled: partial includes OptionalDep_DoWork() call — naïve test.
+ * Two expected calls, not one: conditional_module.c's ConditionalModule_Init() has a
+ * second, compound-guarded `#if defined(NEVER_DEFINED_FEATURE) && defined(CONDITIONAL_FEATURE)`
+ * call to OptionalDep_DoWork() alongside the plain `#ifdef CONDITIONAL_FEATURE` one.
+ * NEVER_DEFINED_FEATURE is never defined by any test config here -- a misparse
+ * reading only the first macro name would evaluate that compound condition as
+ * inactive (excluding the second call) instead of conservatively active. */
 #ifdef CONDITIONAL_FEATURE
 void test_init_calls_optional_dep(void)
 {
+  OptionalDep_DoWork_Expect();
   OptionalDep_DoWork_Expect();
   ConditionalModule_Init();
 }

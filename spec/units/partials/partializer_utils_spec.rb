@@ -511,7 +511,7 @@ describe PartializerUtils do
     let(:code_block)            { 'void foo(void) {}' }
 
     it "returns line number from preprocessed file when found there" do
-      expect(@code_finder).to receive(:find_in_preprpocessed_file)
+      expect(@code_finder).to receive(:find_in_preprocessed_file)
         .with(preprocessed_filepath, code_block)
         .and_return(10)
       expect(@code_finder).not_to receive(:find_in_c_file)
@@ -525,7 +525,7 @@ describe PartializerUtils do
     end
 
     it "falls back to C source when not found in preprocessed file" do
-      allow(@code_finder).to receive(:find_in_preprpocessed_file).and_return(nil)
+      allow(@code_finder).to receive(:find_in_preprocessed_file).and_return(nil)
       expect(@code_finder).to receive(:find_in_c_file).with(filepath, code_block).and_return(25)
 
       result = @utils.locate_function_via_preprocessed(
@@ -537,7 +537,7 @@ describe PartializerUtils do
     end
 
     it "returns nil when found in neither preprocessed nor C source" do
-      allow(@code_finder).to receive(:find_in_preprpocessed_file).and_return(nil)
+      allow(@code_finder).to receive(:find_in_preprocessed_file).and_return(nil)
       allow(@code_finder).to receive(:find_in_c_file).and_return(nil)
 
       result = @utils.locate_function_via_preprocessed(
@@ -549,7 +549,7 @@ describe PartializerUtils do
     end
 
     it "forwards correct arguments to both code_finder methods" do
-      expect(@code_finder).to receive(:find_in_preprpocessed_file)
+      expect(@code_finder).to receive(:find_in_preprocessed_file)
         .with('/exact/preproc.i', 'exact block')
         .and_return(nil)
       expect(@code_finder).to receive(:find_in_c_file)

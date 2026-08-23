@@ -19,7 +19,7 @@ class PreprocessinatorCodeFinder
   # Open a GCC preprocessor output file and search it for code.
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for production use where preprocessor output resides on disk.
-  def find_in_preprpocessed_file(filepath, code)
+  def find_in_preprocessed_file(filepath, code)
     @file_wrapper.open( filepath, 'r' ) do |file|
       return find_in_preprocessed_content( io: file, search: code )
     end
@@ -29,7 +29,7 @@ class PreprocessinatorCodeFinder
   # Wrap a GCC preprocessor output string in a StringIO and search it for code.
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for test use so that specs require no temporary files.
-  def find_in_preprpocessed_string(content, code)
+  def find_in_preprocessed_string(content, code)
     buffer = StringIO.new( content )
     return find_in_preprocessed_content( io: buffer, search: code )
   end
