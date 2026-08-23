@@ -5,6 +5,16 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+# Batchinator is Ceedling's one chokepoint for parallel work. Every worker
+# thread the build spins up, for compiling or for running tests, passes
+# through here. Keeping that in one small file makes the parallel handling
+# easy to find and easy to reason about, instead of scattered thread-pool
+# code wherever a build step happens to need parallelism.
+#
+# Actually running things in parallel is handled by the `parallel` gem.
+# Batchinator's job is just the Ceedling-specific parts on top: picking a
+# worker count from project configuration, and reporting timing.
+
 require 'benchmark'
 require 'parallel'
 
@@ -12,12 +22,8 @@ class Batchinator
 
   constructor :configurator, :loginator, :reportinator
 
-  def setup
-    @queue = Queue.new
-  end
-
   # Neaten up a build step with progress message and some scope encapsulation
-  def build_step(msg, heading: true, &block)
+  def build_step(msg, heading: true)
     if heading
       msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
     else # Progress message
@@ -29,15 +35,42 @@ class Batchinator
     yield # Execute build step block
   end
 
-  # Parallelize work to be done:
-  #  - Enqueue things (thread-safe)
-  #  - Spin up a number of worker threads within constraints of project file config and amount of work
-  #  - Each worker thread consumes one item from queue and runs the block against its details
-  #  - When the queue is empty, the worker threads wind down
+  # Run a block once per item in `things`, spread across worker threads.
+  #
+  # `workload:` picks how many worker threads to use. Compiling and running
+  # tests are configured with independent thread counts (`:project ↳
+  # :compile_threads` and `:project ↳ :test_threads`), since the two
+  # workloads have different performance characteristics and a project may
+  # want to tune them separately. `workload:` says which of the two
+  # settings applies to this call.
+  #
+  # `things:` is whatever collection of work items needs processing. It can
+  # be a plain Array (`job_block` receives one item, e.g. `|object|`) or a
+  # Hash (`job_block` receives a key/value pair, e.g. `|name, testable|`).
+  # Both work through the same `|key, value|` block signature below because
+  # of two ordinary Ruby behaviors, not anything Batchinator does itself:
+  # the `parallel` gem converts any `things` collection to an Array of
+  # items first, and Ruby auto-splats a 2-element Array item (a Hash pair)
+  # into two block parameters. A plain Array item just becomes `key`, with
+  # `value` left `nil`.
+  #
+  # Thread safety is the caller's responsibility, not Batchinator's.
+  # `job_block` runs concurrently on multiple threads. If it reads or
+  # writes anything shared across those calls (a counter, an entry in a
+  # shared results object), that access needs its own synchronization,
+  # typically a `Mutex` the caller owns and passes in via closure. Nothing
+  # about calling `exec` makes shared state safe on its own.
+  #
+  # If `job_block` raises, already-running items keep running to
+  # completion. No new items start once an exception has been seen. Once
+  # every thread is done, the first exception raised is re-raised here, in
+  # the calling thread. This is the `parallel` gem's own default behavior
+  # for thread-based work, not something Batchinator changes.
   def exec(workload:, things:, &job_block)
 
     batch_results = []
     sum_elapsed = 0.0
+    start_times = {}
 
     all_elapsed = Benchmark.realtime do
       # Determine number of worker threads to run
@@ -48,21 +81,27 @@ class Batchinator
       when :test
         workers = @configurator.project_test_threads
       else
-        raise NameError.new("Unrecognized batch workload type: #{workload}")
+        # Explicit ::ArgumentError, not the bare name: this class mixes in
+        # the `constructor` gem's Constructor module, which defines its own
+        # Constructor::ArgumentError ahead of the real one in this class's
+        # ancestor chain. A bare ArgumentError reference here would silently
+        # resolve to that one instead, which expects an Array and not a
+        # String and breaks accordingly.
+        raise ::ArgumentError.new("Unrecognized batch workload type: #{workload}")
       end
 
-      # Perform the actual parallelized work and collect the results and timing
-      batch_results = Parallel.map(things, in_threads: workers) do |key, value| 
-        this_results = ''
-        this_elapsed = Benchmark.realtime { this_results = job_block.call(key, value) }
-        [this_results, this_elapsed]
-      end
-
-      # Separate the elapsed time and results
-      if batch_results.size > 0
-        batch_results, batch_elapsed = batch_results.transpose
-        sum_elapsed = batch_elapsed.sum()
-      end
+      # Perform the actual parallelized work. Per-item timing rides along on
+      # the `parallel` gem's own start:/finish: callbacks instead of wrapping
+      # each job block call in a separate Benchmark.realtime -- the gem calls
+      # these under its own internal mutex, so summing into sum_elapsed here
+      # needs no synchronization of our own. batch_results ends up as the job
+      # block's own per-item return values, nothing wrapped around them.
+      batch_results = Parallel.map(
+        things,
+        in_threads: workers,
+        start:  ->(_item, index) { start_times[index] = Time.now },
+        finish: ->(_item, index, _result) { sum_elapsed += (Time.now - start_times[index]) }
+      ) { |key, value| job_block.call(key, value) }
     end
 
     # Report the timing if requested
