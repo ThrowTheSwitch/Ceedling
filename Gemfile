@@ -24,7 +24,20 @@ gem "diff-lcs", "~> 1.5"
 # Dev-only: code coverage for CI's combined unit+system test coverage report.
 # require: false since it's only ever loaded when CEEDLING_TEST_COVERAGE is set --
 # deliberately NOT declared in ceedling.gemspec, same as diff-lcs above.
-gem "simplecov", "~> 0.22", require: false
+#
+# SimpleCov 1.x requires Ruby >= 3.2 and is what CI's coverage-instrumented
+# leg (Ruby 3.3 -- see ci.yml) actually targets, giving access to modern
+# config method names (cover/skip/group) and the simplecov:disable/enable
+# directive comments used throughout .simplecov and bin/cli.rb. Every other
+# Ruby leg in CI's matrix (3.0, 3.1, ...) never sets CEEDLING_TEST_COVERAGE
+# and so never loads this gem at all -- the ~> 0.22 fallback exists purely
+# so `bundle install` still resolves cleanly on those older interpreters,
+# not because anything in this repo actually runs against it.
+if RUBY_VERSION >= '3.2'
+  gem "simplecov", "~> 1.1", require: false
+else
+  gem "simplecov", "~> 0.22", require: false
+end
 
 # Ceedling dependencies
 gem "diy", "~> 1.1"

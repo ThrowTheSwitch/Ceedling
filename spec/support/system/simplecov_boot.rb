@@ -11,7 +11,12 @@
 # subprocess spawned while coverage mode is on, not just the one build/appcmd call
 # actually being measured, so this re-checks its own gate rather than assuming it's
 # only ever loaded when wanted.
-if ENV['CEEDLING_TEST_COVERAGE_ROOT']
+#
+# Checked for blank, not just nil: GitHub Actions' own `env:` mapping (see
+# run-plugin-tests/action.yml) can't conditionally omit a key entirely, so a
+# non-coverage run still sets this to an empty string rather than leaving it
+# unset -- and an empty string is truthy in Ruby, unlike nil/false.
+if !ENV['CEEDLING_TEST_COVERAGE_ROOT'].to_s.empty?
   require 'simplecov'
 
   # This process's own CWD is a throwaway deployed project directory, not this repo,
@@ -20,6 +25,10 @@ if ENV['CEEDLING_TEST_COVERAGE_ROOT']
   # the shared config explicitly now that root is correct.
   SimpleCov.root(ENV['CEEDLING_TEST_COVERAGE_ROOT'])
   load File.join(ENV['CEEDLING_TEST_COVERAGE_ROOT'], '.simplecov')
+
+  # .simplecov (just loaded above) is configuration only -- this explicit
+  # call is what actually begins tracking for this process.
+  SimpleCov.start
 
   # A unique name per process, still useful for identifying which process a given
   # raw result file came from. PID alone isn't enough (a long run can cycle through
@@ -43,7 +52,7 @@ if ENV['CEEDLING_TEST_COVERAGE_ROOT']
   # into a flat one.
   SimpleCov.coverage_dir(File.join('coverage', 'raw', name))
 
-  # `.simplecov`'s own track_files glob (backfilling files this particular process
+  # `.simplecov`'s own cover glob (backfilling files this particular process
   # never happened to require, so they show as 0% instead of silently vanishing
   # from the total) resolves relative to the process's actual working directory at
   # the moment coverage is finalized, not SimpleCov.root -- SimpleCov.root only

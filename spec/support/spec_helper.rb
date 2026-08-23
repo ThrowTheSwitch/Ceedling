@@ -20,6 +20,10 @@
 # system suites finish, rather than by this process's own exit.
 if ENV['CEEDLING_TEST_COVERAGE'] == 'units'
   require 'simplecov'
+  # .simplecov (already loaded by the require above, via SimpleCov's own
+  # autoload) is configuration only -- this explicit call is what actually
+  # begins tracking for this process.
+  SimpleCov.start
   SimpleCov.command_name 'units'
   SimpleCov.at_exit { SimpleCov.result }
 end

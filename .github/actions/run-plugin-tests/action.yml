@@ -14,6 +14,12 @@
 name: 'Run Plugin Tests'
 description: 'Run FFF, module_generator, and dependencies plugin test suites (requires installed Ceedling gem)'
 
+inputs:
+  coverage:
+    description: "Set to 'system' to instrument each plugin test's ceedling subprocess (and FFF's own RSpec suite) with coverage -- mirrors run-system-tests' own coverage input, compared by exact value rather than truthiness"
+    required: false
+    default: 'false'
+
 runs:
   using: "composite"
   steps:
@@ -32,8 +38,20 @@ runs:
         gem build ceedling.gemspec
         gem install --local ceedling-*.gem --no-document
 
+    # Each plugin's own Rakefile shells out to a repo-relative bin/ceedling (real CLI
+    # invocations against a real example project on disk) -- functionally the same
+    # style of exercise as spec/system/, so their coverage is folded into the
+    # "system" bucket rather than a bucket of its own. Same RUBYOPT/CEEDLING_TEST_COVERAGE_ROOT
+    # mechanism SystemContext#with_context already uses per-subprocess (see
+    # spec/support/system/simplecov_boot.rb) -- set once here since every `rake`
+    # invocation below shells out to that same repo-relative launcher. FFF's own
+    # :spec RSpec task (not a ceedling subprocess) is separately instrumented by
+    # plugins/fff/spec/spec_helper.rb, gated on the same CEEDLING_TEST_COVERAGE_ROOT.
     - name: "Run tests on Ceedling plugin: FFF"
       shell: bash
+      env:
+        RUBYOPT: ${{ inputs.coverage == 'system' && format('-r{0}/spec/support/system/simplecov_boot.rb', github.workspace) || '' }}
+        CEEDLING_TEST_COVERAGE_ROOT: ${{ inputs.coverage == 'system' && github.workspace || '' }}
       run: |
         cd plugins/fff
         rake
@@ -41,6 +59,9 @@ runs:
 
     - name: "Run tests on Ceedling plugin: Module Generator"
       shell: bash
+      env:
+        RUBYOPT: ${{ inputs.coverage == 'system' && format('-r{0}/spec/support/system/simplecov_boot.rb', github.workspace) || '' }}
+        CEEDLING_TEST_COVERAGE_ROOT: ${{ inputs.coverage == 'system' && github.workspace || '' }}
       run: |
         cd plugins/module_generator
         rake
@@ -48,6 +69,9 @@ runs:
 
     - name: "Run tests on Ceedling plugin: Dependencies"
       shell: bash
+      env:
+        RUBYOPT: ${{ inputs.coverage == 'system' && format('-r{0}/spec/support/system/simplecov_boot.rb', github.workspace) || '' }}
+        CEEDLING_TEST_COVERAGE_ROOT: ${{ inputs.coverage == 'system' && github.workspace || '' }}
       run: |
         cd plugins/dependencies
         rake
