@@ -32,6 +32,12 @@ require 'ceedling/encodinator'
 ##   #endif                 → pops the innermost stack frame
 ##   Complex #if expression → treated as active (conservative: include the block)
 ##
+## The `defined(MACRO)`/`!defined(MACRO)` rules above match only that exact,
+## single-macro directive. Anything else on the same line -- a compound
+## expression like `#if defined(A) && defined(B)`, for instance -- falls
+## through to the conservative "complex expression" treatment rather than
+## being evaluated against just the one captured macro name.
+##
 ## Expects lines pre-cleaned by `code_lines` / `clean_encoding` (comments
 ## stripped, continuations joined). Does not raise on multi-byte characters.
 ##
@@ -65,20 +71,20 @@ class CPreprocessorConditionals
     when /^#\s*if\s+1\b/
       push( true )
 
-    when /^#\s*if\s+!\s*defined\s*\(\s*(\w+)\s*\)/
+    when /^#\s*if\s+!\s*defined\s*\(\s*(\w+)\s*\)\s*$/
       push( !macro_defined?($1) )
 
-    when /^#\s*if\s+defined\s*\(\s*(\w+)\s*\)/
+    when /^#\s*if\s+defined\s*\(\s*(\w+)\s*\)\s*$/
       push( macro_defined?($1) )
 
     when /^#\s*if\b/
       # Complex or unrecognized #if expression — treat as active (conservative)
       push( true )
 
-    when /^#\s*elif\s+!\s*defined\s*\(\s*(\w+)\s*\)/
+    when /^#\s*elif\s+!\s*defined\s*\(\s*(\w+)\s*\)\s*$/
       handle_elif( !macro_defined?($1) )
 
-    when /^#\s*elif\s+defined\s*\(\s*(\w+)\s*\)/
+    when /^#\s*elif\s+defined\s*\(\s*(\w+)\s*\)\s*$/
       handle_elif( macro_defined?($1) )
 
     when /^#\s*elif\s+0\b/
