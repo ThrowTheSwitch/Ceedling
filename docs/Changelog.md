@@ -16,7 +16,6 @@ Documentation is available within the repository markdown files and as a local H
 
 ## 🌟 Added
 
-- Support for the Bullseye commercial code coverage tool has been restored through updates to the temporarily disabled [Bullseye plugin](https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/).
 - Optional randomized order for Unity test case runs within a test executable ([PR #1041]https://github.com/ThrowTheSwitch/Ceedling/pull/1041) via `:unity` ↳ `:shuffle_tests` ⇒ `TRUE`.
 
 ### Delta builds
@@ -50,6 +49,8 @@ The `TEST_SOURCE_FILE()` build directive macro can now be used to remove source 
 Platform filepath limits (especially Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
 
 ## 💪 Fixed
+
+Note: 1.2.0 includes all bug fixes for 1.1.x.
 
 - A CLI parameter string mutation issue that could corrupt certain build or plugin task invocations.
 
