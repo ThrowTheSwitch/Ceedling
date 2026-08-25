@@ -1726,6 +1726,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Some YAML Learnin’">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#yaml-highlights-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML highlights &amp; overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#yaml-anchors-aliases-and-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML anchors, aliases, and extensions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4144,6 +4172,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Some YAML Learnin’">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#yaml-highlights-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML highlights &amp; overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#yaml-anchors-aliases-and-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML anchors, aliases, and extensions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4286,7 +4342,17 @@ example of a complete project configuration.</p>
 <p>Please consult YAML documentation for the finer points of format
 and to understand details of our YAML-based configuration file.</p>
 <p>We recommend <a href="http://en.wikipedia.org/wiki/Yaml">Wikipedia’s entry on YAML</a>
-for this. A few highlights from that reference page:</p>
+and <a href="https://www.educative.io/blog/advanced-yaml-syntax-cheatsheet">educative.io’s advanced YAML cheatsheet</a>.</p>
+<div class="admonition tip">
+<p class="admonition-title"><code>ceedling dumpconfig</code> to verify your YAML</p>
+<p>Ceedling provides a means to export the final result of YAML
+processing for your inspection via <a href="../../getting-started/command-line/#ceedling-dumpconfig-filepath-sections"><code>dumpconfig</code></a>.
+Dump output includes the resolution of advanced YAML features and 
+Ceedling’s own manipulations. This is a good way to troubleshoot 
+your project configuration.</p>
+</div>
+<h3 id="yaml-highlights-overview">YAML highlights &amp; overview</h3>
+<p>A few points from the preceding references:</p>
 <ul>
 <li>
 <p>YAML streams are encoded using the set of printable Unicode
@@ -4321,12 +4387,16 @@ for this. A few highlights from that reference page:</p>
   punctuation can generally be represented without needing
   to be enclosed in quotes.</p>
 </li>
-<li>
-<p>Repeated nodes are initially denoted by an ampersand (<code>&amp;</code>) and
-  thereafter referenced with an asterisk (<code>*</code>). These are known as
-  anchors and aliases in YAML speak.</p>
-</li>
 </ul>
+<h3 id="yaml-anchors-aliases-and-extensions">YAML anchors, aliases, and extensions</h3>
+<p>YAML provides several “shortcuts” for referencing and modifying blocks
+of YAML so you can avoid duplication. This is advanced YAML and 
+well beyond the scope of Ceedling documentation. However, know that
+Ceedling’s YAML parser is entirely capable of handling these advanced 
+aspects of YAML.</p>
+<p>See this <a href="https://www.educative.io/blog/advanced-yaml-syntax-cheatsheet#anchors">cheatsheet entry</a> 
+and <a href="https://blog.daemonl.com/2016/02/yaml.html">this guide</a>
+for much more on these powerful but finicky features.</p>
 <h2 id="notes-on-project-file-structure">Notes on Project File Structure</h2>
 <ul>
 <li>
