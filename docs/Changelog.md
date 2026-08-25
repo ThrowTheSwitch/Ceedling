@@ -72,7 +72,9 @@ Because of the support added for handling paths and distinguishing duplicated fi
 
 Historically, Ceedling automatically compiles and links into a test executable any C source file whose name matches an `#include`d header file. Sometimes this convention can select the wrong file among same-named files or compile and link an entirely unwanted source file whose name happens to match a header file.
 
-# [1.1.6] — Prerelease
+---
+
+# [1.1.6] — 2026-08-25
 
 ## 🌟 Added
 
