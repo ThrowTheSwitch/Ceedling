@@ -79,7 +79,7 @@ Historically, Ceedling automatically compiles and links into a test executable a
 - [#1223](https://github.com/ThrowTheSwitch/Ceedling/issues/1223) Fixed a conditional `#include` silently dropping out of generated code derived from preprocessed code, breaking compilation with an undeclared identifier error. The specific case involves a macro defined by another header included earlier in the same file.
 - [#1216](https://github.com/ThrowTheSwitch/Ceedling/issues/1216) Fixed self-test issue that caused docs-related failures when the local documentation was unavailable (generated in CI but not necessarily present during self tests).
 
-#### Partials
+### Partials
 
 - [#1215](https://github.com/ThrowTheSwitch/Ceedling/issues/1215) Fixed `MOCK_PARTIAL_ALL_MODULE()`/`MOCK_PARTIAL_MODULE()` silently failing to partialize `inline` functions in some circumstances leading to duplicated symbols breaking compilation.
 
