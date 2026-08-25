@@ -12,7 +12,18 @@ Please consult YAML documentation for the finer points of format
 and to understand details of our YAML-based configuration file.
 
 We recommend [Wikipedia’s entry on YAML](http://en.wikipedia.org/wiki/Yaml)
-for this. A few highlights from that reference page:
+and [educative.io’s advanced YAML cheatsheet](https://www.educative.io/blog/advanced-yaml-syntax-cheatsheet).
+
+!!! tip "`ceedling dumpconfig` to verify your YAML"
+    Ceedling provides a means to export the final result of YAML
+    processing for your inspection via [`dumpconfig`](../getting-started/command-line.md#ceedling-dumpconfig-filepath-sections).
+    Dump output includes the resolution of advanced YAML features and 
+    Ceedling’s own manipulations. This is a good way to troubleshoot 
+    your project configuration.
+
+### YAML highlights & overview
+
+A few points from the preceding references:
 
 * YAML streams are encoded using the set of printable Unicode
   characters, either in UTF-8 or UTF-16.
@@ -40,9 +51,17 @@ for this. A few highlights from that reference page:
   punctuation can generally be represented without needing
   to be enclosed in quotes.
 
-* Repeated nodes are initially denoted by an ampersand (`&`) and
-  thereafter referenced with an asterisk (`*`). These are known as
-  anchors and aliases in YAML speak.
+### YAML anchors, aliases, and extensions
+
+YAML provides several “shortcuts” for referencing and modifying blocks
+of YAML so you can avoid duplication. This is advanced YAML and 
+well beyond the scope of Ceedling documentation. However, know that
+Ceedling’s YAML parser is entirely capable of handling these advanced 
+aspects of YAML.
+
+See this [cheatsheet entry](https://www.educative.io/blog/advanced-yaml-syntax-cheatsheet#anchors) 
+and [this guide](https://blog.daemonl.com/2016/02/yaml.html)
+for much more on these powerful but finicky features.
 
 ## Notes on Project File Structure
 
