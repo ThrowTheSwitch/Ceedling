@@ -10,7 +10,7 @@ This changelog is complemented by three other documents:
 
 ---
 
-# [1.1.6] — Prerelease
+# [1.1.6] — 2026-08-25
 
 ## 🌟 Added
 
@@ -20,7 +20,7 @@ This changelog is complemented by three other documents:
 
 - [#1223](https://github.com/ThrowTheSwitch/Ceedling/issues/1223) Fixed a conditional `#include` silently dropping out of generated code derived from preprocessed code, breaking compilation with an undeclared identifier error. The specific case involves a macro defined by another header included earlier in the same file.
 - [#1216](https://github.com/ThrowTheSwitch/Ceedling/issues/1216) Fixed self-test issue that caused docs-related failures when the local documentation was unavailable (generated in CI but not necessarily present during self tests).
-- [#1236](https://github.com/ThrowTheSwitch/Ceedling/issues/1236) Fixed an issue that converted system includes extracted from a test C file into user includes when generating a test runner (e.g. `#include <sys/stat.h>` became `#include "stat.h"`) and also stripped relative paths of all includes injected into a test runner.
+- [#1236](https://github.com/ThrowTheSwitch/Ceedling/issues/1236) Fixed an issue that converted system includes extracted from a test C file into user includes when generating a test runner (e.g. `#include <sys/stat.h>` became `#include "stat.h"`) and also stripped relative paths from all includes injected into a test runner.
 
 ### Partials
 
