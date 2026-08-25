@@ -7,6 +7,7 @@
 
 require 'generate_test_runner' # Unity's test runner generator
 require 'ceedling/parsing_parcels'
+require 'ceedling/includes/includes'
 
 class GeneratorTestRunner
 
@@ -38,7 +39,30 @@ class GeneratorTestRunner
       @test_cases_internal,
       # Small hack for mock subdirectory support until include paths fully supported
       mocks.map{ |include| include.filepath },
-      includes.map{ |include| include.filename }
+      # Unity's own generator emits a string verbatim if it contains '<' and otherwise
+      # wraps it in double quotes -- each entry here must therefore already be in its
+      # final, exact form.
+      #
+      # System includes only: use the full, bracketed spelling (include_path, a
+      # reconciled SystemInclude's original as-written directive text -- e.g.
+      # "sys/stat.h" -- when set, else the directory-preserving filepath). A bare
+      # filename here drops both the directory component and the '<>' delimiters a
+      # system header's own search path depends on (issue #1236).
+      #
+      # User includes: bare filename, same as always. Unlike mocks (whose subdirectory
+      # is a real, dedicated build/test/mocks/<test>/ path -- hence their own
+      # directory-preserving filepath usage above) or a system header (whose directory
+      # is meaningful to the system include search path), a project's own directories
+      # are exposed to the compiler as a flat list of -I search paths, not nested to
+      # match whatever directory component a captured UserInclude's filepath happens to
+      # carry -- rendering the full path here breaks resolution instead of fixing it.
+      includes.map do |include|
+        if include.is_a?(SystemInclude)
+          "<#{include.include_path || include.filepath}>"
+        else
+          include.filename
+        end
+      end
     )
   end
 
