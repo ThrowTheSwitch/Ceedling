@@ -1,7 +1,7 @@
 Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-**Ceedling 1.1.5** is the latest and greatest.
+**Ceedling 1.1.6** is the latest and greatest.
 
 See [_Release Notes_][release-notes], [_Changelog_](docs/Changelog.md), 
 [_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues].
