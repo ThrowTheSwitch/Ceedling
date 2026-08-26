@@ -88,32 +88,18 @@ class PreprocessinatorFileAssembler
         filename: File.basename(filepath)
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-
-      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
-      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
-      @file_wrapper.open( filepath, 'rb' ) do |file|
-        # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = file.read.clean_encoding
-
-        # Filter out inactive conditional blocks before extraction so that only
-        # pragmas and macros that are active for the current defines list are returned.
-        _contents = _filter_conditionals( _contents, defines )
-
-        # Extract pragmas and macros from
-        pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
-        macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
-      end
-    else
-      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
-        # Get code contents of preprocessed directives-only file as a string
-        # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
-
-        # Extract pragmas and macros from 
-        pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
-        macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
-      end
     end
+
+    _contents = _active_content_for(
+      fallback:                 fallback,
+      filepath:                 filepath,
+      directives_only_filepath: directives_only_filepath,
+      defines:                  defines
+    )
+
+    # Extract pragmas and macros from the active content
+    pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
+    macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
 
     return contents, (pragmas + macro_defs), include_guard
   end
@@ -140,15 +126,9 @@ class PreprocessinatorFileAssembler
       @file_wrapper.read( source_filepath, 2048 ).clean_encoding
     )
 
-    pragmas = []
-    macro_defs = []
-
-    @file_wrapper.open( source_filepath, 'rb' ) do |file|
-      _contents = file.read.clean_encoding
-      _contents = _filter_conditionals( _contents, defines )
-      pragmas    = @preprocessinator_reconstructor.extract_pragmas( _contents )
-      macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
-    end
+    _contents = _active_content_for( fallback: true, filepath: source_filepath, defines: defines )
+    pragmas    = @preprocessinator_reconstructor.extract_pragmas( _contents )
+    macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
 
     return pragmas + macro_defs
   end
@@ -235,10 +215,10 @@ class PreprocessinatorFileAssembler
 
       # Add in any macro defintions or prgamas
       extras.each do |ex|
-        if ex.class == String
+        if ex.is_a?( String )
           file << ex + "\n"
 
-        elsif ex.class == Array
+        elsif ex.is_a?( Array )
           ex.each { |line| file << line + "\n" }
         end
 
@@ -296,38 +276,23 @@ class PreprocessinatorFileAssembler
         filename: File.basename(filepath)
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-
-      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
-      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
-      @file_wrapper.open( filepath, 'rb' ) do |file|
-        _contents = file.read.clean_encoding
-
-        # Filter out inactive conditional blocks before extraction so that only
-        # test directives that are active for the current defines list are returned.
-        _contents = _filter_conditionals( _contents, defines )
-
-        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
-        test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
-
-        # Extract TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls paired with the test function
-        # they immediately precede -- these vanish from `contents` above because they're real
-        # (empty-expanding) Unity macros erased by full preprocessor expansion, so we must
-        # recover them from this macro-preserving text instead.
-        test_case_directives = @preprocessinator_reconstructor.extract_test_case_directives( _contents )
-      end
-    else
-      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
-        # Get code contents of preprocessed directives-only file as a string
-        _contents = @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
-
-        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
-        test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
-
-        # Extract TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls paired with the test function
-        # they immediately precede (see comment in the fallback branch above)
-        test_case_directives = @preprocessinator_reconstructor.extract_test_case_directives( _contents )
-      end
     end
+
+    _contents = _active_content_for(
+      fallback:                 fallback,
+      filepath:                 filepath,
+      directives_only_filepath: directives_only_filepath,
+      defines:                  defines
+    )
+
+    # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
+    test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
+
+    # Extract TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls paired with the test function
+    # they immediately precede -- these vanish from `contents` above because they're real
+    # (empty-expanding) Unity macros erased by full preprocessor expansion, so we must
+    # recover them from this macro-preserving text instead.
+    test_case_directives = @preprocessinator_reconstructor.extract_test_case_directives( _contents )
 
     # Reinsert TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls immediately ahead of their test
     # function in `contents` -- full expansion erased them in place with no trace (not even a
@@ -344,6 +309,33 @@ class PreprocessinatorFileAssembler
   ### Private ###
 
   private
+
+  # Returns the content string used to extract pragmas, macro definitions, and
+  # test directives -- either by binary-mode-reading and conditional-filtering
+  # the original file (fallback mode) or by reading the already directives-only
+  # preprocessed output (non-fallback mode). Shared by
+  # collect_mockable_header_file_contents, collect_macros_and_pragmas_fallback,
+  # and collect_test_file_contents, which each then run their own distinct
+  # extraction calls against the string this returns.
+  def _active_content_for(fallback:, filepath:, directives_only_filepath: nil, defines: [])
+    if fallback
+      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
+      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
+      @file_wrapper.open( filepath, 'rb' ) do |file|
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        _contents = file.read.clean_encoding
+
+        # Filter out inactive conditional blocks so only content active for the
+        # current defines list is returned.
+        _filter_conditionals( _contents, defines )
+      end
+    else
+      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
+      end
+    end
+  end
 
   # Filters `file_contents` string through CPreprocessorConditionals, returning
   # only lines in active conditional blocks. Uses code_lines internally so
@@ -379,9 +371,9 @@ class PreprocessinatorFileAssembler
 
       # Add in any extras like test directive macros or preserved macro definitions
       extras.each do |ex|
-        if ex.class == String
+        if ex.is_a?( String )
           file << ex + "\n"
-        elsif ex.class == Array
+        elsif ex.is_a?( Array )
           ex.each { |line| file << line + "\n" }
         end
       end
