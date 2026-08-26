@@ -484,4 +484,135 @@ RSpec.describe PreprocessinatorIncludesHandler do
 
   end
 
+
+  # ===========================================================================
+  describe '#extract_user_includes_preprocess' do
+  # ===========================================================================
+
+    let(:filepath) { '/src/module.c' }
+
+    it 'delegates to the line-marker extractor with USER type, no depth limit, and the test name' do
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:extract_includes_from_file).with(
+        '/build/directives_only/module.c',
+        PreprocessinatorLineMarkerIncludesExtractor::USER,
+        test: 'test'
+      ).and_return( [ UserInclude.new('widget.h') ] )
+
+      result = subject.extract_user_includes_preprocess(
+        name: 'test', filepath: filepath, preprocessed_filepath: '/build/directives_only/module.c'
+      )
+
+      expect(result.map(&:filename)).to eq(['widget.h'])
+    end
+
+    it 'removes a self-referential entry matching the file being processed' do
+      allow(@preprocessinator_line_marker_includes_extractor).to receive(:extract_includes_from_file).and_return(
+        [ UserInclude.new(filepath), UserInclude.new('widget.h') ]
+      )
+
+      result = subject.extract_user_includes_preprocess(
+        name: 'test', filepath: filepath, preprocessed_filepath: '/build/directives_only/module.c'
+      )
+
+      expect(result.map(&:filename)).to eq(['widget.h'])
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#extract_system_includes_preprocess' do
+  # ===========================================================================
+
+    let(:filepath) { '/src/module.c' }
+
+    it 'delegates to the line-marker extractor with SYSTEM type and a practical max depth of 5' do
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:extract_includes_from_file).with(
+        '/build/directives_only/module.c',
+        PreprocessinatorLineMarkerIncludesExtractor::SYSTEM,
+        5
+      ).and_return( [ SystemInclude.new('stdint.h') ] )
+
+      result = subject.extract_system_includes_preprocess(
+        name: 'test', filepath: filepath, preprocessed_filepath: '/build/directives_only/module.c'
+      )
+
+      expect(result.map(&:filename)).to eq(['stdint.h'])
+    end
+
+    it 'removes a self-referential entry matching the file being processed' do
+      allow(@preprocessinator_line_marker_includes_extractor).to receive(:extract_includes_from_file).and_return(
+        [ SystemInclude.new(filepath), SystemInclude.new('stdint.h') ]
+      )
+
+      result = subject.extract_system_includes_preprocess(
+        name: 'test', filepath: filepath, preprocessed_filepath: '/build/directives_only/module.c'
+      )
+
+      expect(result.map(&:filename)).to eq(['stdint.h'])
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#write_includes_list' do
+  # ===========================================================================
+
+    it 'dumps the includes list, converted to hashes, to the given filepath' do
+      captured = nil
+      allow(@yaml_wrapper).to receive(:dump) { |filepath, hashes| captured = [filepath, hashes] }
+
+      subject.write_includes_list( '/build/includes/module.c.yml', [ UserInclude.new('widget.h') ] )
+
+      expect(captured[0]).to eq('/build/includes/module.c.yml')
+      expect(captured[1]).to eq( Includes.to_hashes( [ UserInclude.new('widget.h') ] ) )
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#load_includes_list' do
+  # ===========================================================================
+
+    it 'loads and converts a hash list back into Include objects' do
+      allow(@yaml_wrapper).to receive(:load).and_return(
+        [ { 'type' => 'user', 'filepath' => 'widget.h' } ]
+      )
+
+      result = subject.load_includes_list( '/build/includes/module.c.yml' )
+
+      expect(result.map(&:filename)).to eq(['widget.h'])
+      expect(result.first).to be_a(UserInclude)
+    end
+
+    it 'treats nil YAML content (an empty cache file) as an empty list, not nil' do
+      allow(@yaml_wrapper).to receive(:load).and_return(nil)
+
+      result = subject.load_includes_list( '/build/includes/module.c.yml' )
+
+      expect(result).to eq([])
+    end
+
+    it 'wraps a YamlLoadException with a clearer message, preserving reason/source/original_error' do
+      original_error = StandardError.new('boom')
+      allow(@yaml_wrapper).to receive(:load).and_raise(
+        YamlLoadException.new( reason: :syntax, source: '/build/includes/module.c.yml', original_error: original_error, message: 'line 3: bad indentation' )
+      )
+
+      expect {
+        subject.load_includes_list( '/build/includes/module.c.yml' )
+      }.to raise_error do |error|
+        expect(error).to be_a(YamlLoadException)
+        expect(error.reason).to eq(:syntax)
+        expect(error.source).to eq('/build/includes/module.c.yml')
+        expect(error.original_error).to eq(original_error)
+        expect(error.message).to match(/Cached #include list is corrupted or unreadable/)
+        expect(error.message).to match(/line 3: bad indentation/)
+      end
+    end
+
+  end
+
 end
