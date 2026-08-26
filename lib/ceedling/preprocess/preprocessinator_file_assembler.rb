@@ -235,10 +235,10 @@ class PreprocessinatorFileAssembler
 
       # Add in any macro defintions or prgamas
       extras.each do |ex|
-        if ex.class == String
+        if ex.is_a?( String )
           file << ex + "\n"
 
-        elsif ex.class == Array
+        elsif ex.is_a?( Array )
           ex.each { |line| file << line + "\n" }
         end
 
@@ -379,9 +379,9 @@ class PreprocessinatorFileAssembler
 
       # Add in any extras like test directive macros or preserved macro definitions
       extras.each do |ex|
-        if ex.class == String
+        if ex.is_a?( String )
           file << ex + "\n"
-        elsif ex.class == Array
+        elsif ex.is_a?( Array )
           ex.each { |line| file << line + "\n" }
         end
       end

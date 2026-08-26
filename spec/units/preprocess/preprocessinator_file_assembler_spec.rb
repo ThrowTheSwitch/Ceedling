@@ -445,6 +445,35 @@ RSpec.describe PreprocessinatorFileAssembler do
       expect(output.string).to include(content_line_with_crlf)
     end
 
+    it 'writes a String extra as a single line' do
+      output = stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_header_file(
+        filename:              'module.h',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              [],
+        extras:                ['#define FOO 1'],
+        includes:              []
+      )
+
+      expect(output.string).to include("#define FOO 1\n")
+    end
+
+    it 'writes each line of an Array extra' do
+      output = stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_header_file(
+        filename:              'module.h',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              [],
+        extras:                [ ['#define FOO(x) \\', '  (x + 1)'] ],
+        includes:              []
+      )
+
+      expect(output.string).to include("#define FOO(x) \\\n")
+      expect(output.string).to include("  (x + 1)\n")
+    end
+
   end
 
 
@@ -505,6 +534,35 @@ RSpec.describe PreprocessinatorFileAssembler do
       )
 
       expect(output.string).to include(content_line_with_crlf)
+    end
+
+    it 'writes a String extra as a single line' do
+      output = stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_code_file(
+        filename:              'module.c',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              [],
+        extras:                ['TEST_SOURCE_FILE("other.c")'],
+        includes:              []
+      )
+
+      expect(output.string).to include("TEST_SOURCE_FILE(\"other.c\")\n")
+    end
+
+    it 'writes each line of an Array extra' do
+      output = stub_file_write(preprocessed_filepath)
+
+      subject.assemble_preprocessed_code_file(
+        filename:              'module.c',
+        preprocessed_filepath: preprocessed_filepath,
+        contents:              [],
+        extras:                [ ['TEST_CASE(1, 2)', 'TEST_CASE(3, 4)'] ],
+        includes:              []
+      )
+
+      expect(output.string).to include("TEST_CASE(1, 2)\n")
+      expect(output.string).to include("TEST_CASE(3, 4)\n")
     end
 
   end
