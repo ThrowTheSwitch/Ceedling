@@ -122,8 +122,6 @@ class PreprocessinatorCodeFinder
     return (content[0, match_pos].count("\n")) + 1
   end
 
-  private
-
   def whitespace_insensitive_search(content, code)
     # Collapse whitespace to a unique token
     _code = code.gsub(/\s+/, WHITESPACE_MARKER)
