@@ -509,4 +509,157 @@ RSpec.describe PreprocessinatorFileAssembler do
 
   end
 
+
+  # ===========================================================================
+  describe '#collect_file_contents_from_directives_only_preprocessing' do
+  # ===========================================================================
+
+    it 'extracts file content from the raw directives-only preprocessor output' do
+      source_filepath = 'test/test_widget.c'
+      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
+        .with(source_filepath, 'test_widget')
+        .and_return('/build/directives_only/raw_test_widget.c')
+
+      file_contents = [
+        "# 1 \"#{source_filepath}\" 99999",
+        'void test_ShouldDoSomething(void) {}'
+      ].join("\n")
+      stub_file_open('/build/directives_only/raw_test_widget.c', file_contents, 'r')
+
+      result = subject.collect_file_contents_from_directives_only_preprocessing(
+        source_filepath: source_filepath, test: 'test_widget'
+      )
+
+      expect(result).to eq(['void test_ShouldDoSomething(void) {}'])
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#collect_file_contents_from_full_expansion' do
+  # ===========================================================================
+
+    it 'extracts file content from the full-expansion preprocessor output' do
+      source_filepath = 'src/module.c'
+      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath)
+        .with(source_filepath, 'test_module')
+        .and_return('/build/full_expansion/module.c')
+
+      file_contents = [
+        "# 1 \"#{source_filepath}\" 99999",
+        'void Module_Init(void) {}'
+      ].join("\n")
+      stub_file_open('/build/full_expansion/module.c', file_contents, 'r')
+
+      result = subject.collect_file_contents_from_full_expansion(
+        source_filepath: source_filepath, test: 'test_module'
+      )
+
+      expect(result).to eq(['void Module_Init(void) {}'])
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#collect_macros_and_pragmas_fallback' do
+  # ===========================================================================
+
+    let(:source_filepath) { '/src/module.h' }
+
+    it 'extracts pragmas and macro definitions, excluding the include guard\'s own #define' do
+      allow(@file_wrapper).to receive(:read).with(source_filepath, 2048).and_return(
+        "#ifndef MODULE_H\n#define MODULE_H\n"
+      )
+      content = <<~C
+        #ifndef MODULE_H
+        #define MODULE_H
+        #pragma pack(1)
+        #define MAX_SIZE 10
+        void foo(void);
+        #endif
+      C
+      stub_file_open(source_filepath, content, 'rb')
+
+      result = subject.collect_macros_and_pragmas_fallback(source_filepath: source_filepath)
+
+      expect(result).to include('#pragma pack(1)')
+      expect(result).to include('#define MAX_SIZE 10')
+      expect(result).not_to include('#define MODULE_H')
+    end
+
+    it 'filters out macros inside an inactive conditional block' do
+      allow(@file_wrapper).to receive(:read).with(source_filepath, 2048).and_return('')
+      content = <<~C
+        #ifdef FEATURE_X
+        #define FEATURE_MACRO 1
+        #endif
+        #define ALWAYS_MACRO 2
+      C
+      stub_file_open(source_filepath, content, 'rb')
+
+      result = subject.collect_macros_and_pragmas_fallback(source_filepath: source_filepath, defines: [])
+
+      expect(result).not_to include('#define FEATURE_MACRO 1')
+      expect(result).to include('#define ALWAYS_MACRO 2')
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#collect_test_file_contents' do
+  # ===========================================================================
+
+    let(:filepath) { 'test/test_widget.c' }
+
+    before do
+      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return('/build/full_expansion/test_widget.c')
+      allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return({})
+      allow(@tool_executor).to receive(:build_command_line).and_return({})
+      allow(@tool_executor).to receive(:exec)
+
+      full_expansion = [
+        "# 1 \"#{filepath}\" 99999",
+        'void test_ShouldDoSomething(void) {}'
+      ].join("\n")
+      stub_file_open('/build/full_expansion/test_widget.c', full_expansion, 'r')
+    end
+
+    it 'extracts contents from the full expansion and test directives via the fallback text scan when fallback: true' do
+      original_content = <<~C
+        TEST_SOURCE_FILE("other.c")
+        void test_ShouldDoSomething(void) {}
+      C
+      stub_file_open(filepath, original_content, 'rb')
+
+      contents, test_directives = subject.collect_test_file_contents(
+        test: 'test_widget', filepath: filepath, directives_only_filepath: '/build/directives_only/test_widget.c',
+        fallback: true, flags: [], defines: [], include_paths: []
+      )
+
+      expect(contents).to include('void test_ShouldDoSomething(void) {}')
+      expect(test_directives).to include('TEST_SOURCE_FILE("other.c")')
+    end
+
+    it 'extracts test directives from the directives-only output when fallback: false' do
+      directives_only_content = [
+        "# 1 \"#{filepath}\" 99999",
+        'TEST_SOURCE_FILE("other.c")',
+        'void test_ShouldDoSomething(void) {}'
+      ].join("\n")
+      stub_file_open('/build/directives_only/test_widget.c', directives_only_content, 'r')
+
+      contents, test_directives = subject.collect_test_file_contents(
+        test: 'test_widget', filepath: filepath, directives_only_filepath: '/build/directives_only/test_widget.c',
+        fallback: false, flags: [], defines: [], include_paths: []
+      )
+
+      expect(contents).to include('void test_ShouldDoSomething(void) {}')
+      expect(test_directives).to include('TEST_SOURCE_FILE("other.c")')
+    end
+
+  end
+
 end
