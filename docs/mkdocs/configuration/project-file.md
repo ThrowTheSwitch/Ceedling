@@ -8,11 +8,10 @@
 
 ## Some YAML Learnin’
 
-Please consult YAML documentation for the finer points of format
-and to understand details of our YAML-based configuration file.
-
 We recommend [Wikipedia’s entry on YAML](http://en.wikipedia.org/wiki/Yaml)
-and [educative.io’s advanced YAML cheatsheet](https://www.educative.io/blog/advanced-yaml-syntax-cheatsheet).
+and [educative.io’s advanced YAML cheatsheet](https://www.educative.io/blog/advanced-yaml-syntax-cheatsheet)
+for a simple overview of YAML and its syntax sufficient for 
+understanding your Ceedling project configuration.
 
 !!! tip "`ceedling dumpconfig` to verify your YAML"
     Ceedling provides a means to export the final result of YAML
