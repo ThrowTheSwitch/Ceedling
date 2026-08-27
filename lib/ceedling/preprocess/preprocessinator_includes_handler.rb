@@ -135,8 +135,9 @@ class PreprocessinatorIncludesHandler
   def extract_bare_includes_from_text(filepath:)
     includes = []
 
-    # Open in binary mode: code_lines applies clean_encoding per-line, but each_line
-    # itself can raise on invalid byte sequences before clean_encoding is reached.
+    # Open in binary mode: code_lines cleans the whole buffer via clean_encoding
+    # before ever splitting into lines, but a text-mode read could itself raise
+    # on invalid byte sequences before clean_encoding gets the chance.
     @file_wrapper.open(filepath, 'rb') do |input|
       @parsing_parcels.code_lines( input ) do |line|
         _include = @include_factory.user_include_from_directive( line ) ||
@@ -185,8 +186,9 @@ class PreprocessinatorIncludesHandler
 
     cond_tracker = CPreprocessorConditionals.new( defines )
 
-    # Open in binary mode: code_lines applies clean_encoding per-line, but each_line
-    # itself can raise on invalid byte sequences before clean_encoding is reached.
+    # Open in binary mode: code_lines cleans the whole buffer via clean_encoding
+    # before ever splitting into lines, but a text-mode read could itself raise
+    # on invalid byte sequences before clean_encoding gets the chance.
     @file_wrapper.open(filepath, 'rb') do |input|
       @parsing_parcels.code_lines( input ) do |line|
         cond_tracker.process_directive( line )
@@ -235,8 +237,9 @@ class PreprocessinatorIncludesHandler
 
     cond_tracker = CPreprocessorConditionals.new( defines )
 
-    # Open in binary mode: code_lines applies clean_encoding per-line, but each_line
-    # itself can raise on invalid byte sequences before clean_encoding is reached.
+    # Open in binary mode: code_lines cleans the whole buffer via clean_encoding
+    # before ever splitting into lines, but a text-mode read could itself raise
+    # on invalid byte sequences before clean_encoding gets the chance.
     @file_wrapper.open(filepath, 'rb') do |input|
       @parsing_parcels.code_lines( input ) do |line|
         cond_tracker.process_directive( line )

@@ -8,12 +8,16 @@
 # Patch the string class so that we have a nice shortcut for cleaning string encodings
 class String
   # Clean up any oddball characters in an otherwise ASCII document. Hoisted to a
-  # frozen constant rather than rebuilt on every clean_encoding call -- this is
-  # called per-line across large swaths of preprocessing, so a fresh Hash literal
-  # every call was a measurable, needless allocation. Only :replace varies by
-  # caller (default '' vs. e.g. '_' from defineinator.rb), so the common,
-  # default-safe_char case reuses this constant untouched; a non-default
-  # safe_char still allocates one small merged Hash, same as before.
+  # frozen constant rather than rebuilt on every clean_encoding call -- a fresh
+  # Hash literal every call was a measurable, needless allocation back when the
+  # two highest-volume callers (ParsingParcels#code_lines_with_num,
+  # PreprocessinatorReconstructor#_scan_expansion_for_file) each called this
+  # per line; both now clean a whole buffer once instead, but the remaining
+  # per-line fallback-path callers (e.g. CPreprocessorConditionals#process_directive)
+  # still benefit. Only :replace varies by caller (default '' vs. e.g. '_' from
+  # defineinator.rb), so the common, default-safe_char case reuses this
+  # constant untouched; a non-default safe_char still allocates one small
+  # merged Hash, same as before.
   DEFAULT_CLEAN_ENCODING_OPTIONS = {
     :invalid           => :replace,  # Replace invalid byte sequences
     :undef             => :replace,  # Replace anything not defined in ASCII
