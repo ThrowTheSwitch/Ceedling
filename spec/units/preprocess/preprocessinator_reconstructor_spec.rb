@@ -323,8 +323,33 @@ describe PreprocessinatorReconstructor do
 
       expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
     end
+
+    it "cleans an incomplete (truncated) multi-byte UTF-8 sequence without raising" do
+      filepath = "path/do/WANT.c"
+
+      # \xE4\xBD is the first two of three bytes of U+4F60 (你), missing its
+      # final continuation byte -- a "half" Unicode character, as if clipped
+      # by a chunk boundary. Placed inside a line GCC's expansion output would
+      # itself produce (a localized diagnostic or macro-expanded string
+      # literal can contain non-ASCII bytes -- see compact_file_from_expansion's
+      # own comment on this).
+      half = [0xE4, 0xBD].pack('C*').force_encoding('BINARY')
+
+      file_contents = [
+        '# 1 "path/do/WANT.c" 1',
+        ("some_text_with_a_" + half + "_truncated_char();"),
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ).force_encoding('BINARY') )
+
+      expect {
+        @result = @extractor.extract_file_as_array_from_expansion( input, filepath )
+      }.not_to raise_error
+
+      expect( @result ).to eq( ['some_text_with_a__truncated_char();'] )
+    end
   end
-  
+
   context "#extract_file_as_string_from_expansion" do
     it "should simply extract text of original file from preprocessed expansion" do
       filepath = "path/do/WANT.c"

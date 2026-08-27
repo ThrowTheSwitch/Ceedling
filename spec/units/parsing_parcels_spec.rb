@@ -88,6 +88,25 @@ describe ParsingParcels do
       expect( got ).to eq( ['char *a = , *b = "end_";'] )
     end
 
+    it "cleans an incomplete (truncated) multi-byte UTF-8 sequence without raising, wherever it falls on a line" do
+      # \xE4\xBD is the first two of three bytes of U+4F60 (你), missing its
+      # final continuation byte -- a "half" Unicode character, as if clipped
+      # by a chunk boundary or a truncated copy/paste. One case mid-line,
+      # one right at a line's end, immediately before the newline.
+      half = [0xE4, 0xBD].pack('C*').force_encoding('BINARY')
+      file_contents = ("abc" + half + "def\n" + "ghi" + half + "\n").force_encoding('BINARY')
+      got = []
+
+      expect {
+        @parsing_parcels.code_lines( StringIO.new( file_contents ) ) do |line|
+          line.strip!
+          got << line if !line.empty?
+        end
+      }.not_to raise_error
+
+      expect( got ).to eq( ['abcdef', 'ghi'] )
+    end
+
     it "should treat continuations as a single line" do
       file_contents = "// TEST_SOURCE_FILE(\"foo.c\") \\  \nTEST_SOURCE_FILE(\"bar.c\")\nSome text⛔️ \\\nMore text\n"
       got = []
