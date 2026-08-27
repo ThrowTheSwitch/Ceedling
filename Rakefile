@@ -198,12 +198,23 @@ task 'profile:setup' do
   # rather than only inside the rescue branch.
   ENV['CEEDLING_PROFILING'] = 'true'
 
+  puts "Probing for stackprof..."
+
   begin
     require 'stackprof'
+    puts "stackprof is available."
   rescue LoadError
-    puts "stackprof gem not available -- running 'bundle install'..."
-    sh 'bundle install'
-    raise "Gems installed. Please re-run the rake task."
+    puts "stackprof not found -- installing now via 'bundle install'..."
+
+    begin
+      sh 'bundle install'
+    rescue StandardError
+      raise "stackprof installation failed -- a native-extension build " \
+            "toolchain (e.g. the 'ruby-dev'/'ruby-devel' package on Linux) " \
+            "may be missing. See the error above for details."
+    end
+
+    raise "stackprof installed -- run this task again to verify and continue."
   end
 end
 
