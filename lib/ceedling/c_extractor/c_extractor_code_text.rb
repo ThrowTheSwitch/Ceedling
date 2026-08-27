@@ -12,6 +12,26 @@ class CExtractorCodeText
 
   include CExtractorConstants
 
+  # Bare (no-argument-list) keywords strip_compiler_extensions strips verbatim,
+  # as a single precompiled alternation rather than a fresh Regexp.escape'd
+  # Regexp per keyword per scanner position (a profiled hotspot: this loop
+  # runs once per character of every function signature/declaration scanned,
+  # trying up to 14 keywords at each position that isn't a known extension --
+  # a stackprof flame graph attributed the vast majority of
+  # strip_compiler_extensions' cost to exactly this repeated Array#any?/regex-
+  # compilation combination). `\b` on both ends is load-bearing, not
+  # decorative: StringScanner#scan is already position-anchored, but without
+  # the trailing `\b` a short keyword would match as a mere prefix of a
+  # longer identifier starting the same way (e.g. matching "__cdecl" inside
+  # "__cdeclFoo"), and alternation order among keywords that prefix one
+  # another (e.g. __inline vs. __inline__) is safe either way -- Ruby's
+  # regex engine backtracks to a longer alternative when the shorter one's
+  # trailing \b fails to hold (both sides would still be \w characters).
+  BARE_STRIP_KEYWORDS = (
+    MSVC_CALLING_CONVENTIONS + ['__forceinline', '__inline__', '__inline'] + C11_SPECIFIER_KEYWORDS
+  ).freeze unless const_defined?(:BARE_STRIP_KEYWORDS, false)
+  BARE_STRIP_REGEX = /\b(?:#{BARE_STRIP_KEYWORDS.map { |kw| Regexp.escape(kw) }.join('|')})\b/.freeze unless const_defined?(:BARE_STRIP_REGEX, false)
+
   # Collect the full text of a balanced delimiter pair starting AT open_char.
   # Nested pairs, string literals (verbatim), and comments (replaced with a
   # single space) are handled correctly.
@@ -242,10 +262,6 @@ class CExtractorCodeText
     scanner = StringScanner.new(text)
     result  = +""
 
-    bare_strip = MSVC_CALLING_CONVENTIONS +
-                 ['__forceinline', '__inline__', '__inline'] +
-                 C11_SPECIFIER_KEYWORDS
-
     until scanner.eos?
       # __word__(…) — any double-underscore attribute form including __attribute__((…))
       if scanner.check(/__\w+__\s*\(/)
@@ -264,13 +280,9 @@ class CExtractorCodeText
       end
 
       # Whitelisted bare keywords (calling conventions, inline hints, C11 specifiers)
-      stripped = bare_strip.any? do |kw|
-        if scanner.check(/#{Regexp.escape(kw)}\b/)
-          scanner.skip(/#{Regexp.escape(kw)}/)
-          true
-        end
+      if scanner.scan(BARE_STRIP_REGEX)
+        next
       end
-      next if stripped
 
       result << scanner.getch
     end
