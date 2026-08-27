@@ -105,10 +105,11 @@ class PreprocessinatorReconstructor
   # then delegates to `compact_from_expansion` with the resulting IO objects.
   def compact_file_from_expansion(input_filepath:, source_filepath:, output_filepath:)
     # Binary mode on both ends: GCC output under non-C locale contains non-ASCII
-    # bytes (localized markers; per-line clean_encoding in _scan_expansion_for_file
-    # handles content), and the compacted output is read again downstream by code
-    # that depends on its line count being exact. Windows text mode would rewrite
-    # "\n" to "\r\n" on write, which this content must not be subject to.
+    # bytes (localized markers; the whole-buffer clean_encoding in
+    # _scan_expansion_for_file handles content), and the compacted output is
+    # read again downstream by code that depends on its line count being exact.
+    # Windows text mode would rewrite "\n" to "\r\n" on write, which this
+    # content must not be subject to.
     @file_wrapper.open( input_filepath, 'rb' ) do |input|
       @file_wrapper.open( output_filepath, 'wb' ) do |output|
         compact_from_expansion( input: input, filepath: source_filepath, output: output )
@@ -301,13 +302,21 @@ class PreprocessinatorReconstructor
       end
     end
 
-    # Use `each_line()` instead of `readlines()` (chomp removes newlines).
-    # `each_line()` processes the IO buffer one line at a time instead of ingesting lines in an array.
-    # At large buffer sizes needed for potentially lengthy preprocessor output this is far more memory efficient and faster.
-    input.each_line( chomp:true ) do |line|
+    # Clean the whole buffer once rather than line-by-line: clean_encoding's cost
+    # (a double ASCII/UTF-8 transcode) scales with call count as much as with
+    # content size, and GCC's expansion output can run to many times the original
+    # source's line count -- one whole-buffer clean produces byte-for-byte
+    # identical per-line content to cleaning after each_line's split (CRLF is
+    # still normalized before chomp ever sees it; invalid byte sequences are
+    # replaced independently of where a line boundary happens to fall either
+    # way). Trades the prior line-at-a-time memory streaming for far fewer,
+    # larger encode() calls -- worthwhile for realistic single-file expansion
+    # output sizes.
+    content = input.read.clean_encoding
 
-      # Clean up any oddball characters in an otherwise ASCII document
-      line = line.clean_encoding
+    # Use `each_line()` instead of `readlines()` (chomp removes newlines).
+    # `each_line()` processes the buffer one line at a time instead of ingesting lines in an array.
+    content.each_line( chomp:true ) do |line|
 
       # Handle expansion extraction if the line is not a preprocessor directive
       if extract and not line =~ directive
