@@ -49,33 +49,77 @@ on:
 
 
 # Cancel any in-progress run for the same unit of work when a new event arrives.
-# A push to a branch that also has an open PR fires both the push and pull_request
-# triggers for the very same commit; github.head_ref carries the bare source branch
-# name for a pull_request event and is empty for a push, while github.ref_name carries
-# that same bare branch name for a push (and an unrelated merge-ref name for a
-# pull_request, which is why it's only ever reached as the fallback here) -- so
-# `head_ref || ref_name` resolves to the identical string for both event types on the
-# same branch, landing both runs in one group so the second to start cancels the first.
+# github.head_ref carries the bare source branch name for a pull_request event and
+# is empty for a push, while github.ref_name carries that same bare branch name for
+# a push (and an unrelated merge-ref name for a pull_request, which is why it's only
+# ever reached as the fallback here) -- so `head_ref || ref_name` resolves to the
+# identical branch name for both event types on the same branch. github.event_name
+# is included specifically so push and pull_request runs for that same branch land
+# in *separate* groups: a push to a branch that also has an open PR fires both
+# triggers for the very same commit, and without the event name in the group key,
+# whichever run happened to start second would cancel the other -- sometimes the
+# pull_request-attached run, which is the one whose checks actually matter to a
+# reviewer. Each event type still dedupes/cancels superseded runs of its own kind;
+# see the check-duplicate-push job below for how the redundant push-triggered run
+# is skipped instead of run to completion in parallel.
 concurrency:
-  group: ci-${{ github.head_ref || github.ref_name }}
+  group: ci-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 
 permissions:
   contents: read
+  pull-requests: read
 
 
 jobs:
+  # Job: Skip this run's real work if it's a redundant push-triggered duplicate
+  # A push to a branch with an open PR fires both a `push` event and a
+  # `pull_request: synchronize` event for the very same commit -- the separate
+  # concurrency groups above (keyed on event name) mean neither run can cancel
+  # the other, so without this check both would run the full matrix in
+  # parallel for every such commit. This job only performs the check for
+  # `push` events; for `pull_request`/`workflow_dispatch` events `skip` stays
+  # empty (falsy), so every downstream job's `if:` proceeds normally.
+  check-duplicate-push:
+    name: "Check for Duplicate PR-Triggered Run"
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Check whether this push's branch already has an open PR
+        id: check
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          count=$(gh pr list --repo "${{ github.repository }}" --head "${{ github.ref_name }}" --state open --json number --jq 'length')
+          if [ "$count" -gt 0 ]; then
+            echo "Branch '${{ github.ref_name }}' has an open PR -- skipping this redundant push-triggered run."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+
   # Job: Build MkDocs HTML documentation bundle for gem inclusion
   generate-docs:
     name: "Generate Local Docs Bundle for Gem Inclusion"
+    needs: check-duplicate-push
+    # A custom `if:` replaces GitHub's default (implicit) `success()` check on
+    # `needs:` entirely rather than being ANDed with it -- `success()` is
+    # included explicitly on every job below that gained this skip guard, to
+    # preserve each job's original "only run if its other needs succeeded"
+    # behavior alongside the new check.
+    if: success() && needs.check-duplicate-push.outputs.skip != 'true'
     uses: ./.github/workflows/_generate-docs.yml
 
 
   # Job: Linux test suite
   tests-linux:
     name: "Linux Test Suite"
-    needs: generate-docs
+    needs: [check-duplicate-push, generate-docs]
+    if: success() && needs.check-duplicate-push.outputs.skip != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -232,7 +276,8 @@ jobs:
   # Job: Windows test suite
   tests-windows:
     name: "Windows Test Suite"
-    needs: generate-docs
+    needs: [check-duplicate-push, generate-docs]
+    if: success() && needs.check-duplicate-push.outputs.skip != 'true'
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -315,7 +360,8 @@ jobs:
   # Note for the future: Ruby 3.1 will itself be dropped starting with macOS 26.
   tests-macos:
     name: "macOS Test Suite"
-    needs: generate-docs
+    needs: [check-duplicate-push, generate-docs]
+    if: success() && needs.check-duplicate-push.outputs.skip != 'true'
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -403,6 +449,8 @@ jobs:
   # a path-based Bundler deployment (deploy_gem) that does not require a gem build.
   tests-linux-locale:
     name: "Linux Test Suite (ja_JP.UTF-8 Locale)"
+    needs: check-duplicate-push
+    if: success() && needs.check-duplicate-push.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v6
@@ -474,6 +522,8 @@ jobs:
   # deployment (deploy_gem) that does not require a gem build.
   tests-linux-encoding-stress:
     name: "Linux Encoding Stress Test (C/POSIX)"
+    needs: check-duplicate-push
+    if: success() && needs.check-duplicate-push.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v6
@@ -543,11 +593,13 @@ jobs:
   build-gem:
     name: "Validate Ceedling Gem Build"
     needs:
+      - check-duplicate-push
       - tests-linux
       - tests-windows
       - tests-macos
       - tests-linux-locale
       - tests-linux-encoding-stress
+    if: success() && needs.check-duplicate-push.outputs.skip != 'true'
     runs-on: ubuntu-latest
 
     steps:
