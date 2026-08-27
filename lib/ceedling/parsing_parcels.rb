@@ -11,9 +11,9 @@ require 'ceedling/encodinator'
 class ParsingParcels
 
   # This parser accepts a collection of lines which it will sweep through and tidy, giving the purified
-  # lines to the block (one line at a time) for further analysis. It analyzes a single line at a time, 
-  # which is far more memory efficient and faster for large files. However, this requires it to also 
-  # handle backslash line continuations as a single line at this point.
+  # lines to the block (one line at a time) for further analysis. Encoding cleanup happens once against
+  # the whole buffer up front; comment-stripping and backslash line continuations are still handled one
+  # logical line at a time after that.
   # @param input [IO, File, String] The input source to parse line by line
   # @yield [line] Gives each cleaned line to the block
   # @yieldparam line [String] The cleaned code line
@@ -22,9 +22,9 @@ class ParsingParcels
   end
 
   # This parser accepts a collection of lines which it will sweep through and tidy, giving the purified
-  # lines to the block (one line at a time) for further analysis along with the line number. It analyzes 
-  # a single line at a time, which is far more memory efficient and faster for large files. However, this 
-  # requires it to also handle backslash line continuations as a single line at this point.
+  # lines to the block (one line at a time) for further analysis along with the line number. Encoding
+  # cleanup happens once against the whole buffer up front; comment-stripping and backslash line
+  # continuations are still handled one logical line at a time after that.
   #
   # @param input [IO, File, String] The input source to parse line by line
   # @yield [line, line_num] Gives each cleaned line and its line number to the block
@@ -37,10 +37,21 @@ class ParsingParcels
     full_line = ''
     line_num = 0
     continuation_start_line = 0
-    
-    input.each_line do |line|
+
+    # Clean the whole buffer once instead of per line -- clean_encoding's cost
+    # (a double ASCII/UTF-8 transcode) scales with call count as much as with
+    # content size, and this method is the single most fanned-out consumer of
+    # clean_encoding in the codebase. `input` may be an IO (slurp via #read)
+    # or already a String (some callers, e.g. PreprocessinatorReconstructor's
+    # extract_tokens_by_regex_list, pass file contents already in memory) --
+    # either way, the rest of this method works identically off the resulting
+    # String's own #each_line, exactly as it did off the IO's #each_line
+    # before.
+    content = ( input.respond_to?( :read ) ? input.read : input ).clean_encoding
+
+    content.each_line do |line|
       line_num += 1
-      m = line.clean_encoding.match /(.*)\\\s*$/
+      m = line.match /(.*)\\\s*$/
       if (!m.nil?)
         full_line += m[1]
         continuation_start_line = line_num if full_line == m[1]
@@ -59,7 +70,14 @@ class ParsingParcels
   private ######################################################################
 
   def clean_code_line(line, comment_block)
-    _line = line.clean_encoding
+    # `line` is already clean_encoding'd content by the time it gets here (see
+    # code_lines_with_num) -- dup rather than re-clean, since this method
+    # mutates _line in place via gsub! below and must not mutate the caller's
+    # string (both call sites -- a bare line from content.each_line, and
+    # full_line + line -- happen to already hand over a fresh, safely-mutable
+    # String today, but dup keeps that an explicit guarantee, not an
+    # incidental one).
+    _line = line.dup
 
     # Remove line comments
     _line.gsub!(/\/\/.*$/, '')
