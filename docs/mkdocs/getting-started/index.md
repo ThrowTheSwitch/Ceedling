@@ -23,6 +23,14 @@
     Application commands (project creation, help, config inspection) and
     build & plugin tasks (test runs, release builds, clean, and more).
 
+-   :material-playlist-check: **[Builds](builds.md)**
+
+    ---
+
+    Ceedling’s delta builds only regenerate, compile, link, or run an
+    element of the build pipeline if a change in the dependency tree
+    requires it.
+
 -   :material-file-code: **[Commented Sample Test File](../testing-guide/test-sample.md)**
 
     ---

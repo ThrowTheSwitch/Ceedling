@@ -102,6 +102,7 @@ nav:
     - Quick Start: getting-started/quick-start.md
     - Installation: getting-started/installation.md
     - Command Line: getting-started/command-line.md
+    - Builds: getting-started/builds.md
     - Example Projects:
       - getting-started/example-projects/index.md
       - Temp Sensor: getting-started/example-projects/temp-sensor.md
