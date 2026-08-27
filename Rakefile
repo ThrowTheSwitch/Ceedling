@@ -188,6 +188,16 @@ PROFILE_CEEDLING_BIN = File.join(__dir__, 'bin', 'ceedling')
 
 desc "Ensure profiling gems (stackprof) are installed"
 task 'profile:setup' do
+  # stackprof is install_if:-gated in the Gemfile so ordinary `bundle
+  # install` (CI included) never attempts it -- its native extension fails
+  # to build on Windows. This env var is Bundler's *runtime* activation
+  # check too, not just its install-time one: every later `bundle exec`
+  # (in profile:run, and this task's own `bundle install` fallback below)
+  # needs it set for the whole rest of this process, not just around one
+  # call -- hence setting it unconditionally here, before the require check,
+  # rather than only inside the rescue branch.
+  ENV['CEEDLING_PROFILING'] = 'true'
+
   begin
     require 'stackprof'
   rescue LoadError

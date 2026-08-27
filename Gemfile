@@ -42,8 +42,16 @@ end
 # Dev-only: sampling call-stack profiler for ad hoc performance investigation
 # (flame graphs of a real Ceedling build/test run). Not required by any
 # runtime code path -- deliberately NOT declared in ceedling.gemspec, same
-# as diff-lcs/simplecov above.
-gem "stackprof", "~> 0.2", require: false
+# as diff-lcs/simplecov above. install_if: keeps it out of ordinary `bundle
+# install` (CI included) entirely -- only `rake profile:setup` installs it,
+# by setting CEEDLING_PROFILING=true first. Gating is necessary, not just
+# tidy: its native C extension fails to build on Windows
+# (Gem::Ext::BuildError), which broke Windows CI outright when this gem was
+# briefly installed unconditionally. Whether stackprof can ever build on
+# Windows at all (even via an explicit `rake profile:setup` there) is
+# untested and unresolved -- profiling should currently be assumed
+# non-Windows-only.
+gem "stackprof", "~> 0.2", require: false, install_if: -> { ENV['CEEDLING_PROFILING'] == 'true' }
 
 # Ceedling dependencies
 gem "diy", "~> 1.1"
