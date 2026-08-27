@@ -12,21 +12,17 @@ class CExtractorCodeText
 
   include CExtractorConstants
 
-  # Bare (no-argument-list) keywords strip_compiler_extensions strips verbatim,
-  # as a single precompiled alternation rather than a fresh Regexp.escape'd
-  # Regexp per keyword per scanner position (a profiled hotspot: this loop
-  # runs once per character of every function signature/declaration scanned,
-  # trying up to 14 keywords at each position that isn't a known extension --
-  # a stackprof flame graph attributed the vast majority of
-  # strip_compiler_extensions' cost to exactly this repeated Array#any?/regex-
-  # compilation combination). `\b` on both ends is load-bearing, not
-  # decorative: StringScanner#scan is already position-anchored, but without
-  # the trailing `\b` a short keyword would match as a mere prefix of a
-  # longer identifier starting the same way (e.g. matching "__cdecl" inside
-  # "__cdeclFoo"), and alternation order among keywords that prefix one
-  # another (e.g. __inline vs. __inline__) is safe either way -- Ruby's
-  # regex engine backtracks to a longer alternative when the shorter one's
-  # trailing \b fails to hold (both sides would still be \w characters).
+  # Bare (no-argument-list) keywords strip_compiler_extensions strips verbatim:
+  # MSVC calling conventions, inline hints, and C11 specifier keywords. Built
+  # once into a single alternation regex rather than tried one keyword at a
+  # time, since this check runs at every scanner position -- one shared regex
+  # avoids rebuilding and re-running many small ones on every character
+  # scanned. `\b` on both ends keeps a short keyword from matching as a mere
+  # prefix of a longer identifier that happens to start the same way (e.g.
+  # matching "__cdecl" inside "__cdeclFoo"); listing keywords in any order is
+  # safe even where one prefixes another (__inline vs. __inline__), since a
+  # match that fails its own trailing \b simply falls through to try the next
+  # alternative at that same position.
   BARE_STRIP_KEYWORDS = (
     MSVC_CALLING_CONVENTIONS + ['__forceinline', '__inline__', '__inline'] + C11_SPECIFIER_KEYWORDS
   ).freeze unless const_defined?(:BARE_STRIP_KEYWORDS, false)
