@@ -93,11 +93,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          count=$(gh pr list --repo "${{ github.repository }}" --head "${{ github.ref_name }}" --state open --json number --jq 'length')
-          if [ "$count" -gt 0 ]; then
-            echo "Branch '${{ github.ref_name }}' has an open PR -- skipping this redundant push-triggered run."
+          numbers=$(gh pr list --repo "${{ github.repository }}" --head "${{ github.ref_name }}" --state open --json number --jq '.[].number')
+          if [ -n "$numbers" ]; then
+            echo "Branch '${{ github.ref_name }}' has an open PR (#$(echo "$numbers" | paste -sd, -)) -- skipping this redundant push-triggered run."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
+            echo "No open PR found for branch '${{ github.ref_name }}' -- proceeding normally."
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
