@@ -90,18 +90,38 @@ class Batchinator
         raise ::ArgumentError.new("Unrecognized batch workload type: #{workload}")
       end
 
-      # Perform the actual parallelized work. Per-item timing rides along on
-      # the `parallel` gem's own start:/finish: callbacks instead of wrapping
-      # each job block call in a separate Benchmark.realtime -- the gem calls
-      # these under its own internal mutex, so summing into sum_elapsed here
-      # needs no synchronization of our own. batch_results ends up as the job
-      # block's own per-item return values, nothing wrapped around them.
-      batch_results = Parallel.map(
-        things,
-        in_threads: workers,
-        start:  ->(_item, index) { start_times[index] = Time.now },
-        finish: ->(_item, index, _result) { sum_elapsed += (Time.now - start_times[index]) }
-      ) { |key, value| job_block.call(key, value) }
+      if workers <= 1
+        # `parallel`'s in_threads: mode always spawns a real Thread, even for
+        # a pool of size 1 -- pure overhead when there's no concurrency to be
+        # had, and it also hides all of this call's real work from sampling
+        # profilers that (like stackprof's :wall mode) only sample the
+        # calling thread. At workers <= 1 there's never more than one item in
+        # flight, so running things.to_a sequentially in the calling thread
+        # is observably identical to the threaded path: same start:/finish:-
+        # equivalent timing bookkeeping below, same per-item return values in
+        # input order, and the same "no new items start once an exception has
+        # been seen" contract falls out for free (an exception on item N
+        # simply stops the each_with_index loop before item N+1 runs).
+        batch_results = things.to_a.each_with_index.map do |item, index|
+          start_times[index] = Time.now
+          result = job_block.call( item )
+          sum_elapsed += (Time.now - start_times[index])
+          result
+        end
+      else
+        # Perform the actual parallelized work. Per-item timing rides along on
+        # the `parallel` gem's own start:/finish: callbacks instead of wrapping
+        # each job block call in a separate Benchmark.realtime -- the gem calls
+        # these under its own internal mutex, so summing into sum_elapsed here
+        # needs no synchronization of our own. batch_results ends up as the job
+        # block's own per-item return values, nothing wrapped around them.
+        batch_results = Parallel.map(
+          things,
+          in_threads: workers,
+          start:  ->(_item, index) { start_times[index] = Time.now },
+          finish: ->(_item, index, _result) { sum_elapsed += (Time.now - start_times[index]) }
+        ) { |key, value| job_block.call(key, value) }
+      end
     end
 
     # Report the timing if requested

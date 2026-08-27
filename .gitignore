@@ -21,6 +21,9 @@ systests/
 # Coverage report output (CEEDLING_TEST_COVERAGE test runs)
 /coverage/
 
+# Profiling reports/artifacts (rake profile:* tasks)
+/tmp/
+
 # Generated documentation site builds
 site-web/
 site-local/

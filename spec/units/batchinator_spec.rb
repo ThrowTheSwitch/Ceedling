@@ -171,6 +171,85 @@ describe Batchinator do
   end
 
   # =========================================================================
+  # Worker count <= 1: Parallel.map is bypassed entirely (see #exec) since
+  # `parallel`'s in_threads: mode always spawns a real Thread even for a pool
+  # of size 1 -- pure overhead with no concurrency to gain, and it hides all
+  # real work from thread-unaware sampling profilers. These specs pin the
+  # serial path's outward behavior as identical to the threaded path's.
+  describe '#exec at worker count 1' do
+    it 'does not call Parallel.map at all' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(1)
+
+      expect(Parallel).to_not receive(:map)
+
+      @batchinator.exec(workload: :compile, things: [1, 2, 3]) {|item| item }
+    end
+
+    it 'processes every item exactly once, in input order' do
+      allow(@configurator).to receive(:project_test_threads).and_return(1)
+
+      processed = []
+      @batchinator.exec(workload: :test, things: [1, 2, 3]) do |item|
+        processed << item
+      end
+
+      expect(processed).to eq([1, 2, 3])
+    end
+
+    it 'auto-splats a Hash pair into key and value block parameters' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(1)
+
+      captured = []
+      @batchinator.exec(workload: :compile, things: {a: 1, b: 2}) do |key, value|
+        captured << [key, value]
+      end
+
+      expect(captured).to eq([[:a, 1], [:b, 2]])
+    end
+
+    it 'returns the job block per-item results directly, in input order' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(1)
+
+      result = @batchinator.exec(workload: :compile, things: [1, 2, 3]) {|item| item * 10 }
+
+      expect(result).to eq([10, 20, 30])
+    end
+
+    it 'does not raise for an empty things collection' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(1)
+
+      expect {
+        @batchinator.exec(workload: :compile, things: []) {|item| item }
+      }.to_not raise_error
+    end
+
+    it 'logs a well-formed batch elapsed summary after processing' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(1)
+
+      logged_message = nil
+      allow(@loginator).to receive(:lazy) {|_verbosity, &blk| logged_message = blk.call }
+
+      @batchinator.exec(workload: :compile, things: [1, 2]) {|item| item }
+
+      expect(logged_message).to match(/Batch Elapsed: \(All: [\d.]+sec Sum: [\d.]+sec\)/)
+    end
+
+    it 'stops processing once an item raises, never starting later items' do
+      allow(@configurator).to receive(:project_compile_threads).and_return(1)
+
+      processed = []
+      expect {
+        @batchinator.exec(workload: :compile, things: [1, 2, 3]) do |item|
+          raise 'boom' if item == 2
+          processed << item
+        end
+      }.to raise_error('boom')
+
+      expect(processed).to eq([1])
+    end
+  end
+
+  # =========================================================================
   # Real threading, no Parallel.map stub. These exist only to catch a broken
   # integration with the actual `parallel` gem -- something the Layer 1 stub
   # above can't see, since it never touches real threads at all. On purpose,

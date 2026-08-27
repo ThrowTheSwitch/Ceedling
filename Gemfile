@@ -39,6 +39,12 @@ else
   gem "simplecov", "~> 0.22", require: false
 end
 
+# Dev-only: sampling call-stack profiler for ad hoc performance investigation
+# (flame graphs of a real Ceedling build/test run). Not required by any
+# runtime code path -- deliberately NOT declared in ceedling.gemspec, same
+# as diff-lcs/simplecov above.
+gem "stackprof", "~> 0.2", require: false
+
 # Ceedling dependencies
 gem "diy", "~> 1.1"
 gem "constructor", "~> 2"

@@ -170,6 +170,110 @@ task :default => ['specs:all']
 task :ci      => [:no_color, :default]
 
 ##
+## Profiling tasks
+##
+## On-demand stackprof-based profiling of a real Ceedling build/test run,
+## for ad hoc performance investigation. Runs against a scaffolded *copy* of
+## an example project (via `ceedling example`), never in-place under
+## examples/, so a profiling run touches nothing but tmp/profiling/ -- which
+## is entirely git-ignored. See tools/profiling/profile_ceedling.rb for the
+## harness this task shells out to.
+##
+
+require 'yaml'
+
+PROFILE_TMP_DIR      = File.join(__dir__, 'tmp', 'profiling')
+PROFILE_SCRIPT       = File.join(__dir__, 'tools', 'profiling', 'profile_ceedling.rb')
+PROFILE_CEEDLING_BIN = File.join(__dir__, 'bin', 'ceedling')
+
+desc "Ensure profiling gems (stackprof) are installed"
+task 'profile:setup' do
+  begin
+    require 'stackprof'
+  rescue LoadError
+    puts "stackprof gem not available -- running 'bundle install'..."
+    sh 'bundle install'
+    raise "Gems installed. Please re-run the rake task."
+  end
+end
+
+desc "Profile a build task against an example project, generating flame graph."
+task 'profile:run', [:project, :build_task] => 'profile:setup' do |_t, args|
+  # The scaffolded copy persists across successive runs for the same project (build/ and
+  # its dependency cache included), so e.g. a 'test:all' run followed by a
+  # 'test:all' run exercises a real delta/no-op rebuild, not two fresh full builds.
+  # Delete tmp/profiling/<project>/ by hand to force a from-scratch scaffold again.
+  # Usage: rake "profile:run[<example project>,<ceedling build task>]"
+  # Example: rake "profile:run[temp_sensor,clobber test:all]"
+
+  available_projects = Dir.children(File.join(__dir__, 'examples')).sort
+
+  project = args[:project]
+  if project.nil? || !available_projects.include?(project)
+    raise "Unknown example project '#{project}' -- available: #{available_projects.join(', ')}"
+  end
+
+  build_task = args[:build_task] || raise("A ceedling build task is required, e.g. 'clobber test:all'")
+
+  # Keyed on project alone (not timestamped) so this directory -- and the
+  # scaffolded project's build/ and dependency cache within it -- persists
+  # across successive profile:run calls for the same project.
+  scaffold_dir = File.join(PROFILE_TMP_DIR, project)
+  project_dir  = File.join(scaffold_dir, project)
+
+  FileUtils.mkdir_p(scaffold_dir)
+
+  # Scaffold via Ceedling's own `example` command rather than running
+  # in-place under examples/ -- keeps profiling runs isolated from the
+  # checked-in example (no build/ artifacts polluting examples/<project>/).
+  # `ceedling example NAME DEST` places the scaffolded project at
+  # DEST/NAME/..., not directly in DEST -- hence project_dir above.
+  #
+  # Only scaffold if not already present: re-running `ceedling example`
+  # unconditionally would still be content-idempotent (delta builds are
+  # hash-based, not mtime-based), but skipping it here is simpler to reason
+  # about and is what actually lets build/ and the dependency cache persist
+  # untouched across successive runs, which is the whole point.
+  unless File.exist?(File.join(project_dir, 'project.yml'))
+    sh "bundle exec ruby \"#{PROFILE_CEEDLING_BIN}\" example #{project} \"#{scaffold_dir}\""
+    raise "Expected scaffolded project at #{project_dir}, not found" unless File.directory?(project_dir)
+  end
+
+  # Hardcoded to 1: this is what makes Batchinator's serial fallback (see
+  # lib/ceedling/batchinator.rb) kick in, keeping the real work on the same
+  # thread StackProf is sampling instead of an unsampled worker thread. This
+  # task has no way to profile multi-threaded contention -- every flame
+  # graph it produces is single-threaded by design.
+  mixin_path = File.join(scaffold_dir, 'threads_mixin.yml')
+  File.write(mixin_path, { :project => { :test_threads => 1, :compile_threads => 1 } }.to_yaml)
+
+  # Timestamped, since project_dir/scaffold_dir are reused across runs --
+  # this is the one thing that has to be unique per invocation so successive
+  # reports (e.g. a full build, then a delta rebuild) don't overwrite each other.
+  reports_dir = File.join(scaffold_dir, 'reports')
+  FileUtils.mkdir_p(reports_dir)
+  timestamp = Time.now.strftime('%Y%m%d-%H%M%S')
+  dump_path = File.join(reports_dir, "#{timestamp}.dump")
+  text_path = File.join(reports_dir, "#{timestamp}.txt")
+  html_path = File.join(reports_dir, "#{timestamp}.html")
+
+  puts "Profiling 'ceedling #{build_task}' in #{project_dir}..."
+
+  Dir.chdir(project_dir) do
+    sh "bundle exec ruby \"#{PROFILE_SCRIPT}\" \"#{dump_path}\" \"#{PROFILE_CEEDLING_BIN}\" -- #{build_task} --mixin=\"#{mixin_path}\""
+  end
+
+  sh "bundle exec stackprof \"#{dump_path}\" --text > \"#{text_path}\""
+  sh "bundle exec stackprof \"#{dump_path}\" --d3-flamegraph > \"#{html_path}\""
+
+  puts "\nProfiling complete:"
+  puts "  Project dir: #{project_dir}"
+  puts "  Raw dump:    #{dump_path}"
+  puts "  Text report: #{text_path}"
+  puts "  Flame graph: #{html_path}"
+end
+
+##
 ## Documentation tasks
 ##
 
