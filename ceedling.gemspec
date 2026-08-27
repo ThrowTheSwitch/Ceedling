@@ -72,7 +72,12 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
   s.files        += Dir['vendor/unity/src/**/*.[ch]']
 
   s.files        += Dir['**/*']
-  s.files.reject! { |f| f.start_with?('site-web/') }
+  s.files.reject! do |f|
+    f.start_with?('site-web/') ||                        # Hosted/versioned docs site -- not needed offline
+    f == 'Rakefile' ||                                    # Dev/CI tasks only, e.g. specs, profiling -- not for installed gems
+    f == 'tools' || f.start_with?('tools/') ||            # Dev tooling the Rakefile above shells out to
+    f == 'docs/mkdocs' || f.start_with?('docs/mkdocs/')   # Raw docs source -- site-local/ is the built artifact the gem actually serves
+  end
 
   s.test_files = Dir['test/**/*', 'spec/**/*', 'features/**/*']
   s.executables = ['ceedling'] # bin/ceedling
