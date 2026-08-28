@@ -19,13 +19,18 @@ for use on platforms from heavy duty workstations to teeny tiny microcontrollers
 Features handy for low-level development have made these tools popular with 
 embedded systems developers.
 
-!!! feature "New goodness in Ceedling 1.2.0 (prerelease)"
-    * [**Delta builds**](getting-started/builds.md) have been restored so that file regeneration and build actions only occur because of changed files or configuration.
-    * **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully [supports relative paths everywhere](testing-guide/conventions.md#distinguishing-same-named-files) and can distinguish files of the same name in different directories.
-    * **Multiple file extensions per file type.** You may now provide a list of file types (e.g. `.c` and `.cc`) via [`:extension`](configuration/reference/extension.md) to gather files into your project’s build.
-    * **Dedicated mocks and test runner generation [build tasks](getting-started/command-line.md#build-plugin-tasks).** It is now possible to run the test build pipeline only up through generating mocks or test runners without running the rest of a build.
-    
+## New goodness
+
+!!! feature "Ceedling 1.2.0 adds the most requested features and improvements"
     👀 See the [Changelog](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md).
+
+Ceedling 1.2.0 (prerelease) includes:
+
+* [**Delta builds**](getting-started/builds.md) have been restored so that file regeneration and build actions only occur because of changed files or configuration.
+* **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully [supports relative paths everywhere](testing-guide/conventions.md#distinguishing-same-named-files) and offers options to distinguish files of the same name.
+* **Multiple file extensions per file type.** You may now provide a list of file types (e.g. `.c` and `.cc`) via [`:extension`](configuration/reference/extension.md) to gather files into your project’s build.
+* **Dedicated mocks and test runner generation [build tasks](getting-started/command-line.md#build-plugin-tasks).** You may now run the test build pipeline only up through generating mocks or test runners with no compilation or test runs.
+
 ---
 
 ## Overview
