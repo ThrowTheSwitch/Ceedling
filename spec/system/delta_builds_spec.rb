@@ -278,6 +278,95 @@ ceedling_system_tests do
     end
   end
 
+  # Config-only changes -- no source, header, or test file edited at all -- that
+  # should still invalidate a target because the *tool*, the preprocessing mode,
+  # or the Partials config that produced it changed. Each `:tools` edit below adds
+  # a key Ceedling itself never reads (`:ceedling_delta_probe`), so the resulting
+  # rebuild is attributable purely to the dependency tracker's own meta-hash
+  # comparison -- not to any real behavior change a different flag or executable
+  # might otherwise cause.
+  describe "Delta builds: config-only meta changes (temp_sensor)" do
+    before do
+      @c.with_context do
+        output = @c.ceedling_appcmd_exec("example temp_sensor")
+        expect(output).to match(/created/)
+      end
+    end
+
+    it "recompiles every object when the :tools ↳ :test_compiler configuration changes, with no source edits" do
+      @c.with_context do
+        Dir.chdir "temp_sensor" do
+          @c.ceedling_build_exec("test:all")
+
+          @c.merge_project_yml_for_test({ :tools => { :test_compiler => { :ceedling_delta_probe => true } } })
+
+          rebuild = @c.ceedling_build_exec("test:all")
+
+          # Only Compiling is asserted, not Linking: the inert probe key changes
+          # no real compiler argument, so a deterministic toolchain can (and does
+          # here) produce byte-identical objects, in which case linking is
+          # correctly skipped on its own separate content-hash staleness check --
+          # the same pattern already established elsewhere in this file for a
+          # content change that doesn't alter compiled output.
+          expect(rebuild).to match(/^Compiling /)
+          expect(rebuild).to match(/TESTED:\s+86/)
+          expect(rebuild).to match(/PASSED:\s+86/)
+        end
+      end
+    end
+
+    it "reruns every test when the :tools ↳ :test_fixture configuration changes, with the executable otherwise unchanged" do
+      @c.with_context do
+        Dir.chdir "temp_sensor" do
+          @c.ceedling_build_exec("test:all")
+
+          @c.merge_project_yml_for_test({ :tools => { :test_fixture => { :ceedling_delta_probe => true } } })
+
+          rebuild = @c.ceedling_build_exec("test:all")
+
+          # Nothing about the executable itself changed -- only the tool that runs
+          # it -- so compiling and linking are correctly skipped; only execution
+          # (stage 17's own new target) is invalidated.
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to_not match(/^Linking /)
+          expect(rebuild).to match(/^Running /)
+
+          expect(rebuild).to match(/TESTED:\s+86/)
+          expect(rebuild).to match(/PASSED:\s+86/)
+        end
+      end
+    end
+
+    it "re-extracts #includes for every test file when :test_build ↳ :preprocess_force_fallback toggles" do
+      @c.with_context do
+        Dir.chdir "temp_sensor" do
+          @c.ceedling_build_exec("test:all")
+
+          # Unlike the single-file :preprocess: ↳ :defines matcher scenario above,
+          # this setting has no per-file scope at all -- toggling it changes every
+          # preprocessing target's meta project-wide, so re-extraction isn't
+          # limited to one matched file. Forcing text-based fallback extraction
+          # is also a real procedural switch, not merely a meta-tracked value --
+          # it can discover a different #include set than directives-only
+          # expansion does on a real project, so (unlike the :tools scenarios
+          # above) compiling is deliberately left unasserted here rather than
+          # claimed to be absent.
+          @c.merge_project_yml_for_test({ :test_build => { :preprocess_force_fallback => true } })
+
+          rebuild = @c.ceedling_build_exec("test:all")
+
+          expect(rebuild).to match(/^Extracting #includes from TestAdcModel\.c/)
+          expect(rebuild).to match(/^Extracting #includes from TestUsartModel\.c/)
+          expect(rebuild).to match(/^Extracting #includes from TestTimerModel\.c/)
+          expect(rebuild).to match(/WARNING: Using fallback text-only includes extracted for/)
+
+          expect(rebuild).to match(/TESTED:\s+86/)
+          expect(rebuild).to match(/PASSED:\s+86/)
+        end
+      end
+    end
+  end
+
   # :unity ↳ :shuffle_tests decides test-case execution order at runtime, inside
   # the compiled executable's own main() -- not at compile or link time. So an
   # executable delta builds correctly judge unchanged (same source, same flags,
@@ -459,6 +548,32 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Compiling /)
           expect(rebuild).to_not match(/^Linking /)
           expect(rebuild).to_not match(/^Running /)
+
+          expect(rebuild).to match(/TESTED:\s+68/)
+          expect(rebuild).to match(/PASSED:\s+68/)
+        end
+      end
+    end
+
+    it "reprocesses and regenerates every partial when the :partials configuration changes, with no file edits" do
+      @c.with_context do
+        Dir.chdir "wondrous_forest" do
+          @c.ceedling_build_exec("test:all")
+
+          # Unlike the :preprocess: ↳ :defines matcher above, :partials has no
+          # per-file scope -- it applies uniformly, so both the
+          # implementation-only partial (SoilMoisture) and the
+          # implementation+interface partial (ForestMonitor) reprocess and
+          # regenerate.
+          @c.merge_project_yml_for_test({ :partials => { :max_extraction_length => 6000 } })
+
+          rebuild = @c.ceedling_build_exec("test:all")
+
+          expect(rebuild).to match(/Preprocessing partial (header|source) for TestSoilMoisture/)
+          expect(rebuild).to match(/Preprocessing partial (header|source) for TestForestMonitor/)
+          expect(rebuild).to match(/Generating Partial implementation for TestSoilMoisture/)
+          expect(rebuild).to match(/Generating Partial implementation for TestForestMonitor/)
+          expect(rebuild).to match(/Generating Partial mockable interface for TestForestMonitor/)
 
           expect(rebuild).to match(/TESTED:\s+68/)
           expect(rebuild).to match(/PASSED:\s+68/)
