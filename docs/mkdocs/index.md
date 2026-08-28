@@ -19,11 +19,11 @@ for use on platforms from heavy duty workstations to teeny tiny microcontrollers
 Features handy for low-level development have made these tools popular with 
 embedded systems developers.
 
-!!! feature "New goodness in Ceedling 1.2.0"
-    * **Delta builds** have been restored so that regeneration, compilation, or linking only occur because of changed files.
-    * **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully supports relative paths everywhere and can distinguish files of the same name in different directories.
-    * **Multiple file extensions per file type.** You may now provide a list of file types (e.g. `.c` and `.cc`) via `:extensions` to gather files into your project’s build.
-    * **Dedicated mocks and test runner generation build tasks.** It is now possible to run the test build pipeline only up through generating mocks or test runners without running the rest of a build.
+!!! feature "New goodness in Ceedling 1.2.0 (prerelease)"
+    * [**Delta builds**](getting-started/builds.md) have been restored so that file regeneration and build actions only occur because of changed files or configuration.
+    * **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully [supports relative paths everywhere](testing-guide/conventions.md#distinguishing-same-named-files) and can distinguish files of the same name in different directories.
+    * **Multiple file extensions per file type.** You may now provide a list of file types (e.g. `.c` and `.cc`) via [`:extension`](configuration/reference/extension.md) to gather files into your project’s build.
+    * **Dedicated mocks and test runner generation [build tasks](getting-started/command-line.md#build-plugin-tasks).** It is now possible to run the test build pipeline only up through generating mocks or test runners without running the rest of a build.
     
     👀 See the [Changelog](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md).
 ---

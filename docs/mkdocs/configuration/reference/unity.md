@@ -60,4 +60,4 @@ ordering — see [`:test_runner` ↳ `:rng_seed`][test-runner-rng-seed].
 
 <br/><br/>
 
-[test-runner-rng-seed]: test-runner.md#test_runner--rng_seed
+[test-runner-rng-seed]: test-runner.md#test_runner-rng_seed

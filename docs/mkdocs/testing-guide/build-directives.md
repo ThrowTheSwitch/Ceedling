@@ -76,7 +76,7 @@ convention would have found on its own.
 Ceedling logs an informational notice naming the winning `TEST_SOURCE_FILE()`
 entry and the `#include` it overrode, so the substitution is never silent.
 
-See [Distinguishing same-named files](conventions.md#header--source-files)
+See [Distinguishing same-named files](conventions.md#header-source-files)
 for the full discussion of this and Ceedling’s other file-disambiguation
 conventions.
 

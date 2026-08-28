@@ -16,7 +16,7 @@ must appear above their use in a test file.
 ## `TEST_SOURCE_FILE("filepath")`
 
 !!! tip
-    Ceedling [distinguishes files of the same name by their path](../../testing-guide/conventions.md#distinguishing-same-named-files).
+    Ceedling [distinguishes files of the same name by their path](../testing-guide/conventions.md#distinguishing-same-named-files).
     Include a partial path to distinguish any source files of the
     same name to be compiled and linked with your test executable.
 
