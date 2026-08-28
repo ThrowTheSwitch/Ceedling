@@ -390,6 +390,12 @@ describe TestBuildExecutor do
       stub_batchinator_exec()
       allow(@plugin_manager).to receive(:post_test)
 
+      # This context's own tests are about executable_rebuilt/force_rerun/shuffle
+      # deciding whether a fixture reruns, so the fixture-target's own staleness
+      # (the tool-config trigger) defaults to fresh here -- see the dedicated
+      # "tool configuration changed" examples below for that case on its own.
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
       @testable = TestInvokerTypes::Testable.new(
         :name         => 'a_test',
         :filepath     => 'test/TestFoo.c',
@@ -486,6 +492,40 @@ describe TestBuildExecutor do
       allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping test execution for 1 test (reusing cached results)..." )
 
       expect(@loginator).to receive(:log).with( "Skipping test execution for 1 test (reusing cached results)..." )
+      @executor.stage_execute( @state )
+    end
+
+    it "registers a target separate from the executable, with the executable as antecedent and the test fixture tool as meta" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/a_test.pass',
+        files: ['build/a_test.out'],
+        meta:  { tools: [@tools_test_fixture] }
+      )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "reruns the test fixture when only the :tools ↳ :test_fixture configuration changed, even though the executable is unchanged" do
+      @testable.executable_rebuilt = false
+      allow(@dependinator).to receive(:stale?).with('build/a_test.pass').and_return( true )
+      allow(@file_wrapper).to receive(:rm_f)
+
+      expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: false ) )
+      expect(@dependinator).to receive(:mark_fresh).with('build/a_test.pass')
+
+      @executor.stage_execute( @state )
+    end
+
+    it "does not mark the fixture target fresh when the run was skipped" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+
+      expect(@dependinator).to_not receive(:mark_fresh)
+
       @executor.stage_execute( @state )
     end
   end

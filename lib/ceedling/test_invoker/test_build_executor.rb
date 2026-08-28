@@ -469,9 +469,17 @@ class TestBuildExecutor
   # (Unity's generated `main()` reshuffles on every invocation), not at compile
   # or link time, so an executable that's otherwise unchanged still needs to
   # actually run again for shuffling to have any effect at all.
+  #
+  # The dependency tracker gives a third reason to rerun, alongside those two:
+  # `testable.executable` unchanged says nothing about whether the *tool* that
+  # actually runs it -- :tools ↳ :test_fixture -- changed since the last run.
+  # This target is registered separately from stage 16's own executable target
+  # (not reusing it) so a tool-only change reruns the fixture without also
+  # marking the executable itself stale and forcing an unnecessary relink.
   def stage_execute(state)
     skipped = 0
     force_rerun = @configurator.force_test_rerun || @configurator.unity_shuffle_tests
+    fixture_tool = @configurator.tools_test_fixture
 
     overridden = state.testables.values.count { |t| !t.executable_rebuilt }
 
@@ -486,7 +494,11 @@ class TestBuildExecutor
 
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
-        run_now = testable.executable_rebuilt || force_rerun
+        fixture_target = testable.results_pass
+
+        @dependinator.register( fixture_target, files: [testable.executable], meta: { tools: [fixture_tool] } )
+
+        run_now = testable.executable_rebuilt || force_rerun || @dependinator.stale?( fixture_target )
 
         # Clear out any stale prior result (e.g. a lingering `.fail` from a test
         # that now passes) immediately before an actual (re)run -- not upfront
@@ -514,6 +526,8 @@ class TestBuildExecutor
         }
 
         run_fixture( **arg_hash )
+
+        @dependinator.mark_fresh( fixture_target ) if run_now
 
       ensure
         @plugin_manager.post_test( testable.filepath )
