@@ -33,6 +33,10 @@ class Configurator
     # :unity_use_param_tests) and no longer holds a :unity section of its own to read back.
     @unity_config = {} # Default empty hash, replaced by reference below
 
+    # Partials config reference -- same reason as the Unity config above, and needed
+    # as a single value dependency-tracker meta can hash wholesale for Partials targets.
+    @partials_config = {} # Default empty hash, replaced by reference below
+
     # Note: project_config_hash is an instance variable so constants and accessors created
     # in eval() statements in build() have something of proper scope and persistence to reference
     @project_config_hash = {}
@@ -319,6 +323,17 @@ class Configurator
   end
 
 
+  def populate_partials_config(config)
+    # Save Partials config reference -- no transformation needed, unlike Unity/CMock/the
+    # test runner above, since nothing else derives values from or into this section.
+    @partials_config = config[:partials]
+
+    @loginator.lazy( Verbosity::DEBUG ) do
+      "Partials configuration >> #{config[:partials]}"
+    end
+  end
+
+
   def populate_cmock_config(config)
     # Save CMock config reference
     @cmock_config = config[:cmock]
@@ -426,6 +441,12 @@ class Configurator
   def get_unity_config
     # Clone for the same reason as get_runner_config/get_cmock_config above.
     return @unity_config.clone
+  end
+
+
+  def get_partials_config
+    # Clone for the same reason as get_runner_config/get_cmock_config above.
+    return @partials_config.clone
   end
 
 

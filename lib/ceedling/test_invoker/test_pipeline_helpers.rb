@@ -31,8 +31,25 @@ module TestPipelineHelpers
   # registered with -- flags, defines, and search paths all affect a preprocess or
   # compile target's actual output, so all three ride along as meta everywhere a
   # target derived from any of them is registered.
-  def dependency_meta(flags:, defines:, search_paths:)
-    { flags: flags, defines: defines, search_paths: search_paths }
+  #
+  # `tools:` carries the config for whichever :tools entry (or entries) actually
+  # ran to produce this target -- a repointed :executable, an added argument, a
+  # changed :name or :optional/:stderr_redirect setting should all invalidate the
+  # target the same as a changed flag would, even though none of those live in
+  # `flags`. Defaults to an empty list for a caller with no shell tool of its own.
+  #
+  # `preprocess_force_fallback:` defaults to this run's actual
+  # :test_build ↳ :preprocess_force_fallback setting, so every ordinary caller
+  # picks it up without having to ask for it explicitly -- toggling that setting
+  # between runs, with nothing else changed, should still invalidate whatever a
+  # preprocessing pass produced.
+  #
+  # `partials:` is left out of the returned hash entirely when not given, so a
+  # caller with nothing to do with Partials never carries a meaningless `nil`.
+  def dependency_meta(flags:, defines:, search_paths:, tools: [], preprocess_force_fallback: @configurator.test_build_preprocess_force_fallback, partials: nil)
+    meta = { flags: flags, defines: defines, search_paths: search_paths, tools: tools, preprocess_force_fallback: preprocess_force_fallback }
+    meta[:partials] = partials unless partials.nil?
+    meta
   end
 
   # A preprocessing pass falls back to plain, non-directives-only handling either when

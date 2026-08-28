@@ -32,16 +32,21 @@ describe TestBuildExecutor do
     @dependinator                                          = double( "Dependinator" )
     @test_source_file_directive_resolver                      = double( "TestSourceFileDirectiveResolver" )
 
-    @tools_test_compiler  = { name: 'fake compiler' }
-    @tools_test_assembler = { name: 'fake assembler' }
-    @tools_test_linker    = { name: 'fake linker' }
-    @tools_test_fixture   = { name: 'fake fixture' }
+    @tools_test_compiler                     = { name: 'fake compiler' }
+    @tools_test_assembler                    = { name: 'fake assembler' }
+    @tools_test_linker                       = { name: 'fake linker' }
+    @tools_test_fixture                      = { name: 'fake fixture' }
+    @tools_test_bare_includes_preprocessor   = { name: 'fake bare includes preprocessor' }
+    @tools_test_file_directives_only_preprocessor = { name: 'fake directives-only preprocessor' }
 
     allow(@configurator).to receive(:extension_assembly).and_return( FilenameExtension.new('.asm') )
     allow(@configurator).to receive(:tools_test_compiler).and_return( @tools_test_compiler )
     allow(@configurator).to receive(:tools_test_assembler).and_return( @tools_test_assembler )
     allow(@configurator).to receive(:tools_test_linker).and_return( @tools_test_linker )
     allow(@configurator).to receive(:tools_test_fixture).and_return( @tools_test_fixture )
+    allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return( @tools_test_bare_includes_preprocessor )
+    allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( @tools_test_file_directives_only_preprocessor )
+    allow(@configurator).to receive(:test_build_preprocess_force_fallback).and_return( false )
     allow(@configurator).to receive(:project_use_mocks).and_return( false )
     allow(@configurator).to receive(:project_use_exceptions).and_return( false )
     allow(@configurator).to receive(:collection_all_support).and_return( [] )
@@ -184,6 +189,26 @@ describe TestBuildExecutor do
         :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
       )
     end
+
+    it "registers the configured compiler tool as meta for a C source, and the configured assembler tool for an assembly source" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.asm' ).and_return( '.asm' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( true )
+      allow(@generator).to receive(:generate_object_file_c)
+      allow(@generator).to receive(:generate_object_file_asm)
+
+      expect(@dependinator).to receive(:register).with( 'build/foo.o', files: ['src/foo.c'], meta: hash_including( tools: [@tools_test_compiler] ) )
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+
+      expect(@dependinator).to receive(:register).with( 'build/foo.o', files: ['src/foo.asm'], meta: hash_including( tools: [@tools_test_assembler] ) )
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.asm', :object => 'build/foo.o', :state => @state
+      )
+    end
   end
 
   context "#stage_build_objects" do
@@ -259,6 +284,18 @@ describe TestBuildExecutor do
       @executor.stage_build_executables( @state )
 
       expect( @testable.executable_rebuilt ).to be(false)
+    end
+
+    it "registers the configured test linker tool as meta, alongside link flags and library arguments" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@dependinator).to receive(:register).with(
+        'build/a_test.out',
+        files: ['build/foo.o'],
+        meta:  { flags: [], lib_args: [], lib_paths: [], tools: [@tools_test_linker] }
+      )
+
+      @executor.stage_build_executables( @state )
     end
 
     it "logs a summary line stating how many executables were recalled from cache" do
@@ -497,6 +534,22 @@ describe TestBuildExecutor do
       allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping mock preprocessing for 1 mock (nothing changed)..." )
 
       expect(@loginator).to receive(:log).with( "Skipping mock preprocessing for 1 mock (nothing changed)..." )
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "registers the bare-includes and directives-only preprocessor tools, and the fallback setting, as meta" do
+      allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/MockFoo.h',
+        files: ['src/Foo.h'],
+        meta:  {
+          flags: [], defines: [], search_paths: [], extras: false,
+          tools: [@tools_test_bare_includes_preprocessor, @tools_test_file_directives_only_preprocessor],
+          preprocess_force_fallback: false
+        }
+      )
+
       @executor.stage_preprocess_mocks( @state )
     end
   end

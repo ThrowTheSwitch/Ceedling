@@ -54,10 +54,12 @@ class TestBuildExecutor
         target,
         files: [details.source],
         meta:  {
-          flags:        testable.preprocess_flags,
-          defines:      testable.preprocess_defines,
-          search_paths: testable.search_paths,
-          extras:       extras
+          flags:                     testable.preprocess_flags,
+          defines:                   testable.preprocess_defines,
+          search_paths:              testable.search_paths,
+          extras:                    extras,
+          tools:                     [@configurator.tools_test_bare_includes_preprocessor, @configurator.tools_test_file_directives_only_preprocessor],
+          preprocess_force_fallback: @configurator.test_build_preprocess_force_fallback
         }
       )
 
@@ -418,7 +420,7 @@ class TestBuildExecutor
       @dependinator.register(
         testable.executable,
         files: testable.objects,
-        meta:  { flags: testable.link_flags, lib_args: lib_args, lib_paths: lib_paths }
+        meta:  { flags: testable.link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [@configurator.tools_test_linker] }
       )
       stale = @dependinator.stale?( testable.executable )
 
@@ -616,7 +618,7 @@ class TestBuildExecutor
 
     if !@configurator.extension_assembly.match?( source )
       flags = testable.compile_flags
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: @configurator.tools_test_compiler )
 
       return log_compile_skip( test: test, source: source ) unless stale
 
@@ -644,7 +646,7 @@ class TestBuildExecutor
 
     elsif @configurator.test_build_use_assembly
       flags = testable.assembler_flags
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: @configurator.tools_test_assembler )
 
       return log_compile_skip( test: test, source: source ) unless stale
 
@@ -694,8 +696,8 @@ class TestBuildExecutor
   # and reports whether it needs (re)building. The previous run's `.d` file is
   # the only header list available before this run's compile has happened --
   # if headers changed, that's exactly what makes this stale.
-  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:)
-    @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths ) )
+  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:)
+    @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths, tools: [tool] ) )
     @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.stale?( object )
   end

@@ -100,10 +100,13 @@ class PartialsManager
       # before it reaches path normalization, which expects real paths only.
       antecedent_files = [config.header.filepath, config.source.filepath].compact
       antecedent_meta  = {
-        flags:                          testable.preprocess_flags,
-        defines:                        testable.preprocess_defines,
-        search_paths:                   testable.search_paths,
-        partials_max_extraction_length: @configurator.partials_max_extraction_length
+        flags:        testable.preprocess_flags,
+        defines:      testable.preprocess_defines,
+        search_paths: testable.search_paths,
+        # No shell tool runs in this stage -- Partial generation is pure Ruby (below) --
+        # so there's nothing to add here beyond the whole :partials config.
+        tools:        [],
+        partials:     @configurator.get_partials_config
       }
 
       # Generated once and shared by the implementation and interface headers below (via
@@ -287,7 +290,15 @@ class PartialsManager
       @dependinator.register(
         target,
         files: [config.filepath],
-        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
+        meta:  dependency_meta(
+          flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths,
+          tools: [
+            @configurator.tools_test_file_directives_only_preprocessor,
+            @configurator.tools_test_bare_includes_preprocessor,
+            @configurator.tools_test_file_full_preprocessor
+          ],
+          partials: @configurator.get_partials_config
+        )
       )
 
       details.preprocessed_target = target

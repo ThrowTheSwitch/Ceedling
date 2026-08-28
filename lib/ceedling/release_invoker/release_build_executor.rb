@@ -47,7 +47,7 @@ class ReleaseBuildExecutor
     @dependinator.register(
       target,
       files: objects,
-      meta:  { flags: state.link_flags, lib_args: lib_args, lib_paths: lib_paths }
+      meta:  { flags: state.link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [@configurator.tools_release_linker] }
     )
     stale = @dependinator.stale?( target )
 
@@ -106,7 +106,7 @@ class ReleaseBuildExecutor
 
     if !@configurator.extension_assembly.match?( source )
       flags = state.compile_flags
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: state.defines, search_paths: state.search_paths )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: state.defines, search_paths: state.search_paths, tool: @configurator.tools_release_compiler )
 
       return log_compile_skip( source: source ) unless stale
 
@@ -132,7 +132,7 @@ class ReleaseBuildExecutor
       )
     else
       flags = state.assemble_flags
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: state.defines, search_paths: state.search_paths )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: state.defines, search_paths: state.search_paths, tool: @configurator.tools_release_assembler )
 
       return log_compile_skip( source: source ) unless stale
 
@@ -177,8 +177,8 @@ class ReleaseBuildExecutor
   # and reports whether it needs (re)building. The previous run's `.d` file is
   # the only header list available before this run's compile has happened --
   # if headers changed, that's exactly what makes this stale.
-  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:)
-    @dependinator.register( object, files: [source], meta: { flags: flags, defines: defines, search_paths: search_paths } )
+  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:)
+    @dependinator.register( object, files: [source], meta: { flags: flags, defines: defines, search_paths: search_paths, tools: [tool] } )
     @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.stale?( object )
   end

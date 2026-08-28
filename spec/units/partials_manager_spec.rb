@@ -26,6 +26,17 @@ describe PartialsManager do
     allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
     allow(@loginator).to receive(:log)
 
+    @tools_test_bare_includes_preprocessor        = { name: 'fake bare includes preprocessor' }
+    @tools_test_file_directives_only_preprocessor = { name: 'fake directives-only preprocessor' }
+    @tools_test_file_full_preprocessor            = { name: 'fake full preprocessor' }
+    @partials_config                              = { max_extraction_length: 5000 }
+
+    allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return( @tools_test_bare_includes_preprocessor )
+    allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( @tools_test_file_directives_only_preprocessor )
+    allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return( @tools_test_file_full_preprocessor )
+    allow(@configurator).to receive(:test_build_preprocess_force_fallback).and_return( false )
+    allow(@configurator).to receive(:get_partials_config).and_return( @partials_config )
+
     allow(@dependinator).to receive(:register)
     allow(@dependinator).to receive(:stale?).and_return( true )
     allow(@dependinator).to receive(:mark_fresh)
@@ -77,13 +88,18 @@ describe PartialsManager do
       )
     end
 
-    it "registers the header's deterministic target with the header file as sole antecedent and preprocess flags/defines/search paths as meta" do
+    it "registers the header's deterministic target with the header file as sole antecedent and preprocess flags/defines/search paths, preprocessing tools, and :partials config as meta" do
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
 
       expect(@dependinator).to receive(:register).with(
         'build/preprocess/Foo.h',
         files: ['src/Foo.h'],
-        meta:  { flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'] }
+        meta:  {
+          flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'],
+          tools: [@tools_test_file_directives_only_preprocessor, @tools_test_bare_includes_preprocessor, @tools_test_file_full_preprocessor],
+          preprocess_force_fallback: false,
+          partials: @partials_config
+        }
       )
 
       @manager.stage_preprocess_partial_headers( @state )
@@ -181,13 +197,18 @@ describe PartialsManager do
       )
     end
 
-    it "registers the source's deterministic target with the source file as sole antecedent and preprocess flags/defines/search paths as meta" do
+    it "registers the source's deterministic target with the source file as sole antecedent and preprocess flags/defines/search paths, preprocessing tools, and :partials config as meta" do
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
 
       expect(@dependinator).to receive(:register).with(
         'build/preprocess/Foo.c',
         files: ['src/Foo.c'],
-        meta:  { flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'] }
+        meta:  {
+          flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'],
+          tools: [@tools_test_file_directives_only_preprocessor, @tools_test_bare_includes_preprocessor, @tools_test_file_full_preprocessor],
+          preprocess_force_fallback: false,
+          partials: @partials_config
+        }
       )
 
       @manager.stage_preprocess_partial_sources( @state )
@@ -267,7 +288,6 @@ describe PartialsManager do
       stub_batchinator_exec()
 
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
-      allow(@configurator).to receive(:partials_max_extraction_length).and_return( 5 )
 
       @module_contents = double( "CModule",
         function_definitions:    [],
@@ -359,6 +379,19 @@ describe PartialsManager do
 
       expect( @testable.partials.tests ).to eq( ['Foo'] )
       expect( @testable.partials.mocks ).to eq( ['Foo'] )
+    end
+
+    it "registers the whole :partials config as meta, and an empty tools list since this stage runs no shell tool" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@dependinator).to receive(:register).at_least(:once) do |_target, files:, meta:|
+        expect( meta[:tools] ).to eq( [] )
+        expect( meta[:partials] ).to eq( @partials_config )
+      end
+
+      @manager.stage_generate_partials( @state )
     end
 
     it "never registers or checks a types-header target when the module has no type or aggregate definitions" do
