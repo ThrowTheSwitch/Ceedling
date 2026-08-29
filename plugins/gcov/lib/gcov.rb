@@ -59,6 +59,16 @@ class Gcov < Plugin
     @file_wrapper = @ceedling[:file_wrapper]
     @tool_executor = @ceedling[:tool_executor]
     @plugin_manager = @ceedling[:plugin_manager]
+    @dependinator = @ceedling[:dependinator]
+
+    # Cloned from the original, unflattened project config (project_config_hash
+    # above has none of this -- flattening leaves no nested :gcov key) so the whole
+    # section can ride along as dependency-tracker meta alongside the specific
+    # :tools/:flags tracking elsewhere in this file, the same belt-and-suspenders
+    # reasoning :cmock's own whole-section meta capture already uses -- a future
+    # :gcov config key that affects a tracked target's real behavior is covered
+    # automatically, without needing its own dedicated wiring here first.
+    @gcov_config = @ceedling[:setupinator].config_hash[:gcov].clone
 
     @mutex = Mutex.new()
 
@@ -132,22 +142,61 @@ class Gcov < Plugin
         return
       end
 
+      skipped = 0
+
       untested_sources.each do |filepath|
-        filename = File.basename(filepath)
+        filename     = File.basename(filepath)
+        object       = @file_path_utils.form_test_object_filepath( filepath, context:GCOV_SYM )
+        dependencies = @file_path_utils.form_test_dependencies_filepath( filepath, context:GCOV_SYM )
+        search_paths = @configurator.collection_paths_include
+        defines      = @defineinator.defines( subkey:GCOV_SYM )
+
+        # Same MC/DC condition pre_compile_register applies for ordinary test-context
+        # compiles -- this path calls Generator directly, bypassing TestBuildExecutor
+        # (and therefore that hook) entirely, so it has to apply the flag itself.
+        flags = @flaginator.flag_down( context:GCOV_SYM, operation:OPERATION_COMPILE_SYM )
+        flags += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
+
+        # Same register/stale?/mark_fresh idiom TestBuildExecutor's own object
+        # compilation uses -- this compile happens entirely outside that pipeline
+        # (untested sources have no test of their own to drive them through it), so
+        # nothing else registers it. :gcov meta is the whole section, same
+        # belt-and-suspenders reasoning as pre_compile_register above.
+        @dependinator.register(
+          object, files: [filepath],
+          meta: { flags: flags, defines: defines, search_paths: search_paths, tools: [TOOLS_GCOV_COMPILER], gcov: @gcov_config }
+        )
+        @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+
+        unless @dependinator.stale?( object )
+          msg = @reportinator.generate_module_progress(
+            operation:   'Skipping untested-source compilation for',
+            module_name: filename.ext(),
+            filename:    filename
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+          skipped += 1
+          next
+        end
+
         begin
           @generator.generate_object_file_c(
             tool:         TOOLS_GCOV_COMPILER,
             module_name:  filename.ext(),
             context:      GCOV_SYM,
             source:       filepath,
-            object:       @file_path_utils.form_test_object_filepath( filepath, context:GCOV_SYM ),
-            search_paths: @configurator.collection_paths_include,
-            flags:        @flaginator.flag_down( context:GCOV_SYM, operation:OPERATION_COMPILE_SYM ),
-            defines:      @defineinator.defines( subkey:GCOV_SYM ),
-            dependencies: @file_path_utils.form_test_dependencies_filepath( filepath, context:GCOV_SYM )
+            object:       object,
+            search_paths: search_paths,
+            flags:        flags,
+            defines:      defines,
+            dependencies: dependencies
           )
+
+          @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+          @dependinator.mark_fresh( object )
         rescue ShellException => ex
-          # Log actionable guidance then re-raise immediately (omitted when `guidance` is false)
+          # Log actionable guidance then re-raise immediately (omitted when `guidance` is false) --
+          # left un-marked-fresh, so the next run retries this same source.
           if guidance
             notice = "Compiling untested '#{filename}' with coverage failed.\n" \
                      "NOTE: Compilation of an untested source for coverage (:gcov ↳ :untested_sources ➡️ :compile) " \
@@ -162,6 +211,16 @@ class Gcov < Plugin
           raise ex
         end
       end
+
+      # TestInvoker's own flush (test_invoker.rb) already ran and persisted by the
+      # time this method runs (see gcov.rake -- this is always called after
+      # setup_and_invoke returns) -- this flush persists the additional entries
+      # registered above on top of that, safely: flush doesn't clear in-memory
+      # state, so this just writes out the superset to the same already-open cache.
+      @dependinator.flush( refresh_dependencies: false )
+
+      msg = @reportinator.generate_skip_summary( task: "compilation", count: skipped, noun: "untested sources" )
+      @loginator.log( msg ) unless msg.nil?
     end
   end
 
@@ -176,6 +235,13 @@ class Gcov < Plugin
 
     arg_hash[:tool] = TOOLS_GCOV_COMPILER
     arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
+
+    # The whole :gcov config as meta, redundant alongside the :mcdc-derived flag
+    # above -- belt-and-suspenders against a future :gcov key affecting a compile
+    # this file doesn't yet know to thread through by hand, the same reasoning
+    # :cmock's own whole-section meta capture already uses. Additive: merges with
+    # TestBuildExecutor's own register call for this same target moments later.
+    @dependinator.register( arg_hash[:object], meta: { gcov: @gcov_config } )
   end
 
   def pre_compile_execute(arg_hash)
@@ -199,6 +265,10 @@ class Gcov < Plugin
     @cli_gcov_task = true
     arg_hash[:tool] = TOOLS_GCOV_LINKER
     arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
+
+    # See pre_compile_register above -- same belt-and-suspenders reasoning, same
+    # additive merge with TestBuildExecutor's own register call for this target.
+    @dependinator.register( arg_hash[:executable], meta: { gcov: @gcov_config } )
   end
 
   def pre_test_fixture_register(arg_hash)

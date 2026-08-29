@@ -99,6 +99,28 @@ ceedling_system_tests do
         end
       end
     end
+
+    it "skips recompiling an untested source left unchanged, but recompiles it once its content changes" do
+      @c.with_context do
+        Dir.chdir @proj_name do
+          add_gcov_option("untested_sources", ":compile")
+          # Untested — no test references this source file.
+          FileUtils.cp test_asset_path("uncovered_example_file.c"), 'src/'
+
+          @c.ceedling_build_exec("gcov:all")
+
+          rebuild = @c.ceedling_build_exec("gcov:all")
+          expect(rebuild).to_not match(/EXCEPTION/)
+          expect(rebuild).to_not match(/Compiling.*uncovered_example_file/)
+
+          probe = File.read('src/uncovered_example_file.c')
+          File.write('src/uncovered_example_file.c', "#{probe}\n// probe\n")
+
+          recompile = @c.ceedling_build_exec("gcov:all")
+          expect(recompile).to match(/Compiling.*uncovered_example_file/)
+        end
+      end
+    end
   end
 
   describe "Valgrind context: cache isolation and tool-change staleness" do

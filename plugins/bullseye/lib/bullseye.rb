@@ -200,23 +200,56 @@ class Bullseye < Plugin
         return
       end
 
+      dependinator = @ceedling[:dependinator]
+      skipped = 0
+
       untested_sources.each do |filepath|
-        filename = File.basename(filepath)
+        filename     = File.basename(filepath)
+        object       = @ceedling[:file_path_utils].form_test_object_filepath( filepath, context: BULLSEYE_SYM )
+        dependencies = @ceedling[:file_path_utils].form_test_dependencies_filepath( filepath, context: BULLSEYE_SYM )
+        search_paths = @configurator.collection_paths_include
+        flags        = @ceedling[:flaginator].flag_down( context: BULLSEYE_SYM, operation: OPERATION_COMPILE_SYM )
+        defines      = @ceedling[:defineinator].defines( subkey: BULLSEYE_SYM )
+
+        # Same register/stale?/mark_fresh idiom TestBuildExecutor's own object
+        # compilation uses -- this compile happens entirely outside that pipeline
+        # (untested sources have no test of their own to drive them through it), so
+        # nothing else registers it.
+        dependinator.register(
+          object, files: [filepath],
+          meta: { flags: flags, defines: defines, search_paths: search_paths, tools: [TOOLS_BULLSEYE_COMPILER] }
+        )
+        dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+
+        unless dependinator.stale?( object )
+          msg = @reportinator.generate_module_progress(
+            operation:   'Skipping untested-source compilation for',
+            module_name: filename.ext(),
+            filename:    filename
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+          skipped += 1
+          next
+        end
+
         begin
           @ceedling[:generator].generate_object_file_c(
             tool:         TOOLS_BULLSEYE_COMPILER,
             module_name:  filename.ext(),
             context:      BULLSEYE_SYM,
             source:       filepath,
-            object:       @ceedling[:file_path_utils].form_test_object_filepath( filepath, context: BULLSEYE_SYM ),
-            search_paths: @configurator.collection_paths_include,
-            flags:        @ceedling[:flaginator].flag_down( context: BULLSEYE_SYM, operation: OPERATION_COMPILE_SYM ),
+            object:       object,
+            search_paths: search_paths,
+            flags:        flags,
             # 'CODE_COVERAGE' is not added here — pre_compile_execute appends it for every
             # BULLSEYE_SYM-context compile, including this one (generate_object_file_c fires
             # that hook itself); adding it here too would just duplicate the define.
-            defines:      @ceedling[:defineinator].defines( subkey: BULLSEYE_SYM ),
-            dependencies: @ceedling[:file_path_utils].form_test_dependencies_filepath( filepath, context: BULLSEYE_SYM )
+            defines:      defines,
+            dependencies: dependencies
           )
+
+          dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+          dependinator.mark_fresh( object )
         rescue ShellException => ex
           if guidance
             notice = "Compiling untested '#{filename}' with coverage failed.\n" \
@@ -231,6 +264,16 @@ class Bullseye < Plugin
           raise ex
         end
       end
+
+      # TestInvoker's own flush (test_invoker.rb) already ran and persisted by the
+      # time this method runs (see bullseye.rake -- this is always called after
+      # setup_and_invoke returns) -- this flush persists the additional entries
+      # registered above on top of that, safely: flush doesn't clear in-memory
+      # state, so this just writes out the superset to the same already-open cache.
+      dependinator.flush( refresh_dependencies: false )
+
+      msg = @reportinator.generate_skip_summary( task: "compilation", count: skipped, noun: "untested sources" )
+      @loginator.log( msg ) unless msg.nil?
     end
   end
 
