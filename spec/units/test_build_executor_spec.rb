@@ -561,6 +561,7 @@ describe TestBuildExecutor do
 
       swapped_tool = { name: 'fake valgrind wrapper' }
       allow(@plugin_manager).to receive(:pre_test_fixture_register) do |arg_hash|
+        expect( arg_hash[:target] ).to eq( @fixture_target )
         arg_hash[:tool] = swapped_tool
       end
 

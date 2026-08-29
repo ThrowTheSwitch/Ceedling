@@ -506,14 +506,14 @@ class TestBuildExecutor
 
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
-        fixture_tool = resolve_fixture_tool( context: state.context, tool: @configurator.tools_test_fixture, test_name: testable.name )
-
         # `paths[:results]` is only per-test-unique for a test mirrored into its own
         # subdirectory -- a test with no mirrored subdir shares that directory with
         # every other such test, so the marker's own filename (not just its directory)
         # must be test-specific too, matching clean_test_results' own `test + '.*'`
         # naming below.
         fixture_target = File.join( testable.paths[:results], "#{File.basename( testable.name )}.fixture_run" )
+
+        fixture_tool = resolve_fixture_tool( context: state.context, tool: @configurator.tools_test_fixture, test_name: testable.name, target: fixture_target )
 
         @dependinator.register( fixture_target, files: [testable.executable], meta: { tools: [fixture_tool] } )
 
@@ -762,8 +762,12 @@ class TestBuildExecutor
 
   # As resolve_compile_tool/resolve_link_tool above, for the test-fixture step's own
   # tool swap (pre_test_fixture_register), e.g. Valgrind wrapping the executable.
-  def resolve_fixture_tool(context:, tool:, test_name:)
-    arg_hash = { context: context, tool: tool, test_name: test_name }
+  # `target` (the fixture-run marker target -- see stage_execute) is included so a
+  # plugin can register additional meta of its own against the same target, merging
+  # with what this stage registers immediately after -- Dependinator#register is
+  # additive across multiple calls for one target regardless of call order.
+  def resolve_fixture_tool(context:, tool:, test_name:, target:)
+    arg_hash = { context: context, tool: tool, test_name: test_name, target: target }
     @plugin_manager.pre_test_fixture_register( arg_hash )
     return arg_hash[:tool]
   end
