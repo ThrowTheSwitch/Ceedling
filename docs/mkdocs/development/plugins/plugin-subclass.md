@@ -237,6 +237,36 @@ arg_hash = {
 }
 ```
 
+## `Plugin` hook method `pre_compile_register(arg_hash)`
+
+Test builds only (not release builds). Called once per C file in a test build,
+*before* Ceedling's own delta-build dependency tracking registers that file's
+build target and checks whether it needs recompiling — unlike
+`pre_compile_execute` below, this fires every time, whether or not the object
+actually ends up stale. A plugin swapping in its own compiler tool for its own
+build context (as GCov and Bullseye do for coverage instrumentation) should do
+so here, not only in `pre_compile_execute`, so that swap is what Ceedling's
+own staleness check is based on — otherwise editing that tool's own
+configuration won't invalidate the plugin's cached build targets.
+
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  :tool => {
+    # Hash holding compiler tool properties — see ':tools' in the Project Configuration Reference
+  },
+  # Symbol of the operation being considered, e.g. :compile or :assemble
+  :operation => :<operation>,
+  :context => :<context>,
+  :module_name => "<name>",
+  :source => "<filepath>",
+  :object => "<filepath>",
+  :flags => [<flags>],
+  :defines => [<defines>]
+}
+```
+
 ## `Plugin` hook methods `pre_compile_execute(arg_hash)` and `post_compile_execute(arg_hash)`
 
 These methods are called before and after source file compilation. These are
@@ -272,6 +302,31 @@ arg_hash = {
 }
 ```
 
+## `Plugin` hook method `pre_link_register(arg_hash)`
+
+Test builds only (not release builds). Called once per test executable,
+*before* Ceedling's own delta-build dependency tracking registers that
+executable's build target and checks whether it needs relinking — unlike
+`pre_link_execute` below, this fires every time, regardless of staleness. A
+plugin swapping in its own linker tool for its own build context should do so
+here, for the same reason described under `pre_compile_register` above.
+Firing unconditionally also makes this a reliable place for a plugin to note
+that its own build context ran at all, independent of whether anything
+actually needed relinking.
+
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  :tool => {
+    # Hash holding linker tool properties — see ':tools' in the Project Configuration Reference
+  },
+  :context => :<context>,
+  :flags => [<flags>],
+  :executable => "<filepath>"
+}
+```
+
 ## `Plugin` hook methods `pre_link_execute(arg_hash)` and `post_link_execute(arg_hash)`
 
 These methods are called before and after linking an executable. These are
@@ -303,6 +358,28 @@ arg_hash = {
   :libraries => [<names>],
   # List of libraries paths, e.g. the ones passed to the (GNU) linker with -L
   :libpaths => [<paths>]
+}
+```
+
+## `Plugin` hook method `pre_test_fixture_register(arg_hash)`
+
+Called once per test executable, *before* Ceedling's own delta-build
+dependency tracking registers that test's fixture-run target and checks
+whether the executable needs (re)running — unlike `pre_test_fixture_execute`
+below, this fires every time, regardless of staleness. A plugin swapping in
+its own wrapper tool to run the test executable (as Valgrind does) should do
+so here, for the same reason described under `pre_compile_register` above:
+otherwise editing that wrapper tool's own configuration won't force a rerun.
+
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  :tool => {
+    # Hash holding execution tool properties — see ':tools' in the Project Configuration Reference
+  },
+  :context => :<context>,
+  :test_name => "<name>"
 }
 ```
 
