@@ -34,6 +34,15 @@ class Valgrind < Plugin
     @rake_invocation_tracker   = @ceedling[:rake_invocation_tracker]
     @plugin_manager      = @ceedling[:plugin_manager]
     @plugin_reportinator = @ceedling[:plugin_reportinator]
+    @dependinator        = @ceedling[:dependinator]
+
+    # Cloned from the original, unflattened project config (project_config_hash
+    # has none of this -- flattening leaves no nested :valgrind key) so the whole
+    # section can ride along as dependency-tracker meta alongside the specific
+    # :arguments/:tools tracking already baked into the tool hash below -- the
+    # same belt-and-suspenders reasoning :cmock's own whole-section meta capture
+    # already uses.
+    @valgrind_config = @ceedling[:setupinator].config_hash[:valgrind].clone
   end
 
   # Swaps in the per-test Valgrind-wrapped fixture tool ahead of TestBuildExecutor's
@@ -61,6 +70,13 @@ class Valgrind < Plugin
       :optional   => TOOLS_VALGRIND[:optional],
       :arguments  => ["--log-file=\"#{log_path}\""] + valgrind_args + ["${1}"],
     }
+
+    # The whole :valgrind config as meta, redundant alongside :arguments already
+    # being part of the tool hash above -- belt-and-suspenders against a future
+    # :valgrind key affecting a run this file doesn't yet know to thread through by
+    # hand. Additive: merges with TestBuildExecutor's own register call for this
+    # same target moments later.
+    @dependinator.register( arg_hash[:target], meta: { valgrind: @valgrind_config } )
   end
 
   def pre_test_fixture_execute(arg_hash)
