@@ -93,9 +93,14 @@ class ConfiguratorBuilder
   # Processes recursively
   def populate_with_defaults(config, defaults)
     defaults.each do |key, value|
-      # If config is missing the same key, copy in the default entry
+      # If config is missing the same key, copy in the default entry -- cloned
+      # regardless of type (Hash, Array, String, ...), not just Hash, since a
+      # default sourced from a frozen literal constant (several plugins' own
+      # :tools entries) must never end up shared, live, with config -- downstream
+      # code (e.g. FilePathUtils::standardize_in_place) mutates path strings in
+      # place and expects every value it touches to be its own independent copy.
       if config[key].nil?
-        config[key] = value.is_a?(Hash) ? value.deep_clone : value
+        config[key] = value.deep_clone
 
       # Continue recursively for hash entries
       elsif config[key].is_a?(Hash) && value.is_a?(Hash)

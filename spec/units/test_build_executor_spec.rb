@@ -71,6 +71,12 @@ describe TestBuildExecutor do
     # stale -- i.e. every real build in this spec proceeds as an unconditional
     # fresh compile unless a test overrides `stale?` to exercise the skip path.
     allow(@file_wrapper).to receive(:exist?).and_return( false )
+    # Default: no plugin implements the new pre-*-register hooks -- each is a
+    # no-op that leaves the arg_hash it's handed untouched.
+    allow(@plugin_manager).to receive(:pre_test_compile_register)
+    allow(@plugin_manager).to receive(:pre_test_link_register)
+    allow(@plugin_manager).to receive(:pre_test_fixture_register)
+
     allow(@dependinator).to receive(:register)
     allow(@dependinator).to receive(:register_gcc_deps_file)
     allow(@dependinator).to receive(:stale?).and_return( true )
@@ -190,6 +196,38 @@ describe TestBuildExecutor do
       )
     end
 
+    it "resolves the compile tool/flags/defines through pre_test_compile_register before registering staleness meta, and uses the resolved values for the real compile" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+
+      swapped_tool = { name: 'fake gcov compiler' }
+      allow(@plugin_manager).to receive(:pre_test_compile_register) do |arg_hash|
+        arg_hash[:tool]    = swapped_tool
+        arg_hash[:flags]   += ['-fcondition-coverage']
+        arg_hash[:defines] += ['CODE_COVERAGE']
+      end
+
+      expect(@dependinator).to receive(:register).with(
+        'build/foo.o',
+        files: ['src/foo.c'],
+        meta:  hash_including(
+          tools:   [swapped_tool],
+          flags:   array_including('-fcondition-coverage'),
+          defines: array_including('CODE_COVERAGE')
+        )
+      )
+      expect(@generator).to receive(:generate_object_file_c) do |**args|
+        expect( args[:tool] ).to eq( swapped_tool )
+        expect( args[:flags] ).to include('-fcondition-coverage')
+        expect( args[:defines] ).to include('CODE_COVERAGE')
+      end
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+
     it "registers the configured compiler tool as meta for a C source, and the configured assembler tool for an assembly source" do
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.asm' ).and_return( '.asm' )
@@ -286,6 +324,26 @@ describe TestBuildExecutor do
       expect( @testable.executable_rebuilt ).to be(false)
     end
 
+    it "resolves the link tool/flags through pre_test_link_register before registering staleness meta, and uses the resolved values for the real link" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      swapped_tool = { name: 'fake bullseye linker' }
+      allow(@plugin_manager).to receive(:pre_test_link_register) do |arg_hash|
+        arg_hash[:tool] = swapped_tool
+      end
+
+      expect(@dependinator).to receive(:register).with(
+        'build/a_test.out',
+        files: ['build/foo.o'],
+        meta:  hash_including( tools: [swapped_tool] )
+      )
+      expect(@generator).to receive(:generate_executable_file) do |tool, *_rest|
+        expect( tool ).to eq( swapped_tool )
+      end
+
+      @executor.stage_build_executables( @state )
+    end
+
     it "registers the configured test linker tool as meta, alongside link flags and library arguments" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
@@ -322,7 +380,8 @@ describe TestBuildExecutor do
         objects:    ['build/foo.o'],
         flags:      [],
         lib_args:   [],
-        lib_paths:  []
+        lib_paths:  [],
+        tool:       { name: 'fake linker' }
       }
     end
 
@@ -494,6 +553,27 @@ describe TestBuildExecutor do
       allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping test execution for 1 test (reusing cached results)..." )
 
       expect(@loginator).to receive(:log).with( "Skipping test execution for 1 test (reusing cached results)..." )
+      @executor.stage_execute( @state )
+    end
+
+    it "resolves the fixture tool through pre_test_fixture_register before registering staleness meta, and uses the resolved value for the real run" do
+      @testable.executable_rebuilt = false
+
+      swapped_tool = { name: 'fake valgrind wrapper' }
+      allow(@plugin_manager).to receive(:pre_test_fixture_register) do |arg_hash|
+        expect( arg_hash[:target] ).to eq( @fixture_target )
+        arg_hash[:tool] = swapped_tool
+      end
+
+      expect(@dependinator).to receive(:register).with(
+        @fixture_target,
+        files: ['build/a_test.out'],
+        meta:  { tools: [swapped_tool] }
+      )
+      expect(@generator).to receive(:generate_test_results) do |**args|
+        expect( args[:tool] ).to eq( swapped_tool )
+      end
+
       @executor.stage_execute( @state )
     end
 

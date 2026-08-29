@@ -46,6 +46,16 @@ reporting.
 See the [`:plugins` configuration reference][plugins-config] for details of operation
 and the [plugins overview][plugins-directory] for a directory of built-in plugins.
 
+## Plugins and Delta Builds
+
+Ceedling skips work when nothing has changed. This is called a delta build.
+See [Delta Builds](../../getting-started/builds.md).
+
+A plugin's own build runs through the same delta build tracking as an
+ordinary test build. A set of hook methods exist for this purpose. See
+[Delta build hooks](plugin-subclass.md#delta-build-hooks) in the `Plugin`
+subclass guide.
+
 ## Plugin Conventions & Architecture
 
 Plugins are enabled and configured from within a Ceedling project's YAML

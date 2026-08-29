@@ -67,6 +67,20 @@ describe TestInvoker do
       @invoker.setup_and_invoke( tests: [] )
     end
 
+    # Isolates each pipeline identifier's own cache file (see Dependinator#open) --
+    # sharing one cache file between, say, an ordinary test run and a plugin's own
+    # context (:gcov, :valgrind, ...) would let one's full-run pruning flush (see
+    # Dependinator#flush) silently evict the other's cache entries.
+    it "opens the dependency cache identified by the given context, isolating a plugin's own build context from ordinary test runs" do
+      expect(@dependinator).to receive(:open).with( identifier: :gcov )
+      @invoker.setup_and_invoke( tests: [], context: :gcov )
+    end
+
+    it "opens the dependency cache identified by TEST_SYM when context is not given" do
+      expect(@dependinator).to receive(:open).with( identifier: TEST_SYM )
+      @invoker.setup_and_invoke( tests: [] )
+    end
+
     it "flushes with refresh_dependencies true only when that option is present" do
       expect(@dependinator).to receive(:flush).with( refresh_dependencies: true )
       @invoker.setup_and_invoke( tests: [], options: [:refresh_dependencies] )

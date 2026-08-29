@@ -1,13 +1,19 @@
 # Plugin Overview
 
-!!! note
-    When enabled, this plugin creates a new set of `bullseye:` tasks that
-    mirror Ceedling's existing `test:` tasks. A `bullseye:` task compiles and
-    links test executables with Bullseye instrumentation, executes them, and
-    accumulates coverage data in a shared coverage data file.
+When enabled, this plugin creates a new set of `bullseye:` tasks that
+mirror Ceedling's existing `test:` tasks. A `bullseye:` task compiles and
+links test executables with Bullseye instrumentation, executes them, and
+accumulates coverage data in a shared coverage data file.
 
-    `bullseye:` tasks entirely duplicate `test:` tasks and test builds since
-    coverage instrumentation has to be applied at compile time.
+!!! note
+    `bullseye:` tasks entirely duplicate `test:` tasks and builds since
+    coverage instrumentation must be applied at compile time.
+
+    A `bullseye:` task is a [delta build](../../getting-started/builds.md).
+    It maintains its own dependency cache. A source file will be rebuilt the 
+    first time you run a `bullseye:` build. See
+    [Understanding plugin build duplication](../index.md#understanding-plugin-build-duplication)
+    for why `test:` and `bullseye:` builds remain separate.
 
 ## Coverage Metric
 

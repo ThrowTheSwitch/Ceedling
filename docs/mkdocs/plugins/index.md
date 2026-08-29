@@ -52,6 +52,17 @@ important issues:
    plugin task namespacing scheme naturally accomplished this along with the
    needs of (1) and (2).
 
+!!! note
+    A duplicated build task is a [delta build](../getting-started/builds.md).
+    Ceedling skips work in a `gcov:`, `bullseye:`, or `valgrind:` build in the same
+    way it does in a standard `test:` build.
+
+Each of these plugins maintains its own separate delta build cache, apart from
+plain test builds and from each other. A file with no role specific to a
+given plugin will still be rebuilt the first you run that plugin's build.
+This happens because each build tracks state in its own dependency cache, 
+not because of the file itself.
+
 ---
 
 ## Directory

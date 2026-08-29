@@ -417,10 +417,13 @@ class TestBuildExecutor
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       remove_partials_source_objects( testable.objects, testable.partials.configs )
 
+      link_flags = testable.link_flags
+      tool, link_flags = resolve_link_tool( context: state.context, tool: @configurator.tools_test_linker, flags: link_flags, executable: testable.executable )
+
       @dependinator.register(
         testable.executable,
         files: testable.objects,
-        meta:  { flags: testable.link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [@configurator.tools_test_linker] }
+        meta:  { flags: link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [tool] }
       )
       stale = @dependinator.stale?( testable.executable )
 
@@ -430,9 +433,10 @@ class TestBuildExecutor
           build_path: testable.paths[:build],
           executable: testable.executable,
           objects:    testable.objects,
-          flags:      testable.link_flags,
+          flags:      link_flags,
           lib_args:   lib_args,
-          lib_paths:  lib_paths
+          lib_paths:  lib_paths,
+          tool:       tool
         }
 
         generate_executable( **arg_hash )
@@ -488,7 +492,6 @@ class TestBuildExecutor
   def stage_execute(state)
     skipped = 0
     force_rerun = @configurator.force_test_rerun || @configurator.unity_shuffle_tests
-    fixture_tool = @configurator.tools_test_fixture
 
     overridden = state.testables.values.count { |t| !t.executable_rebuilt }
 
@@ -509,6 +512,8 @@ class TestBuildExecutor
         # must be test-specific too, matching clean_test_results' own `test + '.*'`
         # naming below.
         fixture_target = File.join( testable.paths[:results], "#{File.basename( testable.name )}.fixture_run" )
+
+        fixture_tool = resolve_fixture_tool( context: state.context, tool: @configurator.tools_test_fixture, test_name: testable.name, target: fixture_target )
 
         @dependinator.register( fixture_target, files: [testable.executable], meta: { tools: [fixture_tool] } )
 
@@ -536,7 +541,8 @@ class TestBuildExecutor
           test_filepath: testable.filepath,
           executable:    testable.executable,
           result:        testable.results_pass,
-          skipped:       !run_now
+          skipped:       !run_now,
+          tool:          fixture_tool
         }
 
         run_fixture( **arg_hash )
@@ -558,10 +564,10 @@ class TestBuildExecutor
   # Helper methods
   # -----------------------------------------------------------------------
 
-  def generate_executable(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:)
+  def generate_executable(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, tool:)
     begin
       @generator.generate_executable_file(
-        @configurator.tools_test_linker,
+        tool,
         context,
         objects.map { |v| "\"#{v}\"" },
         flags,
@@ -608,9 +614,9 @@ class TestBuildExecutor
     @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
   end
 
-  def run_fixture(context:, test_name:, test_filepath:, executable:, result:, skipped: false)
+  def run_fixture(context:, test_name:, test_filepath:, executable:, result:, tool:, skipped: false)
     @generator.generate_test_results(
-      tool:          @configurator.tools_test_fixture,
+      tool:          tool,
       context:       context,
       test_name:     test_name,
       test_filepath: test_filepath,
@@ -649,7 +655,11 @@ class TestBuildExecutor
 
     if !@configurator.extension_assembly.match?( source )
       flags = testable.compile_flags
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: @configurator.tools_test_compiler )
+      tool, flags, defines = resolve_compile_tool(
+        context: context, operation: OPERATION_COMPILE_SYM, tool: @configurator.tools_test_compiler,
+        flags: flags, defines: defines, module_name: test, source: source, object: object
+      )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool )
 
       return log_compile_skip( test: test, source: source ) unless stale
 
@@ -661,7 +671,7 @@ class TestBuildExecutor
       @file_wrapper.mkdir( File.dirname( dependencies ) )
 
       arg_hash = {
-        tool:         @configurator.tools_test_compiler,
+        tool:         tool,
         module_name:  test,
         context:      context,
         source:       source,
@@ -677,7 +687,11 @@ class TestBuildExecutor
 
     elsif @configurator.test_build_use_assembly
       flags = testable.assembler_flags
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: @configurator.tools_test_assembler )
+      tool, flags, defines = resolve_compile_tool(
+        context: context, operation: OPERATION_ASSEMBLE_SYM, tool: @configurator.tools_test_assembler,
+        flags: flags, defines: defines, module_name: test, source: source, object: object
+      )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool )
 
       return log_compile_skip( test: test, source: source ) unless stale
 
@@ -685,7 +699,7 @@ class TestBuildExecutor
       @file_wrapper.mkdir( File.dirname( dependencies ) )
 
       arg_hash = {
-        tool:         @configurator.tools_test_assembler,
+        tool:         tool,
         module_name:  test,
         context:      context,
         source:       source,
@@ -720,6 +734,42 @@ class TestBuildExecutor
     )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
     false
+  end
+
+  # Lets a plugin swap in its own compiler tool (and adjust flags/defines) for a
+  # particular build context -- e.g. Gcov/Bullseye's instrumented compilers -- via
+  # pre_test_compile_register, *before* dependency-tracker meta is computed below, so a
+  # plugin's own tool config is what actually drives that target's staleness rather
+  # than the plain test compiler it's about to be swapped out for. The resolved
+  # values are also what the real compile itself uses (see the two call sites
+  # above), so the two can never disagree about which tool actually ran.
+  def resolve_compile_tool(context:, operation:, tool:, flags:, defines:, module_name:, source:, object:)
+    arg_hash = {
+      context: context, operation: operation, tool: tool, flags: flags, defines: defines,
+      module_name: module_name, source: source, object: object
+    }
+    @plugin_manager.pre_test_compile_register( arg_hash )
+    return arg_hash[:tool], arg_hash[:flags], arg_hash[:defines]
+  end
+
+  # As resolve_compile_tool above, for the link step's own tool swap (pre_test_link_register),
+  # e.g. Gcov/Bullseye's instrumented linkers.
+  def resolve_link_tool(context:, tool:, flags:, executable:)
+    arg_hash = { context: context, tool: tool, flags: flags, executable: executable }
+    @plugin_manager.pre_test_link_register( arg_hash )
+    return arg_hash[:tool], arg_hash[:flags]
+  end
+
+  # As resolve_compile_tool/resolve_link_tool above, for the test-fixture step's own
+  # tool swap (pre_test_fixture_register), e.g. Valgrind wrapping the executable.
+  # `target` (the fixture-run marker target -- see stage_execute) is included so a
+  # plugin can register additional meta of its own against the same target, merging
+  # with what this stage registers immediately after -- Dependinator#register is
+  # additive across multiple calls for one target regardless of call order.
+  def resolve_fixture_tool(context:, tool:, test_name:, target:)
+    arg_hash = { context: context, tool: tool, test_name: test_name, target: target }
+    @plugin_manager.pre_test_fixture_register( arg_hash )
+    return arg_hash[:tool]
   end
 
   # Registers `object`'s antecedents (its source file, plus whatever headers
