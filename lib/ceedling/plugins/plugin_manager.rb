@@ -102,6 +102,17 @@ class PluginManager
   def pre_runner_generate(arg_hash); execute_plugins(:pre_runner_generate, arg_hash); end
   def post_runner_generate(arg_hash); execute_plugins(:post_runner_generate, arg_hash); end
 
+  # Fire ahead of and separate from pre_compile_execute/pre_link_execute/
+  # pre_test_fixture_execute below -- once per object/executable/test, unconditionally,
+  # before TestBuildExecutor registers dependency-tracker meta or checks staleness,
+  # rather than only when a real (re)compile/link/fixture-run actually happens. A
+  # plugin swapping in its own tool for a build context (Gcov, Valgrind, Bullseye)
+  # implements these so that swap is what dependency-tracker meta reflects, not the
+  # plain tool it's about to replace.
+  def pre_compile_register(arg_hash); execute_plugins(:pre_compile_register, arg_hash); end
+  def pre_link_register(arg_hash); execute_plugins(:pre_link_register, arg_hash); end
+  def pre_test_fixture_register(arg_hash); execute_plugins(:pre_test_fixture_register, arg_hash); end
+
   def pre_compile_execute(arg_hash); execute_plugins(:pre_compile_execute, arg_hash); end
   def post_compile_execute(arg_hash); execute_plugins(:post_compile_execute, arg_hash); end
 
