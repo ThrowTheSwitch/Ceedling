@@ -59,25 +59,37 @@ class Bullseye < Plugin
     @ceedling[:tool_validator].validate( tool: TOOLS_BULLSEYE_LINKER, boom: true )
   end
 
-  def pre_compile_execute(arg_hash)
+  # Swaps in the covc-wrapped compiler (and the coverage define) ahead of
+  # TestBuildExecutor's own dependency-tracker meta capture, so a change to either is
+  # what actually invalidates a bullseye-context object's cache -- not the plain test
+  # compiler this replaces. Instrument every non-assembly file uniformly; report-time
+  # exclusions (covselect) filter framework/test noise rather than skipping
+  # instrumentation at compile time.
+  def pre_compile_register(arg_hash)
     return if (arg_hash[:context] != BULLSEYE_SYM)
-
-    source = arg_hash[:source]
-
-    # Instrument every non-assembly file uniformly; report-time exclusions (covselect)
-    # filter framework/test noise rather than skipping instrumentation at compile time
-    return if EXTENSION_ASSEMBLY.match?(source)
+    return if EXTENSION_ASSEMBLY.match?(arg_hash[:source])
 
     arg_hash[:tool] = TOOLS_BULLSEYE_COMPILER
     arg_hash[:defines] += ['CODE_COVERAGE']
+  end
+
+  def pre_compile_execute(arg_hash)
+    return if (arg_hash[:context] != BULLSEYE_SYM)
+    return if EXTENSION_ASSEMBLY.match?(arg_hash[:source])
+
     arg_hash[:msg] = @reportinator.generate_module_progress(
       operation: "Compiling with coverage",
       module_name: arg_hash[:module_name],
-      filename: File.basename(source)
+      filename: File.basename(arg_hash[:source])
     )
   end
 
-  def pre_link_execute(arg_hash)
+  # As pre_compile_register above, for the covlink-wrapped linker. Fires every run
+  # regardless of whether this executable actually needs relinking, which is also what
+  # lets post_build's summary print correctly even on a fully-cached bullseye:all
+  # re-run -- @cli_bullseye_task marks that a bullseye: task ran at all, not that a
+  # link did.
+  def pre_link_register(arg_hash)
     return if (arg_hash[:context] != BULLSEYE_SYM)
 
     @cli_bullseye_task = true

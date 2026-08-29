@@ -36,7 +36,11 @@ class Valgrind < Plugin
     @plugin_reportinator = @ceedling[:plugin_reportinator]
   end
 
-  def pre_test_fixture_execute(arg_hash)
+  # Swaps in the per-test Valgrind-wrapped fixture tool ahead of TestBuildExecutor's
+  # own dependency-tracker meta capture, so a change to :valgrind ↳ :arguments (or
+  # :tools ↳ :valgrind itself) is what actually forces a rerun -- not the plain test
+  # fixture tool this replaces.
+  def pre_test_fixture_register(arg_hash)
     return unless arg_hash[:context] == VALGRIND_SYM
 
     @mutex.synchronize do
@@ -57,6 +61,10 @@ class Valgrind < Plugin
       :optional   => TOOLS_VALGRIND[:optional],
       :arguments  => ["--log-file=\"#{log_path}\""] + valgrind_args + ["${1}"],
     }
+  end
+
+  def pre_test_fixture_execute(arg_hash)
+    return unless arg_hash[:context] == VALGRIND_SYM
 
     msg = "Running #{File.basename(arg_hash[:executable])} under Valgrind"
     arg_hash[:msg] = @reportinator.generate_progress( msg )

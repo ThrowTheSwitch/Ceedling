@@ -165,35 +165,44 @@ class Gcov < Plugin
     end
   end
 
+  # Swaps in the coverage-instrumented compiler (and MC/DC flag, if configured) ahead
+  # of TestBuildExecutor's own dependency-tracker meta capture, so a change to either
+  # is what actually invalidates a gcov-context object's cache -- not the plain test
+  # compiler this replaces. Compile all non-assembly files with coverage; gcovr
+  # --exclude filters non-production files from reports.
+  def pre_compile_register(arg_hash)
+    return unless arg_hash[:context] == GCOV_SYM
+    return if EXTENSION_ASSEMBLY.match?(arg_hash[:source])
+
+    arg_hash[:tool] = TOOLS_GCOV_COMPILER
+    arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
+  end
+
   def pre_compile_execute(arg_hash)
-    if arg_hash[:context] == GCOV_SYM
-      source = arg_hash[:source]
+    return unless arg_hash[:context] == GCOV_SYM
+    return if EXTENSION_ASSEMBLY.match?(arg_hash[:source])
 
-      # Compile all non-assembly files with coverage; gcovr --exclude filters non-production files from reports
-      if !EXTENSION_ASSEMBLY.match?(source)
-        arg_hash[:tool] = TOOLS_GCOV_COMPILER
-        arg_hash[:msg] = @reportinator.generate_module_progress(
-          operation: "Compiling with coverage",
-          module_name: arg_hash[:module_name],
-          filename: File.basename(source)
-        )
-        arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
-      end
-    end
+    arg_hash[:msg] = @reportinator.generate_module_progress(
+      operation: "Compiling with coverage",
+      module_name: arg_hash[:module_name],
+      filename: File.basename(arg_hash[:source])
+    )
   end
 
-  def pre_link_execute(arg_hash)
-    if arg_hash[:context] == GCOV_SYM
-      @cli_gcov_task = true
-      arg_hash[:tool] = TOOLS_GCOV_LINKER
-      arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
-    end
+  # As pre_compile_register above, for the coverage-instrumented linker. Fires every
+  # run regardless of whether this executable actually needs relinking, which is also
+  # what lets post_build's summary print correctly even on a fully-cached gcov:all
+  # re-run -- @cli_gcov_task marks that a gcov: task ran at all, not that a link did.
+  def pre_link_register(arg_hash)
+    return unless arg_hash[:context] == GCOV_SYM
+
+    @cli_gcov_task = true
+    arg_hash[:tool] = TOOLS_GCOV_LINKER
+    arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
   end
 
-  def pre_test_fixture_execute(arg_hash)
-    if arg_hash[:context] == GCOV_SYM
-      arg_hash[:tool] = TOOLS_GCOV_FIXTURE
-    end
+  def pre_test_fixture_register(arg_hash)
+    arg_hash[:tool] = TOOLS_GCOV_FIXTURE if arg_hash[:context] == GCOV_SYM
   end
 
   # `Plugin` build step hook
