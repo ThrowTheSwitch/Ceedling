@@ -75,34 +75,10 @@ ceedling_system_tests do
         Dir.chdir @proj_name do
           @c.ceedling_build_exec("gcov:all")
 
-          # :gcov_compiler exists only via the plugin's own defaults, never in a
-          # project's own project.yml -- merging just an inert key into it here
-          # (as the equivalent :tools ↳ :test_compiler scenario in
-          # delta_builds_spec.rb does) triggers an unrelated, pre-existing
-          # frozen-string crash when Ceedling merges a project-supplied partial
-          # override on top of a plugin-default-only tool entry's frozen
-          # :arguments (present identically on next_version before this branch,
-          # confirmed via a clean worktree at that commit). Supplying the whole
-          # tool -- matching plugins/gcov/config/defaults_gcov.rb's
-          # DEFAULT_GCOV_COMPILER_TOOL, plus the inert key -- sidesteps that
-          # unrelated bug rather than working around it here; the actual
-          # dependency-tracker-meta assertion this test cares about is unaffected
-          # either way.
-          @c.merge_project_yml_for_test({
-            :tools => {
-              :gcov_compiler => {
-                :executable => 'gcc',
-                :name       => 'default_gcov_compiler',
-                :optional   => false,
-                :arguments  => [
-                  '-g', '-fprofile-arcs', '-ftest-coverage',
-                  '-I"${5}"', '-D"${6}"', '-DGCOV_COMPILER', '-DCODE_COVERAGE',
-                  '-c "${1}"', '-o "${2}"', '-MMD', '-MF "${4}"'
-                ],
-                :ceedling_delta_probe => true
-              }
-            }
-          })
+          # An inert key Ceedling itself never reads -- isolates the assertion to
+          # the dependency tracker's own meta-hash comparison, not any real
+          # behavior change a different flag or executable might otherwise cause.
+          @c.merge_project_yml_for_test({ :tools => { :gcov_compiler => { :ceedling_delta_probe => true } } })
 
           rebuild = @c.ceedling_build_exec("gcov:all")
           expect(rebuild).to_not match(/EXCEPTION/)
