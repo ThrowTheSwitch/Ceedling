@@ -15,6 +15,11 @@ gem "rake", ">= 12", "< 14"
 gem "rr"
 gem "require_all"
 
+# Test-only: spec/system/support/gcov_partials_test_cases.rb parses coverage XML.
+# rexml has been removed from the default gems bundled with some Ruby installations
+# (same category as erb/benchmark below), so it must be declared explicitly here too.
+gem "rexml", ">= 3.2"
+
 # Dev-only: used by DependencyTracker's :full debug tier to render human-readable
 # content diffs. Soft dependency at runtime (lib/ceedling/dependencies/dependency_differ.rb
 # requires it defensively and degrades gracefully if absent) -- deliberately NOT declared in
