@@ -40,7 +40,12 @@ class TestInvoker
     timestamp_s = SystemWrapper.time_stopwatch_s()
     @plugin_manager.pre_test_build( context, timestamp_s )
 
-    @dependinator.open
+    # `identifier: context` isolates this run's own cache file (see Dependinator#open) --
+    # a plugin building its own variant of the test pipeline under a distinct context
+    # (:gcov, :valgrind, ...) gets its own cache automatically, never sharing one with
+    # ordinary :test runs (or another plugin's context) and never exposed to a full
+    # :test run's own pruning flush evicting its entries.
+    @dependinator.open( identifier: context )
 
     @state = PipelineState.new(
       tests:            tests,
