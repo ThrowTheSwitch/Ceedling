@@ -183,7 +183,11 @@ class DependencyTracker
     key = @dependency_path_normalizer.normalize( target )
     rel = @mutex.synchronize { @relationships[key] } || { files: [], meta: {} }
 
-    self_hash = @dependency_hasher.hash_of_file( key )
+    # A target isn't guaranteed to exist -- e.g. a caller conditionally writes one of two
+    # mutually exclusive outcome files -- so this mirrors `stale?`'s own existence check
+    # before ever hashing the target, and the `deps` loop three lines below, which already
+    # extends the same tolerance to each individual dependency.
+    self_hash = @file_wrapper.exist?( key ) ? @dependency_hasher.hash_of_file( key ) : nil
     entry = {
       'self_hash' => self_hash,
       'meta_hash' => @dependency_hasher.hash_of_meta( rel[:meta] ),

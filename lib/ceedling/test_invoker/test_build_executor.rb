@@ -476,6 +476,15 @@ class TestBuildExecutor
   # This target is registered separately from stage 16's own executable target
   # (not reusing it) so a tool-only change reruns the fixture without also
   # marking the executable itself stale and forcing an unnecessary relink.
+  #
+  # The target itself is a dedicated marker file, not either outcome-dependent
+  # results file (.pass/.fail) -- which of those two actually gets written
+  # depends on whether the test passes, so neither is guaranteed to exist after
+  # every run, and a target `mark_fresh` can't hash is a crash on a failing
+  # test, while a target `stale?` can't find is permanent, unwanted staleness
+  # for a test that keeps failing the same way. The marker's own content is
+  # irrelevant and never changes -- only its existence (written after every
+  # real run, pass or fail alike) and the registered files/meta drive staleness.
   def stage_execute(state)
     skipped = 0
     force_rerun = @configurator.force_test_rerun || @configurator.unity_shuffle_tests
@@ -494,7 +503,12 @@ class TestBuildExecutor
 
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
-        fixture_target = testable.results_pass
+        # `paths[:results]` is only per-test-unique for a test mirrored into its own
+        # subdirectory -- a test with no mirrored subdir shares that directory with
+        # every other such test, so the marker's own filename (not just its directory)
+        # must be test-specific too, matching clean_test_results' own `test + '.*'`
+        # naming below.
+        fixture_target = File.join( testable.paths[:results], "#{File.basename( testable.name )}.fixture_run" )
 
         @dependinator.register( fixture_target, files: [testable.executable], meta: { tools: [fixture_tool] } )
 
@@ -527,7 +541,10 @@ class TestBuildExecutor
 
         run_fixture( **arg_hash )
 
-        @dependinator.mark_fresh( fixture_target ) if run_now
+        if run_now
+          @file_wrapper.touch( fixture_target )
+          @dependinator.mark_fresh( fixture_target )
+        end
 
       ensure
         @plugin_manager.post_test( testable.filepath )

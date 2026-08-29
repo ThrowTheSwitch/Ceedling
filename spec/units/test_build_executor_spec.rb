@@ -395,6 +395,7 @@ describe TestBuildExecutor do
       # (the tool-config trigger) defaults to fresh here -- see the dedicated
       # "tool configuration changed" examples below for that case on its own.
       allow(@dependinator).to receive(:stale?).and_return( false )
+      allow(@file_wrapper).to receive(:touch)
 
       @testable = TestInvokerTypes::Testable.new(
         :name         => 'a_test',
@@ -404,6 +405,7 @@ describe TestBuildExecutor do
         :paths        => { :results => 'build/test/results' }
       )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
+      @fixture_target = 'build/test/results/a_test.fixture_run'
     end
 
     it "runs the test fixture when stage 16 rebuilt the executable, first clearing any stale prior result" do
@@ -495,12 +497,12 @@ describe TestBuildExecutor do
       @executor.stage_execute( @state )
     end
 
-    it "registers a target separate from the executable, with the executable as antecedent and the test fixture tool as meta" do
+    it "registers a dedicated marker target separate from the executable, with the executable as antecedent and the test fixture tool as meta" do
       @testable.executable_rebuilt = false
       allow(@generator).to receive(:generate_test_results)
 
       expect(@dependinator).to receive(:register).with(
-        'build/a_test.pass',
+        @fixture_target,
         files: ['build/a_test.out'],
         meta:  { tools: [@tools_test_fixture] }
       )
@@ -510,12 +512,27 @@ describe TestBuildExecutor do
 
     it "reruns the test fixture when only the :tools ↳ :test_fixture configuration changed, even though the executable is unchanged" do
       @testable.executable_rebuilt = false
-      allow(@dependinator).to receive(:stale?).with('build/a_test.pass').and_return( true )
+      allow(@dependinator).to receive(:stale?).with(@fixture_target).and_return( true )
       allow(@file_wrapper).to receive(:rm_f)
 
       expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
       expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: false ) )
-      expect(@dependinator).to receive(:mark_fresh).with('build/a_test.pass')
+      expect(@dependinator).to receive(:mark_fresh).with(@fixture_target)
+
+      @executor.stage_execute( @state )
+    end
+
+    # The whole reason this target is a dedicated marker file rather than the test's own
+    # outcome-dependent .pass/.fail result file: a failing test never writes the .pass
+    # path, and DependencyTracker#mark_fresh would otherwise crash trying to hash a target
+    # that doesn't exist -- exactly the CI failure this scenario guards against regressing.
+    it "marks the marker target fresh after a real run even when the test itself fails" do
+      @testable.executable_rebuilt = true
+      allow(@file_wrapper).to receive(:rm_f)
+      allow(@generator).to receive(:generate_test_results).and_return( { results: { counts: { failed: 1 } } } )
+
+      expect(@file_wrapper).to receive(:touch).with(@fixture_target)
+      expect(@dependinator).to receive(:mark_fresh).with(@fixture_target)
 
       @executor.stage_execute( @state )
     end

@@ -334,6 +334,27 @@ describe DependencyTracker do
       expect( @tracker.stale?('foo.o') ).to be(true)
     end
 
+    # A target itself is not guaranteed to exist -- a caller may legitimately mark_fresh
+    # something conditionally written (e.g. one of two mutually-exclusive outcome files).
+    # `stale?` and `diagnose` already both check existence before ever hashing the target;
+    # `mark_fresh` extends the same tolerance here, mirroring its own `deps` loop three
+    # lines below, which already skips hashing a dependency that doesn't currently exist.
+    it 'does not raise when the target itself does not exist on disk' do
+      @tracker.register( 'missing.o', files: [] )
+
+      expect { @tracker.mark_fresh('missing.o') }.not_to raise_error
+    end
+
+    it 'reports a target marked fresh while missing as stale once it appears, even with nothing else changed' do
+      @tracker.register( 'missing.o', files: [] )
+      @tracker.mark_fresh( 'missing.o' )
+
+      stub_file( 'missing.o', 'now exists' )
+      @tracker.register( 'missing.o', files: [] )
+
+      expect( @tracker.stale?('missing.o') ).to be(true)
+    end
+
     # These write/read a real (mocked-FileWrapper-backed) DependencyDebugTree
     # snapshot rather than anything embedded in the JSON cache -- Tier 2's
     # capture moved out of the cache entries entirely. A small in-memory

@@ -367,6 +367,66 @@ ceedling_system_tests do
     end
   end
 
+  # Every other scenario in this file uses a project whose tests all pass -- stage
+  # 17's own fixture-tool tracking (see the config-only meta changes above) targets
+  # a dedicated marker file specifically because the test's outcome-dependent result
+  # file (.pass on success, .fail on failure) is not guaranteed to exist either way,
+  # and a persistently *failing* test is exactly the case that would have exposed a
+  # target keyed on the wrong one of those two -- crashing outright if marked fresh
+  # while genuinely missing, or reporting permanent, incorrect staleness if `stale?`
+  # checked for a path that only exists on the *other* outcome.
+  describe "Delta builds: repeated builds of a persistently failing test" do
+    before { @proj_name = unique_proj_name("delta_fail") }
+
+    def deploy_failing_test!
+      @c.ceedling_appcmd_exec("new #{@proj_name}")
+
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file.c"), 'test/'
+      end
+    end
+
+    it "does not crash, and correctly skips recompiling/relinking/rerunning, on a rebuild of a failing test left unchanged" do
+      @c.with_context do
+        deploy_failing_test!
+
+        Dir.chdir @proj_name do
+          baseline = @c.ceedling_build_exec("test:all")
+          expect(baseline).to_not match(/EXCEPTION/)
+          expect(baseline).to match(/FAILED:\s+[1-9]/)
+
+          rebuild = @c.ceedling_build_exec("test:all")
+          expect(rebuild).to_not match(/EXCEPTION/)
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to_not match(/^Linking /)
+          expect(rebuild).to_not match(/^Running /)
+          expect(rebuild).to match(/FAILED:\s+[1-9]/)
+        end
+      end
+    end
+
+    it "reruns a persistently failing test's fixture when :tools ↳ :test_fixture configuration changes, with nothing else changed" do
+      @c.with_context do
+        deploy_failing_test!
+
+        Dir.chdir @proj_name do
+          @c.ceedling_build_exec("test:all")
+
+          @c.merge_project_yml_for_test({ :tools => { :test_fixture => { :ceedling_delta_probe => true } } })
+
+          rebuild = @c.ceedling_build_exec("test:all")
+          expect(rebuild).to_not match(/EXCEPTION/)
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to_not match(/^Linking /)
+          expect(rebuild).to match(/^Running /)
+          expect(rebuild).to match(/FAILED:\s+[1-9]/)
+        end
+      end
+    end
+  end
+
   # :unity ↳ :shuffle_tests decides test-case execution order at runtime, inside
   # the compiled executable's own main() -- not at compile or link time. So an
   # executable delta builds correctly judge unchanged (same source, same flags,
