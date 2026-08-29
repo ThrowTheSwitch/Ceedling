@@ -109,8 +109,8 @@ class PluginManager
   # plugin swapping in its own tool for a build context (Gcov, Valgrind, Bullseye)
   # implements these so that swap is what dependency-tracker meta reflects, not the
   # plain tool it's about to replace.
-  def pre_compile_register(arg_hash); execute_plugins(:pre_compile_register, arg_hash); end
-  def pre_link_register(arg_hash); execute_plugins(:pre_link_register, arg_hash); end
+  def pre_test_compile_register(arg_hash); execute_plugins(:pre_test_compile_register, arg_hash); end
+  def pre_test_link_register(arg_hash); execute_plugins(:pre_test_link_register, arg_hash); end
   def pre_test_fixture_register(arg_hash); execute_plugins(:pre_test_fixture_register, arg_hash); end
 
   def pre_compile_execute(arg_hash); execute_plugins(:pre_compile_execute, arg_hash); end

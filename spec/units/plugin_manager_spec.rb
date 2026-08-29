@@ -50,7 +50,7 @@ describe PluginManager do
   # TestBuildExecutor's resolve_compile_tool/resolve_link_tool/resolve_fixture_tool) --
   # distinct from and additional to the existing pre_compile_execute/pre_link_execute/
   # pre_test_fixture_execute hooks, which only fire for a target actually rebuilt.
-  describe 'pre_compile_register / pre_link_register / pre_test_fixture_register' do
+  describe 'pre_test_compile_register / pre_test_link_register / pre_test_fixture_register' do
     before(:each) do
       allow(@loginator).to receive(:lazy)
     end
@@ -63,20 +63,20 @@ describe PluginManager do
       plugin
     end
 
-    it 'dispatches pre_compile_register to a plugin implementing it, with the given arg_hash' do
-      plugin = stub_plugin_implementing(:pre_compile_register)
+    it 'dispatches pre_test_compile_register to a plugin implementing it, with the given arg_hash' do
+      plugin = stub_plugin_implementing(:pre_test_compile_register)
       arg_hash = { tool: 'fake tool' }
 
-      expect(plugin).to receive(:pre_compile_register).with(arg_hash)
-      @pm.pre_compile_register(arg_hash)
+      expect(plugin).to receive(:pre_test_compile_register).with(arg_hash)
+      @pm.pre_test_compile_register(arg_hash)
     end
 
-    it 'dispatches pre_link_register to a plugin implementing it, with the given arg_hash' do
-      plugin = stub_plugin_implementing(:pre_link_register)
+    it 'dispatches pre_test_link_register to a plugin implementing it, with the given arg_hash' do
+      plugin = stub_plugin_implementing(:pre_test_link_register)
       arg_hash = { tool: 'fake tool' }
 
-      expect(plugin).to receive(:pre_link_register).with(arg_hash)
-      @pm.pre_link_register(arg_hash)
+      expect(plugin).to receive(:pre_test_link_register).with(arg_hash)
+      @pm.pre_test_link_register(arg_hash)
     end
 
     it 'dispatches pre_test_fixture_register to a plugin implementing it, with the given arg_hash' do
@@ -88,8 +88,8 @@ describe PluginManager do
     end
 
     it 'is a harmless no-op for any of the three when no plugin implements it' do
-      expect { @pm.pre_compile_register({}) }.to_not raise_error
-      expect { @pm.pre_link_register({}) }.to_not raise_error
+      expect { @pm.pre_test_compile_register({}) }.to_not raise_error
+      expect { @pm.pre_test_link_register({}) }.to_not raise_error
       expect { @pm.pre_test_fixture_register({}) }.to_not raise_error
     end
   end

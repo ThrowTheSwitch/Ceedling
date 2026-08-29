@@ -151,7 +151,7 @@ class Gcov < Plugin
         search_paths = @configurator.collection_paths_include
         defines      = @defineinator.defines( subkey:GCOV_SYM )
 
-        # Same MC/DC condition pre_compile_register applies for ordinary test-context
+        # Same MC/DC condition pre_test_compile_register applies for ordinary test-context
         # compiles -- this path calls Generator directly, bypassing TestBuildExecutor
         # (and therefore that hook) entirely, so it has to apply the flag itself.
         flags = @flaginator.flag_down( context:GCOV_SYM, operation:OPERATION_COMPILE_SYM )
@@ -161,7 +161,7 @@ class Gcov < Plugin
         # compilation uses -- this compile happens entirely outside that pipeline
         # (untested sources have no test of their own to drive them through it), so
         # nothing else registers it. :gcov meta is the whole section, same
-        # belt-and-suspenders reasoning as pre_compile_register above.
+        # belt-and-suspenders reasoning as pre_test_compile_register above.
         @dependinator.register(
           object, files: [filepath],
           meta: { flags: flags, defines: defines, search_paths: search_paths, tools: [TOOLS_GCOV_COMPILER], gcov: @gcov_config }
@@ -229,7 +229,7 @@ class Gcov < Plugin
   # is what actually invalidates a gcov-context object's cache -- not the plain test
   # compiler this replaces. Compile all non-assembly files with coverage; gcovr
   # --exclude filters non-production files from reports.
-  def pre_compile_register(arg_hash)
+  def pre_test_compile_register(arg_hash)
     return unless arg_hash[:context] == GCOV_SYM
     return if EXTENSION_ASSEMBLY.match?(arg_hash[:source])
 
@@ -255,18 +255,18 @@ class Gcov < Plugin
     )
   end
 
-  # As pre_compile_register above, for the coverage-instrumented linker. Fires every
+  # As pre_test_compile_register above, for the coverage-instrumented linker. Fires every
   # run regardless of whether this executable actually needs relinking, which is also
   # what lets post_build's summary print correctly even on a fully-cached gcov:all
   # re-run -- @cli_gcov_task marks that a gcov: task ran at all, not that a link did.
-  def pre_link_register(arg_hash)
+  def pre_test_link_register(arg_hash)
     return unless arg_hash[:context] == GCOV_SYM
 
     @cli_gcov_task = true
     arg_hash[:tool] = TOOLS_GCOV_LINKER
     arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
 
-    # See pre_compile_register above -- same belt-and-suspenders reasoning, same
+    # See pre_test_compile_register above -- same belt-and-suspenders reasoning, same
     # additive merge with TestBuildExecutor's own register call for this target.
     @dependinator.register( arg_hash[:executable], meta: { gcov: @gcov_config } )
   end

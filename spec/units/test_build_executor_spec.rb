@@ -73,8 +73,8 @@ describe TestBuildExecutor do
     allow(@file_wrapper).to receive(:exist?).and_return( false )
     # Default: no plugin implements the new pre-*-register hooks -- each is a
     # no-op that leaves the arg_hash it's handed untouched.
-    allow(@plugin_manager).to receive(:pre_compile_register)
-    allow(@plugin_manager).to receive(:pre_link_register)
+    allow(@plugin_manager).to receive(:pre_test_compile_register)
+    allow(@plugin_manager).to receive(:pre_test_link_register)
     allow(@plugin_manager).to receive(:pre_test_fixture_register)
 
     allow(@dependinator).to receive(:register)
@@ -196,12 +196,12 @@ describe TestBuildExecutor do
       )
     end
 
-    it "resolves the compile tool/flags/defines through pre_compile_register before registering staleness meta, and uses the resolved values for the real compile" do
+    it "resolves the compile tool/flags/defines through pre_test_compile_register before registering staleness meta, and uses the resolved values for the real compile" do
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
       allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
 
       swapped_tool = { name: 'fake gcov compiler' }
-      allow(@plugin_manager).to receive(:pre_compile_register) do |arg_hash|
+      allow(@plugin_manager).to receive(:pre_test_compile_register) do |arg_hash|
         arg_hash[:tool]    = swapped_tool
         arg_hash[:flags]   += ['-fcondition-coverage']
         arg_hash[:defines] += ['CODE_COVERAGE']
@@ -324,11 +324,11 @@ describe TestBuildExecutor do
       expect( @testable.executable_rebuilt ).to be(false)
     end
 
-    it "resolves the link tool/flags through pre_link_register before registering staleness meta, and uses the resolved values for the real link" do
+    it "resolves the link tool/flags through pre_test_link_register before registering staleness meta, and uses the resolved values for the real link" do
       allow(@dependinator).to receive(:stale?).and_return( true )
 
       swapped_tool = { name: 'fake bullseye linker' }
-      allow(@plugin_manager).to receive(:pre_link_register) do |arg_hash|
+      allow(@plugin_manager).to receive(:pre_test_link_register) do |arg_hash|
         arg_hash[:tool] = swapped_tool
       end
 

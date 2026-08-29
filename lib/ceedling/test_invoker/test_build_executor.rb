@@ -738,7 +738,7 @@ class TestBuildExecutor
 
   # Lets a plugin swap in its own compiler tool (and adjust flags/defines) for a
   # particular build context -- e.g. Gcov/Bullseye's instrumented compilers -- via
-  # pre_compile_register, *before* dependency-tracker meta is computed below, so a
+  # pre_test_compile_register, *before* dependency-tracker meta is computed below, so a
   # plugin's own tool config is what actually drives that target's staleness rather
   # than the plain test compiler it's about to be swapped out for. The resolved
   # values are also what the real compile itself uses (see the two call sites
@@ -748,15 +748,15 @@ class TestBuildExecutor
       context: context, operation: operation, tool: tool, flags: flags, defines: defines,
       module_name: module_name, source: source, object: object
     }
-    @plugin_manager.pre_compile_register( arg_hash )
+    @plugin_manager.pre_test_compile_register( arg_hash )
     return arg_hash[:tool], arg_hash[:flags], arg_hash[:defines]
   end
 
-  # As resolve_compile_tool above, for the link step's own tool swap (pre_link_register),
+  # As resolve_compile_tool above, for the link step's own tool swap (pre_test_link_register),
   # e.g. Gcov/Bullseye's instrumented linkers.
   def resolve_link_tool(context:, tool:, flags:, executable:)
     arg_hash = { context: context, tool: tool, flags: flags, executable: executable }
-    @plugin_manager.pre_link_register( arg_hash )
+    @plugin_manager.pre_test_link_register( arg_hash )
     return arg_hash[:tool], arg_hash[:flags]
   end
 

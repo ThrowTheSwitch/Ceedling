@@ -250,7 +250,7 @@ the matching `pre_*_execute` hook below, makes sure Ceedling's delta build
 check sees the real tool. Otherwise a change to that tool's own settings
 will not force a rebuild.
 
-## `Plugin` hook method `pre_compile_register(arg_hash)`
+## `Plugin` hook method `pre_test_compile_register(arg_hash)`
 
 Test builds only, not release builds. Runs once per C file in a test build.
 Runs before Ceedling registers the file as a delta build target.
@@ -308,7 +308,7 @@ arg_hash = {
 }
 ```
 
-## `Plugin` hook method `pre_link_register(arg_hash)`
+## `Plugin` hook method `pre_test_link_register(arg_hash)`
 
 Test builds only, not release builds. Runs once per test executable in a
 test build. Runs before Ceedling registers the executable as a delta build
@@ -316,7 +316,7 @@ target. See [Delta build hooks](#delta-build-hooks) above for why this hook
 exists and when it runs.
 
 A plugin swapping in its own linker tool for its own build context should
-do so here, for the same reason described under `pre_compile_register`
+do so here, for the same reason described under `pre_test_compile_register`
 above. Because this hook always runs, it also gives a plugin a reliable
 place to note that its own build context ran at all, apart from whether
 anything actually needed relinking.
@@ -376,7 +376,7 @@ for why this hook exists and when it runs.
 
 A plugin swapping in its own wrapper tool to run the test executable (as
 Valgrind does) should do so here, for the same reason described under
-`pre_compile_register` above. Otherwise a change to that wrapper tool's own
+`pre_test_compile_register` above. Otherwise a change to that wrapper tool's own
 settings will not force a rerun.
 
 The argument `arg_hash` follows the structure below:

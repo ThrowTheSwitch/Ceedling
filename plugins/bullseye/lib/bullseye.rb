@@ -65,7 +65,7 @@ class Bullseye < Plugin
   # compiler this replaces. Instrument every non-assembly file uniformly; report-time
   # exclusions (covselect) filter framework/test noise rather than skipping
   # instrumentation at compile time.
-  def pre_compile_register(arg_hash)
+  def pre_test_compile_register(arg_hash)
     return if (arg_hash[:context] != BULLSEYE_SYM)
     return if EXTENSION_ASSEMBLY.match?(arg_hash[:source])
 
@@ -84,12 +84,12 @@ class Bullseye < Plugin
     )
   end
 
-  # As pre_compile_register above, for the covlink-wrapped linker. Fires every run
+  # As pre_test_compile_register above, for the covlink-wrapped linker. Fires every run
   # regardless of whether this executable actually needs relinking, which is also what
   # lets post_build's summary print correctly even on a fully-cached bullseye:all
   # re-run -- @cli_bullseye_task marks that a bullseye: task ran at all, not that a
   # link did.
-  def pre_link_register(arg_hash)
+  def pre_test_link_register(arg_hash)
     return if (arg_hash[:context] != BULLSEYE_SYM)
 
     @cli_bullseye_task = true
