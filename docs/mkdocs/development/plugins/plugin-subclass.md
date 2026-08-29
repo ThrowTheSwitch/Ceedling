@@ -237,17 +237,23 @@ arg_hash = {
 }
 ```
 
+## Delta build hooks
+
+Ceedling skips work when nothing has changed. This is called a delta build.
+See [Delta Builds](../../getting-started/builds.md) for the full picture.
+
+Three hook methods run before Ceedling checks delta build state for a
+target. Each one always runs, for every target, whether or not that target
+turns out to need rebuilding. A plugin uses one of these hooks to swap in
+its own tool for its own build context. Doing the swap here, not only in
+the matching `pre_*_execute` hook below, makes sure Ceedling's delta build
+check sees the real tool. Otherwise a change to that tool's own settings
+will not force a rebuild.
+
 ## `Plugin` hook method `pre_compile_register(arg_hash)`
 
-Test builds only (not release builds). Called once per C file in a test build,
-*before* Ceedling's own delta-build dependency tracking registers that file's
-build target and checks whether it needs recompiling — unlike
-`pre_compile_execute` below, this fires every time, whether or not the object
-actually ends up stale. A plugin swapping in its own compiler tool for its own
-build context (as GCov and Bullseye do for coverage instrumentation) should do
-so here, not only in `pre_compile_execute`, so that swap is what Ceedling's
-own staleness check is based on — otherwise editing that tool's own
-configuration won't invalidate the plugin's cached build targets.
+Test builds only, not release builds. Runs once per C file in a test build.
+Runs before Ceedling registers the file as a delta build target.
 
 The argument `arg_hash` follows the structure below:
 
@@ -304,15 +310,16 @@ arg_hash = {
 
 ## `Plugin` hook method `pre_link_register(arg_hash)`
 
-Test builds only (not release builds). Called once per test executable,
-*before* Ceedling's own delta-build dependency tracking registers that
-executable's build target and checks whether it needs relinking — unlike
-`pre_link_execute` below, this fires every time, regardless of staleness. A
-plugin swapping in its own linker tool for its own build context should do so
-here, for the same reason described under `pre_compile_register` above.
-Firing unconditionally also makes this a reliable place for a plugin to note
-that its own build context ran at all, independent of whether anything
-actually needed relinking.
+Test builds only, not release builds. Runs once per test executable in a
+test build. Runs before Ceedling registers the executable as a delta build
+target. See [Delta build hooks](#delta-build-hooks) above for why this hook
+exists and when it runs.
+
+A plugin swapping in its own linker tool for its own build context should
+do so here, for the same reason described under `pre_compile_register`
+above. Because this hook always runs, it also gives a plugin a reliable
+place to note that its own build context ran at all, apart from whether
+anything actually needed relinking.
 
 The argument `arg_hash` follows the structure below:
 
@@ -363,13 +370,14 @@ arg_hash = {
 
 ## `Plugin` hook method `pre_test_fixture_register(arg_hash)`
 
-Called once per test executable, *before* Ceedling's own delta-build
-dependency tracking registers that test's fixture-run target and checks
-whether the executable needs (re)running — unlike `pre_test_fixture_execute`
-below, this fires every time, regardless of staleness. A plugin swapping in
-its own wrapper tool to run the test executable (as Valgrind does) should do
-so here, for the same reason described under `pre_compile_register` above:
-otherwise editing that wrapper tool's own configuration won't force a rerun.
+Runs once per test executable. Runs before Ceedling registers the test run
+as a delta build target. See [Delta build hooks](#delta-build-hooks) above
+for why this hook exists and when it runs.
+
+A plugin swapping in its own wrapper tool to run the test executable (as
+Valgrind does) should do so here, for the same reason described under
+`pre_compile_register` above. Otherwise a change to that wrapper tool's own
+settings will not force a rerun.
 
 The argument `arg_hash` follows the structure below:
 
@@ -379,7 +387,10 @@ arg_hash = {
     # Hash holding execution tool properties — see ':tools' in the Project Configuration Reference
   },
   :context => :<context>,
-  :test_name => "<name>"
+  :test_name => "<name>",
+  # The delta build target for this test run. A plugin can register its own
+  # additional data against this same target — see Delta Builds.
+  :target => "<filepath>"
 }
 ```
 
@@ -430,6 +441,11 @@ termination points, including early exit due to a build error.
 The argument `context` is the build context symbol (e.g. `:test`, `:gcov`) that
 was passed to `TestInvoker#setup_and_invoke`. This lets a plugin respond
 differently depending on which kind of build triggered the pipeline.
+
+Each context also gets its own separate delta build cache. A plugin that
+runs its own build under a distinct context symbol keeps that build's
+tracked state apart from ordinary test builds and from any other plugin's
+builds. See [Delta Builds](../../getting-started/builds.md) for more.
 
 The argument `timestamp_s` is a floating-point stopwatch value in seconds
 (from `SystemWrapper.time_stopwatch_s`). Compare the `pre_test_build` and

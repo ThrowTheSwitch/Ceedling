@@ -25,7 +25,7 @@ A delta build is simply a build run that only performs regeneration, compilation
 
 If a build requests a test to be built/run but no changes for it exist, its cached test results will be reported. The `--force-test-rerun` flag is available at the command line for any test-related tasks to force the delta build mechanism to rerun test executables and produce new test results.
 
-Delta builds are fully integrated with GCov, Valgrind, and Bullseye. Each runs its own build through the same test pipeline as an ordinary test build, under its own build context, so it gets the same content-hash-based staleness tracking — and its own isolated dependency cache, and correctly-tracked instrumented tool configuration.
+Delta builds are fully integrated with test build plugins (e.g. GCov, Valgrind). Each runs its own build through the same test pipeline as an ordinary test build, under its own build context, so it benefits from the same staleness tracking within its own isolated dependency cache
 
 ### `#include` relative paths & duplicate filename disambiguation
 Added support for properly distinguishing all C files by filepath (addressing [#1167](https://github.com/ThrowTheSwitch/Ceedling/issues) specifically but also the fundamental problem generally).

@@ -28,6 +28,14 @@ Resulting, example command line:
  > Hello World!
 ```
 
+## Running a test build from a Rake task
+
+A Rake task can trigger a full test build itself by calling
+`@ceedling[:test_invoker].setup_and_invoke`. Pass a context symbol unique to
+your plugin. Ceedling uses this context to distinguish build pipelines. It
+also keeps your build's delta build state separate from ordinary test builds.
+See [Delta Builds](../../getting-started/builds.md) for how this tracking works.
+
 ## Example Rake plugin layout
 
 Project configuration file:
