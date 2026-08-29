@@ -39,6 +39,9 @@ describe TestBuildSetup do
     allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
     allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
     allow(@configurator).to receive(:paths_test).and_return( [] )
+    allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return( { name: 'fake bare includes preprocessor' } )
+    allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( { name: 'fake directives-only preprocessor' } )
+    allow(@configurator).to receive(:test_build_preprocess_force_fallback).and_return( false )
     allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath).and_return( 'build/preprocess/raw/Foo.txt' )
     allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.c.yml' )
     allow(@file_path_utils).to receive(:form_test_build_directives_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/Foo.c.yml' )
@@ -391,6 +394,27 @@ describe TestBuildSetup do
 
       @setup.stage_collect_preprocessor_context( @state )
     end
+
+    it "registers the test file as the sole antecedent, with preprocess flags/defines/search paths and the directives-only preprocessor tool as meta" do
+      testable = @testable
+      testable.preprocess_flags   = ['-Wall']
+      testable.preprocess_defines = ['TEST']
+      testable.search_paths       = ['src']
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.txt' )
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/raw/Foo.txt',
+        files: ['test/TestFoo.c'],
+        meta:  {
+          flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'],
+          tools: [{ name: 'fake directives-only preprocessor' }],
+          preprocess_force_fallback: false
+        }
+      )
+
+      @setup.stage_collect_preprocessor_context( @state )
+    end
   end
 
   context "#stage_collect_preprocessor_context (bare-includes pass)" do
@@ -441,7 +465,7 @@ describe TestBuildSetup do
       @setup.stage_collect_preprocessor_context( @state )
     end
 
-    it "registers the test file as the sole antecedent, with preprocess flags/defines/search paths as meta" do
+    it "registers the test file as the sole antecedent, with preprocess flags/defines/search paths and the bare-includes preprocessor tool as meta" do
       testable = @testable
       testable.preprocess_flags   = ['-Wall']
       testable.preprocess_defines = ['TEST']
@@ -450,7 +474,11 @@ describe TestBuildSetup do
       expect(@dependinator).to receive(:register).with(
         'build/preprocess/includes/Foo.c.yml',
         files: ['test/TestFoo.c'],
-        meta:  { flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'] }
+        meta:  {
+          flags: ['-Wall'], defines: ['TEST'], search_paths: ['src'],
+          tools: [{ name: 'fake bare includes preprocessor' }],
+          preprocess_force_fallback: false
+        }
       )
 
       @setup.stage_collect_preprocessor_context( @state )

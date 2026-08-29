@@ -54,10 +54,12 @@ class TestBuildExecutor
         target,
         files: [details.source],
         meta:  {
-          flags:        testable.preprocess_flags,
-          defines:      testable.preprocess_defines,
-          search_paths: testable.search_paths,
-          extras:       extras
+          flags:                     testable.preprocess_flags,
+          defines:                   testable.preprocess_defines,
+          search_paths:              testable.search_paths,
+          extras:                    extras,
+          tools:                     [@configurator.tools_test_bare_includes_preprocessor, @configurator.tools_test_file_directives_only_preprocessor],
+          preprocess_force_fallback: @configurator.test_build_preprocess_force_fallback
         }
       )
 
@@ -418,7 +420,7 @@ class TestBuildExecutor
       @dependinator.register(
         testable.executable,
         files: testable.objects,
-        meta:  { flags: testable.link_flags, lib_args: lib_args, lib_paths: lib_paths }
+        meta:  { flags: testable.link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [@configurator.tools_test_linker] }
       )
       stale = @dependinator.stale?( testable.executable )
 
@@ -467,9 +469,26 @@ class TestBuildExecutor
   # (Unity's generated `main()` reshuffles on every invocation), not at compile
   # or link time, so an executable that's otherwise unchanged still needs to
   # actually run again for shuffling to have any effect at all.
+  #
+  # The dependency tracker gives a third reason to rerun, alongside those two:
+  # `testable.executable` unchanged says nothing about whether the *tool* that
+  # actually runs it -- :tools ↳ :test_fixture -- changed since the last run.
+  # This target is registered separately from stage 16's own executable target
+  # (not reusing it) so a tool-only change reruns the fixture without also
+  # marking the executable itself stale and forcing an unnecessary relink.
+  #
+  # The target itself is a dedicated marker file, not either outcome-dependent
+  # results file (.pass/.fail) -- which of those two actually gets written
+  # depends on whether the test passes, so neither is guaranteed to exist after
+  # every run, and a target `mark_fresh` can't hash is a crash on a failing
+  # test, while a target `stale?` can't find is permanent, unwanted staleness
+  # for a test that keeps failing the same way. The marker's own content is
+  # irrelevant and never changes -- only its existence (written after every
+  # real run, pass or fail alike) and the registered files/meta drive staleness.
   def stage_execute(state)
     skipped = 0
     force_rerun = @configurator.force_test_rerun || @configurator.unity_shuffle_tests
+    fixture_tool = @configurator.tools_test_fixture
 
     overridden = state.testables.values.count { |t| !t.executable_rebuilt }
 
@@ -484,7 +503,16 @@ class TestBuildExecutor
 
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
-        run_now = testable.executable_rebuilt || force_rerun
+        # `paths[:results]` is only per-test-unique for a test mirrored into its own
+        # subdirectory -- a test with no mirrored subdir shares that directory with
+        # every other such test, so the marker's own filename (not just its directory)
+        # must be test-specific too, matching clean_test_results' own `test + '.*'`
+        # naming below.
+        fixture_target = File.join( testable.paths[:results], "#{File.basename( testable.name )}.fixture_run" )
+
+        @dependinator.register( fixture_target, files: [testable.executable], meta: { tools: [fixture_tool] } )
+
+        run_now = testable.executable_rebuilt || force_rerun || @dependinator.stale?( fixture_target )
 
         # Clear out any stale prior result (e.g. a lingering `.fail` from a test
         # that now passes) immediately before an actual (re)run -- not upfront
@@ -512,6 +540,11 @@ class TestBuildExecutor
         }
 
         run_fixture( **arg_hash )
+
+        if run_now
+          @file_wrapper.touch( fixture_target )
+          @dependinator.mark_fresh( fixture_target )
+        end
 
       ensure
         @plugin_manager.post_test( testable.filepath )
@@ -616,7 +649,7 @@ class TestBuildExecutor
 
     if !@configurator.extension_assembly.match?( source )
       flags = testable.compile_flags
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: @configurator.tools_test_compiler )
 
       return log_compile_skip( test: test, source: source ) unless stale
 
@@ -644,7 +677,7 @@ class TestBuildExecutor
 
     elsif @configurator.test_build_use_assembly
       flags = testable.assembler_flags
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: @configurator.tools_test_assembler )
 
       return log_compile_skip( test: test, source: source ) unless stale
 
@@ -694,8 +727,8 @@ class TestBuildExecutor
   # and reports whether it needs (re)building. The previous run's `.d` file is
   # the only header list available before this run's compile has happened --
   # if headers changed, that's exactly what makes this stale.
-  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:)
-    @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths ) )
+  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:)
+    @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths, tools: [tool] ) )
     @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.stale?( object )
   end

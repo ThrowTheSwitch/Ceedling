@@ -124,6 +124,9 @@ class Setupinator
     # Populate CMock configuration with values to tie vendor tool configurations together
     @configurator.populate_cmock_config( config_hash )
 
+    # Populate Partials configuration reference for dependency-tracker meta
+    @configurator.populate_partials_config( config_hash )
+
     # Configure test runner generation
     @configurator.populate_test_runner_generation_config( config_hash )
 

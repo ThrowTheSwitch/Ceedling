@@ -285,4 +285,30 @@ describe Configurator do
 
   end
 
+  describe "#populate_partials_config / #get_partials_config" do
+
+    it "returns the :partials section handed to populate_partials_config" do
+      config = { partials: { max_extraction_length: 5000 } }
+
+      @configurator.populate_partials_config( config )
+
+      expect( @configurator.get_partials_config ).to eq( { max_extraction_length: 5000 } )
+    end
+
+    it "returns a clone, not the same object populate_partials_config was given -- callers may mutate their own copy freely" do
+      config = { partials: { max_extraction_length: 5000 } }
+      @configurator.populate_partials_config( config )
+
+      returned = @configurator.get_partials_config
+      returned[:max_extraction_length] = 1
+
+      expect( @configurator.get_partials_config[:max_extraction_length] ).to eq( 5000 )
+    end
+
+    it "defaults to an empty hash before populate_partials_config has ever run" do
+      expect( @configurator.get_partials_config ).to eq( {} )
+    end
+
+  end
+
 end

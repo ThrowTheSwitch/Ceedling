@@ -151,6 +151,16 @@ describe ReleaseBuildExecutor do
       @executor.compile_objects( @state )
     end
 
+    it "registers the configured compiler tool as meta for a C source, and the configured assembler tool for an assembly source" do
+      allow(@file_finder).to receive(:find_build_input_file).with( filepath: 'build/release/out/foo.o', context: RELEASE_SYM ).and_return( 'src/foo.c' )
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@generator).to receive(:generate_object_file_c)
+
+      expect(@dependinator).to receive(:register).with( 'build/release/out/foo.o', files: ['src/foo.c'], meta: hash_including( tools: [@tools_release_compiler] ) )
+      @state.objects = ['build/release/out/foo.o']
+      @executor.compile_objects( @state )
+    end
+
     it "registers the object's source before checking staleness, and its freshly-written gcc deps file after a real compile" do
       allow(@file_finder).to receive(:find_build_input_file).and_return( 'src/foo.c' )
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
@@ -286,7 +296,7 @@ describe ReleaseBuildExecutor do
       expect(@dependinator).to receive(:register).with(
         'build/release/out/project.out',
         files: ['build/release/out/foo.o'],
-        meta:  { flags: ['-Wall'], lib_args: ['-lm'], lib_paths: ['-Lvendor/lib'] }
+        meta:  { flags: ['-Wall'], lib_args: ['-lm'], lib_paths: ['-Lvendor/lib'], tools: [@tools_release_linker] }
       )
 
       @executor.link( @state )
