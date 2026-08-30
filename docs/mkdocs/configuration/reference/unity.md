@@ -48,10 +48,10 @@ See Unity documentation for more on parameterized test cases.
 
 ## `:shuffle_tests`
 
-Configures the Unity test runner to randomize the order in which test cases 
-run within a test executable. This is useful for surfacing bugs caused by 
-tests that depend on execution order or on state left behind by an earlier 
-test.
+Configures the Unity test runner to shuffle (randomize) the order in which 
+test cases run within a test executable. This is useful for surfacing bugs 
+caused by tests that depend on execution order or on state left behind by 
+an earlier test.
 
 The randomization seed can be pinned to a fixed value for reproducible
 ordering — see [`:test_runner` ↳ `:rng_seed`][test-runner-rng-seed].
