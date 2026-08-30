@@ -87,9 +87,7 @@ Ceedling 1.2.0 (prerelease) includes:
 
     ---
 
-    Ceedling’s delta builds only regenerate, compile, link, or run an
-    element of the build pipeline if a change in the dependency tree
-    requires it.
+    Expect fast builds triggered only by changes.
 
 </div>
 
