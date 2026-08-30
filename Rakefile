@@ -385,7 +385,7 @@ namespace :docs do
   end
 
   namespace :serve do
-    desc "Serve the prerelease documentation site locally on port 8000, for docs development"
+    desc "Serve the prerelease documentation site locally on port 8000"
     task :prerelease do
       venv_sh "mkdocs serve -f mkdocs.prerelease.yml"
     end
@@ -397,20 +397,20 @@ namespace :docs do
   end
 
   namespace :deploy do
-    desc "Deploy a prerelease documentation build to Github Pages (usage: rake docs:deploy:prerelease[1.2.0])"
+    desc "Deploy prerelease docs to Github Pages"
     task :prerelease, [:version] => [:snapshot] do |t, args|
       version = args[:version] || raise("Version required: rake docs:deploy:prerelease[#.#.#]")
       venv_sh "mike deploy --push --config-file mkdocs.prerelease.yml #{version}"
     end
 
-    desc "Deploy a release version to Github Pages, without changing 'latest' (usage: rake docs:deploy:release[1.1.0])"
+    desc "Deploy release docs to Github Pages without changing 'latest'"
     task :release, [:version] => [:snapshot] do |t, args|
       version = args[:version] || raise("Version required: rake docs:deploy:release[#.#.#]")
       venv_sh "mike deploy --push #{version}"
     end
 
     namespace :release do
-      desc "Deploy a release version to Github Pages and set it as 'latest' (usage: rake docs:deploy:release:latest[1.2.0])"
+      desc "Deploy release docs to Github Pages without and set it as 'latest'"
       task :latest, [:version] => [:snapshot] do |t, args|
         version = args[:version] || raise("Version required: rake docs:deploy:release:latest[#.#.#]")
         venv_sh "mike deploy --push #{version} latest"
