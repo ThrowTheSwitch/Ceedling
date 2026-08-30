@@ -77,11 +77,19 @@ Ceedling 1.2.0 (prerelease) includes:
 
     Installing Ceedling and its prerequisites.
 
--   :material-console: **[Ceedling’s Command Line.][command-line]**
+-   :material-console: **[Ceedling’s Command Line][command-line]**
 
     ---
 
     Now what? How do I make it _Go_?
+
+-   :material-playlist-check: **[Delta builds][delta-builds]**
+
+    ---
+
+    Ceedling’s delta builds only regenerate, compile, link, or run an
+    element of the build pipeline if a change in the dependency tree
+    requires it.
 
 </div>
 
@@ -201,6 +209,7 @@ Ceedling 1.2.0 (prerelease) includes:
 </div>
 
 [quick-start]:                 getting-started/quick-start.md
+[delta-builds]:                getting-started/builds.md
 [build-system]:                overview/build-system.md
 [tools-and-frameworks]:        overview/tools-and-frameworks.md
 [testing-abilities]:           overview/testing-abilities.md
