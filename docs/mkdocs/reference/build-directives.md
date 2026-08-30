@@ -29,6 +29,10 @@ a test build that has assembly support enabled.
 - The file must exist within Ceedling's source file collection
 - Multiple uses per test file are allowed, one per line
 
+A subtractive decorator `-:` prepending a filepath removes the C file
+from the test executable build. This can be useful in overriding certain
+Ceedling conventions.
+
 ## `TEST_INCLUDE_PATH("path")`
 
 Add a header search path to an individual test executable's compiler
