@@ -242,8 +242,12 @@ configuration is in `mkdocs.yml` while the local site bundle configuration is in
 | `rake docs:install` | Install Python documentation tooling |
 | `rake docs:build:local` | Build the site for local filesystem navigation in strict mode — fails on broken links or warnings |
 | `rake docs:build:web` | Build the site to be served in strict mode — fails on broken links or warnings |
+| `rake docs:build:prerelease` | Build the prerelease site in strict mode, for local validation |
 | `rake docs:serve` | Serve plain MkDocs site locally on port 8000 |
-| `rake docs:deploy` | Deploy `dev` version to local `gh-pages` branch (no remote push) |
+| `rake docs:serve:prerelease` | Serve the prerelease site locally on port 8000, for docs development |
+| `rake docs:deploy:prerelease[version]` | Deploy a prerelease build to Github Pages under `version` (usage: `rake docs:deploy:prerelease[1.2.0]`) |
+| `rake docs:deploy:release[version]` | Deploy a release build to Github Pages under `version`, without changing `latest` (usage: `rake docs:deploy:release[1.1.0]`) |
+| `rake docs:deploy:release:latest[version]` | Deploy a release build to Github Pages under `version` and set it as `latest` (usage: `rake docs:deploy:release:latest[1.2.0]`) |
 | `rake docs:preview` | Browse mike-versioned site locally on port 8000 |
 
 **Browser preview in VS Code:** When `mkdocs serve` or `mike serve` binds to 

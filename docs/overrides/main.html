@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{#
+  Material's own `outdated`/`announce` blocks (base.html) ship empty by
+  default -- both are opt-in via a project template override like this one.
+
+  `outdated`: the standard "you're not viewing the latest version" warning
+  banner. Material only renders its wrapping markup when this block actually
+  produces non-empty output, so suppressing it here for prerelease pages
+  (rather than just leaving the block's *content* blank) is what keeps the
+  banner from appearing at all on those pages.
+
+  `announce`: a separate announcement bar, used here to carry the prerelease
+  notice instead. `extra.prerelease` is set to `true` only in
+  mkdocs.prerelease.yml -- switching both blocks based on which mkdocs
+  config built the page.
+#}
+
+{% block outdated %}
+  {% if not config.extra.prerelease %}
+    You are not viewing the latest version.
+    <a href="{{ '../' ~ base_url }}">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  {% endif %}
+{% endblock %}
+
+{% block announce %}
+  {% if config.extra.prerelease %}
+    This is prerelease documentation for an upcoming Ceedling release.
+    Content may change before the official release.
+  {% endif %}
+{% endblock %}
