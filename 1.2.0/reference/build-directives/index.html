@@ -95,7 +95,6 @@
             
   
     This is prerelease documentation for an upcoming Ceedling release.
-    Content may change before the official release.
   
 
           </div>
@@ -4223,6 +4222,9 @@ a test build that has assembly support enabled.</p>
 <li>The file must exist within Ceedling's source file collection</li>
 <li>Multiple uses per test file are allowed, one per line</li>
 </ul>
+<p>A subtractive decorator <code>-:</code> prepending a filepath removes the C file
+from the test executable build. This can be useful in overriding certain
+Ceedling conventions.</p>
 <h2 id="test_include_pathpath"><code>TEST_INCLUDE_PATH("path")</code></h2>
 <p>Add a header search path to an individual test executable's compiler
 invocation. This supplements — it does not replace — the <code>:paths</code> ↳ <code>:include</code>
