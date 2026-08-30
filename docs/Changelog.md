@@ -16,10 +16,8 @@ Documentation is available within the repository markdown files and as a local H
 
 ## 🌟 Added
 
-- Optional randomized order for Unity test case runs within a test executable ([PR #1041]https://github.com/ThrowTheSwitch/Ceedling/pull/1041) via `:unity` ↳ `:shuffle_tests` ⇒ `TRUE`.
-
 ### Delta builds
-Delta builds have been restored after a temporary hiatus following a major refactoring for 1.0.0 ([Restore delta test builds to Ceedling 1.0.0+](https://github.com/ThrowTheSwitch/Ceedling/issues/1143)).
+[Delta builds](https://throwtheswitch.github.io/Ceedling/1.2.0/getting-started/builds/) have been restored after a temporary hiatus following a major refactoring for 1.0.0 ([Restore delta test builds to Ceedling 1.0.0+](https://github.com/ThrowTheSwitch/Ceedling/issues/1143)).
 
 A delta build is simply a build run that only performs regeneration, compilation, linking, or execution as needed because of changed files or configuration. Ceedling 1.0.0 introduced threaded parallel build steps but had to remove delta builds in the process. As of 1.2.0, both build speedups are now available. Delta builds are automatic with no configuration needed.
 
@@ -28,12 +26,12 @@ If a build requests a test to be built/run but no changes for it exist, its cach
 Delta builds are fully integrated with test build plugins (e.g. GCov, Valgrind). Each runs its own build through the same test pipeline as an ordinary test build, under its own build context, so it benefits from the same staleness tracking within its own isolated dependency cache
 
 ### `#include` relative paths & duplicate filename disambiguation
-Added support for properly distinguishing all C files by filepath (addressing [#1167](https://github.com/ThrowTheSwitch/Ceedling/issues) specifically but also the fundamental problem generally).
+Added support for properly [distinguishing all C files by filepath](https://throwtheswitch.github.io/Ceedling/1.2.0/testing-guide/conventions/#distinguishing-same-named-files) (addressing [#1167](https://github.com/ThrowTheSwitch/Ceedling/issues) specifically but also the fundamental problem generally).
 
 In Ceedling’s early history simplicity won out with the assumption that every C file would be uniquely named. But, for example, this meant _dir1/foo.h_ and _dir2/foo.h_ were indistiguishable and Ceedling “guessed” to disambiguate using the ordering of filepath collections. This worked, but there was no ability to use partial paths to explicitly select a specific file. Now Ceedling fully utilizes filepaths to distinguish all elements of a test build. Relative paths are supported in `#include` directives. `test:` build tasks at the command line can optionally include a filepath to distinguish test files of the same name. The previous convention still works where the ordering of paths is identical among compiler search paths and those used to find files for test builds, but now additional path information can be provided to target specific files in your source collection.
 
 ### Multiple file extensions per file type
-Added support for multiple [file extensions](https://throwtheswitch.github.io/Ceedling/latest/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
+Added support for multiple [file extensions](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
 
 ### Dedicated mocks and test runner generation build tasks
 Some users have asked for the ability to run the test build pipeline only up through generating mocks or test runners without running the rest of a build. This is now possible.
@@ -46,10 +44,10 @@ Tasks mirroring command line `test:` task invocation but with an early terminati
 Like with command line `test:` tasks, `<test>` can be `all`, a test file name, or a source file name that has a corresponding test file.
 
 ### Test case shuffling at runtime
-Ceedling now integrates Unity’s features for randomizing test case execution within a test executable (`:unity` ↳ `:shuffle_tests` ⇒ `TRUE`). If enabled, the behavior of delta builds automatically adjusts to always execute test executables even if no code changes have occurred. This ensures the randomization occurs when test executables would otherwise fail to run for lack of any code or configuration changes up the dependency tree.
+Ceedling now integrates Unity’s features for randomizing test case execution within a test executable ([PR #1041]https://github.com/ThrowTheSwitch/Ceedling/pull/1041) via [`:unity` ↳ `:shuffle_tests`](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/reference/unity/#shuffle_tests) ⇒ `TRUE`. If enabled, the behavior of delta builds automatically adjusts to always execute test executables even if no code changes have occurred. This ensures the randomization occurs when test executables would otherwise fail to run for lack of any code or configuration changes up the dependency tree.
 
 ### Subtractive paths in `TEST_SOURCE_FILE()`
-The `TEST_SOURCE_FILE()` build directive macro can now be used to remove source files from a test executable build using the same `-:` filepath decorator as available in `:paths` project configuration (ex. `TEST_SOURCE_FILE("-:foo/bar/file.c")`). This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
+The [`TEST_SOURCE_FILE()` build directive macro](https://throwtheswitch.github.io/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file-subtractive-notation) can now be used to remove source files from a test executable build using the same `-:` filepath decorator as available in `:paths` project configuration (ex. `TEST_SOURCE_FILE("-:foo/bar/file.c")`). This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
 
 ### Filepath limit checks
 Platform filepath limits (especially on Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
