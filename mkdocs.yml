@@ -26,6 +26,7 @@ copyright: >-
 theme:
   name: material
   favicon: assets/images/favicon.png
+  custom_dir: docs/overrides  # Project template overrides (outdated-version/prerelease banners)
   palette:
     - scheme: default
       primary: green
