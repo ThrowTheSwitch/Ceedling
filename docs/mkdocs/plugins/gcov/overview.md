@@ -6,10 +6,10 @@ with coverage enabled for the source files exercised by those tests.
 
 The Gcov plugin creates a duplicate test build with `gcov:` 
 command line plugin tasks because of the needs of coverage instrumentation 
-at compile time. [This is intentional and needed](index.md#understanding-plugin-build-duplication).
+at compile time. [This is intentional and needed](../index.md#understanding-plugin-build-duplication).
 
 !!! note
-    A `gcov:` task is a [delta build](../getting-started/builds.md).
+    A `gcov:` task is a [delta build](../../getting-started/builds.md).
     This plugin maintains its own dependency cache. A test executable will be 
     rebuilt the first time you run a `gcov:` build.
 
