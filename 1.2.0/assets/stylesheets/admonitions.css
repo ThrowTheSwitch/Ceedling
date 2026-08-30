@@ -1,0 +1,152 @@
+/* Restore older style of Admonitions (nicer) */
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-width: 0;
+  border-left-width: 4px;
+}
+
+/* 
+ Styling Built-In Admonition Types
+ =================================
+ */
+
+/* ── Note ──────────────────────────────────────────────────────────────────
+   Usage:  !!! note "This does not imply if the swallow is African or European"
+               Body text here.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Overrides default note style.
+  */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-color: rgb(58, 0, 64);
+}
+
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  background-color: rgba(58, 0, 64, .15);
+}
+
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+  background-color: rgb(58, 0, 64);
+}
+
+/* ── Tip ──────────────────────────────────────────────────────────────────
+   Usage:  !!! tip "You pronounce it 'potato'"
+               Body text here.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Overrides default tip style.
+  */
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-color: rgb(58, 0, 64);
+}
+
+.md-typeset .tip > .admonition-title,
+.md-typeset .tip > summary {
+  background-color: rgba(58, 0, 64, .15);
+}
+
+.md-typeset .tip > .admonition-title::before,
+.md-typeset .tip > summary::before {
+  background-color: rgb(58, 0, 64);
+}
+
+/* ── Info ──────────────────────────────────────────────────────────────────
+   Usage:  !!! info "The answer to Life, The Universe, and Everything is 42."
+               Body text here.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Overrides default info style.
+  */
+.md-typeset .admonition.info,
+.md-typeset details.info {
+  border-color: rgb(58, 0, 64);
+}
+
+.md-typeset .info > .admonition-title,
+.md-typeset .info > summary {
+  background-color: rgba(58, 0, 64, .15);
+}
+
+.md-typeset .info > .admonition-title::before,
+.md-typeset .info > summary::before {
+  background-color: rgb(58, 0, 64);
+}
+
+/* 
+ Custom Admonition Types
+ =======================
+ */
+
+/* ── Sponsorship ────────────────────────────────────────────────────────────
+   Usage:  !!! sponsorship "ThingamaByte is a Great Sponsor"
+               Body text here.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Icon: Material Design Icons 'currency-usd'
+   Source: material/templates/.icons/material/currency-usd.svg
+   (Only available at time of site-generation in a container)
+
+   CSS mask-image requires an SVG data URL but the :material-currency-usd: shortcode
+   is Markdown-only and is not available to CSS.
+  
+   The SVG path recreates the 'currency-usd' icon from Material Design Icons as
+   the file is unavailable outside the site-generation container.
+  */
+:root {
+  --md-admonition-icon--sponsorship: url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M11.8,10.9c-2.27-0.59-3-1.2-3-2.15c0-1.09,1.01-1.85,2.7-1.85c1.78,0,2.44,0.85,2.5,2.1h2.21c-0.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94,0.42-3.5,1.68-3.5,3.61c0,2.31,1.91,3.46,4.7,4.13c2.5,0.6,3,1.48,3,2.41c0,0.69-0.49,1.79-2.7,1.79c-2.06,0-2.87-0.92-2.98-2.1h-2.2c0.12,2.19,1.76,3.42,3.68,3.83V21h3v-2.15c1.95-0.37,3.5-1.5,3.5-3.55C17.5,12.46,14.07,11.49,11.8,10.9z'/></svg>");
+}
+
+.md-typeset .admonition.sponsorship,
+.md-typeset details.sponsorship {
+  border-color: rgb(63, 176, 78);
+}
+
+.md-typeset .sponsorship > .admonition-title,
+.md-typeset .sponsorship > summary {
+  background-color: rgb(91,255,113);
+}
+
+.md-typeset .sponsorship > .admonition-title::before,
+.md-typeset .sponsorship > summary::before {
+  background-color: rgb(63, 176, 78);
+  -webkit-mask-image: var(--md-admonition-icon--sponsorship);
+          mask-image: var(--md-admonition-icon--sponsorship);
+}
+
+/* ── Feature ────────────────────────────────────────────────────────────────
+   Usage:  !!! feature "New in 1.0"
+               Body text here.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Icon: Custom 16-point starburst badge (no MDI equivalent)
+   A circular "new and improved" badge seal with 16 short ridged points.
+   Constructed by alternating outer radius 11 and inner radius 9 at 11.25° steps.
+
+   CSS mask-image requires an SVG data URL; Markdown icon shortcodes are
+   not available to CSS.
+  */
+:root {
+  --md-admonition-icon--feature: url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12,1L13.76,3.17L16.21,1.84L17,4.52L19.78,4.22L19.48,7L22.16,7.79L20.83,10.24L23,12L20.83,13.76L22.16,16.21L19.48,17L19.78,19.78L17,19.48L16.21,22.16L13.76,20.83L12,23L10.24,20.83L7.79,22.16L7,19.48L4.22,19.78L4.52,17L1.84,16.21L3.17,13.76L1,12L3.17,10.24L1.84,7.79L4.52,7L4.22,4.22L7,4.52L7.79,1.84L10.24,3.17Z'/></svg>");
+}
+
+.md-typeset .admonition.feature,
+.md-typeset details.feature {
+  border-color: rgb(63, 176, 78);
+}
+
+.md-typeset .feature > .admonition-title,
+.md-typeset .feature > summary {
+  background-color: rgb(91,255,113);
+}
+
+.md-typeset .feature > .admonition-title::before,
+.md-typeset .feature > summary::before {
+  background-color: rgb(63, 176, 78);
+  -webkit-mask-image: var(--md-admonition-icon--feature);
+          mask-image: var(--md-admonition-icon--feature);
+}
