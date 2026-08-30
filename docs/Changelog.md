@@ -12,8 +12,6 @@ This changelog is complemented by three other documents:
 
 # [1.2.0] — Prerelease
 
-Documentation is available within the repository markdown files and as a local HTML documentation bundle exported from Ceedling. New and updated documentation has not yet been published to the documentation site.
-
 ## 🌟 Added
 
 ### Delta builds
@@ -44,7 +42,7 @@ Tasks mirroring command line `test:` task invocation but with an early terminati
 Like with command line `test:` tasks, `<test>` can be `all`, a test file name, or a source file name that has a corresponding test file.
 
 ### Test case shuffling at runtime
-Ceedling now integrates Unity’s features for randomizing test case execution within a test executable ([PR #1041]https://github.com/ThrowTheSwitch/Ceedling/pull/1041) via [`:unity` ↳ `:shuffle_tests`](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/reference/unity/#shuffle_tests) ⇒ `TRUE`. If enabled, the behavior of delta builds automatically adjusts to always execute test executables even if no code changes have occurred. This ensures the randomization occurs when test executables would otherwise fail to run for lack of any code or configuration changes up the dependency tree.
+Ceedling now integrates Unity’s features for randomizing test case execution within a test executable ([PR #1041](https://github.com/ThrowTheSwitch/Ceedling/pull/1041) via [`:unity` ↳ `:shuffle_tests`](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/reference/unity/#shuffle_tests) ⇒ `TRUE`. If enabled, the behavior of delta builds automatically adjusts to always execute test executables even if no code changes have occurred. This ensures the randomization occurs when test executables would otherwise fail to run for lack of any code or configuration changes up the dependency tree.
 
 ### Subtractive paths in `TEST_SOURCE_FILE()`
 The [`TEST_SOURCE_FILE()` build directive macro](https://throwtheswitch.github.io/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file-subtractive-notation) can now be used to remove source files from a test executable build using the same `-:` filepath decorator as available in `:paths` project configuration (ex. `TEST_SOURCE_FILE("-:foo/bar/file.c")`). This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
