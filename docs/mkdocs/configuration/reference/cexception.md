@@ -2,7 +2,7 @@
 
 **Configure CException’s features**
 
-## Exmaple `:cmock` YAML
+## Example `:cmock` YAML
 
 ```yaml
 :cexception:
