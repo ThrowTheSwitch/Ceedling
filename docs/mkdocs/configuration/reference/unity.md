@@ -2,7 +2,7 @@
 
 **Configure Unity’s features**
 
-## Exmaple `:unity` YAML
+## Example `:unity` YAML
 
 ```yaml
 :unity:

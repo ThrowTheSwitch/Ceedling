@@ -6,7 +6,7 @@ Ceedling sets values for a subset of CMock settings. All CMock options are
 available to be set, but only those options set by Ceedling in an automated
 fashion are documented below. See [CMock documentation][cmock-docs].
 
-## Exmaple `:cmock` YAML
+## Example `:cmock` YAML
 
 ```yaml
 :cmock:
