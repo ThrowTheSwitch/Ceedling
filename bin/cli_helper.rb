@@ -74,8 +74,13 @@ class CliHelper
   end
 
 
-  def create_project_file(dest, local, ceedling_tag)
-    project_filepath = File.join( dest, DEFAULT_PROJECT_FILENAME )
+  # #1250 -- `ceedling_yml:` names the generated file ALTERNATE_PROJECT_FILENAME
+  # (ceedling.yml) instead of the default DEFAULT_PROJECT_FILENAME (project.yml). Only
+  # the destination filename changes -- both are cloned from the same one template
+  # asset; no second template file exists or is needed.
+  def create_project_file(dest, local, ceedling_tag, ceedling_yml: false)
+    filename = ceedling_yml ? ALTERNATE_PROJECT_FILENAME : DEFAULT_PROJECT_FILENAME
+    project_filepath = File.join( dest, filename )
     source_filepath = File.join( 'assets', 'features', DEFAULT_PROJECT_FILENAME )
 
     # Clone the project file

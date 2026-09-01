@@ -163,6 +163,22 @@ ceedling_system_tests do
         expect(File.exist?(File.join(@proj_name, 'marker.txt'))).to eq(false)
       end
     end
+
+    # #1250 -- `--ceedling-yml` names the generated starter file ceedling.yml
+    # instead of project.yml; the default (no flag, exercised by every other
+    # example in this block via the outer `before`) is unchanged.
+    it "generates ceedling.yml instead of project.yml under --ceedling-yml" do
+      @c.with_context do
+        alt_proj_name = "#{@proj_name}_ceedling_yml"
+        output = @c.ceedling_appcmd_exec("new #{alt_proj_name} --ceedling-yml")
+
+        expect(@c.last_exit_status).to eq(0)
+        Dir.chdir alt_proj_name do
+          expect(File.exist?("ceedling.yml")).to eq true
+          expect(File.exist?("project.yml")).to eq false
+        end
+      end
+    end
   end
 
   describe "No project required" do

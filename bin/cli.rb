@@ -224,6 +224,7 @@ module CeedlingTasks
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
     method_option :configs, :type => :boolean, :default => true, :desc => "Install starter project file in project root"
+    method_option :ceedling_yml, :type => :boolean, :default => false, :desc => "Name the starter project file ceedling.yml instead of project.yml"
     method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and recreate destination"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     method_option :gitsupport, :type => :boolean, :default => false, :desc => "Create .gitignore / .gitkeep files for convenience"
