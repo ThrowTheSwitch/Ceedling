@@ -40,11 +40,19 @@ class Gcov < Plugin
       )
     end
 
-    # Validate configuration and tools while building Reportinators
-    @reportinators = build_reportinators( 
-      @project_config[:gcov_utilities],
-      @reports_enabled
-    )
+    # #1252 -- Validate `:gcov ↳ :utilities` config (cheap, no external tool needed) and
+    # build the console summary Reportinator (needs no external tool of its own) here,
+    # eagerly, since `setup()` runs for every build this plugin is merely *enabled* for,
+    # not only real `gcov:` builds. Deliberately NOT building the gcovr/ReportGenerator
+    # Reportinators here -- doing so validates gcovr/ReportGenerator are installed
+    # (see their own constructors), which would make either a hard dependency of any
+    # build at all (e.g. plain `test:all`) rather than only a real `gcov:` build. See
+    # generate_coverage_reports, which builds (and so validates) them lazily, only once
+    # post_build already knows a gcov: task actually ran.
+    validate_utilities_config( @project_config[:gcov_utilities] )
+    @console_reportinator = summaries_enabled?( @project_config ) ?
+      ConsoleReportinator.new( @ceedling, @project_config ) : nil
+    @reportinators = nil
 
     # Convenient instance variable references
     @configurator = @ceedling[:configurator]
@@ -260,6 +268,15 @@ class Gcov < Plugin
   def generate_coverage_reports()
     return if not @reports_enabled
 
+    # #1252 -- Lazily build (and so validate the external tools of) the gcovr/
+    # ReportGenerator Reportinators only now: this method only runs from post_build
+    # (automatic reporting) or the standalone `gcov:report` task (manual reporting,
+    # mutually exclusive with automatic per :gcov_report_task) -- either way, only
+    # once a real gcov: task is confirmed to have already run. See setup()'s own
+    # comment for why this can't happen any earlier. `||=` just guards against ever
+    # rebuilding (and so re-validating) on a hypothetical repeat call.
+    @reportinators ||= build_reportinators( @project_config[:gcov_utilities] )
+
     @reportinators.each do |reportinator|
       # Create the artifacts output directory.
       @file_wrapper.mkdir( reportinator.artifacts_path ) if reportinator.artifacts_path
@@ -315,16 +332,10 @@ class Gcov < Plugin
     return sources - tested_sources
   end
 
-  def build_reportinators(config, enabled)
-    reportinators = []
-
-    # Instantiate console summary reportinator if summaries enabled
-    @console_reportinator = summaries_enabled?(@project_config) ?
-      ConsoleReportinator.new(@ceedling, @project_config) : nil
-
-    # Do not instantiate file reportinators (and tool validation) unless reports enabled
-    return reportinators if (!enabled)
-
+  # Fail fast at plugin setup if :utilities holds an unrecognized name (e.g. a typo) --
+  # cheap, config-shape-only validation, so this stays eager even though the actual
+  # Reportinators it names are built lazily (see build_reportinators, generate_coverage_reports).
+  def validate_utilities_config(config)
     config.each do |reportinator|
       if not GCOV_UTILITY_NAMES.map(&:upcase).include?( reportinator.upcase )
         options = GCOV_UTILITY_NAMES.map{ |utility| "'#{utility}'" }.join(', ')
@@ -332,6 +343,14 @@ class Gcov < Plugin
         raise CeedlingException.new(msg)
       end
     end
+  end
+
+  # #1252 -- Deliberately not called from setup(); see its own comment and
+  # generate_coverage_reports, the only caller. Constructing GcovrReportinator/
+  # ReportGeneratorReportinator validates gcovr/ReportGenerator are installed, so this
+  # can only run once a real gcov: task is confirmed to have run.
+  def build_reportinators(config)
+    reportinators = []
 
     # Run reports using gcovr
     if utility_enabled?( config, GCOV_UTILITY_NAME_GCOVR )
