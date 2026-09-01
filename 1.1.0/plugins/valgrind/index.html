@@ -16,7 +16,7 @@
         <link rel="prev" href="../cppcheck/">
       
       
-        <link rel="next" href="../fff/">
+        <link rel="next" href="../bullseye/">
       
       
         
@@ -89,33 +89,9 @@
     </div>
     <div data-md-component="announce">
       
-        <aside class="md-banner">
-          <div class="md-banner__inner md-grid md-typeset">
-            
-            
-  
-
-          </div>
-          
-        </aside>
-      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
-        
-          <aside class="md-banner md-banner--warning">
-            <div class="md-banner__inner md-grid md-typeset">
-              
-  
-    You are not viewing the latest version.
-    <a href="../../..">
-      <strong>Click here to go to latest.</strong>
-    </a>
-  
-
-            </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
-          </aside>
         
       </div>
     
@@ -710,8 +686,6 @@
       
         
       
-        
-      
     
     
     
@@ -856,34 +830,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../getting-started/builds/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Builds
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -910,7 +856,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -932,14 +878,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2509,6 +2455,8 @@
       
         
       
+        
+      
     
     
     
@@ -3339,6 +3287,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bullseye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bullseye (Coverage)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -4481,13 +4457,10 @@
 <p>Adds Ceedling tasks to run test executables under <a href="https://valgrind.org">Valgrind</a> memory error
 detection to help find memory leaks, invalid memory accesses, and
 use-after-free bugs in your C code.</p>
-<p>The Valgrind plugin creates a duplicate test build with <code>valgrind:</code> 
-command line plugin tasks. <a href="../#understanding-plugin-build-duplication">This is intentional and needed</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>A <code>valgrind:</code> task is a <a href="../../getting-started/builds/">delta build</a>.
-This plugin maintains its own dependency cache. A test executable will be 
-rebuilt the first time you run a <code>valgrind:</code> build.</p>
+<p>The Valgrind plugin creates a duplicate test build with <code>valgrind:</code> 
+command line plugin tasks. <a href="../#understanding-plugin-build-duplication">This is intentional and needed</a>.</p>
 </div>
 <hr />
 <h2 id="plugin-overview">Plugin overview</h2>

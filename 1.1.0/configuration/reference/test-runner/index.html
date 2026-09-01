@@ -89,33 +89,9 @@
     </div>
     <div data-md-component="announce">
       
-        <aside class="md-banner">
-          <div class="md-banner__inner md-grid md-typeset">
-            
-            
-  
-
-          </div>
-          
-        </aside>
-      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
-        
-          <aside class="md-banner md-banner--warning">
-            <div class="md-banner__inner md-grid md-typeset">
-              
-  
-    You are not viewing the latest version.
-    <a href="../../../..">
-      <strong>Click here to go to latest.</strong>
-    </a>
-  
-
-            </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
-          </aside>
         
       </div>
     
@@ -710,8 +686,6 @@
       
         
       
-        
-      
     
     
     
@@ -856,34 +830,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../../getting-started/builds/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Builds
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -910,7 +856,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -932,14 +878,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2445,17 +2391,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#test_runner-rng_seed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        :test_runner ↳ :rng_seed
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#example-test_runner-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2585,6 +2520,8 @@
       
         
           
+        
+      
         
       
         
@@ -3227,6 +3164,34 @@
     
   
     Valgrind (Memory Analysis)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../plugins/bullseye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bullseye (Coverage)
   
 
     
@@ -4178,17 +4143,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#test_runner-rng_seed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        :test_runner ↳ :rng_seed
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#example-test_runner-yaml" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4322,15 +4276,6 @@ is generally unsupported by emulators running test executables.</p>
 <p>The idea of command line arguments passed to an executable is generally 
 only possible with desktop command line terminals.</p>
 </div>
-<h2 id="test_runner-rng_seed"><code>:test_runner</code> ↳ <code>:rng_seed</code></h2>
-<p>Seeds the randomization used by <a href="../unity/#shuffle_tests"><code>:unity</code> ↳ <code>:shuffle_tests</code></a>
-to shuffle the Unity runner test case execution order. <code>:rng_seed</code> has no 
-effect unless <code>:shuffle_tests</code> is enabled.</p>
-<p>Left at its default of <code>0</code>, Unity seeds the shuffle from the current time 
-causing a different execution order every time a test runner executes. Set 
-a fixed, nonzero value for a reproducible shuffled order (e.g. to debug 
-an order-dependent failure without test case order moving around run to run).</p>
-<p><strong>Default</strong>: 0</p>
 <h2 id="example-test_runner-yaml">Example <code>:test_runner</code> YAML</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:test_runner</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="c1"># Insert additional #include statements in a generated runner</span>

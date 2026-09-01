@@ -89,33 +89,9 @@
     </div>
     <div data-md-component="announce">
       
-        <aside class="md-banner">
-          <div class="md-banner__inner md-grid md-typeset">
-            
-            
-  
-
-          </div>
-          
-        </aside>
-      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
-        
-          <aside class="md-banner md-banner--warning">
-            <div class="md-banner__inner md-grid md-typeset">
-              
-  
-    You are not viewing the latest version.
-    <a href="../../../..">
-      <strong>Click here to go to latest.</strong>
-    </a>
-  
-
-            </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
-          </aside>
         
       </div>
     
@@ -710,8 +686,6 @@
       
         
       
-        
-      
     
     
     
@@ -856,34 +830,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../../getting-started/builds/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Builds
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -910,7 +856,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -932,14 +878,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2663,6 +2609,8 @@
       
         
       
+        
+      
     
     
     
@@ -3271,6 +3219,34 @@
     
   
     Valgrind (Memory Analysis)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../plugins/bullseye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bullseye (Coverage)
   
 
     
@@ -4376,17 +4352,10 @@
 <h1 id="extension"><code>:extension</code></h1>
 <p><strong>Filename extensions used to collect lists of files searched in <a href="../paths/"><code>:paths</code></a></strong></p>
 <p>Ceedling uses path lists and wildcard matching against filename extensions to collect file lists.</p>
-<p>Each file type below accepts either a single extension or a list of extensions. A single
-extension is written as a plain string. A list is useful when a project mixes conventions for
-a given file type (e.g. source files named with both <code>.c</code> and <code>.C</code>).</p>
-<p>Ceedling searches for and collects files under any extension in the list.</p>
 <h2 id="example-extension-yaml">Example <code>:extension</code> YAML</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:extension</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.cc</span><span class="w">       </span><span class="c1"># A single extension</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">:header</span><span class="p">:</span><span class="w">           </span><span class="c1"># A list of extensions</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.h</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.H</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.bin</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.cc</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">:executable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.bin</span>
 </code></pre></div>
 <h2 id="header"><code>:header</code></h2>
 <p>C header files</p>

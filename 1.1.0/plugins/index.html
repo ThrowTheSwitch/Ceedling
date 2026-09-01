@@ -89,33 +89,9 @@
     </div>
     <div data-md-component="announce">
       
-        <aside class="md-banner">
-          <div class="md-banner__inner md-grid md-typeset">
-            
-            
-  
-
-          </div>
-          
-        </aside>
-      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
-        
-          <aside class="md-banner md-banner--warning">
-            <div class="md-banner__inner md-grid md-typeset">
-              
-  
-    You are not viewing the latest version.
-    <a href="../..">
-      <strong>Click here to go to latest.</strong>
-    </a>
-  
-
-            </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
-          </aside>
         
       </div>
     
@@ -710,8 +686,6 @@
       
         
       
-        
-      
     
     
     
@@ -856,34 +830,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../getting-started/builds/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Builds
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -910,7 +856,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -932,14 +878,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2509,6 +2455,8 @@
       
         
       
+        
+      
     
     
     
@@ -3123,6 +3071,34 @@
     
   
     Valgrind (Memory Analysis)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="bullseye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bullseye (Coverage)
   
 
     
@@ -4236,7 +4212,7 @@ for how to enable built-in plugins and load custom plugins in your project.</p>
 <p class="admonition-title">Warning</p>
 <p>Build-related plugins intentionally execute duplicated builds.</p>
 </div>
-<p>Plugins including <a href="gcov/">Gcov</a>, Bullseye, and <a href="valgrind/">Valgrind</a>
+<p>Plugins including <a href="gcov/">Gcov</a>, <a href="bullseye/">Bullseye</a>, and <a href="valgrind/">Valgrind</a>
 recreate test build tasks. That is, the command line build task <code>test:foo</code> also exists 
 as <code>gcov:foo</code>, <code>bullseye:foo</code>, and/or <code>valgrind:foo</code> if these plugins are enabled.
 Each of these triggers a full rebuild of the named test with instrumentation 
@@ -4264,17 +4240,6 @@ important issues:</p>
    plugin task namespacing scheme naturally accomplished this along with the
    needs of (1) and (2).</li>
 </ol>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>A duplicated build task is a <a href="../getting-started/builds/">delta build</a>.
-Ceedling skips work in a <code>gcov:</code>, <code>bullseye:</code>, or <code>valgrind:</code> build in the same
-way it does in a standard <code>test:</code> build.</p>
-</div>
-<p>Each of these plugins maintains its own separate delta build cache, apart from
-plain test builds and from each other. A file with no role specific to a
-given plugin will still be rebuilt the first you run that plugin's build.
-This happens because each build tracks state in its own dependency cache, 
-not because of the file itself.</p>
 <hr />
 <h2 id="directory">Directory</h2>
 <h3 id="console-test-results">Console Test Results</h3>
@@ -4373,13 +4338,11 @@ and .Net-based <a href="https://reportgenerator.io">ReportGenerator</a> to produ
 variety of formats.</p>
 </li>
 <li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m18.5 3.5-15 15 2 2 15-15M7 4a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m10 10a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3"/></svg></span> <strong><code>bullseye</code></strong></p>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m18.5 3.5-15 15 2 2 15-15M7 4a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m10 10a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3"/></svg></span> <strong><a href="bullseye/"><code>bullseye</code></a></strong></p>
 <hr />
 <p>Adds Ceedling tasks to execute tests with code coverage instrumentation
 provided by the commercial <a href="http://www.bullseye.com">Bullseye</a> tool, which provides visualization
 and report generation from the coverage results.</p>
-<p>Note: Bullseye was disabled as of 1.0.0 and is being updated for 1.2.0 but
-is currently not usable.</p>
 </li>
 </ul>
 </div>

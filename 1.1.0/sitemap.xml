@@ -145,10 +145,6 @@
          <lastmod>2026-09-01</lastmod>
     </url>
     <url>
-         <loc>https://throwtheswitch.github.io/Ceedling/latest/getting-started/builds/</loc>
-         <lastmod>2026-09-01</lastmod>
-    </url>
-    <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/getting-started/command-line/</loc>
          <lastmod>2026-09-01</lastmod>
     </url>
@@ -198,6 +194,10 @@
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/beep/</loc>
+         <lastmod>2026-09-01</lastmod>
+    </url>
+    <url>
+         <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/</loc>
          <lastmod>2026-09-01</lastmod>
     </url>
     <url>
@@ -254,38 +254,6 @@
     </url>
     <url>
          <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/valgrind/</loc>
-         <lastmod>2026-09-01</lastmod>
-    </url>
-    <url>
-         <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/</loc>
-         <lastmod>2026-09-01</lastmod>
-    </url>
-    <url>
-         <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/examples/</loc>
-         <lastmod>2026-09-01</lastmod>
-    </url>
-    <url>
-         <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/licensing/</loc>
-         <lastmod>2026-09-01</lastmod>
-    </url>
-    <url>
-         <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/overview/</loc>
-         <lastmod>2026-09-01</lastmod>
-    </url>
-    <url>
-         <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/reporting/</loc>
-         <lastmod>2026-09-01</lastmod>
-    </url>
-    <url>
-         <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/setup/</loc>
-         <lastmod>2026-09-01</lastmod>
-    </url>
-    <url>
-         <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/tool-versions/</loc>
-         <lastmod>2026-09-01</lastmod>
-    </url>
-    <url>
-         <loc>https://throwtheswitch.github.io/Ceedling/latest/plugins/bullseye/troubleshooting/</loc>
          <lastmod>2026-09-01</lastmod>
     </url>
     <url>

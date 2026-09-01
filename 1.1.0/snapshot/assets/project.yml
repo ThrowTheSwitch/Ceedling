@@ -83,8 +83,6 @@
     - html 
 
 # override the default extensions for your system and toolchain
-# each entry accepts a single extension (e.g. :source: .c) or a list of extensions
-# (e.g. :assembly: [.s, .S]) when a project mixes conventions for a file type
 :extension:
   #:header: .h
   #:source: .c
