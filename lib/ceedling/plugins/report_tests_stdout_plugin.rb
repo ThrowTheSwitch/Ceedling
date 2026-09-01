@@ -50,7 +50,10 @@ class ReportTestsStdoutPlugin < Plugin
 
     results = @plugin_reportinator.assemble_test_results( @result_list )
     hash = { :context => TEST_SYM, :results => results }
-    verbosity = (results[:counts][:failed] > 0) ? Verbosity::ERRORS : Verbosity::NORMAL
+    # #1251 -- `:warnings` on the CLI maps to Verbosity::COMPLAIN (see VERBOSITY_OPTIONS
+    # in constants.rb), not NORMAL, so gating the all-clean case at NORMAL silently
+    # swallowed the Overall Test Summary at --verbosity=warnings even on a passing run.
+    verbosity = (results[:counts][:failed] > 0) ? Verbosity::ERRORS : Verbosity::COMPLAIN
 
     # Print unit test suite results
     @plugin_reportinator.run_test_results_report( hash, verbosity )
