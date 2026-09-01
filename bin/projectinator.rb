@@ -12,6 +12,9 @@ class Projectinator
 
   PROJECT_FILEPATH_ENV_VAR = 'CEEDLING_PROJECT_FILE'
   DEFAULT_PROJECT_FILEPATH = './' + DEFAULT_PROJECT_FILENAME
+  # #1250 -- self-documenting alternative default project filename, tried only
+  # alongside DEFAULT_PROJECT_FILEPATH during default discovery below.
+  ALTERNATE_PROJECT_FILEPATH = './' + ALTERNATE_PROJECT_FILENAME
   DEFAULT_YAML_FILE_EXTENSION = '.yml'
 
   constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator
@@ -20,7 +23,8 @@ class Projectinator
   # Precendence of attempts:
   #  1. Explcit flepath from argument
   #  2. Environment variable
-  #  3. Default filename in working directory
+  #  3. Default filename in working directory (project.yml or ceedling.yml --
+  #     #1250 -- an error if both exist, since neither is "preferred" over the other)
   # Returns:
   #  - Absolute path of project file found and used
   #  - Config hash loaded from project file
@@ -45,17 +49,37 @@ class Projectinator
       config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
       return _filepath, config
 
-    # Final option: default filepath
-    elsif @file_wrapper.exist?( DEFAULT_PROJECT_FILEPATH )
-      filepath = DEFAULT_PROJECT_FILEPATH
-      _filepath = File.expand_path( filepath )
-      config = load_and_log( _filepath, "from working directory", silent )
-      config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
-      return _filepath, config
-
-    # If no user-provided filepath and the default filepath does not exist, we have a big problem
+    # Final option: default filepath(s) in the working directory
     else
-      raise "No project filepath provided and default #{DEFAULT_PROJECT_FILEPATH} not found"
+      default_exists     = @file_wrapper.exist?( DEFAULT_PROJECT_FILEPATH )
+      alternate_exists    = @file_wrapper.exist?( ALTERNATE_PROJECT_FILEPATH )
+
+      # #1250 -- two default project files in one directory is almost certainly a
+      # mistake (which one would silently win?) -- error out rather than guess.
+      if default_exists && alternate_exists
+        raise CeedlingException.new( ambiguous_default_message() )
+      end
+
+      filepath =
+        if default_exists
+          DEFAULT_PROJECT_FILEPATH
+        elsif alternate_exists
+          ALTERNATE_PROJECT_FILEPATH
+        end
+
+      if filepath
+        _filepath = File.expand_path( filepath )
+        config = load_and_log( _filepath, "from working directory", silent )
+        config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
+        return _filepath, config
+
+      # If no user-provided filepath and neither default filepath exists, we have a big problem
+      else
+        raise CeedlingException.new(
+          "No project filepath provided and neither default " \
+          "#{DEFAULT_PROJECT_FILEPATH} nor #{ALTERNATE_PROJECT_FILEPATH} found"
+        )
+      end
     end
   end
 
@@ -89,6 +113,13 @@ class Projectinator
   ### Private ###
 
   private
+
+  # #1250 -- mirrors PathMatcher's own ambiguous-file message style (path_matcher.rb).
+  def ambiguous_default_message
+    "Ambiguous default project file: both #{DEFAULT_PROJECT_FILEPATH} and " \
+    "#{ALTERNATE_PROJECT_FILEPATH} exist in the working directory. " \
+    "Remove or rename one, or specify which to use with --project/-p."
+  end
 
   def load_and_log(filepath, method, silent)
     begin
