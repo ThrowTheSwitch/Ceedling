@@ -515,7 +515,28 @@ class TestBuildExecutor
 
         fixture_tool = resolve_fixture_tool( context: state.context, tool: @configurator.tools_test_fixture, test_name: testable.name, target: fixture_target )
 
-        @dependinator.register( fixture_target, files: [testable.executable], meta: { tools: [fixture_tool] } )
+        # :use_backtrace doesn't swap the fixture tool itself (unlike Valgrind/Gcov's own
+        # pre_test_fixture_register hooks) -- it only selects what happens *after*
+        # run_fixture detects a crash (generator.rb's own case on :project_use_backtrace:
+        # :gdb runs tools_test_backtrace_gdb, :simple runs tools_test_fixture_simple_backtrace,
+        # :none does neither). Without capturing that selector (and the tool config(s) it
+        # actually drives) as meta here, toggling :use_backtrace -- or editing a backtrace
+        # tool's own executable/args -- would never invalidate this fixture_target, so a
+        # delta build would keep reusing a stale crash-diagnosis result on the next crash.
+        #
+        # tools_test_backtrace_gdb only exists at all when :use_backtrace is :gdb --
+        # Configurator only merges its defaults (DEFAULT_TOOLS_TEST_GDB_BACKTRACE) in that
+        # case (configurator.rb) -- so it's only read here when actually relevant.
+        # tools_test_fixture_simple_backtrace has no such gate (DEFAULT_TOOLS_TEST always
+        # includes it) and is always safe to read.
+        use_backtrace = @configurator.project_config_hash[:project_use_backtrace]
+        backtrace_tools = [@configurator.tools_test_fixture_simple_backtrace]
+        backtrace_tools << @configurator.tools_test_backtrace_gdb if use_backtrace == :gdb
+
+        @dependinator.register(
+          fixture_target, files: [testable.executable],
+          meta: { tools: [fixture_tool], use_backtrace: use_backtrace, backtrace_tools: backtrace_tools }
+        )
 
         run_now = testable.executable_rebuilt || force_rerun || @dependinator.stale?( fixture_target )
 
