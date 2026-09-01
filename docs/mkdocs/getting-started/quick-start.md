@@ -36,6 +36,11 @@ through running build tasks. Jump down just a teeny bit to see what the Ceedling
 command line looks like and navigate to all the documentation for the steps 
 listed immediately below.
 
+!!! warning "C toolchain requirement"
+    Ceedling requires a command line C toolchain be available in your path and is
+    flexible enough to work with most anything. By default, Ceedling is ready to 
+    work with [GCC] out of the box (we recommend [MinGW] on Windows).
+
 1. [Install Ceedling](installation.md)
 1. Create a project
     * Use Ceedling to generate an example project (see next section), or
@@ -45,12 +50,6 @@ listed immediately below.
         1. Add source code and optionally test code however you’d like it organized.
         1. Create a Ceedling project file in the root of your project directory.
 1. Run Ceedling tasks (see next section) from the working directory of your project.
-
-!!! note
-    Ceedling requires a command line C toolchain be available in your path. It’s 
-    flexible enough to work with most anything on any platform. By default, Ceedling 
-    is ready to work with [GCC] out of the box (we recommend the [MinGW] project 
-    on Windows).
 
 A common build strategy is to use your target toolchain for release builds—with or 
 without Ceedling—but rely on Ceedling + GCC for test builds (more on this 
