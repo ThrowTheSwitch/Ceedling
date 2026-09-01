@@ -89,9 +89,33 @@
     </div>
     <div data-md-component="announce">
       
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  
+
+          </div>
+          
+        </aside>
+      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
         
       </div>
     
@@ -686,6 +710,8 @@
       
         
       
+        
+      
     
     
     
@@ -830,6 +856,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../getting-started/builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -856,7 +910,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -878,14 +932,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1585,6 +1639,28 @@
     <span class="md-ellipsis">
       
         TEST_SOURCE_FILE() Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_source_file-the-headersource-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TEST_SOURCE_FILE() &amp; the Header/Source Convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_source_file-subtractive-notation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TEST_SOURCE_FILE() Subtractive Notation
       
     </span>
   </a>
@@ -2619,8 +2695,6 @@
       
         
       
-        
-      
     
     
     
@@ -3229,34 +3303,6 @@
     
   
     Valgrind (Memory Analysis)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../plugins/bullseye/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bullseye (Coverage)
   
 
     
@@ -4220,6 +4266,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#test_source_file-the-headersource-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TEST_SOURCE_FILE() &amp; the Header/Source Convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_source_file-subtractive-notation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TEST_SOURCE_FILE() Subtractive Notation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#test_source_file-example" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4358,7 +4426,7 @@
 <p>Ceedling supports a small number of build directive macros. At present,
 these macros are only for use in test files.</p>
 <p>By placing these macros in your test files, you may control aspects of an 
-individual test executable's build from within the test file itself.</p>
+individual test executable’s build from within the test file itself.</p>
 <p>These macros are actually defined in Unity, but they evaluate to empty 
 strings. That is, the macros do nothing and only serve as text markers for 
 Ceedling to parse. But, by placing them in your test files they 
@@ -4366,20 +4434,20 @@ communicate instructions to Ceedling when scanned at the beginning of a
 test build.</p>
 <p><strong><em>Notes:</em></strong></p>
 <ul>
-<li>Since these macros are defined in <em>unity.h</em>, it's essential to 
+<li>Since these macros are defined in <em>unity.h</em>, it’s essential to 
   <code>#include "unity.h"</code> before making use of them in your test file. 
   Typically, <em>unity.h</em> is referenced at or near the top of a test file
   anyhow, but this is an important detail to call out.</li>
 <li><strong><code>TEST_SOURCE_FILE()</code> and <code>TEST_INCLUDE_PATH()</code>, new in Ceedling 
   1.0.0, are incompatible with enclosing conditional compilation C 
   preprocessing statements.</strong> See
-  <a href="../conventions/#preprocessing-gotchas">Ceedling's preprocessing documentation</a> 
+  <a href="../conventions/#preprocessing-gotchas">Ceedling’s preprocessing documentation</a> 
   for more details.</li>
 </ul>
 <h2 id="test_source_file"><code>TEST_SOURCE_FILE()</code></h2>
 <h3 id="test_source_file-purpose"><code>TEST_SOURCE_FILE()</code> Purpose</h3>
 <p>The <code>TEST_SOURCE_FILE()</code> build directive allows the simple injection of 
-a specific source file into a test executable's build.</p>
+a specific source file into a test executable’s build.</p>
 <p>The Ceedling <a href="../conventions/">convention</a> of compiling and linking 
 any C file that corresponds in name to an <code>#include</code>d header file does 
 not always work. A given source file may not have a header file that 
@@ -4395,16 +4463,48 @@ test executable—if assembly support is enabled for test builds.</p>
 <p>The argument for the <code>TEST_SOURCE_FILE()</code> build directive macro is a 
 single filename or filepath as a string enclosed in quotation marks. Use
 forward slashes for path separators. The filename or filepath must be 
-present within Ceedling's source file collection.</p>
+present within Ceedling’s source file collection.</p>
 <p>To understand your source file collection:</p>
 <ul>
 <li>See the documentation for project file configuration section 
   <a href="../../configuration/reference/paths/"><code>:paths</code></a>.</li>
-<li>Dump a listing your project's source files with the command line task
+<li>Dump a listing your project’s source files with the command line task
   <code>ceedling files:source</code>.</li>
 </ul>
 <p>Multiple uses of <code>TEST_SOURCE_FILE()</code> are perfectly fine. You'll likely
 want one per line within your test file.</p>
+<h3 id="test_source_file-the-headersource-convention"><code>TEST_SOURCE_FILE()</code> &amp; the Header/Source Convention</h3>
+<p><code>TEST_SOURCE_FILE()</code> takes precedence over Ceedling’s usual convention of
+compiling and linking whatever C file corresponds by name to an <code>#include</code>d
+header. If your test file both <code>#include</code>s a header and separately names a
+same-named source with <code>TEST_SOURCE_FILE()</code>, the directive’s own file is the
+one compiled. Ceedling does not also compile whatever the header/source
+convention would have found on its own.</p>
+<p>Ceedling logs an informational notice naming the winning <code>TEST_SOURCE_FILE()</code>
+entry and the <code>#include</code> it overrode, so the substitution is never silent.</p>
+<p>See <a href="../conventions/#header-source-files">Distinguishing same-named files</a>
+for the full discussion of this and Ceedling’s other file-disambiguation
+conventions.</p>
+<h3 id="test_source_file-subtractive-notation"><code>TEST_SOURCE_FILE()</code> Subtractive Notation</h3>
+<p>A <code>TEST_SOURCE_FILE()</code> entry can also be prefixed with <code>-:</code> to remove a
+named file from a test executable’s compile/link list outright, rather
+than add one. This uses the same <code>+:</code> / <code>-:</code> convention available for
+<a href="../../configuration/reference/paths/#subtractive-entries"><code>:paths</code> list entries</a>.</p>
+<p>Unlike the override behavior above that only modifies the header/source 
+convention for same-named files, a <code>-:</code> decorated entry applies to the fully 
+assembled list for a test. It removes the named file regardless of how 
+that file was added to the list and acts only after every other source 
+has already been added to the list.</p>
+<p>This is useful whenever Ceedling’s convention of compiling and linking any
+<code>.c</code> file matching an <code>#include</code>d header’s name pulls in a file that
+should not be part of a particular test executable. Certain splits of 
+headers, source, and arranging of symbols can lead to duplicate symbols
+if Ceedling’s convention operates without intervention.</p>
+<p>As with the override behavior, Ceedling logs an informational notice
+naming the removed file, so a <code>-:</code> entry is never silent.</p>
+<p>Like in <code>:paths</code> entries, a <code>+:</code> decorator is assumed. That is omitting any
+decorator yields an additive file path. The <code>+:</code> decorator is available
+solely for formatting or self-documentation purposes.</p>
 <h3 id="test_source_file-example"><code>TEST_SOURCE_FILE()</code> Example</h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="cm">/*</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="cm"> * Test file test_mycode.c to exercise functions in mycode.c.</span>
@@ -4436,7 +4536,7 @@ is necessary for every test executable build. That path can come from a <code>:p
 ↳ <code>:include</code> entry in your project configuration or by using <code>TEST_INCLUDE_PATH()</code> 
 in a test file.</p>
 <p>Please see <a href="../conventions/#test-build-search-paths">Configuring Your Header File Search Paths</a>
-for an overview of Ceedling's options and conventions for header file search paths.</p>
+for an overview of Ceedling’s options and conventions for header file search paths.</p>
 <h3 id="test_include_path-usage"><code>TEST_INCLUDE_PATH()</code> Usage</h3>
 <p><code>TEST_INCLUDE_PATH()</code> entries in your test file are only an additive customization.
 The path will be added to the base / common path list specified by 
@@ -4460,7 +4560,7 @@ per line within your test file.</p>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;unity.h&quot;</span><span class="c1">    // Contains TEST_INCLUDE_PATH() definition</span>
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;somefile.h&quot;</span><span class="c1"> // Needed symbols and macros</span>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1">// Add the following to the compiler&#39;s -I search paths used to</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1">// Add the following to the compiler’s -I search paths used to</span>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1">// compile all components comprising the test_mycode executable.</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">TEST_INCLUDE_PATH</span><span class="p">(</span><span class="s">&quot;foo/bar/&quot;</span><span class="p">)</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">TEST_INCLUDE_PATH</span><span class="p">(</span><span class="s">&quot;/usr/local/include/baz/&quot;</span><span class="p">)</span>

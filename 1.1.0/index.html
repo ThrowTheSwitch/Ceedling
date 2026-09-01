@@ -87,9 +87,33 @@
     </div>
     <div data-md-component="announce">
       
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  
+
+          </div>
+          
+        </aside>
+      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  
+    You are not viewing the latest version.
+    <a href="../.">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
         
       </div>
     
@@ -539,6 +563,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#new-goodness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New goodness
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -786,6 +821,8 @@
       
         
       
+        
+      
     
     
     
@@ -930,6 +967,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="getting-started/builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -956,7 +1021,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -978,14 +1043,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2553,8 +2618,6 @@
       
         
       
-        
-      
     
     
     
@@ -3163,34 +3226,6 @@
     
   
     Valgrind (Memory Analysis)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="plugins/bullseye/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bullseye (Coverage)
   
 
     
@@ -4109,6 +4144,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#new-goodness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New goodness
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4209,15 +4255,18 @@ Plugins provide reporting, code coverage, static analysis, and more.</p>
 for use on platforms from heavy duty workstations to teeny tiny microcontrollers. 
 Features handy for low-level development have made these tools popular with 
 embedded systems developers.</p>
+<h2 id="new-goodness">New goodness</h2>
 <div class="admonition feature">
-<p class="admonition-title">New in Ceedling 1.1.0 — Partials</p>
-<p>A <a href="testing-guide/partials/"><em>Partial</em></a> is your C code sliced and diced
-to expose functional elements for testing that you could not otherwise 
-access without rewriting your source code. Think of Partials as a scalpel 
-for testing your code.</p>
-<p>👀 See the <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md">Changelog</a>
-for all the new goodness in 1.1.0.</p>
+<p class="admonition-title">Ceedling 1.2.0 adds the most requested features and improvements</p>
+<p>👀 See the <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md">Changelog</a>.</p>
 </div>
+<p>Ceedling 1.2.0 (prerelease) includes:</p>
+<ul>
+<li><a href="getting-started/builds/"><strong>Delta builds</strong></a> have been restored so that file regeneration and build actions only occur because of changed files or configuration.</li>
+<li><strong><code>#include</code> relative paths &amp; duplicate filename disambiguation</strong>. Ceedling now fully <a href="testing-guide/conventions/#distinguishing-same-named-files">supports relative paths everywhere</a> and offers options to distinguish files of the same name.</li>
+<li><strong>Multiple file extensions per file type.</strong> You may now provide a list of file types (e.g. <code>.c</code> and <code>.cc</code>) via <a href="configuration/reference/extension/"><code>:extension</code></a> to gather files into your project’s build.</li>
+<li><strong>Dedicated mocks and test runner generation <a href="getting-started/command-line/#build-plugin-tasks">build tasks</a>.</strong> You may now run the test build pipeline only up through generating mocks or test runners with no compilation or test runs.</li>
+</ul>
 <hr />
 <h2 id="overview">Overview</h2>
 <div class="grid cards">
@@ -4257,9 +4306,14 @@ right test suite strategy for your project.</p>
 <p>Installing Ceedling and its prerequisites.</p>
 </li>
 <li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 19V7H4v12zm0-16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm-7 14v-2h5v2zm-3.42-4L5.57 9H8.4l3.3 3.3c.39.39.39 1.03 0 1.42L8.42 17H5.59z"/></svg></span> <strong><a href="getting-started/command-line/">Ceedling’s Command Line.</a></strong></p>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 19V7H4v12zm0-16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm-7 14v-2h5v2zm-3.42-4L5.57 9H8.4l3.3 3.3c.39.39.39 1.03 0 1.42L8.42 17H5.59z"/></svg></span> <strong><a href="getting-started/command-line/">Ceedling’s Command Line</a></strong></p>
 <hr />
 <p>Now what? How do I make it <em>Go</em>?</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 10H3v2h11zm0-4H3v2h11zM3 16h7v-2H3zm18.5-4.5L23 13l-7 7-4.5-4.5L13 14l3 3z"/></svg></span> <strong><a href="getting-started/builds/">Delta builds</a></strong></p>
+<hr />
+<p>Expect fast builds triggered only by changes.</p>
 </li>
 </ul>
 </div>

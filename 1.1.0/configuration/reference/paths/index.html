@@ -89,9 +89,33 @@
     </div>
     <div data-md-component="announce">
       
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  
+
+          </div>
+          
+        </aside>
+      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  
+    You are not viewing the latest version.
+    <a href="../../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
         
       </div>
     
@@ -686,6 +710,8 @@
       
         
       
+        
+      
     
     
     
@@ -830,6 +856,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../getting-started/builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -856,7 +910,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -878,14 +932,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2681,8 +2735,6 @@
       
         
       
-        
-      
     
     
     
@@ -3291,34 +3343,6 @@
     
   
     Valgrind (Memory Analysis)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../plugins/bullseye/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bullseye (Coverage)
   
 
     
@@ -4501,7 +4525,13 @@ and file extensions. See <a href="../extension/">project configuration <code>:ex
 <p>Entries in <code>:paths</code> help create directory-based bulk file collections. The
 <code>:files</code> configuration section is available for filepath-oriented tailoring of
 these bulk file collections.</p>
-<p>Entries in <code>:paths</code> ↳ <code>:include</code> also specify search paths for header files.</p>
+<p>Entries in <code>:paths</code> ↳ <code>:include</code> also specify compilation search paths for 
+header files.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Ceedling <a href="../../../testing-guide/conventions/#distinguishing-same-named-files">distinguishes files of the same name by their path with various interfaces and conventions to expose this</a>.
+This ability is particularly of interest in test suite builds.</p>
+</div>
 <p>All of the configuration subsections that follow default to empty lists. In
 YAML, list items can be comma separated within brackets or organized per line
 with a dash. An empty list can only be denoted as <code>[]</code>. Typically, you will see
@@ -4707,6 +4737,12 @@ project configuration, subtractive paths will only be processed after the
 final mixin is merged. That is, you can merge in additive and subtractive
 paths with Mixins to your heart’s content. The subtractive paths are not
 removed until all Mixins have been merged.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">The same <code>+:</code> / <code>-:</code> convention is available in test files</p>
+<p>The <a href="../../../testing-guide/build-directives/#test_source_file-subtractive-notation"><code>TEST_SOURCE_FILE()</code> build directive macro</a>
+supports this identical notation for removing a specific source file from
+a test executable’s own compile/link list.</p>
 </div>
 <p><br/><br/></p>
 

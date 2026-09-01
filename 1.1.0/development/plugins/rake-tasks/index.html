@@ -87,9 +87,33 @@
     </div>
     <div data-md-component="announce">
       
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  
+
+          </div>
+          
+        </aside>
+      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  
+    You are not viewing the latest version.
+    <a href="../../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
         
       </div>
     
@@ -684,6 +708,8 @@
       
         
       
+        
+      
     
     
     
@@ -828,6 +854,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../getting-started/builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -854,7 +908,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -876,14 +930,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2451,8 +2505,6 @@
       
         
       
-        
-      
     
     
     
@@ -3061,34 +3113,6 @@
     
   
     Valgrind (Memory Analysis)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../plugins/bullseye/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bullseye (Coverage)
   
 
     
@@ -4025,6 +4049,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#running-a-test-build-from-a-rake-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running a test build from a Rake task
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example-rake-plugin-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4090,6 +4125,17 @@
     <span class="md-ellipsis">
       
         Example Rake task
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-a-test-build-from-a-rake-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running a test build from a Rake task
       
     </span>
   </a>
@@ -4211,6 +4257,12 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>hello_world
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w"> </span>&gt;<span class="w"> </span>Hello<span class="w"> </span>World!
 </code></pre></div>
+<h2 id="running-a-test-build-from-a-rake-task">Running a test build from a Rake task</h2>
+<p>A Rake task can trigger a full test build itself by calling
+<code>@ceedling[:test_invoker].setup_and_invoke</code>. Pass a context symbol unique to
+your plugin. Ceedling uses this context to distinguish build pipelines. It
+also keeps your build's delta build state separate from ordinary test builds.
+See <a href="../../../getting-started/builds/">Delta Builds</a> for how this tracking works.</p>
 <h2 id="example-rake-plugin-layout">Example Rake plugin layout</h2>
 <p>Project configuration file:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:plugins</span><span class="p">:</span>

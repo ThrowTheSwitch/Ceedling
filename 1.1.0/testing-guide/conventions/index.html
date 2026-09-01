@@ -89,9 +89,33 @@
     </div>
     <div data-md-component="announce">
       
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  
+
+          </div>
+          
+        </aside>
+      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
         
       </div>
     
@@ -686,6 +710,8 @@
       
         
       
+        
+      
     
     
     
@@ -830,6 +856,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../getting-started/builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -856,7 +910,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -878,14 +932,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1240,6 +1294,45 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#distinguishing-same-named-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distinguishing same-named files
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Distinguishing same-named files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#header-source-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Header / source files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-files-cli-test-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test files (CLI test tasks)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2802,8 +2895,6 @@
       
         
       
-        
-      
     
     
     
@@ -3412,34 +3503,6 @@
     
   
     Valgrind (Memory Analysis)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../plugins/bullseye/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bullseye (Coverage)
   
 
     
@@ -4369,6 +4432,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#distinguishing-same-named-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distinguishing same-named files
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Distinguishing same-named files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#header-source-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Header / source files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-files-cli-test-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test files (CLI test tasks)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#test-build-search-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4733,6 +4835,55 @@ Any directory structure will do. Tests can be held in subdirectories
 within source directories, or tests and source directories
 can be wholly separated at the top of your project's directory
 tree.</p>
+<h2 id="distinguishing-same-named-files">Distinguishing same-named files</h2>
+<h3 id="header-source-files">Header / source files</h3>
+<p>Ceedling distinguishes files by their full relative path, not just their
+filename. A project may have, for example, both <code>src/drivers/uart.c</code> and
+<code>src/sensors/uart.c</code> without one hiding or colliding with the other.</p>
+<p>Distinguishing files is mostly an issue in test builds. If two files share
+a name without enough path to distinguish them, Ceedling resolves the reference 
+to the first match among the file collection. File collections are ordered per
+your project configuration (<code>:paths</code>). The ordering of collected files is
+identical to the search path ordering provided to the compiler from the same
+<code>:paths</code> configuration plus any use of
+<a href="../build-directives/#test_include_path"><code>TEST_INCLUDE_PATH()</code></a> directives in
+a test file. When Ceedling finds more than one reference, it uses the first
+in the ordered file list but logs an informational notice naming multi-file 
+matches, so the choice is not silent.</p>
+<p>If Ceedling uses the wrong match for lack of path information, your test build 
+fails downstream with an ordinary compilation error indirectly revealing the
+issue. Add enough path at the point of reference to select the file you actually 
+meant.</p>
+<ul>
+<li>Use paths in <code>#include</code> directives in your test files to distinguish header 
+  files of the same name (mocks are distiguished by the same filepath as the 
+  headers from which they are generated). Examples: <code>#include "foo/bar/file.h"</code>
+  and/or <code>#include "foo/bar/mock_file.h"</code>.</li>
+<li>Use the <a href="../build-directives/"><code>TEST_SOURCE_FILE()</code> build directive macro</a>
+  to provide a path to distinguish source files of the same name to be 
+  compiled and linked with a test executable.</li>
+</ul>
+<p><code>TEST_SOURCE_FILE()</code> also takes precedence over the header/source correspondence
+convention above. If a test both <code>#include</code>s a header and separately names a
+same-named source via <code>TEST_SOURCE_FILE()</code>, the directive's own path wins outright
+— its source is the one compiled, and the header/source convention does not also
+compile whatever it would otherwise have found on its own for that same name. This
+holds even when the header's own <code>#include</code> was already unambiguous; a
+<code>TEST_SOURCE_FILE()</code> entry sharing that basename is always authoritative. (The
+header itself is still validated/resolved as usual — only which <em>source</em> file gets
+compiled for a shared basename is affected.) Like the search-path resolution
+above, this override is logged with an informational notice naming the winning
+<code>TEST_SOURCE_FILE()</code> entry and the <code>#include</code> it overrode, so the substitution
+is not silent either.</p>
+<h3 id="test-files-cli-test-tasks">Test files (CLI test tasks)</h3>
+<p>Execute <a href="../../getting-started/command-line/"><code>ceedling test:</code> tasks</a> at the command line with an
+optional partial path to distinguish test executables (e.g. <code>test:foo/bar.c</code>),
+recalling that multiple conventions exist for finding/executing a test
+executable via <code>test:</code> task.</p>
+<p>Unlike the cases above, a same-named test file given at the command line is 
+<strong>not</strong> auto-resolved. You must supply enough path yourself in the task
+name. Ceedling will complain about colliding task names and provide a list
+of matching candidates to help you provide path to disambiguate test files.</p>
 <h2 id="test-build-search-paths">Test build search paths</h2>
 <p>Test builds in C are fairly complex. Each test file becomes a test
 executable. Each test executable needs generated runner code and 
@@ -4863,6 +5014,12 @@ present in <code>file_xyz.c</code>. In these cases, you can use the test
 directive macro <code>TEST_SOURCE_FILE(...)</code> to tell Ceedling to compile 
 and link the desired source file into the test executable (see 
 <a href="../build-directives/">macro documentation</a>).</p>
+<p>Conversely, sometimes you may need to remove from a test executable 
+build a source file that corresponds to an <code>#include</code> directive in your
+test file. A <code>TEST_SOURCE_FILE()</code> entry prefixed with a <code>-:</code> decorator 
+removes a named file from a test‘s compile/link list. See 
+<a href="../build-directives/#test_source_file-subtractive-notation"><code>TEST_SOURCE_FILE()</code> Subtractive Notation</a>
+for the full discussion.</p>
 <p>That was a lot of information and many clauses in a very few 
 sentences; the commented example test file code that follows in a 
 bit will make it clearer.</p>

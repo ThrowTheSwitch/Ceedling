@@ -89,9 +89,33 @@
     </div>
     <div data-md-component="announce">
       
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  
+
+          </div>
+          
+        </aside>
+      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
         
       </div>
     
@@ -686,6 +710,8 @@
       
         
       
+        
+      
     
     
     
@@ -830,6 +856,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../getting-started/builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -856,7 +910,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -878,14 +932,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2453,8 +2507,6 @@
       
         
       
-        
-      
     
     
     
@@ -3063,34 +3115,6 @@
     
   
     Valgrind (Memory Analysis)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../plugins/bullseye/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bullseye (Coverage)
   
 
     
@@ -4620,12 +4644,28 @@ configuration is in <code>mkdocs.yml</code> while the local site bundle configur
 <td>Build the site to be served in strict mode — fails on broken links or warnings</td>
 </tr>
 <tr>
+<td><code>rake docs:build:prerelease</code></td>
+<td>Build the prerelease site in strict mode, for local validation</td>
+</tr>
+<tr>
 <td><code>rake docs:serve</code></td>
 <td>Serve plain MkDocs site locally on port 8000</td>
 </tr>
 <tr>
-<td><code>rake docs:deploy</code></td>
-<td>Deploy <code>dev</code> version to local <code>gh-pages</code> branch (no remote push)</td>
+<td><code>rake docs:serve:prerelease</code></td>
+<td>Serve the prerelease site locally on port 8000, for docs development</td>
+</tr>
+<tr>
+<td><code>rake docs:deploy:prerelease[version]</code></td>
+<td>Deploy a prerelease build to Github Pages under <code>version</code> (usage: <code>rake docs:deploy:prerelease[1.2.0]</code>)</td>
+</tr>
+<tr>
+<td><code>rake docs:deploy:release[version]</code></td>
+<td>Deploy a release build to Github Pages under <code>version</code>, without changing <code>latest</code> (usage: <code>rake docs:deploy:release[1.1.0]</code>)</td>
+</tr>
+<tr>
+<td><code>rake docs:deploy:release:latest[version]</code></td>
+<td>Deploy a release build to Github Pages under <code>version</code> and set it as <code>latest</code> (usage: <code>rake docs:deploy:release:latest[1.2.0]</code>)</td>
 </tr>
 <tr>
 <td><code>rake docs:preview</code></td>

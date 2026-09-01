@@ -89,9 +89,33 @@
     </div>
     <div data-md-component="announce">
       
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  
+
+          </div>
+          
+        </aside>
+      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
         
       </div>
     
@@ -686,6 +710,8 @@
       
         
       
+        
+      
     
     
     
@@ -830,6 +856,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../getting-started/builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -856,7 +910,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -878,14 +932,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2453,8 +2507,6 @@
       
         
       
-        
-      
     
     
     
@@ -3063,34 +3115,6 @@
     
   
     Valgrind (Memory Analysis)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../plugins/bullseye/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bullseye (Coverage)
   
 
     
@@ -4186,6 +4210,12 @@ must appear above their use in a test file.</p>
 for details.</p>
 </div>
 <h2 id="test_source_filefilepath"><code>TEST_SOURCE_FILE("filepath")</code></h2>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Ceedling <a href="../../testing-guide/conventions/#distinguishing-same-named-files">distinguishes files of the same name by their path</a>.
+Include a partial path to distinguish any source files of the
+same name to be compiled and linked with your test executable.</p>
+</div>
 <p>Inject a specific source file into a test executable's build. Use this when
 a source file has no corresponding header file that Ceedling can discover by
 convention, or when you need to explicitly include an assembly file (<code>.s</code>) in
@@ -4195,6 +4225,9 @@ a test build that has assembly support enabled.</p>
 <li>The file must exist within Ceedling's source file collection</li>
 <li>Multiple uses per test file are allowed, one per line</li>
 </ul>
+<p>A subtractive decorator <code>-:</code> prepending a filepath removes the C file
+from the test executable build. This can be useful in overriding certain
+Ceedling conventions.</p>
 <h2 id="test_include_pathpath"><code>TEST_INCLUDE_PATH("path")</code></h2>
 <p>Add a header search path to an individual test executable's compiler
 invocation. This supplements — it does not replace — the <code>:paths</code> ↳ <code>:include</code>

@@ -89,9 +89,33 @@
     </div>
     <div data-md-component="announce">
       
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  
+
+          </div>
+          
+        </aside>
+      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
         
       </div>
     
@@ -686,6 +710,8 @@
       
         
       
+        
+      
     
     
     
@@ -830,6 +856,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../getting-started/builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -856,7 +910,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -878,14 +932,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2453,8 +2507,6 @@
       
         
       
-        
-      
     
     
     
@@ -3083,34 +3135,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../plugins/bullseye/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bullseye (Coverage)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../plugins/fff/" class="md-nav__link">
         
   
@@ -3663,6 +3687,50 @@
     <span class="md-ellipsis">
       
         ceedling test:path[*]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling-genmocksall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling gen:mocks:all
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling-genmocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling gen:mocks:*
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling-gentest_runnerall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling gen:test_runner:all
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling-gentest_runner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling gen:test_runner:*
       
     </span>
   </a>
@@ -4608,6 +4676,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ceedling-genmocksall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling gen:mocks:all
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling-genmocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling gen:mocks:*
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling-gentest_runnerall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling gen:test_runner:all
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ceedling-gentest_runner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ceedling gen:test_runner:*
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ceedling-release" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4910,8 +5022,14 @@ validation of code and configuration via your toolchain.</p>
 <hr />
 <h3 id="ceedling-test"><a href="../../getting-started/command-line/#ceedling-test"><code>ceedling test:*</code></a></h3>
 <p>Execute the named test file or the named source file that has an
-accompanying test. No path. Examples: <code>ceedling test:foo</code>, <code>ceedling 
-test:foo.c</code> or <code>ceedling test:test_foo.c</code></p>
+accompanying test. Examples: <code>ceedling test:foo</code>, <code>ceedling test:foo.c</code>
+or <code>ceedling test:test_foo.c</code></p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>See the full documentation linked in this reference section title for
+details on how to reference test files having the same filename within
+different paths.</p>
+</div>
 <h4 id="ceedling-test-test-casetest_case_name"><a href="../../getting-started/command-line/#ceedling-test-test-casetest_case_name"><code>ceedling test:* --test-case=&lt;test_case_name&gt;</code></a></h4>
 <p>Execute individual test cases which match <code>test_case_name</code>.</p>
 <p>For instance, if you have a test file <em>test_gpio.c</em> containing the following 
@@ -4955,6 +5073,29 @@ will execute all tests named for initialization testing.</p>
 sensitive). Example: <code>ceedling test:path[foo/bar]</code> will execute all tests
 whose path contains foo/bar.</p>
 <p>Both directory separator characters <code>/</code> and <code>\</code> are valid.</p>
+<hr />
+<h3 id="ceedling-genmocksall"><a href="../../getting-started/command-line/#ceedling-genmocksall"><code>ceedling gen:mocks:all</code></a></h3>
+<p>Generate the mock files in the project build directory for all tests. The
+test build pipeline terminates after the mock generation stage.</p>
+<hr />
+<h3 id="ceedling-genmocks"><a href="../../getting-started/command-line/#ceedling-genmocks"><code>ceedling gen:mocks:*</code></a></h3>
+<p>Generate the mock files in the project build directory for only the given 
+test or the named source file that has an accompanying test. The test 
+build pipeline terminates after the mock generation stage.
+Examples: <code>ceedling gen:mocks:foo</code>, <code>ceedling gen:mocks:foo.c</code> or 
+<code>ceedling gen:mocks:test_foo.c</code></p>
+<hr />
+<h3 id="ceedling-gentest_runnerall"><a href="../../getting-started/command-line/#ceedling-gentest_runnerall"><code>ceedling gen:test_runner:all</code></a></h3>
+<p>Generate up through test runners in the project build directory for all 
+tests. The test build pipeline terminates after the test runner generation 
+stage.</p>
+<hr />
+<h3 id="ceedling-gentest_runner"><a href="../../getting-started/command-line/#ceedling-gentest_runner"><code>ceedling gen:test_runner:*</code></a></h3>
+<p>Generate the test runner files in the project build directory for only 
+the given test or the named source file that has an accompanying test. 
+The test build pipeline terminates after the test runner generation stage.
+Examples: <code>ceedling gen:test_runner:foo</code>, <code>ceedling gen:test_runner:foo.c</code>
+or <code>ceedling gen:test_runner:test_foo.c</code></p>
 <hr />
 <h3 id="ceedling-release"><a href="../../getting-started/command-line/#ceedling-release"><code>ceedling release</code></a></h3>
 <p>Build all source into a release artifact (if the release build option

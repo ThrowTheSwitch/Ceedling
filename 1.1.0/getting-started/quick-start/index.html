@@ -89,9 +89,33 @@
     </div>
     <div data-md-component="announce">
       
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+            
+  
+
+          </div>
+          
+        </aside>
+      
     </div>
     
       <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
+  
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
         
       </div>
     
@@ -688,6 +712,8 @@
       
         
       
+        
+      
     
     
     
@@ -915,6 +941,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -944,7 +998,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -966,14 +1020,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3_5" id="__nav_3_5_label" tabindex="">
+              <label class="md-nav__link " for="__nav_3_6" id="__nav_3_6_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_3_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2541,8 +2595,6 @@
       
         
       
-        
-      
     
     
     
@@ -3151,34 +3203,6 @@
     
   
     Valgrind (Memory Analysis)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../plugins/bullseye/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Bullseye (Coverage)
   
 
     
@@ -4227,6 +4251,12 @@ configuration file could be as simple as this:</p>
 through running build tasks. Jump down just a teeny bit to see what the Ceedling 
 command line looks like and navigate to all the documentation for the steps 
 listed immediately below.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Ceedling requires a command line C toolchain be available in your path and is
+flexible enough to work with most anything. By default, Ceedling is ready to 
+work with <a href="https://gcc.gnu.org">GCC</a> out of the box (we recommend <a href="http://www.mingw.org/">MinGW</a> on Windows).</p>
+</div>
 <ol>
 <li><a href="../installation/">Install Ceedling</a></li>
 <li>Create a project<ul>
@@ -4242,13 +4272,6 @@ listed immediately below.</p>
 </li>
 <li>Run Ceedling tasks (see next section) from the working directory of your project.</li>
 </ol>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Ceedling requires a command line C toolchain be available in your path. It’s 
-flexible enough to work with most anything on any platform. By default, Ceedling 
-is ready to work with <a href="https://gcc.gnu.org">GCC</a> out of the box (we recommend the <a href="http://www.mingw.org/">MinGW</a> project 
-on Windows).</p>
-</div>
 <p>A common build strategy is to use your target toolchain for release builds—with or 
 without Ceedling—but rely on Ceedling + GCC for test builds (more on this 
 <a href="../../overview/">here</a>).</p>
