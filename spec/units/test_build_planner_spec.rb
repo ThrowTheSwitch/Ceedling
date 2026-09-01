@@ -332,7 +332,7 @@ describe TestBuildPlanner do
         allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
           .with( 'test/TestFoo.c' ).and_return( ['Foo'] )
         allow(@file_finder).to receive(:find_build_input_file)
-          .with( filepath: 'Foo', complain: :ignore, context: :test ).and_return( 'src/Foo.c' )
+          .with( filepath: 'Foo', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/Foo.c' )
         @testable.mocks = { MockFoo: TestInvokerTypes::MockDetails.new( name: 'MockFoo' ) }
       end
 
@@ -550,7 +550,7 @@ describe TestBuildPlanner do
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [] )
 
-      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
       expect(result).to eq( ['src/Foo.c'] )
     end
@@ -561,9 +561,9 @@ describe TestBuildPlanner do
           [UserInclude.new('unity.h'), MockInclude.new('MockFoo.h'), UserInclude.new('drivers/bar.h')]
         )
       allow(@file_finder).to receive(:find_build_input_file)
-        .with( filepath: 'drivers/bar.h', complain: :ignore, context: :test ).and_return( 'src/drivers/bar.c' )
+        .with( filepath: 'drivers/bar.h', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/drivers/bar.c' )
 
-      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
       expect(result).to eq( ['src/drivers/bar.c'] )
     end
@@ -573,11 +573,50 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [] )
       @testable.partials.tests = ['Baz']
       allow(@file_finder).to receive(:find_build_input_file)
-        .with( filepath: 'Baz', complain: :ignore, context: :test ).and_return( 'build/test/partials/a_test/Baz.c' )
+        .with( filepath: 'Baz', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'build/test/partials/a_test/Baz.c' )
 
-      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
       expect(result).to include( 'build/test/partials/a_test/Baz.c' )
+    end
+
+    # A Partial's own module name (e.g. 'Baz') carries no directory of its own for
+    # FileFinder to infer a test identity from -- passing `test_name` explicitly here
+    # is what scopes the lookup to this one testable's own Partials subdirectory.
+    # Without it, two different tests each Partializing a module that happens to
+    # produce the same generated basename would search every test's Partials
+    # directory at once and raise an ambiguous-file collision, even though each
+    # unambiguously belongs to its own test -- exactly the bug this call guards against.
+    it "scopes a Partial's generated-source lookup to this testable's own name, not another test's" do
+      other_testable = TestInvokerTypes::Testable.new(
+        :name         => 'other_test',
+        :filepath     => 'test/TestOther.c',
+        :paths        => { :build => 'build/test/out/other_test', :results => 'build/test/results/other_test' },
+        :mocks        => {},
+        :search_paths => []
+      )
+      @testable.partials.tests = ['Baz']
+      other_testable.partials.tests = ['Baz']
+
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .with( 'test/TestOther.c' ).and_return( [] )
+      allow(@test_source_file_directive_resolver).to receive(:resolve)
+        .with( 'test/TestOther.c', :test ).and_return( [[], {}] )
+
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'Baz', complain: :ignore, context: :test, test: 'a_test' )
+        .and_return( 'build/test/partials/a_test/Baz.c' )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'Baz', complain: :ignore, context: :test, test: 'other_test' )
+        .and_return( 'build/test/partials/other_test/Baz.c' )
+
+      a_result     = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
+      other_result = @planner.extract_sources( :test, 'test/TestOther.c', other_testable.partials, other_testable.name )
+
+      expect(a_result).to include( 'build/test/partials/a_test/Baz.c' )
+      expect(other_result).to include( 'build/test/partials/other_test/Baz.c' )
     end
 
     it "skips the implicit header-driven resolution entirely when a TEST_SOURCE_FILE() entry already shares the header's own basename -- unconditionally, not only when the implicit resolution would otherwise be ambiguous -- and logs a NOTICE naming the override" do
@@ -586,14 +625,14 @@ describe TestBuildPlanner do
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
       expect(@file_finder).to_not receive(:find_build_input_file)
-        .with( filepath: 'foo.h', complain: :ignore, context: :test )
+        .with( filepath: 'foo.h', complain: :ignore, context: :test, test: 'a_test' )
       expect(@loginator).to receive(:log).with(
         a_string_matching(/src\/beta\/foo\.c/).and(a_string_matching(/foo\.h/)).and(a_string_matching(/test\/TestFoo\.c/)),
         Verbosity::COMPLAIN,
         LogLabels::NOTICE
       )
 
-      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
       expect(result).to eq( ['src/beta/foo.c'] )
     end
@@ -604,14 +643,14 @@ describe TestBuildPlanner do
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
       expect(@file_finder).to_not receive(:find_build_input_file)
-        .with( filepath: 'foo.h', complain: :ignore, context: :test )
+        .with( filepath: 'foo.h', complain: :ignore, context: :test, test: 'a_test' )
       expect(@loginator).to receive(:log).with(
         a_string_matching(/src\/beta\/foo\.cpp/).and(a_string_matching(/foo\.h/)),
         Verbosity::COMPLAIN,
         LogLabels::NOTICE
       )
 
-      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
       expect(result).to eq( ['src/beta/foo.cpp'] )
     end
@@ -622,10 +661,10 @@ describe TestBuildPlanner do
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
       allow(@file_finder).to receive(:find_build_input_file)
-        .with( filepath: 'foo.h', complain: :ignore, context: :test ).and_return( 'src/foo.c' )
+        .with( filepath: 'foo.h', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/foo.c' )
       expect(@loginator).to_not receive(:log)
 
-      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
       expect(result).to match_array( ['src/calc.c', 'src/foo.c'] )
     end
@@ -636,9 +675,9 @@ describe TestBuildPlanner do
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('foo.h')] )
       allow(@file_finder).to receive(:find_build_input_file)
-        .with( filepath: 'foo.h', complain: :ignore, context: :test ).and_return( 'src/foo.c' )
+        .with( filepath: 'foo.h', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/foo.c' )
 
-      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
       expect(result).to eq( [] )
     end
@@ -649,7 +688,7 @@ describe TestBuildPlanner do
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [] )
 
-      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
       expect(result).to eq( [] )
     end
@@ -660,7 +699,7 @@ describe TestBuildPlanner do
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [] )
 
-      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials )
+      result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
       expect(result).to eq( ['src/keep.c'] )
     end

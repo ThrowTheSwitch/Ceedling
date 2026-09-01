@@ -139,7 +139,7 @@ class TestBuildPlanner
       filepath  = testable.filepath
       mock_list = @context_extractor.lookup_mock_header_includes_list( filepath )
 
-      test_sources = extract_sources( state.context, filepath, testable.partials )
+      test_sources = extract_sources( state.context, filepath, testable.partials, testable.name )
       test_core    = test_sources +
                      mock_list.map { |mock| mock.filename.ext( EXTENSION_CORE_SOURCE ) }
 
@@ -217,7 +217,7 @@ class TestBuildPlanner
     return sources
   end
 
-  def extract_sources(context, test_filepath, partials)
+  def extract_sources(context, test_filepath, partials, test_name)
     sources = []
 
     additive_directive_sources, subtractive_directive_sources =
@@ -251,12 +251,29 @@ class TestBuildPlanner
         next
       end
 
-      sources << @file_finder.find_build_input_file( filepath: include.filepath, complain: :ignore, context: context )
+      # `test: test_name` pins this lookup to this testable's own generated-file
+      # subdirectories (mocks, runners, Partials) rather than letting FileFinder
+      # infer a test identity from `include.filepath` itself -- inference only works
+      # when a query's own path already sits under the test build-output root, which
+      # a bare module name or an unresolved include never does. Without it, a
+      # Partial-prefixed basename here would fall back to an unscoped, build-wide
+      # search and could collide with another, unrelated test's own same-named
+      # Partial output (see the Partials loop below, where this same gap was real).
+      sources << @file_finder.find_build_input_file( filepath: include.filepath, complain: :ignore, context: context, test: test_name )
     end
 
     # Add to the source list any testable Partials (no mock Partials)
+    #
+    # `_module` is a bare module name, not a path -- FileFinder has no directory
+    # structure to infer a test identity from, so without `test: test_name` here
+    # explicitly (the same identity TestBuildExecutor already passes when resolving
+    # this test's own objects, see its own `test: obj.test` call), the generated
+    # Partial search falls back to scanning every test's Partials directory at once.
+    # Two different tests each Partializing a module that happens to produce the
+    # same generated basename would then collide as "ambiguous," even though each
+    # unambiguously belongs to its own test.
     partials.tests.each do |_module|
-      sources << @file_finder.find_build_input_file( filepath: _module, complain: :ignore, context: context )
+      sources << @file_finder.find_build_input_file( filepath: _module, complain: :ignore, context: context, test: test_name )
     end
 
     sources = sources.compact.uniq
