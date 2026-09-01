@@ -38,6 +38,8 @@ describe TestBuildExecutor do
     @tools_test_fixture                      = { name: 'fake fixture' }
     @tools_test_bare_includes_preprocessor   = { name: 'fake bare includes preprocessor' }
     @tools_test_file_directives_only_preprocessor = { name: 'fake directives-only preprocessor' }
+    @tools_test_backtrace_gdb                = { name: 'fake gdb backtrace' }
+    @tools_test_fixture_simple_backtrace     = { name: 'fake simple backtrace' }
 
     allow(@configurator).to receive(:extension_assembly).and_return( FilenameExtension.new('.asm') )
     allow(@configurator).to receive(:tools_test_compiler).and_return( @tools_test_compiler )
@@ -46,6 +48,13 @@ describe TestBuildExecutor do
     allow(@configurator).to receive(:tools_test_fixture).and_return( @tools_test_fixture )
     allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return( @tools_test_bare_includes_preprocessor )
     allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( @tools_test_file_directives_only_preprocessor )
+    # tools_test_backtrace_gdb is deliberately NOT stubbed here -- the real Configurator
+    # only defines it at all when :use_backtrace is :gdb (see test_build_executor.rb's
+    # own comment at its one call site), so leaving it unstubbed here means any example
+    # that calls it without :gdb mode explicitly set up fails loudly, the same way the
+    # real Configurator would raise NoMethodError.
+    allow(@configurator).to receive(:tools_test_fixture_simple_backtrace).and_return( @tools_test_fixture_simple_backtrace )
+    allow(@configurator).to receive(:project_config_hash).and_return( { project_use_backtrace: :simple } )
     allow(@configurator).to receive(:test_build_preprocess_force_fallback).and_return( false )
     allow(@configurator).to receive(:project_use_mocks).and_return( false )
     allow(@configurator).to receive(:project_use_exceptions).and_return( false )
@@ -568,7 +577,7 @@ describe TestBuildExecutor do
       expect(@dependinator).to receive(:register).with(
         @fixture_target,
         files: ['build/a_test.out'],
-        meta:  { tools: [swapped_tool] }
+        meta:  hash_including( tools: [swapped_tool] )
       )
       expect(@generator).to receive(:generate_test_results) do |**args|
         expect( args[:tool] ).to eq( swapped_tool )
@@ -584,7 +593,55 @@ describe TestBuildExecutor do
       expect(@dependinator).to receive(:register).with(
         @fixture_target,
         files: ['build/a_test.out'],
-        meta:  { tools: [@tools_test_fixture] }
+        meta:  hash_including( tools: [@tools_test_fixture] )
+      )
+
+      @executor.stage_execute( @state )
+    end
+
+    # :use_backtrace doesn't swap the fixture tool itself -- it only selects what
+    # generator.rb does *after* a crash is detected (see this call site's own comment
+    # in test_build_executor.rb). Without capturing it (and the tool config(s) it
+    # drives) as meta here, toggling it would never invalidate a cached-fresh
+    # fixture_target, so a delta build would keep reusing a stale crash-diagnosis result.
+    it "registers :use_backtrace and the gdb backtrace tool as meta when :use_backtrace is :gdb" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+      allow(@configurator).to receive(:project_config_hash).and_return( { project_use_backtrace: :gdb } )
+      allow(@configurator).to receive(:tools_test_backtrace_gdb).and_return( @tools_test_backtrace_gdb )
+
+      expect(@dependinator).to receive(:register).with(
+        @fixture_target,
+        files: ['build/a_test.out'],
+        meta:  {
+          tools: [@tools_test_fixture],
+          use_backtrace: :gdb,
+          backtrace_tools: [@tools_test_fixture_simple_backtrace, @tools_test_backtrace_gdb]
+        }
+      )
+
+      @executor.stage_execute( @state )
+    end
+
+    # Regression guard: tools_test_backtrace_gdb only exists on the real Configurator
+    # when :use_backtrace is :gdb (Configurator only merges its defaults in that case) --
+    # calling it unconditionally raised NoMethodError against a real project configured
+    # for :simple or :none. @configurator here is a plain double with no stub for
+    # tools_test_backtrace_gdb, so it fails the same way a real run would if this
+    # regressed.
+    it "registers only the simple backtrace tool as meta, and never reads the gdb tool's config, when :use_backtrace is :simple" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+      allow(@configurator).to receive(:project_config_hash).and_return( { project_use_backtrace: :simple } )
+
+      expect(@dependinator).to receive(:register).with(
+        @fixture_target,
+        files: ['build/a_test.out'],
+        meta:  {
+          tools: [@tools_test_fixture],
+          use_backtrace: :simple,
+          backtrace_tools: [@tools_test_fixture_simple_backtrace]
+        }
       )
 
       @executor.stage_execute( @state )

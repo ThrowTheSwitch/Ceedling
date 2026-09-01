@@ -211,6 +211,29 @@ module CommonSystemTestCases
     end
   end
 
+  # #1251 -- the Overall Test Summary must still print at :warnings verbosity
+  # (`--verbosity=warnings`, Verbosity::COMPLAIN) on an all-passing run, not just
+  # when verbosity is :normal or higher, or when a test fails. Before this fix, the
+  # summary's own gate mistakenly required :normal, silently swallowing the summary
+  # on the (default) all-clean case at :warnings.
+  def test_project_with_warnings_verbosity_prints_overall_summary
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = @c.ceedling_build_exec("--verbosity=warnings")
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/OVERALL TEST SUMMARY/)
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
   def test_project_with_numerical_verbosity
     @c.with_context do
       Dir.chdir @proj_name do
