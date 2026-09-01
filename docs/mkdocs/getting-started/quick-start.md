@@ -52,9 +52,13 @@ listed immediately below.
     is ready to work with [GCC] out of the box (we recommend the [MinGW] project 
     on Windows).
 
-A common build strategy with tooling other than GCC is to use your target 
-toolchain for release builds—with or without Ceedling—but rely on Ceedling + 
-GCC for test builds (more on all this [here][overview]).
+A common build strategy is to use your target toolchain for release builds—with or 
+without Ceedling—but rely on Ceedling + GCC for test builds (more on this 
+[here][overview]).
+
+!!! tip "Ceedling VS Code extension"
+    If you are a Visual Studio Code user, you may want to install the
+    [Ceedling extension](https://marketplace.visualstudio.com/items?itemName=throw-the-switch.vscode-ceedling).
 
 [GCC]: https://gcc.gnu.org
 [MinGW]: http://www.mingw.org/

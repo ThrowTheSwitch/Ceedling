@@ -82,6 +82,9 @@ awesomeness in the C language.
 1. **[CMock]**<sup>†</sup>, a code generating, 
    [function mocking & stubbing][test-doubles] kit for interaction-based testing.
 
+If you are a Visual Studio Code user, you may also be interested in the
+[Ceedling extension](https://marketplace.visualstudio.com/items?itemName=throw-the-switch.vscode-ceedling).
+
 <sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
 [fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
 
