@@ -121,6 +121,11 @@ MIXIN_SIGIL_INLINE_YAML = '='
 MIXIN_SIGIL_FILEPATH    = '@'
 
 DEFAULT_PROJECT_FILENAME = 'project.yml'
+# #1250 -- self-documenting alternative to the generic DEFAULT_PROJECT_FILENAME, tried
+# during default discovery only (Projectinator#load) when no --project/-p or
+# CEEDLING_PROJECT_FILE was given. Neither name is "preferred" over the other -- either
+# alone is used as found; both present is an error (see Projectinator#load).
+ALTERNATE_PROJECT_FILENAME = 'ceedling.yml'
 DEFAULT_BUILD_LOGS_PATH = 'logs'
 
 DOCS_SITE_LOCAL_PATH = 'site-local'

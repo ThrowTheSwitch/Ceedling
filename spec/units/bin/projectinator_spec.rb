@@ -93,6 +93,45 @@ describe Projectinator do
       }.to raise_error( /No project filepath provided/ )
     end
 
+    # #1250 -- ceedling.yml as an alternative default project filename, self-documenting
+    # in a way the generic project.yml isn't. Default discovery only (no --project/-p,
+    # no CEEDLING_PROJECT_FILE) -- an explicit filepath or env var always wins outright,
+    # as already covered above.
+    it 'falls back to ceedling.yml in the working directory when project.yml is absent' do
+      allow(@file_wrapper).to receive(:exist?).with('./project.yml').and_return(false)
+      allow(@file_wrapper).to receive(:exist?).with('./ceedling.yml').and_return(true)
+      allow(@yaml_wrapper).to receive(:load).with(File.expand_path('./ceedling.yml')).and_return({:project => {}})
+
+      filepath, config = @projectinator.load
+
+      expect(filepath).to eq(File.expand_path('./ceedling.yml'))
+      expect(config[:history][:config].first[:mechanism]).to eq(:project)
+    end
+
+    it 'raises a CeedlingException naming both files when project.yml and ceedling.yml both exist, under default discovery' do
+      allow(@file_wrapper).to receive(:exist?).with('./project.yml').and_return(true)
+      allow(@file_wrapper).to receive(:exist?).with('./ceedling.yml').and_return(true)
+
+      expect {
+        @projectinator.load
+      }.to raise_error( CeedlingException, a_string_matching(/project\.yml/).and(a_string_matching(/ceedling\.yml/)) )
+    end
+
+    it 'does not raise the ambiguity error when only ceedling.yml exists' do
+      allow(@file_wrapper).to receive(:exist?).with('./project.yml').and_return(false)
+      allow(@file_wrapper).to receive(:exist?).with('./ceedling.yml').and_return(true)
+      allow(@yaml_wrapper).to receive(:load).and_return({:project => {}})
+
+      expect { @projectinator.load }.to_not raise_error
+    end
+
+    it 'ignores ceedling.yml (no ambiguity error) when an explicit filepath argument is given, even if both default files exist' do
+      allow(@file_wrapper).to receive(:exist?).and_return(true)
+      allow(@yaml_wrapper).to receive(:load).and_return({:project => {}})
+
+      expect { @projectinator.load( filepath: 'custom.yml' ) }.to_not raise_error
+    end
+
     it 'treats a blank YAML file as an empty config hash rather than nil' do
       allow(@yaml_wrapper).to receive(:load).and_return(nil)
 

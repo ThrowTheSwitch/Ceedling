@@ -93,8 +93,10 @@ class CliHandler
     # If destination is nil, assume it's the working directory
     dest ||= '.'
 
-    # Check for existing project (unless --force)
-    if @helper.project_exists?( dest, :|, DEFAULT_PROJECT_FILENAME, 'src', 'test' )
+    # Check for existing project (unless --force) -- #1250: either default project
+    # filename counts, so `ceedling new` doesn't silently overwrite an existing
+    # ceedling.yml-based project just because it's looking for project.yml.
+    if @helper.project_exists?( dest, :|, DEFAULT_PROJECT_FILENAME, ALTERNATE_PROJECT_FILENAME, 'src', 'test' )
       msg = "It appears a project already exists at \"#{dest}/\"! Use --force to destroy it and create a new project."
       raise msg
     end unless options[:force]
@@ -117,7 +119,7 @@ class CliHandler
     @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
 
     # Copy / set up project file
-    @helper.create_project_file( dest, options[:local], ceedling_tag ) if options[:configs]
+    @helper.create_project_file( dest, options[:local], ceedling_tag, ceedling_yml: options[:ceedling_yml] ) if options[:configs]
     
     # Copy in documentation
     @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( dest, DOCS_SUBDIR ) ) if options[:docs]
