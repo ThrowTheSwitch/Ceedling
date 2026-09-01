@@ -66,13 +66,17 @@ class GeneratorTestResultsBacktrace
       # Attribute each group member its own real result line, if Unity printed one
       group.each do |test_case|
         case crash_result[:output]
-        # Success test case
-        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:PASS\s*$)/
+        # Success test case -- tolerates a trailing duration suffix (e.g. `PASS (12 ms)`,
+        # UNITY_INCLUDE_EXEC_TIME), matching the real format generator_test_results.rb's
+        # own parser already recognizes for it.
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:PASS(\s\(.*ms\))?\s*$)/
           group_results[:passed]  += 1
           group_results[:output] << $1
 
-        # Ignored test case
-        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:IGNORE\s*$)/
+        # Ignored test case -- tolerates a trailing message (TEST_IGNORE_MESSAGE), same as
+        # FAIL below. Before this fix, a message-carrying ignore fell through to "unresolved"
+        # and was misreported as crash evidence -- IGNORE was only recognized bare.
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:IGNORE(:.+)?\s*$)/
           group_results[:ignored] += 1
           group_results[:output] << $1
 
@@ -260,13 +264,17 @@ class GeneratorTestResultsBacktrace
       # Attribute each group member its own real result line, if Unity printed one
       group.each do |test_case|
         case crash_result[:output]
-        # Success test case
-        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:PASS\s*$)/
+        # Success test case -- tolerates a trailing duration suffix (e.g. `PASS (12 ms)`,
+        # UNITY_INCLUDE_EXEC_TIME), matching the real format generator_test_results.rb's
+        # own parser already recognizes for it.
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:PASS(\s\(.*ms\))?\s*$)/
           group_results[:passed]  += 1
           group_results[:output] << $1
 
-        # Ignored test case
-        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:IGNORE\s*$)/
+        # Ignored test case -- tolerates a trailing message (TEST_IGNORE_MESSAGE), same as
+        # FAIL below. Before this fix, a message-carrying ignore fell through to "unresolved"
+        # and was misreported as crash evidence -- IGNORE was only recognized bare.
+        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:IGNORE(:.+)?\s*$)/
           group_results[:ignored] += 1
           group_results[:output] << $1
 

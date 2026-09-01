@@ -130,6 +130,7 @@ SIMPLE_ASSERT_CRASH_OUTPUT =
 SIMPLE_PASS_OUTPUT   = "test_lib.c:3:test_empty:PASS\n---------\n1 Tests 0 Failures 0 Ignored\nOK\n"
 SIMPLE_FAIL_OUTPUT   = "test_lib.c:8:test_bad:FAIL: Expected 1 Was 2\n---------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
 SIMPLE_IGNORE_OUTPUT = "test_lib.c:12:test_skip:IGNORE\n---------\n1 Tests 0 Failures 1 Ignored\nOK\n"
+SIMPLE_IGNORE_WITH_MESSAGE_OUTPUT = "test_lib.c:12:test_skip:IGNORE: Not yet implemented\n---------\n1 Tests 0 Failures 1 Ignored\nOK\n"
 
 
 describe GeneratorTestResultsBacktrace do
@@ -253,6 +254,31 @@ describe GeneratorTestResultsBacktrace do
       @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
 
       expect(expected_output_lines).to include('test_lib.c:9:test_asserting:FAIL: Expected 1 Was 2')
+    end
+
+    # Ignored-crash false positive: a TEST_IGNORE_MESSAGE(...) test case carries a
+    # trailing message, same as FAIL. Before this fix, only FAIL tolerated one --
+    # a message-carrying IGNORE fell through to "unresolved" and was misreported
+    # as crash evidence (a second @file_wrapper.write, for a companion_case that
+    # never actually crashed).
+    it 'handles an IGNORE test case with a trailing message and does not write a log' do
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status },
+        { output: "test_lib.c:9:test_asserting:IGNORE: Not yet implemented\n---------\n1 Tests 0 Failures 1 Ignored\nOK\n",
+          time: 0.1, exit_code: 0, stderr: '', status: @ok_status }
+      )
+
+      expect(@file_wrapper).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything, anything)
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:9:test_asserting:IGNORE: Not yet implemented')
     end
 
     it "does not trust a matched PASS line when the retry's own real status contradicts it" do
@@ -469,6 +495,31 @@ describe GeneratorTestResultsBacktrace do
       @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore, context: :test )
 
       expect(expected_output_lines).to include('test_lib.c:12:test_skip:IGNORE')
+    end
+
+    # Ignored-crash false positive: a TEST_IGNORE_MESSAGE(...) test case carries a
+    # trailing message, same as FAIL (handled just above). Before this fix, only FAIL
+    # tolerated one -- a message-carrying IGNORE fell through to the "no result line"
+    # branch and was misreported as a second crashed test case (test_skip, alongside
+    # the real crash attributed to test_crashes_elsewhere).
+    it 'handles an IGNORE test case with a trailing message' do
+      test_cases_ignore = [{ test: 'test_crashes_elsewhere', line_number: 20 }, { test: 'test_skip', line_number: 12 }]
+
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status },
+        { output: SIMPLE_IGNORE_WITH_MESSAGE_OUTPUT, time: 0.02, exit_code: 0, stderr: '', status: @ok_status }
+      )
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:12:test_skip:IGNORE: Not yet implemented')
+      expect(expected_output_lines).to_not include(a_string_matching(/test_skip:FAIL/))
     end
 
     it "does not trust a matched PASS line when the retry's own real status contradicts it" do
