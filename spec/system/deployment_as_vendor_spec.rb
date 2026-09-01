@@ -90,6 +90,7 @@ ceedling_system_tests do
 
     describe "Verbosity and output" do
       test_case :test_project_with_named_verbosity
+      test_case :test_project_with_warnings_verbosity_prints_overall_summary
       test_case :test_project_with_numerical_verbosity
       test_case :report_tests_raw_output_log_plugin
     end

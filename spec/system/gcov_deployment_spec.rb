@@ -33,6 +33,7 @@ ceedling_system_tests do
         end
       end
 
+      test_case :project_with_gcov_enabled_test_all_does_not_require_gcovr
       test_case :project_with_gcov_success
       test_case :project_with_gcov_fail
       test_case :gcov_console_report_with_system_header

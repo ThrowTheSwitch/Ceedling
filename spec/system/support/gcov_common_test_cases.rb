@@ -10,6 +10,38 @@ require_relative 'gcov_helpers'
 module GcovCommonTestCases
   include GcovHelpers
 
+  # #1252 -- Enabling the gcov plugin must not make gcovr a hard dependency of every
+  # build. Deliberately does NOT call prep_project_yml_for_coverage (which conditionally
+  # strips :utilities ➡️ gcovr when the host lacks a real gcovr) -- the point here is
+  # gcovr enabled in config but genuinely unreachable, reproducing #1252 regardless of
+  # what's actually installed on the machine running this spec.
+  def project_with_gcov_enabled_test_all_does_not_require_gcovr
+    @c.with_context do
+      Dir.chdir @proj_name do
+        @c.uncomment_project_yml_option_for_test("- gcov")
+        # Default :gcov ↳ :utilities already includes gcovr and :reports already
+        # includes HtmlBasic -- exactly the enabled-but-unused shape #1252 reported.
+        @c.merge_project_yml_for_test(
+          { :tools => { :gcov_gcovr_report => { :executable => 'nonexistent_gcovr_binary_for_1252_test' } } }
+        )
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        # An ordinary test:all run must succeed -- it never needs gcovr at all.
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to_not match(/nonexistent_gcovr_binary_for_1252_test/)
+
+        # A real gcov: build still needs gcovr and must still fail loudly when it's missing --
+        # the fix defers gcovr's tool validation, it doesn't remove it.
+        output = @c.ceedling_build_exec("gcov:all")
+        expect(@c.last_exit_status).to_not eq(0)
+        expect(output).to match(/nonexistent_gcovr_binary_for_1252_test/)
+      end
+    end
+  end
+
   def project_with_gcov_success
     @c.with_context do
       Dir.chdir @proj_name do
