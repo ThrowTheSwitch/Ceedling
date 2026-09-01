@@ -219,6 +219,7 @@ new project (default is your working directory).
 | `--local` | | Install Ceedling plus supporting tools to vendor/ | `false` |
 | `--docs` | | Copy all documentation to docs/ subdirectory of project | `false` |
 | `--configs` | | Install starter project file in project root | `true` |
+| `--ceedling-yml` | | Name starter project file `ceedling.yml` instead of historical default of `project.yml` | `false` |
 | `--force` | | Ignore any existing project and recreate destination | `false` |
 | `--gitsupport` | | Create .gitignore / .gitkeep files for convenience | `false` |
 

@@ -69,13 +69,18 @@ be absolute or relative (to your working directory).
 
 If the filepath does not exist, Ceedling terminates with an error.
 
-### Default _project.yml_ in your working directory
+### Default project file in your working directory
 
 If neither a `--project` command line flag nor the environment variable
-`CEEDLING_PROJECT_FILE` are set, then Ceedling tries to load a file 
-named _project.yml_ in your working directory.
+`CEEDLING_PROJECT_FILE` are set, Ceedling looks in your working directory
+for a file named either _project.yml_ (historical default) or 
+_ceedling.yml_ (new alternative). Either name is loaded exactly the same way.
 
-If this file does not exist, Ceedling terminates with an error.
+If both _project.yml_ and _ceedling.yml_ exist in your working directory,
+Ceedling terminates with an error. If both are present, remove or rename one,
+or use `--project`/`-p` to explicitly choose which to load.
+
+If neither file exists, Ceedling terminates with an error.
 
 ## Applying Mixins
 

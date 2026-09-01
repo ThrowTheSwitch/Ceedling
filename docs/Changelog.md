@@ -50,11 +50,17 @@ The [`TEST_SOURCE_FILE()` build directive macro](https://throwtheswitch.github.i
 ### Filepath limit checks
 Platform filepath limits (especially on Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
 
+### `ceedling.yml` as an alternate default project file
+[#1250](https://github.com/ThrowTheSwitch/Ceedling/issues/1250) `ceedling.yml` is now recognized as an alternate default project filename alongside `project.yml`. Either name is loaded the same way; neither is preferred over the other. If both exist in the same directory, Ceedling raises an error. `ceedling new` continues to generate `project.yml` by default; pass `--ceedling-yml` to generate `ceedling.yml` instead. See [Loading a Project Configuration](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/loading/).
+
 ## 💪 Fixed
 
 Note: 1.2.0 includes all bug fixes for 1.1.x.
 
 - A CLI parameter string mutation issue that could corrupt certain build or plugin task invocations.
+- [#1251](https://github.com/ThrowTheSwitch/Ceedling/issues/1251) Fixed _Overall Test Summary_ not printing at logging verbosity of warning on an otherwise all-passing test run.
+- [#1252](https://github.com/ThrowTheSwitch/Ceedling/issues/1252) Fixed the Gcov plugin requiring `gcovr` to be installed for any build merely because the plugin was enabled, rather than only when a `gcov:` build actually runs.
+- Fixed a Unity `TEST_IGNORE_MESSAGE()` test case being misreported as crash evidence during crash-diagnosis retries when it shares a test file with a genuine crash.
 
 ### Mixins
 
