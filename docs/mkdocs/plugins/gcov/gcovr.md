@@ -32,10 +32,11 @@ using a Gcovr config file, you must provide explicit exclusion patterns matching
 your project layout (example below).
 
 ```ini
-[gcovr]
 ; You will need to revise these example exclude patterns to match your
 ; project directories and file naming as they cannot be automatically 
 ; provided to Gcovr when a Gcovr configuration file is in use.
+;
+; Note: Format is flat `key = value` lines with no `[section]` header.
 
 ; Test path(s) exclusions for 'test_' files with .c extensions. 
 exclude = .*test.*/test_.+\.c$
@@ -78,9 +79,8 @@ include all these options in your Gcov plugin configuration.
     # patterns in your config file (adjust paths to match your project’s
     # :test_file_prefix, test paths, and :build_root settings):
     #
-    #   [gcovr]
-    #   exclude = .*test.*/test_.+\.c$
-    #   exclude = .*build/.+\.c$
+    #  exclude = .*test.*/test_.+\.c$
+    #  exclude = .*build/.+\.c$
     :config_file: <config_file>
 
     # Exit with a status of 2 if the total line coverage is less than MIN percentage.
