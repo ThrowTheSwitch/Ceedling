@@ -21,21 +21,23 @@ GCovr can be configured in two ways:
 ### Gcovr configuration file
 
 !!! warning "Using a gcovr configuration file"
-    When `:config_file` is set, Ceedling passes only `--root` (`:report_root`) 
-    and `--config` (`:config_file`) to `gcovr` at the command line from your
-    plugin configuration. This prevents overriding config file settings with 
-    CLI arguments. You must provide any settings that would have been provided 
-    by the Gcov plugin.
+    When `:config_file` is set, Ceedling passes only `--root` (`:report_root`), 
+    `--config` (`:config_file`), and any `:custom_args:` to `gcovr` at the command 
+    line from your plugin configuration. This prevents overriding config file 
+    settings with other CLI arguments derived from plugin configuration. You must 
+    provide any settings that would have been provided by the Gcov plugin, either 
+    in the config file itself or via `:custom_args:`.
 
 To preserve filtering of test and build files from coverage results when
 using a Gcovr config file, you must provide explicit exclusion patterns matching 
 your project layout (example below).
 
 ```ini
-[gcovr]
 ; You will need to revise these example exclude patterns to match your
 ; project directories and file naming as they cannot be automatically 
 ; provided to Gcovr when a Gcovr configuration file is in use.
+;
+; Note: Format is flat `key = value` lines with no `[section]` header.
 
 ; Test path(s) exclusions for 'test_' files with .c extensions. 
 exclude = .*test.*/test_.+\.c$
@@ -69,18 +71,19 @@ include all these options in your Gcov plugin configuration.
     # Defaults to gcovr.cfg in the report_root directory if that file exists.
     #
     # When :config_file is set, Ceedling passes only --root and --config to
-    # gcovr and defers all other configuration to the file. This prevents
-    # Ceedling from overriding config file values with its CLI arguments. Only
+    # gcovr and defers (nearly) all other configuration to the file. This prevents
+    # Ceedling from overriding config file values with its CLI arguments.
     # :report_root is still applied because Ceedling may invoke gcovr from a
-    # different working directory than your project root.
+    # different working directory than your project root, and any :custom_args:
+    # (below) are still applied too — the one way to pass Gcovr flags of your
+    # own alongside a config file.
     #
     # To preserve the plugin’s base filtering behavior, include the following
     # patterns in your config file (adjust paths to match your project’s
-    # :test_file_prefix, test paths, and :build_root settings):
+    # :test_file_prefix, test paths, and :build_root settings).
     #
-    #   [gcovr]
-    #   exclude = .*test.*/test_.+\.c$
-    #   exclude = .*build/.+\.c$
+    #  exclude = .*test.*/test_.+\.c$
+    #  exclude = .*build/.+\.c$
     :config_file: <config_file>
 
     # Exit with a status of 2 if the total line coverage is less than MIN percentage.
@@ -181,6 +184,16 @@ include all these options in your Gcov plugin configuration.
 
     # Set the number of threads to use in parallel. (gcovr -j).
     :threads: <count>
+
+    # Optional list of one or more raw command line arguments to pass to gcovr.
+    # Useful as an escape hatch for any gcovr flag Ceedling has no named option for
+    # (e.g. limiting gcovr's search root).
+    # Note: Unlike every other option above, these arguments are still applied even
+    #       when :config_file is set. This is the one way to pass gcovr flags of
+    #       your own alongside a config file.
+    :custom_args:
+      - <argument>
+      - ...
 ```
 ## HTML reports
 

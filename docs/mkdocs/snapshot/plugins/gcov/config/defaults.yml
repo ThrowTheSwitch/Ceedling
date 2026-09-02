@@ -20,6 +20,7 @@
   :gcovr:
     :report_root: "."             # Gcovr defaults to scanning for results starting in working directory
     :config_file: ~               # Specify the location of the GCOVR configuration file to use instead of settings config here
+    :custom_args: []              # Optional list of one or more command line arguments to pass to gcovr (e.g. search-path limiting). Explicitly defined as default empty array to simplify option validation code
 
                                   # For v6.0+ merge coverage results for same function tested multiple times
                                   # The default behavior is 'strict' which will cause a gcovr exception for many users
