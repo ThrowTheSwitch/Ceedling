@@ -83,7 +83,10 @@ class ConfiguratorValidator
       # Expand paths using Ruby's Dir.glob()
       #  - A simple path will yield that path
       #  - A path glob will expand to one or more paths
-      _reformed = FilePathUtils::reform_subdirectory_glob( _path )
+      # #104 -- FilePathUtils.subdirectory_glob escapes a literal `[`/`]` in the
+      # user's own path before reforming the glob suffix, so it's matched literally
+      # rather than misread as glob character-class syntax.
+      _reformed = FilePathUtils.subdirectory_glob( _path )
       @file_wrapper.directory_listing( _reformed ).each do |entry|
         # For each result, add it to the working list *if* it's a directory
         dirs << entry if @file_wrapper.directory?(entry)
@@ -129,7 +132,9 @@ class ConfiguratorValidator
         next # Skip to next path
       end      
 
-      filelist = @file_wrapper.instantiate_file_list(_path)
+      # #104 -- escape a literal `[`/`]` in the user's own path so it's matched
+      # literally rather than misread as glob character-class syntax.
+      filelist = @file_wrapper.instantiate_file_list( FilePathUtils.escape_glob_brackets( _path ) )
 
       # If file list is empty, complain
       if (filelist.size == 0)

@@ -10,6 +10,7 @@ require 'rake' # for adding ext() method to string
 require 'ceedling/exceptions'
 require 'ceedling/path_matcher'
 require 'ceedling/path_mirror'
+require 'ceedling/file_path_utils'
 
 class FileFinder
 
@@ -101,10 +102,14 @@ class FileFinder
     if (!release) and
        (source_file =~ /^#{Regexp.escape(@configurator.project_test_file_prefix)}.+#{Regexp.escape(@configurator.test_runner_file_suffix)}$/)
       _source_file = source_file + EXTENSION_CORE_SOURCE
+      # #104 -- runner_scope_dir mirrors the test's own subdirectory, which may itself
+      # contain a literal `[`/`]` (e.g. a test living directly under a bracket-named
+      # directory); FilePathUtils.glob escapes it before Dir.glob (via directory_listing)
+      # re-interprets it.
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
-          @file_wrapper.directory_listing( File.join(runner_scope_dir(test_context), '*') ),
+          @file_wrapper.directory_listing( FilePathUtils.glob(runner_scope_dir(test_context), '*') ),
           complain)
 
     # Generated mocks -- scoped to this test's own mock subtree so another test's

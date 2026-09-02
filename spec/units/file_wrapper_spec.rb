@@ -124,4 +124,30 @@ describe FileWrapper do
       end
     end
   end
+
+  # #104 -- plain FileList.new(files)/#include treats every entry as a glob pattern to
+  # (re-)resolve via Dir.glob, which drops a literal `[`/`]` survivor in an already-
+  # concrete filename, and can only ever match files that already exist on disk at all
+  # -- wrong for a caller that already has the real, final answer in hand (e.g. an
+  # object file this same build is about to create). `<<` bypasses glob interpretation
+  # entirely.
+  describe '#instantiate_file_list_literal' do
+    it 'returns a FileList instance' do
+      expect( @file_wrapper.instantiate_file_list_literal( [] ) ).to be_a( Rake::FileList )
+    end
+
+    it 'returns an empty FileList for an empty array' do
+      expect( @file_wrapper.instantiate_file_list_literal( [] ).to_a ).to eq( [] )
+    end
+
+    it 'preserves every entry exactly, including a not-yet-existing path with literal [] brackets' do
+      files = ['src/[legacy]/foo.c', 'build/test/out/a_test/[legacy]/foo.o']
+      expect( @file_wrapper.instantiate_file_list_literal( files ).to_a ).to eq( files )
+    end
+
+    it 'preserves entry order and duplicates as given, with no glob re-resolution' do
+      files = ['b.c', 'a.c', 'a.c']
+      expect( @file_wrapper.instantiate_file_list_literal( files ).to_a ).to eq( files )
+    end
+  end
 end

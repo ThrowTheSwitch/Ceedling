@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/file_path_utils'
+
 # A configured filename-extension setting for one file type (source, header,
 # assembly, and so on). A project may name a file type with a single
 # extension or with several -- an assembly file might be `.s` or `.S`, for
@@ -60,8 +62,16 @@ class FilenameExtension
   # Wildcard glob fragments for every configured extension, for building
   # a `path/*ext` search pattern per extension when collecting whole file
   # lists rather than resolving one specific candidate filename.
+  #
+  # #104 -- `path` here is an already-resolved, concrete directory (the output of
+  # FilePathCollectionUtils#collect_paths, not a user-typed glob), but every caller
+  # hands the result straight to Rake::FileList#include, which globs it again --
+  # so a literal `[`/`]` surviving from the real directory name (collect_paths'
+  # own fix escapes brackets only for *its own* glob, not this next one) still
+  # needs escaping here, or the file list silently comes up empty for that path.
+  # FilePathUtils.glob handles the escaping itself.
   def glob_patterns(path)
-    @extensions.map { |ext| File.join(path, "*#{ext}") }
+    @extensions.map { |ext| FilePathUtils.glob(path, "*#{ext}") }
   end
 
   # A human-readable rendering of the configured extensions for log and

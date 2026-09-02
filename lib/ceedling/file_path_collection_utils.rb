@@ -37,7 +37,12 @@ class FilePathCollectionUtils
       _path = FilePathUtils.no_aggregation_decorators( path )
 
       # If it's a glob, modify it for Ceedling's recursive subdirectory convention
-      _reformed = FilePathUtils::reform_subdirectory_glob( _path )
+      # #104 -- FilePathUtils.subdirectory_glob escapes a literal `[`/`]` in the
+      # user's own path before reforming the glob suffix, so it's matched literally
+      # rather than misread as glob character-class syntax. `_path` itself
+      # (unescaped) is still used below for suffix checks and decorator-stripping,
+      # neither of which is a glob operation.
+      _reformed = FilePathUtils.subdirectory_glob( _path )
 
       # Expand paths using Ruby's Dir.glob()
       #  - A simple path will yield that path
@@ -116,7 +121,9 @@ class FilePathCollectionUtils
 
       # Expand path by pattern as needed and add only filepaths to working list.
       # Sort for deterministic ordering — see collect_paths and Github Issue #860
-      @file_wrapper.directory_listing( path ).sort.each do |entry|
+      # #104 -- escape a literal `[`/`]` in the user's own path so it's matched
+      # literally rather than misread as glob character-class syntax.
+      @file_wrapper.directory_listing( FilePathUtils.escape_glob_brackets( path ) ).sort.each do |entry|
         filepaths << File.expand_path( entry ) if !@file_wrapper.directory?( entry )
       end
 
@@ -133,7 +140,13 @@ class FilePathCollectionUtils
     result_paths = (plus - minus).to_a
     result_paths.map! {|path| shortest_path_from_working(path) }
 
-    result = FileList.new( result_paths )
+    # #104 -- every entry here is already a concrete, real file (nothing left to glob-
+    # expand -- this method's whole job already resolved it from any actual glob), but
+    # plain FileList.new/#include re-interprets each entry as a glob pattern to
+    # re-resolve via Dir.glob regardless, silently dropping a literal `[`/`]` survivor
+    # all over again. FileWrapper#instantiate_file_list_literal (`<<`, not `.new`) adds
+    # every entry as-is, with no glob interpretation at all.
+    result = @file_wrapper.instantiate_file_list_literal( result_paths )
     result.resolve()  # Force expansion to prevent race conditions in threaded context
     return result
   end

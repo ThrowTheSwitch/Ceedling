@@ -136,6 +136,78 @@ describe FilePathUtils do
       expect( FilePathUtils.no_decorators( nil ) ).to eq( '' )
     end
 
+    # #104 -- `[`/`]` are legal filename characters (Windows especially) but were
+    # swept into PATTERNS::GLOB alongside Ceedling's own genuinely-supported `*`/`?`/
+    # `{`/`}` wildcard syntax. Unlike those, `[`/`]` are never a documented Ceedling
+    # glob feature, so a literal bracket in a real directory name must not be treated
+    # as "where the glob starts" -- doing so silently validated the wrong, truncated
+    # ancestor directory instead of the real one.
+    it "returns a directory path containing literal brackets unchanged, not truncated ('foo/[bar]/baz')" do
+      expect( FilePathUtils.no_decorators( 'foo/[bar]/baz' ) ).to eq( 'foo/[bar]/baz' )
+    end
+
+    it "still extracts the directory portion ahead of a real glob when a literal bracket precedes it ('foo/[bar]/baz/*.c')" do
+      expect( FilePathUtils.no_decorators( 'foo/[bar]/baz/*.c' ) ).to eq( 'foo/[bar]/baz' )
+    end
+
+  end
+
+
+  describe '.escape_glob_brackets' do
+
+    it "backslash-escapes a literal '[' and ']'" do
+      expect( FilePathUtils.escape_glob_brackets( 'foo/[bar]/baz' ) ).to eq( 'foo/\\[bar\\]/baz' )
+    end
+
+    it "leaves a path with no brackets unchanged" do
+      expect( FilePathUtils.escape_glob_brackets( 'foo/bar/baz' ) ).to eq( 'foo/bar/baz' )
+    end
+
+    it "leaves Ceedling's own genuine glob syntax untouched" do
+      expect( FilePathUtils.escape_glob_brackets( 'foo/bar/**' ) ).to eq( 'foo/bar/**' )
+    end
+
+    it "returns nil for nil" do
+      expect( FilePathUtils.escape_glob_brackets( nil ) ).to be_nil
+    end
+
+  end
+
+
+  # #104 -- the canonical base-path-plus-suffix glob builder every call site should use
+  # instead of hand-rolling `File.join(path, suffix)`, so a literal `[`/`]` in `base_path`
+  # can't be forgotten by omission (several call sites did, before this existed).
+  describe '.glob' do
+
+    it "escapes brackets in the base path, leaving an appended suffix untouched" do
+      expect( FilePathUtils.glob( 'foo/[bar]', '*.c' ) ).to eq( 'foo/\\[bar\\]/*.c' )
+    end
+
+    it "joins multiple suffix parts, same as File.join" do
+      expect( FilePathUtils.glob( 'foo/[bar]', 'config', '*.rb' ) ).to eq( 'foo/\\[bar\\]/config/*.rb' )
+    end
+
+    it "behaves as a plain File.join when the base path has no brackets" do
+      expect( FilePathUtils.glob( 'foo/bar', '*.c' ) ).to eq( File.join( 'foo/bar', '*.c' ) )
+    end
+
+    it "returns just the escaped base path when no suffix is given" do
+      expect( FilePathUtils.glob( 'foo/[bar]' ) ).to eq( 'foo/\\[bar\\]' )
+    end
+
+  end
+
+
+  describe '.subdirectory_glob' do
+
+    it "escapes brackets in the path before reforming the trailing '/**' convention" do
+      expect( FilePathUtils.subdirectory_glob( 'foo/[bar]/**' ) ).to eq( 'foo/\\[bar\\]/**/**' )
+    end
+
+    it "escapes brackets in a path with no trailing glob" do
+      expect( FilePathUtils.subdirectory_glob( 'foo/[bar]' ) ).to eq( 'foo/\\[bar\\]' )
+    end
+
   end
 
 
