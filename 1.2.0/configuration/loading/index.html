@@ -1758,10 +1758,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#default-projectyml-in-your-working-directory" class="md-nav__link">
+  <a href="#default-project-file-in-your-working-directory" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Default project.yml in your working directory
+        Default project file in your working directory
       
     </span>
   </a>
@@ -4202,10 +4202,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#default-projectyml-in-your-working-directory" class="md-nav__link">
+  <a href="#default-project-file-in-your-working-directory" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Default project.yml in your working directory
+        Default project file in your working directory
       
     </span>
   </a>
@@ -4353,11 +4353,15 @@ environment variable <code>CEEDLING_PROJECT_FILE</code> is set, Ceedling will us
 the path it contains to load your project configuration. The path can
 be absolute or relative (to your working directory).</p>
 <p>If the filepath does not exist, Ceedling terminates with an error.</p>
-<h3 id="default-projectyml-in-your-working-directory">Default <em>project.yml</em> in your working directory</h3>
+<h3 id="default-project-file-in-your-working-directory">Default project file in your working directory</h3>
 <p>If neither a <code>--project</code> command line flag nor the environment variable
-<code>CEEDLING_PROJECT_FILE</code> are set, then Ceedling tries to load a file 
-named <em>project.yml</em> in your working directory.</p>
-<p>If this file does not exist, Ceedling terminates with an error.</p>
+<code>CEEDLING_PROJECT_FILE</code> are set, Ceedling looks in your working directory
+for a file named either <em>project.yml</em> (historical default) or 
+<em>ceedling.yml</em> (new alternative). Either name is loaded exactly the same way.</p>
+<p>If both <em>project.yml</em> and <em>ceedling.yml</em> exist in your working directory,
+Ceedling terminates with an error. If both are present, remove or rename one,
+or use <code>--project</code>/<code>-p</code> to explicitly choose which to load.</p>
+<p>If neither file exists, Ceedling terminates with an error.</p>
 <h2 id="applying-mixins">Applying Mixins</h2>
 <p>Once your base configuration is loaded, <a href="../mixins/">Mixins</a> provide a way
 to merge additional YAML configuration into it — for build variants, local
