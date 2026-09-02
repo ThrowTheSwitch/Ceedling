@@ -81,6 +81,40 @@ class FilePathUtils
     return path[0..(find_index-1)]
   end
 
+  # #104 -- `[`/`]` are legal filename characters (Windows especially) but Ruby's
+  # `Dir.glob`/`File.fnmatch` treat an unescaped `[...]` as character-class glob
+  # syntax, so a literal bracket in a real directory name silently fails to match
+  # its own glob pattern. Ceedling has no glob-escape helper of its own and Ruby
+  # provides none for this (unlike `Regexp.escape` for regexes), so this backslash-
+  # escapes just those two characters. Callers apply this only to the raw,
+  # user-supplied path *segment* of a pattern they're about to build -- never to a
+  # glob suffix Ceedling itself appends (e.g. `'*.rb'`/`'**/*.c'`), which must stay
+  # glob-active.
+  def self.escape_glob_brackets(path)
+    return path if path.nil?
+    return path.gsub(/([\[\]])/) { "\\#{$1}" }
+  end
+
+  # #104 -- the single, canonical way to turn a (possibly bracket-containing) base
+  # directory path into a glob pattern safe for anything that (re-)interprets it as
+  # a glob (`FileWrapper#directory_listing`, `Rake::FileList#include`,
+  # `FileWrapper#instantiate_file_list`). `escape_glob_brackets` alone only protects
+  # a call site that remembers to invoke it -- several didn't, because building the
+  # pattern via a bare `File.join(path, suffix)` gives no signal escaping was ever
+  # needed. Routing every base-path-plus-suffix glob pattern through this instead
+  # makes that omission structurally harder to repeat.
+  def self.glob(base_path, *suffix)
+    return File.join( escape_glob_brackets( base_path ), *suffix )
+  end
+
+  # Same escaping guarantee as `glob`, for the one caller shape that reforms
+  # Ceedling's own trailing `/**` recursive-directory convention instead of
+  # appending a suffix. `reform_subdirectory_glob` only inspects/appends based on
+  # a trailing `**`, so escaping first doesn't interfere with its own logic.
+  def self.subdirectory_glob(path)
+    return reform_subdirectory_glob( escape_glob_brackets( path ) )
+  end
+
   # Return whether the given path is to be aggregated (no aggregation modifier defaults to same as +:).
   # nil is treated as an additive (non-excluding) path.
   def self.add_path?(path)
@@ -433,15 +467,25 @@ class FilePathUtils
   # same-named object from the first. A file matching none of `roots` (a mock's own bare
   # basename, a vendor framework file, the test file itself under its own build path) is
   # left flat under `root`.
+  # #104 -- `files` (and, below, the `objects` this method itself computes) are already
+  # fully concrete filepaths -- nothing to glob-expand, no search to perform -- but
+  # `objects`' own entries in particular don't exist on disk yet at all (they're this
+  # very build's *about-to-be-compiled* output). FileWrapper#instantiate_file_list
+  # (Rake::FileList.new/#include) treats every entry as a glob pattern to resolve via
+  # Dir.glob regardless, which can only ever match files that already exist -- so a
+  # not-yet-existing object path is silently dropped outright, independent of whether
+  # it contains a literal `[`/`]`. FileWrapper#instantiate_file_list_literal (`<<`, not
+  # `.new`/`.include`) adds every entry as-is, with no glob interpretation at all -- the
+  # correct construction for a list that's already the real, final answer.
   def mirror_build_objects(files, root:, ext:, roots:)
     clean_roots = PathMirror.clean_roots( roots )
 
-    objects = @file_wrapper.instantiate_file_list(files).map do |file|
+    objects = @file_wrapper.instantiate_file_list_literal(files).map do |file|
       subdir   = PathMirror.relative_subdir_from_clean_roots( file, clean_roots )
       basename = File.basename(file).ext(ext)
       subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
     end
-    return @file_wrapper.instantiate_file_list(objects)
+    return @file_wrapper.instantiate_file_list_literal( objects )
   end
 
 end

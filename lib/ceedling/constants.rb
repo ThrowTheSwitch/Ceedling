@@ -86,7 +86,13 @@ CEEDLING_HEADER_FILEPATH = CEEDLING_HEADER_FILENAME # lib/ceedling/
 PARTIAL_FILENAME_PREFIX  = 'ceedling_partial_'
 
 class PATTERNS
-  GLOB = /[\*\?\{\}\[\]]/
+  # #104 -- `[`/`]` deliberately excluded: they're legal filename characters
+  # (common on Windows especially) but never a documented Ceedling glob feature
+  # (unlike `*`/`?`/`{`/`}`, Ceedling's own real wildcard syntax) -- including them
+  # here meant a literal bracket in a real directory name was silently treated as
+  # "where the glob starts," truncating path validation to the wrong ancestor
+  # directory. See FilePathUtils.no_decorators, this regex's one consumer.
+  GLOB = /[\*\?\{\}]/
 
   RUBY_STRING_REPLACEMENT = /#\{.+\}/
   TOOL_EXECUTOR_ARGUMENT_REPLACEMENT = /(\$\{(\d+)\})/

@@ -288,7 +288,11 @@ class Gcov < Plugin
     result_file = arg_hash[:result_file]
 
     @mutex.synchronize do
-      if (result_file =~ /#{GCOV_RESULTS_PATH}/) && !@result_list.include?(result_file)
+      # #104 -- `[`/`]` are legal filename characters, but also regex character-class
+      # syntax; interpolating GCOV_RESULTS_PATH into this regex unescaped means a
+      # literal bracket anywhere in it (e.g. a bracket-containing :build_root:) silently
+      # breaks this match, and the test never gets counted here.
+      if (result_file =~ /#{Regexp.escape(GCOV_RESULTS_PATH)}/) && !@result_list.include?(result_file)
         @result_list << arg_hash[:result_file]
       end
     end

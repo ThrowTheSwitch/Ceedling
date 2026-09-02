@@ -164,6 +164,23 @@ class FileWrapper
     return FileList.new(files)
   end
 
+  # #104 -- `FileList.new(files)` (and `FileList#include`) treats every string in `files`
+  # as a glob *pattern* to (re-)resolve against the real filesystem via Dir.glob, even
+  # when the caller already has a fully concrete, computed filepath in hand -- so a
+  # literal `[`/`]` surviving in one is silently dropped by that re-resolution, and a
+  # not-yet-existing path (e.g. an object file this same build is about to create) is
+  # dropped outright regardless of brackets, since Dir.glob only ever matches files that
+  # already exist. `<<` (unlike `.new`/`.include`) adds an entry to a FileList literally,
+  # with no glob interpretation at all -- the right tool whenever every entry is already
+  # exactly the real path wanted, existing or not. Only use this for that case; callers
+  # that actually want pattern matching (a directory to search, a real user-authored
+  # glob) still want `instantiate_file_list` + `.include`, same as always.
+  def instantiate_file_list_literal(files=[])
+    list = FileList.new
+    files.each { |file| list << file }
+    return list
+  end
+
   def mkdir(folder)
     check_path_length(folder, origin: 'FileWrapper#mkdir')
     return FileUtils.mkdir_p(folder)

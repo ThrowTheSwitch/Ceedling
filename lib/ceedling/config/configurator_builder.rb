@@ -359,8 +359,11 @@ class ConfiguratorBuilder
     in_hash[:collection_paths_test].each do |path|
       # A test file's basename carries the project's test-file prefix ahead of whichever
       # source extension is in play, so the prefix is folded into the glob fragment itself.
+      # #104 -- `path` is an already-resolved, concrete directory that may contain a
+      # literal `[`/`]` (e.g. a test file living directly under a bracket-named
+      # directory); FilePathUtils.glob escapes it before FileList#include re-globs it.
       in_hash[:extension_source].each do |ext|
-        all_tests.include( File.join(path, "#{in_hash[:project_test_file_prefix]}*#{ext}") )
+        all_tests.include( FilePathUtils.glob(path, "#{in_hash[:project_test_file_prefix]}*#{ext}") )
       end
     end
 
@@ -459,8 +462,11 @@ class ConfiguratorBuilder
     paths << in_hash[:project_build_vendor_cexception_path] if (in_hash[:project_use_exceptions])
 
     # Collect vendor framework code files
+    # #104 -- `path` is a vendor path rooted at the project directory, which may
+    # itself sit under a bracket-named directory (the original bug report's own
+    # scenario); FilePathUtils.glob escapes it before FileList#include re-globs it.
     paths.each do |path|
-      release_input.include( File.join(path, '*' + EXTENSION_CORE_SOURCE) )
+      release_input.include( FilePathUtils.glob(path, '*' + EXTENSION_CORE_SOURCE) )
     end
 
     # Collect source files
@@ -493,8 +499,11 @@ class ConfiguratorBuilder
     paths << in_hash[:project_build_vendor_cmock_path]      if (in_hash[:project_use_mocks])
 
     # Collect vendor framework code files
+    # #104 -- `path` is a vendor path rooted at the project directory, which may
+    # itself sit under a bracket-named directory (the original bug report's own
+    # scenario); FilePathUtils.glob escapes it before FileList#include re-globs it.
     paths.each do |path|
-      all_input.include( File.join(path, '*' + EXTENSION_CORE_SOURCE) )
+      all_input.include( FilePathUtils.glob(path, '*' + EXTENSION_CORE_SOURCE) )
     end
 
     paths =
@@ -574,8 +583,11 @@ class ConfiguratorBuilder
     paths = get_vendor_paths(in_hash)
 
     # Collect vendor framework code files
+    # #104 -- `path` is a vendor path rooted at the project directory, which may
+    # itself sit under a bracket-named directory (the original bug report's own
+    # scenario); FilePathUtils.glob escapes it before FileList#include re-globs it.
     paths.each do |path|
-      filelist.include( File.join(path, '*' + EXTENSION_CORE_SOURCE) )
+      filelist.include( FilePathUtils.glob(path, '*' + EXTENSION_CORE_SOURCE) )
     end
 
     # Force Rake::FileList to expand patterns to ensure it happens (FileList is a bit unreliable)

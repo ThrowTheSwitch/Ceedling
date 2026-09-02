@@ -100,7 +100,11 @@ class Bullseye < Plugin
     result_file = arg_hash[:result_file]
 
     @mutex.synchronize do
-      if ((result_file =~ /#{BULLSEYE_RESULTS_PATH}/) and (not @result_list.include?(result_file)))
+      # #104 -- `[`/`]` are legal filename characters, but also regex character-class
+      # syntax; interpolating BULLSEYE_RESULTS_PATH into this regex unescaped means a
+      # literal bracket anywhere in it (e.g. a bracket-containing :build_root:) silently
+      # breaks this match, and the test never gets counted here.
+      if ((result_file =~ /#{Regexp.escape(BULLSEYE_RESULTS_PATH)}/) and (not @result_list.include?(result_file)))
         @result_list << result_file
       end
     end

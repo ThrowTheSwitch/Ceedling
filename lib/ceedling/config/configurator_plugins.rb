@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/file_path_utils'
 
 class ConfiguratorPlugins
 
@@ -43,14 +44,21 @@ class ConfiguratorPlugins
       config[:plugins][:load_paths].each do |root|
         path = File.join(root, plugin)
 
+        # #104 -- `path` is real, unescaped, and used as-is below (add_load_path,
+        # plugin_paths[...]) -- only this glob-pattern-only variant needs a literal
+        # `[`/`]` in the user's own :load_paths: entry escaped, so it doesn't get
+        # misread as glob character-class syntax by Dir.glob (via directory_listing)
+        # and silently fail to match a real, existing plugin directory.
+        # FilePathUtils.glob handles the escaping itself.
+
         # Ceedling Ruby-based hash defaults plugin (or config for Ceedling programmatic plugin)
-        is_config_plugin       = ( not @file_wrapper.directory_listing( File.join( path, 'config', '*.rb' ) ).empty? )
+        is_config_plugin       = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, 'config', '*.rb' ) ).empty? )
 
         # Ceedling programmatic plugin
-        is_programmatic_plugin = ( not @file_wrapper.directory_listing( File.join( path, 'lib', '*.rb' ) ).empty? )
+        is_programmatic_plugin = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, 'lib', '*.rb' ) ).empty? )
 
         # Ceedling Rake plugin
-        is_rake_plugin         = ( not @file_wrapper.directory_listing( File.join( path, '*.rake' ) ).empty? )
+        is_rake_plugin         = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, '*.rake' ) ).empty? )
 
         if (is_config_plugin or is_programmatic_plugin or is_rake_plugin)
           plugin_paths[(plugin + '_path').to_sym] = path
