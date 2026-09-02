@@ -89,13 +89,6 @@ class Configurator
     # If partials enabled, enable full test preprocessing
     config[:project][:use_test_preprocessor] = :all
     @loginator.log( " > Enabled preprocessing." )
-
-    # If partials enabled and CMock's `:treat_inlines` is enabled, quietly disable.
-    # Enabling Partials and this feature causes extra processing for Ceedling and CMock that is never used.
-    if config[:cmock][:treat_inlines] == :include
-      config[:cmock][:treat_inlines] = :exclude
-      @loginator.log( "Reverted :cmock ↳ :treat_inlines to :exclude because this CMock feature is superseded by Partials.", Verbosity::COMPLAIN, LogLabels::NOTICE )
-    end
   end
 
 

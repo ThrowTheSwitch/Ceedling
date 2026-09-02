@@ -31,10 +31,12 @@ module TestInvokerTypes
 
   # A resolved mock: its own header's real, resolved location (`source`, also
   # duplicated onto `filepath`), the mirrored subdirectory it lives in below
-  # this test's mock root (`path`), and whichever of the two the compiler
-  # should actually read (`input` -- the raw header or its preprocessed
-  # output, depending on whether mock preprocessing is enabled).
-  MockDetails = Struct.new(:name, :filepath, :path, :source, :input, keyword_init: true) unless const_defined?(:MockDetails, false)
+  # this test's mock root (`path`), whichever of the two the compiler should
+  # actually read (`input` -- the raw header or its preprocessed output,
+  # depending on whether mock preprocessing is enabled), and whether this
+  # mock is Ceedling's own generated Partial content rather than a mock of a
+  # real header (`partial`).
+  MockDetails = Struct.new(:name, :filepath, :path, :source, :input, :partial, keyword_init: true) unless const_defined?(:MockDetails, false)
 
   # A test's generated Unity runner: the C file to be compiled (`output_filepath`)
   # and the (possibly preprocessed) test file it was generated from (`input_filepath`).

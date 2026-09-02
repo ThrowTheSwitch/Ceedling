@@ -283,6 +283,15 @@ describe Configurator do
       expect( config[:defines] ).to_not have_key( :preprocess )
     end
 
+    it "leaves :cmock ↳ :treat_inlines untouched, whatever it was set to -- a per-mock concern handled at mock generation time, not a project-wide one settled here" do
+      config = partials_config
+      config[:cmock][:treat_inlines] = :include
+
+      @configurator.set_partials_derived_config( config )
+
+      expect( config[:cmock][:treat_inlines] ).to eq( :include )
+    end
+
   end
 
   describe "#populate_partials_config / #get_partials_config" do

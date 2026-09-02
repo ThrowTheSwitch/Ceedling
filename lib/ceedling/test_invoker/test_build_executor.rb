@@ -38,7 +38,6 @@ class TestBuildExecutor
   # Stage 9: Preprocess header files to be mocked.
   def stage_preprocess_mocks(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
-    extras = (@configurator.cmock_treat_inlines == :include)
     skipped = 0
 
     # Register every mock's preprocessed-header target and settle its staleness
@@ -47,6 +46,11 @@ class TestBuildExecutor
     state.mocks_list.each do |mock|
       details  = mock.details
       testable = mock.testable
+
+      # A Partial mock's own generated header is already free of inline function
+      # bodies, so it never needs this extra pass regardless of what the project
+      # configures for CMock's own mocks of real headers elsewhere.
+      extras = !details.partial && (@configurator.cmock_treat_inlines == :include)
 
       target = @file_path_utils.form_preprocessed_file_filepath( details.source, testable.name )
 
@@ -114,6 +118,7 @@ class TestBuildExecutor
       details                  = mock.details
       testable                 = mock.testable
       directives_only_filepath = mock.directives_only_filepath
+      extras                   = !details.partial && (@configurator.cmock_treat_inlines == :include)
 
       arg_hash = {
         test:                     testable.name,
@@ -179,12 +184,19 @@ class TestBuildExecutor
         next
       end
 
+      # A Partial mock's own generated header is already free of inline function
+      # bodies -- CMock's own inline handling has nothing to do on it and is
+      # skipped for this one mock, independent of whatever the project configures
+      # for CMock's own mocks of real headers elsewhere in the same test suite.
+      overrides = details.partial ? { treat_inlines: :exclude } : {}
+
       arg_hash = {
         context:        state.context,
         mock:           mock.name,
         test:           testable.name,
         input_filepath: details.input,
-        output_path:    output_path
+        output_path:    output_path,
+        overrides:      overrides
       }
 
       @generator.generate_mock( **arg_hash )

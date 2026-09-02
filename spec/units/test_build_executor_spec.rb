@@ -746,6 +746,33 @@ describe TestBuildExecutor do
 
       @executor.stage_preprocess_mocks( @state )
     end
+
+    it "runs the extra treat-inlines-aware pass for an ordinary mock when the project configures :treat_inlines: :include" do
+      allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
+      allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/MockFoo.h',
+        files: anything,
+        meta:  hash_including( extras: true )
+      )
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "skips the extra treat-inlines-aware pass for a Partial mock even when the project configures :treat_inlines: :include -- its own generated header is already inline-free" do
+      @state.mocks_list.first.details.partial = true
+      allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
+      allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/MockFoo.h',
+        files: anything,
+        meta:  hash_including( extras: false )
+      )
+
+      @executor.stage_preprocess_mocks( @state )
+    end
   end
 
   context "#stage_generate_mocks" do
@@ -832,6 +859,25 @@ describe TestBuildExecutor do
         files: anything,
         meta:  { cmock: { mock_prefix: 'Custom' } }
       )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "generates an ordinary mock with no configuration override" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@generator).to receive(:generate_mock).with( hash_including( overrides: {} ) )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "generates a Partial mock with its inline handling disabled, redundant alongside Partials' own" do
+      @state.mocks_list.first.details.partial = true
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@generator).to receive(:generate_mock).with( hash_including( overrides: { treat_inlines: :exclude } ) )
 
       @executor.stage_generate_mocks( @state )
     end

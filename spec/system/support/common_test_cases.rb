@@ -539,6 +539,39 @@ module CommonSystemTestCases
     end
   end
 
+  # A project can use Partials for some modules while other, unrelated tests keep
+  # mocking a plain `static inline` function through CMock's own :treat_inlines
+  # option -- the two mechanisms don't need to agree project-wide, since each
+  # mock's own configuration is independent of what any other test in the project
+  # is doing.
+  def test_project_partials_enabled_still_allows_plain_treat_inlines_mocking
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("partial_all_module.h"), 'src/'
+        FileUtils.cp test_asset_path("test_partial_all_module.c"), 'test/'
+        FileUtils.cp test_asset_path("plain_inline_module.h"), 'src/'
+        FileUtils.cp test_asset_path("test_plain_inline_module.c"), 'test/'
+
+        settings = {
+          :project => {
+            :use_partials          => true,
+            :use_test_preprocessor => :all
+          },
+          :cmock => {
+            :treat_inlines => :include
+          }
+        }
+        @c.merge_project_yml_for_test(settings)
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(0) # Successful build and tests
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+2/)
+        expect(output).to match(/FAILED:\s+0/)
+      end
+    end
+  end
+
   def test_project_fail
     @c.with_context do
       Dir.chdir @proj_name do

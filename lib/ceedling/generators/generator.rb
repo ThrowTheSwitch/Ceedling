@@ -109,7 +109,7 @@ class Generator
     return @generator_partials.generate_implementation( **arg_hash )
   end
 
-  def generate_mock(context:, mock:, test:, input_filepath:, output_path:)
+  def generate_mock(context:, mock:, test:, input_filepath:, output_path:, overrides: {})
     arg_hash = {
       :header_file => input_filepath,
       :test => test,
@@ -128,7 +128,7 @@ class Generator
       #  - Make CMock thread-safe
 
       # Get default config created by Ceedling and customize it
-      config = @generator_mocks.build_configuration( output_path )
+      config = @generator_mocks.build_configuration( output_path, overrides: overrides )
   
       # Generate mock
       msg = @reportinator.generate_module_progress(

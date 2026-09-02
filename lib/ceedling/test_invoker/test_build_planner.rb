@@ -48,12 +48,13 @@ class TestBuildPlanner
       _mocks  = @context_extractor.lookup_mock_header_includes_list( filepath )
 
       _mocks.each do |include|
-        name   = File.basename( include.filename ).ext()
-        source = nil
-        input  = nil
-        subdir = ''
+        name    = File.basename( include.filename ).ext()
+        source  = nil
+        input   = nil
+        subdir  = ''
+        partial = mock_partial?( include )
 
-        if mock_partial?( include )
+        if partial
           source = generate_header_input_for_mock_partial( include, test )
           input  = source
         else
@@ -73,7 +74,8 @@ class TestBuildPlanner
           filepath: source,
           path:     subdir,
           source:   source,
-          input:    input
+          input:    input,
+          partial:  partial
         )
       end
 
