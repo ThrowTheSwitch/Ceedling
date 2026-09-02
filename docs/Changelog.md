@@ -53,6 +53,9 @@ Platform filepath limits (especially on Windows) can lead to mysterious build fa
 ### `ceedling.yml` as an alternate default project file
 [#1250](https://github.com/ThrowTheSwitch/Ceedling/issues/1250) `ceedling.yml` is now recognized as an alternate default project filename alongside `project.yml`. Either name is loaded the same way; neither is preferred over the other. If both exist in the same directory, Ceedling raises an error. `ceedling new` continues to generate `project.yml` by default; pass `--ceedling-yml` to generate `ceedling.yml` instead. See [Loading a Project Configuration](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/loading/).
 
+### Gcovr raw custom arguments
+[#1159](https://github.com/ThrowTheSwitch/Ceedling/issues/1159) Added [`:gcov` ↳ `:gcovr` ↳ `:custom_args:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/gcov/gcovr/), a list of raw command line arguments passed straight through to `gcovr`. This is an escape hatch for any `gcovr` flag Ceedling has no named option for (e.g. limiting gcovr's search root), mirroring the `:report_generator` ↳ `:custom_args:` option that already existed for the ReportGenerator side of the Gcov plugin. Unlike every other GCovr option, `:custom_args:` still applies even when `:config_file` is set.
+
 ## 💪 Fixed
 
 Note: 1.2.0 includes all bug fixes for 1.1.x.
@@ -61,6 +64,7 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - [#1251](https://github.com/ThrowTheSwitch/Ceedling/issues/1251) Fixed _Overall Test Summary_ not printing at logging verbosity of warning on an otherwise all-passing test run.
 - [#1252](https://github.com/ThrowTheSwitch/Ceedling/issues/1252) Fixed the Gcov plugin requiring `gcovr` to be installed for any build merely because the plugin was enabled, rather than only when a `gcov:` build actually runs.
 - Fixed a Unity `TEST_IGNORE_MESSAGE()` test case being misreported as crash evidence during crash-diagnosis retries when it shares a test file with a genuine crash.
+- [#104](https://github.com/ThrowTheSwitch/Ceedling/issues/104) Fixed a literal `[` or `]` in a path (legal on Windows especially) being silently misread as glob or regular expression syntax. This could drop files from a build with no error (a source, header, or test file living in a bracket-named directory; a project whose absolute `:build_root:` includes a bracket-named directory) or cause a passing test run to be reported as "no tests executed."
 
 ### Mixins
 
