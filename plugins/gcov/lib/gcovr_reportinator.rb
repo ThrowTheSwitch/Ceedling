@@ -84,6 +84,15 @@ class GcovrReportinator < GcovReportinator
     args = ""
     args += "--config \"#{gcovr_opts[:config_file]}\" " if config_file_in_use?(gcovr_opts)
 
+    # #1159 -- applied even with a :config_file: in use (unlike every other option below):
+    # this is the escape hatch for whatever gcovr flag Ceedling has no named option for (e.g.
+    # limiting gcovr's search root), so it needs to keep working right alongside a config file,
+    # not be deferred to it. Mirrors ReportGeneratorReportinator#build_optional_args' identical
+    # :custom_args: handling for the ReportGenerator side.
+    gcovr_opts[:custom_args].each do |custom_arg|
+      args += "\"#{custom_arg}\" " unless custom_arg.nil? || custom_arg.empty?
+    end
+
     # When a config file is provided, defer all other options to it.
     # This prevents Ceedling from overriding config file values with its CLI arguments.
     # --root (${1}) is always passed; --exclude (${2}) is nil when a config file is present,

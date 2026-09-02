@@ -280,6 +280,45 @@ module GcovCommonTestCases
     end
   end
 
+  # #1159 -- :custom_args: is the escape hatch for whatever gcovr flag Ceedling has no
+  # named option for (the issue's own request: limiting gcovr's search root). Also
+  # confirms it still applies alongside a :config_file: (unlike every other :gcovr:
+  # option, which config_file_in_use? defers to the file instead) -- it's meant to
+  # keep working right alongside a config file, not be silently dropped by it.
+  def create_html_report_with_gcovr_custom_args
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        # gcovr's own config file format is flat `key = value` -- no `[section]`
+        # header (confirmed against the real tool; a `[gcovr]` header, despite
+        # appearing in some older examples elsewhere, is invalid and gcovr rejects
+        # it outright).
+        File.write('gcovr.cfg', "merge-mode-functions = merge-use-line-max\n")
+
+        @c.merge_project_yml_for_test({
+          :gcov => {
+            :gcovr => {
+              :config_file => 'gcovr.cfg',
+              :custom_args => ['--gcov-executable', 'gcov']
+            }
+          }
+        })
+
+        output = @c.ceedling_build_exec("gcov:all --verbosity=obnoxious")
+        if @gcov_reports.include? :gcovr
+          expect(@c.last_exit_status).to eq(0)
+          # Custom arg appears on the actual invoked gcovr command line, even
+          # though a :config_file: is also in use.
+          expect(output).to match(/"--gcov-executable" "gcov"/)
+        end
+      end
+    end
+  end
+
   def create_html_report_from_crashing_test_with_backtrace_enabled
     @c.with_context do
       Dir.chdir @proj_name do

@@ -50,6 +50,7 @@ ceedling_system_tests do
       test_case :help_tasks_include_gcov
       test_case :create_html_report
       test_case :create_html_report_with_gcovr_config_file_overrides_default
+      test_case :create_html_report_with_gcovr_custom_args
       test_case :create_html_report_100_coverage_excluding_crashing_test_case
     end
 
