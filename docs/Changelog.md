@@ -14,7 +14,7 @@ This changelog is complemented by three other documents:
 
 ## 💪 Fixed
 
-- [#1251](https://github.com/ThrowTheSwitch/Ceedling/issues/1251) Fixed _Overall Test Summary_ not printing at logging verbosity of warning on an otherwise all-passing test run.
+- [#1251](https://github.com/ThrowTheSwitch/Ceedling/issues/1251) Fixed _Overall Test Summary_ not printing at logging verbosity of warning on an otherwise all-passing test run. A follow-up closes the remaining gap: an all-passing run's test summary now also prints at the stricter `--verbosity=errors`, matching a failing run, rather than requiring `warnings` or higher.
 - [#1252](https://github.com/ThrowTheSwitch/Ceedling/issues/1252) Fixed the Gcov plugin requiring `gcovr` to be installed for any build merely because the plugin was enabled, rather than only when a `gcov:` build actually runs.
 - Fixed a Unity `TEST_IGNORE_MESSAGE()` test case being misreported as crash evidence during crash-diagnosis retries when it shares a test file with a genuine crash.
 

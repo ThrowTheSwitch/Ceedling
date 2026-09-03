@@ -235,8 +235,11 @@ class SystemContext
     # encoding regardless of their actual content, so any project source content the
     # subprocess echoes (verbose logging, compiler output, etc.) can make later regex
     # matching against this string raise. Sanitize once here, the same way Ceedling itself
-    # sanitizes file content it scans.
-    @raw_output       = (stdout + stderr).clean_encoding
+    # sanitizes file content it scans -- reused for both the raw output and the failure
+    # report below, since a real compiler's own diagnostic text (e.g. clang's curly-quoted
+    # identifiers) is exactly the kind of non-ASCII content this needs to survive too.
+    stdout, stderr    = stdout.clean_encoding, stderr.clean_encoding
+    @raw_output       = stdout + stderr
     @console_summary  = compose_failure_report(stdout, stderr)
 
     SystemTestOutput.new(@raw_output)
@@ -250,7 +253,8 @@ class SystemContext
 
     @last_cmd         = cmd
     @last_exit_status = status.exitstatus
-    @raw_output       = (stdout + stderr).clean_encoding
+    stdout, stderr    = stdout.clean_encoding, stderr.clean_encoding
+    @raw_output       = stdout + stderr
     @console_summary  = compose_failure_report(stdout, stderr)
 
     SystemTestOutput.new(@raw_output)
