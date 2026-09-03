@@ -91,10 +91,9 @@ RSpec.describe PreprocessinatorIncludesHandler do
     before :each do
       allow(@file_path_utils).to receive(:form_test_preprocess_files_path)
         .with(test_name).and_return(isolation_parent)
-      allow(@file_wrapper).to receive(:mkdir_tmp)
-        .with(nil, isolation_parent).and_return(isolation_dir)
-      allow(@file_wrapper).to receive(:cp).with(filepath, isolated_filepath)
-      allow(@file_wrapper).to receive(:rm_rf).with(isolation_dir)
+      allow(@file_wrapper).to receive(:stage_isolated_copies)
+        .with(parent: isolation_parent, files: [filepath]).and_return(isolation_dir)
+      allow(@file_wrapper).to receive(:remove_isolated_copies).with(isolation_dir)
 
       allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return(:bare_tool)
 
@@ -114,8 +113,7 @@ RSpec.describe PreprocessinatorIncludesHandler do
     it 'stages a copy of the file into an isolated, sibling-free directory before extraction' do
       call_it()
 
-      expect(@file_wrapper).to have_received(:mkdir_tmp).with(nil, isolation_parent)
-      expect(@file_wrapper).to have_received(:cp).with(filepath, isolated_filepath)
+      expect(@file_wrapper).to have_received(:stage_isolated_copies).with(parent: isolation_parent, files: [filepath])
     end
 
     it 'builds the bare-includes command against the isolated staged path, not the original' do
@@ -132,7 +130,7 @@ RSpec.describe PreprocessinatorIncludesHandler do
 
     it 'cleans up the isolation directory after a successful run' do
       call_it()
-      expect(@file_wrapper).to have_received(:rm_rf).with(isolation_dir)
+      expect(@file_wrapper).to have_received(:remove_isolated_copies).with(isolation_dir)
     end
 
     it 'cleans up the isolation directory even when the tool executor raises' do
@@ -140,7 +138,7 @@ RSpec.describe PreprocessinatorIncludesHandler do
 
       expect { call_it() }.to raise_error(StandardError, 'boom')
 
-      expect(@file_wrapper).to have_received(:rm_rf).with(isolation_dir)
+      expect(@file_wrapper).to have_received(:remove_isolated_copies).with(isolation_dir)
     end
 
     it 'still cleans self-reference against the original filepath identity, not the staged copy' do

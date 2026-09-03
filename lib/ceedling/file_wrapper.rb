@@ -195,6 +195,29 @@ class FileWrapper
     return path
   end
 
+  # Copies each of `files` together into one new, otherwise-empty directory nested
+  # inside `parent` -- the quote-include same-directory shortcut a compiler or
+  # preprocessor takes for `#include "..."` has nothing else there to find but
+  # exactly what's staged, forcing that lookup through a search path instead.
+  # Caller owns the returned directory's lifetime; pair with remove_isolated_copies
+  # once it's no longer needed.
+  def stage_isolated_copies(parent:, files:)
+    isolation_dir = mkdir_tmp(nil, parent)
+
+    files.each do |file|
+      destination = File.join(isolation_dir, File.basename(file))
+      cp(file, destination)
+      @loginator.log("Staged isolated copy: '#{file}' -> '#{destination}'", Verbosity::DEBUG)
+    end
+
+    return isolation_dir
+  end
+
+  def remove_isolated_copies(isolation_dir)
+    @loginator.log("Removing isolated directory '#{isolation_dir}'", Verbosity::DEBUG)
+    rm_rf(isolation_dir)
+  end
+
   # Path length gets flagged once it's within this many characters of the platform limit --
   # a fixed margin rather than a percentage, since a near-miss matters the same whether the
   # limit itself is Windows' cramped 260 or Linux's roomy 4096.
