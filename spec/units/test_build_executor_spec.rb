@@ -602,6 +602,29 @@ describe TestBuildExecutor do
 
         call_it()
       end
+
+      # A test's own Partials output directory is shaped exactly the same way as its
+      # mocks output directory -- several generated headers (a types header, an
+      # interface header, and more) routinely sit side by side there, one set per
+      # Partialized module, none of it a real project header.
+      it "does not report co-resident files inside this test's own Partials output directory" do
+        @testable.paths = { build: 'build/test/out/a_test', partials: 'build/test/partials/a_test' }
+
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          {
+            'a.o' => [
+              'test/a_test.c', '/project/library/gpio.h',
+              'build/test/partials/a_test/ceedling_partial_moduleA_impl.h',
+              'build/test/partials/a_test/ceedling_partial_gpio_interface.h',
+              'build/test/partials/a_test/ceedling_partial_gpio_types.h'
+            ]
+          }
+        )
+
+        expect(@loginator).to_not receive(:log).with( anything, Verbosity::COMPLAIN, anything )
+
+        call_it()
+      end
     end
 
     context "with a Partialized header" do

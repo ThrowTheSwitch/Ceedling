@@ -992,10 +992,14 @@ class TestBuildExecutor
 
   # Directory roots holding only Ceedling's own generated or vendored content for this
   # test -- never real project headers, so co-residency there is routine, not a
-  # same-directory quote-include risk.
+  # same-directory quote-include risk. A test's own Partials output directory
+  # routinely holds several generated headers side by side (a types header, an
+  # interface header, and more, one set per Partialized module), exactly the same
+  # shape as the mocks output directory.
   def generated_content_dirs(testable)
     [
       testable.paths[:mocks],
+      testable.paths[:partials],
       PROJECT_BUILD_VENDOR_UNITY_PATH,
       PROJECT_BUILD_VENDOR_CMOCK_PATH,
       PROJECT_BUILD_VENDOR_CEXCEPTION_PATH,
