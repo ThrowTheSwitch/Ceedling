@@ -945,8 +945,15 @@ class TestBuildExecutor
     # Any other directory in this same reachable set holding more than one file is
     # shaped the same way a mocked header's own directory is -- but with no
     # designated substitute among its occupants, there's nothing to safely isolate.
+    # Ceedling's own generated/vendor directories are exempt: a mocks output
+    # directory or a vendor framework's own source directory routinely holds
+    # several co-resident files as a matter of course, never a same-directory
+    # quote-include shortcut risk the way a real project header directory is.
+    generated_dirs = generated_content_dirs( testable )
+
     by_directory.each do |dir, files|
       next if mocked_dirs.include?( dir )
+      next if generated_dirs.any? { |gd| dir.start_with?( gd ) }
 
       files.uniq.combination( 2 ).each do |a, b|
         msg = "'#{a}' sits alongside '#{b}' at a nesting depth beyond what automated sibling-header " \
@@ -981,6 +988,19 @@ class TestBuildExecutor
     end
 
     headers
+  end
+
+  # Directory roots holding only Ceedling's own generated or vendored content for this
+  # test -- never real project headers, so co-residency there is routine, not a
+  # same-directory quote-include risk.
+  def generated_content_dirs(testable)
+    [
+      testable.paths[:mocks],
+      PROJECT_BUILD_VENDOR_UNITY_PATH,
+      PROJECT_BUILD_VENDOR_CMOCK_PATH,
+      PROJECT_BUILD_VENDOR_CEXCEPTION_PATH,
+      @configurator.project_build_vendor_ceedling_path
+    ].compact
   end
 
   # Registers `object`'s antecedents (its source file, plus whatever headers

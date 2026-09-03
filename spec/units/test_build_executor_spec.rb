@@ -63,6 +63,7 @@ describe TestBuildExecutor do
     allow(@configurator).to receive(:collection_all_support).and_return( [] )
     allow(@configurator).to receive(:force_test_rerun).and_return( false )
     allow(@configurator).to receive(:unity_shuffle_tests).and_return( false )
+    allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
 
     allow(@file_path_utils).to receive(:form_test_build_list_filepath).and_return( 'build/list' )
     allow(@file_path_utils).to receive(:form_test_dependencies_filepath).and_return( 'build/deps' )
@@ -574,6 +575,30 @@ describe TestBuildExecutor do
         )
 
         expect(@loginator).to_not receive(:log).with( anything, anything, LogLabels::NOTICE )
+
+        call_it()
+      end
+
+      # This test's own mocks output directory routinely holds several generated files
+      # side by side (a mock's own interface header, and -- when :treat_inlines: :include
+      # is configured -- a same-basename shadow of the real header too), and Unity's own
+      # vendor directory ships more than one header as a matter of course. Neither is a
+      # real project header directory a quote-include could ambiguously resolve within,
+      # so neither belongs in the "worth investigating" heads-up.
+      it "does not report co-resident files inside this test's own mocks output directory or a vendor framework directory" do
+        @testable.paths = { build: 'build/test/out/a_test', mocks: 'build/test/mocks/a_test' }
+
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          {
+            'a.o' => [
+              'test/a_test.c', '/project/library/gpio.h',
+              'build/test/mocks/a_test/mock_gpio.h', 'build/test/mocks/a_test/gpio.h',
+              PROJECT_BUILD_VENDOR_UNITY_PATH + '/unity.h', PROJECT_BUILD_VENDOR_UNITY_PATH + '/unity_internals.h'
+            ]
+          }
+        )
+
+        expect(@loginator).to_not receive(:log).with( anything, Verbosity::COMPLAIN, anything )
 
         call_it()
       end
