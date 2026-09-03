@@ -733,7 +733,21 @@ class TestBuildExecutor
       )
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool )
 
-      return log_compile_skip( test: test, source: source ) unless stale
+      unless stale
+        # A skipped compile still needs this test's search paths corrected the same
+        # way a real compile would have left them -- otherwise every other object in
+        # this test's build (compiled or skipped) would compute its own staleness
+        # against paths that silently drift from whatever the last real compile
+        # actually cached, forcing a recompile on every subsequent build regardless
+        # of whether anything actually changed. The existing .d file already on disk
+        # (from whichever run last actually compiled this file) is what a skip has
+        # to go on -- there's no fresh one to write this run.
+        if source == testable.filepath && @file_wrapper.exist?( dependencies )
+          apply_sibling_isolation( testable: testable, dependencies_filepath: dependencies )
+        end
+
+        return log_compile_skip( test: test, source: source )
+      end
 
       # A module-under-test or support source mirrored into its own subdirectory needs that
       # subdirectory (and its dependencies-file counterpart) to actually exist before the
@@ -772,12 +786,9 @@ class TestBuildExecutor
       # object in the same test's build already sees whatever search paths that check
       # settled on (see stage_build_objects's own two-pass split).
       if source == testable.filepath && @file_wrapper.exist?( dependencies )
-        isolation = isolate_sibling_headers( testable: testable, dependencies_filepath: dependencies )
+        isolation = apply_sibling_isolation( testable: testable, dependencies_filepath: dependencies )
 
         if isolation
-          testable.search_paths          = isolation[:search_paths]
-          testable.isolated_headers_path = isolation[:isolation_dir]
-
           # A throwaway retry: its own .d file is never registered, so the attempt
           # registered just above -- real headers, real paths -- remains the lasting
           # record of this object's antecedents. The isolated copy is always freshly,
@@ -894,6 +905,22 @@ class TestBuildExecutor
     return arg_hash[:tool]
   end
 
+  # Checks `dependencies_filepath` (this test's own most recent `.d` file, whether
+  # freshly written by a real compile just now or left over from whichever run
+  # last actually compiled it) for a sibling-header risk, and mutates `testable`
+  # in place to apply whatever it finds -- the one path both a real compile and a
+  # skipped one share, so search_paths reads the same way regardless of which one
+  # happened this run. Returns whatever isolate_sibling_headers itself returned.
+  def apply_sibling_isolation(testable:, dependencies_filepath:)
+    isolation = isolate_sibling_headers( testable: testable, dependencies_filepath: dependencies_filepath )
+    return nil if isolation.nil?
+
+    testable.search_paths          = isolation[:search_paths]
+    testable.isolated_headers_path = isolation[:isolation_dir]
+
+    isolation
+  end
+
   # A mock or Partial substitutes a header only by way of search-path order -- a
   # module reaching the same real header a second way, unmocked, can slip past the
   # substitution entirely, silently, because C's own quote-include rule checks a
@@ -902,11 +929,15 @@ class TestBuildExecutor
   # it, mocked/Partialized or not, which is enough to know where that risk exists
   # even though it says nothing about whether any given occurrence actually won.
   #
-  # For each header this test mocks or Partializes, any other file sharing its
-  # real directory in that dependency list is staged, alone, into an isolated
-  # directory -- with nothing else there for its own #include of the real header
-  # to find, that #include is forced through the search paths that list the
-  # mock/Partial first. Only one level deep: a directory elsewhere in the same
+  # For each header this test mocks or Partializes, any other file sharing its real
+  # directory in that dependency list, that itself actually #includes the real
+  # header by name, is staged, alone, into an isolated directory -- with nothing
+  # else there for its own #include of the real header to find, that #include is
+  # forced through the search paths that list the mock/Partial first. Actually
+  # #including the real header is the deciding signal, not mere co-residency: most
+  # real projects keep every header in one shared directory as a matter of
+  # ordinary convention, so "shares a directory" alone would flag nearly every
+  # file in the project. Only one level deep: a directory elsewhere in the same
   # dependency list that shares no header with any of this test's own mocks or
   # Partials, but itself holds more than one candidate, is shaped the same way
   # and reported, but nothing designates which of its occupants should win, so
@@ -929,7 +960,12 @@ class TestBuildExecutor
     mocked_headers.each_value do |real_path|
       next unless dependencies.include?( real_path )
 
+      basename = File.basename( real_path )
       siblings = (by_directory[File.dirname( real_path )] || []) - [real_path]
+      # A same-directory file is only a genuine risk if it actually #includes the
+      # real header by name -- most real projects keep every header in one shared
+      # directory, so "shares a directory" alone would flag nearly everything.
+      siblings = siblings.select { |sibling| sibling_includes_real_header?( sibling, basename ) }
       next if siblings.empty?
 
       siblings.each do |sibling|
@@ -968,6 +1004,23 @@ class TestBuildExecutor
     isolation_dir = @file_wrapper.stage_isolated_copies( parent: testable.paths[:build], files: isolated.uniq )
 
     { search_paths: [isolation_dir] + testable.search_paths, isolation_dir: isolation_dir }
+  end
+
+  # Whether `sibling` itself quote-includes a header named `basename` -- the actual
+  # mechanism that would let it reach the real header directly, bypassing a
+  # mock/Partial substitution via its own same-directory-first resolution. A path
+  # prefix ahead of the bare name is tolerated (`#include "sub/basename"` still
+  # matches), but the check is otherwise a plain, literal text scan -- no macro
+  # expansion, no conditional (#if/#ifdef) evaluation -- so it can occasionally miss
+  # a macro-computed #include target or over-match one guarded by a condition that's
+  # never actually true. Either kind of miss only changes whether a genuine, rare
+  # edge case gets isolated -- it can never manufacture a mock/Partial substitution
+  # risk where none exists, which is what actually matters here.
+  def sibling_includes_real_header?(sibling, basename)
+    return false unless @file_wrapper.exist?( sibling )
+
+    content = @file_wrapper.read( sibling )
+    content.match?( /#include\s*"(?:[^"]*\/)?#{Regexp.escape(basename)}"/ )
   end
 
   # `{ basename => real path }` for every real header this test substitutes -- CMock

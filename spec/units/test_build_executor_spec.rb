@@ -291,6 +291,12 @@ describe TestBuildExecutor do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'build/foo.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
         )
+
+        # driverlib.h is the sibling under test throughout this context -- it
+        # genuinely #includes gpio.h, the signal that distinguishes a real risk
+        # from merely sharing a directory.
+        allow(@file_wrapper).to receive(:exist?).with( '/project/library/driverlib.h' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( '/project/library/driverlib.h' ).and_return( "#include \"gpio.h\"\n" )
       end
 
       it "retries the compile with corrected search paths when a sibling risk is found, and clears an initial failure" do
@@ -398,6 +404,43 @@ describe TestBuildExecutor do
         )
       end
 
+      # A delta build's own whole point is that an unchanged object never recompiles --
+      # but isolation's own correction to search_paths only ever happens as a side
+      # effect of a real compile. Without also applying it here, every other object in
+      # this same test's build would compute its own staleness against paths that
+      # silently drift from what actually got cached the last time isolation *did* run,
+      # forcing them to recompile on every single subsequent build, forever, even
+      # though nothing about the project actually changed.
+      it "applies whatever isolation the existing .d file already reveals even when this object is not stale" do
+        allow(@dependinator).to receive(:stale?).with( 'build/foo.o' ).and_return( false )
+        allow(@file_wrapper).to receive(:stage_isolated_copies)
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+
+        expect(@generator).to_not receive(:generate_object_file_c)
+
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+        )
+
+        expect( @state.testables[:a_test].search_paths ).to include( 'build/test/out/a_test/isolated_headers/xyz' )
+        expect( @state.testables[:a_test].isolated_headers_path ).to eq( 'build/test/out/a_test/isolated_headers/xyz' )
+      end
+
+      it "does not attempt isolation on a skip when there is no existing .d file yet" do
+        allow(@dependinator).to receive(:stale?).with( 'build/foo.o' ).and_return( false )
+        allow(@file_wrapper).to receive(:exist?).with( 'build/deps' ).and_return( false )
+
+        expect(@gcc_dependency_parser).to_not receive(:parse)
+        expect(@generator).to_not receive(:generate_object_file_c)
+
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+        )
+      end
+
       # A Partial's own generated content never gives isolation an alternative same-named
       # file for a search path to fall through to, so a redeclaration/conflicting-types
       # failure can survive every attempt here. Logging the likely cause alongside the raw
@@ -489,6 +532,12 @@ describe TestBuildExecutor do
             source: '/project/library/gpio.h', input: '/project/library/gpio.h', partial: false
           )
         }
+
+        # driverlib.h is the sibling under test throughout this context -- it
+        # genuinely #includes gpio.h, the signal that distinguishes a real risk
+        # from merely sharing a directory.
+        allow(@file_wrapper).to receive(:exist?).with( '/project/library/driverlib.h' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( '/project/library/driverlib.h' ).and_return( "#include \"gpio.h\"\n" )
       end
 
       it "returns nil when the mocked header itself never appears in the dependency list" do
@@ -502,6 +551,23 @@ describe TestBuildExecutor do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/other/unrelated.h'] }
         )
+        expect( call_it() ).to be_nil
+      end
+
+      # A same-directory file is a real project header layout, not a special one --
+      # most projects keep every header in one shared directory as ordinary
+      # convention. A candidate that merely lives beside the mocked header, without
+      # itself #including it, is exactly that ordinary case, not a collision risk;
+      # isolating it anyway would recompile it every single build for no reason.
+      it "does not isolate a same-directory file that does not itself #include the mocked header" do
+        allow(@file_wrapper).to receive(:exist?).with( '/project/library/unrelated_neighbor.h' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( '/project/library/unrelated_neighbor.h' ).and_return( "#include <stdint.h>\n" )
+
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/unrelated_neighbor.h'] }
+        )
+
+        expect(@file_wrapper).to_not receive(:stage_isolated_copies)
         expect( call_it() ).to be_nil
       end
 
@@ -637,6 +703,8 @@ describe TestBuildExecutor do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'a.o' => ['test/a_test.c', '/project/library/moduleA.h', '/project/library/driverlib.h'] }
         )
+        allow(@file_wrapper).to receive(:exist?).with( '/project/library/driverlib.h' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( '/project/library/driverlib.h' ).and_return( "#include \"moduleA.h\"\n" )
         allow(@file_wrapper).to receive(:stage_isolated_copies)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
           .and_return( 'isolated/dir' )
