@@ -150,4 +150,73 @@ describe FileWrapper do
       expect( @file_wrapper.instantiate_file_list_literal( files ).to_a ).to eq( files )
     end
   end
+
+  # A quote-include (`#include "..."`) always checks its own file's directory
+  # before consulting any -I search path -- staging a copy of a file alone in
+  # a fresh directory, with nothing else beside it, is what forces that lookup
+  # through -I instead.
+  describe '#stage_isolated_copies' do
+    before(:each) do
+      @parent = Dir.mktmpdir
+      @source_a = File.join( @parent, 'source_a.h' )
+      @source_b = File.join( @parent, 'nested', 'source_b.h' )
+
+      FileUtils.mkdir_p( File.dirname( @source_b ) )
+      File.write( @source_a, 'a' )
+      File.write( @source_b, 'b' )
+    end
+
+    after(:each) do
+      FileUtils.rm_rf( @parent )
+    end
+
+    it 'creates a new directory nested inside parent' do
+      isolation_dir = @file_wrapper.stage_isolated_copies( parent: @parent, files: [@source_a] )
+
+      expect( File.directory?( isolation_dir ) ).to be true
+      expect( isolation_dir ).to start_with( @parent )
+    end
+
+    it 'copies every given file into that directory, named by basename alone' do
+      isolation_dir = @file_wrapper.stage_isolated_copies( parent: @parent, files: [@source_a, @source_b] )
+
+      expect( File.read( File.join( isolation_dir, 'source_a.h' ) ) ).to eq( 'a' )
+      expect( File.read( File.join( isolation_dir, 'source_b.h' ) ) ).to eq( 'b' )
+    end
+
+    it 'stages nothing but an empty directory when given no files' do
+      isolation_dir = @file_wrapper.stage_isolated_copies( parent: @parent, files: [] )
+
+      expect( Dir.children( isolation_dir ) ).to eq( [] )
+    end
+
+    it 'logs each staged copy at DEBUG verbosity' do
+      @file_wrapper.stage_isolated_copies( parent: @parent, files: [@source_a] )
+
+      expect(@loginator).to have_received(:log).with(
+        a_string_including( @source_a ), Verbosity::DEBUG
+      )
+    end
+  end
+
+  describe '#remove_isolated_copies' do
+    it 'removes the given directory and its content' do
+      isolation_dir = Dir.mktmpdir
+      File.write( File.join( isolation_dir, 'leftover.h' ), 'x' )
+
+      @file_wrapper.remove_isolated_copies( isolation_dir )
+
+      expect( File.directory?( isolation_dir ) ).to be false
+    end
+
+    it 'logs the removal at DEBUG verbosity' do
+      isolation_dir = Dir.mktmpdir
+
+      @file_wrapper.remove_isolated_copies( isolation_dir )
+
+      expect(@loginator).to have_received(:log).with(
+        a_string_including( isolation_dir ), Verbosity::DEBUG
+      )
+    end
+  end
 end

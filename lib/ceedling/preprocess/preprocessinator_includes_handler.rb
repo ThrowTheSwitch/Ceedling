@@ -62,12 +62,10 @@ class PreprocessinatorIncludesHandler
     # no dedicated subdirectory or filename-based naming, to keep the resulting path as short as
     # possible for platforms with tight path length limits.
     isolation_parent = @file_path_utils.form_test_preprocess_files_path( test )
-    isolation_dir = @file_wrapper.mkdir_tmp( nil, isolation_parent )
+    isolation_dir = @file_wrapper.stage_isolated_copies( parent: isolation_parent, files: [filepath] )
     isolated_filepath = File.join( isolation_dir, filename )
 
     begin
-      @file_wrapper.cp( filepath, isolated_filepath )
-
       msg = @reportinator.generate_module_progress(
         operation: "Isolating a sibling-free copy for bare-includes extraction at",
         module_name: test,
@@ -92,7 +90,7 @@ class PreprocessinatorIncludesHandler
       command[:options][:boom] = false
       shell_result = @tool_executor.exec( command )
     ensure
-      @file_wrapper.rm_rf( isolation_dir )
+      @file_wrapper.remove_isolated_copies( isolation_dir )
     end
 
     make_rules = shell_result[:output]

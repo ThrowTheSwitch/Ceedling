@@ -99,5 +99,46 @@ class GeneratorHelper
 
     @loginator.log( notice, Verbosity::ERRORS, LogLabels::CRASH )
   end
-  
+
+  # A "redeclaration"/"redefinition"/"conflicting types"/"previous definition" family
+  # of compiler errors mentioning a header this test also mocks or Partializes is a
+  # strong signal that the real header's own content reached this compile a second,
+  # unmocked way -- substitution only ever replaces what a test's own #include
+  # directives name directly, so a module reaching the same real header through some
+  # other, unrelated #include chain slips past it entirely, and the genuine and
+  # substituted copies of the same declarations collide in the one compiled
+  # translation unit. Different compilers word this differently -- gcc's own
+  # "conflicting types for" and clang's "redefinition of"/"previous definition is
+  # here" are both real, observed wordings for the same underlying constraint
+  # violation, not a hypothetical spread to guard against.
+  #
+  # `mocked_headers` maps a real header's own basename to its real, resolved path --
+  # exactly the substitution knowledge a test's own mocks/Partials configuration
+  # already carries, cross-referenced here against whichever file paths the compiler's
+  # own error text happens to mention.
+  def explain_possible_mock_partial_collision(output:, mocked_headers:)
+    return nil if output.nil?
+    return nil unless output =~ /redeclaration of|redefinition of|conflicting types|previous definition/i
+
+    mentioned = output.scan( /([^\s"]+\.h):\d+:\d+/ ).flatten.uniq
+
+    culprit = mocked_headers.find do |basename, real_path|
+      mentioned.any? { |m| File.basename( m ) == basename && File.expand_path( m ) == File.expand_path( real_path ) }
+    end
+    return nil if culprit.nil?
+
+    basename, real_path = culprit
+
+    notice  = "This looks like '#{basename}' is mocked or Partialized for this test, but its " \
+              "real content ('#{real_path}') is also reaching compilation through a second " \
+              "unmocked #include chain.\n"
+    notice += "> The cause is most likely a transitive #include chain through an unrelated " \
+              "header brought about by C convention quirks in search paths and #include guards.\n"
+    notice += "> Consider investigating the #include chain and modifying your source or " \
+              "Partializing/mocking the problematic header (without necessarily using it) to " \
+              "break the transitive #include chain.\n"
+
+    notice
+  end
+
 end

@@ -136,4 +136,65 @@ describe GeneratorHelper do
 
   end
 
+
+  describe '#explain_possible_mock_partial_collision' do
+    let(:mocked_headers) { { 'gpio.h' => '/project/library/gpio.h' } }
+
+    it 'returns nil for output with no redeclaration-family error at all' do
+      output = "/project/library/gpio.h:12:8: error: some unrelated compiler error\n"
+      expect( @helper.explain_possible_mock_partial_collision( output: output, mocked_headers: mocked_headers ) ).to be_nil
+    end
+
+    it 'returns nil for nil output' do
+      expect( @helper.explain_possible_mock_partial_collision( output: nil, mocked_headers: mocked_headers ) ).to be_nil
+    end
+
+    it 'returns nil when a redeclaration error matches but names no header this test mocks or Partializes' do
+      output = "/project/library/other.h:10:5: error: redeclaration of 'struct other'\n"
+      expect( @helper.explain_possible_mock_partial_collision( output: output, mocked_headers: mocked_headers ) ).to be_nil
+    end
+
+    it 'returns a notice naming the mocked header and its real path when a redeclaration error mentions it' do
+      output = "/project/library/gpio.h:12:8: error: redeclaration of 'struct gpio'\n"
+      notice = @helper.explain_possible_mock_partial_collision( output: output, mocked_headers: mocked_headers )
+
+      expect( notice ).to_not be_nil
+      expect( notice ).to include( 'gpio.h' )
+      expect( notice ).to include( '/project/library/gpio.h' )
+    end
+
+    it 'matches a "conflicting types for" error the same way' do
+      output = "/project/library/gpio.h:12:8: error: conflicting types for 'gpio_init'\n"
+      expect( @helper.explain_possible_mock_partial_collision( output: output, mocked_headers: mocked_headers ) ).to_not be_nil
+    end
+
+    it 'matches a "previous definition of" error the same way' do
+      output = "/project/library/gpio.h:12:8: note: previous definition of 'gpio_init' was here\n"
+      expect( @helper.explain_possible_mock_partial_collision( output: output, mocked_headers: mocked_headers ) ).to_not be_nil
+    end
+
+    # clang's own real, observed wording for this same underlying collision --
+    # "redefinition of"/"previous definition is here", not gcc's "conflicting
+    # types for"/"previous definition of" -- confirmed against a real clang build.
+    it 'matches clang\'s "redefinition of" wording' do
+      output = "/project/library/gpio.h:8:5: error: redefinition of enumerator 'GPIO_DIR_MODE_IN'\n"
+      expect( @helper.explain_possible_mock_partial_collision( output: output, mocked_headers: mocked_headers ) ).to_not be_nil
+    end
+
+    it 'matches clang\'s "previous definition is here" wording' do
+      output = "/project/library/gpio.h:8:5: note: previous definition is here\n"
+      expect( @helper.explain_possible_mock_partial_collision( output: output, mocked_headers: mocked_headers ) ).to_not be_nil
+    end
+
+    it 'matches a bare "conflicting types" without a trailing "for"' do
+      output = "/project/library/gpio.h:8:5: error: conflicting types for 'gpio_init', different types\n"
+      expect( @helper.explain_possible_mock_partial_collision( output: output, mocked_headers: mocked_headers ) ).to_not be_nil
+    end
+
+    it 'does not match a header of the same basename resolving to a different real path' do
+      output = "/some/other/place/gpio.h:12:8: error: redeclaration of 'struct gpio'\n"
+      expect( @helper.explain_possible_mock_partial_collision( output: output, mocked_headers: mocked_headers ) ).to be_nil
+    end
+  end
+
 end
