@@ -4,55 +4,137 @@ The `ReportGenerator` utility may be configured with the following configuration
 
 All generated reports are found in `<build root>/artifacts/gcov/ReportGenerator/`.
 
+## Example configuration
+
 ```yaml
 :gcov:
   :report_generator:
-    # Optional directory for storing persistent coverage information.
-    # Can be used in future reports to show coverage evolution.
-    :history_directory: <path>
+    :history_directory: build/artifacts/gcov/history
+    :file_filters: "-./vendor/*;-./build/*;-./test/*;+./src/*"
+    :verbosity: Warning
+    :tag: "release-1.4.0"
+    :num_parallel_threads: 4
+    :gcov_exclude:
+      - some_excluded_file
+    :custom_args:
+      - "-title:MyProject"
+```
 
-    # Optional plugin files for custom reports or custom history storage (separated by semicolon).
-    :plugins: <plugin.dll>;<*.dll>
+## Plugin configuration
 
-    # Optional list of assemblies that should be included or excluded in the report (separated by semicolon).
-    # Exclusion filters take precedence over inclusion filters.
-    # Wildcards are allowed, but not regular expressions.
-    :assembly_filters: +<included>;-<excluded>
+### `:history_directory`
 
-    # Optional list of classes that should be included or excluded in the report (separated by semicolon).
-    # Exclusion filters take precedence over inclusion filters.
-    # Wildcards are allowed, but not regular expressions.
-    :class_filters: +<included>;-<excluded>
+Optional directory for storing persistent coverage information. Can be used
+in future reports to show coverage evolution.
 
-    # Optional list of files that should be included or excluded in the report (separated by semicolon).
-    # Exclusion filters take precedence over inclusion filters.
-    # Wildcards are allowed, but not regular expressions.
-    # Example: "-./vendor/*;-./build/*;-./test/*;-./lib/*;+./src/*"
-    :file_filters: +<included>;-<excluded>
+---
 
-    # The verbosity level of the log messages.
-    # Values: Verbose, Info, Warning, Error, Off (defaults to Warning)
-    :verbosity: <level>
+### `:plugins`
 
-    # Optional tag or build version.
-    :tag: <tag>
+Optional plugin files for custom reports or custom history storage (separated
+by semicolon).
 
-    # Optional list of one or more regular expressions to exclude gcov notes files that match these filters.
+**Example:** `plugin.dll;*.dll`
+
+---
+
+### `:assembly_filters`
+
+Optional list of assemblies that should be included or excluded in the
+report (separated by semicolon). Exclusion filters take precedence over
+inclusion filters. Wildcards are allowed, but not regular expressions.
+
+**Example:** `+<included>;-<excluded>`
+
+---
+
+### `:class_filters`
+
+Optional list of classes that should be included or excluded in the report
+(separated by semicolon). Exclusion filters take precedence over inclusion
+filters. Wildcards are allowed, but not regular expressions.
+
+**Example:** `+<included>;-<excluded>`
+
+---
+
+### `:file_filters`
+
+Optional list of files that should be included or excluded in the report
+(separated by semicolon). Exclusion filters take precedence over inclusion
+filters. Wildcards are allowed, but not regular expressions. Ceedling places
+your own patterns first, ahead of the exclusions it generates automatically
+for test paths, the build root, and (when Partials are in use) Partial
+source files, so your patterns take precedence.
+
+**Example:** `"-./vendor/*;-./build/*;-./test/*;-./lib/*;+./src/*"`
+
+---
+
+### `:verbosity`
+
+The verbosity level of the log messages.
+
+**Values:** `Verbose`, `Info`, `Warning`, `Error`, `Off`
+
+**Default:** `Warning`
+
+---
+
+### `:tag`
+
+Optional tag or build version.
+
+---
+
+### `:gcov_exclude`
+
+Optional list of one or more regular expressions to exclude gcov notes
+(`.gcno`) files that match these filters from coverage processing — these
+files are never run through `gcov` at all. A trailing `.gcov` or `.gcno`
+suffix on a pattern is stripped automatically, so either form works.
+
+```yaml
+:gcov:
+  :report_generator:
     :gcov_exclude:
       - <regex>
       - ...
+```
 
-    # Optionally set the number of threads to use in parallel. Defaults to 1.
-    :threads: <count>
+**Default:** `[]`
 
-    # Optional list of one or more command line arguments to pass to Report Generator.
-    # Useful for configuring Risk Hotspots and Other Settings.
-    # https://github.com/danielpalme/ReportGenerator/wiki/Settings
-    # Note: This can be accomplished with Ceedling's tool configuration options outside of plugin 
-    #       configuration but is supported here to collect configuration options in one place.
+---
+
+### `:num_parallel_threads`
+
+Optionally set the number of threads ReportGenerator uses in parallel. Drives
+both of ReportGenerator's own `numberOfReportsParsedInParallel` and
+`numberOfReportsMergedInParallel` settings together.
+
+**Default:** unset (ReportGenerator's own default applies)
+
+---
+
+### `:custom_args`
+
+Optional list of one or more command line arguments to pass to Report
+Generator. Useful for configuring Risk Hotspots and other settings not
+covered by the options above. See the
+[ReportGenerator settings wiki](https://github.com/danielpalme/ReportGenerator/wiki/Settings).
+
+Note: This can be accomplished with Ceedling's tool configuration options
+outside of plugin configuration but is supported here to collect
+configuration options in one place.
+
+```yaml
+:gcov:
+  :report_generator:
     :custom_args:
       - <argument>
       - ...
 ```
+
+**Default:** `[]`
 
 <br/><br/>
