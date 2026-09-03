@@ -459,6 +459,7 @@ test_build_executor:
     - file_wrapper
     - dependinator
     - test_source_file_directive_resolver
+    - gcc_dependency_parser
 
 partials_manager:
   compose:

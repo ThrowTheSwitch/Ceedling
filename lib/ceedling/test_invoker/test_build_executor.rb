@@ -28,7 +28,8 @@ class TestBuildExecutor
     :file_finder,
     :file_wrapper,
     :dependinator,
-    :test_source_file_directive_resolver
+    :test_source_file_directive_resolver,
+    :gcc_dependency_parser
   )
 
   def setup()
@@ -402,19 +403,49 @@ class TestBuildExecutor
   # hooks. Contrast with stage 17, where Generator#generate_test_results
   # reports a skipped executable's cached result through both fixture-execute
   # hooks regardless, so consumers of *that* pair always see every test.
+  #
+  # Compiles in two sequential batches -- every test's own file first, in a batch
+  # fully completed before any other object starts. compile_test_component's own
+  # sibling-header isolation (run only against a test's own file) may correct that
+  # testable's search paths; every other object in the same test needs to compile
+  # against the corrected paths, never the original ones, and a real barrier
+  # between the two groups is the only way parallel compilation can guarantee that.
   def stage_build_objects(state)
     skipped = 0
 
-    @batchinator.exec(workload: :compile, things: state.objects_list) do |obj|
+    resolved = state.objects_list.map do |obj|
       src = @file_finder.find_build_input_file( filepath: obj.obj, context: state.context, test: obj.test )
-      compiled = compile_test_component(
-        context: state.context,
-        test:    obj.test,
-        source:  src,
-        object:  obj.obj,
-        state:   state
-      )
-      state.lock.synchronize { skipped += 1 } unless compiled
+      [obj, src]
+    end
+
+    test_file_pairs, other_pairs = resolved.partition do |obj, src|
+      testable = state.testables[obj.test.to_sym]
+      !testable.nil? && src == testable.filepath
+    end
+
+    compile_pass = lambda do |pairs|
+      @batchinator.exec(workload: :compile, things: pairs) do |obj, src|
+        compiled = compile_test_component(
+          context: state.context,
+          test:    obj.test,
+          source:  src,
+          object:  obj.obj,
+          state:   state
+        )
+        state.lock.synchronize { skipped += 1 } unless compiled
+      end
+    end
+
+    compile_pass.call( test_file_pairs )
+    compile_pass.call( other_pairs )
+
+    # Any isolated sibling-header copy staged for a testable during either batch
+    # above was scoped to this one build and never registered as a tracked
+    # dependency in its own right (see isolate_sibling_headers) -- nothing past
+    # this point still needs it to exist.
+    state.testables.each_value do |testable|
+      next if testable.isolated_headers_path.nil?
+      @file_wrapper.remove_isolated_copies( testable.isolated_headers_path )
     end
 
     log_skip_summary( task: "compilation", count: skipped, noun: "objects" )
@@ -716,7 +747,49 @@ class TestBuildExecutor
         dependencies: dependencies
       }
 
-      @generator.generate_object_file_c( **arg_hash )
+      compile_failure = nil
+
+      begin
+        @generator.generate_object_file_c( **arg_hash )
+      rescue ShellException => ex
+        compile_failure = ex
+      end
+
+      # gcc's dependency output is a side effect of preprocessing -- already written to
+      # disk by the time a later parse/type-check phase can still fail -- so this
+      # attempt's own .d file is worth registering whether or not it went on to fail.
+      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+
+      # Only the test file's own compile is ever checked here directly -- every other
+      # object in the same test's build already sees whatever search paths that check
+      # settled on (see stage_build_objects's own two-pass split).
+      if source == testable.filepath && @file_wrapper.exist?( dependencies )
+        isolation = isolate_sibling_headers( testable: testable, dependencies_filepath: dependencies )
+
+        if isolation
+          testable.search_paths          = isolation[:search_paths]
+          testable.isolated_headers_path = isolation[:isolation_dir]
+
+          # A throwaway retry: its own .d file is never registered, so the attempt
+          # registered just above -- real headers, real paths -- remains the lasting
+          # record of this object's antecedents. The isolated copy is always freshly,
+          # fully derived from those same tracked files, so it can never itself go
+          # stale independently and needs no tracking of its own.
+          retry_arg_hash = arg_hash.merge(
+            search_paths: tailor_search_paths( search_paths: isolation[:search_paths], filepath: source ),
+            dependencies: dependencies + '.isolated_retry'
+          )
+
+          begin
+            @generator.generate_object_file_c( **retry_arg_hash )
+            compile_failure = nil
+          rescue ShellException => ex
+            compile_failure = ex
+          end
+        end
+      end
+
+      raise compile_failure if compile_failure
 
     elsif @configurator.test_build_use_assembly
       flags = testable.assembler_flags
@@ -745,15 +818,15 @@ class TestBuildExecutor
       }
 
       @generator.generate_object_file_asm( **arg_hash )
+
+      # register_gcc_deps_file again to pick up the freshly-written `.d` file's current
+      # header set (a no-op call here regardless, since the assembler tool has no
+      # -MMD/-MF of its own) before recording this target's new baseline.
+      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     else
       return false
     end
 
-    # A real (re)compile just happened -- register_gcc_deps_file again to pick
-    # up the freshly-written `.d` file's current header set (only produced for
-    # C compiles; a no-op call for assembly, whose tool has no -MMD/-MF) before
-    # recording this target's new baseline.
-    @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.mark_fresh( object )
 
     true
@@ -803,6 +876,95 @@ class TestBuildExecutor
     arg_hash = { context: context, tool: tool, test_name: test_name, target: target }
     @plugin_manager.pre_test_fixture_register( arg_hash )
     return arg_hash[:tool]
+  end
+
+  # A mock or Partial substitutes a header only by way of search-path order -- a
+  # module reaching the same real header a second way, unmocked, can slip past the
+  # substitution entirely, silently, because C's own quote-include rule checks a
+  # file's own directory before ever consulting a search path. A test file's own
+  # freshly-compiled `.d` file already reveals every real header reachable from
+  # it, mocked/Partialized or not, which is enough to know where that risk exists
+  # even though it says nothing about whether any given occurrence actually won.
+  #
+  # For each header this test mocks or Partializes, any other file sharing its
+  # real directory in that dependency list is staged, alone, into an isolated
+  # directory -- with nothing else there for its own #include of the real header
+  # to find, that #include is forced through the search paths that list the
+  # mock/Partial first. Only one level deep: a directory elsewhere in the same
+  # dependency list that shares no header with any of this test's own mocks or
+  # Partials, but itself holds more than one candidate, is shaped the same way
+  # and reported, but nothing designates which of its occupants should win, so
+  # nothing there is acted on.
+  #
+  # Returns nil when nothing needs isolating; otherwise a hash of the search
+  # paths to compile with (isolation directory listed first) and that directory's
+  # own path, for the caller to track and eventually clean up.
+  def isolate_sibling_headers(testable:, dependencies_filepath:)
+    mocked_headers = mocked_and_partialized_headers( testable )
+    return nil if mocked_headers.empty?
+
+    parsed       = @gcc_dependency_parser.parse( @file_wrapper.read( dependencies_filepath ) )
+    dependencies = parsed.values.flatten.uniq
+    by_directory = dependencies.group_by { |dep| File.dirname( dep ) }
+
+    isolated   = []
+    mocked_dirs = mocked_headers.values.map { |real_path| File.dirname( real_path ) }.uniq
+
+    mocked_headers.each_value do |real_path|
+      next unless dependencies.include?( real_path )
+
+      siblings = (by_directory[File.dirname( real_path )] || []) - [real_path]
+      next if siblings.empty?
+
+      siblings.each do |sibling|
+        isolated << sibling
+
+        msg = "Isolated '#{sibling}' into its own directory for this test's build because it shares a " \
+              "directory with '#{real_path}' and C conventions could bypass mock substitution leading to " \
+              "false negative test failures or even test fixture crashes."
+        @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      end
+    end
+
+    # Any other directory in this same reachable set holding more than one file is
+    # shaped the same way a mocked header's own directory is -- but with no
+    # designated substitute among its occupants, there's nothing to safely isolate.
+    by_directory.each do |dir, files|
+      next if mocked_dirs.include?( dir )
+
+      files.uniq.combination( 2 ).each do |a, b|
+        msg = "'#{a}' sits alongside '#{b}' at a nesting depth beyond what automated sibling-header " \
+              "isolation provides. If this test's build fails with a redeclaration or conflicting types " \
+              "error, the include ordering and path structure leading to '#{a}' or '#{b}' is worth investigating."
+        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+      end
+    end
+
+    return nil if isolated.empty?
+
+    isolation_dir = @file_wrapper.stage_isolated_copies( parent: testable.paths[:build], files: isolated.uniq )
+
+    { search_paths: [isolation_dir] + testable.search_paths, isolation_dir: isolation_dir }
+  end
+
+  # `{ basename => real path }` for every real header this test substitutes -- CMock
+  # mocks of a real header, and Partials -- cross-referenced elsewhere against
+  # whatever a test's own compile actually reached. A mock Partial's own `source` is
+  # its own generated interface header, not a real project header, and is excluded.
+  def mocked_and_partialized_headers(testable)
+    headers = {}
+
+    (testable.mocks || {}).each_value do |details|
+      next if details.partial
+      headers[File.basename( details.source )] = details.source if details.source
+    end
+
+    testable.partials.configs.each_value do |config|
+      filepath = config.header.filepath
+      headers[File.basename( filepath )] = filepath if filepath
+    end
+
+    headers
   end
 
   # Registers `object`'s antecedents (its source file, plus whatever headers

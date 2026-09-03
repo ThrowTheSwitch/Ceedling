@@ -85,6 +85,14 @@ module TestInvokerTypes
                                                 # then the executable has already been marked fresh (if it
                                                 # was rebuilt), so a fresh staleness query would always
                                                 # answer false regardless of what actually happened.
+    :isolated_headers_path,                    # String — set by stage 15's own sibling-header isolation
+                                                # (TestBuildExecutor#isolate_sibling_headers) the first time
+                                                # this test's own file compile finds a real header sharing a
+                                                # directory with a mocked/Partialized header. Scoped to this
+                                                # one test's whole build rather than any single object, so
+                                                # every object compiled afterward sees the same corrected
+                                                # search paths; nil until (if ever) that happens, and read
+                                                # once more at the very end of stage 15 to know what to clean up.
     keyword_init: true
   ) do
     def initialize(**kwargs)
