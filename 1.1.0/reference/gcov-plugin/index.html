@@ -4201,10 +4201,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#threads_1" class="md-nav__link">
+  <a href="#num_parallel_threads" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :threads
+        :num_parallel_threads
       
     </span>
   </a>
@@ -5346,10 +5346,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#threads_1" class="md-nav__link">
+  <a href="#num_parallel_threads" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :threads
+        :num_parallel_threads
       
     </span>
   </a>
@@ -5866,9 +5866,11 @@ are excluded from report generation.</p>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;regex&gt;</span>
 </code></pre></div>
 <hr />
-<h3 id="threads_1"><code>:threads</code></h3>
-<p>Number of parallel threads to use during report generation.</p>
-<p><strong>Default:</strong> <code>1</code></p>
+<h3 id="num_parallel_threads"><code>:num_parallel_threads</code></h3>
+<p>Number of parallel threads to use during report generation. Drives both
+ReportGenerator's own <code>numberOfReportsParsedInParallel</code> and
+<code>numberOfReportsMergedInParallel</code> settings together.</p>
+<p><strong>Default:</strong> unset (ReportGenerator's own default applies)</p>
 <hr />
 <h3 id="custom_args"><code>:custom_args</code></h3>
 <p>Optional list of additional command-line arguments passed directly to
