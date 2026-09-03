@@ -90,11 +90,11 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 ### A mock or Partial silently bypassed by its own real header
 
-[#1240](https://github.com/ThrowTheSwitch/Ceedling/issues/1240) Added handling for edge cases where a mock or Partial could be silently bypassed by the real header these are meant to replace. Idiosyncrasies of C compilation search paths together with combinations of `#include` guards and `#include` ordering can lead to false negative test failures or outright crashes.
+[#1240](https://github.com/ThrowTheSwitch/Ceedling/issues/1240) Added handling for edge cases where a mock or Partial could be silently bypassed by the real header these are meant to replace. Idiosyncrasies of C compilation search paths together with combinations of `#include` guards and `#include` ordering can lead to false negative test failures or outright crashes. Ceedling now discovers these scenarios on the other side of test compilation, rewires the test build to isolate the problematic header, and rebuilds with the fix in place. This intervention is only employed for shallow #include scenarios where this action is safe. More complex scenarios are prominently and proactively logged to provide hints on diagnosing failures that require more complex solutions than Ceedling should ever attempt to implement.
 
 ### Guidance for a Partial colliding with its own module’s real header
 
-[#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Ceedling now recognizes when test compilation fails because a Partial's generated content and its source module's own real, un-Partialized header somehow both reached the compilation of the translation unit. Logging explains the likely cause and fix directly alongside the raw compiler error instead of leaving a bare `redeclaration`/`conflicting types` error.
+[#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Ceedling now recognizes when test compilation fails because a Partial’s generated content and its source module’s own real, un-Partialized header somehow both reached the compilation of the test fixture translation unit. Logging explains the likely cause and suggested solutions directly alongside the raw compiler error instead of leaving a confusing, bare `redeclaration`/`conflicting types` error.
 
 ---
 
