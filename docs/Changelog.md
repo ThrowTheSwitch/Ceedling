@@ -88,6 +88,14 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 [#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Enabling `:use_partials` previously turned off CMock's `:treat_inlines` ⇒ `:include` option for every mock in every test in your project. This prevented unnecessary overhead and generation of files never used. However, this affected tests that used no Partials at all. Each mock now gets exactly the inline handling it needs on its own terms. A test using Partials gets Partials’ own handling for that mock, while every other mock keeps using whatever `:treat_inlines` setting you’ve configured.
 
+### A mock or Partial silently bypassed by its own real header
+
+[#1240](https://github.com/ThrowTheSwitch/Ceedling/issues/1240) Added handling for edge cases where a mock or Partial could be silently bypassed by the real header these are meant to replace. Idiosyncrasies of C compilation search paths together with combinations of `#include` guards and `#include` ordering can lead to false negative test failures or outright crashes.
+
+### Guidance for a Partial colliding with its own module’s real header
+
+[#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Ceedling now recognizes when test compilation fails because a Partial's generated content and its source module's own real, un-Partialized header somehow both reached the compilation of the translation unit. Logging explains the likely cause and fix directly alongside the raw compiler error instead of leaving a bare `redeclaration`/`conflicting types` error.
+
 ---
 
 # [1.1.7] — Prerelease
