@@ -61,7 +61,7 @@ Platform filepath limits (especially on Windows) can lead to mysterious build fa
 Note: 1.2.0 includes all bug fixes for 1.1.x.
 
 - A CLI parameter string mutation issue that could corrupt certain build or plugin task invocations.
-- [#1251](https://github.com/ThrowTheSwitch/Ceedling/issues/1251) Fixed _Overall Test Summary_ not printing at logging verbosity of warning on an otherwise all-passing test run.
+- [#1251](https://github.com/ThrowTheSwitch/Ceedling/issues/1251) Fixed _Overall Test Summary_ not printing at logging verbosity of warning on an otherwise all-passing test run. A follow-up closes the remaining gap: an all-passing run's test summary now also prints at the stricter `--verbosity=errors`, matching a failing run, rather than requiring `warnings` or higher.
 - [#1252](https://github.com/ThrowTheSwitch/Ceedling/issues/1252) Fixed the Gcov plugin requiring `gcovr` to be installed for any build merely because the plugin was enabled, rather than only when a `gcov:` build actually runs.
 - Fixed a Unity `TEST_IGNORE_MESSAGE()` test case being misreported as crash evidence during crash-diagnosis retries when it shares a test file with a genuine crash.
 - [#104](https://github.com/ThrowTheSwitch/Ceedling/issues/104) Fixed a literal `[` or `]` in a path being silently misread as a glob or regular expression syntax. This could drop files from a build with no error, cause issues with a `:build_root` entry, or cause a passing test run to be reported as "no tests executed."

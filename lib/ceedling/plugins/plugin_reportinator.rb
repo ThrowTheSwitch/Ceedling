@@ -95,6 +95,16 @@ class PluginReportinator
     return aggregated_results
   end
       
+  # A build's own test results -- pass or fail -- are core information a user
+  # silencing routine build chatter still wants to see; ERRORS is the floor
+  # for both, not just for a failing run. Centralized here so every plugin
+  # printing post-build test results (report_tests_stdout_plugin, gcov,
+  # bullseye, valgrind) agrees on the same answer instead of each hardcoding
+  # its own.
+  def test_results_floor_verbosity
+    Verbosity::ERRORS
+  end
+
   def run_test_results_report(hash, verbosity=Verbosity::NORMAL)
     if @test_results_template.nil?
       raise CeedlingException.new( "No test results report template has been set." )
