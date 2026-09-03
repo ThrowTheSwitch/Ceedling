@@ -460,6 +460,7 @@ test_build_executor:
     - dependinator
     - test_source_file_directive_resolver
     - gcc_dependency_parser
+    - generator_helper
 
 partials_manager:
   compose:

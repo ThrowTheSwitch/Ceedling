@@ -29,7 +29,8 @@ class TestBuildExecutor
     :file_wrapper,
     :dependinator,
     :test_source_file_directive_resolver,
-    :gcc_dependency_parser
+    :gcc_dependency_parser,
+    :generator_helper
   )
 
   def setup()
@@ -711,6 +712,13 @@ class TestBuildExecutor
   # Compile a single C or assembly source file into an object file. Returns
   # whether a real compile actually happened, so the caller can report how
   # many objects across the whole build needed nothing done.
+  #
+  # A test file's own C compile (only) gets one extra check: isolate_sibling_headers
+  # inspects its freshly-written .d file for a real header sharing a directory with
+  # one this test mocks or Partializes, and retries with corrected search paths if
+  # it finds one. A failure that's still standing afterward -- nothing to isolate,
+  # or an isolated retry that failed too -- gets one last look from generator_helper
+  # before it's raised, in case it's explainable as this same class of collision.
   def compile_test_component(context:, test:, source:, object:, state:)
     testable     = state.testables[test.to_sym]
     defines      = testable.compile_defines
@@ -789,7 +797,15 @@ class TestBuildExecutor
         end
       end
 
-      raise compile_failure if compile_failure
+      if compile_failure
+        notice = @generator_helper.explain_possible_mock_partial_collision(
+          output: compile_failure.shell_result[:output],
+          mocked_headers: mocked_and_partialized_headers( testable )
+        )
+        @loginator.log( notice, Verbosity::ERRORS, LogLabels::NOTICE ) if notice
+
+        raise compile_failure
+      end
 
     elsif @configurator.test_build_use_assembly
       flags = testable.assembler_flags

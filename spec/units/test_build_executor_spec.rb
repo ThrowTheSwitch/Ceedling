@@ -32,6 +32,7 @@ describe TestBuildExecutor do
     @dependinator                                          = double( "Dependinator" )
     @test_source_file_directive_resolver                      = double( "TestSourceFileDirectiveResolver" )
     @gcc_dependency_parser                                        = double( "GccDependencyParser" )
+    @generator_helper                                                = double( "GeneratorHelper" )
 
     @tools_test_compiler                     = { name: 'fake compiler' }
     @tools_test_assembler                    = { name: 'fake assembler' }
@@ -69,6 +70,7 @@ describe TestBuildExecutor do
 
     allow(@file_wrapper).to receive(:mkdir)
     allow(@file_wrapper).to receive(:remove_isolated_copies)
+    allow(@generator_helper).to receive(:explain_possible_mock_partial_collision).and_return( nil )
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_progress).and_return( '' )
@@ -109,7 +111,8 @@ describe TestBuildExecutor do
         :file_wrapper            => @file_wrapper,
         :dependinator            => @dependinator,
         :test_source_file_directive_resolver => @test_source_file_directive_resolver,
-        :gcc_dependency_parser   => @gcc_dependency_parser
+        :gcc_dependency_parser   => @gcc_dependency_parser,
+        :generator_helper        => @generator_helper
       }
     )
 
@@ -392,6 +395,67 @@ describe TestBuildExecutor do
           :compile_test_component,
           :context => :test, :test => :a_test, :source => 'src/other.c', :object => 'build/other.o', :state => @state
         )
+      end
+
+      # A Partial's own generated content never gives isolation an alternative same-named
+      # file for a search path to fall through to, so a redeclaration/conflicting-types
+      # failure can survive every attempt here. Logging the likely cause alongside the raw
+      # compiler error, rather than raising it bare, is the deliberate fallback for exactly
+      # that case -- and for any other collision isolation doesn't resolve.
+      it "logs the guidance from generator_helper and still raises, when the compile fails with no isolation to try" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h'] }
+        )
+
+        ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+
+        allow(@generator_helper).to receive(:explain_possible_mock_partial_collision)
+          .with( output: 'redeclaration of struct gpio', mocked_headers: { 'gpio.h' => '/project/library/gpio.h' } )
+          .and_return( 'explanatory notice text' )
+
+        expect(@loginator).to receive(:log).with( 'explanatory notice text', Verbosity::ERRORS, LogLabels::NOTICE )
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to raise_error( ShellException )
+      end
+
+      it "logs the guidance after a retry that also fails" do
+        allow(@file_wrapper).to receive(:stage_isolated_copies).and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+
+        ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+        allow(@generator_helper).to receive(:explain_possible_mock_partial_collision).and_return( 'explanatory notice text' )
+
+        expect(@loginator).to receive(:log).with( 'explanatory notice text', Verbosity::ERRORS, LogLabels::NOTICE )
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to raise_error( ShellException )
+      end
+
+      it "logs nothing extra when generator_helper finds no explanation" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h'] }
+        )
+        ex = ShellException.new( shell_result: { output: 'totally unrelated failure' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+
+        expect(@loginator).to_not receive(:log).with( anything, Verbosity::ERRORS, LogLabels::NOTICE )
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to raise_error( ShellException )
       end
     end
   end
