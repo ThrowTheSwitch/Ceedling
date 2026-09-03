@@ -84,6 +84,20 @@ Because of the support added for handling paths and distinguishing duplicated fi
 
 Historically, Ceedling automatically compiles and links into a test executable any C source file whose name matches an `#include`d header file. Sometimes this convention can select the wrong file among same-named files or compile and link an entirely unwanted source file whose name happens to match a header file.
 
+### Partials no longer silence CMock’s `:treat_inlines` project-wide
+
+[#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Enabling `:use_partials` previously turned off CMock's `:treat_inlines` ⇒ `:include` option for every mock in every test in your project. This prevented unnecessary overhead and generation of files never used. However, this affected tests that used no Partials at all. Each mock now gets exactly the inline handling it needs on its own terms. A test using Partials gets Partials’ own handling for that mock, while every other mock keeps using whatever `:treat_inlines` setting you’ve configured.
+
+---
+
+# [1.1.7] — Prerelease
+
+## 💪 Fixed
+
+- [#1251](https://github.com/ThrowTheSwitch/Ceedling/issues/1251) Fixed _Overall Test Summary_ not printing at logging verbosity of warning on an otherwise all-passing test run.
+- [#1252](https://github.com/ThrowTheSwitch/Ceedling/issues/1252) Fixed the Gcov plugin requiring `gcovr` to be installed for any build merely because the plugin was enabled, rather than only when a `gcov:` build actually runs.
+- Fixed a Unity `TEST_IGNORE_MESSAGE()` test case being misreported as crash evidence during crash-diagnosis retries when it shares a test file with a genuine crash.
+
 ---
 
 # [1.1.6] — 2026-08-25

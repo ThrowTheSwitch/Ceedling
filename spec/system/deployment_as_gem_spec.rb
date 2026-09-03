@@ -67,6 +67,7 @@ ceedling_system_tests do
 
     describe "Partials" do
       test_case :test_project_partial_all_module_mocks_declaration_only_function
+      test_case :test_project_partials_enabled_still_allows_plain_treat_inlines_mocking
     end
 
     describe "Defines and configuration" do

@@ -160,7 +160,8 @@ describe TestBuildPlanner do
             filepath: 'src/drivers/foo.h',
             path:     'drivers',
             source:   'src/drivers/foo.h',
-            input:    'src/drivers/foo.h'
+            input:    'src/drivers/foo.h',
+            partial:  false
           )
         )
       end
@@ -196,7 +197,8 @@ describe TestBuildPlanner do
             filepath: 'build/test/partials/a_test/ceedling_partial_foo_interface.h',
             path:     '',
             source:   'build/test/partials/a_test/ceedling_partial_foo_interface.h',
-            input:    'build/test/partials/a_test/ceedling_partial_foo_interface.h'
+            input:    'build/test/partials/a_test/ceedling_partial_foo_interface.h',
+            partial:  true
           )
         )
       end
