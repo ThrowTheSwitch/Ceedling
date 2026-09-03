@@ -46,12 +46,17 @@ exclude = .*test.*/test_.+\.c$
 exclude = .*build/.+\.c$
 ```
 
-### Plugin project configuration
+## Plugin configuration
 
-The following is an exhaustive commented version of all GCovr configuration 
-options exposed through your project configuration file. Only specify those 
-you need or those whose defaults you need to override. You do not need to 
-include all these options in your Gcov plugin configuration.
+The following options are exposed through your project configuration file, all
+beneath `:gcov` ↳ `:gcovr`. Only specify those you need or those whose defaults
+you need to override. You do not need to include all these options in your
+Gcov plugin configuration.
+
+### `:report_root`
+
+The root directory of your source files. File names are reported relative to
+this root. `:report_root` is also the default `:report_include`.
 
 !!! warning "`gcovr` accepts only one reporting root path"
     `gcovr` accepts only a single path for `:report_root`. In unusual project
@@ -59,227 +64,352 @@ include all these options in your Gcov plugin configuration.
     _all_ source files and selectively exclude paths or files from coverage 
     reporting (see `:report_exclude` and `:exclude_directories`).
 
+**Default:** `"."` (the current directory)
+
+---
+
+### `:config_file`
+
+Load the specified `gcovr` configuration file. (`gcovr --config`)
+
+When `:config_file` is set, Ceedling passes only `--root` and `--config` to
+`gcovr` and defers (nearly) all other configuration to the file. This prevents
+Ceedling from overriding config file values with its CLI arguments.
+`:report_root` is still applied because Ceedling may invoke `gcovr` from a
+different working directory than your project root, and `:custom_args:` is
+still applied too — the one way to pass Gcovr flags of your own alongside a
+config file (see `:custom_args` below).
+
+To preserve the plugin's base filtering behavior, include exclusion patterns
+matching your project layout in the config file itself — see
+[Gcovr configuration file](#gcovr-configuration-file) above.
+
+**Default:** `gcovr.cfg` in the `:report_root` directory, if that file exists.
+
+---
+
+### `:fail_under_line`
+
+Exit with a status of 2 if the total line coverage is less than this minimum
+percentage. Can be ORed with the exit status of other `:fail_under_*` options.
+(`gcovr --fail-under-line`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_branch`
+
+Exit with a status of 4 if the total branch coverage is less than this minimum
+percentage. Can be ORed with the exit status of other `:fail_under_*` options.
+(`gcovr --fail-under-branch`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_decision`
+
+Exit with a status of 8 if the total decision coverage is less than this minimum
+percentage. Can be ORed with the exit status of other `:fail_under_*` options.
+(`gcovr --fail-under-decision`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_function`
+
+Exit with a status of 16 if the total function coverage is less than this minimum
+percentage. Can be ORed with the exit status of other `:fail_under_*` options.
+(`gcovr --fail-under-function`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:exception_on_fail`
+
+If any `:fail_under_*` option above is set and its condition is met, specifies
+whether that condition should break the build. When disabled, Ceedling simply
+logs a warning without breaking the build.
+
+**Default:** `false`
+
+---
+
+### `:source_encoding`
+
+Select the source file character encoding. (`gcovr --source-encoding`)
+
+**Default:** the system default encoding (typically `UTF-8`)
+
+---
+
+### `:branches`
+
+Report the branch coverage instead of the line coverage. Applies to the text
+report only. (`gcovr --branches`)
+
+---
+
+### `:sort_uncovered`
+
+Sort entries by increasing number of uncovered lines. Applies to text and HTML
+reports. (`gcovr --sort-uncovered`)
+
+---
+
+### `:sort_percentage`
+
+Sort entries by increasing percentage of uncovered lines. Applies to text and
+HTML reports. (`gcovr --sort-percentage`)
+
+---
+
+### `:print_summary`
+
+Print a small report to stdout with line and branch percentage coverage. This
+is in addition to any other configured reports. (`gcovr --print-summary`)
+
+---
+
+### `:report_include`
+
+Keep only source files that match this filter. Filters are regular
+expressions. (`gcovr --filter`)
+
+**Example:** `"^src"`
+
+---
+
+### `:report_exclude`
+
+Exclude source files that match this filter. Filters are regular expressions.
+(`gcovr --exclude`)
+
+**Example:** `"^vendor.*|^build.*|^test.*|^lib.*"`
+
+---
+
+### `:gcov_filter`
+
+Keep only `.gcov` data files that match this filter. Filters are regular
+expressions. (`gcovr --gcov-filter`)
+
+---
+
+### `:gcov_exclude`
+
+Exclude `.gcov` data files that match this filter. Filters are regular
+expressions. (`gcovr --gcov-exclude`)
+
+---
+
+### `:exclude_directories`
+
+Exclude directories that match this filter while searching for raw coverage
+files. Filters are regular expressions. (`gcovr --exclude-directories`)
+
+---
+
+### `:gcov_executable`
+
+Use a particular `gcov` executable. This may be appropriate and necessary in
+special circumstances — review Ceedling's options for modifying tools first.
+(`gcovr --gcov-executable`)
+
+---
+
+### `:exclude_unreachable_branches`
+
+Exclude branch coverage from lines without useful source code.
+(`gcovr --exclude-unreachable-branches`)
+
+---
+
+### `:exclude_throw_branches`
+
+For branch coverage, exclude branches that the compiler generates for
+exception handling. (`gcovr --exclude-throw-branches`)
+
+---
+
+### `:merge_mode_function`
+
+For `gcovr` 6.0+, multiple instances of the same function in coverage results
+can cause a fatal error. Since Ceedling can test multiple build variations of
+the same source function, this is a real risk. This option controls how
+`gcovr` merges those repeated entries. See the
+[gcovr merging docs](https://gcovr.com/en/stable/guide/merging.html) for all
+valid values. Ignored on `gcovr` versions below 6.0.
+
+**Default:** `merge-use-line-max` (`gcovr`'s own default, `strict`, raises an
+exception for many Ceedling projects)
+
+---
+
+### `:use_gcov_files`
+
+Use existing `.gcov` files for analysis instead of running `gcov` again.
+(`gcovr --use-gcov-files`)
+
+**Default:** `false`
+
+---
+
+### `:gcov_ignore_parse_errors`
+
+Skip lines with parse errors in `.gcov` files instead of exiting with an
+error. (`gcovr --gcov-ignore-parse-errors`)
+
+---
+
+### `:object_directory`
+
+Override normal working directory detection for `.gcda`/`.gcno` files.
+(`gcovr --object-directory`)
+
+---
+
+### `:keep`
+
+Keep intermediate `.gcov` files after processing. (`gcovr --keep`)
+
+---
+
+### `:delete`
+
+Delete `.gcda` files after processing. (`gcovr --delete`)
+
+---
+
+### `:threads`
+
+Set the number of threads `gcovr` uses in parallel. (`gcovr -j`)
+
+---
+
+### `:custom_args`
+
+Optional list of one or more raw command line arguments to pass to `gcovr`.
+Useful as an escape hatch for any `gcovr` flag Ceedling has no named option
+for (e.g. limiting `gcovr`'s search root).
+
+Unlike every other option above, these arguments are still applied even when
+`:config_file` is set — the one way to pass `gcovr` flags of your own
+alongside a config file.
+
 ```yaml
 :gcov:
   :gcovr:
-    # The root directory of your source files. Defaults to ".", the current directory.
-    # File names are reported relative to this root. The report_root is the default report_include.
-    # Default if unspecified: "."
-    :report_root: <path>
-
-    # Load the specified configuration file. (gcovr --config)
-    # Defaults to gcovr.cfg in the report_root directory if that file exists.
-    #
-    # When :config_file is set, Ceedling passes only --root and --config to
-    # gcovr and defers (nearly) all other configuration to the file. This prevents
-    # Ceedling from overriding config file values with its CLI arguments.
-    # :report_root is still applied because Ceedling may invoke gcovr from a
-    # different working directory than your project root, and any :custom_args:
-    # (below) are still applied too — the one way to pass Gcovr flags of your
-    # own alongside a config file.
-    #
-    # To preserve the plugin’s base filtering behavior, include the following
-    # patterns in your config file (adjust paths to match your project’s
-    # :test_file_prefix, test paths, and :build_root settings).
-    #
-    #  exclude = .*test.*/test_.+\.c$
-    #  exclude = .*build/.+\.c$
-    :config_file: <config_file>
-
-    # Exit with a status of 2 if the total line coverage is less than MIN percentage.
-    # Can be ORed with exit status of other fail options. (gcovr --fail-under-line)
-    :fail_under_line: <1-100>
-
-    # Exit with a status of 4 if the total branch coverage is less than MIN percentage.
-    # Can be ORed with exit status of other fail options. (gcovr --fail-under-branch)
-    :fail_under_branch: <1-100>
-
-    # Exit with a status of 8 if the total decision coverage is less than MIN percentage.
-    # Can be ORed with exit status of other fail options. (gcovr --fail-under-decision)
-    :fail_under_decision: <1-100>
-
-    # Exit with a status of 16 if the total function coverage is less than MIN percentage.
-    # Can be ORed with exit status of other fail options. (gcovr --fail-under-function)
-    :fail_under_function: <1-100>
-
-    # If the fail options above are set, specify whether those conditions should break a build.
-    # The default option is false and simply logs a warning without breaking the build.
-    :exception_on_fail: <true|false>
-
-    # Select the source file encoding.
-    # Defaults to the system default encoding (UTF-8). (gcovr --source-encoding)
-    :source_encoding: <encoding>
-
-    # Report the branch coverage instead of the line coverage. For text report only. (gcovr --branches).
-    :branches: <true|false>
-
-    # Sort entries by increasing number of uncovered lines.
-    # For text and HTML report. (gcovr --sort-uncovered)
-    :sort_uncovered: <true|false>
-
-    # Sort entries by increasing percentage of uncovered lines.
-    # For text and HTML report. (gcovr --sort-percentage)
-    :sort_percentage: <true|false>
-
-    # Print a small report to stdout with line & branch percentage coverage.
-    # This is in addition to other reports. (gcovr --print-summary).
-    :print_summary: <true|false>
-
-    # Keep only source files that match this filter. (gcovr --filter).
-    # Filters are regular expressions (ex: "^src")
-    :report_include: <filter>
-
-    # Exclude source files that match this filter. (gcovr --exclude).
-    # Filters are regular expressions (ex: "^vendor.*|^build.*|^test.*|^lib.*")
-    :report_exclude: <filter>
-
-    # Keep only gcov data files that match this filter. (gcovr --gcov-filter).
-    # Filters are regular expressions
-    :gcov_filter: <filter>
-
-    # Exclude gcov data files that match this filter. (gcovr --gcov-exclude).
-    # Filters are regular expressions
-    :gcov_exclude: <filter>
-
-    # Exclude directories that match this filter while searching 
-    # raw coverage files. (gcovr --exclude-directories).
-    # Filters are regular expressions
-    :exclude_directories: <filters>
-
-    # Use a particular gcov executable. (gcovr --gcov-executable).
-    # (This may be appropriate and necessary in special circumstances.
-    #  Please review Ceedling’s options for modifying tools first.)
-    :gcov_executable: <cmd>
-
-    # Exclude branch coverage from lines without useful
-    # source code. (gcovr --exclude-unreachable-branches).
-    :exclude_unreachable_branches: <true|false>
-
-    # For branch coverage, exclude branches that the compiler
-    # generates for exception handling. (gcovr --exclude-throw-branches).
-    :exclude_throw_branches: <true|false>
-
-    # For Gcovr 6.0+, multiple instances of the same function in coverage results can
-    # cause a fatal error. Since Ceedling can test multiple build variations of the
-    # same source function, this is bad.
-    # Default value for Gcov plugin is 'merge-use-line-max'. See Gcovr docs for more.
-    # https://gcovr.com/en/stable/guide/merging.html
-    :merge_mode_function: <...>
-
-    # Use existing gcov files for analysis. Default: False. (gcovr --use-gcov-files)
-    :use_gcov_files: <true|false>
-
-    # Skip lines with parse errors in GCOV files instead of
-    # exiting with an error. (gcovr --gcov-ignore-parse-errors).
-    :gcov_ignore_parse_errors: <true|false>
-
-    # Override normal working directory detection. (gcovr --object-directory)
-    :object_directory: <path>
-
-    # Keep gcov files after processing. (gcovr --keep).
-    :keep: <true|false>
-
-    # Delete gcda files after processing. (gcovr --delete).
-    :delete: <true|false>
-
-    # Set the number of threads to use in parallel. (gcovr -j).
-    :threads: <count>
-
-    # Optional list of one or more raw command line arguments to pass to gcovr.
-    # Useful as an escape hatch for any gcovr flag Ceedling has no named option for
-    # (e.g. limiting gcovr's search root).
-    # Note: Unlike every other option above, these arguments are still applied even
-    #       when :config_file is set. This is the one way to pass gcovr flags of
-    #       your own alongside a config file.
     :custom_args:
       - <argument>
       - ...
 ```
+
+**Default:** `[]`
+
 ## HTML reports
 
 Generation of HTML reports may be modified with the following configuration items.
 
-```yaml
-:gcov:
-  :gcovr:
-    # HTML report filename.
-    :html_artifact_filename: <filename>
+### `:html_artifact_filename`
 
-    # Use 'title' as title for the HTML report.
-    # Default is 'Head'. (gcovr --html-title)
-    :html_title: <title>
+Override the default HTML report output filename.
 
-    # If the coverage is below MEDIUM, the value is marked as low coverage in the HTML report.
-    # MEDIUM has to be lower than or equal to value of html_high_threshold.
-    # If MEDIUM is equal to value of html_high_threshold the report has only high and low coverage.
-    # Default is 75.0. (gcovr --html-medium-threshold)
-    :html_medium_threshold: 75
+---
 
-    # If the coverage is below HIGH, the value is marked as medium coverage in the HTML report.
-    # HIGH has to be greater than or equal to value of html_medium_threshold.
-    # If HIGH is equal to value of html_medium_threshold the report has only high and low coverage.
-    # Default is 90.0. (gcovr -html-high-threshold)
-    :html_high_threshold: 90
+### `:html_title`
 
-    # Set to 'true' to use absolute paths to link the 'detailed' reports.
-    # Defaults to relative links. (gcovr --html-absolute-paths)
-    :html_absolute_paths: <true|false>
+Use `title` as the title for the HTML report. (`gcovr --html-title`)
 
-    # Override the declared HTML report encoding. Defaults to UTF-8. (gcovr --html-encoding)
-    :html_encoding: <html_encoding>
-```
+**Default:** `Head`
+
+---
+
+### `:html_medium_threshold`
+
+If the coverage is below this value, it is marked as low coverage in the HTML
+report. Must be lower than or equal to `:html_high_threshold`. If equal to
+`:html_high_threshold`, the report has only high and low coverage.
+(`gcovr --html-medium-threshold`)
+
+**Default:** `75.0`
+
+---
+
+### `:html_high_threshold`
+
+If the coverage is below this value, it is marked as medium coverage in the
+HTML report. Must be greater than or equal to `:html_medium_threshold`. If
+equal to `:html_medium_threshold`, the report has only high and low coverage.
+(`gcovr --html-high-threshold`)
+
+**Default:** `90.0`
+
+---
+
+### `:html_absolute_paths`
+
+Use absolute paths to link the "detailed" reports. Defaults to relative
+links. (`gcovr --html-absolute-paths`)
+
+---
+
+### `:html_encoding`
+
+Override the declared HTML report encoding. (`gcovr --html-encoding`)
+
+**Default:** `UTF-8`
 
 ## Cobertura XML reports
 
 Generation of Cobertura XML reports may be modified with the following configuration items.
 
-```yaml
-:gcov:
-  :gcovr:
-    # Set to 'true' to pretty-print the Cobertura XML report, otherwise set to 'false'.
-    # Defaults to disabled. (gcovr --xml-pretty)
-    :cobertura_pretty: <true|false>
+### `:cobertura_pretty`
 
-    # Override default Cobertura XML report filename.
-    :cobertura_artifact_filename: <filename>
-```
+Pretty-print the Cobertura XML report. (`gcovr --xml-pretty`)
+
+**Default:** `false`
+
+---
+
+### `:cobertura_artifact_filename`
+
+Override the default Cobertura XML report output filename.
 
 ## SonarQube XML reports
 
 Generation of SonarQube XML reports may be modified with the following configuration items.
 
-```yaml
-:gcov:
-  :gcovr:
-    # Override default SonarQube XML report filename.
-    :sonarqube_artifact_filename: <filename>
-```
+### `:sonarqube_artifact_filename`
+
+Override the default SonarQube XML report output filename.
 
 ## JSON reports
 
 Generation of JSON reports may be modified with the following configuration items.
 
-```yaml
-:gcov:
-  :gcovr:
-    # Set to 'true' to pretty-print the JSON report, otherwise set 'false'.
-    # Defaults to disabled. (gcovr --json-pretty)
-    :json_pretty: <true|false>
+### `:json_pretty`
 
-    # Override default JSON report filename.
-    :json_artifact_filename: <filename>
-```
+Pretty-print the JSON report. (`gcovr --json-pretty`)
+
+**Default:** `false`
+
+---
+
+### `:json_artifact_filename`
+
+Override the default JSON report output filename.
 
 ## Text reports
 
 Generation of text reports may be modified with the following configuration items.
 Text reports may be printed to the console or output to a file.
 
-```yaml
-:gcov:
-  :gcovr:
-    # Override default text report filename.
-    :text_artifact_filename: <filename>
-```
+### `:text_artifact_filename`
+
+Override the default text report output filename.
 
 <br/><br/>

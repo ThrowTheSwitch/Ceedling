@@ -552,11 +552,13 @@ are excluded from report generation.
 
 ---
 
-### `:threads`
+### `:num_parallel_threads`
 
-Number of parallel threads to use during report generation.
+Number of parallel threads to use during report generation. Drives both
+ReportGenerator's own `numberOfReportsParsedInParallel` and
+`numberOfReportsMergedInParallel` settings together.
 
-**Default:** `1`
+**Default:** unset (ReportGenerator's own default applies)
 
 ---
 

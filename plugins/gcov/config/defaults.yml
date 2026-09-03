@@ -28,7 +28,6 @@
 
   :report_generator:
     :verbosity: Warning           # Default verbosity
-    :collection_paths_source: []  # Explicitly defined as default empty array to simplify option validation code
     :custom_args: []              # Explicitly defined as default empty array to simplify option validation code
     :gcov_exclude: []             # Explicitly defined as default empty array to simplify option validation code
 ...
