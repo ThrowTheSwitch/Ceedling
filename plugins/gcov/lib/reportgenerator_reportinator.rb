@@ -116,6 +116,26 @@ class ReportGeneratorReportinator < GcovReportinator
     :tag                  => { type: :inline_value, flag: '-tag:' },
   }.freeze
 
+  # ReportGenerator's own analogue of gcovr's :fail_under_* family
+  # (minimumCoverageThresholds:*, added ReportGenerator v5.1.23) -- same naming
+  # convention and 1-100 validation as the gcovr side. Unlike gcovr's composite
+  # bit-flagged exit code, a threshold violation here is just an ordinary non-zero
+  # ReportGenerator exit -- run_reportgenerator already leaves :boom at its default
+  # (true), so any violation already raises and is already caught by
+  # Gcov#generate_coverage_reports's per-reportinator exception isolation.
+  #
+  # NOTE: like `settings:` above, `minimumCoverageThresholds:` takes NO leading `-`
+  # -- confirmed directly against a real `reportgenerator` run (`-minimumCoverage...`
+  # logs "Unknown command line parameter 'minimumCoverageThresholds'"; the dash-less
+  # form is accepted). Caught by that same Docker verification before this shipped,
+  # not after.
+  REPORT_GENERATOR_THRESHOLD_ARGS = {
+    :fail_under_line        => { type: :inline_integer_percent, flag: 'minimumCoverageThresholds:lineCoverage=' },
+    :fail_under_branch      => { type: :inline_integer_percent, flag: 'minimumCoverageThresholds:branchCoverage=' },
+    :fail_under_method      => { type: :inline_integer_percent, flag: 'minimumCoverageThresholds:methodCoverage=' },
+    :fail_under_full_method => { type: :inline_integer_percent, flag: 'minimumCoverageThresholds:fullMethodCoverage=' },
+  }.freeze
+
   # Map configured report types to ReportGenerator names, silently skipping unknowns.
   # Returns an array used to build both the -reporttypes: value and the report count.
   def build_report_types(opts)
@@ -135,6 +155,7 @@ class ReportGeneratorReportinator < GcovReportinator
   # Docker verification -- left exactly as originally written, on purpose.
   def build_optional_args(rg_opts, report_type_count)
     args = build_args_from_table(rg_opts, REPORT_GENERATOR_COMMON_ARGS)
+    args += build_args_from_table(rg_opts, REPORT_GENERATOR_THRESHOLD_ARGS, component_prefix: ':gcov ↳ :report_generator')
 
     args += "\"settings:createSubdirectoryForAllReportTypes=true\" " if report_type_count > 1
     unless rg_opts[:num_parallel_threads].nil?

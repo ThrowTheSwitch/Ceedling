@@ -92,8 +92,10 @@ class GcovReportinator
   #                   :inline_value (flag and value quoted together as a single CLI token,
   #                   ReportGenerator's `-key:value` style, vs. gcovr's `--flag "value"`),
   #                   :list (flag repeated once per array entry), :integer (flag + value,
-  #                   only if the configured value is an Integer), or :integer_percent
-  #                   (as :integer, plus a 1-100 range check raising CeedlingException).
+  #                   only if the configured value is an Integer), :integer_percent
+  #                   (as :integer, plus a 1-100 range check raising CeedlingException),
+  #                   or :inline_integer_percent (:inline_value's glued-together token
+  #                   shape, plus :integer_percent's 1-100 range check).
   #   :quote       - set false to emit a :value/:list entry's value unquoted.
   #   :min_version - [major, minor]; entry is silently omitted below this version
   #                   (distinct from VERSION_GATES-style checks, which raise instead).
@@ -125,6 +127,14 @@ class GcovReportinator
           raise CeedlingException.new("#{component_prefix} ↳ :#{option} ➡️ '#{value}' must be an integer percentage 1 – 100")
         end
         args << "#{flag} #{value} "
+      when :inline_integer_percent
+        unless value.is_a?(Integer)
+          raise CeedlingException.new("#{component_prefix} ↳ :#{option} ➡️ '#{value}' must be an integer")
+        end
+        unless (1..100).cover?(value)
+          raise CeedlingException.new("#{component_prefix} ↳ :#{option} ➡️ '#{value}' must be an integer percentage 1 – 100")
+        end
+        args << "\"#{flag}#{value}\" "
       end
     end
   end

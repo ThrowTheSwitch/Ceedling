@@ -419,7 +419,12 @@ class GcovrReportinator < GcovReportinator
       _opts[:report_exclude] = excludes unless excludes.empty?
     end
 
-    _opts[:mcdc] = true if opts[:gcov_mcdc]
+    # No :mcdc-specific gcovr flag to set here -- GCC's own condition/MC-DC data flows
+    # into gcovr's reports unconditionally, in every format, regardless of --decisions
+    # (confirmed directly: gcovr's Condition-labeled HTML/JSON content is byte-identical
+    # with and without --decisions; that flag only adds its own separate, additive
+    # Decision data alongside it). :mcdc's own gcovr-version floor is still enforced in
+    # initialize -- there's just nothing more for gcovr's own CLI args to do here.
     _opts[:gcov_reports] = opts[:gcov_reports]
     _opts[:gcov_html_report_type] = opts[:gcov_html_report_type]
 

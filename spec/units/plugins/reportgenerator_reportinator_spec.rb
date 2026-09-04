@@ -89,6 +89,21 @@ describe ReportGeneratorReportinator do
       args = reportinator.send(:build_optional_args, rg_opts, 1)
       expect(args).to include('"-foo:bar"')
     end
+
+    it 'emits minimumCoverageThresholds:* for each configured :fail_under_* option' do
+      rg_opts = { fail_under_line: 80, fail_under_branch: 70, fail_under_method: 60, fail_under_full_method: 50 }
+      args = reportinator.send(:build_optional_args, rg_opts, 1)
+      expect(args).to include('"minimumCoverageThresholds:lineCoverage=80"')
+      expect(args).to include('"minimumCoverageThresholds:branchCoverage=70"')
+      expect(args).to include('"minimumCoverageThresholds:methodCoverage=60"')
+      expect(args).to include('"minimumCoverageThresholds:fullMethodCoverage=50"')
+    end
+
+    it 'rejects a :fail_under_* threshold outside 1-100' do
+      expect {
+        reportinator.send(:build_optional_args, { fail_under_line: 0 }, 1)
+      }.to raise_error(CeedlingException, /:gcov ↳ :report_generator.*must be an integer percentage/)
+    end
   end
 
   describe '#collect_reportgenerator_opts' do

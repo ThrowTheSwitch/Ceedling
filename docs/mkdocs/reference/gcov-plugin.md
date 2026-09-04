@@ -560,6 +560,42 @@ Optional build tag or version label embedded in the report.
 
 ---
 
+### `:fail_under_line`
+
+Break the build if total line coverage is below this percentage.
+(ReportGenerator `minimumCoverageThresholds:lineCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_branch`
+
+Break the build if total branch coverage is below this percentage.
+(ReportGenerator `minimumCoverageThresholds:branchCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_method`
+
+Break the build if total method coverage is below this percentage.
+(ReportGenerator `minimumCoverageThresholds:methodCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_full_method`
+
+Break the build if total full method coverage is below this percentage.
+(ReportGenerator `minimumCoverageThresholds:fullMethodCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
 ### `:gcov_exclude`
 
 Optional list of regular expressions; `.gcov` notes files whose paths match

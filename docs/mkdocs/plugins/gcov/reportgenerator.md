@@ -87,6 +87,42 @@ Optional tag or build version.
 
 ---
 
+### `:fail_under_line`
+
+Break the build if the total line coverage is less than this minimum
+percentage. (ReportGenerator `minimumCoverageThresholds:lineCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_branch`
+
+Break the build if the total branch coverage is less than this minimum
+percentage. (ReportGenerator `minimumCoverageThresholds:branchCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_method`
+
+Break the build if the total method coverage is less than this minimum
+percentage. (ReportGenerator `minimumCoverageThresholds:methodCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_full_method`
+
+Break the build if the total full method coverage is less than this minimum
+percentage. (ReportGenerator `minimumCoverageThresholds:fullMethodCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
 ### `:gcov_exclude`
 
 Optional list of one or more regular expressions to exclude gcov notes

@@ -391,11 +391,16 @@ describe GcovrReportinator do
       expect(result[:report_exclude][0..1]).to eq(['a', 'b'])
     end
 
-    it 'sets :mcdc only when :gcov_mcdc is truthy on the raw opts' do
+    # Confirmed directly (Docker, gcovr 8.6): --decisions has zero effect on GCC's own
+    # condition/MC-DC data in either JSON or HTML output -- byte-identical Condition
+    # content with and without it, only an additive, separate Decision column changes.
+    # collect_gcovr_opts has nothing :mcdc-specific to do; :gcov_mcdc never appears on
+    # its returned opts at all.
+    it 'never sets :mcdc on the returned opts, regardless of :gcov_mcdc' do
       with_mcdc    = reportinator.send(:collect_gcovr_opts, { gcov_gcovr: {}, gcov_mcdc: true })
       without_mcdc = reportinator.send(:collect_gcovr_opts, { gcov_gcovr: {}, gcov_mcdc: false })
-      expect(with_mcdc[:mcdc]).to eq(true)
-      expect(without_mcdc[:mcdc]).to be_nil
+      expect(with_mcdc).to_not have_key(:mcdc)
+      expect(without_mcdc).to_not have_key(:mcdc)
     end
   end
 

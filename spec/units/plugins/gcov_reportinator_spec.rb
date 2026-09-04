@@ -193,6 +193,26 @@ describe GcovReportinator do
       expect( reportinator.send(:build_args_from_table, { merge_mode_function: 'strict' }, table, version: ToolVersion.new(5, 9)) ).to eq('')
       expect( reportinator.send(:build_args_from_table, { merge_mode_function: 'strict' }, table, version: ToolVersion.new(6, 0)) ).to include('--merge-mode-functions "strict"')
     end
+
+    it 'glues flag and value into one quoted token for :inline_integer_percent, within 1-100' do
+      table = { fail_under_line: { type: :inline_integer_percent, flag: '-minimumCoverageThresholds:lineCoverage=' } }
+      result = reportinator.send(:build_args_from_table, { fail_under_line: 80 }, table, component_prefix: ':gcov')
+      expect(result).to eq('"-minimumCoverageThresholds:lineCoverage=80" ')
+    end
+
+    it 'raises CeedlingException for an :inline_integer_percent value outside 1-100' do
+      table = { fail_under_line: { type: :inline_integer_percent, flag: '-minimumCoverageThresholds:lineCoverage=' } }
+      expect {
+        reportinator.send(:build_args_from_table, { fail_under_line: 0 }, table, component_prefix: ':gcov')
+      }.to raise_error(CeedlingException, /must be an integer percentage/)
+    end
+
+    it 'raises CeedlingException for a non-Integer :inline_integer_percent value' do
+      table = { fail_under_line: { type: :inline_integer_percent, flag: '-minimumCoverageThresholds:lineCoverage=' } }
+      expect {
+        reportinator.send(:build_args_from_table, { fail_under_line: '80' }, table, component_prefix: ':gcov')
+      }.to raise_error(CeedlingException, /must be an integer/)
+    end
   end
 
   describe '#build_exclusion_data' do
