@@ -96,7 +96,7 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 ---
 
-# [1.1.7] — Prerelease
+# [1.1.7] — 2026-09-03
 
 ## 💪 Fixed
 
