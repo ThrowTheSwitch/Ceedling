@@ -186,7 +186,9 @@ this path.
 
 Load a `gcovr` configuration file. (`gcovr --config`)
 
-**Default:** `gcovr.cfg` in the `:report_root` directory, if present.
+**Default:** unset — Ceedling does not look for or autodetect a config file
+on disk; `gcovr` itself is only ever told to load one when `:config_file` is
+explicitly set.
 
 ---
 
@@ -492,8 +494,9 @@ Override the default JSON report output filename.
 
 ### `:text_artifact_filename`
 
-Override the default text report output filename. When unset the text report
-is printed to the console.
+Override the default text report output filename.
+
+**Default:** `coverage.txt`
 
 ---
 
