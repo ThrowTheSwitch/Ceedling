@@ -29,6 +29,7 @@ describe ReportGeneratorReportinator do
   let(:tool_validator)   { double('tool_validator', validate: nil) }
   let(:tool_executor)    { double('tool_executor') }
   let(:batchinator)      { double('batchinator') }
+  let(:file_wrapper)     { double('file_wrapper') }
   let(:configurator) do
     double('configurator',
       project_use_partials:     false,
@@ -48,6 +49,7 @@ describe ReportGeneratorReportinator do
       tool_executor:  tool_executor,
       configurator:   configurator,
       batchinator:    batchinator,
+      file_wrapper:   file_wrapper,
     }
   end
 
@@ -136,6 +138,130 @@ describe ReportGeneratorReportinator do
       # reachable if none of those match either -- not exercised further here.
       rg_opts = { gcov_exclude: [] }
       expect( reportinator.send(:build_gcno_exclude_regex, rg_opts) ).to_not be_nil
+    end
+  end
+
+  describe '#build_report_types' do
+    it 'maps configured report types to ReportGenerator names, silently dropping unrecognized ones' do
+      result = reportinator.send(:build_report_types, { gcov_reports: ['HtmlBasic', 'Cobertura', 'NotARealType'] })
+      expect(result).to eq(['HtmlSummary', 'Cobertura'])
+    end
+  end
+
+  # All real filesystem I/O in this class is routed through @file_wrapper --
+  # no real files or directories are touched by any spec in this describe block.
+  describe '#run_gcov' do
+    def stub_exec(exit_code:, output:)
+      allow(tool_executor).to receive(:build_command_line).and_return({ options: {} })
+      allow(tool_executor).to receive(:exec).and_return({ exit_code: exit_code, output: output })
+    end
+
+    it 'renames the file gcov reports creating, extracted from "Creating \'file.gcov\'" output' do
+      stub_exec(exit_code: 0, output: "Creating 'a1b2.gcov'\n")
+      allow(file_wrapper).to receive(:exist?).with('a1b2.gcov').and_return(true)
+      expect(file_wrapper).to receive(:mv).with('a1b2.gcov', File.join('build/gcov/out/test_foo', 'a1b2.gcov'))
+      reportinator.send(:run_gcov, 'build/gcov/out/test_foo/foo.c.gcno', '/proj/')
+    end
+
+    it 'renames every file mentioned across multiple "Creating" lines in one invocation' do
+      stub_exec(exit_code: 0, output: "Creating 'a1b2.gcov'\nCreating 'c3d4.gcov'\n")
+      allow(file_wrapper).to receive(:exist?).and_return(true)
+      expect(file_wrapper).to receive(:mv).with('a1b2.gcov', anything)
+      expect(file_wrapper).to receive(:mv).with('c3d4.gcov', anything)
+      reportinator.send(:run_gcov, 'build/gcov/out/test_foo/foo.c.gcno', '/proj/')
+    end
+
+    it 'skips the rename when the file does not exist' do
+      stub_exec(exit_code: 0, output: "Creating 'a1b2.gcov'\n")
+      allow(file_wrapper).to receive(:exist?).and_return(false)
+      expect(file_wrapper).to_not receive(:mv)
+      reportinator.send(:run_gcov, 'build/gcov/out/test_foo/foo.c.gcno', '/proj/')
+    end
+
+    it 'skips the rename when source and destination are already identical' do
+      stub_exec(exit_code: 0, output: "Creating 'build/gcov/out/test_foo/a1b2.gcov'\n")
+      allow(file_wrapper).to receive(:exist?).and_return(true)
+      expect(file_wrapper).to_not receive(:mv)
+      reportinator.send(:run_gcov, 'build/gcov/out/test_foo/foo.c.gcno', '/proj/')
+    end
+
+    it 'logs a COMPLAIN on non-zero exit but still proceeds to scan and rename (documented non-fatal behavior)' do
+      stub_exec(exit_code: 1, output: "Creating 'a1b2.gcov'\n")
+      allow(file_wrapper).to receive(:exist?).and_return(true)
+      expect(loginator).to receive(:log).with(/could not process/, Verbosity::COMPLAIN)
+      expect(file_wrapper).to receive(:mv)
+      reportinator.send(:run_gcov, 'build/gcov/out/test_foo/foo.c.gcno', '/proj/')
+    end
+  end
+
+  describe '#generate_gcov_files' do
+    it 'discovers directories containing .gcno files and dispatches sorted, per-dir work to the batchinator' do
+      allow(file_wrapper).to receive(:directory_listing)
+        .with(File.join(GCOV_BUILD_OUTPUT_PATH, '**', "*#{EXTENSION_GCNO}"))
+        .and_return([
+          'build/gcov/out/test_foo/src/foo.c.gcno',
+          'build/gcov/out/test_foo/src/ceedling_partial_foo_impl.c.gcno',
+        ])
+      allow(file_wrapper).to receive(:directory_listing)
+        .with(File.join('build/gcov/out/test_foo/src', "*#{EXTENSION_GCNO}"))
+        .and_return([
+          # Deliberately listed partial-first -- generate_gcov_files must still sort the
+          # partial after its non-partial counterpart regardless of listing order.
+          'build/gcov/out/test_foo/src/ceedling_partial_foo_impl.c.gcno',
+          'build/gcov/out/test_foo/src/foo.c.gcno',
+        ])
+
+      dispatched = nil
+      allow(batchinator).to receive(:exec) { |workload:, things:, &_blk| dispatched = { workload: workload, things: things } }
+
+      reportinator.send(:generate_gcov_files, nil)
+
+      expect(dispatched[:workload]).to eq(:compile)
+      expect(dispatched[:things].length).to eq(1)
+      expect(dispatched[:things].first[:gcno_files]).to eq([
+        'build/gcov/out/test_foo/src/foo.c.gcno',
+        'build/gcov/out/test_foo/src/ceedling_partial_foo_impl.c.gcno',
+      ])
+    end
+
+    it 'excludes .gcno files matching gcno_exclude_regex, dropping a directory entirely once empty' do
+      allow(file_wrapper).to receive(:directory_listing)
+        .with(File.join(GCOV_BUILD_OUTPUT_PATH, '**', "*#{EXTENSION_GCNO}"))
+        .and_return(['build/gcov/out/test_foo/test_foo_runner.c.gcno'])
+      allow(file_wrapper).to receive(:directory_listing)
+        .with(File.join('build/gcov/out/test_foo', "*#{EXTENSION_GCNO}"))
+        .and_return(['build/gcov/out/test_foo/test_foo_runner.c.gcno'])
+
+      dispatched = nil
+      allow(batchinator).to receive(:exec) { |workload:, things:, &_blk| dispatched = things }
+
+      reportinator.send(:generate_gcov_files, /test_foo_runner/)
+
+      expect(dispatched).to eq([])
+    end
+  end
+
+  describe '#run_reportgenerator' do
+    it 'logs a COMPLAIN and returns nil without ever building a command when no .gcov files exist' do
+      allow(file_wrapper).to receive(:directory_listing).and_return([])
+      expect(tool_executor).to_not receive(:build_command_line)
+      expect(loginator).to receive(:log).with(/No matching \.gcno coverage files found/, Verbosity::COMPLAIN)
+
+      result = reportinator.send(:run_reportgenerator, { gcov_reports: [], collection_paths_source: [] }, {})
+      expect(result).to be_nil
+    end
+
+    it 'proceeds normally when .gcov files are present' do
+      allow(file_wrapper).to receive(:directory_listing).and_return(['build/gcov/out/test_foo/foo.c.gcov'])
+      allow(tool_executor).to receive(:build_command_line).and_return({})
+      expect(tool_executor).to receive(:exec).and_return({ exit_code: 0 })
+
+      result = reportinator.send(
+        :run_reportgenerator,
+        { gcov_reports: ['HtmlBasic'], collection_paths_source: ['src'] },
+        { file_filters: 'x' }
+      )
+      expect(result).to eq({ exit_code: 0 })
     end
   end
 end

@@ -45,6 +45,7 @@ class ReportGeneratorReportinator < GcovReportinator
     @tool_executor = @ceedling[:tool_executor]
     @configurator  = @ceedling[:configurator]
     @batchinator   = @ceedling[:batchinator]
+    @file_wrapper  = @ceedling[:file_wrapper]
 
     # Mutex that serializes each gcov subprocess + rename pair (see run_gcov).
     @gcov_cwd_mutex = Mutex.new
@@ -225,7 +226,7 @@ class ReportGeneratorReportinator < GcovReportinator
     # (untested sources placed there by process_untested_sources).
     # gcov handles a missing .gcda gracefully; it produces a .gcov with 0% coverage —
     # so no .gcda guard needed.
-    gcno_dirs = Dir.glob(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "*#{EXTENSION_GCNO}"))
+    gcno_dirs = @file_wrapper.directory_listing(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "*#{EXTENSION_GCNO}"))
       .map { |f| File.dirname(f) }
       .uniq
       .sort
@@ -233,7 +234,7 @@ class ReportGeneratorReportinator < GcovReportinator
     # Pre-compute the sorted, filtered file list for each dir before dispatching.
     # filter_map drops empty dirs so Batchinator never queues no-op work items.
     work_items = gcno_dirs.filter_map do |gcno_dir|
-      files = Dir.glob(File.join(gcno_dir, "*#{EXTENSION_GCNO}"))
+      files = @file_wrapper.directory_listing(File.join(gcno_dir, "*#{EXTENSION_GCNO}"))
         .reject { |f| gcno_exclude_regex && f =~ gcno_exclude_regex }
         # Sort to process non-partial source files before their partial counterparts.
         # Processing the coverage compiled version of the original source creates .gcov
@@ -256,7 +257,7 @@ class ReportGeneratorReportinator < GcovReportinator
   # Run ReportGenerator if .gcov files are present. Returns the shell result, or nil
   # with a complaint log if no .gcov files were produced by the gcov step.
   def run_reportgenerator(opts, rg_opts)
-    unless Dir.glob(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "*#{EXTENSION_GCOV}")).length > 0
+    unless @file_wrapper.directory_listing(File.join(GCOV_BUILD_OUTPUT_PATH, "**", "*#{EXTENSION_GCOV}")).length > 0
       @loginator.log( "No matching .gcno coverage files found", Verbosity::COMPLAIN )
       return nil
     end
@@ -362,7 +363,7 @@ class ReportGeneratorReportinator < GcovReportinator
         dest = File.join(gcno_dir, File.basename(gcov_file))
 
         # Move the generated file after extracting its filename from `gcov` output
-        File.rename(gcov_file, dest) if File.exist?(gcov_file) && gcov_file != dest
+        @file_wrapper.mv(gcov_file, dest) if @file_wrapper.exist?(gcov_file) && gcov_file != dest
       end
 
       return shell_result

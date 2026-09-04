@@ -178,6 +178,13 @@ class ConsoleReportinator < GcovReportinator
         section       = section.reject { |line| line.include?( File.basename( source,'.*') ) }
         report        = section.map { |line| report_name + ' | ' + line }.join('')
         @loginator.log( report )
+      else
+        # A Partial whose remapped name still doesn't match any File header in gcov's
+        # output -- without this, a Partial's unparseable coverage silently produces no
+        # report and no log at all, unlike the equivalent non-Partial case just below.
+        @loginator.lazy( Verbosity::COMPLAIN ) do
+          "Found no coverage results for #{test}::#{File.basename(source)}"
+        end
       end
 
     # Otherwise, found no coverage results

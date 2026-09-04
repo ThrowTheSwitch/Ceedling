@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/reportinator'
 
 PROJECT_BUILD_ROOT           = 'build'     unless defined?(PROJECT_BUILD_ROOT)
 PROJECT_BUILD_ARTIFACTS_ROOT = 'artifacts' unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
@@ -235,6 +236,305 @@ describe GcovrReportinator do
 
     it 'returns false for a plain zero exit code' do
       expect( reportinator.send(:gcovr_exec_exception?, {}, 0, true, { stderr: '' }) ).to eq(false)
+    end
+  end
+
+  describe '#args_builder_cobertura' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'returns an empty string when Cobertura is not an enabled report type' do
+      expect( reportinator.send(:args_builder_cobertura, { gcov_reports: ['HtmlBasic'] }) ).to eq('')
+    end
+
+    it 'uses the default artifact filename when none is configured' do
+      args = reportinator.send(:args_builder_cobertura, { gcov_reports: ['Cobertura'] })
+      expect(args).to include(GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA)
+    end
+
+    it 'joins a custom filename under the gcovr artifacts path' do
+      args = reportinator.send(:args_builder_cobertura, { gcov_reports: ['Cobertura'], cobertura_artifact_filename: 'Custom.xml' })
+      expect(args).to include(File.join(GCOV_GCOVR_ARTIFACTS_PATH, 'Custom.xml'))
+    end
+
+    it 'includes --xml-pretty only when cobertura_pretty is set and no config file is in use' do
+      with_pretty = { gcov_reports: ['Cobertura'], cobertura_pretty: true }
+      expect( reportinator.send(:args_builder_cobertura, with_pretty) ).to include('--xml-pretty')
+
+      with_pretty_and_config = with_pretty.merge(config_file: 'gcovr.cfg')
+      expect( reportinator.send(:args_builder_cobertura, with_pretty_and_config) ).to_not include('--xml-pretty')
+    end
+
+    it 'adds --output only when use_output_option is true' do
+      gcovr_opts = { gcov_reports: ['Cobertura'] }
+      expect( reportinator.send(:args_builder_cobertura, gcovr_opts, true) ).to include('--output')
+      expect( reportinator.send(:args_builder_cobertura, gcovr_opts, false) ).to_not include('--output')
+    end
+  end
+
+  describe '#args_builder_sonarqube' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'returns an empty string when SonarQube is not enabled, and the default filename when it is' do
+      expect( reportinator.send(:args_builder_sonarqube, { gcov_reports: [] }) ).to eq('')
+      args = reportinator.send(:args_builder_sonarqube, { gcov_reports: ['SonarQube'] })
+      expect(args).to include(GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE)
+    end
+
+    it 'joins a custom filename under the gcovr artifacts path' do
+      args = reportinator.send(:args_builder_sonarqube, { gcov_reports: ['SonarQube'], sonarqube_artifact_filename: 'Custom.xml' })
+      expect(args).to include(File.join(GCOV_GCOVR_ARTIFACTS_PATH, 'Custom.xml'))
+    end
+  end
+
+  describe '#args_builder_json' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'returns an empty string when JSON is not enabled, and the default filename when it is' do
+      expect( reportinator.send(:args_builder_json, { gcov_reports: [] }) ).to eq('')
+      args = reportinator.send(:args_builder_json, { gcov_reports: ['JSON'] })
+      expect(args).to include(GCOV_GCOVR_ARTIFACTS_FILE_JSON)
+    end
+
+    it 'includes --json-pretty only when json_pretty is set and no config file is in use' do
+      with_pretty = { gcov_reports: ['JSON'], json_pretty: true }
+      expect( reportinator.send(:args_builder_json, with_pretty) ).to include('--json-pretty')
+
+      with_pretty_and_config = with_pretty.merge(config_file: 'gcovr.cfg')
+      expect( reportinator.send(:args_builder_json, with_pretty_and_config) ).to_not include('--json-pretty')
+    end
+  end
+
+  describe '#args_builder_html' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'returns an empty string when neither HTML report type is enabled' do
+      expect( reportinator.send(:args_builder_html, { gcov_reports: [] }) ).to eq('')
+    end
+
+    it 'is enabled by either HtmlBasic or HtmlDetailed' do
+      expect( reportinator.send(:args_builder_html, { gcov_reports: ['HtmlBasic'] }) ).to include('--html ')
+      expect( reportinator.send(:args_builder_html, { gcov_reports: ['HtmlDetailed'] }) ).to include('--html ')
+    end
+
+    it 'adds --html-details via the HtmlDetailed report type' do
+      args = reportinator.send(:args_builder_html, { gcov_reports: ['HtmlDetailed'] })
+      expect(args).to include('--html-details')
+    end
+
+    it 'adds --html-details via the case-insensitive :gcov_html_report_type string, independent of report type' do
+      args = reportinator.send(:args_builder_html, { gcov_reports: ['HtmlBasic'], gcov_html_report_type: 'Detailed' })
+      expect(args).to include('--html-details')
+    end
+
+    it 'withholds title/absolute-paths/encoding/thresholds when a config file is in use' do
+      gcovr_opts = {
+        gcov_reports: ['HtmlBasic'], config_file: 'gcovr.cfg',
+        html_title: 'T', html_absolute_paths: true, html_encoding: 'UTF-8',
+        html_medium_threshold: 75, html_high_threshold: 90
+      }
+      args = reportinator.send(:args_builder_html, gcovr_opts)
+      expect(args).to_not include('--html-title')
+      expect(args).to_not include('--html-absolute-paths')
+      expect(args).to_not include('--html-encoding')
+      expect(args).to_not include('--html-medium-threshold')
+      expect(args).to_not include('--html-high-threshold')
+      expect(args).to include('--html ')
+    end
+
+    it 'joins a custom filename under the gcovr artifacts path' do
+      args = reportinator.send(:args_builder_html, { gcov_reports: ['HtmlBasic'], html_artifact_filename: 'Custom.html' })
+      expect(args).to include(File.join(GCOV_GCOVR_ARTIFACTS_PATH, 'Custom.html'))
+    end
+  end
+
+  describe '#generate_reports_modern' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'never invokes gcovr when no format contributed any arguments' do
+      expect(reportinator).to_not receive(:run_gcovr)
+      reportinator.send(:generate_reports_modern, { gcov_reports: [] }, '--root x ', false)
+    end
+
+    it 'invokes gcovr once when at least one format is enabled' do
+      expect(reportinator).to receive(:run_gcovr).once
+      reportinator.send(:generate_reports_modern, { gcov_reports: ['HtmlBasic'] }, '--root x ', false)
+    end
+  end
+
+  describe '#generate_reports_legacy' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'invokes gcovr separately for HTML and Cobertura, each only when its args are non-empty' do
+      allow(reportinator).to receive(:args_builder_html).and_return('')
+      allow(reportinator).to receive(:args_builder_cobertura).and_return('--xml x ')
+      expect(reportinator).to receive(:run_gcovr).once
+      reportinator.send(:generate_reports_legacy, { gcov_reports: [] }, '', false)
+    end
+  end
+
+  describe '#collect_gcovr_opts' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'forces :report_exclude to [] (not nil) when a config file is in use' do
+      result = reportinator.send(:collect_gcovr_opts, { gcov_gcovr: { config_file: 'gcovr.cfg' } })
+      expect(result[:report_exclude]).to eq([])
+    end
+
+    it 'prepends user-supplied :report_exclude ahead of the generated exclusions' do
+      result = reportinator.send(:collect_gcovr_opts, { gcov_gcovr: { report_exclude: 'user-pattern' } })
+      expect(result[:report_exclude].first).to eq('user-pattern')
+      expect(result[:report_exclude].length).to be > 1
+    end
+
+    it 'accepts an Array for user-supplied :report_exclude without nesting it' do
+      result = reportinator.send(:collect_gcovr_opts, { gcov_gcovr: { report_exclude: ['a', 'b'] } })
+      expect(result[:report_exclude][0..1]).to eq(['a', 'b'])
+    end
+
+    it 'sets :mcdc only when :gcov_mcdc is truthy on the raw opts' do
+      with_mcdc    = reportinator.send(:collect_gcovr_opts, { gcov_gcovr: {}, gcov_mcdc: true })
+      without_mcdc = reportinator.send(:collect_gcovr_opts, { gcov_gcovr: {}, gcov_mcdc: false })
+      expect(with_mcdc[:mcdc]).to eq(true)
+      expect(without_mcdc[:mcdc]).to be_nil
+    end
+  end
+
+  describe '#run_gcovr' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'sets @summary only when :print_summary is enabled' do
+      allow(tool_executor).to receive(:build_command_line).and_return({})
+      allow(tool_executor).to receive(:exec).and_return({ exit_code: 0, time: 0.1, stdout: "lines: 90.0% (9 out of 10)\n", stderr: '' })
+
+      reportinator.send(:run_gcovr, { print_summary: true, report_root: '.', report_exclude: [] }, '', false)
+      expect(reportinator.summary).to include('90.0%')
+    end
+
+    it 'leaves @summary untouched when :print_summary is disabled' do
+      allow(tool_executor).to receive(:build_command_line).and_return({})
+      allow(tool_executor).to receive(:exec).and_return({ exit_code: 0, time: 0.1, stdout: "lines: 90.0% (9 out of 10)\n", stderr: '' })
+
+      reportinator.send(:run_gcovr, { print_summary: false, report_root: '.', report_exclude: [] }, '', false)
+      expect(reportinator.summary).to eq('')
+    end
+
+    it 'raises when gcovr_exec_exception? says the failure is real (its own CeedlingException, not the original ShellException)' do
+      allow(tool_executor).to receive(:build_command_line).and_return({})
+      shell_result = { exit_code: 2, time: 0.1, output: '', stdout: '', stderr: '' }
+      allow(tool_executor).to receive(:exec)
+        .and_raise(ShellException.new(name: 'gcovr', message: 'failed', shell_result: shell_result))
+
+      # gcovr_exec_exception? itself raises (boom: true) before run_gcovr's own `raise(exception)`
+      # line is ever reached -- the surfaced error is its CeedlingException, describing which
+      # threshold failed, not a re-raise of the original ShellException.
+      expect {
+        reportinator.send(:run_gcovr, { fail_under_line: 90, report_root: '.', report_exclude: [] }, '', true)
+      }.to raise_error(CeedlingException, /Line coverage/)
+    end
+
+    it 'swallows the ShellException and returns its shell_result when gcovr_exec_exception? says the exit code is fine' do
+      allow(tool_executor).to receive(:build_command_line).and_return({})
+      shell_result = { exit_code: 0, time: 0.1, output: '', stdout: '', stderr: '' }
+      allow(tool_executor).to receive(:exec)
+        .and_raise(ShellException.new(name: 'gcovr', message: 'failed', shell_result: shell_result))
+
+      result = reportinator.send(:run_gcovr, { report_root: '.', report_exclude: [] }, '', true)
+      expect(result).to eq(shell_result)
+    end
+  end
+
+  describe '#extract_gcovr_error_message' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'returns nil for a nil shell_result' do
+      expect( reportinator.send(:extract_gcovr_error_message, nil) ).to be_nil
+    end
+
+    it 'returns nil when stderr is empty' do
+      expect( reportinator.send(:extract_gcovr_error_message, { stderr: '' }) ).to be_nil
+    end
+
+    it 'captures, trims, and capitalizes an (ERROR)-prefixed line' do
+      result = reportinator.send(:extract_gcovr_error_message, { stderr: "(ERROR) something went wrong.\n" })
+      expect(result).to eq('Something went wrong.')
+    end
+
+    it 'matches case-insensitively' do
+      result = reportinator.send(:extract_gcovr_error_message, { stderr: "error: lowercase message\n" })
+      expect(result).to eq('Lowercase message')
+    end
+
+    it 'uses only the first matching line among several' do
+      stderr = "(ERROR) first problem\n(ERROR) second problem\n"
+      result = reportinator.send(:extract_gcovr_error_message, { stderr: stderr })
+      expect(result).to eq('First problem')
+    end
+
+    it 'returns nil when no error-prefixed line exists' do
+      result = reportinator.send(:extract_gcovr_error_message, { stderr: "just some noise\n" })
+      expect(result).to be_nil
+    end
+  end
+
+  describe '#extract_gcovr_summary' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'returns an empty string for nil or empty output' do
+      expect( reportinator.send(:extract_gcovr_summary, nil) ).to eq('')
+      expect( reportinator.send(:extract_gcovr_summary, '') ).to eq('')
+    end
+
+    it 'returns an empty string when no line contains a percent sign' do
+      expect( reportinator.send(:extract_gcovr_summary, "no percentages here\n") ).to eq('')
+    end
+
+    it 'extracts a single contiguous block of percent-containing lines' do
+      output = "some header\nlines: 90.0% (9 out of 10)\nbranches: 80.0% (8 out of 10)\nfooter\n"
+      result = reportinator.send(:extract_gcovr_summary, output)
+      expect(result).to eq("lines: 90.0% (9 out of 10)\nbranches: 80.0% (8 out of 10)\n")
+    end
+
+    it 'returns only the last block when multiple separate percent blocks exist' do
+      output = "lines: 10.0% (old)\n\nlines: 90.0% (9 out of 10)\nbranches: 80.0% (8 out of 10)\n"
+      result = reportinator.send(:extract_gcovr_summary, output)
+      expect(result).to eq("lines: 90.0% (9 out of 10)\nbranches: 80.0% (8 out of 10)\n")
+      expect(result).to_not include('10.0%')
+    end
+
+    it 'does not underflow when the matching block reaches the very first line' do
+      output = "lines: 90.0% (9 out of 10)\nbranches: 80.0% (8 out of 10)\n"
+      result = reportinator.send(:extract_gcovr_summary, output)
+      expect(result).to eq(output)
+    end
+  end
+
+  describe '#generate_reports' do
+    it 'dispatches to generate_reports_modern for gcovr >= 4.2' do
+      reportinator = build_reportinator({}, gcovr_version: ToolVersion.new(8, 3))
+      expect(reportinator).to receive(:generate_reports_modern)
+      expect(reportinator).to_not receive(:generate_reports_legacy)
+      reportinator.generate_reports({ gcov_gcovr: {}, gcov_reports: [] })
+    end
+
+    it 'dispatches to generate_reports_legacy below gcovr 4.2' do
+      reportinator = build_reportinator({}, gcovr_version: ToolVersion.new(4, 1))
+      expect(reportinator).to receive(:generate_reports_legacy)
+      expect(reportinator).to_not receive(:generate_reports_modern)
+      reportinator.generate_reports({ gcov_gcovr: {}, gcov_reports: [] })
+    end
+
+    it 'skips the text report when Text is not an enabled report type' do
+      reportinator = build_reportinator({}, gcovr_version: ToolVersion.new(8, 3))
+      allow(reportinator).to receive(:generate_reports_modern)
+      expect(reportinator).to_not receive(:generate_text_report)
+      reportinator.generate_reports({ gcov_gcovr: {}, gcov_reports: ['HtmlBasic'] })
+    end
+
+    it 'invokes the text report when Text is an enabled report type' do
+      reportinator = build_reportinator({}, gcovr_version: ToolVersion.new(8, 3))
+      allow(reportinator).to receive(:generate_reports_modern)
+      expect(reportinator).to receive(:generate_text_report)
+      reportinator.generate_reports({ gcov_gcovr: {}, gcov_reports: ['Text'] })
     end
   end
 end
