@@ -39,10 +39,12 @@ systems. This flag became available with `gcov` version 7. We do not recommend
 using `gcov` version 6 and earlier. And, in fact, because of the Gcov plugin's 
 dependence on the `gcov` `-x` flag, attempting to use it will fail.
 
-GNU Compiler Collection 14 introduced changes in how coverage is instrumented.
-The `gcov` plugin implemented a revised means of processing coverage that is
-forward compatible with GCC 14+ and backwards compatible to the earliest
-versions of the collection.
+GNU Compiler Collection 14 introduced support for Modified Condition/Decision
+Coverage (MC/DC). For this reason, the Gcov plugin's own `:mcdc` option (see
+[Setup](setup.md)) explicitly checks for GCC 14+. The plugin raises a clear 
+error if running against an older GCC with `:mcdc` enabled. This GCC-version 
+dependency is specific to `:mcdc`; it does not otherwise affect how the 
+plugin processes coverage.
 
 ## `gcovr`
 
@@ -51,10 +53,29 @@ Gcov plugin supports `gcovr` command line conventions since version 4.2 and
 attempts to support `gcovr` command lines before version 4.2. We recommend 
 using `gcovr` 5 and later.
 
+Several `:gcovr` options depend on a minimum `gcovr` version, checked and
+enforced by this plugin (see [GCovr Configuration](gcovr.md) for each
+option's own details):
+
+| Option | Minimum `gcovr` version |
+|---|---|
+| `:decisions` | 5.1 |
+| `:merge_mode_function` | 6.0 (ignored for earlier versions) |
+| `:fail_under_decision` | 7.0 |
+| `:mcdc` | 8.0 |
+
+`gcovr` 7.0 also deprecated `:branches`, `:sort_uncovered`, and
+`:sort_percentage`'s underlying flags in favor of renamed equivalents; the
+plugin automatically uses whichever form of arguments your installed `gcovr` 
+expects but each is enabled with the [keys documented](gcovr.md).
+
 ## `reportgenerator`
 
 The Gcov plugin is known to work with `reportgenerator` 5.2.4. The command line
 for executing `reportgenerator` that the Gcov plugin relies on has largely been
 stable since version 4. We recommend using `reportgenerator` 5.0 and later.
+
+Unlike `gcovr`, the plugin does not detect the installed `reportgenerator`
+version or gate any option on it.
 
 <br/><br/>

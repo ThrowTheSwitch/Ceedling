@@ -16,7 +16,21 @@ require 'gcovr_reportinator'
 require 'reportgenerator_reportinator'
 
 class Gcov < Plugin
-  
+
+  include ToolVersionGating
+
+  # Checked lazily (see validate_mcdc_gcc_version!, called from the gcov-context build
+  # hooks below) rather than here in setup(), which runs for every build this plugin is
+  # merely *enabled* for -- not only real `gcov:` builds. Shelling out to `gcc --version`
+  # here would make GCC-version validation (and a build-breaking exception on too-old a
+  # GCC) fire even for builds that never touch :mcdc at all, e.g. plain `test:all`.
+  MCDC_GCC_VERSION_GATE = {
+    :mcdc => {
+      min: [14, 0],
+      message: ":gcov ↳ :mcdc ➡️ Modified condition/decision coverage requires GCC %{req} or higher (found %{found})"
+    }
+  }.freeze
+
   # `Plugin` setup()
   def setup
     @result_list = []
@@ -80,16 +94,9 @@ class Gcov < Plugin
 
     @mutex = Mutex.new()
 
-    # Validate MC/DC configuration against GCC version (only incurs gcc --version when :mcdc: TRUE)
-    if @project_config[:gcov_mcdc]
-      gcc_version = get_gcc_version()
-      if gcc_version.major < 14
-        raise CeedlingException.new(
-          ":gcov ↳ :mcdc ➡️ Modified condition/decision coverage requires GCC 14 or higher " \
-          "(found #{gcc_version.major}.#{gcc_version.minor})"
-        )
-      end
-    end
+    # See validate_mcdc_gcc_version! and MCDC_GCC_VERSION_GATE above for why this isn't
+    # checked eagerly here.
+    @mcdc_gcc_checked = false
   end
 
   # Called within class and also externally by plugin Rakefile
@@ -138,6 +145,8 @@ class Gcov < Plugin
       @loginator.log_list( untested_sources.sort, header, Verbosity::COMPLAIN, LogLabels::WARNING )
 
     when GCOV_UNTESTED_SOURCES_COMPILE
+      validate_mcdc_gcc_version!
+
       msg = 'Processing Untested Sources'
       msg = @reportinator.generate_heading( @loginator.decorate( msg, LogLabels::RUN ) )
       @loginator.log( msg )
@@ -241,6 +250,8 @@ class Gcov < Plugin
     return unless arg_hash[:context] == GCOV_SYM
     return if EXTENSION_ASSEMBLY.match?(arg_hash[:source])
 
+    validate_mcdc_gcc_version!
+
     arg_hash[:tool] = TOOLS_GCOV_COMPILER
     arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
 
@@ -269,6 +280,8 @@ class Gcov < Plugin
   # re-run -- @cli_gcov_task marks that a gcov: task ran at all, not that a link did.
   def pre_test_link_register(arg_hash)
     return unless arg_hash[:context] == GCOV_SYM
+
+    validate_mcdc_gcc_version!
 
     @cli_gcov_task = true
     arg_hash[:tool] = TOOLS_GCOV_LINKER
@@ -453,23 +466,35 @@ class Gcov < Plugin
     return reportinators
   end
 
-  def get_gcc_version()
-    command = @tool_executor.build_command_line( TOOLS_GCOV_GCC_VERSION, [])
+  # Lazily validates :mcdc against the installed GCC version -- called from every
+  # gcov-context build hook that could otherwise emit -fcondition-coverage (compile,
+  # untested-source compile, link), memoized so `gcc --version` runs at most once
+  # regardless of how many source files or hooks fire before it. See MCDC_GCC_VERSION_GATE
+  # above for why this isn't checked eagerly in setup().
+  def validate_mcdc_gcc_version!
+    return if @mcdc_gcc_checked
+    @mcdc_gcc_checked = true
+    return unless @project_config[:gcov_mcdc]
 
+    enforce_version_gates!(
+      { mcdc: @project_config[:gcov_mcdc] },
+      get_gcc_version(),
+      MCDC_GCC_VERSION_GATE
+    )
+  end
+
+  # Get the GCC version number as a ToolVersion struct.
+  def get_gcc_version()
     @loginator.lazy( Verbosity::OBNOXIOUS ) do
       @reportinator.generate_progress("Collecting GCC version for conditional feature handling")
     end
 
-    shell_result = @tool_executor.exec( command )
-
     # First line of gcc --version: "gcc[.exe] (...platform info...) major.minor.patch"
-    version_match = shell_result[:output].match(/^gcc(?:#{Regexp.escape(EXTENSION_WIN_EXE)})?\s+.*\s+(\d+)\.(\d+)\.\d+/)
-
-    if version_match.nil? || version_match[1].nil? || version_match[2].nil?
-      raise CeedlingException.new("Could not collect `gcc` version from its command line")
-    end
-
-    return GcovToolVersion.new( version_match[1].to_i, version_match[2].to_i )
+    detect_tool_version(
+      TOOLS_GCOV_GCC_VERSION,
+      /^gcc(?:#{Regexp.escape(EXTENSION_WIN_EXE)})?\s+.*\s+(\d+)\.(\d+)\.\d+/,
+      tool_label: 'gcc'
+    )
   end
 
 end

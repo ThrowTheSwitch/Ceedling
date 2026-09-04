@@ -54,7 +54,10 @@ Platform filepath limits (especially on Windows) can lead to mysterious build fa
 [#1250](https://github.com/ThrowTheSwitch/Ceedling/issues/1250) `ceedling.yml` is now recognized as an alternate default project filename alongside `project.yml`. Either name is loaded the same way; neither is preferred over the other. If both exist in the same directory, Ceedling raises an error. `ceedling new` continues to generate `project.yml` by default; pass `--ceedling-yml` to generate `ceedling.yml` instead. See [Loading a Project Configuration](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/loading/).
 
 ### Gcovr raw custom arguments
-[#1159](https://github.com/ThrowTheSwitch/Ceedling/issues/1159) Added [`:gcov` ↳ `:gcovr` ↳ `:custom_args:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/gcov/gcovr/), a list of raw command line arguments passed straight through to `gcovr`. This is an escape hatch for any `gcovr` flag Ceedling has no named option for (e.g. limiting gcovr's search root), mirroring the `:report_generator` ↳ `:custom_args:` option that already existed for the ReportGenerator side of the Gcov plugin. Unlike every other GCovr option, `:custom_args:` still applies even when `:config_file` is set.
+[#1159](https://github.com/ThrowTheSwitch/Ceedling/issues/1159) Added [`:gcov` ↳ `:gcovr` ↳ `:custom_args:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/gcov/gcovr/), a list of raw command line arguments passed straight through to `gcovr`. This is an escape hatch for any `gcovr` flag Ceedling has no named option for (e.g. limiting gcovr’s search root), mirroring the `:report_generator` ↳ `:custom_args:` option that already existed for the ReportGenerator side of the Gcov plugin. Unlike every other GCovr option, `:custom_args:` still applies even when `:config_file` is set.
+
+### ReportGenerator coverage-threshold parity
+Added `:gcov` ↳ `:report_generator` ↳ `:fail_under_line`/`:fail_under_branch`/`:fail_under_method`/`:fail_under_full_method`, ReportGenerator’s own coverage-threshold options mirroring the Gcovr side’s existing `:fail_under_*` family. A configured threshold breaks the build in the same way as these options do with Gcovr.
 
 ## 💪 Fixed
 
@@ -84,7 +87,7 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 ### Partials no longer silence CMock’s `:treat_inlines` project-wide
 
-[#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Enabling `:use_partials` previously turned off CMock's `:treat_inlines` ⇒ `:include` option for every mock in every test in your project. This prevented unnecessary overhead and generation of files never used. However, this affected tests that used no Partials at all. Each mock now gets exactly the inline handling it needs on its own terms. A test using Partials gets Partials’ own handling for that mock, while every other mock keeps using whatever `:treat_inlines` setting you’ve configured.
+[#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Enabling `:use_partials` previously turned off CMock’s `:treat_inlines` ⇒ `:include` option for every mock in every test in your project. This prevented unnecessary overhead and generation of files never used. However, this affected tests that used no Partials at all. Each mock now gets exactly the inline handling it needs on its own terms. A test using Partials gets Partials’ own handling for that mock, while every other mock keeps using whatever `:treat_inlines` setting you’ve configured.
 
 ### A mock or Partial silently bypassed by its own real header
 
@@ -93,6 +96,24 @@ Historically, Ceedling automatically compiles and links into a test executable a
 ### Guidance for a Partial colliding with its own module’s real header
 
 [#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Ceedling now recognizes when test compilation fails because a Partial’s generated content and its source module’s own real, un-Partialized header somehow both reached the compilation of the test fixture translation unit. Logging explains the likely cause and suggested solutions directly alongside the raw compiler error instead of leaving a confusing, bare `redeclaration`/`conflicting types` error.
+
+---
+
+# [1.1.8] — Prerelease
+
+## 💪 Fixed
+
+### Gcov plugin
+
+- Fixed `:gcov ↳ :gcovr ↳ :decisions` reporting an incorrect minimum-version requirement; the version check (and docs) now correctly require `gcovr` 5.1 or higher.
+- Fixed `:gcov ↳ :gcovr ↳ :fail_under_line`/`:fail_under_branch`/`:fail_under_decision`/`:fail_under_function` silently accepting `0`, contradicting the documented 1–100 range; `0` is now rejected.
+- Fixed `:gcov ↳ :gcovr ↳ :object_directory` and `:source_encoding` values containing a space breaking the constructed `gcovr` command line; both are now quoted consistently with every other string-valued option.
+- Fixed a regex-metacharacter-injection risk (e.g. a literal `.`) in `:gcov ↳ :gcovr`'s and `:gcov ↳ :report_generator`'s auto-generated exclusion patterns in `:test_file_prefix`, `:mock_prefix`, or the build root path could silently over- or under-match files.
+- Fixed `:gcov ↳ :mcdc` triggering a `gcc --version` check (and a potential build-breaking exception for an older compiler) on every build in which a project enables the Gcov plugin, not only `gcov:` builds.
+- Fixed only the first of multiple simultaneously violated `:gcov ↳ :gcovr ↳ :fail_under_*` thresholds being reported when a build-breaking exception is raised; every violated threshold is now listed.
+- Fixed a latent mutation risk in `:gcov ↳ :report_generator` option handling that could accumulate stale exclusion patterns across repeated report-generation calls within a single run.
+- `:gcov ↳ :gcovr ↳ :branches`/`:sort_uncovered`/`:sort_percentage` now use `gcovr`'s renamed `--txt-metric branch`/`--sort uncovered-number`/`--sort uncovered-percent` flags on `gcovr` 7.0+, silencing `gcovr`'s deprecation warnings for those options. The pre-7.0 flag names are still used automatically with older `gcovr`.
+- Fixed the Gcov console summary silently producing no report and no log line at all for a Partial-implementation source whose `gcov` output couldn't be matched. It now logs the same "Found no coverage results" message the equivalent non-Partial case already did.
 
 ---
 
@@ -131,7 +152,7 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 ### Partials
 
-- Fixed shared generated Partial types header filename being derived from the test's name rather than partialized module's own name. Two modules Partialized in the same test could silently overwrite each other's content.
+- Fixed shared generated Partial types header filename being derived from the test’s name rather than partialized module’s own name. Two modules Partialized in the same test could silently overwrite each other’s content.
 - [#1210](https://github.com/ThrowTheSwitch/Ceedling/issues/1210) Fixed macros missing from shared Partial types header file emitted when two Partials both depend on the same types and related in common.
 
 ---
@@ -140,16 +161,16 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 ## 💪 Fixed
 
-- [#1198](https://github.com/ThrowTheSwitch/Ceedling/issues/1198) Fixed a crash that could go unnoticed. If a test crashed but `:use_backtrace`'s diagnostic retry ran cleanly instead of reproducing the crash, Ceedling trusted that clean retry over the real crash and reported the test as passing, with a successful exit code.
+- [#1198](https://github.com/ThrowTheSwitch/Ceedling/issues/1198) Fixed a crash that could go unnoticed. If a test crashed but `:use_backtrace`’s diagnostic retry ran cleanly instead of reproducing the crash, Ceedling trusted that clean retry over the real crash and reported the test as passing, with a successful exit code.
 - [#1197](https://github.com/ThrowTheSwitch/Ceedling/issues/1197) Fixed edge case of includes extraction where header files in the same directory as a file being preprocessed were erroneously discovered as depth 0 `#include`s in the preprocessed file. The cause is a quirk of GCC search path defaults. The impact was greatest on certain test file organizations.
 
 ### Partials
 
 - [#1203](https://github.com/ThrowTheSwitch/Ceedling/issues/1203) Fixed `MOCK_PARTIAL_ALL_MODULE()` (and `MOCK_PARTIAL_PUBLIC_MODULE()`/`MOCK_PARTIAL_PRIVATE_MODULE()`) silently omitting a function from the mock interface in certain cases where no function body could be found in the module.
 - [#1194](https://github.com/ThrowTheSwitch/Ceedling/issues/1194) Fixed generated Partials stripping directory components from system include directives (e.g. `<sys/stat.h>` becoming `<stat.h>`).
-- [#1189](https://github.com/ThrowTheSwitch/Ceedling/issues/1189)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed `const`/`volatile`/`restrict` qualifiers stripped from a Partial's generated `extern` declaration and definition for a promoted variable.
-- Fixed C variable extraction discarding a pointer's own qualifier (e.g. the second `const` in `const uint8_t* const ptr;`) whenever the same qualifier keyword also led the declaration.
-- [#1190](https://github.com/ThrowTheSwitch/Ceedling/issues/1190)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed a module's typedefs and aggregate (struct/enum/union) definitions being generated into both its Test Partial and Mock Partial headers, causing a redefinition error when a test file uses both for the same module. Such content is now generated once into a shared header with unique include guard that both Partial headers, in turn, include.
+- [#1189](https://github.com/ThrowTheSwitch/Ceedling/issues/1189)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed `const`/`volatile`/`restrict` qualifiers stripped from a Partial’s generated `extern` declaration and definition for a promoted variable.
+- Fixed C variable extraction discarding a pointer’s own qualifier (e.g. the second `const` in `const uint8_t* const ptr;`) whenever the same qualifier keyword also led the declaration.
+- [#1190](https://github.com/ThrowTheSwitch/Ceedling/issues/1190)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed a module’s typedefs and aggregate (struct/enum/union) definitions being generated into both its Test Partial and Mock Partial headers, causing a redefinition error when a test file uses both for the same module. Such content is now generated once into a shared header with unique include guard that both Partial headers, in turn, include.
 - [#1188](https://github.com/ThrowTheSwitch/Ceedling/issues/1188)/[#1187](https://github.com/ThrowTheSwitch/Ceedling/issues/1187) Fixed a long C declaration silently vanishing from a Partial (and everything textually after it in the same file) once it exceeded an internal, fixed sized buffer length. Refactored to rely on a different dynamically resized buffer with a configurable size ceiling (new `:partials` ↳ `:max_extraction_length`). C feature extraction now raises a clear error if the limit is exceeded.
 
 ---

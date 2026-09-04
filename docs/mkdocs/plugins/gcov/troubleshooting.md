@@ -37,35 +37,32 @@ Options:
 
 ### Redefine `gcovr` to call Python directly
 
-Another solution is simple in concept. Instead of calling `gcovr` directly, call 
-`python` with the `gcovr` script as a command line argument (followed by all of 
+Another solution is simple in concept. Instead of calling `gcovr` directly, call
+`python` with the `gcovr` script as a command line argument (followed by all of
 the configured `gcovr` arguments).
 
-To implement the solution, we make use of two features:
-
-* `gcovr`’s tool `:executable` definition that looks up an environment variable.
-* Ceedling’s `:environment` settings to redefine `gcovr`.
-
-Gcovr’s tool defintion, like many of Ceedling’s tool defintions, defaults to an
-environment variable (`GCOVR`) if it is defined. If we set that environment
-variable to call Python with the path to the `gcovr` script, Ceedling will call
-that instead of only `gcovr`. Ceedling enables you to set environment variables
-that only exist while it runs.
-
-In your project file:
+`gcovr`'s tool definition, like every Ceedling tool definition, can be
+overridden directly in your project configuration. Overriding `:tools` merges
+into the plugin's own default tool definition key by key, so redefining
+`:executable` alone would leave the default `:arguments` — meant for calling
+`gcovr` directly — in place. Instead, provide the whole tool definition,
+inserting the path to the `gcovr` script as `python`'s first argument ahead
+of the plugin's own `${1}`/`${2}`/`${3}` placeholders (`--root`, `--exclude`,
+and the plugin's remaining built options, respectively):
 
 ```yaml
-:environment:
-  # Fill in / omit paths on your system as appropritate to your circumstances
-  - :gcovr: <path>/python <path>/gcovr
+:tools:
+  :gcov_gcovr_report:
+    :executable: python
+    :arguments:
+      - <path>/gcovr
+      - "--root \"${1}\""
+      - "--exclude \"${2}\""
+      - "${3}"
 ```
 
-Alternatively, a slightly more elegant approach may work in some cases:
-
-```yaml
-:environment:
-  - ":gcovr: python #{`which gcovr`}" # Shell out to look up the path to gcovr
-```
+See [Tool Definitions](../../configuration/reference/tools.md) for the full
+set of tool customization options.
 
 A variation of this concept relies on Python’s knowledge of its runtime
 environment and packages:

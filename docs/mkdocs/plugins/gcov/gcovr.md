@@ -56,7 +56,8 @@ Gcov plugin configuration.
 ### `:report_root`
 
 The root directory of your source files. File names are reported relative to
-this root. `:report_root` is also the default `:report_include`.
+this root. Ceedling does not derive a default `:report_include` from it —
+`gcovr` itself only searches beneath `--root` when no `--filter` is given.
 
 !!! warning "`gcovr` accepts only one reporting root path"
     `gcovr` accepts only a single path for `:report_root`. In unusual project
@@ -84,7 +85,9 @@ To preserve the plugin's base filtering behavior, include exclusion patterns
 matching your project layout in the config file itself — see
 [Gcovr configuration file](#gcovr-configuration-file) above.
 
-**Default:** `gcovr.cfg` in the `:report_root` directory, if that file exists.
+**Default:** unset — Ceedling does not look for or autodetect a config file
+on disk; `gcovr` itself is only ever told to load one when `:config_file` is
+explicitly set.
 
 ---
 
@@ -131,7 +134,7 @@ Report the decision coverage. For HTML, JSON, and the summary report.
 
 Implied automatically whenever `:fail_under_decision` is set.
 
-**Requires:** `gcovr` 6.0 or higher
+**Requires:** `gcovr` 5.1 or higher
 
 ---
 
@@ -166,21 +169,25 @@ Select the source file character encoding. (`gcovr --source-encoding`)
 ### `:branches`
 
 Report the branch coverage instead of the line coverage. Applies to the text
-report only. (`gcovr --branches`)
+report only. Uses `gcovr --txt-metric branch` on `gcovr` 7.0+ (`--branches` is
+deprecated as of 7.0, though still functional); `gcovr --branches` below it.
 
 ---
 
 ### `:sort_uncovered`
 
 Sort entries by increasing number of uncovered lines. Applies to text and HTML
-reports. (`gcovr --sort-uncovered`)
+reports. Uses `gcovr --sort uncovered-number` on `gcovr` 7.0+ (`--sort-uncovered`
+is deprecated as of 7.0, though still functional); `gcovr --sort-uncovered` below it.
 
 ---
 
 ### `:sort_percentage`
 
 Sort entries by increasing percentage of uncovered lines. Applies to text and
-HTML reports. (`gcovr --sort-percentage`)
+HTML reports. Uses `gcovr --sort uncovered-percent` on `gcovr` 7.0+
+(`--sort-percentage` is deprecated as of 7.0, though still functional);
+`gcovr --sort-percentage` below it.
 
 ---
 
@@ -423,10 +430,11 @@ Override the default JSON report output filename.
 ## Text reports
 
 Generation of text reports may be modified with the following configuration items.
-Text reports may be printed to the console or output to a file.
 
 ### `:text_artifact_filename`
 
 Override the default text report output filename.
+
+**Default:** `coverage.txt`
 
 <br/><br/>

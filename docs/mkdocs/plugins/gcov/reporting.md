@@ -61,7 +61,8 @@ these tools.
 ```yaml
 :gcov:
   # Specify one or more reports to generate.
-  # Defaults to HtmlBasic.
+  # Empty or absent disables report generation entirely (coverage summaries
+  # are unaffected).
   :reports:
     # Generate an HTML summary report.
     # Supported utilities: gcovr, ReportGenerator
@@ -71,7 +72,7 @@ these tools.
     # Supported utilities: gcovr, ReportGenerator
     - HtmlDetailed
 
-    # Generate a Text report, which may be output to the console with gcovr or a file in both gcovr and ReportGenerator.
+    # Generate a Text report, written to a file by both gcovr and ReportGenerator.
     # Supported utilities: gcovr, ReportGenerator
     - Text
 
