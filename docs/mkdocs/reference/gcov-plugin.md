@@ -230,7 +230,7 @@ Report the decision coverage. For HTML, JSON, and the summary report.
 
 Implied automatically whenever `:fail_under_decision` is set.
 
-**Requires:** `gcovr` 6.0 or higher
+**Requires:** `gcovr` 5.1 or higher
 
 ---
 
@@ -263,21 +263,26 @@ Source file character encoding. (`gcovr --source-encoding`)
 ### `:branches`
 
 Report branch coverage instead of line coverage. Applies to text reports only.
-(`gcovr --branches`)
+Uses `gcovr --txt-metric branch` on `gcovr` 7.0+ (`--branches` is deprecated as
+of 7.0, though still functional); `gcovr --branches` below it.
 
 ---
 
 ### `:sort_uncovered`
 
 Sort report entries by increasing number of uncovered lines. Applies to text
-and HTML reports. (`gcovr --sort-uncovered`)
+and HTML reports. Uses `gcovr --sort uncovered-number` on `gcovr` 7.0+
+(`--sort-uncovered` is deprecated as of 7.0, though still functional);
+`gcovr --sort-uncovered` below it.
 
 ---
 
 ### `:sort_percentage`
 
 Sort report entries by increasing percentage of uncovered lines. Applies to
-text and HTML reports. (`gcovr --sort-percentage`)
+text and HTML reports. Uses `gcovr --sort uncovered-percent` on `gcovr` 7.0+
+(`--sort-percentage` is deprecated as of 7.0, though still functional);
+`gcovr --sort-percentage` below it.
 
 ---
 

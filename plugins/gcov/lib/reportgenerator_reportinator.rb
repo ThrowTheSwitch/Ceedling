@@ -27,7 +27,7 @@ class ReportGeneratorReportinator < GcovReportinator
     @ceedling = system_objects
 
     # Validate the `reportgenerator` tool since it's used to generate reports
-    @ceedling[:tool_validator].validate( 
+    @ceedling[:tool_validator].validate(
       tool: TOOLS_GCOV_REPORTGENERATOR_REPORT,
       boom: true
     )
@@ -97,7 +97,23 @@ class ReportGeneratorReportinator < GcovReportinator
     ReportTypes::XML_SUMMARY.upcase => "XmlSummary",
   }
 
-  REPORT_GENERATOR_SETTING_PREFIX = "gcov_report_generator"
+  REPORT_GENERATOR_SETTING_PREFIX = :gcov_report_generator
+
+  # Declarative map of the ReportGenerator options with a plain 1:1 flag mapping.
+  # :inline_value quotes flag and value together as a single CLI token (ReportGenerator's
+  # `-key:value` syntax), unlike gcovr's `--flag "value"` two-token style. A few options
+  # don't fit this 1:1 shape at all (createSubdirectoryForAllReportTypes is driven by
+  # report count, not a config option; the two numberOfReports*InParallel settings both
+  # derive from one :num_parallel_threads option) -- those stay explicit in
+  # build_optional_args below rather than being forced into this table.
+  REPORT_GENERATOR_COMMON_ARGS = {
+    :history_directory => { type: :inline_value, flag: '-historydir:' },
+    :plugins            => { type: :inline_value, flag: '-plugins:' },
+    :assembly_filters    => { type: :inline_value, flag: '-assemblyfilters:' },
+    :class_filters        => { type: :inline_value, flag: '-classfilters:' },
+    :verbosity            => { type: :inline_value, flag: '-verbosity:' },
+    :tag                  => { type: :inline_value, flag: '-tag:' },
+  }.freeze
 
   # Map configured report types to ReportGenerator names, silently skipping unknowns.
   # Returns an array used to build both the -reporttypes: value and the report count.
@@ -108,27 +124,33 @@ class ReportGeneratorReportinator < GcovReportinator
 
   # Build the optional ${6} argument string for ReportGenerator.
   # report_type_count drives the createSubdirectoryForAllReportTypes setting.
+  #
+  # NOTE: unlike every other option in this method, ReportGenerator's `settings:` keys
+  # take NO leading `-` -- confirmed directly against a real `reportgenerator` run
+  # (`-settings:...` logs "Unknown command line parameter 'settings'" and the setting
+  # never applies; bare `settings:...` is accepted and the resolved Settings JSON
+  # reflects it). This was mistakenly "fixed" once during this pass by matching the
+  # dash convention every sibling option uses, then caught and reverted by that same
+  # Docker verification -- left exactly as originally written, on purpose.
   def build_optional_args(rg_opts, report_type_count)
-    args = ""
-    args += "\"-historydir:#{rg_opts[:history_directory]}\" " unless rg_opts[:history_directory].nil?
-    args += "\"-plugins:#{rg_opts[:plugins]}\" " unless rg_opts[:plugins].nil?
-    args += "\"-assemblyfilters:#{rg_opts[:assembly_filters]}\" " unless rg_opts[:assembly_filters].nil?
-    args += "\"-classfilters:#{rg_opts[:class_filters]}\" " unless rg_opts[:class_filters].nil?
-    args += "\"-verbosity:#{rg_opts[:verbosity]}\" " unless rg_opts[:verbosity].nil?
-    args += "\"-tag:#{rg_opts[:tag]}\" " unless rg_opts[:tag].nil?
+    args = build_args_from_table(rg_opts, REPORT_GENERATOR_COMMON_ARGS)
+
     args += "\"settings:createSubdirectoryForAllReportTypes=true\" " if report_type_count > 1
-    args += "\"settings:numberOfReportsParsedInParallel=#{rg_opts[:num_parallel_threads]}\" " unless rg_opts[:num_parallel_threads].nil?
-    args += "\"settings:numberOfReportsMergedInParallel=#{rg_opts[:num_parallel_threads]}\" " unless rg_opts[:num_parallel_threads].nil?
-    rg_opts[:custom_args].each do |custom_arg|
-      args += "\"#{custom_arg}\" " unless custom_arg.nil? || custom_arg.empty?
+    unless rg_opts[:num_parallel_threads].nil?
+      args += "\"settings:numberOfReportsParsedInParallel=#{rg_opts[:num_parallel_threads]}\" "
+      args += "\"settings:numberOfReportsMergedInParallel=#{rg_opts[:num_parallel_threads]}\" "
     end
+
+    args += build_custom_args(rg_opts[:custom_args])
     args.strip
   end
 
 
   # Get the ReportGenerator options from the project options.
   def collect_reportgenerator_opts(opts)
-    _opts = opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym]
+    # dup prevents repeated calls from accumulating mutations on the shared opts hash,
+    # mirroring GcovrReportinator#collect_gcovr_opts' identical guard and rationale.
+    _opts = opts[REPORT_GENERATOR_SETTING_PREFIX].dup
 
     # Auto-generate -filefilters: exclusion patterns for test paths and the build root.
     # These exclude test files and all generated/framework files from coverage reports.
@@ -167,7 +189,7 @@ class ReportGeneratorReportinator < GcovReportinator
     gcno_exclusions = []
 
     # Collect user-specified coverage results exclusions.
-    for gcno_exclude_expression in rg_opts[:gcov_exclude]
+    rg_opts[:gcov_exclude].each do |gcno_exclude_expression|
       next if gcno_exclude_expression.nil? || gcno_exclude_expression.empty?
       # Users may specify exclusion patterns ending in .gcov (matching gcov output files)
       # or .gcno (matching the coverage notes files we iterate). Strip either suffix —
@@ -248,9 +270,9 @@ class ReportGeneratorReportinator < GcovReportinator
       GCOV_REPORT_GENERATOR_ARTIFACTS_PATH,                   # ${2} -targetdir:
       report_type_names.join(';'),                            # ${3} -reporttypes:
       ".;#{collapsed.join(';')}",                             # ${4} -sourcedirs:
-      # Always non-nil: collect_reportgenerator_opts unconditionally populates 
+      # Always non-nil: collect_reportgenerator_opts unconditionally populates
       # it with at least the build-root exclusion from build_filefilter_exclusions.
-      rg_opts[:file_filters],                                 # ${5} -filefilters: 
+      rg_opts[:file_filters],                                 # ${5} -filefilters:
       build_optional_args(rg_opts, report_type_names.length)  # ${6} optional args
     )
 
@@ -275,17 +297,19 @@ class ReportGeneratorReportinator < GcovReportinator
   # Build filename-fragment patterns for the .gcno scan exclusion regex.
   # Excludes test files, generated mocks, and test runners from gcov processing.
   # The '.*' suffix handles source extensions embedded in .gcno filenames (e.g. test_foo.c.gcno).
+  # test_prefix/mock_prefix are config-driven, so they're Regexp-escaped -- unescaped, a
+  # metacharacter in either (e.g. a literal '.') would silently over- or under-match.
   def build_gcno_exclusions
     data = build_exclusion_data
     # Use [^\/\\]* (no path separators) rather than .* to match filenames only.
     # Ceedling names build output dirs after test files (e.g. build/gcov/out/test_foo/),
     # so .* would greedily match test_foo/bar.c and exclude ALL production sources.
     [
-      "#{data[:test_prefix]}[^\\/\\\\]*",  # test_foo.gcno
-      "#{data[:mock_prefix]}[^\\/\\\\]*",  # MockBar.gcno
-      "[^\\/\\\\]*_runner[^\\/\\\\]*",     # test_foo_runner.gcno
-      File.basename(UNITY_C_FILE, '.*'),   # unity.gcno
-      File.basename(CMOCK_C_FILE, '.*')    # cmock.gcno
+      "#{Regexp.escape(data[:test_prefix].to_s)}[^\\/\\\\]*",  # test_foo.gcno
+      "#{Regexp.escape(data[:mock_prefix].to_s)}[^\\/\\\\]*",  # MockBar.gcno
+      "[^\\/\\\\]*_runner[^\\/\\\\]*",                          # test_foo_runner.gcno
+      Regexp.escape(File.basename(UNITY_C_FILE, '.*')),        # unity.gcno
+      Regexp.escape(File.basename(CMOCK_C_FILE, '.*'))         # cmock.gcno
     ]
   end
 
