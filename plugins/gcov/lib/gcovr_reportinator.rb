@@ -66,9 +66,12 @@ class GcovrReportinator < GcovReportinator
       )
     end
 
-    if gcovr_opts[:decisions] && !min_version?( @gcovr_version, 6, 0 )
+    # --decisions was introduced in gcovr 5.1, not 6.0 -- confirmed directly against
+    # gcovr's own changelog and a real gcovr 5.1/5.0 install (5.1 accepts --decisions
+    # and proceeds; 5.0 rejects it outright as unrecognized).
+    if gcovr_opts[:decisions] && !min_version?( @gcovr_version, 5, 1 )
       raise CeedlingException.new(
-        ":gcov ↳ :gcovr ↳ :decisions ➡️ requires gcovr 6 or higher " \
+        ":gcov ↳ :gcovr ↳ :decisions ➡️ requires gcovr 5.1 or higher " \
         "(found #{@gcovr_version.major}.#{@gcovr_version.minor})"
       )
     end
@@ -116,9 +119,18 @@ class GcovrReportinator < GcovReportinator
     args += "--gcov-filter \"#{gcovr_opts[:gcov_filter]}\" " unless gcovr_opts[:gcov_filter].nil?
     args += "--gcov-exclude \"#{gcovr_opts[:gcov_exclude]}\" " unless gcovr_opts[:gcov_exclude].nil?
     args += "--exclude-directories \"#{gcovr_opts[:exclude_directories]}\" " unless gcovr_opts[:exclude_directories].nil?
-    args += "--branches " if gcovr_opts[:branches]
-    args += "--sort-uncovered " if gcovr_opts[:sort_uncovered]
-    args += "--sort-percentage " if gcovr_opts[:sort_percentage]
+    # gcovr 7.0 deprecated --branches/--sort-uncovered/--sort-percentage in favor of
+    # these renamed equivalents (still functional, but warn, below 7.0); use whichever
+    # form the detected gcovr_version actually expects.
+    if gcovr_opts[:branches]
+      args += (min_version?(gcovr_version, 7, 0) ? "--txt-metric branch " : "--branches ")
+    end
+    if gcovr_opts[:sort_uncovered]
+      args += (min_version?(gcovr_version, 7, 0) ? "--sort uncovered-number " : "--sort-uncovered ")
+    end
+    if gcovr_opts[:sort_percentage]
+      args += (min_version?(gcovr_version, 7, 0) ? "--sort uncovered-percent " : "--sort-percentage ")
+    end
     args += "--print-summary " if gcovr_opts[:print_summary]
     args += "--gcov-executable \"#{gcovr_opts[:gcov_executable]}\" " unless gcovr_opts[:gcov_executable].nil?
     args += "--exclude-unreachable-branches " if gcovr_opts[:exclude_unreachable_branches]
@@ -152,18 +164,24 @@ class GcovrReportinator < GcovReportinator
       next if gcovr_opts[opt].nil?
 
       value = gcovr_opts[opt]
-      
+
       # Value sanity checks for :fail_under_* settings
       if opt.to_s =~ /fail_/
         if not value.is_a? Integer
           raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} ➡️ '#{value}' must be an integer")
-        elsif (value < 0) || (value > 100)
-          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} ➡️ '#{value}' must be an integer percentage 0 – 100")
+        elsif (value < 1) || (value > 100)
+          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} ➡️ '#{value}' must be an integer percentage 1 – 100")
         end
       end
-      
-      # If the YAML key has a value, trasnform key into command line argument with value and concatenate
-      args += "--#{opt.to_s.gsub('_','-')} #{value} " unless value.nil?
+
+      # :source_encoding/:object_directory are quoted (unlike the already-validated,
+      # always-integer :fail_under_* values) so a value containing a space doesn't
+      # break the constructed command line.
+      if [:source_encoding, :object_directory].include?(opt)
+        args += "--#{opt.to_s.gsub('_','-')} \"#{value}\" " unless value.nil?
+      else
+        args += "--#{opt.to_s.gsub('_','-')} #{value} " unless value.nil?
+      end
     end
 
     return args
@@ -409,7 +427,12 @@ class GcovrReportinator < GcovReportinator
       _opts[:report_exclude] = excludes unless excludes.empty?
     end
 
-    _opts[:mcdc] = true if opts[:gcov_mcdc]
+    # No :mcdc-specific gcovr flag to set here -- GCC's own condition/MC-DC data flows
+    # into gcovr's reports unconditionally, in every format, regardless of --decisions
+    # (confirmed directly: gcovr's Condition-labeled HTML/JSON content is byte-identical
+    # with and without --decisions; that flag only adds its own separate, additive
+    # Decision data alongside it). :mcdc's own gcovr-version floor is still enforced in
+    # initialize -- there's just nothing more for gcovr's own CLI args to do here.
 
     return _opts
   end
@@ -417,22 +440,29 @@ class GcovrReportinator < GcovReportinator
 
   # Build a combined Python regex for gcovr's `--exclude` flag covering all
   # non-production file categories: test files, support files, and generated/framework files.
+  # Path/prefix values are config-driven, so they're Regexp-escaped -- interpolated raw, a
+  # metacharacter (e.g. a literal '.') in a project's own path would silently over- or
+  # under-match.
   def build_report_exclusions
     data = build_exclusion_data
     patterns = []
 
+    test_prefix    = Regexp.escape(data[:test_prefix].to_s)
+    build_root     = Regexp.escape(data[:build_root].to_s)
+    src_extension  = Regexp.escape(data[:src_extension].to_s)
+
     data[:test_paths].each do |path|
       # Test files (e.g. test_foo.c)
-      patterns << ".*#{path}.*/#{data[:test_prefix]}.+\\#{data[:src_extension]}$"
+      patterns << ".*#{Regexp.escape(path)}.*/#{test_prefix}.+\\#{src_extension}$"
     end
 
     # Support files (e.g. helpers, stubs, fixtures) — never production source
     data[:support_paths].each do |path|
-      patterns << ".*#{path}/.+\\#{data[:src_extension]}$"
+      patterns << ".*#{Regexp.escape(path)}/.+\\#{src_extension}$"
     end
 
     # Any generated files for tests or vendored framework C source files below the root of the build directory
-    patterns << ".*#{data[:build_root]}/.+\\#{EXTENSION_CORE_SOURCE}$"
+    patterns << ".*#{build_root}/.+\\#{EXTENSION_CORE_SOURCE}$"
 
     return patterns
   end
@@ -535,59 +565,43 @@ class GcovrReportinator < GcovReportinator
 
   # Output to console a human-friendly message on certain coverage failure exit codes.
   # Prefers the actual gcovr error text from stderr; falls back to descriptive strings.
-  # Perform the logic on whether to raise an exception
+  # gcovr's composite exit code bit-ORs every violated :fail_under_* threshold together --
+  # every violated bit is collected and reported, not just whichever is checked first.
   def gcovr_exec_exception?(opts, exitcode, boom, shell_result=nil)
+    violations = []
 
     # Special handling of exit code 2 with --fail-under-line
     if ((exitcode & 2) == 2) and !opts[:fail_under_line].nil?
       fallback = "Line coverage is less than the configured minimum of #{opts[:fail_under_line]}%"
-      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
-      if boom
-        raise CeedlingException.new(msg)
-      else
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        # Clear bit in exit code
-        exitcode &= ~2
-      end
+      violations << "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
+      exitcode &= ~2
     end
 
     # Special handling of exit code 4 with --fail-under-branch
     if ((exitcode & 4) == 4) and !opts[:fail_under_branch].nil?
       fallback = "Branch coverage is less than the configured minimum of #{opts[:fail_under_branch]}%"
-      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
-      if boom
-        raise CeedlingException.new(msg)
-      else
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        # Clear bit in exit code
-        exitcode &= ~4
-      end
+      violations << "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
+      exitcode &= ~4
     end
 
     # Special handling of exit code 8 with --fail-under-decision
     if ((exitcode & 8) == 8) and !opts[:fail_under_decision].nil?
       fallback = "Decision coverage is less than the configured minimum of #{opts[:fail_under_decision]}%"
-      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
-      if boom
-        raise CeedlingException.new(msg)
-      else
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        # Clear bit in exit code
-        exitcode &= ~8
-      end
+      violations << "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
+      exitcode &= ~8
     end
 
     # Special handling of exit code 16 with --fail-under-function
     if ((exitcode & 16) == 16) and !opts[:fail_under_function].nil?
       fallback = "Function coverage is less than the configured minimum of #{opts[:fail_under_function]}%"
-      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
-      if boom
-        raise CeedlingException.new(msg)
-      else
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        # Clear bit in exit code
-        exitcode &= ~16
-      end
+      violations << "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
+      exitcode &= ~16
+    end
+
+    if boom
+      raise CeedlingException.new( violations.join("\n") ) unless violations.empty?
+    else
+      violations.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN ) }
     end
 
     # A non-zero exit code is a problem

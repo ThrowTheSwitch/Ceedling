@@ -98,6 +98,24 @@ module GcovCommonTestCases
     end
   end
 
+  # :fail_under_* documents a 1-100 range; 0 was previously silently accepted as a
+  # threshold that could never actually fail (0% coverage is always >= 0).
+  def project_with_gcov_fail_under_line_rejects_zero
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        @c.merge_project_yml_for_test( { :gcov => { :gcovr => { :fail_under_line => 0 } } } )
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = @c.ceedling_build_exec("gcov:all")
+        expect(@c.last_exit_status).to_not eq(0)
+        expect(output).to match(/:fail_under_line.*must be an integer percentage/)
+      end
+    end
+  end
+
   # TODO: Restore this test when the :abort_on_uncovered option is restored in the Gcov plugin
   # def project_with_gcov_fail_because_of_uncovered_files
   #   @c.with_context do

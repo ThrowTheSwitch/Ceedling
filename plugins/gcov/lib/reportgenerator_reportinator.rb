@@ -128,7 +128,9 @@ class ReportGeneratorReportinator < GcovReportinator
 
   # Get the ReportGenerator options from the project options.
   def collect_reportgenerator_opts(opts)
-    _opts = opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym]
+    # dup prevents repeated calls from accumulating mutations on the shared opts hash --
+    # mirrors GcovrReportinator#collect_gcovr_opts' identical guard and rationale.
+    _opts = opts[REPORT_GENERATOR_SETTING_PREFIX.to_sym].dup
 
     # Auto-generate -filefilters: exclusion patterns for test paths and the build root.
     # These exclude test files and all generated/framework files from coverage reports.
@@ -275,17 +277,19 @@ class ReportGeneratorReportinator < GcovReportinator
   # Build filename-fragment patterns for the .gcno scan exclusion regex.
   # Excludes test files, generated mocks, and test runners from gcov processing.
   # The '.*' suffix handles source extensions embedded in .gcno filenames (e.g. test_foo.c.gcno).
+  # test_prefix/mock_prefix are config-driven, so they're Regexp-escaped -- unescaped, a
+  # metacharacter in either (e.g. a literal '.') would silently over- or under-match.
   def build_gcno_exclusions
     data = build_exclusion_data
     # Use [^\/\\]* (no path separators) rather than .* to match filenames only.
     # Ceedling names build output dirs after test files (e.g. build/gcov/out/test_foo/),
     # so .* would greedily match test_foo/bar.c and exclude ALL production sources.
     [
-      "#{data[:test_prefix]}[^\\/\\\\]*",  # test_foo.gcno
-      "#{data[:mock_prefix]}[^\\/\\\\]*",  # MockBar.gcno
-      "[^\\/\\\\]*_runner[^\\/\\\\]*",     # test_foo_runner.gcno
-      File.basename(UNITY_C_FILE, '.*'),   # unity.gcno
-      File.basename(CMOCK_C_FILE, '.*')    # cmock.gcno
+      "#{Regexp.escape(data[:test_prefix].to_s)}[^\\/\\\\]*",  # test_foo.gcno
+      "#{Regexp.escape(data[:mock_prefix].to_s)}[^\\/\\\\]*",  # MockBar.gcno
+      "[^\\/\\\\]*_runner[^\\/\\\\]*",                          # test_foo_runner.gcno
+      Regexp.escape(File.basename(UNITY_C_FILE, '.*')),        # unity.gcno
+      Regexp.escape(File.basename(CMOCK_C_FILE, '.*'))         # cmock.gcno
     ]
   end
 

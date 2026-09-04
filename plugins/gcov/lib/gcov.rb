@@ -70,16 +70,12 @@ class Gcov < Plugin
 
     @mutex = Mutex.new()
 
-    # Validate MC/DC configuration against GCC version (only incurs gcc --version when :mcdc: TRUE)
-    if @project_config[:gcov_mcdc]
-      gcc_version = get_gcc_version()
-      if gcc_version.major < 14
-        raise CeedlingException.new(
-          ":gcov ↳ :mcdc ➡️ Modified condition/decision coverage requires GCC 14 or higher " \
-          "(found #{gcc_version.major}.#{gcc_version.minor})"
-        )
-      end
-    end
+    # See validate_mcdc_gcc_version! below for why this isn't checked eagerly here --
+    # setup() runs for every build this plugin is merely *enabled* for, not only real
+    # gcov: builds. Shelling out to `gcc --version` here would make GCC-version
+    # validation (and a build-breaking exception on too-old a GCC) fire even for builds
+    # that never touch :mcdc at all, e.g. plain `test:all`.
+    @mcdc_gcc_checked = false
   end
 
   # Called within class and also externally by plugin Rakefile
@@ -179,6 +175,8 @@ class Gcov < Plugin
 
       # Compile all non-assembly files with coverage; gcovr --exclude filters non-production files from reports
       if File.extname(source) != EXTENSION_ASSEMBLY
+        validate_mcdc_gcc_version!
+
         arg_hash[:tool] = TOOLS_GCOV_COMPILER
         arg_hash[:msg] = @reportinator.generate_module_progress(
           operation: "Compiling with coverage",
@@ -192,6 +190,8 @@ class Gcov < Plugin
 
   def pre_link_execute(arg_hash)
     if arg_hash[:context] == GCOV_SYM
+      validate_mcdc_gcc_version!
+
       @cli_gcov_task = true
       arg_hash[:tool] = TOOLS_GCOV_LINKER
       arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
@@ -362,6 +362,25 @@ class Gcov < Plugin
     end
 
     return reportinators
+  end
+
+  # Lazily validates :mcdc against the installed GCC version -- called from every
+  # gcov-context build hook that could otherwise emit -fcondition-coverage (compile,
+  # link), memoized so `gcc --version` runs at most once regardless of how many source
+  # files or hooks fire before it. See setup()'s own comment for why this isn't checked
+  # eagerly there.
+  def validate_mcdc_gcc_version!
+    return if @mcdc_gcc_checked
+    @mcdc_gcc_checked = true
+    return unless @project_config[:gcov_mcdc]
+
+    gcc_version = get_gcc_version()
+    if gcc_version.major < 14
+      raise CeedlingException.new(
+        ":gcov ↳ :mcdc ➡️ Modified condition/decision coverage requires GCC 14 or higher " \
+        "(found #{gcc_version.major}.#{gcc_version.minor})"
+      )
+    end
   end
 
   def get_gcc_version()

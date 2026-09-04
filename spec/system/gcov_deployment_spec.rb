@@ -37,6 +37,7 @@ ceedling_system_tests do
       test_case :project_with_gcov_success
       test_case :project_with_gcov_fail
       test_case :project_with_gcov_fail_under_decision
+      test_case :project_with_gcov_fail_under_line_rejects_zero
       test_case :gcov_console_report_with_system_header
       test_case :gcov_console_report_with_partial
       # TODO: Restore these tests when the :abort_on_uncovered option is restored in the Gcov plugin
