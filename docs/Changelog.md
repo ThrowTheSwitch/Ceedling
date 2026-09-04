@@ -75,6 +75,9 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 
 ## ⚠️ Changed
 
+### Performance improvements
+Optimizations and fixes have yielded a 5–10% speed increase for most builds _before_ the second-run speedup of new delta builds.
+
 ### `#include` relative paths & duplicate filename disambiguation in test builds
 Because of the support added for handling paths and distinguishing duplicated filenames, the functional interface for testing has changed.
 
