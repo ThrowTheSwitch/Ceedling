@@ -11,6 +11,7 @@ GEM
     parallel (1.28.0)
     rake (13.2.1)
     require_all (3.0.0)
+    rexml (3.4.4)
     rr (3.1.2)
     rspec (3.13.2)
       rspec-core (~> 3.13.0)
@@ -48,6 +49,7 @@ DEPENDENCIES
   parallel (~> 1.26)
   rake (>= 12, < 14)
   require_all
+  rexml
   rr
   rspec (~> 3.8)
   thor (~> 1.3)

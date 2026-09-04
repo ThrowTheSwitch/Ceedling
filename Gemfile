@@ -15,6 +15,10 @@ gem "rake", ">= 12", "< 14"
 gem "rr"
 gem "require_all"
 
+# `rexml` has been removed from the default gems in some Ruby versions -- needed
+# explicitly by the gcov Partials system-test cases, which parse gcovr's XML output.
+gem "rexml"
+
 # Ceedling dependencies
 gem "diy", "~> 1.1"
 gem "constructor", "~> 2"

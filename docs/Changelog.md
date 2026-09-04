@@ -16,6 +16,7 @@ This changelog is complemented by three other documents:
 
 - [#1251](https://github.com/ThrowTheSwitch/Ceedling/issues/1251) Fixed _Overall Test Summary_ not printing at logging verbosity of warning or error level on an otherwise all-passing test run.
 - [#1252](https://github.com/ThrowTheSwitch/Ceedling/issues/1252) Fixed the Gcov plugin requiring `gcovr` to be installed for any build merely because the plugin was enabled, rather than only when a `gcov:` build actually runs.
+- [#1080](https://github.com/ThrowTheSwitch/Ceedling/issues/1080) Fixed `:gcov ↳ :gcovr ↳ :fail_under_decision` failing every `gcov:` build outright — `gcovr` itself requires `--decisions` alongside `--fail-under-decision`, which Ceedling never supplied. A new `:decisions` option is also available directly. Each now reports a clear error if configured against a `gcovr` too old to support it (6.0 for `:decisions`, 7.0 for `:fail_under_decision`).
 - Fixed a Unity `TEST_IGNORE_MESSAGE()` test case being misreported as crash evidence during crash-diagnosis retries when it shares a test file with a genuine crash.
 
 ---

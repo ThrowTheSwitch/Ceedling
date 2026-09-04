@@ -213,7 +213,23 @@ Exit with status 4 if total branch coverage is below this percentage.
 Exit with status 8 if total decision coverage is below this percentage.
 (`gcovr --fail-under-decision`)
 
+`gcovr` treats `--fail-under-decision` as a no-op without `--decisions` also
+present — setting this option implies `:decisions` (below) automatically.
+
 **Values:** `1`–`100`
+
+**Requires:** `gcovr` 7.0 or higher
+
+---
+
+### `:decisions`
+
+Report the decision coverage. For HTML, JSON, and the summary report.
+(`gcovr --decisions`)
+
+Implied automatically whenever `:fail_under_decision` is set.
+
+**Requires:** `gcovr` 6.0 or higher
 
 ---
 
