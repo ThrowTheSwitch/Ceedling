@@ -930,6 +930,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#delta-build-special-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delta build special cases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#delta-build-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4146,6 +4157,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#delta-build-special-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delta build special cases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#delta-build-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4272,6 +4294,9 @@
 <li>Its own understanding of your project through the lens of its build pipeline. In test builds, Ceedling and its supporting frameworks generate various files from various sources. Ceedling’s built-in understanding of those file generation relationships also drive individual file target rebuilds.</li>
 </ol>
 <p>Where a C file change ripples out only along that file’s dependency chain, a shared configuration change ripples out across every target that reads that piece of configuration — often the whole project. File changes tend to trigger depth-oriented rebuilds while configuration changes tend to trigger breadth-oriented rebuilds.</p>
+<h2 id="delta-build-special-cases">Delta build special cases</h2>
+<p>Add the <a href="../command-line/#ceedling-build-tasks"><code>--force-test-rerun</code></a> flag to test build tasks to bypass the checks for only running changed test fixture executables. This command line flag forces those executables to run and produce fresh test results.</p>
+<p>When <a href="../../configuration/reference/unity/#shuffle_tests">Unity’s test shuffling feature</a> is enabled, delta builds automatically rerun test fixture executables to randomize test case order regardless of change or lack thereof in a test’s dependency tree. That is, since the feature requires test executables to run in order to shuffle test case order, effectively, delta builds are disabled for test fixture executables.</p>
 <h2 id="delta-build-examples">Delta build examples</h2>
 <p>Say a project has a <code>sensor</code> module (<code>sensor.c</code> / <code>sensor.h</code>) and a <code>logger</code>
 module (<code>logger.c</code> / <code>logger.h</code>), each with its own test file. <code>test_sensor.c</code>
