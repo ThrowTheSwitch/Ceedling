@@ -50,6 +50,28 @@ class GcovrReportinator < GcovReportinator
         "(found #{@gcovr_version.major}.#{@gcovr_version.minor})"
       )
     end
+
+    # --decisions requires gcovr 6+; --fail-under-decision (which depends on --decisions)
+    # is a distinct, later addition requiring gcovr 7+ -- confirmed directly against real
+    # gcovr 6.0, which rejects --fail-under-decision outright as an unrecognized argument.
+    # Raised here, upfront, rather than left to surface as gcovr's own opaque CLI error or
+    # silently dropped -- either of which would leave a configured coverage threshold
+    # quietly never actually checked.
+    gcovr_opts = @config[GCOVR_SETTING_PREFIX.to_sym] || {}
+
+    if !gcovr_opts[:fail_under_decision].nil? && !min_version?( @gcovr_version, 7, 0 )
+      raise CeedlingException.new(
+        ":gcov ↳ :gcovr ↳ :fail_under_decision ➡️ requires gcovr 7 or higher " \
+        "(found #{@gcovr_version.major}.#{@gcovr_version.minor})"
+      )
+    end
+
+    if gcovr_opts[:decisions] && !min_version?( @gcovr_version, 6, 0 )
+      raise CeedlingException.new(
+        ":gcov ↳ :gcovr ↳ :decisions ➡️ requires gcovr 6 or higher " \
+        "(found #{@gcovr_version.major}.#{@gcovr_version.minor})"
+      )
+    end
   end
 
   # Generate the gcovr report(s) specified in the options.
@@ -120,6 +142,14 @@ class GcovrReportinator < GcovReportinator
     if min_version?( gcovr_version, 6, 0 )
       args += "--merge-mode-functions \"#{gcovr_opts[:merge_mode_function]}\" " unless gcovr_opts[:merge_mode_function].nil?
     end
+
+    # --fail-under-decision is a no-op to gcovr without --decisions also present (that's
+    # what actually turns decision-coverage analysis on) -- :fail_under_decision implies
+    # it automatically so the threshold option can never be configured into silently
+    # failing outright. initialize already guarantees gcovr 6+ whenever either is set
+    # (7+ specifically whenever :fail_under_decision is set), matching this method's own
+    # 6+ gate above.
+    args += "--decisions " if gcovr_opts[:decisions] || !gcovr_opts[:fail_under_decision].nil?
 
     [:fail_under_line,
      :fail_under_branch,
@@ -336,7 +366,7 @@ class GcovrReportinator < GcovReportinator
   # configuration must come from the gcovr configuration file itself.
   IGNORED_WHEN_CONFIG_FILE_SET = [
     :report_include, :report_exclude, :gcov_filter, :gcov_exclude, :exclude_directories,
-    :branches, :sort_uncovered, :sort_percentage, :print_summary, :gcov_executable,
+    :branches, :decisions, :sort_uncovered, :sort_percentage, :print_summary, :gcov_executable,
     :exclude_unreachable_branches, :exclude_throw_branches, :use_gcov_files, :gcov_ignore_parse_errors,
     :keep, :delete, :threads, :merge_mode_function,
     :fail_under_line, :fail_under_branch, :fail_under_decision, :fail_under_function,

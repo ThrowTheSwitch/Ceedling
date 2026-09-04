@@ -78,6 +78,26 @@ module GcovCommonTestCases
     end
   end
 
+  # gcovr's own --fail-under-decision is a no-op without --decisions also present --
+  # Ceedling supplies --decisions automatically whenever :fail_under_decision is
+  # configured, so a passing run reports success instead of gcovr's own opaque
+  # "need also option --decision" CLI error.
+  def project_with_gcov_fail_under_decision
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        @c.merge_project_yml_for_test( { :gcov => { :gcovr => { :fail_under_decision => 1 } } } )
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = @c.ceedling_build_exec("gcov:all")
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to_not match(/need also option --decision/)
+      end
+    end
+  end
+
   # TODO: Restore this test when the :abort_on_uncovered option is restored in the Gcov plugin
   # def project_with_gcov_fail_because_of_uncovered_files
   #   @c.with_context do

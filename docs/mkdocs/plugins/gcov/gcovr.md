@@ -114,7 +114,24 @@ Exit with a status of 8 if the total decision coverage is less than this minimum
 percentage. Can be ORed with the exit status of other `:fail_under_*` options.
 (`gcovr --fail-under-decision`)
 
+`gcovr` treats `--fail-under-decision` as a no-op without `--decisions` also
+present — setting this option implies `:decisions` (below) automatically, so
+it's never silently non-functional.
+
 **Values:** `1`–`100`
+
+**Requires:** `gcovr` 7.0 or higher
+
+---
+
+### `:decisions`
+
+Report the decision coverage. For HTML, JSON, and the summary report.
+(`gcovr --decisions`)
+
+Implied automatically whenever `:fail_under_decision` is set.
+
+**Requires:** `gcovr` 6.0 or higher
 
 ---
 
