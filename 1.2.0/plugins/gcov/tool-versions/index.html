@@ -4271,19 +4271,56 @@ file paths to ensure they are not a problem for certain platforms' file
 systems. This flag became available with <code>gcov</code> version 7. We do not recommend 
 using <code>gcov</code> version 6 and earlier. And, in fact, because of the Gcov plugin's 
 dependence on the <code>gcov</code> <code>-x</code> flag, attempting to use it will fail.</p>
-<p>GNU Compiler Collection 14 introduced changes in how coverage is instrumented.
-The <code>gcov</code> plugin implemented a revised means of processing coverage that is
-forward compatible with GCC 14+ and backwards compatible to the earliest
-versions of the collection.</p>
+<p>GNU Compiler Collection 14 introduced support for Modified Condition/Decision
+Coverage (MC/DC). For this reason, the Gcov plugin's own <code>:mcdc</code> option (see
+<a href="../setup/">Setup</a>) explicitly checks for GCC 14+. The plugin raises a clear 
+error if running against an older GCC with <code>:mcdc</code> enabled. This GCC-version 
+dependency is specific to <code>:mcdc</code>; it does not otherwise affect how the 
+plugin processes coverage.</p>
 <h2 id="gcovr"><code>gcovr</code></h2>
 <p>The Gcov plugin is known to work with <code>gcovr</code> 5.2 through <code>gcovr</code> 8.x. The
 Gcov plugin supports <code>gcovr</code> command line conventions since version 4.2 and
 attempts to support <code>gcovr</code> command lines before version 4.2. We recommend 
 using <code>gcovr</code> 5 and later.</p>
+<p>Several <code>:gcovr</code> options depend on a minimum <code>gcovr</code> version, checked and
+enforced by this plugin (see <a href="../gcovr/">GCovr Configuration</a> for each
+option's own details):</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Minimum <code>gcovr</code> version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>:decisions</code></td>
+<td>5.1</td>
+</tr>
+<tr>
+<td><code>:merge_mode_function</code></td>
+<td>6.0 (ignored for earlier versions)</td>
+</tr>
+<tr>
+<td><code>:fail_under_decision</code></td>
+<td>7.0</td>
+</tr>
+<tr>
+<td><code>:mcdc</code></td>
+<td>8.0</td>
+</tr>
+</tbody>
+</table>
+<p><code>gcovr</code> 7.0 also deprecated <code>:branches</code>, <code>:sort_uncovered</code>, and
+<code>:sort_percentage</code>'s underlying flags in favor of renamed equivalents; the
+plugin automatically uses whichever form of arguments your installed <code>gcovr</code> 
+expects but each is enabled with the <a href="../gcovr/">keys documented</a>.</p>
 <h2 id="reportgenerator"><code>reportgenerator</code></h2>
 <p>The Gcov plugin is known to work with <code>reportgenerator</code> 5.2.4. The command line
 for executing <code>reportgenerator</code> that the Gcov plugin relies on has largely been
 stable since version 4. We recommend using <code>reportgenerator</code> 5.0 and later.</p>
+<p>Unlike <code>gcovr</code>, the plugin does not detect the installed <code>reportgenerator</code>
+version or gate any option on it.</p>
 <p><br/><br/></p>
 
 

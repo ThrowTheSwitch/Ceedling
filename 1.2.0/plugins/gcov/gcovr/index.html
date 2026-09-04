@@ -3160,6 +3160,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :decisions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fail_under_function" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4774,6 +4785,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :decisions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fail_under_function" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5383,7 +5405,8 @@ you need to override. You do not need to include all these options in your
 Gcov plugin configuration.</p>
 <h3 id="report_root"><code>:report_root</code></h3>
 <p>The root directory of your source files. File names are reported relative to
-this root. <code>:report_root</code> is also the default <code>:report_include</code>.</p>
+this root. Ceedling does not derive a default <code>:report_include</code> from it —
+<code>gcovr</code> itself only searches beneath <code>--root</code> when no <code>--filter</code> is given.</p>
 <div class="admonition warning">
 <p class="admonition-title"><code>gcovr</code> accepts only one reporting root path</p>
 <p><code>gcovr</code> accepts only a single path for <code>:report_root</code>. In unusual project
@@ -5405,7 +5428,9 @@ config file (see <code>:custom_args</code> below).</p>
 <p>To preserve the plugin's base filtering behavior, include exclusion patterns
 matching your project layout in the config file itself — see
 <a href="#gcovr-configuration-file">Gcovr configuration file</a> above.</p>
-<p><strong>Default:</strong> <code>gcovr.cfg</code> in the <code>:report_root</code> directory, if that file exists.</p>
+<p><strong>Default:</strong> unset — Ceedling does not look for or autodetect a config file
+on disk; <code>gcovr</code> itself is only ever told to load one when <code>:config_file</code> is
+explicitly set.</p>
 <hr />
 <h3 id="fail_under_line"><code>:fail_under_line</code></h3>
 <p>Exit with a status of 2 if the total line coverage is less than this minimum
@@ -5423,7 +5448,17 @@ percentage. Can be ORed with the exit status of other <code>:fail_under_*</code>
 <p>Exit with a status of 8 if the total decision coverage is less than this minimum
 percentage. Can be ORed with the exit status of other <code>:fail_under_*</code> options.
 (<code>gcovr --fail-under-decision</code>)</p>
+<p><code>gcovr</code> treats <code>--fail-under-decision</code> as a no-op without <code>--decisions</code> also
+present — setting this option implies <code>:decisions</code> (below) automatically, so
+it's never silently non-functional.</p>
 <p><strong>Values:</strong> <code>1</code>–<code>100</code></p>
+<p><strong>Requires:</strong> <code>gcovr</code> 7.0 or higher</p>
+<hr />
+<h3 id="decisions"><code>:decisions</code></h3>
+<p>Report the decision coverage. For HTML, JSON, and the summary report.
+(<code>gcovr --decisions</code>)</p>
+<p>Implied automatically whenever <code>:fail_under_decision</code> is set.</p>
+<p><strong>Requires:</strong> <code>gcovr</code> 5.1 or higher</p>
 <hr />
 <h3 id="fail_under_function"><code>:fail_under_function</code></h3>
 <p>Exit with a status of 16 if the total function coverage is less than this minimum
@@ -5443,15 +5478,19 @@ logs a warning without breaking the build.</p>
 <hr />
 <h3 id="branches"><code>:branches</code></h3>
 <p>Report the branch coverage instead of the line coverage. Applies to the text
-report only. (<code>gcovr --branches</code>)</p>
+report only. Uses <code>gcovr --txt-metric branch</code> on <code>gcovr</code> 7.0+ (<code>--branches</code> is
+deprecated as of 7.0, though still functional); <code>gcovr --branches</code> below it.</p>
 <hr />
 <h3 id="sort_uncovered"><code>:sort_uncovered</code></h3>
 <p>Sort entries by increasing number of uncovered lines. Applies to text and HTML
-reports. (<code>gcovr --sort-uncovered</code>)</p>
+reports. Uses <code>gcovr --sort uncovered-number</code> on <code>gcovr</code> 7.0+ (<code>--sort-uncovered</code>
+is deprecated as of 7.0, though still functional); <code>gcovr --sort-uncovered</code> below it.</p>
 <hr />
 <h3 id="sort_percentage"><code>:sort_percentage</code></h3>
 <p>Sort entries by increasing percentage of uncovered lines. Applies to text and
-HTML reports. (<code>gcovr --sort-percentage</code>)</p>
+HTML reports. Uses <code>gcovr --sort uncovered-percent</code> on <code>gcovr</code> 7.0+
+(<code>--sort-percentage</code> is deprecated as of 7.0, though still functional);
+<code>gcovr --sort-percentage</code> below it.</p>
 <hr />
 <h3 id="print_summary"><code>:print_summary</code></h3>
 <p>Print a small report to stdout with line and branch percentage coverage. This
@@ -5589,10 +5628,10 @@ links. (<code>gcovr --html-absolute-paths</code>)</p>
 <h3 id="json_artifact_filename"><code>:json_artifact_filename</code></h3>
 <p>Override the default JSON report output filename.</p>
 <h2 id="text-reports">Text reports</h2>
-<p>Generation of text reports may be modified with the following configuration items.
-Text reports may be printed to the console or output to a file.</p>
+<p>Generation of text reports may be modified with the following configuration items.</p>
 <h3 id="text_artifact_filename"><code>:text_artifact_filename</code></h3>
 <p>Override the default text report output filename.</p>
+<p><strong>Default:</strong> <code>coverage.txt</code></p>
 <p><br/><br/></p>
 
 

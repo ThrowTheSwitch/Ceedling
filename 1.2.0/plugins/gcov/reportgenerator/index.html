@@ -3182,6 +3182,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fail_under_line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :fail_under_line
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fail_under_branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :fail_under_branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fail_under_method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :fail_under_method
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fail_under_full_method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :fail_under_full_method
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#gcov_exclude" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4325,6 +4369,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fail_under_line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :fail_under_line
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fail_under_branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :fail_under_branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fail_under_method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :fail_under_method
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fail_under_full_method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :fail_under_full_method
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#gcov_exclude" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4502,6 +4590,26 @@ source files, so your patterns take precedence.</p>
 <hr />
 <h3 id="tag"><code>:tag</code></h3>
 <p>Optional tag or build version.</p>
+<hr />
+<h3 id="fail_under_line"><code>:fail_under_line</code></h3>
+<p>Break the build if the total line coverage is less than this minimum
+percentage. (ReportGenerator <code>minimumCoverageThresholds:lineCoverage</code>)</p>
+<p><strong>Values:</strong> <code>1</code>–<code>100</code></p>
+<hr />
+<h3 id="fail_under_branch"><code>:fail_under_branch</code></h3>
+<p>Break the build if the total branch coverage is less than this minimum
+percentage. (ReportGenerator <code>minimumCoverageThresholds:branchCoverage</code>)</p>
+<p><strong>Values:</strong> <code>1</code>–<code>100</code></p>
+<hr />
+<h3 id="fail_under_method"><code>:fail_under_method</code></h3>
+<p>Break the build if the total method coverage is less than this minimum
+percentage. (ReportGenerator <code>minimumCoverageThresholds:methodCoverage</code>)</p>
+<p><strong>Values:</strong> <code>1</code>–<code>100</code></p>
+<hr />
+<h3 id="fail_under_full_method"><code>:fail_under_full_method</code></h3>
+<p>Break the build if the total full method coverage is less than this minimum
+percentage. (ReportGenerator <code>minimumCoverageThresholds:fullMethodCoverage</code>)</p>
+<p><strong>Values:</strong> <code>1</code>–<code>100</code></p>
 <hr />
 <h3 id="gcov_exclude"><code>:gcov_exclude</code></h3>
 <p>Optional list of one or more regular expressions to exclude gcov notes

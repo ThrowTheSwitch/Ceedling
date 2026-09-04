@@ -4269,87 +4269,88 @@ these tools.</p>
 </table>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:gcov</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="c1"># Specify one or more reports to generate.</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="c1"># Defaults to HtmlBasic.</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">:reports</span><span class="p">:</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="c1"># Generate an HTML summary report.</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlBasic</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="c1"># Generate an HTML report with line by line coverage of each source file.</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlDetailed</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="c1"># Generate a Text report, which may be output to the console with gcovr or a file in both gcovr and ReportGenerator.</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Text</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="c1"># Generate a Cobertura XML report.</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Cobertura</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="c1"># Generate a SonarQube XML report.</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SonarQube</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">    </span><span class="c1"># Generate a JSON report.</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">JSON</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>
-<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">    </span><span class="c1"># Generate a detailed HTML report with CSS and JavaScript included in every HTML page. Useful for build servers.</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlInline</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>
-<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">    </span><span class="c1"># Generate a detailed HTML report with a light theme and CSS and JavaScript included in every HTML page for Azure DevOps.</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlInlineAzure</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>
-<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="w">    </span><span class="c1"># Generate a detailed HTML report with a dark theme and CSS and JavaScript included in every HTML page for Azure DevOps.</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlInlineAzureDark</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>
-<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">    </span><span class="c1"># Generate a single HTML file containing a chart with historic coverage information.</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlChart</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>
-<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">    </span><span class="c1"># Generate a detailed HTML report in a single file.</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MHtml</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>
-<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="w">    </span><span class="c1"># Generate SVG and PNG files that show line and / or branch coverage information.</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Badges</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>
-<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="w">    </span><span class="c1"># Generate a single CSV file containing coverage information per file.</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CsvSummary</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>
-<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">    </span><span class="c1"># Generate a single TEX file containing a summary for all files and detailed reports for each files.</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Latex</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>
-<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="w">    </span><span class="c1"># Generate a single TEX file containing a summary for all files.</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LatexSummary</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>
-<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a><span class="w">    </span><span class="c1"># Generate a single PNG file containing a chart with historic coverage information.</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PngChart</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>
-<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a><span class="w">    </span><span class="c1"># Command line output interpreted by TeamCity.</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TeamCitySummary</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a>
-<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a><span class="w">    </span><span class="c1"># Generate a text file in lcov format.</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lcov</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a>
-<a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a><span class="w">    </span><span class="c1"># Generate a XML file containing a summary for all classes and detailed reports for each class.</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Xml</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a>
-<a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a><span class="w">    </span><span class="c1"># Generate a single XML file containing a summary for all files.</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">XmlSummary</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="c1"># Empty or absent disables report generation entirely (coverage summaries</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="c1"># are unaffected).</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">:reports</span><span class="p">:</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="c1"># Generate an HTML summary report.</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlBasic</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="c1"># Generate an HTML report with line by line coverage of each source file.</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlDetailed</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="c1"># Generate a Text report, written to a file by both gcovr and ReportGenerator.</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Text</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="c1"># Generate a Cobertura XML report.</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Cobertura</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">    </span><span class="c1"># Generate a SonarQube XML report.</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr, ReportGenerator</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SonarQube</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="c1"># Generate a JSON report.</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="c1"># Supported utilities: gcovr</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">JSON</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">    </span><span class="c1"># Generate a detailed HTML report with CSS and JavaScript included in every HTML page. Useful for build servers.</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlInline</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">    </span><span class="c1"># Generate a detailed HTML report with a light theme and CSS and JavaScript included in every HTML page for Azure DevOps.</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlInlineAzure</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">    </span><span class="c1"># Generate a detailed HTML report with a dark theme and CSS and JavaScript included in every HTML page for Azure DevOps.</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlInlineAzureDark</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">    </span><span class="c1"># Generate a single HTML file containing a chart with historic coverage information.</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HtmlChart</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="w">    </span><span class="c1"># Generate a detailed HTML report in a single file.</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MHtml</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">    </span><span class="c1"># Generate SVG and PNG files that show line and / or branch coverage information.</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Badges</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="w">    </span><span class="c1"># Generate a single CSV file containing coverage information per file.</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CsvSummary</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">    </span><span class="c1"># Generate a single TEX file containing a summary for all files and detailed reports for each files.</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Latex</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a><span class="w">    </span><span class="c1"># Generate a single TEX file containing a summary for all files.</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LatexSummary</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a><span class="w">    </span><span class="c1"># Generate a single PNG file containing a chart with historic coverage information.</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PngChart</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a><span class="w">    </span><span class="c1"># Command line output interpreted by TeamCity.</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TeamCitySummary</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a>
+<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a><span class="w">    </span><span class="c1"># Generate a text file in lcov format.</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lcov</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a>
+<a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a><span class="w">    </span><span class="c1"># Generate a XML file containing a summary for all classes and detailed reports for each class.</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Xml</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a>
+<a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a><span class="w">    </span><span class="c1"># Generate a single XML file containing a summary for all files.</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a><span class="w">    </span><span class="c1"># Supported utilities: ReportGenerator</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">XmlSummary</span>
 </code></pre></div>
 <p><br/><br/></p>
 
