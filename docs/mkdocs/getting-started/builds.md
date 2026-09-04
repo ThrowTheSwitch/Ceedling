@@ -23,6 +23,12 @@ Ceedling builds the dependency graph for you from two sources:
 
 Where a C file change ripples out only along that file’s dependency chain, a shared configuration change ripples out across every target that reads that piece of configuration — often the whole project. File changes tend to trigger depth-oriented rebuilds while configuration changes tend to trigger breadth-oriented rebuilds.
 
+## Delta build special cases
+
+Add the [`--force-test-rerun`](command-line.md#ceedling-build-tasks) flag to test build tasks to bypass the checks for only running changed test fixture executables. This command line flag forces those executables to run and produce fresh test results.
+
+When [Unity’s test shuffling feature](../configuration/reference/unity.md#shuffle_tests) is enabled, delta builds automatically rerun test fixture executables to randomize test case order regardless of change or lack thereof in a test’s dependency tree. That is, since the feature requires test executables to run in order to shuffle test case order, effectively, delta builds are disabled for test fixture executables.
+
 ## Delta build examples
 
 Say a project has a `sensor` module (`sensor.c` / `sensor.h`) and a `logger`
