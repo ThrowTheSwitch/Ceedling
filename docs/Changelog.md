@@ -10,6 +10,24 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.1.8] — Prerelease
+
+## 💪 Fixed
+
+### Gcov plugin
+
+- Fixed `:gcov ↳ :gcovr ↳ :decisions` reporting an incorrect minimum-version requirement; the version check (and docs) now correctly require `gcovr` 5.1 or higher.
+- Fixed `:gcov ↳ :gcovr ↳ :fail_under_line`/`:fail_under_branch`/`:fail_under_decision`/`:fail_under_function` silently accepting `0`, contradicting the documented 1–100 range; `0` is now rejected.
+- Fixed `:gcov ↳ :gcovr ↳ :object_directory` and `:source_encoding` values containing a space breaking the constructed `gcovr` command line; both are now quoted consistently with every other string-valued option.
+- Fixed a regex-metacharacter-injection risk (e.g. a literal `.`) in `:gcov ↳ :gcovr`'s and `:gcov ↳ :report_generator`'s auto-generated exclusion patterns in `:test_file_prefix`, `:mock_prefix`, or the build root path could silently over- or under-match files.
+- Fixed `:gcov ↳ :mcdc` triggering a `gcc --version` check (and a potential build-breaking exception for an older compiler) on every build in which a project enables the Gcov plugin, not only `gcov:` builds.
+- Fixed only the first of multiple simultaneously violated `:gcov ↳ :gcovr ↳ :fail_under_*` thresholds being reported when a build-breaking exception is raised; every violated threshold is now listed.
+- Fixed a latent mutation risk in `:gcov ↳ :report_generator` option handling that could accumulate stale exclusion patterns across repeated report-generation calls within a single run.
+- `:gcov ↳ :gcovr ↳ :branches`/`:sort_uncovered`/`:sort_percentage` now use `gcovr`'s renamed `--txt-metric branch`/`--sort uncovered-number`/`--sort uncovered-percent` flags on `gcovr` 7.0+, silencing `gcovr`'s deprecation warnings for those options. The pre-7.0 flag names are still used automatically with older `gcovr`.
+- Fixed the Gcov console summary silently producing no report and no log line at all for a Partial-implementation source whose `gcov` output couldn't be matched. It now logs the same "Found no coverage results" message the equivalent non-Partial case already did.
+
+---
+
 # [1.1.7] — 2026-09-03
 
 ## 💪 Fixed
