@@ -1,36 +1,27 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
 
-require 'ceedling/plugins/plugin'
+require 'ceedling/plugins/report_log_writer_plugin'
 require 'ceedling/constants'
 
-class ReportBuildWarningsLog < Plugin
-  
+class ReportBuildWarningsLog < ReportLogWriterPlugin
+
   # `Plugin` setup()
   def setup
-    # Create structure of @warnings hash with default values
-    @warnings = Hash.new() do |h,k|
-      # k => :context
-      h[k] = {
-        collection: [],
-      }
-    end
+    super
 
-    # Ceedling can run with multiple threads, provide a lock to use around @warnings
-    @mutex = Mutex.new()
+    # Plain Hash -- populated only at write time (process_output), never by
+    # merely reading an absent context, so `.empty?` stays a trustworthy
+    # "have we collected anything at all?" check.
+    @warnings = Hash.new
 
     # Get default (default.yml) / user-set log filename in project configuration
     @log_filename = @ceedling[:configurator].report_build_warnings_log_filename
-
-    # Convenient instance variable references
-    @file_wrapper = @ceedling[:file_wrapper]
-    @loginator = @ceedling[:loginator]
-    @reportinator = @ceedling[:reportinator]
   end
 
   # `Plugin` build step hook
@@ -76,62 +67,44 @@ class ReportBuildWarningsLog < Plugin
   # `Plugin` build step hook
   def post_build(_timestamp_s)
     # Write collected warnings to log(s)
-    write_logs( @warnings, @log_filename )
+    write_logs
   end
 
   # `Plugin` build step hook
   def post_error(_timestamp_s)
     # Write collected warnings to log(s)
-    write_logs( @warnings, @log_filename )
+    write_logs
   end
 
   ### Private ###
 
   private
 
-  # Extract warning messages and store to hash in thread-safe manner
+  # Extract warning messages and store to hash in thread-safe manner.
+  # Keeps only the line(s) that themselves look like a warning -- not the
+  # entire tool-output blob a build step produced -- so a log file holds
+  # just the warnings a user actually asked this plugin to collect.
   def process_output(context, output, hash)
-    # If $stderr/$stdout does not contain "warning", bail out
-    return if !(output =~ /warning/i)
+    lines = output.each_line.select { |line| line =~ /warning/i }
+    return if lines.empty?
 
-    # Store warning message
     @mutex.synchronize do
-      hash[context][:collection] << output
+      entry = (hash[context] ||= { collection: [] })
+      entry[:collection].concat(lines)
     end
   end
 
   # Walk warnings hash and write contents to log file(s)
-  def write_logs( warnings, filename )
-    msg = @reportinator.generate_heading( "Running Warnings Report" )
-    @loginator.log( msg )
-
-    if warnings.empty?
-      @loginator.log( "Build produced no warnings.\n" )
-      return
-    end
-
-    warnings.each do |context, hash|
-      log_filepath = form_log_filepath( context, filename )
-
-      msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
-      @loginator.log( msg )
-
-      File.open( log_filepath, 'w' ) do |f|
-        hash[:collection].each { |warning| f << warning }
+  def write_logs
+    flush_log(
+      heading: 'Running Warnings Report',
+      empty_message: 'Build produced no warnings.',
+      empty: -> { @warnings.empty? }
+    ) do
+      @warnings.each do |context, hash|
+        write_artifact(artifact_filepath(context, @log_filename), hash[:collection].join)
       end
     end
-
-    # White space at command line after progress messages
-    @loginator.log( '' )
   end
 
-  def form_log_filepath(context, filename)
-    path = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s )
-    filepath = File.join(path, filename)
-
-    # Ensure containing artifact directory exists
-    @file_wrapper.mkdir( path )
-
-    return filepath
-  end
 end
