@@ -120,4 +120,50 @@ describe PathMatcher do
     end
   end
 
+  describe '.resolve_relative' do
+    it 'returns a query with no .. segment completely unchanged, anchor or not' do
+      expect(described_class.resolve_relative('foo/bar.h')).to eq('foo/bar.h')
+      expect(described_class.resolve_relative('foo/bar.h', anchor: 'test/unit')).to eq('foo/bar.h')
+    end
+
+    it 'resolves a single leading .. against the anchor directory' do
+      expect(described_class.resolve_relative('../common/helper.h', anchor: 'test/unit')).to eq('test/common/helper.h')
+    end
+
+    it 'resolves multiple leading .. segments, one anchor segment popped per ..' do
+      expect(described_class.resolve_relative('../../common/helper.h', anchor: 'test/unit/adc')).to eq('test/common/helper.h')
+    end
+
+    it 'collapses an internal .. against an empty-string anchor, for an already self-contained path' do
+      # This is the shape GCC itself produces for a directory-relative quoted include --
+      # a complete, project-root-relative path that merely needs its own .. collapsed,
+      # not prefixed onto some other anchor.
+      expect(described_class.resolve_relative('test/unit/../common/helper.h', anchor: '')).to eq('test/common/helper.h')
+    end
+
+    it 'raises a CeedlingException naming the query when .. is present and no anchor is available' do
+      expect { described_class.resolve_relative('../common/helper.h') }.to raise_error(CeedlingException) do |error|
+        expect(error.message).to include('../common/helper.h')
+      end
+    end
+
+    it 'raises a CeedlingException naming the query when .. traverses past the anchor root' do
+      expect { described_class.resolve_relative('../../common/helper.h', anchor: 'test') }.to raise_error(CeedlingException) do |error|
+        expect(error.message).to include('../../common/helper.h')
+      end
+    end
+
+    it 'passes an absolute query through unchanged, even one containing .., deferring to expand_path-based matching elsewhere' do
+      expect(described_class.resolve_relative('/abs/unit/../common/helper.h')).to eq('/abs/unit/../common/helper.h')
+    end
+
+    it 'passes a Windows drive-letter query through unchanged, even one containing ..' do
+      expect(described_class.resolve_relative('C:\\unit\\..\\common\\helper.h')).to eq('C:\\unit\\..\\common\\helper.h')
+    end
+
+    it 'treats a backslash-separated .. query the same as a forward-slash one' do
+      expect(described_class.resolve_relative('..\\common\\helper.h', anchor: 'test/unit')).to eq('test/common/helper.h')
+    end
+  end
+
 end

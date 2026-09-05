@@ -193,6 +193,13 @@ RSpec.describe PreprocessinatorIncludesHandler do
         expect(result.map(&:filename)).to contain_exactly('real.h')
       end
 
+      it 'anchors a .. in the directive text against the scanned file\'s own directory' do
+        nested_filepath = 'test/unit/module.c'
+        stub_file_open(nested_filepath, "#include \"../common/helper.h\"\n")
+        result = subject.extract_user_includes_from_text(name: 'test', filepath: nested_filepath)
+        expect(result.map(&:filepath)).to eq(['test/common/helper.h'])
+      end
+
     end
 
 
@@ -416,6 +423,13 @@ RSpec.describe PreprocessinatorIncludesHandler do
         stub_file_open(filepath, "#include \"user.h\"\n")
         result = subject.extract_system_includes_from_text(name: 'test', filepath: filepath)
         expect(result).to be_empty
+      end
+
+      it 'anchors a .. in the directive text against the scanned file\'s own directory, same as a user include' do
+        nested_filepath = 'test/unit/module.c'
+        stub_file_open(nested_filepath, "#include <../vendor/compat.h>\n")
+        result = subject.extract_system_includes_from_text(name: 'test', filepath: nested_filepath)
+        expect(result.map(&:filepath)).to eq(['test/vendor/compat.h'])
       end
 
     end
