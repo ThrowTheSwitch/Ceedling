@@ -73,6 +73,17 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - Fixed mixin environment variable name matching issues such as a leading zero for `01` numbering or improperly matching on an environment variable similar to the mixin convention.
 - Fixed an edge case for `tools:` argument special handling merging involving a single string argument instead of list of arguments.
 
+### Reporting plugins
+
+- Fixed a thread-safety issue in `report_build_warnings_log` that could crash a multi-threaded build or produce an incomplete warnings log.
+`cppunit` or `html` could leak JUnit’s own escaped test names into the other reports.
+- Fixed the GTest-like console report (`report_tests_gtestlike_stdout`) mislabeling ignored tests as passing and silently dropping their ignore message; its header and footer test counts could also disagree whenever a build had ignored tests.
+- Fixed the TeamCity console report (`report_tests_teamcity_stdout`) not escaping a real line break in a failure message, corrupting the TeamCity service message it produced.
+
+#### `report_tests_log_factory`
+- Fixed `report_tests_log_factory`’s JUnit, CppUnit, and HTML reports producing malformed or unsafe output when processing characters like `<`, `>`, `&`, or `"`.
+- Fixed `report_tests_log_factory` report content silently depending on the order reports were listed in `:report_tests_log_factory` ↳ `:reports:` (e.g. enabling `junit` ahead of `cppunit`)
+
 ## ⚠️ Changed
 
 ### Performance improvements
@@ -85,20 +96,19 @@ Because of the support added for handling paths and distinguishing duplicated fi
 1. Paths in `#include` directives are optional but available to direct Ceedling to the proper header file for your test build needs. This is especially useful to distinguish header files of the same name in your project. Without a path in an `#include` directive, Ceedling works identically to a compiler, selecting the first file among ordered search paths.
 
 ### Use `TEST_SOURCE_PATH()` to override Ceedling’s .c / .h correspondence convention in tests
-
 Historically, Ceedling automatically compiles and links into a test executable any C source file whose name matches an `#include`d header file. Sometimes this convention can select the wrong file among same-named files or compile and link an entirely unwanted source file whose name happens to match a header file.
 
 ### Partials no longer silence CMock’s `:treat_inlines` project-wide
-
 [#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Enabling `:use_partials` previously turned off CMock’s `:treat_inlines` ⇒ `:include` option for every mock in every test in your project. This prevented unnecessary overhead and generation of files never used. However, this affected tests that used no Partials at all. Each mock now gets exactly the inline handling it needs on its own terms. A test using Partials gets Partials’ own handling for that mock, while every other mock keeps using whatever `:treat_inlines` setting you’ve configured.
 
 ### A mock or Partial silently bypassed by its own real header
-
 [#1240](https://github.com/ThrowTheSwitch/Ceedling/issues/1240) Added handling for edge cases where a mock or Partial could be silently bypassed by the real header these are meant to replace. Idiosyncrasies of C compilation search paths together with combinations of `#include` guards and `#include` ordering can lead to false negative test failures or outright crashes. Ceedling now discovers these scenarios on the other side of test compilation, rewires the test build to isolate the problematic header, and rebuilds with the fix in place. This intervention is only employed for shallow #include scenarios where this action is safe. More complex scenarios are prominently and proactively logged to provide hints on diagnosing failures that require more complex solutions than Ceedling should ever attempt to implement.
 
 ### Guidance for a Partial colliding with its own module’s real header
-
 [#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Ceedling now recognizes when test compilation fails because a Partial’s generated content and its source module’s own real, un-Partialized header somehow both reached the compilation of the test fixture translation unit. Logging explains the likely cause and suggested solutions directly alongside the raw compiler error instead of leaving a confusing, bare `redeclaration`/`conflicting types` error.
+
+### `report_build_warnings_log` plugin warning lines
+`report_build_warnings_log`’s log files now contain only the actual warning line(s) from a build step’s output, not that step’s entire lengthy console output whenever it happened to contain the word "warning."
 
 ---
 
@@ -111,11 +121,11 @@ Historically, Ceedling automatically compiles and links into a test executable a
 - Fixed `:gcov ↳ :gcovr ↳ :decisions` reporting an incorrect minimum-version requirement; the version check (and docs) now correctly require `gcovr` 5.1 or higher.
 - Fixed `:gcov ↳ :gcovr ↳ :fail_under_line`/`:fail_under_branch`/`:fail_under_decision`/`:fail_under_function` silently accepting `0`, contradicting the documented 1–100 range; `0` is now rejected.
 - Fixed `:gcov ↳ :gcovr ↳ :object_directory` and `:source_encoding` values containing a space breaking the constructed `gcovr` command line; both are now quoted consistently with every other string-valued option.
-- Fixed a regex-metacharacter-injection risk (e.g. a literal `.`) in `:gcov ↳ :gcovr`'s and `:gcov ↳ :report_generator`'s auto-generated exclusion patterns in `:test_file_prefix`, `:mock_prefix`, or the build root path could silently over- or under-match files.
+- Fixed a regex-metacharacter-injection risk (e.g. a literal `.`) in `:gcov ↳ :gcovr`’s and `:gcov ↳ :report_generator`’s auto-generated exclusion patterns in `:test_file_prefix`, `:mock_prefix`, or the build root path could silently over- or under-match files.
 - Fixed `:gcov ↳ :mcdc` triggering a `gcc --version` check (and a potential build-breaking exception for an older compiler) on every build in which a project enables the Gcov plugin, not only `gcov:` builds.
 - Fixed only the first of multiple simultaneously violated `:gcov ↳ :gcovr ↳ :fail_under_*` thresholds being reported when a build-breaking exception is raised; every violated threshold is now listed.
 - Fixed a latent mutation risk in `:gcov ↳ :report_generator` option handling that could accumulate stale exclusion patterns across repeated report-generation calls within a single run.
-- `:gcov ↳ :gcovr ↳ :branches`/`:sort_uncovered`/`:sort_percentage` now use `gcovr`'s renamed `--txt-metric branch`/`--sort uncovered-number`/`--sort uncovered-percent` flags on `gcovr` 7.0+, silencing `gcovr`'s deprecation warnings for those options. The pre-7.0 flag names are still used automatically with older `gcovr`.
+- `:gcov ↳ :gcovr ↳ :branches`/`:sort_uncovered`/`:sort_percentage` now use `gcovr`’s renamed `--txt-metric branch`/`--sort uncovered-number`/`--sort uncovered-percent` flags on `gcovr` 7.0+, silencing `gcovr`’s deprecation warnings for those options. The pre-7.0 flag names are still used automatically with older `gcovr`.
 - Fixed the Gcov console summary silently producing no report and no log line at all for a Partial-implementation source whose `gcov` output couldn't be matched. It now logs the same "Found no coverage results" message the equivalent non-Partial case already did.
 
 ---

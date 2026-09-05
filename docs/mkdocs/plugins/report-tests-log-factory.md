@@ -24,7 +24,7 @@ Test reports often lack well managed standards or even much documentation at all
 If a test report produced by this plugin does not work for your needs or is not recognized by your report processing tool of choice, well, sadly, this is not all that uncommon. You have at least two options:
 
 1. Use a script or other tool to post-process the report into a format that works for you. You might be surprised how many of these hacks are commonly necessary and exist peppered throughout online forums. You can incorporate any such post-processing step by enabling the `command_hooks` Ceedling plugin (lower in the plugin list than this plugin) and configuring a Ceedling tool to run the needed transformation.
-1. Use Ceedling's abilities plus features of this plugin (documented below) to generate your own test report with a minimal amount of Ruby code.
+1. Use Ceedling’s abilities plus features of this plugin (documented below) to generate your own test report with a minimal amount of Ruby code.
 
 ## Setup
 
@@ -36,7 +36,7 @@ Enable the plugin in your Ceedling project file by adding `report_tests_log_fact
     - report_tests_log_factory
 ```
 
-All generated reports are written to `<build root>/artifacts/<context>`. Your Ceedling project file specifies `<build root>` as a required entry for any build. Your build's context defaults to `test`. Certain other test build plugins (e.g. GCov) provide a different context (e.g. `gcov`) for test builds, generally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than `test/`, `gcov/`.
+All generated reports are written to `<build root>/artifacts/<context>`. Your Ceedling project file specifies `<build root>` as a required entry for any build. Your build’s context defaults to `test`. Certain other test build plugins (e.g. GCov) provide a different context (e.g. `gcov`) for test builds, generally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than `test/`, `gcov/`.
 
 ## Configuration
 
@@ -83,7 +83,7 @@ Some test reporting formats include the execution time (duration) for aspects of
 
 Ceedling automatically gathers all the relevant durations. In fact, Ceedling itself performs the needed timing and arithmetric in all cases, except one. Individual test case exection time tracking is specifically a [Unity] feature (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values and make them available to reports.
 
-To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation symbols (`:unity` ↳ `:defines`) in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest. Unity test case durations as reported by Ceedling default to 0 if this Unity compilation option is not configured.
+To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity’s compilation symbols (`:unity` ↳ `:defines`) in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest. Unity test case durations as reported by Ceedling default to 0 if this Unity compilation option is not configured.
 
 ```yaml
 :unity:
@@ -323,7 +323,7 @@ Configuration steps, (1) and (3) above, are documented by example below. Convent
 ```yaml
 :plugins:
   :load_paths:              # Paths can be relative or absolute
-    - scripts/              # Add <build root>/scripts to Ruby's load paths
+    - scripts/              # Add <build root>/scripts to Ruby’s load paths
   :enabled:
     - report_tests_log_factory
 
@@ -334,7 +334,7 @@ Configuration steps, (1) and (3) above, are documented by example below. Convent
 
 ### Custom `TestsReporter` code
 
-To create a custom report, here's what you gotta do:
+To create a custom report, here’s what you gotta do:
 
 1. Create a Ruby file in your configured additional load path named `<custom_report>_tests_reporter.rb`. `<custom_report>` should be in lower case and use underscores if you wish to seperate words (i.e. snakecase).
 1. The Ruby code itself must subclass an existing plugin class, `TestsReporter`.
@@ -344,6 +344,10 @@ To create a custom report, here's what you gotta do:
     * `header()` (optional)
     * `body()`
     * `footer()` (optional)
+
+    `header()`, `body()`, and `footer()` each receive the same four keyword
+    arguments — `stream:`, `name:`, `results:`, and `duration_s:` — whether
+    or not your own implementation needs all of them.
 
 Overriding the default filename of your custom report happens just as it does for the built-in reports. In fact, apart from the custom load path, the built-in reports documented above use the same mechanisms as a custom report. These Ruby files can and should be used as references.
 
@@ -375,13 +379,13 @@ class FancyShmancyTestsReporter < TestsReporter
   
   # If your report includes a header section, fill out this method.
   # If no header in your report, this method is not needed in this file at all.
-  def header(results:, stream:)
+  def header(stream:, name:, results:, duration_s:)
     stream.puts( '<?xml version="1.0" encoding="utf-8" ?>' )
-    stream.puts( "<FancyShmancy TestCount=#{results[:counts][:total]}>" )
+    stream.puts( "<FancyShmancy Name=\"#{name}\" TestCount=#{results[:counts][:total]}>" )
   end
 
   # Process test results into report records
-  def body(results:, stream:)
+  def body(stream:, name:, results:, duration_s:)
     results.each do |result|
       result[:collection].each do |item|
         write_test( item, stream )
@@ -390,8 +394,8 @@ class FancyShmancyTestsReporter < TestsReporter
   end
 
   # If your report includes a footer section, fill out this method.
-  # If no footer in your report, this method is not needed in this file at all.
-  def footer(results:, stream:)
+  # If you have no footer in your report, this method is not needed in this file at all.
+  def footer(stream:, name:, results:, duration_s:)
     stream.puts( "</FancyShmancy>" )
   end
 
@@ -414,7 +418,7 @@ end
 
 See [_PluginDevelopmentGuide_][custom-plugins] for documentation of the test results data structure (i.e. the `results` method arguments in above sample code).
 
-See this plugin's built-in `TestsReports` subclasses — `json_tests_reporter.rb`, `junit_tests_reporter.rb`, and `cppunit_tests_reporter.rb` — for examples of using test results.
+See this plugin’s built-in `TestsReports` subclasses — `json_tests_reporter.rb`, `junit_tests_reporter.rb`, and `cppunit_tests_reporter.rb` — for examples of using test results.
 
 [custom-plugins]: ../development/plugins/index.md
 
@@ -424,7 +428,7 @@ See this plugin's built-in `TestsReports` subclasses — `json_tests_reporter.rb
 
 You may call the private method `fetch_config_value(*keys)` of the parent class `TestReporters` from your custom subclass to retrieve configuration entries.
 
-This method automatically indexes into `:report_tests_log_factory` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns `nil`. Otherwise, it returns the hash, list, string, boolean, or numeric value for the specified key walk into your report's configuration.
+This method automatically indexes into `:report_tests_log_factory` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns `nil`. Otherwise, it returns the hash, list, string, boolean, or numeric value for the specified key walk into your report’s configuration.
 
 `fetch_config_value(*keys)` expects a list of keys and only accesses configuration beneath `:report_tests_log_factory` ↳ `:<custom_report>`.
 

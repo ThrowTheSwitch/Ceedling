@@ -32,7 +32,7 @@ No additional configuration is needed once the plugin is enabled.
 
 ### Ceedling mapped to GoogleTest reporting elements
 
-Ceedling's conventions and output map to GTest format as the following:
+Ceedling’s conventions and output map to GTest format as the following:
 
 * A Ceedling test file — ultimately an individual test executable — is a GTest 
   _test case_.
@@ -46,6 +46,13 @@ results incrementally as well, but its plugin reporting structure does not
 collect and format statistics until the end of a build. This plugin duplicates
 the tense of the wording in a GTest report, but it is unintentionally somewhat 
 misleading.
+
+GTest has no native concept of an ignored (a.k.a. skipped) test case. A
+Ceedling test case marked `TEST_IGNORE()` is therefore left out of this
+report entirely — it is not listed as `OK` or `FAILED`, and it is not
+counted in the running total header or the passed/failed footer. A test
+file whose every test case is ignored produces no section for that file at
+all.
 
 ### Example output (snippet)
 
