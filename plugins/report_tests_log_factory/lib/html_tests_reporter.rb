@@ -184,7 +184,14 @@ class HtmlTestsReporter < TestsReporter
   def message_cell(message)
     msg = message.to_s
     return '<td class="col-message">—</td>' if msg.empty?
-    return "<td class=\"col-message\"><details><summary>Message hidden due to long length.</summary>#{msg}</details></td>" if msg.length > 150
+    # Truncation threshold is checked against the raw message length, before
+    # escaping -- escaping can only lengthen the string, never shorten it,
+    # so checking pre-escaping keeps the threshold meaning "this many actual
+    # characters of message text" rather than "this many characters once
+    # some fraction of them have been expanded into HTML entities."
+    truncate = msg.length > 150
+    msg = html_escape(msg)
+    return "<td class=\"col-message\"><details><summary>Message hidden due to long length.</summary>#{msg}</details></td>" if truncate
     "<td class=\"col-message\">#{msg}</td>"
   end
 
@@ -237,14 +244,14 @@ class HtmlTestsReporter < TestsReporter
   # The chart and percentage cells use rowspan="4" to span all four count rows,
   # and the timestamp row uses colspan="4" to span all columns.
   def write_summary(name, counts, duration_s, stream)
-    passed    = counts[:total] - counts[:ignored] - counts[:failed]
+    passed    = counts[:passed]
     chart     = ring_chart_svg( passed, counts[:failed], counts[:ignored] )
     pct       = counts[:total] > 0 ? ("%.1f%%" % (passed.to_f / counts[:total] * 100)) : "—"
     timestamp = Time.now.utc.strftime( "%B %d, %Y %H:%M:%S UTC" )
     duration  = duration_s.nil? ? nil : Reportinator.generate_duration_string( duration_s, precision: 0, abbreviate: true )
     stream.puts <<~HTML
       <table class="summary">
-        <thead><tr><th colspan="4">#{name}</th></tr></thead>
+        <thead><tr><th colspan="4">#{html_escape(name)}</th></tr></thead>
         <tbody>
           <tr>
             <td>Total</td><td>#{counts[:total]}</td>
@@ -279,12 +286,12 @@ class HtmlTestsReporter < TestsReporter
 
     count = 0
     results.each do |result|
-      filepath = result[:source][:file]
+      filepath = html_escape( result[:source][:file] )
       stream.puts "  <tbody class=\"file-group\">"
       stream.puts "    <tr class=\"filepath-row\"><td class=\"col-count\"></td><td colspan=\"3\"><i>#{filepath}</i></td></tr>"
       result[:collection].each do |item|
         count += 1
-        stream.puts "    <tr><td class=\"col-count\">#{count}</td><td class=\"col-shrink\"><code>#{item[:test]}</code></td><td class=\"col-line\">#{item[:line]}</td>#{message_cell(item[:message])}</tr>"
+        stream.puts "    <tr><td class=\"col-count\">#{count}</td><td class=\"col-shrink\"><code>#{html_escape(item[:test])}</code></td><td class=\"col-line\">#{item[:line]}</td>#{message_cell(item[:message])}</tr>"
       end
       stream.puts "  </tbody>"
     end
@@ -306,12 +313,12 @@ class HtmlTestsReporter < TestsReporter
 
     count = 0
     results.each do |result|
-      filepath = result[:source][:file]
+      filepath = html_escape( result[:source][:file] )
       stream.puts "  <tbody class=\"file-group\">"
       stream.puts "    <tr class=\"filepath-row\"><td class=\"col-count\"></td><td colspan=\"2\"><i>#{filepath}</i></td></tr>"
       result[:collection].each do |item|
         count += 1
-        stream.puts "    <tr><td class=\"col-count\">#{count}</td><td class=\"col-shrink\"><code>#{item[:test]}</code></td>#{message_cell(item[:message])}</tr>"
+        stream.puts "    <tr><td class=\"col-count\">#{count}</td><td class=\"col-shrink\"><code>#{html_escape(item[:test])}</code></td>#{message_cell(item[:message])}</tr>"
       end
       stream.puts "  </tbody>"
     end
@@ -334,12 +341,12 @@ class HtmlTestsReporter < TestsReporter
 
     count = 0
     results.each do |result|
-      filepath = result[:source][:file]
+      filepath = html_escape( result[:source][:file] )
       stream.puts "  <tbody class=\"file-group\">"
       stream.puts "    <tr class=\"filepath-row\"><td class=\"col-count\"></td><td><i>#{filepath}</i></td></tr>"
       result[:collection].each do |item|
         count += 1
-        stream.puts "    <tr><td class=\"col-count\">#{count}</td><td><code>#{item[:test]}</code></td></tr>"
+        stream.puts "    <tr><td class=\"col-count\">#{count}</td><td><code>#{html_escape(item[:test])}</code></td></tr>"
       end
       stream.puts "  </tbody>"
     end

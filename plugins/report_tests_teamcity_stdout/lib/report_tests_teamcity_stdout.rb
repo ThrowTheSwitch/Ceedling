@@ -27,6 +27,12 @@ class ReportTestsTeamcityStdout < Plugin
     # This hash relates each test filepath to a unique Flow ID
     # (TeamCity uses Flow IDs to differentiate messages generated in concurrent threads)
     @suites = {}
+
+    # Captured rather than called as a bare `puts` so a test can substitute
+    # a StringIO -- deliberately not routed through Loginator, which would
+    # risk both suppression under a quiet --verbosity and batching/timing
+    # changes to what TeamCity expects as immediate, real-time messages.
+    @stream = $stdout
   end
 
   # `Plugin` build step hook
@@ -152,12 +158,17 @@ class ReportTestsTeamcityStdout < Plugin
 
   def escape(string)
     # https://www.jetbrains.com/help/teamcity/service-messages.html#Escaped+Values
-    string.gsub(/['|\[\]]/, '|\0').gsub('\r', '|r').gsub('\n', '|n')
+    # A real embedded CR/LF must become the two-character |r/|n sequence, not
+    # pass through as an actual line break -- TeamCity parses service
+    # messages one physical line at a time, so an unescaped newline mid
+    # message would split it across lines and corrupt the message TeamCity
+    # sees.
+    string.gsub(/['|\[\]]/, '|\0').gsub("\r", '|r').gsub("\n", '|n')
   end
 
   def teamcity_service_message(content, flowId=0)
     # https://www.jetbrains.com/help/teamcity/service-messages.html
-    puts "##teamcity[#{content} flowId='#{flowId}']"
+    @stream.puts "##teamcity[#{content} flowId='#{flowId}']"
   end
 
 end

@@ -1,8 +1,8 @@
-% ignored        = hash[:results][:counts][:ignored]
-% failed         = hash[:results][:counts][:failed]
-% stdout_count   = hash[:results][:counts][:stdout]
-% header_prepend = ((hash[:context] != TEST_SYM) ? "#{hash[:context].to_s.upcase}: " : '')
-% banner_width   = 25 + header_prepend.length # widest message
+% preamble       = @ceedling[:plugin_reportinator].test_report_preamble(hash)
+% ignored        = preamble[:ignored]
+% failed         = preamble[:failed]
+% stdout_count   = preamble[:stdout_count]
+% header_prepend = preamble[:header_prepend]
 
 % if (stdout_count > 0)
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'TEST OUTPUT')%>
@@ -38,7 +38,7 @@
   Test: <%=item[:test]%>
 %       if (not item[:message].empty?)
 %         # Cause multline error messages to wrap with indentation aligned with line header
-%         msg = item[:message].split("\n").enum_for(:each_with_index).map{|line,i| ((i >= 1) ? (' ' * (header.size + 3)) : '') + line}.join("\n")
+%         msg = @ceedling[:plugin_reportinator].reflow_message(item[:message], ' ' * (header.size + 3))
   <%=header%> "<%=msg%>"
 %       else
   <%=header%>
@@ -49,8 +49,8 @@
 % end
 % total_string = hash[:results][:counts][:total].to_s
 % format_string = "%#{total_string.length}i"
-% decorator = (failed > 0) ? LogLabels::FAIL : LogLabels::PASS
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + @loginator.decorate('OVERALL TEST SUMMARY', decorator))%>
+% banner_text = @ceedling[:plugin_reportinator].decorate_summary_banner('OVERALL TEST SUMMARY', failed)
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + banner_text)%>
 % if (hash[:results][:counts][:total] > 0)
 TESTED:  <%=hash[:results][:counts][:total].to_s%>
 PASSED:  <%=sprintf(format_string, hash[:results][:counts][:passed])%>

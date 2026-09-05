@@ -65,7 +65,7 @@ class JsonTestsReporter < TestsReporter
     # Hash of keys:values for statistics
     return {
       "total_tests" => counts[:total],
-      "passed" => (counts[:total] - counts[:ignored] - counts[:failed]),
+      "passed" => counts[:passed],
       "ignored" => counts[:ignored],
       "failures" => counts[:failed]
     }

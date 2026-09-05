@@ -5,6 +5,9 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'cgi'
+require 'stringio'
+
 class TestsReporter
 
   # Dependency injection
@@ -13,15 +16,21 @@ class TestsReporter
   # Setup value injection
   attr_writer :config
 
+  # Dependency injection -- write() renders into an in-memory buffer and
+  # hands the finished content to this in one call, rather than opening a
+  # real file itself, so a report can be fully exercised in a test without
+  # ever touching disk.
+  attr_writer :file_wrapper
+
   # Publicly accessible filename for the resulting report
   attr_reader :filename
 
   def initialize(handle:)
     @handle = handle
 
-    # Safe default filename in case user's custom subclass forgets to call 
+    # Safe default filename in case user's custom subclass forgets to call
     # setup() with a default filename.
-    # If the report is named 'foo_bar' in project configuration, the 
+    # If the report is named 'foo_bar' in project configuration, the
     # fallback filename is 'foo_bar.report'
     @filename = "#{handle}.report"
   end
@@ -32,11 +41,11 @@ class TestsReporter
 
   # Write report contents to file
   def write(name:, filepath:, results:, duration_s:nil)
-    File.open( filepath, 'w' ) do |f|
-      header( stream: f, name: name, results: results, duration_s: duration_s )
-      body( stream: f, name: name, results: results, duration_s: duration_s )
-      footer( stream: f, name: name, results: results, duration_s: duration_s )
-    end
+    buffer = StringIO.new
+    header( stream: buffer, name: name, results: results, duration_s: duration_s )
+    body( stream: buffer, name: name, results: results, duration_s: duration_s )
+    footer( stream: buffer, name: name, results: results, duration_s: duration_s )
+    @file_wrapper.write( filepath, buffer.string )
   end
 
   def header(stream:, name:, results:, duration_s:)
@@ -65,6 +74,21 @@ class TestsReporter
   def fetch_config_value(*keys)
     result, _ = @config_walkinator.fetch_value( *keys, hash:@config )
     return result
+  end
+
+  # Escapes text for safe use inside an XML attribute or element body.
+  # Returns a NEW string -- a reporter must never mutate a test name or
+  # message in place, since the very same results structure this value came
+  # from is handed unmodified to every other configured reporter in turn.
+  def xml_escape(str)
+    str.to_s.gsub(/[&<>"']/, '&' => '&amp;', '<' => '&lt;', '>' => '&gt;', '"' => '&quot;', "'" => '&apos;')
+  end
+
+  # Escapes text for safe interpolation into HTML. CGI.escapeHTML already
+  # covers the same characters HTML needs escaped, so this reuses it rather
+  # than hand-rolling a second near-identical table.
+  def html_escape(str)
+    CGI.escapeHTML(str.to_s)
   end
 
 end

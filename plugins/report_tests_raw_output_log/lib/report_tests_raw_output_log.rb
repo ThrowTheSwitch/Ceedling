@@ -5,22 +5,16 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/plugins/plugin'
+require 'ceedling/plugins/report_log_writer_plugin'
 require 'ceedling/constants'
 
-class ReportTestsRawOutputLog < Plugin
+class ReportTestsRawOutputLog < ReportLogWriterPlugin
   # `Plugin` setup()
   def setup
-   # @raw_output hash with default values
+    super
+
+    # @raw_output hash with default values
     @raw_output = {}
-
-    # Ceedling can run with multiple threads, provide a lock to use around @raw_output
-    @mutex = Mutex.new()
-
-    # Convenient instance variable references
-    @file_wrapper = @ceedling[:file_wrapper]
-    @loginator = @ceedling[:loginator]
-    @reportinator = @ceedling[:reportinator]
   end
 
   # `Plugin` build step hook
@@ -29,7 +23,7 @@ class ReportTestsRawOutputLog < Plugin
 
     # Bail out early
     return if output.empty?
-    
+
     # After test fixture execution, parse output, store any raw console statements
     @mutex.synchronize do
       process_output(
@@ -86,44 +80,17 @@ class ReportTestsRawOutputLog < Plugin
   end
 
   def write_logs(hash)
-    msg = @reportinator.generate_heading( "Running Raw Tests Output Report" )
-    @loginator.log( msg )
-
-    empty = false
-
-    @mutex.synchronize { empty = hash.empty? }
-
-    if empty
-      @loginator.log( "Tests produced no extra console output.\n" )
-      return
-    end
-
-    @mutex.synchronize do
+    flush_log(
+      heading: 'Running Raw Tests Output Report',
+      empty_message: 'Tests produced no extra console output.',
+      empty: -> { hash.empty? }
+    ) do
       hash.each do |context, tests|
         tests.each do |test, output|
-          log_filepath = form_log_filepath( context, test )
-
-          msg = @reportinator.generate_progress( "Generating artifact #{log_filepath}" )
-          @loginator.log( msg )
-
-          File.open( log_filepath, 'w' ) do |f|
-            output.each { |line| f << line }
-          end
+          write_artifact(artifact_filepath(context, "#{test}.raw.log"), output.join)
         end
       end
     end
-
-    # White space at command line after progress messages
-    @loginator.log( '' )
   end
 
-  def form_log_filepath(context, test)
-    path = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s )
-    filepath = File.join(path, test + '.raw.log')
-
-    # Ensure containing artifact directory exists
-    @file_wrapper.mkdir( path )
-
-    return filepath
-  end
 end

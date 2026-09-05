@@ -31,7 +31,7 @@ Enable the plugin in your Ceedling project file:
 
 ## Configuration
 
-To change the default filename of `warning.log`, add your desired filename to
+To change the default filename of `warnings.log`, add your desired filename to
 your configuration file using `:report_build_warnings_log:` ↳ `:filename`.
 
 ```yaml

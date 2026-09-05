@@ -420,11 +420,11 @@ CEEDLING_RUNTIME_CONFIG = {
 
 
 DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
-% ignored        = hash[:results][:counts][:ignored]
-% failed         = hash[:results][:counts][:failed]
-% stdout_count   = hash[:results][:counts][:stdout]
-% header_prepend = ((hash[:context] != TEST_SYM) ? "#{hash[:context].to_s.upcase}: " : '')
-% banner_width   = 25 + header_prepend.length # widest message
+% preamble       = @ceedling[:plugin_reportinator].test_report_preamble(hash)
+% ignored        = preamble[:ignored]
+% failed         = preamble[:failed]
+% stdout_count   = preamble[:stdout_count]
+% header_prepend = preamble[:header_prepend]
 
 % if (stdout_count > 0)
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'TEST OUTPUT')%>
@@ -439,9 +439,10 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'IGNORED TEST SUMMARY')%>
 %   hash[:results][:ignores].each do |ignore|
 %     ignore[:collection].each do |item|
-<%=ignore[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+%       prefix = "#{ignore[:source][:file]}:#{item[:line]}:#{item[:test]}"
+<%=prefix%>
 % if (item[:message].length > 0)
-: "<%=item[:message]%>"
+: "<%=@ceedling[:plugin_reportinator].reflow_message(item[:message], "#{prefix}: ")%>"
 % else
 <%="\n"%>
 % end
@@ -453,9 +454,10 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'FAILED TEST SUMMARY')%>
 %   hash[:results][:failures].each do |failure|
 %     failure[:collection].each do |item|
-<%=failure[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+%       prefix = "#{failure[:source][:file]}:#{item[:line]}:#{item[:test]}"
+<%=prefix%>
 % if (item[:message].length > 0)
-: "<%=item[:message]%>"
+: "<%=@ceedling[:plugin_reportinator].reflow_message(item[:message], "#{prefix}: ")%>"
 % else
 <%="\n"%>
 % end
@@ -465,7 +467,8 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 % end
 % total_string = hash[:results][:counts][:total].to_s
 % format_string = "%#{total_string.length}i"
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'OVERALL TEST SUMMARY')%>
+% banner_text = @ceedling[:plugin_reportinator].decorate_summary_banner('OVERALL TEST SUMMARY', failed)
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + banner_text)%>
 % if (hash[:results][:counts][:total] > 0)
 TESTED:  <%=hash[:results][:counts][:total].to_s%>
 PASSED:  <%=sprintf(format_string, hash[:results][:counts][:passed])%>

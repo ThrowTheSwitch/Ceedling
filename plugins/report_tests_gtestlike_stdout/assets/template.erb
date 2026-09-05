@@ -1,19 +1,14 @@
-% ignored        = hash[:results][:counts][:ignored]
 % failed         = hash[:results][:counts][:failed]
 % stdout_count   = hash[:results][:counts][:stdout]
+% # GTest's own format has no "ignored" concept, so ignored tests are left out
+% # entirely here -- never entering `results`, never counted in `total` --
+% # rather than mislabeled as a pass. A build where every test was ignored
+% # still renders "No tests executed." even though tests technically ran; that
+% # is this deliberate, fully-consistent choice, not a bug to "fix" back.
+% total = hash[:results][:counts][:passed] + failed
 % results = {}
 % hash[:results][:successes].each do |testresult|
 %   results[ testresult[:source][:file] ] = testresult[:collection]
-%   results[ testresult[:source][:file] ].length.times do |i|
-%     results[ testresult[:source][:file] ][i][:pass] = true
-%   end
-% end
-% hash[:results][:ignores].each do |testresult|
-%   if (results[ testresult[:source][:file] ].nil?)
-%     results[ testresult[:source][:file] ] = testresult[:collection]
-%   else
-%     results[ testresult[:source][:file] ] += testresult[:collection]
-%   end
 %   results[ testresult[:source][:file] ].length.times do |i|
 %     results[ testresult[:source][:file] ][i][:pass] = true
 %   end
@@ -29,7 +24,7 @@
 % if hash[:context] != TEST_SYM
 Running testing tasks: <%=hash[:context].to_s.upcase%>
 % end
-[==========] Running <%=hash[:results][:counts][:total].to_s%> tests from <%=results.length.to_s%> test cases.
+[==========] Running <%=total.to_s%> tests from <%=results.length.to_s%> test cases.
 [----------] Global test environment set-up.
 % results.each_pair do |modulename, moduledetails|
 [----------] <%=moduledetails.length.to_s%> tests from <%=modulename%>
@@ -61,9 +56,9 @@ Running testing tasks: <%=hash[:context].to_s.upcase%>
 [----------] <%=moduledetails.length.to_s%> tests from <%=modulename%> (<%=duration%> ms total)
 % end
 
-% if (hash[:results][:counts][:total] > 0)
+% if (total > 0)
 [----------] Global test environment tear-down.
-[==========] <%=hash[:results][:counts][:total].to_s%> tests from <%=results.length.to_s%> test cases ran.
+[==========] <%=total.to_s%> tests from <%=results.length.to_s%> test cases ran.
 [  PASSED  ] <%=hash[:results][:counts][:passed].to_s%> tests.
 %   if (failed == 0)
 [  FAILED  ] 0 tests.
