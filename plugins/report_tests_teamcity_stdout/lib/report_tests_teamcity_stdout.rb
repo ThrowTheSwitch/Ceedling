@@ -158,7 +158,12 @@ class ReportTestsTeamcityStdout < Plugin
 
   def escape(string)
     # https://www.jetbrains.com/help/teamcity/service-messages.html#Escaped+Values
-    string.gsub(/['|\[\]]/, '|\0').gsub('\r', '|r').gsub('\n', '|n')
+    # A real embedded CR/LF must become the two-character |r/|n sequence, not
+    # pass through as an actual line break -- TeamCity parses service
+    # messages one physical line at a time, so an unescaped newline mid
+    # message would split it across lines and corrupt the message TeamCity
+    # sees.
+    string.gsub(/['|\[\]]/, '|\0').gsub("\r", '|r').gsub("\n", '|n')
   end
 
   def teamcity_service_message(content, flowId=0)
