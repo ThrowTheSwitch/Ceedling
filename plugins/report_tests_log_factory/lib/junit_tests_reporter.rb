@@ -148,12 +148,7 @@ class JunitTestsReporter < TestsReporter
     unless suite[:stdout].empty?
       stream.puts('    <system-out>')
       suite[:stdout].each do |line|
-        line.gsub!(/&/, '&amp;')
-        line.gsub!(/</, '&lt;')
-        line.gsub!(/>/, '&gt;')
-        line.gsub!(/"/, '&quot;')
-        line.gsub!(/'/, '&apos;')
-        stream.puts( line )
+        stream.puts( xml_escape(line) )
       end
       stream.puts('    </system-out>')
     end
@@ -162,35 +157,25 @@ class JunitTestsReporter < TestsReporter
   end
 
   def write_test( test, stream )
-    test[:test].gsub!(/&/, '&amp;')
-    test[:test].gsub!(/</, '&lt;')
-    test[:test].gsub!(/>/, '&gt;')
-    test[:test].gsub!(/"/, '&quot;')
-    test[:test].gsub!(/'/, '&apos;')
+    name = xml_escape( test[:test] )
 
     case test[:result]
     when :success
-      stream.puts(
-        '    <testcase name="%<test>s" '               % test +
-                      'time="%<unity_test_time>.3f"/>' % test
-      )
+      stream.puts( '    <testcase name="%s" time="%.3f"/>' % [ name, test[:unity_test_time] ] )
 
     when :failed
-      stream.puts(
-        '    <testcase name="%<test>s" '              % test +
-                      'time="%<unity_test_time>.3f">' % test
-      )
+      stream.puts( '    <testcase name="%s" time="%.3f">' % [ name, test[:unity_test_time] ] )
 
       if test[:message].empty?
         stream.puts( '      <failure />' )
       else
-        stream.puts( '      <failure message="%s" />' % test[:message] )
+        stream.puts( '      <failure message="%s" />' % xml_escape( test[:message] ) )
       end
-      
+
       stream.puts( '    </testcase>' )
 
     when :ignored
-      stream.puts( '    <testcase name="%<test>s" time="%<unity_test_time>.3f">' % test )
+      stream.puts( '    <testcase name="%s" time="%.3f">' % [ name, test[:unity_test_time] ] )
       stream.puts( '      <skipped />' )
       stream.puts( '    </testcase>' )
     end

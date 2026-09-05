@@ -149,14 +149,19 @@ class ReportTestsLogFactory < Plugin
       # For custom user subclasses, requires directoy in :plugins ↳ :load_paths
       require "#{report}_tests_reporter"
 
-      # Dynamically instantiate Reporter subclass object
-      reporter = eval( "#{_reporter}.new(handle: :#{report})" )
+      # Dynamically instantiate Reporter subclass object. const_get (rather
+      # than eval-ing a constructed string) fails with a direct, ordinary
+      # NameError naming exactly the missing constant when a custom
+      # subclass doesn't follow the naming convention -- no separate eval
+      # context standing between the mistake and its own error message.
+      reporter = Object.const_get( _reporter ).new( handle: report.to_sym )
 
       # Inject configuration
       reporter.config = config[report.to_sym]
 
-      # Inject utilty object
+      # Inject utility objects
       reporter.config_walkinator = @ceedling[:config_walkinator]
+      reporter.file_wrapper = @ceedling[:file_wrapper]
 
       # Perform Reporter sublcass set up
       reporter.setup()

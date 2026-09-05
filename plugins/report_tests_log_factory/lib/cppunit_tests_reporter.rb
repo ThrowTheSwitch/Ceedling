@@ -48,16 +48,16 @@ class CppunitTestsReporter < TestsReporter
 
     results.each do |result|
       result[:collection].each do |item|
-        filename = result[:source][:file]
+        filename = xml_escape( result[:source][:file] )
 
         stream.puts "    <Test id=\"#{@test_counter}\">"
-        stream.puts "      <Name>#{filename}::#{item[:test]}</Name>"
+        stream.puts "      <Name>#{filename}::#{xml_escape(item[:test])}</Name>"
         stream.puts "      <FailureType>Assertion</FailureType>"
         stream.puts "      <Location>"
         stream.puts "        <File>#{filename}</File>"
         stream.puts "        <Line>#{item[:line]}</Line>"
         stream.puts "      </Location>"
-        stream.puts "      <Message>#{item[:message]}</Message>"
+        stream.puts "      <Message>#{xml_escape(item[:message])}</Message>"
         stream.puts "    </Test>"
         @test_counter += 1
       end
@@ -76,9 +76,9 @@ class CppunitTestsReporter < TestsReporter
 
     results.each do |result|
       result[:collection].each do |item|
-        filename = result[:source][:file]
+        filename = xml_escape( result[:source][:file] )
         stream.puts( "    <Test id=\"#{@test_counter}\">" )
-        stream.puts( "      <Name>#{filename}::#{item[:test]}</Name>" )
+        stream.puts( "      <Name>#{filename}::#{xml_escape(item[:test])}</Name>" )
         stream.puts( "    </Test>" )
         @test_counter += 1
       end
