@@ -60,6 +60,66 @@ class PathMatcher
     collection.select { |candidate| tail_matches?(query_segments, segments(candidate)) }
   end
 
+  # Collapses a `..` segment in `query` against `anchor`, a directory path in the
+  # same representation as every other path this class handles (e.g. a test file's
+  # own `File.dirname`) -- one anchor segment is popped per leading `..`, so the
+  # result is an ordinary, `..`-free query ready for `.match`/`.resolve`/`.candidates`
+  # exactly as if it had been written that way to begin with. A query with no `..` at
+  # all is returned completely untouched, so this is a no-op for the overwhelming
+  # majority of callers.
+  #
+  # `anchor: nil` means no file context exists to resolve against (e.g. a bare CLI
+  # task name, which names no file of its own) -- a `..` there can't mean anything,
+  # so it raises rather than silently mismatching or falling through to a confusing
+  # "not found" further down. `anchor: ''` is different: it means the query is
+  # already a complete, self-contained path that merely needs its own internal `..`
+  # collapsed, not prefixed onto anything else -- the shape GCC itself produces for a
+  # directory-relative quoted include, which is a full project-root-relative path
+  # left uncanonicalized.
+  #
+  # An absolute query (including a Windows drive letter) is returned unchanged --
+  # `candidates()`'s own `File.expand_path` comparison above already resolves `..`
+  # correctly for those, so reprocessing one here as anchor-relative would be wrong,
+  # not merely redundant.
+  def self.resolve_relative(query, anchor: nil)
+    return query if absolute?(query)
+
+    query_segments = segments(query)
+    return query unless query_segments.include?('..')
+
+    if anchor.nil?
+      raise CeedlingException.new(
+        "Relative path reference '..' in '#{query}' has no file context to resolve against here."
+      )
+    end
+
+    resolved = segments(anchor)
+
+    query_segments.each do |segment|
+      if segment == '..'
+        if resolved.empty?
+          raise CeedlingException.new("Relative path reference '..' in '#{query}' goes outside the project.")
+        end
+        resolved.pop
+      else
+        resolved << segment
+      end
+    end
+
+    resolved.join('/')
+  end
+
+  # Two filepaths correspond if the shorter one's path segments equal the longer
+  # one's own trailing segments, exactly, in order -- checked without regard for
+  # which side is shorter, since a query and a candidate can each be the more
+  # specific one depending on how each was discovered.
+  def self.correspond?(a, b)
+    segments_a = segments(a)
+    segments_b = segments(b)
+    shorter, longer = segments_a.length <= segments_b.length ? [segments_a, segments_b] : [segments_b, segments_a]
+    tail_matches?(shorter, longer)
+  end
+
   ### Private ###
 
   def self.absolute?(path)

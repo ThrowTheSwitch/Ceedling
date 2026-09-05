@@ -7,6 +7,7 @@
 
 require 'set'
 require 'ceedling/exceptions'
+require 'ceedling/path_matcher'
 
 class Includes
   # Class method to convert mixed list of Include objects into an order-preserving list of hashes
@@ -209,9 +210,12 @@ class Includes
   # includes are never resolved against a real file under `-nostdinc`, so its bare text
   # is always exactly what was written.
   #
-  # `test_filepath` plays no part in matching -- it's carried only so a caller's own
-  # `on_ambiguous` block can name the one test file whose #include statement is worth a
-  # closer look, since nothing further up the call stack adds that context on its own.
+  # `test_filepath` is the anchor a bare entry's own `..` resolves against -- a bare
+  # scan sees a directory-relative #include exactly as written, `..` and all, so it's
+  # resolved here against the one file any such directive could possibly belong to:
+  # the test file itself. It's also carried so a caller's own `on_ambiguous` block can
+  # name the one test file whose #include statement is worth a closer look, since
+  # nothing further up the call stack adds that context on its own.
   def self.reconcile(bare:, user:, system:, test_filepath: nil, &on_ambiguous)
     # Validate input types
 
@@ -249,13 +253,20 @@ class Includes
     seen = Set.new
 
     bare.each do |bare_include|
+      # A directory-relative #include's own literal text is anchored to the one file
+      # a bare scan could have found it in -- the test file itself, never a header,
+      # since bare extraction never recurses into one. Resolving here, once, means
+      # every candidate below is compared against an ordinary, ..-free path exactly
+      # as if it had been written that way to begin with.
+      bare_filepath = PathMatcher.resolve_relative(bare_include.filepath, anchor: test_filepath && File.dirname(test_filepath))
+
       # Matching is deliberately bidirectional: a bare entry can carry either more path
       # than its candidate (literal, unresolved #include text against a bare-scanned
       # candidate from fallback preprocessing) or less (a pathless bare entry against a
       # candidate directives-only preprocessing resolved to a fuller real location) --
       # either side may be the more specific one, so whichever is shorter sets how many
       # of the longer one's trailing segments must match.
-      matched = user_filepaths.select { |filepath| paths_correspond?(bare_include.filepath, filepath) }
+      matched = user_filepaths.select { |filepath| paths_correspond?(bare_filepath, filepath) }
 
       next if matched.empty?
 
@@ -280,11 +291,10 @@ class Includes
   # Two filepaths correspond if the shorter one's path segments equal the longer one's
   # own trailing segments, exactly, in order -- checked without regard for which side is
   # shorter, since either a bare entry or its candidate may be the one carrying less path.
+  # Delegates to PathMatcher's own version of this same comparison rather than
+  # reimplementing segment-splitting a second time.
   def self.paths_correspond?(a, b)
-    segments_a = a.split(/[\\\/]/).reject(&:empty?)
-    segments_b = b.split(/[\\\/]/).reject(&:empty?)
-    shorter, longer = segments_a.length <= segments_b.length ? [segments_a, segments_b] : [segments_b, segments_a]
-    return longer.last(shorter.length) == shorter
+    PathMatcher.correspond?(a, b)
   end
   private_class_method :paths_correspond?
 
@@ -358,6 +368,18 @@ class Include
     @filename = File.basename(@filepath)
     @path = File.dirname(@filepath)
     @include_path = clean(include_path) if include_path
+  end
+
+  # Resolves any `..` in this include's own filepath against `anchor` (a directory
+  # path in the same representation `filepath` itself uses), returning a new instance
+  # of this same class if resolution actually changed anything, or this instance
+  # unchanged otherwise. A raw text scan -- unlike a real compiler, which resolves a
+  # directory-relative #include on its own while opening it -- has no way to know
+  # which real file its own literal directive text reaches until this runs.
+  def anchored(anchor)
+    resolved = PathMatcher.resolve_relative( @filepath, anchor: anchor )
+    return self if resolved == @filepath
+    return self.class.new( resolved, include_path: @include_path )
   end
 
   # Method specialized by subclasses

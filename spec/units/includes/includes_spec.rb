@@ -1330,5 +1330,29 @@ describe "Includes reconciliation" do
         "/usr/lib/gcc/x86_64-linux-gnu/14/include/stdint.h", "/usr/include/stdint.h"
       )
     end
+
+    it "resolves a .. in a bare entry's literal text against test_filepath's own directory to match a clean candidate" do
+      # A fallback text scan sees a directory-relative #include exactly as written --
+      # ".." and all -- while a candidate reported via directives-only preprocessing
+      # is already a clean, project-root-relative path with no .. of its own.
+      bare = [Include.new("../common/helper.h")]
+      user = [UserInclude.new("test/common/helper.h")]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system, test_filepath: "test/unit/test_dotdot.c")
+
+      expect(result.length).to eq(1)
+      expect(result[0].filepath).to eq("test/common/helper.h")
+    end
+
+    it "raises a CeedlingException when a bare entry's .. has no test_filepath to anchor against" do
+      bare = [Include.new("../common/helper.h")]
+      user = [UserInclude.new("test/common/helper.h")]
+      system = []
+
+      expect {
+        Includes.reconcile(bare: bare, user: user, system: system)
+      }.to raise_error(CeedlingException, /\.\.\/common\/helper\.h/)
+    end
   end
 end

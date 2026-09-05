@@ -100,8 +100,11 @@ class TestContextExtractor
       end
 
       if args.include?( Context::INCLUDES )
-        # Scan for contents of #include directives
-        includes += _extract_includes( line )
+        # Scan for contents of #include directives. Anchored to this test file's own
+        # directory: when preprocessing is off, nothing downstream ever reconciles or
+        # otherwise re-resolves this list, so a directory-relative reference has to be
+        # settled here, the only place that still knows which file it was written in.
+        includes += _extract_includes( line ).map { |include| include.anchored( File.dirname( filepath ) ) }
       end
     end
 

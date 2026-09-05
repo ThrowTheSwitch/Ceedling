@@ -149,6 +149,21 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
       expect( paths_of(includes) ).to eq( ['widget.h', 'nested.h'] )
     end
 
+    it 'collapses a .. segment GCC leaves uncanonicalized in a directory-relative quoted include line marker' do
+      # GCC forms a directory-relative quoted include's line marker as the including
+      # file's own directory concatenated with the literal include text -- it does not
+      # canonicalize away a .. this produces. Left uncanonicalized, this candidate could
+      # never correspond to the project's own, real, ..-free file list downstream.
+      content = <<~OUTPUT
+        # 1 "test/unit/test_dotdot.c"
+        # 1 "test/unit/../common/helper.h" 1
+      OUTPUT
+
+      includes = @extractor.extract_includes_from_string( content, 'test/unit/test_dotdot.c', described_class::USER )
+
+      expect( paths_of(includes) ).to eq( ['test/common/helper.h'] )
+    end
+
     it 'deduplicates a path reached more than once (e.g. via an include guard)' do
       content = <<~OUTPUT
         # 1 "test.c"

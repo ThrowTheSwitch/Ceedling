@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/includes/includes'
+require 'ceedling/path_matcher'
 require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
 require 'ceedling/preprocess/preprocessinator_line_marker_includes_extractor'
 require 'ceedling/preprocess/c_preprocessor_conditionals'
@@ -192,7 +193,7 @@ class PreprocessinatorIncludesHandler
         cond_tracker.process_directive( line )
         next unless cond_tracker.active?
         _include = @include_factory.user_include_from_directive( line )
-        includes << _include if !_include.nil?
+        includes << _include.anchored( File.dirname( filepath ) ) if !_include.nil?
       end
     end
 
@@ -243,7 +244,7 @@ class PreprocessinatorIncludesHandler
         cond_tracker.process_directive( line )
         next unless cond_tracker.active?
         _include = @include_factory.system_include_from_directive( line )
-        includes << _include if !_include.nil?
+        includes << _include.anchored( File.dirname( filepath ) ) if !_include.nil?
       end
     end
 

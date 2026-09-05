@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
+require 'ceedling/path_matcher'
 require 'set'
 
 ##
@@ -163,6 +164,13 @@ class PreprocessinatorLineMarkerIncludesExtractor
 
         # Skip special markers like "<built-in>" and "<command-line>"
         next if filepath.start_with?('<')
+
+        # GCC forms a directory-relative quoted include's own line marker by
+        # concatenating the including file's directory onto the literal include
+        # text -- real and complete, but left uncanonicalized. Collapsing any ..
+        # here, once, means this path can correspond to the project's own real,
+        # ..-free file list the same way any other candidate already does.
+        filepath = PathMatcher.resolve_relative( filepath, anchor: '' )
 
         # Integer line number
         line_number = match[1].to_i

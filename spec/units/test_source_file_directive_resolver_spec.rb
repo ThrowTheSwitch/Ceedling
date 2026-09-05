@@ -87,6 +87,28 @@ describe TestSourceFileDirectiveResolver do
 
       expect(additive).to eq( ['src/foo.c'] )
     end
+
+    it "resolves a .. in an additive entry against the test file's own directory before looking it up" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/unit/TestFoo.c' ).and_return( ['../common/extra.c'] )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'test/common/extra.c', complain: :ignore, context: :test ).and_return( 'test/common/extra.c' )
+
+      additive, subtractive = @resolver.resolve( 'test/unit/TestFoo.c', :test )
+
+      expect(additive).to eq( ['test/common/extra.c'] )
+    end
+
+    it "resolves a .. in a subtractive entry the same way, against the test file's own directory" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/unit/TestFoo.c' ).and_return( ['-:../common/extra.c'] )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'test/common/extra.c', complain: :ignore, context: :test ).and_return( 'test/common/extra.c' )
+
+      additive, subtractive = @resolver.resolve( 'test/unit/TestFoo.c', :test )
+
+      expect(subtractive).to eq( { 'test/common/extra.c' => '-:../common/extra.c' } )
+    end
   end
 
   describe "#validate!" do

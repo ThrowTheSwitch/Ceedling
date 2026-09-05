@@ -8,6 +8,7 @@
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/file_path_utils'
+require 'ceedling/path_matcher'
 require 'ceedling/test_invoker/test_build_validations'
 
 # Owns everything about the TEST_SOURCE_FILE() build directive's own path
@@ -33,9 +34,15 @@ class TestSourceFileDirectiveResolver
     raw = @test_context_extractor.lookup_build_directive_sources_list( test_filepath )
     additive, subtractive = raw.partition { |source| FilePathUtils.add_path?( source ) }
 
+    # A directive's own text is written directly in the test file, so its `..`, if
+    # any, is anchored to that same test file's own directory -- exactly as a
+    # directory-relative #include would be.
+    anchor = File.dirname( test_filepath )
+
     find = -> (source) {
+      stripped = FilePathUtils.no_aggregation_decorators( source )
       @file_finder.find_build_input_file(
-        filepath: FilePathUtils.no_aggregation_decorators( source ),
+        filepath: PathMatcher.resolve_relative( stripped, anchor: anchor ),
         complain: :ignore,
         context:  context
       )
