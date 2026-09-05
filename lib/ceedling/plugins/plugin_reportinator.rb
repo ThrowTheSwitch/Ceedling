@@ -39,6 +39,34 @@ class PluginReportinator
     return @reportinator.generate_heading(message)
   end
 
+  # Common preamble values every stdout test-results template needs before
+  # rendering -- centralized so sibling templates can't silently drift the
+  # way two of them once did over which of these values got computed at all.
+  def test_report_preamble(hash)
+    {
+      ignored:        hash[:results][:counts][:ignored],
+      failed:         hash[:results][:counts][:failed],
+      stdout_count:   hash[:results][:counts][:stdout],
+      header_prepend: (hash[:context] != TEST_SYM ? "#{hash[:context].to_s.upcase}: " : '')
+    }
+  end
+
+  # Reflows a possibly multi-line failure/ignore message so every physical
+  # line stays useful to whichever format is rendering it -- one template
+  # passes plain spaces to align continuation lines under a text header;
+  # another passes a repeated "file:line:test: " prefix so every line
+  # remains its own clickable reference.
+  def reflow_message(message, continuation_prefix)
+    message.each_line(chomp: true).with_index.map { |line, i| i.zero? ? line : continuation_prefix + line }.join("\n")
+  end
+
+  # Color-decorates summary-banner text green/red by overall pass/fail
+  # outcome -- shared so no sibling template can silently omit this the way
+  # one once did.
+  def decorate_summary_banner(text, failed_count)
+    @loginator.decorate(text, failed_count > 0 ? LogLabels::FAIL : LogLabels::PASS)
+  end
+
   ##
   ## Sample Test Results Output File (YAML)
   ## ======================================
