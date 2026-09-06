@@ -14,10 +14,12 @@
 #   and release.yml, which trigger only on intentional Git tags.
 #
 # Triggers:
-#   - Push to any branch
+#   - Push to a long-lived integration branch (master, next_version) only —
+#     a feature/topic branch gets checks exclusively through the pull_request
+#     event once a PR exists (see the push: trigger below for why)
 #   - Pull request targeting any branch (a PR can be opened against any
 #     integration branch, not just master, as the project matures multiple
-#     branches at once)
+#     branches at once); skipped for a still-draft PR until marked ready
 #   - Manual dispatch (workflow_dispatch)
 #
 # Skip-CI:
@@ -33,13 +35,22 @@
 ---
 name: CI
 
-# Triggers the workflow on push to any branch (tag pushes excluded — handled by
-# prerelease.yml and release.yml), pull requests targeting any branch, or manual dispatch
+# Triggers the workflow on push to a long-lived integration branch (tag pushes
+# excluded — handled by prerelease.yml and release.yml), pull requests targeting
+# any branch, or manual dispatch
 on:
   push:
-    branches:
-      - '**'             # All branches; branches: ['**'] scopes push to refs/heads/ only,
-                         # excluding refs/tags/ pushes — see Skip-CI above
+    # Deliberately narrow, not '**': a feature/topic branch's own push event used
+    # to also trigger this workflow, so a push immediately followed by opening a
+    # PR from it fired two runs for the identical commit -- push and pull_request
+    # are independent, asynchronously-fired events with no ordering guarantee
+    # between them, so no point-in-time check on either side can reliably catch
+    # this before the fact (see the concurrency: block below for the backstop
+    # that still exists for whatever this doesn't prevent). Scoping push: to only
+    # the branches that are never themselves the source of a PR removes the
+    # redundant trigger at its source instead: a feature branch now gets CI
+    # exactly once, via the PR opened from it.
+    branches: [master, next_version]
   pull_request:
     # No branch restriction: a PR merging into any branch gets checks. The one
     # exclusion is gh-pages, which only ever receives generated site output and
@@ -74,6 +85,12 @@ jobs:
   # Job: Build MkDocs HTML documentation bundle for gem inclusion
   generate-docs:
     name: "Generate Local Docs Bundle for Gem Inclusion"
+    # pull_request fires for a draft PR the same as a ready one; github.event.pull_request
+    # is only ever populated on that event type, so this has no effect on push or
+    # workflow_dispatch runs. Holds off the full matrix's cost until a PR is actually
+    # ready for review -- a draft's own incremental commits get this workflow's checks
+    # for free the moment it's marked ready, no separate action needed.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     uses: ./.github/workflows/_generate-docs.yml
 
 
@@ -81,6 +98,11 @@ jobs:
   tests-linux:
     name: "Linux Test Suite"
     needs: generate-docs
+    # success() is spelled out explicitly here (not left implicit) because a custom
+    # if: replaces GitHub's default success()-on-needs: check entirely rather than
+    # being ANDed with it -- every job below with a needs: dependency carries this
+    # same explicit success() alongside its own draft-PR guard for that reason.
+    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -238,6 +260,7 @@ jobs:
   tests-windows:
     name: "Windows Test Suite"
     needs: generate-docs
+    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -321,6 +344,7 @@ jobs:
   tests-macos:
     name: "macOS Test Suite"
     needs: generate-docs
+    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -408,6 +432,7 @@ jobs:
   # a path-based Bundler deployment (deploy_gem) that does not require a gem build.
   tests-linux-locale:
     name: "Linux Test Suite (ja_JP.UTF-8 Locale)"
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v6
@@ -479,6 +504,7 @@ jobs:
   # deployment (deploy_gem) that does not require a gem build.
   tests-linux-encoding-stress:
     name: "Linux Encoding Stress Test (C/POSIX)"
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v6
@@ -553,6 +579,7 @@ jobs:
       - tests-macos
       - tests-linux-locale
       - tests-linux-encoding-stress
+    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
 
     steps:
