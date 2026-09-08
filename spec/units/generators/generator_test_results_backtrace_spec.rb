@@ -379,6 +379,32 @@ describe GeneratorTestResultsBacktrace do
       expect(crash_line).not_to include('failed to extract')
     end
 
+    # #1266 follow-on: the same unanchored-substring risk class as #1262/#1266, here in the
+    # "prefer whichever unresolved member's own symbol is named in the backtrace" search --
+    # no \b before the escaped symbol, so a shorter unresolved symbol that's a suffix of a
+    # longer one actually named in the crash frame can false-match and steal the attribution.
+    it 'attributes a crash to the member whose symbol actually appears in the backtrace, not a shorter symbol that is merely its suffix' do
+      test_cases_suffix = [
+        { test: 'test_x(1)', symbol: 'foo',    line_number: 10 },
+        { test: 'test_x(2)', symbol: 'my_foo', line_number: 20 }
+      ]
+      filename_suffix = 'test_module.c'
+
+      crash_output = <<~GDB
+        Program received signal SIGSEGV, Segmentation fault.
+        0x00005618066ea1fb in my_foo () at test/test_module.c:42
+        #0  0x00005618066ea1fb in my_foo () at test/test_module.c:42
+      GDB
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: crash_output, time: 0.5, exit_code: 139, stderr: '', status: @ok_status })
+
+      expect(@file_wrapper).to receive(:write)
+        .with('/build/logs/test/test_module/test_x(2).gdb.log', /=== test_x\(2\) ===/, 'a')
+
+      @backtrace.do_gdb( filename_suffix, executable, shell_result, test_cases_suffix, context: :test )
+    end
+
     it 'handles a SIGABRT crash from assert() — shows assertion text, no source line' do
       test_cases_assert = [{ test: 'test_asserting', symbol: 'test_asserting', line_number: 8 }]
 

@@ -52,6 +52,22 @@ describe CExtractorDeclarations do
         expect(rest).to eq("")
       end
 
+      # #1266 follow-on: same unanchored-substring risk class as #1262/#1266. The type-side
+      # identifier "counter_t" itself contains "count" as a substring; a plain rindex(name)
+      # would still find the real trailing occurrence here (rindex searches right-to-left),
+      # but this pins down that the \b-anchored match extract_type now uses doesn't regress
+      # this ordinary case, where the type name happens to share a substring with the
+      # declared name.
+      it "extracts a variable whose type name contains the variable's own name as a substring" do
+        content = "counter_t count;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'count', type: 'counter_t', text: 'counter_t count;')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
       it "extracts simple char variable" do
         content = "char c;"
         success, variable, pos, rest = extract_variable.call(content)

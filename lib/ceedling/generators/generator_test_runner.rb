@@ -129,7 +129,11 @@ class GeneratorTestRunner
       break if remaining.empty?
 
       next_case = remaining.first
-      if (line =~ /#{next_case[:test]}/)
+      # Escaped (a raw test name can contain regex metacharacters) and \b-anchored on both
+      # sides so an unrelated line that merely contains this test's name as a substring --
+      # e.g. a helper function like `reset_test_ab_state()` sitting before `test_ab` itself
+      # -- can't steal its line number and cascade misalignment to every case after it.
+      if (line =~ /\b#{Regexp.escape(next_case[:test])}\b/)
         next_case[:line_number] = line_num
         remaining.shift
       end
