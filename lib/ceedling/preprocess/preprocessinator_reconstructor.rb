@@ -237,8 +237,15 @@ class PreprocessinatorReconstructor
   def extract_macro_defs(file_contents, include_guard)
     macro_definitions = extract_multiline_directives( file_contents, 'define' )
 
-    # Remove an include guard if provided
-    macro_definitions.reject! {|macro| macro.include?( include_guard ) } if !include_guard.nil?
+    # Remove an include guard if provided. A plain substring test here would also reject
+    # any ordinary macro whose name or value happens to contain the guard string -- e.g.
+    # guard RTC_H matching inside RTC_HOUR_SECONDS' own name, or inside RTC_DAY_SECONDS'
+    # value, which references RTC_HOUR_SECONDS (GH #1266). Anchoring to "#define <guard>"
+    # followed by whitespace or end-of-line only matches the guard definition itself.
+    if !include_guard.nil?
+      include_guard_regex = /^\s*#\s*define\s+#{Regexp.escape(include_guard)}(?:\s|$)/
+      macro_definitions.reject! {|macro| macro =~ include_guard_regex }
+    end
 
     return macro_definitions
   end
