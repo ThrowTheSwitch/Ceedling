@@ -116,6 +116,9 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 ## 💪 Fixed
 
+- Fixed a crashed test case in a parameterized group occasionally being misattributed to a different, shorter-named test case in the same group whose name happened to be a substring of the one actually named in the crash backtrace.
+- Fixed a test case's line number occasionally being misattributed to an unrelated helper function whose name merely contained the test's name as a substring, cascading incorrect line numbers to every test case after it in the same file.
+
 ### Partials
 
 - [#1262](https://github.com/ThrowTheSwitch/Ceedling/issues/1262) Fixed a Partials-generated header occasionally concatenating two adjacent `#define` lines in one line causing a stray '#' compilation error. The triggering condition involved a `//` or `/* */` comment containing an apostrophe or quote (e.g. `// Don't ...`) that disrupted string literal handling.
