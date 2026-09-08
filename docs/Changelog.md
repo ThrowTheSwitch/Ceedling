@@ -116,6 +116,10 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 ## 💪 Fixed
 
+### Partials
+
+- [#1262](https://github.com/ThrowTheSwitch/Ceedling/issues/1262) Fixed a Partials-generated header occasionally concatenating two adjacent `#define` lines in one line causing a stray '#' compilation error. The triggering condition involved a `//` or `/* */` comment containing an apostrophe or quote (e.g. `// Don't ...`) that disrupted string literal handling.
+
 ### Gcov plugin
 
 - Fixed `:gcov ↳ :gcovr ↳ :decisions` reporting an incorrect minimum-version requirement; the version check (and docs) now correctly require `gcovr` 5.1 or higher.

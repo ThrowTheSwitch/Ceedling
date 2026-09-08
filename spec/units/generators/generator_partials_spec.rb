@@ -397,6 +397,56 @@ describe GeneratorPartials do
 
       expect( buf.string ).to_not include("#define FOO 1")
     end
+
+    # #1262: two consecutive typedefs (no macro carry-forward involved at
+    # all) had no byte-exact adjacency coverage -- only the macro-before-
+    # typedef pending_macros path did.
+    it "emits two consecutive typedefs each on their own line" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      typedef_a = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+      typedef_b = CExtractorTypes::CStatement.new(text: "typedef uint16_t Word;", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions: [typedef_a, typedef_b],
+        element_sequence: [typedef_a, typedef_b]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to include( "typedef uint8_t Byte;\ntypedef uint16_t Word;\n" )
+    end
+
+    # #1262: same gap for two consecutive aggregate definitions.
+    it "emits two consecutive aggregate definitions each on their own line" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      aggregate_a = CExtractorTypes::CStatement.new(text: "struct Point { int x; int y; };", line_num: 1)
+      aggregate_b = CExtractorTypes::CStatement.new(text: "struct Color { int r; int g; int b; };", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        aggregate_definitions: [aggregate_a, aggregate_b],
+        element_sequence:      [aggregate_a, aggregate_b]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to include( "struct Point { int x; int y; };\nstruct Color { int r; int g; int b; };\n" )
+    end
   end
 
   context "#generate_header (private method)" do
@@ -553,6 +603,54 @@ describe GeneratorPartials do
 
       @generator.send(:generate_header, buf, 'defs', [], [], c_module, false)
       expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    # #1262: a header with several single-line macros in a row and nothing
+    # type-defining after them (so generate_types never runs at all, per its
+    # own empty-module guard) is the ordinary, ungoverned case -- every macro
+    # here goes through this inline CStatement branch, not generate_types'
+    # own carry-forward logic, which already had its own adjacency coverage.
+    it "emits three consecutive macros each on their own line, with nothing following them" do
+      file_contents = <<~CONTENTS
+      #ifndef __CEEDLING_GENERATED_REGS_H__
+      #define __CEEDLING_GENERATED_REGS_H__
+
+      #define START_ADDRESS 0x00
+      #define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)
+      #define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)
+
+      #endif // __CEEDLING_GENERATED_REGS_H__
+
+      CONTENTS
+
+      c_module = make_module(
+        make_stmt(text: "#define START_ADDRESS 0x00", line_num: 1),
+        make_stmt(text: "#define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)", line_num: 2),
+        make_stmt(text: "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)", line_num: 3)
+      )
+
+      @generator.send(:generate_header, buf, 'regs', [], [], c_module, false)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    # #1262 regression: the actual reported shape -- one macro's trailing // comment
+    # includes an apostrophe. Extraction is what previously merged the macros (see
+    # c_extractor specs); this confirms generate_header still emits each item's text,
+    # comment included, on its own line once extraction is correct.
+    it "emits each macro on its own line even when one has a trailing comment with an apostrophe (GH #1262)" do
+      c_module = make_module(
+        make_stmt(text: "#define START_ADDRESS 0x00 // don't change this", line_num: 1),
+        make_stmt(text: "#define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)", line_num: 2),
+        make_stmt(text: "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)", line_num: 3)
+      )
+
+      @generator.send(:generate_header, buf, 'regs', [], [], c_module, false)
+
+      expect( buf.string ).to include(
+        "#define START_ADDRESS 0x00 // don't change this\n" +
+        "#define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)\n" +
+        "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)\n"
+      )
     end
 
     it "should emit macro and variable statements inline while routing typedefs and aggregates to the shared types header" do

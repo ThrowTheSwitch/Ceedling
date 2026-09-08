@@ -336,6 +336,51 @@ describe CExtractorPreprocessing do
       expect(pos).to eq "#define FOO 1\n".length
     end
 
+    # --- Regression: GH #1262 — a trailing // comment's apostrophe/quote merges
+    # the next directive into this one ---
+    # A '\'' or '"' inside an ordinary // comment (e.g. an English contraction
+    # like "don't") is not a string/char literal delimiter. Scanned as one
+    # anyway, it sends skip_c_string hunting for a closing match straight through
+    # this directive's own newline and into whatever follows, silently merging
+    # the next #define's text (and losing the newline between them) into this one.
+
+    it "extracts a #define with a trailing // comment containing an apostrophe" do
+      input = "#define START_ADDRESS 0x00 // don't change this\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input.rstrip]
+      expect(pos).to eq input.length
+    end
+
+    it "does not consume a following #define after a // comment containing an apostrophe" do
+      input = "#define START_ADDRESS 0x00 // don't change this\n#define IDX 1\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, "#define START_ADDRESS 0x00 // don't change this"]
+      expect(pos).to eq "#define START_ADDRESS 0x00 // don't change this\n".length
+    end
+
+    it "does not consume a following #define after a // comment containing a double quote" do
+      input = %(#define LABEL "unbalanced) + %( quote in a comment: "\n#define IDX 1\n)
+      result, pos = try_directive(input)
+      expect(result[0]).to eq true
+      expect(result[1]).to start_with('#define LABEL')
+      expect(pos).to be < input.length
+      expect(input[pos..]).to eq "#define IDX 1\n"
+    end
+
+    it "extracts a #define with a trailing /* */ comment containing an apostrophe" do
+      input = "#define START_ADDRESS 0x00 /* don't change this */\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input.rstrip]
+      expect(pos).to eq input.length
+    end
+
+    it "carries a directive across physical lines when a // comment's own line ends in a backslash" do
+      input = "#define MACRO(x) \\\n  // comment continues \\\n  do_thing(x);\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input.rstrip]
+      expect(pos).to eq input.length
+    end
+
     it "leaves scanner position unchanged on failure" do
       scanner = StringScanner.new("int x;")
       scanner.pos = 0
