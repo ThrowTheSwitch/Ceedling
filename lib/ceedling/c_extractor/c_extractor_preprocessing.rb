@@ -241,9 +241,46 @@ class CExtractorPreprocessing
     text = scanner.scan(/#/)
 
     until scanner.eos?
-      text << (scanner.scan(/[^"'\\\n]*/) || '')
+      # '/' is excluded here (alongside the quote/backslash/newline characters
+      # already excluded) so a comment marker is never swallowed into this plain
+      # literal run -- it has to be seen and dispatched on its own below, before
+      # any '"' or "'" inside the comment's own text gets mistaken for the start
+      # of a string/char literal (see the // and /* branches for why that matters).
+      text << (scanner.scan(/[^"'\\\n\/]*/) || '')
 
-      if (ch = scanner.peek(1)) == '"' || ch == "'"
+      if scanner.scan(%r{//})
+        # A trailing line comment (e.g. "// don't change this") can contain an
+        # apostrophe or quote that isn't a literal delimiter at all. Consumed the
+        # ordinary way, that stray quote would send skip_c_string hunting for a
+        # closing match, straight through this directive's own newline and into
+        # whatever follows -- silently merging the next #define into this one.
+        # Comment content is captured verbatim and never scanned for literals.
+        #
+        # A '\' immediately before the physical newline still splices lines here,
+        # same as everywhere else in a directive (line splicing is a translation
+        # phase that happens before comments are stripped), so the comment -- and
+        # the directive -- keeps going onto the next physical line rather than
+        # ending at that newline.
+        before = scanner.pos - 2
+        loop do
+          scanner.scan(/[^\\\n]*/)
+          break if scanner.eos?
+          break unless scanner.scan(/\\\n/) || scanner.scan(/\\/)
+        end
+        text << scanner.string[before...scanner.pos]
+
+      elsif scanner.scan(%r{/\*})
+        # A block comment can legitimately span physical lines without ending the
+        # directive (only an un-commented newline does that) -- its content, quotes
+        # included, is likewise never scanned for literals, only for its own close.
+        before = scanner.pos - 2
+        scanner.skip_until(%r{\*/}) || scanner.terminate
+        text << scanner.string[before...scanner.pos]
+
+      elsif scanner.scan(%r{/})
+        text << '/'
+
+      elsif (ch = scanner.peek(1)) == '"' || ch == "'"
         before = scanner.pos
         @c_extractor_code_text.skip_c_string(scanner, ch)
         text << scanner.string[before...scanner.pos]
