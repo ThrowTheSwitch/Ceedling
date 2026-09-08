@@ -120,6 +120,10 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 - [#1262](https://github.com/ThrowTheSwitch/Ceedling/issues/1262) Fixed a Partials-generated header occasionally concatenating two adjacent `#define` lines in one line causing a stray '#' compilation error. The triggering condition involved a `//` or `/* */` comment containing an apostrophe or quote (e.g. `// Don't ...`) that disrupted string literal handling.
 
+### Preprocessing
+
+- [#1266](https://github.com/ThrowTheSwitch/Ceedling/issues/1266) Fixed a reconstructed header silently dropping any macro whose name or value merely contained the header's own include guard as a substring (e.g. guard `RTC_H` matching inside `RTC_HOUR_SECONDS`), causing undeclared-identifier compile errors.
+
 ### Gcov plugin
 
 - Fixed `:gcov ↳ :gcovr ↳ :decisions` reporting an incorrect minimum-version requirement; the version check (and docs) now correctly require `gcovr` 5.1 or higher.

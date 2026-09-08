@@ -823,6 +823,45 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_macro_defs( file_text, '_INCLUDE_GUARD_' ) ).to eq expected
     end
 
+    # #1266: a plain substring test against the include guard rejected any macro whose
+    # name OR value merely contained the guard string, not only the guard macro itself.
+    # RTC_HOUR_SECONDS' own name contains the guard "RTC_H", and RTC_DAY_SECONDS'
+    # *value* references RTC_HOUR_SECONDS, so its captured text also contains "RTC_H" --
+    # both were silently dropped from the reconstructed header, breaking compilation.
+    it "does not reject an ordinary macro whose name or value merely contains the include guard as a substring (GH #1266)" do
+      file_text = <<~FILE_TEXT
+        #ifndef RTC_H
+        #define RTC_H
+
+        #define RTC_MINUTE_SECONDS 60u
+        #define RTC_HOUR_SECONDS (60u * RTC_MINUTE_SECONDS)
+        #define RTC_DAY_SECONDS (24u * RTC_HOUR_SECONDS)
+
+        #endif
+      FILE_TEXT
+
+      expected = [
+        "#define RTC_MINUTE_SECONDS 60u",
+        "#define RTC_HOUR_SECONDS (60u * RTC_MINUTE_SECONDS)",
+        "#define RTC_DAY_SECONDS (24u * RTC_HOUR_SECONDS)"
+      ]
+
+      expect( @extractor.extract_macro_defs( file_text, 'RTC_H' ) ).to eq expected
+    end
+
+    it "still rejects the include guard when it appears with trailing whitespace instead of a value" do
+      file_text = <<~FILE_TEXT
+        #ifndef RTC_H
+        #define RTC_H
+
+        #define RTC_MINUTE_SECONDS 60u
+      FILE_TEXT
+
+      expected = [ "#define RTC_MINUTE_SECONDS 60u" ]
+
+      expect( @extractor.extract_macro_defs( file_text, 'RTC_H' ) ).to eq expected
+    end
+
   end
 
   context "#compact_file_from_expansion" do
