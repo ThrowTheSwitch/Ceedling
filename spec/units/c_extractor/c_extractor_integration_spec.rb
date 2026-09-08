@@ -565,6 +565,59 @@ describe CExtractor do
       expect( contents.variable_declarations.length ).to eq 0
     end
 
+    # #1262: Partials-generated headers occasionally concatenated two adjacent
+    # #define lines onto one physical line. Reconstructing the joined text
+    # from element_sequence (as generator_partials.rb does) rules the plain,
+    # comment-free case in or out formally, rather than by inspection of
+    # #_collect_directive alone. This shape -- three plain register-offset
+    # macros in a row, no comments -- is expected to reconstruct cleanly.
+    it "reconstructs three adjacent plain #define macros joined by newlines with no text lost between them" do
+      file_contents = <<~'CONTENTS'
+      #define START_ADDRESS 0x00
+      #define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)
+      #define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect( contents.macro_definitions.length ).to eq 3
+      joined = contents.element_sequence.map(&:text).join("\n")
+      expect( joined ).to eq(
+        "#define START_ADDRESS 0x00\n" +
+        "#define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)\n" +
+        "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)"
+      )
+    end
+
+    # #1262's actual reported trigger: a trailing // comment on one #define containing
+    # an ordinary English contraction. The stray apostrophe used to be scanned as the
+    # start of a char literal, sending the directive scanner hunting for a closing
+    # match straight through this macro's own newline and into the next two #defines
+    # -- merging all three into one macro_definitions entry with no separating newline,
+    # which is exactly what later caused Partials-generated headers to concatenate two
+    # #define lines onto one physical line ("stray '#' in program").
+    it "reconstructs three adjacent #define macros when one has a trailing comment with an apostrophe" do
+      file_contents = <<~'CONTENTS'
+      #define START_ADDRESS 0x00 // don't change this
+      #define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)
+      #define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect( contents.macro_definitions.length ).to eq 3
+      expect( contents.macro_definitions[0].text ).to eq "#define START_ADDRESS 0x00 // don't change this"
+      expect( contents.macro_definitions[1].text ).to eq "#define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)"
+      expect( contents.macro_definitions[2].text ).to eq "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)"
+
+      joined = contents.element_sequence.map(&:text).join("\n")
+      expect( joined ).to eq(
+        "#define START_ADDRESS 0x00 // don't change this\n" +
+        "#define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)\n" +
+        "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)"
+      )
+    end
+
     it "should extract a function definition following a #define with an escaped character in a string literal (GH #1184)" do
       file_contents = <<~'CONTENTS'
       #include "world.h"
