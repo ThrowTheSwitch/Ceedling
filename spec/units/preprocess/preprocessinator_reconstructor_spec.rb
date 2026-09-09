@@ -211,6 +211,41 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
     end
   
+    # #1268: GCC's -fdirectives-only output preserves the ORIGINAL indentation of a
+    # top-level #include when it replaces that directive with a line marker entering
+    # the included file -- e.g. a source line "    #include \"Module3.h\"" produces
+    # "    # 1 \"Module3.h\" 1", not the flush-left "# 1 ..." this method's marker
+    # regexes assumed every marker would be. An unrecognized entering-marker leaves
+    # `extract` stuck at whatever it already was instead of turning off, so the
+    # marker line itself (and everything up to the NEXT recognized marker, e.g. one
+    # from a nested system include triggered from inside the ignored file) leaks into
+    # the extracted output before the ping-pong finally self-corrects.
+    it "does not leak file content when the marker entering an included file is itself indented" do
+      filepath = "dir/our_file.c"
+
+      file_contents = [
+        '# 1 "dir/our_file.c"',
+        'void wanted_before(void);',
+        '    # 1 "dir/included.h" 1',        # indented entering-marker (leading whitespace from source)
+        'int leaked_from_included_h;',
+        '# 1 "/usr/include/nested.h" 1 3 4',  # a normal, flush-left marker from within included.h
+        'int also_should_not_leak;',
+        '# 2 "dir/included.h" 2',             # returning from nested.h back into included.h (still not our file)
+        'int still_should_not_leak;',
+        '# 3 "dir/our_file.c" 2',             # returning to our file
+        'void wanted_after(void);',
+      ]
+
+      expected = [
+        'void wanted_before(void);',
+        'void wanted_after(void);',
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
     it "should extract text of original file from preprocessed expansion ignoring embedded expansions having similar names" do
       filepath = "dir1/dir2/our_file.c"
       
