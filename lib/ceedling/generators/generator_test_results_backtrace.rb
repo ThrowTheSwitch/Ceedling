@@ -95,9 +95,11 @@ class GeneratorTestResultsBacktrace
         # Prefer whichever unresolved member's own C symbol is actually named in the gdb
         # backtrace (works regardless of position in the group); fall back to the first
         # unresolved member if no member's symbol can be found in the transcript (e.g. a
-        # brief crash report with no frame information at all).
+        # brief crash report with no frame information at all). \b anchors the symbol so a
+        # shorter unresolved symbol that's merely a suffix of a longer one actually named in
+        # the frame (e.g. "foo" vs "my_foo") can't steal the attribution.
         crashed_case = unresolved.find do |tc|
-          crash_result[:output].match?( /#{Regexp.escape(tc[:symbol])}\s*\(\)\sat/ )
+          crash_result[:output].match?( /\b#{Regexp.escape(tc[:symbol])}\s*\(\)\sat/ )
         end
         crashed_case ||= unresolved.first
 
@@ -458,7 +460,7 @@ class GeneratorTestResultsBacktrace
     output.lines.filter_map do |line|
       line = line.strip
       next if line.empty?
-      next if line =~ /^#{filename}.+:(PASS|FAIL|IGNORE)/
+      next if line =~ /^#{Regexp.escape(filename)}.+:(PASS|FAIL|IGNORE)/
       line
     end
   end

@@ -86,6 +86,29 @@ describe GeneratorTestRunner do
 
       expect( test_cases.first[:line_number] ).to eq( 5 )
     end
+
+    # #1266 follow-on: the same unanchored-substring risk class as #1262/#1266. A static
+    # helper function between two test cases whose name merely contains a later test's
+    # name as a substring (here "test_ab" inside "reset_test_ab_state") must not steal
+    # that test's line number, and an unescaped test name must not be treated as a regex.
+    it 'does not false-match a test name against an unrelated line that merely contains it as a substring' do
+      source = <<~SOURCE
+        void test_a(void) {}
+        void reset_test_ab_state(void) {}
+        void test_ab(void) {}
+      SOURCE
+
+      runner = build_runner( test_file_contents: source, preprocessed_file_contents: source )
+      test_cases = [
+        { test: 'test_a',  line_number: 0 },
+        { test: 'test_ab', line_number: 0 }
+      ]
+
+      runner.send( :remap_line_numbers!, test_cases, source )
+
+      expect( test_cases[0][:line_number] ).to eq( 1 )
+      expect( test_cases[1][:line_number] ).to eq( 3 )
+    end
   end
 
   describe '#initialize / #test_cases' do
