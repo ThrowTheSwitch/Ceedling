@@ -126,6 +126,7 @@ Historically, Ceedling automatically compiles and links into a test executable a
 ### Preprocessing
 
 - [#1266](https://github.com/ThrowTheSwitch/Ceedling/issues/1266) Fixed a reconstructed header silently dropping any macro whose name or value merely contained the header's own include guard as a substring (e.g. guard `RTC_H` matching inside `RTC_HOUR_SECONDS`), causing undeclared-identifier compile errors.
+- [#1268](https://github.com/ThrowTheSwitch/Ceedling/issues/1268) Fixed a mockable header's `#include` losing the enums, structs, and function prototypes of a conditionally-included file (only its macros survived) when that `#include` was indented inside its `#ifdef` block, causing undeclared-identifier compile errors.
 
 ### Gcov plugin
 
