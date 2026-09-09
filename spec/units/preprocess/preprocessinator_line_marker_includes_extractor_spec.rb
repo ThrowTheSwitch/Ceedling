@@ -68,6 +68,23 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
       expect( paths_of(includes) ).to eq( ['widget.h'] )
     end
 
+    # #1268: GCC's -fdirectives-only output preserves the ORIGINAL indentation of a
+    # top-level #include when it replaces that directive with a line marker entering
+    # the included file -- an indented `    #include "widget.h"` produces an indented
+    # `    # 1 "widget.h" 1`, not the flush-left marker every other marker GCC
+    # generates uses. LINE_MARKER_REGEX must recognize that marker too, or the include
+    # is silently missing from the extracted list entirely.
+    it 'recognizes a line marker that is itself indented (e.g. from an indented #include)' do
+      content = <<~OUTPUT
+        # 1 "test.c"
+            # 1 "widget.h" 1
+      OUTPUT
+
+      includes = @extractor.extract_includes_from_string( content, 'test.c', described_class::USER )
+
+      expect( paths_of(includes) ).to eq( ['widget.h'] )
+    end
+
     it 'extracts only non-system (flag 3 absent) includes for USER type' do
       content = <<~OUTPUT
         # 1 "test.c"

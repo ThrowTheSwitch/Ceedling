@@ -279,10 +279,16 @@ class PreprocessinatorReconstructor
   def _scan_expansion_for_file(input, filepath, &block)
     # Expand filepath under inspection to ensure proper match
     extraction_filepath = File.expand_path( filepath )
-    # Preprocessor directive blocks generally take the form of '# <digits> <text> [optional digits]'
-    directive   = /^# \d+ \"/
+    # Preprocessor directive blocks generally take the form of '# <digits> <text> [optional digits]'.
+    # Leading whitespace is tolerated (`^\s*`, not just `^`): GCC's -fdirectives-only output
+    # replaces a top-level #include with a line marker that inherits that #include's own
+    # original indentation (GH #1268) -- an indented `#include "x.h"` produces an indented
+    # `    # 1 "x.h" 1`, not the flush-left marker every OTHER marker GCC generates uses.
+    # Failing to recognize such a marker here leaves `extract` stuck at whatever it already
+    # was instead of correctly toggling off, leaking the ignored file's content into output.
+    directive   = /^\s*# \d+ \"/
     # Line markers have the specific form of '# <digits> "path/filename.ext" [optional digits]' (see above)
-    line_marker = /^#\s(\d+)\s\"(.+)\"/
+    line_marker = /^\s*#\s(\d+)\s\"(.+)\"/
     # Boolean to ping pong between line-by-line extract/ignore
     extract = false
 
