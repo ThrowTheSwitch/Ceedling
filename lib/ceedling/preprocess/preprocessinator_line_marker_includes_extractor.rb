@@ -82,7 +82,12 @@ require 'set'
 
 # Parse GCC preprocessor output (from -fdirectives-only) to extract system include directives
 class PreprocessinatorLineMarkerIncludesExtractor
-  LINE_MARKER_REGEX = /^#\s+(\d+)\s+"([^"]+)"(?:\s+(\d+(?:\s+\d+)*))?$/ unless const_defined?(:LINE_MARKER_REGEX)
+  # Leading whitespace is tolerated (`^\s*`, not just `^`): GCC's -fdirectives-only output
+  # replaces a top-level #include with a line marker that inherits that #include's own
+  # original indentation (GH #1268) -- an indented `#include "x.h"` produces an indented
+  # `    # 1 "x.h" 1`, not the flush-left marker every OTHER marker GCC generates uses.
+  # Without this, such an include is silently missing from the extracted list entirely.
+  LINE_MARKER_REGEX = /^\s*#\s+(\d+)\s+"([^"]+)"(?:\s+(\d+(?:\s+\d+)*))?$/ unless const_defined?(:LINE_MARKER_REGEX)
 
   SYSTEM = :system  unless const_defined?(:SYSTEM)
   USER   = :user    unless const_defined?(:USER)
