@@ -402,16 +402,17 @@ class CExtractorDeclarations
       return $1.strip
     end
 
-    # Find the name in the text and take everything before it (including pointer specifiers)
-    idx = text.rindex(name)
-    return nil if idx.nil?
+    # Find the name in the text and take everything before it (including pointer specifiers).
+    # A plain rindex(name) would find the last substring occurrence of `name` anywhere in
+    # text, even inside an unrelated longer identifier that merely ends with it (e.g. `name`
+    # "count" inside a type-side identifier like "recount") -- \b anchors this to a whole
+    # identifier occurrence. Greedy `.*` in a single match (not scan) naturally finds the
+    # rightmost such occurrence, since it consumes as much as possible before backtracking
+    # just enough to let the trailing \bname\b still match.
+    match = text.match(/\A(.*)\b#{Regexp.escape(name)}\b/m)
+    return nil if match.nil?
 
-    type_part = text[0...idx]
-    # Include any pointer specifiers attached to the name
-    if text[idx..] =~ /^#{Regexp.escape(name)}/
-      # Look for * immediately before name (with optional space)
-      type_part = type_part.rstrip
-    end
+    type_part = match[1]
     type_part.strip
   end
 
