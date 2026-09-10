@@ -132,7 +132,92 @@ class PreprocessinatorLineMarkerIncludesExtractor
     return extract_includes(io: io, filepath: filepath, type: type, max_depth: max_depth, test: test)
   end
 
+  # Correlate `-fdirectives-only` entering line markers back to the raw source lines
+  # that produced them, for a set of lines of interest. Used to recover GCC's own
+  # resolution of an `#include` whose target is a macro invocation: the directive
+  # carries no literal filename to scan for, but the accurate directives-only pass
+  # still resolves it and emits an ordinary entering marker for the header.
+  #
+  # @param preprocessed_filepath [String] raw directives-only output (line markers
+  #   intact, comments stripped or not -- physical line count is 1:1 with the source
+  #   either way, which is all this walk needs)
+  # @param source_basename [String] basename of the original source file, used to
+  #   recognize its own line markers in the stream
+  # @param source_lines [Enumerable<Integer>] 1-indexed source line numbers to report
+  #   a resolution for (the lines carrying a non-literal `#include`)
+  # @return [Hash{Integer => String}] source line number => path GCC resolved that
+  #   line's `#include` to; only lines that actually produced an entering marker appear
+  def resolve_computed_includes(preprocessed_filepath:, source_basename:, source_lines:)
+    wanted = source_lines.to_a
+    return {} if wanted.empty?
+
+    begin
+      # Binary mode for the same reason extract_includes_from_file uses it: GCC output
+      # under a non-C locale carries non-ASCII bytes, and \r\n must survive untranslated
+      # for the per-line chomp! below to normalize.
+      @file_wrapper.open( preprocessed_filepath, 'rb' ) do |file|
+        return correlate_computed_includes( io: file, source_basename: source_basename, wanted: Set.new( wanted ) )
+      end
+    rescue StandardError => e
+      raise CeedlingException.new("Failed to correlate computed #includes from preprocessor output file '#{preprocessed_filepath}' ⏩️ #{e.message}")
+    end
+  end
+
   private
+
+  # Walk the directives-only stream tracking which source line of the file of interest
+  # the current physical line maps to, and report the resolved path for every entering
+  # marker attributed to a `wanted` source line.
+  #
+  # `src_line` names the source line the NEXT non-marker physical line will be. A
+  # `# n "<file of interest>"` marker sets it to `n`; each subsequent body line of that
+  # file bumps it by one. The macro-target `#include` directive is REPLACED by the
+  # entering marker for the header it pulled in, so it never shows up as a body line --
+  # `src_line` therefore still reads that directive's own line number when its entering
+  # marker appears. Body lines and markers of any OTHER file are skipped entirely, so
+  # a header's own nesting can't drift the count.
+  def correlate_computed_includes(io:, source_basename:, wanted:)
+    resolved = {}
+    in_file_of_interest = false
+    src_line = 0
+
+    io.each_line do |line|
+      line.chomp!
+
+      match = LINE_MARKER_REGEX.match(line)
+
+      # A non-marker line advances the counter only while inside the file of interest.
+      unless match
+        src_line += 1 if in_file_of_interest
+        next
+      end
+
+      marker_path = match[2]
+      next if marker_path.start_with?('<')  # <built-in>, <command-line>
+
+      marker_path = PathMatcher.resolve_relative(marker_path, anchor: '')
+      flags = match[3] ? match[3].split.map(&:to_i) : []
+
+      if File.basename(marker_path) == source_basename
+        # Entering or resuming the file of interest: its own markers carry the
+        # authoritative line number for whatever comes next.
+        src_line = match[1].to_i
+        in_file_of_interest = true
+      elsif in_file_of_interest && flags.include?(1)
+        # An entering marker for another file, standing in for a directive on the
+        # file-of-interest line the counter currently names.
+        resolved[src_line] = marker_path if wanted.include?(src_line)
+        in_file_of_interest = false
+      else
+        # Any other marker (returning to an intermediate header, a nested entry):
+        # we're no longer tracking file-of-interest body lines until its own marker
+        # brings us back.
+        in_file_of_interest = false
+      end
+    end
+
+    resolved
+  end
 
   def validate_type_argument(type)
     unless [SYSTEM, USER].include?(type)

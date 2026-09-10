@@ -43,7 +43,7 @@ class PreprocessinatorIncludesHandler
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
     # Creation:
-    #  - This output is created with the -MM -MG -MP command line options.
+    #  - This output is created with the -M -MG -MP command line options.
     #  - Limited search paths are used towards shallow extracting of only the user #include statements of the file.
     #    This preprocessor mode assumes any includes discovered outside of a search path will be generated.
     #
@@ -181,6 +181,35 @@ class PreprocessinatorIncludesHandler
     clean_self_reference( filepath, includes )
   end
 
+  # Resolve every `#include` in the original file whose target is a macro invocation
+  # rather than a literal `"..."` / `<...>` filename. Neither bare pass above can see
+  # such a directive: the gcc dep pass runs against an isolated copy and can't evaluate
+  # a sibling-header guard around it, and the text scan has no literal filename to
+  # match. The accurate directives-only pass DID resolve it -- it opened the header and
+  # emitted an ordinary entering line marker. This method finds each non-literal
+  # `#include`'s source line, then asks the line-marker extractor which header GCC
+  # entered at that line, and returns those as base `Include` objects to union into
+  # `bare` (see Preprocessinator#preprocess_file_includes_common). Meaningful only with
+  # a directives-only stream to read; a nil `directives_only_filepath` (fallback, or a
+  # per-file directives-only failure) yields an empty list -- a documented limitation.
+  #
+  # @return [Array<Include>] base Include objects, one per resolved computed #include
+  def extract_computed_includes(filepath:, directives_only_filepath:)
+    return [] if directives_only_filepath.nil?
+
+    computed_lines = computed_include_source_lines( filepath )
+    return [] if computed_lines.empty?
+
+    resolved = @line_marker_includes_extractor.resolve_computed_includes(
+      preprocessed_filepath: directives_only_filepath,
+      source_basename:       File.basename( filepath ),
+      source_lines:          computed_lines
+    )
+
+    includes = resolved.values.map { |path| Include.new( path ) }
+    clean_self_reference( filepath, includes )
+  end
+
   def extract_user_includes_from_text(name:, filepath:, defines: [])
     _extract_includes_from_text( :user_include_from_directive, 'user', name: name, filepath: filepath, defines: defines )
   end
@@ -239,6 +268,33 @@ class PreprocessinatorIncludesHandler
     end
 
     clean_self_reference( filepath, includes )
+  end
+
+  # An `#include` directive with an argument of some kind. `\S` after the whitespace
+  # rejects a malformed `#include` with nothing after it.
+  INCLUDE_DIRECTIVE = /^\s*#\s*include\s+\S/ unless const_defined?(:INCLUDE_DIRECTIVE, false)
+
+  # 1-indexed source line numbers of every `#include` in `filepath` whose argument is
+  # a bare token rather than a literal `"..."` or `<...>` -- i.e. a macro the
+  # preprocessor must expand before any filename exists. `code_lines_with_num` has
+  # already stripped comments and folded backslash continuations, so a commented-out
+  # or string-embedded `#include` never reaches here, and a continued directive
+  # reports the line its first physical line sat on.
+  def computed_include_source_lines(filepath)
+    lines = []
+
+    # Binary read for the same reason the sibling text scans use it: a text-mode read
+    # can raise on an invalid byte sequence before code_lines' encoding cleanup runs.
+    @file_wrapper.open( filepath, 'rb' ) do |input|
+      @parsing_parcels.code_lines_with_num( input ) do |line, line_num|
+        next unless line.match?( INCLUDE_DIRECTIVE )
+        next if line.match?( PATTERNS::USER_INCLUDE_DIRECTIVE_FILENAME )
+        next if line.match?( PATTERNS::SYSTEM_INCLUDE_DIRECTIVE_FILENAME )
+        lines << line_num
+      end
+    end
+
+    lines
   end
 
   # Shared progress line for the four extraction methods above.

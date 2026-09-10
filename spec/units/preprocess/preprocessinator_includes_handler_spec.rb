@@ -406,6 +406,97 @@ RSpec.describe PreprocessinatorIncludesHandler do
 
 
   # ===========================================================================
+  describe '#extract_computed_includes' do
+  # ===========================================================================
+  # Resolves an #include whose target is a macro invocation, not a literal filename.
+  # Finds each such directive's source line, asks the line-marker extractor which
+  # header GCC entered at that line in the accurate pass, and returns base Includes.
+
+    let(:filepath)  { '/src/module.c' }
+    let(:donly)     { '/build/directives_only/module.c' }
+
+    it 'returns an empty list without touching the line-marker extractor when there is no directives-only output' do
+      expect(@preprocessinator_line_marker_includes_extractor).to_not receive(:resolve_computed_includes)
+      expect(
+        subject.extract_computed_includes( filepath: filepath, directives_only_filepath: nil )
+      ).to eq([])
+    end
+
+    it 'returns an empty list for a file whose every #include is a literal "..." or <...>' do
+      stub_file_open(filepath, %(#include "foo.h"\n#include <stdio.h>\nint m(void){return 0;}\n))
+      expect(@preprocessinator_line_marker_includes_extractor).to_not receive(:resolve_computed_includes)
+
+      expect(
+        subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+      ).to eq([])
+    end
+
+    it 'does not treat a commented-out or string-embedded #include as a computed directive' do
+      content = <<~C
+        // #include COMMENTED_MACRO
+        /* #include BLOCK_MACRO */
+        const char *s = "#include STRING_MACRO";
+        int m(void) { return 0; }
+      C
+      stub_file_open(filepath, content)
+      expect(@preprocessinator_line_marker_includes_extractor).to_not receive(:resolve_computed_includes)
+
+      expect(
+        subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+      ).to eq([])
+    end
+
+    it 'asks the line-marker extractor about each non-literal #include line and wraps the resolved paths as bare Includes' do
+      content = <<~C
+        #include "literal.h"
+        #include DEVICE_HEADER(a)
+        int m(void) { return 0; }
+      C
+      stub_file_open(filepath, content)
+
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:resolve_computed_includes).with(
+        preprocessed_filepath: donly,
+        source_basename:       'module.c',
+        source_lines:          [2]
+      ).and_return( { 2 => 'src/device_a.h' } )
+
+      result = subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+
+      expect(result.map(&:filepath)).to eq(['src/device_a.h'])
+      expect(result).to all( be_an_instance_of(Include) )
+    end
+
+    it 'passes every computed-include line number through, in source order' do
+      content = <<~C
+        #include FIRST_MACRO
+        int a;
+        #include SECOND_MACRO
+        int b;
+      C
+      stub_file_open(filepath, content)
+
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:resolve_computed_includes).with(
+        hash_including( source_lines: [1, 3] )
+      ).and_return( {} )
+
+      subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+    end
+
+    it 'drops a computed-include line the extractor could not correlate to an entered header' do
+      content = %(#include ACTIVE_MACRO\n#include INACTIVE_MACRO\nint m(void){return 0;}\n)
+      stub_file_open(filepath, content)
+
+      allow(@preprocessinator_line_marker_includes_extractor).to receive(:resolve_computed_includes)
+        .and_return( { 1 => 'src/active.h' } )  # line 2 absent -- guard was false
+
+      result = subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+
+      expect(result.map(&:filepath)).to eq(['src/active.h'])
+    end
+  end
+
+
+  # ===========================================================================
   describe '#extract_system_includes_from_text' do
   # ===========================================================================
 
