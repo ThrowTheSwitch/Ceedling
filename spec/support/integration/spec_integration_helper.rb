@@ -37,7 +37,8 @@ module IntegrationSpecHelpers
   # logging/assembly collaborators that the includes path either never reaches or only
   # calls for their side effects.
   class NullObject
-    def method_missing(*, **, &) = self
+    # Named params (not anonymous `&`) so this loads on Ruby 3.0, still in the CI matrix.
+    def method_missing(*_args, **_kwargs, &_block) = self
     def respond_to_missing?(*) = true
   end
   NULL = NullObject.new
