@@ -317,6 +317,156 @@ describe 'Includes extraction (integration)' do
     expect(extracted(tree, 'ff.c', defines: ['ENABLE_X'], fallback: true)).to eq(['#include "x.h"'])
   end
 
+  # --- Computed (macro-target) includes (#1267) ------------------------
+
+  # Every fixture here uses the standard stringize dance to build a header name from a
+  # macro argument: STR2/STR turn `dev_extra` into `"dev_extra.h"`, so
+  # `#include PICK(dev_extra)` is an #include whose target only exists after macro
+  # expansion -- invisible to a literal text scan.
+  COMPUTED = <<~C
+    #define STR2(x) #x
+    #define STR(x) STR2(x)
+    #define PICK(name) STR(name.h)
+  C
+
+  it 'resolves a computed #include guarded by a sibling-header macro (the #1267 shape)' do
+    skip 'accurate (-fdirectives-only) path unavailable on this toolchain' unless @accurate
+    tree = {
+      'widget.c' => <<~C,
+        #include "device_config.h"
+        #{COMPUTED}
+        #if DEVICE_COUNT > 1
+        #include PICK(device_extra)
+        #endif
+        int w(void) { return DEVICE_EXTRA_MACRO; }
+      C
+      'device_config.h' => %(#ifndef DEVICE_CONFIG_H\n#define DEVICE_CONFIG_H\n#define DEVICE_COUNT 2\n#endif\n),
+      'device_extra.h'  => %(#ifndef DEVICE_EXTRA_H\n#define DEVICE_EXTRA_H\n#define DEVICE_EXTRA_MACRO (42)\n#endif\n)
+    }
+    expect(extracted(tree, 'widget.c')).to contain_exactly(
+      '#include "device_config.h"', '#include "device_extra.h"'
+    )
+  end
+
+  it 'does not resolve a computed #include whose guard the accurate pass evaluates false' do
+    skip 'accurate (-fdirectives-only) path unavailable on this toolchain' unless @accurate
+    tree = {
+      'widget.c' => <<~C,
+        #include "device_config.h"
+        #{COMPUTED}
+        #if DEVICE_COUNT > 9
+        #include PICK(device_extra)
+        #endif
+        int w(void) { return 0; }
+      C
+      'device_config.h' => %(#ifndef DEVICE_CONFIG_H\n#define DEVICE_CONFIG_H\n#define DEVICE_COUNT 2\n#endif\n),
+      'device_extra.h'  => %(#ifndef DEVICE_EXTRA_H\n#define DEVICE_EXTRA_H\n#define DEVICE_EXTRA_MACRO (42)\n#endif\n)
+    }
+    expect(extracted(tree, 'widget.c')).to eq(['#include "device_config.h"'])
+  end
+
+  it 'keeps a single entry for an unguarded computed #include the bare pass already resolves' do
+    # No guard: the bare gcc pass sees the same-file STR/PICK macros (a -D define is
+    # visible even in the isolated copy) and -MG makes the missing header phony, so it
+    # already lands in `bare`. The computed-include path adds it too; dedup by filename
+    # keeps exactly one.
+    tree = {
+      'widget.c' => <<~C,
+        #{COMPUTED}
+        #include PICK(solo_device)
+        int w(void) { return 0; }
+      C
+      'solo_device.h' => %(#ifndef SOLO_DEVICE_H\n#define SOLO_DEVICE_H\nint sd(void);\n#endif\n)
+    }
+    expect(extracted(tree, 'widget.c')).to eq(['#include "solo_device.h"'])
+  end
+
+  it 'resolves each of two adjacent computed #includes by its own guard' do
+    skip 'accurate (-fdirectives-only) path unavailable on this toolchain' unless @accurate
+    tree = {
+      'widget.c' => <<~C,
+        #include "device_config.h"
+        #{COMPUTED}
+        #if DEVICE_COUNT > 1
+        #include PICK(dev_on)
+        #endif
+        #if DEVICE_COUNT > 9
+        #include PICK(dev_off)
+        #endif
+        int w(void) { return DEV_ON_MACRO; }
+      C
+      'device_config.h' => %(#ifndef DEVICE_CONFIG_H\n#define DEVICE_CONFIG_H\n#define DEVICE_COUNT 2\n#endif\n),
+      'dev_on.h'  => %(#ifndef DEV_ON_H\n#define DEV_ON_H\n#define DEV_ON_MACRO 1\n#endif\n),
+      'dev_off.h' => %(#ifndef DEV_OFF_H\n#define DEV_OFF_H\n#define DEV_OFF_MACRO 0\n#endif\n)
+    }
+    expect(extracted(tree, 'widget.c')).to contain_exactly(
+      '#include "device_config.h"', '#include "dev_on.h"'
+    )
+  end
+
+  it 'resolves a computed #include that targets a project header with bracket syntax' do
+    skip 'accurate (-fdirectives-only) path unavailable on this toolchain' unless @accurate
+    tree = {
+      'widget.c' => <<~C,
+        #include "device_config.h"
+        #define BR(x) <x.h>
+        #if DEVICE_COUNT > 1
+        #include BR(bracket_device)
+        #endif
+        int w(void) { return BRACKET_DEVICE_MACRO; }
+      C
+      'device_config.h'  => %(#ifndef DEVICE_CONFIG_H\n#define DEVICE_CONFIG_H\n#define DEVICE_COUNT 2\n#endif\n),
+      'bracket_device.h' => %(#ifndef BRACKET_DEVICE_H\n#define BRACKET_DEVICE_H\n#define BRACKET_DEVICE_MACRO 7\n#endif\n)
+    }
+    # Rendered as a user include: reconciliation keys on where GCC found the header
+    # (a project -I path), not on the directive's punctuation -- same as the literal
+    # bracket-vs-quote characterization above.
+    expect(extracted(tree, 'widget.c')).to contain_exactly(
+      '#include "device_config.h"', '#include "bracket_device.h"'
+    )
+  end
+
+  it 'does not correlate a computed #include split across a backslash continuation' do
+    skip 'accurate (-fdirectives-only) path unavailable on this toolchain' unless @accurate
+    # Documented limitation: the raw-source scan reports the directive at its first
+    # physical line, but GCC attributes the entered header to a line shifted by the
+    # continuation, so the two never line up. A single-physical-line computed
+    # #include (every other case here) is unaffected.
+    tree = {
+      'widget.c' => <<~C,
+        #include "device_config.h"
+        #{COMPUTED}
+        #if DEVICE_COUNT > 1
+        #include \\
+          PICK(device_extra)
+        #endif
+        int w(void) { return 0; }
+      C
+      'device_config.h' => %(#ifndef DEVICE_CONFIG_H\n#define DEVICE_CONFIG_H\n#define DEVICE_COUNT 2\n#endif\n),
+      'device_extra.h'  => %(#ifndef DEVICE_EXTRA_H\n#define DEVICE_EXTRA_H\n#define DEVICE_EXTRA_MACRO (42)\n#endif\n)
+    }
+    expect(extracted(tree, 'widget.c')).to eq(['#include "device_config.h"'])
+  end
+
+  it 'does not resolve a sibling-macro-guarded computed #include on the forced text-scan path' do
+    # Documented limitation: fallback has no directives-only stream to correlate
+    # against, so a computed #include behind a guard the text scan can't evaluate is
+    # left out. The literal sibling header is still found.
+    tree = {
+      'widget.c' => <<~C,
+        #include "device_config.h"
+        #{COMPUTED}
+        #if DEVICE_COUNT > 1
+        #include PICK(device_extra)
+        #endif
+        int w(void) { return 0; }
+      C
+      'device_config.h' => %(#ifndef DEVICE_CONFIG_H\n#define DEVICE_CONFIG_H\n#define DEVICE_COUNT 2\n#endif\n),
+      'device_extra.h'  => %(#ifndef DEVICE_EXTRA_H\n#define DEVICE_EXTRA_H\n#define DEVICE_EXTRA_MACRO (42)\n#endif\n)
+    }
+    expect(extracted(tree, 'widget.c', fallback: true)).to eq(['#include "device_config.h"'])
+  end
+
   it 'falls back per file when the directives-only pass cannot resolve an include' do
     # The directives-only tool has no -MG, so an unresolvable #include makes that pass
     # exit non-zero; generate_directives_only_output returns nil and this one file

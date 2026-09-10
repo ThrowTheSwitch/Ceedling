@@ -73,6 +73,9 @@ RSpec.describe Preprocessinator do
       allow(@includes_handler).to receive(:write_includes_list)
 
       allow(@includes_handler).to receive(:extract_system_includes_preprocess).and_return([])
+      # Computed-include supplement: off by default here; the dedicated cases below
+      # override this return to exercise the union.
+      allow(@includes_handler).to receive(:extract_computed_includes).and_return([])
     end
 
     # Regression coverage for #1223: the gcc-based bare pass runs against an
@@ -420,6 +423,7 @@ RSpec.describe Preprocessinator do
       allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return('/build/includes/module.h.yml')
       allow(@includes_handler).to receive(:extract_bare_includes).and_return([])
       allow(@includes_handler).to receive(:extract_bare_includes_from_text).and_return([])
+      allow(@includes_handler).to receive(:extract_computed_includes).and_return([])
       allow(@includes_handler).to receive(:extract_user_includes_preprocess).and_return([])
       allow(@includes_handler).to receive(:extract_system_includes_preprocess).and_return([])
       allow(@includes_handler).to receive(:write_includes_list)
@@ -485,6 +489,7 @@ RSpec.describe Preprocessinator do
       allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return('/build/includes/module.h.yml')
       allow(@includes_handler).to receive(:extract_bare_includes).and_return([])
       allow(@includes_handler).to receive(:extract_bare_includes_from_text).and_return([])
+      allow(@includes_handler).to receive(:extract_computed_includes).and_return([])
       allow(@includes_handler).to receive(:extract_user_includes_preprocess).and_return([])
       allow(@includes_handler).to receive(:extract_user_includes_from_text).and_return([])
       allow(@includes_handler).to receive(:extract_system_includes_preprocess).and_return([])

@@ -575,6 +575,24 @@ class Preprocessinator
       bare_includes + @includes_handler.extract_bare_includes_from_text( filepath: filepath )
     ).uniq( &:filename )
 
+    # Supplement again with computed #includes -- a directive whose target is a macro
+    # invocation rather than a literal filename. Both bare passes above are blind to
+    # one: the gcc dep pass can't evaluate a sibling-header guard around it in the
+    # isolated copy, and the text scan has no literal filename to find. The accurate
+    # directives-only pass did resolve it, though, so extract_computed_includes reads
+    # that pass's own line markers back and hands us GCC's resolution to fold into
+    # `bare` like any literal. Guarded `unless fallback`: fallback has no
+    # directives-only stream to correlate against (documented limitation). Same
+    # reconcile safety as the text scan above -- an entry only survives if the
+    # accurate user/system list also carries it.
+    unless fallback
+      bare_includes = (
+        bare_includes + @includes_handler.extract_computed_includes(
+          filepath: filepath, directives_only_filepath: directives_only_filepath
+        )
+      ).uniq( &:filename )
+    end
+
     # Extract user includes
     user_includes = preprocess_user_includes(
       name:                     test,

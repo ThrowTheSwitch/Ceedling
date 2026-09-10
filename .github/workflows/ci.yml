@@ -159,10 +159,14 @@ jobs:
       # Integration tests compose real lib/ceedling objects and shell out to real gcc,
       # but drive a single subsystem rather than a whole build. They need only gcc
       # (already on the runner), so they run here -- right after unit tests, before the
-      # slower external tool installs and the system suite.
+      # slower external tool installs and the system suite. Same Ruby-3.3-only coverage
+      # instrumentation as the unit and system steps; 'integration' routes it to its own
+      # raw resultset (see spec_helper.rb) so `coverage:report` builds a standalone
+      # integration report and still folds it into the combined one.
       - name: Run Integration Tests
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
+          CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'integration' || 'false' }}
         run: rake specs:integration
 
       # Install gdb for backtrace feature testing
@@ -249,9 +253,10 @@ jobs:
           coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
 
       # Merges the resultset all prior coverage-instrumented steps accumulated (see
-      # Run Unit Tests, Run System Tests, and Run Plugin Tests above) into one HTML
-      # report and uploads it, downloadable from this run's own Actions summary page.
-      # Ruby-3.3-only, same leg those steps instrumented.
+      # Run Unit Tests, Run Integration Tests, Run System Tests, and Run Plugin Tests
+      # above) into per-suite HTML reports plus one combined report, and uploads them,
+      # downloadable from this run's own Actions summary page. Ruby-3.3-only, same leg
+      # those steps instrumented.
       - name: Generate Combined Coverage Report
         if: matrix.ruby == '3.3'
         run: rake coverage:report

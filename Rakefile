@@ -52,52 +52,59 @@ task 'specs:system:debug' do
   Rake::Task['specs:system'].invoke
 end
 
-# Formats three HTML reports -- units alone, system alone, and both combined --
-# from the raw coverage data that CEEDLING_TEST_COVERAGE test runs accumulate
-# (see .simplecov and spec/support/system/simplecov_boot.rb). Run after both
-# `specs:units` and `specs:system`/`specs:system:debug` have completed with that
-# env var set -- this task only reads back what they already wrote, it doesn't
-# run any specs itself. Sources, one per report:
-#   units    -- coverage/.resultset.json, written directly by the one unit-test
-#               process (spec_helper.rb)
-#   system   -- coverage/raw/system-<pid>-<timestamp>/.resultset.json, one small
-#               file per system-test child process (simplecov_boot.rb). Each
-#               process gets its own file rather than all sharing one growing
-#               coverage/.resultset.json -- sharing one file means every single
-#               process's exit re-reads, re-merges, and rewrites the *entire*
-#               accumulated file so far, a cost that grows with every process
-#               that ran before it and compounds across a full system-test run.
-#               merge_results below reads each small file once, the same
-#               approach SimpleCov itself recommends for "big CI setups" with
-#               many result files.
-#   combined -- the units file plus every system file
+# Formats four HTML reports -- units alone, integration alone, system alone, and all
+# combined -- from the raw coverage data that CEEDLING_TEST_COVERAGE test runs
+# accumulate (see .simplecov and spec/support/system/simplecov_boot.rb). Run after
+# `specs:units`, `specs:integration`, and `specs:system`/`specs:system:debug` have
+# completed with that env var set -- this task only reads back what they already
+# wrote, it doesn't run any specs itself. Sources, one per report:
+#   units       -- coverage/.resultset.json, written directly by the one unit-test
+#                  process (spec_helper.rb)
+#   integration -- coverage/raw/integration/.resultset.json, written directly by the
+#                  one integration-test process (spec_helper.rb, its own coverage_dir)
+#   system      -- coverage/raw/system-<pid>-<timestamp>/.resultset.json, one small
+#                  file per system-test child process (simplecov_boot.rb). Each
+#                  process gets its own file rather than all sharing one growing
+#                  coverage/.resultset.json -- sharing one file means every single
+#                  process's exit re-reads, re-merges, and rewrites the *entire*
+#                  accumulated file so far, a cost that grows with every process
+#                  that ran before it and compounds across a full system-test run.
+#                  merge_results below reads each small file once, the same
+#                  approach SimpleCov itself recommends for "big CI setups" with
+#                  many result files.
+#   combined    -- the units file plus the integration file plus every system file
 #
 # `require 'simplecov'` here briefly starts SimpleCov for this task's own process
 # too (via .simplecov's own autoload) -- overriding at_exit to a no-op keeps that
 # process's own trivial self-coverage from being written anywhere at all, since
 # this task reformats coverage_dir multiple times over its own run and has
 # nothing of its own worth preserving.
-desc "Merge and format units-only, system-only, and combined SimpleCov coverage reports"
+desc "Merge and format units-only, integration-only, system-only, and combined SimpleCov coverage reports"
 task 'coverage:report' do
   require 'simplecov'
   SimpleCov.at_exit { }
 
-  units_file  = File.join('coverage', '.resultset.json')
-  system_files = Dir[File.join('coverage', 'raw', 'system-*', '.resultset.json')]
+  units_file        = File.join('coverage', '.resultset.json')
+  integration_files = Dir[File.join('coverage', 'raw', 'integration', '.resultset.json')]
+  system_files      = Dir[File.join('coverage', 'raw', 'system-*', '.resultset.json')]
 
   raise "No coverage data found under coverage/ -- " \
-        "run specs:units and specs:system with CEEDLING_TEST_COVERAGE set first" \
-        if !File.exist?(units_file) && system_files.empty?
+        "run specs:units, specs:integration, and specs:system with CEEDLING_TEST_COVERAGE set first" \
+        if !File.exist?(units_file) && integration_files.empty? && system_files.empty?
+
+  units_files = File.exist?(units_file) ? [units_file] : []
 
   reports = {
-    'units'    => File.exist?(units_file) ? [units_file] : [],
-    'system'   => system_files,
-    'combined' => (File.exist?(units_file) ? [units_file] : []) + system_files
+    'units'       => units_files,
+    'integration' => integration_files,
+    'system'      => system_files,
+    'combined'    => units_files + integration_files + system_files
   }
 
   reports.each do |label, files|
     if files.empty?
-      puts "Skipping #{label} report -- no matching coverage data (run with CEEDLING_TEST_COVERAGE=#{label == 'combined' ? 'units/system' : label} first)"
+      want = label == 'combined' ? 'units/integration/system' : label
+      puts "Skipping #{label} report -- no matching coverage data (run with CEEDLING_TEST_COVERAGE=#{want} first)"
       next
     end
 
@@ -114,7 +121,12 @@ task 'coverage:report' do
     result = SimpleCov::ResultMerger.merge_results(*files, ignore_timeout: true)
 
     SimpleCov.coverage_dir(File.join('coverage', label))
-    SimpleCov::Formatter::HTMLFormatter.new.format(result)
+    # silent: true suppresses SimpleCov's own "Coverage report generated for
+    # <command_name> to ..." status line. For the merged system/combined reports
+    # that command_name is every system-<pid>-<timestamp> name joined with ", " --
+    # hundreds of them, burying this task's own one-line summary below. The
+    # concise line this task prints next says everything that noise did.
+    SimpleCov::Formatter::HTMLFormatter.new(silent: true).format(result)
     puts "#{label.capitalize} coverage: #{result.covered_percent.round(2)}% " \
          "(#{result.covered_lines}/#{result.total_lines} lines)"
   end
