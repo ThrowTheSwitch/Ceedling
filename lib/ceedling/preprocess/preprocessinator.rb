@@ -122,12 +122,7 @@ class Preprocessinator
   def store_includes_list(test:, filepath:, includes:)
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
-    # Get or create a mutex for this specific cache file
-    file_lock = @file_locks_mutex.synchronize do
-      @file_locks[_filepath] ||= Mutex.new
-    end
-
-    file_lock.synchronize do
+    cache_file_lock( _filepath ).synchronize do
       @includes_handler.write_includes_list( _filepath, includes )
     end
   end
@@ -139,12 +134,7 @@ class Preprocessinator
   def load_includes_list(test:, filepath:)
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
-    # Get or create a mutex for this specific cache file
-    file_lock = @file_locks_mutex.synchronize do
-      @file_locks[_filepath] ||= Mutex.new
-    end
-
-    file_lock.synchronize do
+    cache_file_lock( _filepath ).synchronize do
       msg = @reportinator.generate_module_progress(
         operation: "Loading #include statement listing file for",
         module_name: test,
@@ -460,6 +450,12 @@ class Preprocessinator
 
   ### Private ###
   private
+
+  # One Mutex per includes-cache file, so concurrent testables serialize on the exact
+  # file they touch and nothing more. The map itself is guarded by @file_locks_mutex.
+  def cache_file_lock(cache_filepath)
+    @file_locks_mutex.synchronize { @file_locks[cache_filepath] ||= Mutex.new }
+  end
 
   # User and system include extraction differ only in which handler pair they call and
   # one word in the debug log. `kind` is :user or :system; the accurate line-marker
