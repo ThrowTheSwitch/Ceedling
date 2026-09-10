@@ -315,6 +315,25 @@ RSpec.describe Preprocessinator do
   end
 
   # ===========================================================================
+  describe '#preprocess_user_includes / #preprocess_system_includes' do
+  # ===========================================================================
+    # Each is a thin dispatcher: the accurate line-marker extraction when fallback is
+    # false, the text-scan extraction when it is true.
+
+    it "uses the line-marker (preprocess) extraction when fallback: false" do
+      expect(@includes_handler).to receive(:extract_user_includes_preprocess)
+        .with(name: 't', filepath: 'f.h', preprocessed_filepath: 'd.pp').and_return([])
+      subject.preprocess_user_includes(name: 't', filepath: 'f.h', directives_only_filepath: 'd.pp', fallback: false)
+    end
+
+    it "uses the text-scan (fallback) extraction when fallback: true" do
+      expect(@includes_handler).to receive(:extract_system_includes_from_text)
+        .with(name: 't', filepath: 'f.h', defines: ['X']).and_return([])
+      subject.preprocess_system_includes(name: 't', filepath: 'f.h', directives_only_filepath: nil, fallback: true, defines: ['X'])
+    end
+  end
+
+  # ===========================================================================
   describe '#preprocess_mockable_header_file' do
   # ===========================================================================
 

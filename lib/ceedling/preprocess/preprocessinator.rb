@@ -628,4 +628,13 @@ class Preprocessinator
     return includes
   end
 
+  # `preprocess_file_includes_common` is the single reconciliation path for a mockable
+  # header or a Partial source/header. It sits in the private section next to the
+  # `preprocess_*` orchestration it grew up beside, but it is a self-contained,
+  # side-effect-scoped unit (its only writes are the YAML cache) and the integration
+  # spec tier drives it directly against real GCC output. Re-publicized here rather than
+  # relocated to keep this change small; a later refactor folds the test-file
+  # reconciliation in test_build_setup.rb into this same method.
+  public :preprocess_file_includes_common
+
 end
