@@ -334,6 +334,68 @@ RSpec.describe Preprocessinator do
   end
 
   # ===========================================================================
+  describe '#reconcile_includes' do
+  # ===========================================================================
+    # The merge step shared by preprocess_file_includes_common and stage 4's test-file
+    # pass: bare ∩ (user ∪ system), a NOTICE on a genuinely ambiguous #include, and an
+    # optional mock-supersedes-real filter. Uses the real Includes.reconcile.
+
+    it "keeps only entries the bare list and the accurate user/system lists agree on" do
+      result = subject.reconcile_includes(
+        bare:   [ Include.new('a.h'), Include.new('b.h') ],
+        user:   [ UserInclude.new('a.h') ],
+        system: [ SystemInclude.new('sys.h') ],   # not in bare -> dropped
+        test_filepath: 'test/T.c'
+      )
+      expect(result.map(&:filename)).to eq(['a.h'])
+    end
+
+    it "logs an ℹ️ NOTICE naming the chosen file and the candidates passed over for an ambiguous #include" do
+      expect(@loginator).to receive(:log).with(
+        a_string_matching(/foo\/bar\.h/).and(a_string_matching(/baz\/bar\.h/)).and(a_string_matching(%r{test/T\.c})),
+        Verbosity::COMPLAIN, LogLabels::NOTICE
+      )
+      subject.reconcile_includes(
+        bare:   [ Include.new('bar.h') ],
+        user:   [ UserInclude.new('foo/bar.h'), UserInclude.new('baz/bar.h') ],
+        system: [],
+        test_filepath: 'test/T.c'
+      )
+    end
+
+    it "logs no NOTICE when every bare #include resolves uniquely" do
+      expect(@loginator).to_not receive(:log).with(anything, Verbosity::COMPLAIN, LogLabels::NOTICE)
+      subject.reconcile_includes(
+        bare:   [ Include.new('bar.h') ],
+        user:   [ UserInclude.new('foo/bar.h') ],
+        system: [],
+        test_filepath: 'test/T.c'
+      )
+    end
+
+    it "drops a header whose mock is also present when drop_mocked is true (the default)" do
+      result = subject.reconcile_includes(
+        bare:   [ Include.new('sensor.h'), Include.new('Mocksensor.h') ],
+        user:   [ UserInclude.new('sensor.h'), UserInclude.new('Mocksensor.h') ],
+        system: [],
+        test_filepath: 'test/T.c'
+      )
+      expect(result.map(&:filename)).to eq(['Mocksensor.h'])
+    end
+
+    it "keeps a header alongside its mock when drop_mocked is false" do
+      result = subject.reconcile_includes(
+        bare:   [ Include.new('sensor.h'), Include.new('Mocksensor.h') ],
+        user:   [ UserInclude.new('sensor.h'), UserInclude.new('Mocksensor.h') ],
+        system: [],
+        test_filepath: 'test/T.c',
+        drop_mocked: false
+      )
+      expect(result.map(&:filename)).to contain_exactly('sensor.h', 'Mocksensor.h')
+    end
+  end
+
+  # ===========================================================================
   describe '#preprocess_mockable_header_file' do
   # ===========================================================================
 

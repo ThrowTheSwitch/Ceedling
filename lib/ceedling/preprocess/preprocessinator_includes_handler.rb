@@ -148,107 +148,45 @@ class PreprocessinatorIncludesHandler
     return clean_self_reference( filepath, includes )
   end
 
+  # User and system extraction are the same shape twice over -- once against the
+  # accurate directives-only line-marker stream, once against the original file's own
+  # text as a fallback. The public methods below stay as the four call sites callers
+  # and specs know; the two private helpers hold the body each pair shares.
+
   def extract_user_includes_preprocess(name:, filepath:, preprocessed_filepath:)
-    includes = []
+    _log_extraction_progress( 'Extracting user #includes from preprocessed output', name, filepath )
 
-    filename = File.basename(filepath)
-
-    msg = @reportinator.generate_module_progress(
-      operation: "Extracting user #includes from preprocessed output",
-      module_name: name,
-      filename: filename
+    # No depth limit: a user include matters however deeply it nests. `test:` lets the
+    # extractor strip this test's own mock subdirectory off a resolved mock include.
+    includes = @line_marker_includes_extractor.extract_includes_from_file(
+      preprocessed_filepath,
+      PreprocessinatorLineMarkerIncludesExtractor::USER,
+      test: name
     )
-    @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-    includes =
-      @line_marker_includes_extractor.extract_includes_from_file(
-        preprocessed_filepath,
-        PreprocessinatorLineMarkerIncludesExtractor::USER,
-        # Note: No limit to max depth to search for user includes
-        test: name
-      )
-
-    return clean_self_reference( filepath, includes )
-  end
-
-  def extract_user_includes_from_text(name:, filepath:, defines: [])
-    includes = []
-
-    filename = File.basename(filepath)
-
-    msg = @reportinator.generate_module_progress(
-      operation: "Extracting user #includes from original file using fallback method",
-      module_name: name,
-      filename: filename
-    )
-    @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-
-    cond_tracker = CPreprocessorConditionals.new( defines )
-
-    # Open in binary mode: code_lines cleans the whole buffer via clean_encoding
-    # before ever splitting into lines, but a text-mode read could itself raise
-    # on invalid byte sequences before clean_encoding gets the chance.
-    @file_wrapper.open(filepath, 'rb') do |input|
-      @parsing_parcels.code_lines( input ) do |line|
-        cond_tracker.process_directive( line )
-        next unless cond_tracker.active?
-        _include = @include_factory.user_include_from_directive( line )
-        includes << _include.anchored( File.dirname( filepath ) ) if !_include.nil?
-      end
-    end
-
-    return clean_self_reference( filepath, includes )
+    clean_self_reference( filepath, includes )
   end
 
   def extract_system_includes_preprocess(name:, filepath:, preprocessed_filepath:)
-    includes = []
+    _log_extraction_progress( 'Extracting system #includes from preprocessed output', name, filepath )
 
-    filename = File.basename(filepath)
-
-    msg = @reportinator.generate_module_progress(
-      operation: "Extracting system #includes from preprocessed output",
-      module_name: name,
-      filename: filename
+    # A practical ceiling: system headers nest deeply through their own wrappers and
+    # everything past a handful of levels is noise, not a project dependency.
+    includes = @line_marker_includes_extractor.extract_includes_from_file(
+      preprocessed_filepath,
+      PreprocessinatorLineMarkerIncludesExtractor::SYSTEM,
+      SYSTEM_INCLUDE_MAX_DEPTH
     )
-    @loginator.log(msg, Verbosity::OBNOXIOUS)
 
-    includes = 
-      @line_marker_includes_extractor.extract_includes_from_file(
-        preprocessed_filepath,
-        PreprocessinatorLineMarkerIncludesExtractor::SYSTEM,
-        5 # Practical max depth limit for system headers (to avoid noisy length)
-      )
+    clean_self_reference( filepath, includes )
+  end
 
-    return clean_self_reference( filepath, includes )
+  def extract_user_includes_from_text(name:, filepath:, defines: [])
+    _extract_includes_from_text( :user_include_from_directive, 'user', name: name, filepath: filepath, defines: defines )
   end
 
   def extract_system_includes_from_text(name:, filepath:, defines: [])
-    includes = []
-
-    filename = File.basename(filepath)
-
-    msg = @reportinator.generate_module_progress(
-      operation: "Extracting system #includes from original file using fallback method",
-      module_name: name,
-      filename: filename
-    )
-    @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-
-    cond_tracker = CPreprocessorConditionals.new( defines )
-
-    # Open in binary mode: code_lines cleans the whole buffer via clean_encoding
-    # before ever splitting into lines, but a text-mode read could itself raise
-    # on invalid byte sequences before clean_encoding gets the chance.
-    @file_wrapper.open(filepath, 'rb') do |input|
-      @parsing_parcels.code_lines( input ) do |line|
-        cond_tracker.process_directive( line )
-        next unless cond_tracker.active?
-        _include = @include_factory.system_include_from_directive( line )
-        includes << _include.anchored( File.dirname( filepath ) ) if !_include.nil?
-      end
-    end
-
-    return clean_self_reference( filepath, includes )
+    _extract_includes_from_text( :system_include_from_directive, 'system', name: name, filepath: filepath, defines: defines )
   end
 
   # Write to disk a yaml representation of a list of includes
@@ -272,6 +210,46 @@ class PreprocessinatorIncludesHandler
 
   ### Private ###
   private
+
+  # Practical max depth for the system-header line-marker walk (see
+  # extract_system_includes_preprocess).
+  SYSTEM_INCLUDE_MAX_DEPTH = 5 unless const_defined?(:SYSTEM_INCLUDE_MAX_DEPTH, false)
+
+  # Fallback text scan for user or system includes -- identical but for which directive
+  # form IncludeFactory recognizes. `#if`/`#ifdef` state is tracked so a guarded include
+  # is only kept when its guard is actually true given `defines`.
+  def _extract_includes_from_text(directive_method, noun, name:, filepath:, defines:)
+    _log_extraction_progress(
+      "Extracting #{noun} #includes from original file using fallback method",
+      name, filepath, label: LogLabels::WARNING
+    )
+
+    cond_tracker = CPreprocessorConditionals.new( defines )
+    includes = []
+
+    # Binary read: code_lines runs clean_encoding over the whole buffer, but a text-mode
+    # read can raise on an invalid byte sequence before that ever happens.
+    @file_wrapper.open( filepath, 'rb' ) do |input|
+      @parsing_parcels.code_lines( input ) do |line|
+        cond_tracker.process_directive( line )
+        next unless cond_tracker.active?
+        _include = @include_factory.public_send( directive_method, line )
+        includes << _include.anchored( File.dirname( filepath ) ) unless _include.nil?
+      end
+    end
+
+    clean_self_reference( filepath, includes )
+  end
+
+  # Shared progress line for the four extraction methods above.
+  def _log_extraction_progress(operation, name, filepath, label: nil)
+    msg = @reportinator.generate_module_progress(
+      operation: operation, module_name: name, filename: File.basename( filepath )
+    )
+    args = [msg, Verbosity::OBNOXIOUS]
+    args << label unless label.nil?
+    @loginator.log( *args )
+  end
 
   # Remove any filepath in the includes list that is identical to the filepath being processed.
   # We want to prevent an includes list containing an unnecessary self-reference.

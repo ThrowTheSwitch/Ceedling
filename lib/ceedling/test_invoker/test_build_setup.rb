@@ -406,20 +406,16 @@ class TestBuildSetup
         system_includes = Includes.system( all_includes )
       end
 
-      bare_includes = testable.preprocess[:includes]
-
-      all_includes = Includes.reconcile(
-        bare:          bare_includes,
+      # Shares the reconcile core with the mockable-header/Partial path, but keeps its
+      # own bare source (stage 4's list, no text supplement) and skips the mock-filter:
+      # a test file's own #include of a mock is deliberate and must survive.
+      all_includes = @preprocessinator.reconcile_includes(
+        bare:          testable.preprocess[:includes],
         user:          user_includes,
         system:        system_includes,
-        test_filepath: filepath
-      ) do |bare_filepath, chosen, passed_over|
-        msg = "Multiple files satisfy #include '#{bare_filepath}' within #{filepath}; chose '#{chosen}' " \
-              "by search-path priority. Other candidates passed over: #{passed_over.join(', ')}. If this " \
-              "choice is wrong, add more path to that #include statement to select a different file -- or " \
-              "watch for a compilation error naming the real mismatch."
-        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
-      end
+        test_filepath: filepath,
+        drop_mocked:   false
+      )
 
       header = "Extracted reconciled #include list from #{filepath}:"
       @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )

@@ -57,13 +57,10 @@ class PreprocessinatorBareIncludesExtractor
     INCLUDE_MATCHER = /^(\S+\.\S+):\s*$/ unless const_defined?(:INCLUDE_MATCHER, false) # <characters>.<extension>:
 
   def self.extract_includes(make_rules)
-    # Extract the #include dependencies from the "phony" make rules, one per line
-    includes = make_rules.scan( INCLUDE_MATCHER )
-    includes.flatten! # Regex results can be nested arrays becuase of paren captures
-    includes.uniq!
-
-    # Convert list of fileapth strings to list of bare Include objects
-    return includes.map { |_include| Include.new(_include) }
+    # One phony `<header>:` rule per #include dependency (.h, .c, ...). `scan` returns
+    # each single capture wrapped in its own array, hence the flatten; a header reached
+    # more than once (an include guard, say) is listed once.
+    make_rules.scan( INCLUDE_MATCHER ).flatten.uniq.map { |filepath| Include.new( filepath ) }
   end
 end
 

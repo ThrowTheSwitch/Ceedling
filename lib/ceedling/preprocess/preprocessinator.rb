@@ -93,53 +93,19 @@ class Preprocessinator
   end
 
   # Extract user includes from a file using directives-only output (or text-only fallback).
-  # Called externally and internally by `preprocess_common`.
+  # Called externally and internally by `preprocess_file_includes_common`.
   def preprocess_user_includes(name:, filepath:, directives_only_filepath:, fallback: false, defines: [])
-    includes = []
-
-    if !fallback
-      includes = @includes_handler.extract_user_includes_preprocess(
-        name:                   name,
-        filepath:               filepath,
-        preprocessed_filepath:  directives_only_filepath
-      )
-    else
-      includes = @includes_handler.extract_user_includes_from_text(
-        name:     name,
-        filepath: filepath,
-        defines:  defines
-      )
-    end
-
-    header = "Extracted user #includes from #{filepath}:"
-    @loginator.log_list( includes, header, Verbosity::DEBUG )
-
-    return includes
+    _preprocess_includes( :user, name: name, filepath: filepath,
+                          directives_only_filepath: directives_only_filepath,
+                          fallback: fallback, defines: defines )
   end
 
   # Extract system includes from a file using directives-only output (or text-only fallback).
-  # Called externally and internally by `preprocess_common`.
+  # Called externally and internally by `preprocess_file_includes_common`.
   def preprocess_system_includes(name:, filepath:, directives_only_filepath:, fallback: false, defines: [])
-    includes = []
-
-    if !fallback
-      includes = @includes_handler.extract_system_includes_preprocess(
-        name:                   name,
-        filepath:               filepath,
-        preprocessed_filepath:  directives_only_filepath
-      )
-    else
-      includes = @includes_handler.extract_system_includes_from_text(
-        name:     name,
-        filepath: filepath,
-        defines:  defines
-      )
-    end
-
-    header = "Extracted system #includes from #{filepath}:"
-    @loginator.log_list( includes, header, Verbosity::DEBUG )
-
-    return includes
+    _preprocess_includes( :system, name: name, filepath: filepath,
+                          directives_only_filepath: directives_only_filepath,
+                          fallback: fallback, defines: defines )
   end
 
   # Persists `includes` under a cache file keyed by `test`/`filepath` so
@@ -156,12 +122,7 @@ class Preprocessinator
   def store_includes_list(test:, filepath:, includes:)
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
-    # Get or create a mutex for this specific cache file
-    file_lock = @file_locks_mutex.synchronize do
-      @file_locks[_filepath] ||= Mutex.new
-    end
-
-    file_lock.synchronize do
+    cache_file_lock( _filepath ).synchronize do
       @includes_handler.write_includes_list( _filepath, includes )
     end
   end
@@ -173,12 +134,7 @@ class Preprocessinator
   def load_includes_list(test:, filepath:)
     _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
 
-    # Get or create a mutex for this specific cache file
-    file_lock = @file_locks_mutex.synchronize do
-      @file_locks[_filepath] ||= Mutex.new
-    end
-
-    file_lock.synchronize do
+    cache_file_lock( _filepath ).synchronize do
       msg = @reportinator.generate_module_progress(
         operation: "Loading #include statement listing file for",
         module_name: test,
@@ -495,6 +451,33 @@ class Preprocessinator
   ### Private ###
   private
 
+  # One Mutex per includes-cache file, so concurrent testables serialize on the exact
+  # file they touch and nothing more. The map itself is guarded by @file_locks_mutex.
+  def cache_file_lock(cache_filepath)
+    @file_locks_mutex.synchronize { @file_locks[cache_filepath] ||= Mutex.new }
+  end
+
+  # User and system include extraction differ only in which handler pair they call and
+  # one word in the debug log. `kind` is :user or :system; the accurate line-marker
+  # extraction runs unless `fallback`, in which case the original file's text is scanned.
+  def _preprocess_includes(kind, name:, filepath:, directives_only_filepath:, fallback:, defines:)
+    includes =
+      if fallback
+        @includes_handler.public_send(
+          "extract_#{kind}_includes_from_text",
+          name: name, filepath: filepath, defines: defines
+        )
+      else
+        @includes_handler.public_send(
+          "extract_#{kind}_includes_preprocess",
+          name: name, filepath: filepath, preprocessed_filepath: directives_only_filepath
+        )
+      end
+
+    @loginator.log_list( includes, "Extracted #{kind} #includes from #{filepath}:", Verbosity::DEBUG )
+    includes
+  end
+
   def _preprocess_partial_expand_macros(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     msg = @reportinator.generate_module_progress(
       operation: 'Full-preprocessing for expanded Partial signature extraction',
@@ -610,31 +593,48 @@ class Preprocessinator
       defines:                  defines
     )
 
-    # Reconcile includes with overlapping information
-    includes = Includes.reconcile(
-      bare:          bare_includes,
-      user:          user_includes,
-      system:        system_includes,
-      test_filepath: filepath
+    includes = reconcile_includes(
+      bare: bare_includes, user: user_includes, system: system_includes, test_filepath: filepath
     )
-
-    # Sanitize the final list and remove any includes that have been mocked
-    Includes.sanitize!(includes) do |include, all|
-      all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
-    end
 
     store_includes_list( filepath: filepath, test: test, includes: includes )
 
     return includes
   end
 
-  # `preprocess_file_includes_common` is the single reconciliation path for a mockable
-  # header or a Partial source/header. It sits in the private section next to the
-  # `preprocess_*` orchestration it grew up beside, but it is a self-contained,
-  # side-effect-scoped unit (its only writes are the YAML cache) and the integration
-  # spec tier drives it directly against real GCC output. Re-publicized here rather than
-  # relocated to keep this change small; a later refactor folds the test-file
-  # reconciliation in test_build_setup.rb into this same method.
-  public :preprocess_file_includes_common
+  # The merge step every includes-reconciliation site shares: intersect a bare list
+  # against the accurate user/system lists, log a NOTICE on any genuinely ambiguous
+  # `#include` (more than one file on the search path satisfies it), and -- for the
+  # mockable-header/Partial path -- drop a header whose mock is also present.
+  # `preprocess_file_includes_common` above and stage 4's test-file pass
+  # (test_build_setup.rb) build their own three lists and own their own caching; only
+  # this middle is common.
+  def reconcile_includes(bare:, user:, system:, test_filepath:, drop_mocked: true)
+    includes = Includes.reconcile(
+      bare: bare, user: user, system: system, test_filepath: test_filepath
+    ) do |bare_filepath, chosen, passed_over|
+      msg = "Multiple files satisfy #include '#{bare_filepath}' within #{test_filepath}; chose '#{chosen}' " \
+            "by search-path priority. Other candidates passed over: #{passed_over.join(', ')}. If this " \
+            "choice is wrong, add more path to that #include statement to select a different file -- or " \
+            "watch for a compilation error naming the real mismatch."
+      @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+    end
+
+    if drop_mocked
+      Includes.sanitize!( includes ) do |include, all|
+        all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
+      end
+    end
+
+    includes
+  end
+
+  # These two sit in the private section next to the `preprocess_*` orchestration they
+  # grew up beside, but both are self-contained and side-effect-scoped:
+  # `preprocess_file_includes_common` (its only writes are the YAML cache) is driven
+  # directly by the integration spec tier against real GCC output, and
+  # `reconcile_includes` is the merge step stage 4's test-file pass calls too.
+  # Re-publicized here rather than relocated to keep the diff small.
+  public :preprocess_file_includes_common, :reconcile_includes
 
 end

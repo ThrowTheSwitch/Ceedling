@@ -148,29 +148,10 @@ ceedling_system_tests do
         end
       end
 
-
-      # -----------------------------------------------------------------------
-      # Encoding safety: UTF-8 multi-byte characters in comments near #ifdef
-      # directives in source/header files must not cause encoding errors when
-      # the fallback partial preprocessor processes them.
-      # (The test assets already contain non-ASCII UTF-8 in comments.)
-      # -----------------------------------------------------------------------
-      it "should not raise errors for UTF-8 in comments near #ifdef" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            settings = {
-              :project    => { :use_partials => true },
-              :test_build => { :preprocess_force_fallback => true }
-            }
-            @c.merge_project_yml_for_test(settings)
-
-            output = @c.ceedling_build_exec("test:conditionals")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/using fallback method/i)
-            expect(output).to match(/PASSED:\s+1/)
-          end
-        end
-      end
+      # (The dedicated no-CONDITIONAL_FEATURE + UTF-8-in-comments example was folded
+      # away: the assets already carry non-ASCII UTF-8, so the two examples above
+      # exercise the encoding-safety path already, and preprocessing_encoding_spec
+      # plus the unit encoding tests cover it directly.)
 
     end
 
