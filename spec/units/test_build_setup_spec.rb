@@ -68,6 +68,7 @@ describe TestBuildSetup do
     # always runs, ungated (see its comment in test_build_setup.rb).
     allow(@preprocessinator).to receive(:preprocess_user_includes).and_return( [] )
     allow(@preprocessinator).to receive(:preprocess_system_includes).and_return( [] )
+    allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )
     allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
     allow(@test_context_extractor).to receive(:ingest_includes)
 
@@ -557,28 +558,27 @@ describe TestBuildSetup do
       allow(@dependinator).to receive(:stale?).with('build/preprocess/includes/Foo.c.yml').and_return( true )
       allow(@dependinator).to receive(:stale?).with('build/preprocess/raw/Foo.txt').and_return( false )
       allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('bar.h') ] )
+      allow(@preprocessinator).to receive(:preprocess_user_includes).and_return( [] )
+      allow(@preprocessinator).to receive(:preprocess_system_includes).and_return( [] )
     end
 
-    it "logs an ℹ️ NOTICE naming the chosen file and every candidate passed over when reconciliation resolves an ambiguous #include" do
-      allow(@preprocessinator).to receive(:preprocess_user_includes).and_return(
-        [ UserInclude.new('foo/bar.h'), UserInclude.new('baz/bar.h') ]
-      )
+    # The reconcile core -- intersection, the ambiguous-#include NOTICE, and the
+    # mock-filter -- now lives in Preprocessinator#reconcile_includes (its own specs).
+    # Here we only assert the third pass hands it the test file's own bare list, keeps
+    # the mock-filter off, and ingests what it returns.
+    it "delegates to Preprocessinator#reconcile_includes with the test file's bare list and drop_mocked: false" do
+      reconciled = [ UserInclude.new('bar.h') ]
+      expect(@preprocessinator).to receive(:reconcile_includes).with(
+        hash_including(
+          bare:          [ Include.new('bar.h') ],
+          user:          [],
+          system:        [],
+          test_filepath: 'test/TestFoo.c',
+          drop_mocked:   false
+        )
+      ).and_return( reconciled )
 
-      expect(@loginator).to receive(:log).with(
-        a_string_matching(/foo\/bar\.h/).and(a_string_matching(/baz\/bar\.h/)).and(a_string_matching(/test\/TestFoo\.c/)),
-        Verbosity::COMPLAIN,
-        LogLabels::NOTICE
-      )
-
-      @setup.stage_collect_preprocessor_context( @state )
-    end
-
-    it "logs no NOTICE when reconciliation resolves a bare #include uniquely" do
-      allow(@preprocessinator).to receive(:preprocess_user_includes).and_return(
-        [ UserInclude.new('foo/bar.h') ]
-      )
-
-      expect(@loginator).to_not receive(:log).with( anything, Verbosity::COMPLAIN, LogLabels::NOTICE )
+      expect(@test_context_extractor).to receive(:ingest_includes).with( 'test/TestFoo.c', reconciled )
 
       @setup.stage_collect_preprocessor_context( @state )
     end

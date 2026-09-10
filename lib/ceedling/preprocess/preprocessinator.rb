@@ -597,31 +597,48 @@ class Preprocessinator
       defines:                  defines
     )
 
-    # Reconcile includes with overlapping information
-    includes = Includes.reconcile(
-      bare:          bare_includes,
-      user:          user_includes,
-      system:        system_includes,
-      test_filepath: filepath
+    includes = reconcile_includes(
+      bare: bare_includes, user: user_includes, system: system_includes, test_filepath: filepath
     )
-
-    # Sanitize the final list and remove any includes that have been mocked
-    Includes.sanitize!(includes) do |include, all|
-      all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
-    end
 
     store_includes_list( filepath: filepath, test: test, includes: includes )
 
     return includes
   end
 
-  # `preprocess_file_includes_common` is the single reconciliation path for a mockable
-  # header or a Partial source/header. It sits in the private section next to the
-  # `preprocess_*` orchestration it grew up beside, but it is a self-contained,
-  # side-effect-scoped unit (its only writes are the YAML cache) and the integration
-  # spec tier drives it directly against real GCC output. Re-publicized here rather than
-  # relocated to keep this change small; a later refactor folds the test-file
-  # reconciliation in test_build_setup.rb into this same method.
-  public :preprocess_file_includes_common
+  # The merge step every includes-reconciliation site shares: intersect a bare list
+  # against the accurate user/system lists, log a NOTICE on any genuinely ambiguous
+  # `#include` (more than one file on the search path satisfies it), and -- for the
+  # mockable-header/Partial path -- drop a header whose mock is also present.
+  # `preprocess_file_includes_common` above and stage 4's test-file pass
+  # (test_build_setup.rb) build their own three lists and own their own caching; only
+  # this middle is common.
+  def reconcile_includes(bare:, user:, system:, test_filepath:, drop_mocked: true)
+    includes = Includes.reconcile(
+      bare: bare, user: user, system: system, test_filepath: test_filepath
+    ) do |bare_filepath, chosen, passed_over|
+      msg = "Multiple files satisfy #include '#{bare_filepath}' within #{test_filepath}; chose '#{chosen}' " \
+            "by search-path priority. Other candidates passed over: #{passed_over.join(', ')}. If this " \
+            "choice is wrong, add more path to that #include statement to select a different file -- or " \
+            "watch for a compilation error naming the real mismatch."
+      @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+    end
+
+    if drop_mocked
+      Includes.sanitize!( includes ) do |include, all|
+        all.include?( "#{@configurator.cmock_mock_prefix}#{include.filename}" )
+      end
+    end
+
+    includes
+  end
+
+  # These two sit in the private section next to the `preprocess_*` orchestration they
+  # grew up beside, but both are self-contained and side-effect-scoped:
+  # `preprocess_file_includes_common` (its only writes are the YAML cache) is driven
+  # directly by the integration spec tier against real GCC output, and
+  # `reconcile_includes` is the merge step stage 4's test-file pass calls too.
+  # Re-publicized here rather than relocated to keep the diff small.
+  public :preprocess_file_includes_common, :reconcile_includes
 
 end
