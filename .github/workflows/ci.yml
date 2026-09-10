@@ -156,6 +156,15 @@ jobs:
           CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'units' || 'false' }}
         run: rake specs:units
 
+      # Integration tests compose real lib/ceedling objects and shell out to real gcc,
+      # but drive a single subsystem rather than a whole build. They need only gcc
+      # (already on the runner), so they run here -- right after unit tests, before the
+      # slower external tool installs and the system suite.
+      - name: Run Integration Tests
+        env:
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: rake specs:integration
+
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
         run: |
@@ -300,6 +309,12 @@ jobs:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:units
 
+      # See the Linux job for why integration tests run here (need only gcc).
+      - name: Run Integration Tests
+        env:
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: rake specs:integration
+
       # Install GCovr for Gcov plugin test
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
         run: |
@@ -381,6 +396,15 @@ jobs:
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:units
+
+      # See the Linux job for why integration tests run here (need only gcc). On macOS
+      # the gcc alias is Apple Clang, which ignores -fdirectives-only; the integration
+      # specs detect that and assert the fallback path, same as the system preprocessing
+      # specs already do.
+      - name: Run Integration Tests
+        env:
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: rake specs:integration
 
       # gdb is not installed on macOS runners — backtrace specs detect absence and skip
       # valgrind is unavailable on macOS — valgrind specs already skip via @valgrind_available guard
