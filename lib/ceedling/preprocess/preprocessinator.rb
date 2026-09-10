@@ -93,53 +93,19 @@ class Preprocessinator
   end
 
   # Extract user includes from a file using directives-only output (or text-only fallback).
-  # Called externally and internally by `preprocess_common`.
+  # Called externally and internally by `preprocess_file_includes_common`.
   def preprocess_user_includes(name:, filepath:, directives_only_filepath:, fallback: false, defines: [])
-    includes = []
-
-    if !fallback
-      includes = @includes_handler.extract_user_includes_preprocess(
-        name:                   name,
-        filepath:               filepath,
-        preprocessed_filepath:  directives_only_filepath
-      )
-    else
-      includes = @includes_handler.extract_user_includes_from_text(
-        name:     name,
-        filepath: filepath,
-        defines:  defines
-      )
-    end
-
-    header = "Extracted user #includes from #{filepath}:"
-    @loginator.log_list( includes, header, Verbosity::DEBUG )
-
-    return includes
+    _preprocess_includes( :user, name: name, filepath: filepath,
+                          directives_only_filepath: directives_only_filepath,
+                          fallback: fallback, defines: defines )
   end
 
   # Extract system includes from a file using directives-only output (or text-only fallback).
-  # Called externally and internally by `preprocess_common`.
+  # Called externally and internally by `preprocess_file_includes_common`.
   def preprocess_system_includes(name:, filepath:, directives_only_filepath:, fallback: false, defines: [])
-    includes = []
-
-    if !fallback
-      includes = @includes_handler.extract_system_includes_preprocess(
-        name:                   name,
-        filepath:               filepath,
-        preprocessed_filepath:  directives_only_filepath
-      )
-    else
-      includes = @includes_handler.extract_system_includes_from_text(
-        name:     name,
-        filepath: filepath,
-        defines:  defines
-      )
-    end
-
-    header = "Extracted system #includes from #{filepath}:"
-    @loginator.log_list( includes, header, Verbosity::DEBUG )
-
-    return includes
+    _preprocess_includes( :system, name: name, filepath: filepath,
+                          directives_only_filepath: directives_only_filepath,
+                          fallback: fallback, defines: defines )
   end
 
   # Persists `includes` under a cache file keyed by `test`/`filepath` so
@@ -494,6 +460,27 @@ class Preprocessinator
 
   ### Private ###
   private
+
+  # User and system include extraction differ only in which handler pair they call and
+  # one word in the debug log. `kind` is :user or :system; the accurate line-marker
+  # extraction runs unless `fallback`, in which case the original file's text is scanned.
+  def _preprocess_includes(kind, name:, filepath:, directives_only_filepath:, fallback:, defines:)
+    includes =
+      if fallback
+        @includes_handler.public_send(
+          "extract_#{kind}_includes_from_text",
+          name: name, filepath: filepath, defines: defines
+        )
+      else
+        @includes_handler.public_send(
+          "extract_#{kind}_includes_preprocess",
+          name: name, filepath: filepath, preprocessed_filepath: directives_only_filepath
+        )
+      end
+
+    @loginator.log_list( includes, "Extracted #{kind} #includes from #{filepath}:", Verbosity::DEBUG )
+    includes
+  end
 
   def _preprocess_partial_expand_macros(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
     msg = @reportinator.generate_module_progress(
