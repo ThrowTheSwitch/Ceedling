@@ -145,4 +145,86 @@ describe 'Includes extraction (integration)' do
     }
     expect(extracted(tree, 'feature.c')).to eq(['#include "feature_config.h"'])
   end
+
+  it 'selects the taken branch of an #if / #elif / #else include choice' do
+    tree = {
+      'radio.c' => <<~C,
+        #define BAND 2
+        #if BAND == 1
+        #include "band_lo.h"
+        #elif BAND == 2
+        #include "band_mid.h"
+        #else
+        #include "band_hi.h"
+        #endif
+        int r(void) { return BAND_MID_MACRO; }
+      C
+      'band_lo.h'  => %(#ifndef BAND_LO_H\n#define BAND_LO_H\n#define BAND_LO_MACRO 1\n#endif\n),
+      'band_mid.h' => %(#ifndef BAND_MID_H\n#define BAND_MID_H\n#define BAND_MID_MACRO 2\n#endif\n),
+      'band_hi.h'  => %(#ifndef BAND_HI_H\n#define BAND_HI_H\n#define BAND_HI_MACRO 3\n#endif\n)
+    }
+    if @accurate
+      expect(extracted(tree, 'radio.c')).to eq(['#include "band_mid.h"'])
+    else
+      # The text-fallback path tracks #if/#elif/#else and keeps only the active branch.
+      expect(extracted(tree, 'radio.c', fallback: true)).to eq(['#include "band_mid.h"'])
+    end
+  end
+
+  # --- Spelling / rendering ------------------------------------------------
+
+  it 'currently collapses a subdir user include to its basename' do
+    tree = {
+      'io.c'      => %(#include <bits/hw.h>\nint io(void){return HW_BIT;}\n),
+      'bits/hw.h' => %(#ifndef BITS_HW_H\n#define BITS_HW_H\n#define HW_BIT 1\n#endif\n)
+    }
+    # Characterization: only a reconciled SYSTEM include gets its as-written spelling
+    # restored from the bare pass. A user include is rendered from its basename alone,
+    # so `<bits/hw.h>` (project header, categorized user) comes back as `"hw.h"`.
+    expect(extracted(tree, 'io.c')).to eq(['#include "hw.h"'])
+  end
+
+  it 'tolerates unusual but legal directive whitespace' do
+    tree = {
+      'ws.c' => "#   include \"ws.h\"\n\t#\tinclude <stddef.h>\nsize_t f(void){return 0;}\n",
+      'ws.h' => %(#ifndef WS_H\n#define WS_H\nsize_t f(void);\n#endif\n)
+    }
+    result = extracted(tree, 'ws.c')
+    expect(result).to include('#include "ws.h"')
+    expect(result.any? { |s| s.start_with?('#include <') }).to be true
+  end
+
+  # --- Mocks -------------------------------------------------------------
+
+  it 'drops a real header when its mock is also included (mock supersedes)' do
+    tree = {
+      'consumer.c'   => %(#include "sensor.h"\n#include "mock_sensor.h"\nint c(void){return 0;}\n),
+      'sensor.h'      => %(#ifndef SENSOR_H\n#define SENSOR_H\nint sensor_read(void);\n#endif\n),
+      'mock_sensor.h' => %(#ifndef MOCK_SENSOR_H\n#define MOCK_SENSOR_H\nint sensor_read(void);\n#endif\n)
+    }
+    result = extracted(tree, 'consumer.c')
+    expect(result.any? { |s| s.include?('mock_sensor.h') }).to be true
+    expect(result.any? { |s| s =~ %r{(^|/)sensor\.h"} }).to be false
+  end
+
+  # --- Degenerate / resilience ---------------------------------------------
+
+  it 'ignores an #include that appears only inside a comment or a string literal' do
+    tree = {
+      'noise.c' => <<~C,
+        /* #include "commented.h" */
+        // #include "commented_too.h"
+        const char *s = "#include \\"stringy.h\\"";
+        #include "real.h"
+        int n(void) { return 0; }
+      C
+      'real.h' => %(#ifndef REAL_H\n#define REAL_H\nint n(void);\n#endif\n)
+    }
+    expect(extracted(tree, 'noise.c')).to eq(['#include "real.h"'])
+  end
+
+  it 'yields an empty list when the source file has no resolvable includes and no deps' do
+    tree = { 'bare.c' => %(int b(void) { return 0; }\n) }
+    expect(extracted(tree, 'bare.c')).to eq([])
+  end
 end
