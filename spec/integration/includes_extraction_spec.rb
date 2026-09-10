@@ -28,12 +28,15 @@ describe 'Includes extraction (integration)' do
   before(:all) { @accurate = directives_only_supported? }
 
   # Runs one fixture through the harness and returns the rendered `#include ...` lines.
-  def extracted(tree, entry, defines: [], fallback: false)
+  # `search_subdirs` adds further -I roots (each joined to the fixture dir);
+  # `fallback: true` forces the text-scan path even where the accurate one is available.
+  def extracted(tree, entry, defines: [], fallback: false, search_subdirs: [])
     with_source_tree(tree) do |dir|
       harness = build_includes_harness(dir)
       list = harness.reconcile(
         file: File.join(dir, entry), defines: defines,
-        search_paths: [dir], fallback: fallback || !@accurate
+        search_paths: [dir, *search_subdirs.map { |s| File.join(dir, s) }],
+        fallback: fallback || !@accurate
       )
       list.map(&:to_s)
     end
@@ -173,17 +176,6 @@ describe 'Includes extraction (integration)' do
 
   # --- Spelling / rendering ------------------------------------------------
 
-  it 'currently collapses a subdir user include to its basename' do
-    tree = {
-      'io.c'      => %(#include <bits/hw.h>\nint io(void){return HW_BIT;}\n),
-      'bits/hw.h' => %(#ifndef BITS_HW_H\n#define BITS_HW_H\n#define HW_BIT 1\n#endif\n)
-    }
-    # Characterization: only a reconciled SYSTEM include gets its as-written spelling
-    # restored from the bare pass. A user include is rendered from its basename alone,
-    # so `<bits/hw.h>` (project header, categorized user) comes back as `"hw.h"`.
-    expect(extracted(tree, 'io.c')).to eq(['#include "hw.h"'])
-  end
-
   it 'tolerates unusual but legal directive whitespace' do
     tree = {
       'ws.c' => "#   include \"ws.h\"\n\t#\tinclude <stddef.h>\nsize_t f(void){return 0;}\n",
@@ -226,5 +218,115 @@ describe 'Includes extraction (integration)' do
   it 'yields an empty list when the source file has no resolvable includes and no deps' do
     tree = { 'bare.c' => %(int b(void) { return 0; }\n) }
     expect(extracted(tree, 'bare.c')).to eq([])
+  end
+
+  # --- More guard shapes -----------------------------------------------
+
+  it 'handles #ifdef, #ifndef, and #if defined() guards consistently' do
+    tree = {
+      'guards.c' => <<~C,
+        #ifdef HAVE_A
+        #include "a.h"
+        #endif
+        #ifndef HAVE_A
+        #include "not_a.h"
+        #endif
+        #if defined(HAVE_B)
+        #include "b.h"
+        #endif
+        int g(void) { return A_MACRO + B_MACRO; }
+      C
+      'a.h'   => %(#ifndef A_H\n#define A_H\n#define A_MACRO 1\n#endif\n),
+      'not_a.h' => %(#ifndef NOT_A_H\n#define NOT_A_H\n#define A_MACRO 0\n#endif\n),
+      'b.h'   => %(#ifndef B_H\n#define B_H\n#define B_MACRO 2\n#endif\n)
+    }
+    result = extracted(tree, 'guards.c', defines: ['HAVE_A', 'HAVE_B'])
+    expect(result).to contain_exactly('#include "a.h"', '#include "b.h"')
+  end
+
+  it 'keeps a single entry for an include-guarded header pulled in twice' do
+    tree = {
+      'twice.c' => %(#include "shared.h"\n#include "shared.h"\nint t(void){return SHARED_MACRO;}\n),
+      'shared.h' => %(#ifndef SHARED_H\n#define SHARED_H\n#define SHARED_MACRO 5\n#endif\n)
+    }
+    expect(extracted(tree, 'twice.c')).to eq(['#include "shared.h"'])
+  end
+
+  # --- Path / search-path shapes -----------------------------------------
+
+  it 'currently drops the subdir from a subdir-qualified quoted include' do
+    tree = {
+      'app.c'          => %(#include "drivers/uart.h"\nint a(void){return UART_BAUD;}\n),
+      'drivers/uart.h' => %(#ifndef DRIVERS_UART_H\n#define DRIVERS_UART_H\n#define UART_BAUD 115200\n#endif\n)
+    }
+    # Characterization: a user include renders from its basename alone, so
+    # `"drivers/uart.h"` comes back `"uart.h"`.
+    expect(extracted(tree, 'app.c')).to eq(['#include "uart.h"'])
+  end
+
+  it 'currently collides two headers that share a basename in different directories' do
+    tree = {
+      'app.c'        => %(#include "hw/config.h"\n#include "app/config.h"\nint a(void){return HW_CFG + APP_CFG;}\n),
+      'hw/config.h'  => %(#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\n#define HW_CFG 1\n#endif\n),
+      'app/config.h' => %(#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define APP_CFG 2\n#endif\n)
+    }
+    # Characterization of a known limitation: reconciliation keys on basename and a user
+    # include renders from its basename, so two distinct `config.h` headers merge into
+    # one. Fixing this belongs to the Include value model, out of scope for this work.
+    expect(extracted(tree, 'app.c')).to eq(['#include "config.h"'])
+  end
+
+  # --- Partial-source shape ----------------------------------------------
+
+  it 'reconciles a partial-source file with several top-level includes plus a conditional one' do
+    tree = {
+      'module.c' => <<~C,
+        #include "types.h"
+        #include "module.h"
+        #ifdef WITH_LOGGING
+        #include "log.h"
+        #endif
+        #include "bus.h"
+        int m(void) { return 0; }
+      C
+      'types.h'  => %(#ifndef TYPES_H\n#define TYPES_H\ntypedef int word;\n#endif\n),
+      'module.h' => %(#ifndef MODULE_H\n#define MODULE_H\nint m(void);\n#endif\n),
+      'log.h'    => %(#ifndef LOG_H\n#define LOG_H\nvoid logmsg(void);\n#endif\n),
+      'bus.h'    => %(#ifndef BUS_H\n#define BUS_H\nvoid bus_send(void);\n#endif\n)
+    }
+    result = extracted(tree, 'module.c', defines: ['WITH_LOGGING'])
+    expect(result).to eq(
+      ['#include "types.h"', '#include "module.h"', '#include "log.h"', '#include "bus.h"']
+    )
+  end
+
+  # --- Fallback specifics ----------------------------------------------
+
+  it 'keeps a conditional literal include on the forced text-scan path' do
+    # With fallback forced, categorization comes from scanning the file text with
+    # #if/#ifdef tracking -- a project-define guard still resolves correctly.
+    tree = {
+      'ff.c' => <<~C,
+        #ifdef ENABLE_X
+        #include "x.h"
+        #endif
+        int f(void) { return X_MACRO; }
+      C
+      'x.h' => %(#ifndef X_H\n#define X_H\n#define X_MACRO 9\n#endif\n)
+    }
+    expect(extracted(tree, 'ff.c', defines: ['ENABLE_X'], fallback: true)).to eq(['#include "x.h"'])
+  end
+
+  it 'falls back per file when the directives-only pass cannot resolve an include' do
+    # The directives-only tool has no -MG, so an unresolvable #include makes that pass
+    # exit non-zero; generate_directives_only_output returns nil and this one file
+    # drops to the text-scan path, which still captures the literal directive.
+    tree = {
+      'missing.c' => %(#include "absent.h"\n#include "present.h"\nint m(void){return 0;}\n),
+      'present.h' => %(#ifndef PRESENT_H\n#define PRESENT_H\nint p(void);\n#endif\n)
+    }
+    result = extracted(tree, 'missing.c')
+    expect(result).to include('#include "present.h"')
+    expect(result).to include('#include "absent.h"')
   end
 end
