@@ -9,106 +9,65 @@ require 'spec_helper'
 require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
 require 'ceedling/includes/includes'
 
-# Pure, stateless parser -- no IO, no fixtures needed, just real make-rule
-# text as GCC's `-M -MG -MP` output would actually contain it.
+# PreprocessinatorBareIncludesExtractor is a pure parser: it turns the `gcc -M -MG -MP`
+# "phony" make rules -- one `header:` line per dependency -- into bare Include objects.
+# The handler that runs GCC (PreprocessinatorIncludesHandler#extract_bare_includes)
+# gates on MAKE_RULE_MATCHER first and hands only matching output here, so these tests
+# feed representative make-rule text directly.
 describe PreprocessinatorBareIncludesExtractor do
-  describe '.extract_includes' do
-    it 'returns an empty list for a self-referential rule with no dependencies' do
-      make_rules = "widget.o: widget.h\n"
+  def extract(text) = described_class.extract_includes(text)
 
-      includes = described_class.extract_includes( make_rules )
+  it 'returns one bare Include per phony rule line' do
+    rules = <<~RULES
+      widget.o: widget.c widget.h stdint.h
+      widget.h:
+      stdint.h:
+    RULES
+    result = extract(rules)
+    expect(result.map(&:filename)).to eq(['widget.h', 'stdint.h'])
+    expect(result).to all(be_an_instance_of(Include))
+  end
 
-      expect( includes ).to eq( [] )
-    end
+  it 'produces no includes from a make rule with no phony lines (file has no #includes)' do
+    expect(extract("solo.o: solo.c\n")).to eq([])
+  end
 
-    it 'extracts a single include from its own phony rule line' do
-      make_rules = <<~MAKE
-        widget.o: widget.h fstd_types.h
-        fstd_types.h:
-      MAKE
+  it 'captures a phony rule for a pathful dependency' do
+    rules = <<~RULES
+      os.o: ../../src/os/os.h fstd_types.h
+      ../../src/os/os.h:
+      fstd_types.h:
+    RULES
+    expect(extract(rules).map(&:filepath)).to contain_exactly('../../src/os/os.h', 'fstd_types.h')
+  end
 
-      includes = described_class.extract_includes( make_rules )
+  it 'deduplicates a dependency that appears in more than one phony rule' do
+    rules = <<~RULES
+      a.o: a.c shared.h
+      shared.h:
+      shared.h:
+    RULES
+    expect(extract(rules).map(&:filename)).to eq(['shared.h'])
+  end
 
-      expect( includes.map(&:filepath) ).to eq( ['fstd_types.h'] )
-    end
+  it 'ignores GCC diagnostic lines interleaved with the phony rules' do
+    rules = <<~RULES
+      os.o: os.c os.h
+      os.h:
+      os.h:73:20: error: no include path in which to search for stdint.h
+         73 | #include <stdint.h>
+            |                    ^
+    RULES
+    expect(extract(rules).map(&:filename)).to eq(['os.h'])
+  end
 
-    it 'extracts multiple includes, each from its own phony rule line' do
-      make_rules = <<~MAKE
-        os.o: ../../src/app/task/os/os.h fstd_types.h FreeRTOS.h queue.h
-        fstd_types.h:
-        FreeRTOS.h:
-        queue.h:
-      MAKE
-
-      includes = described_class.extract_includes( make_rules )
-
-      expect( includes.map(&:filepath) ).to eq( ['fstd_types.h', 'FreeRTOS.h', 'queue.h'] )
-    end
-
-    it 'deduplicates a phony rule line that appears more than once' do
-      make_rules = <<~MAKE
-        widget.o: widget.h fstd_types.h
-        fstd_types.h:
-        fstd_types.h:
-      MAKE
-
-      includes = described_class.extract_includes( make_rules )
-
-      expect( includes.map(&:filepath) ).to eq( ['fstd_types.h'] )
-    end
-
-    it 'extracts both .h and .c dependencies' do
-      make_rules = <<~MAKE
-        widget.o: widget.h helper.c
-        helper.c:
-        widget.h:
-      MAKE
-
-      includes = described_class.extract_includes( make_rules )
-
-      expect( includes.map(&:filepath) ).to eq( ['helper.c', 'widget.h'] )
-    end
-
-    it 'extracts a dependency with a relative directory path' do
-      make_rules = <<~MAKE
-        os.o: ../../src/app/task/os/os.h
-        ../../src/app/task/os/os.h:
-      MAKE
-
-      includes = described_class.extract_includes( make_rules )
-
-      expect( includes.map(&:filepath) ).to eq( ['../../src/app/task/os/os.h'] )
-    end
-
-    it 'ignores trailing compiler error output after the phony rules' do
-      make_rules = <<~MAKE
-        os.o: ../../src/app/task/os/os.h stdbool.h
-        stdbool.h:
-        ../../src/app/task/os/os.h:72:21: error: no include path in which to search for stdbool.h
-           72 | #include <stdbool.h>
-              |                     ^
-      MAKE
-
-      includes = described_class.extract_includes( make_rules )
-
-      expect( includes.map(&:filepath) ).to eq( ['stdbool.h'] )
-    end
-
-    it 'returns an empty list for input with no phony rule lines at all' do
-      includes = described_class.extract_includes( '' )
-
-      expect( includes ).to eq( [] )
-    end
-
-    it 'returns plain Include objects, not a subclass' do
-      make_rules = <<~MAKE
-        widget.o: widget.h fstd_types.h
-        fstd_types.h:
-      MAKE
-
-      includes = described_class.extract_includes( make_rules )
-
-      expect( includes.first.class ).to eq( Include )
-    end
+  it 'ignores a bare dependency filename that has no extension' do
+    # INCLUDE_MATCHER requires a `.<ext>` -- an extensionless phony rule is skipped.
+    rules = <<~RULES
+      m.o: m.c helper.h Makefile
+      helper.h:
+      Makefile:
+    RULES
+    expect(extract(rules).map(&:filename)).to eq(['helper.h'])
   end
 end
