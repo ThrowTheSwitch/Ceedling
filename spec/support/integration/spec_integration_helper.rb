@@ -15,6 +15,9 @@
 # objects out: a Configurator stub that just returns the `DEFAULT_*_PREPROCESSOR_TOOL`
 # definitions and the mock prefix, and a ToolExecutor stub whose `exec` actually shells
 # the command it was handed through Open3. GCC genuinely runs; nothing else is faked.
+#
+# Written to plain `def ... end` throughout -- no endless method definitions, no
+# anonymous parameter forwarding -- so it loads on every Ruby in the CI matrix (3.0+).
 
 require 'open3'
 require 'tmpdir'
@@ -37,11 +40,166 @@ module IntegrationSpecHelpers
   # logging/assembly collaborators that the includes path either never reaches or only
   # calls for their side effects.
   class NullObject
-    # Named params (not anonymous `&`) so this loads on Ruby 3.0, still in the CI matrix.
-    def method_missing(*_args, **_kwargs, &_block) = self
-    def respond_to_missing?(*) = true
+    def method_missing(*_args, **_kwargs)
+      self
+    end
+
+    def respond_to_missing?(*)
+      true
+    end
   end
   NULL = NullObject.new
+
+  # A Configurator with only what the includes path touches: the three preprocessor
+  # tool definitions and the CMock mock naming. Everything else would be a bug to reach.
+  class StubConfigurator
+    def tools_test_bare_includes_preprocessor
+      DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL
+    end
+
+    def tools_test_file_directives_only_preprocessor
+      DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL
+    end
+
+    def tools_test_file_full_preprocessor
+      DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL
+    end
+
+    def cmock_mock_prefix
+      'mock_'
+    end
+
+    def cmock_mock_path
+      'mocks'
+    end
+  end
+
+  # A ToolExecutor that assembles the command from the tool definition the same way the
+  # real one's `${n}` slot substitution does (an Array slot fans its argument out into
+  # one repeated flag per element), then runs it for real. Return shape matches what
+  # PreprocessinatorIncludesHandler and Preprocessinator read: `:output`, `:exit_code`.
+  class ShellingToolExecutor
+    def build_command_line(tool, extra_params, *args)
+      slots = {}
+      args.each_with_index { |value, i| slots[(i + 1).to_s] = value }
+
+      argv = [tool[:executable]] + Array(extra_params)
+      tool[:arguments].each do |arg|
+        slot = arg[/\$\{(\d+)\}/, 1]
+        if slot
+          Array(slots[slot]).each { |value| argv << arg.gsub("${#{slot}}", value.to_s) }
+        else
+          argv << arg
+        end
+      end
+
+      { line: argv.join(' '), options: { boom: true } }
+    end
+
+    def exec(command, _args = [])
+      stdout, stderr, status = Open3.capture3(command[:line])
+      { output: stdout + stderr, exit_code: status.exitstatus }
+    end
+  end
+
+  # Minimal FilePathUtils: the includes path only asks it for a handful of scratch
+  # locations. Every returned directory is created on demand.
+  class ScratchFilePathUtils
+    def initialize(root)
+      @root = root
+    end
+
+    def form_test_preprocess_files_path(_test)
+      ensure_dir(File.join(@root, 'preprocess'))
+    end
+
+    def form_preprocessed_includes_list_filepath(filepath, test)
+      File.join(ensure_dir(File.join(@root, 'includes', test.to_s)), File.basename(filepath) + '.yml')
+    end
+
+    def form_preprocessed_file_raw_directives_only_filepath(filepath, test)
+      File.join(ensure_dir(File.join(@root, 'donly', 'raw', test.to_s)), File.basename(filepath))
+    end
+
+    def form_preprocessed_file_compacted_directives_only_filepath(filepath, test)
+      File.join(ensure_dir(File.join(@root, 'donly', test.to_s)), File.basename(filepath))
+    end
+
+    private
+
+    def ensure_dir(dir)
+      FileUtils.mkdir_p(dir)
+      dir
+    end
+  end
+
+  # Facade: `reconcile` lays out the same call sequence a real build's
+  # `stage_preprocess_*` does for one file -- optionally generate the directives-only
+  # output, then hand it to `Preprocessinator#preprocess_file_includes_common` -- and
+  # returns the reconciled, sanitized Include list. The spec renders those to Strings.
+  class IncludesExtractionHarness
+    def initialize(_work_dir)
+      @root         = Dir.mktmpdir('ceedling-includes-harness-')
+      @cfg          = StubConfigurator.new
+      @tool_exec    = ShellingToolExecutor.new
+      @fpu          = ScratchFilePathUtils.new(@root)
+      @file_wrapper = FileWrapper.new(loginator: NULL, verbosinator: NULL)
+      factory       = IncludeFactory.new(configurator: @cfg)
+      line_marker   = PreprocessinatorLineMarkerIncludesExtractor.new(
+        include_factory: factory, file_wrapper: @file_wrapper
+      )
+
+      @handler = PreprocessinatorIncludesHandler.new(
+        configurator:                                    @cfg,
+        preprocessinator_line_marker_includes_extractor: line_marker,
+        include_factory:                                 factory,
+        tool_executor:                                   @tool_exec,
+        file_wrapper:                                    @file_wrapper,
+        file_path_utils:                                 @fpu,
+        yaml_wrapper:                                    NULL,
+        parsing_parcels:                                 ParsingParcels.new,
+        loginator:                                       NULL,
+        reportinator:                                    NULL
+      )
+      @handler.setup
+
+      @preprocessinator = Preprocessinator.new(
+        preprocessinator_includes_handler: @handler,
+        preprocessinator_comment_stripper: NULL,
+        preprocessinator_file_assembler:   NULL,
+        preprocessinator_reconstructor:    NULL,
+        file_path_utils:                   @fpu,
+        tool_executor:                     @tool_exec,
+        plugin_manager:                    NULL,
+        configurator:                      @cfg,
+        loginator:                         NULL,
+        reportinator:                      NULL
+      )
+      @preprocessinator.setup
+    end
+
+    # `fallback: true` forces the text-scan path (skips directives-only generation).
+    def reconcile(file:, search_paths:, test: 'itest', defines: [], fallback: false)
+      donly = nil
+      unless fallback
+        donly = @preprocessinator.generate_directives_only_output(
+          filepath: file, test: test, flags: [],
+          include_paths: search_paths, vendor_paths: [], defines: defines
+        )
+      end
+
+      @preprocessinator.preprocess_file_includes_common(
+        test: test,
+        filepath: file,
+        directives_only_filepath: donly,
+        fallback: (fallback || donly.nil?),
+        flags: [],
+        include_paths: search_paths,
+        vendor_paths: [],
+        defines: defines
+      )
+    end
+  end
 
   # --- Toolchain probes -----------------------------------------------------
 
@@ -82,136 +240,10 @@ module IntegrationSpecHelpers
     end
   end
 
-  # --- Includes-extraction harness --------------------------------------------
-
   # Builds the real Preprocessinator graph wired to run GCC for real, and returns a
   # small facade over it. See IncludesExtractionHarness#reconcile.
   def build_includes_harness(work_dir)
     IncludesExtractionHarness.new(work_dir)
-  end
-
-  # A Configurator with only what the includes path touches: the three preprocessor
-  # tool definitions and the CMock mock naming. Everything else would be a bug to reach.
-  class StubConfigurator
-    def tools_test_bare_includes_preprocessor = DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL
-    def tools_test_file_directives_only_preprocessor = DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL
-    def tools_test_file_full_preprocessor = DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL
-    def cmock_mock_prefix = 'mock_'
-    def cmock_mock_path = 'mocks'
-  end
-
-  # A ToolExecutor that assembles the command from the tool definition exactly as the
-  # real one's `${n}` slot substitution does (an Array slot fans its argument out into
-  # one repeated flag per element), then runs it for real. Return shape matches what
-  # PreprocessinatorIncludesHandler and Preprocessinator read: `:output`, `:exit_code`.
-  class ShellingToolExecutor
-    def build_command_line(tool, extra_params, *args)
-      slots = args.each_with_index.to_h { |v, i| [(i + 1).to_s, v] }
-      argv  = [tool[:executable], *Array(extra_params)]
-      tool[:arguments].each do |arg|
-        slot = arg[/\$\{(\d+)\}/, 1]
-        if slot
-          Array(slots[slot]).each { |v| argv << arg.gsub("${#{slot}}", v.to_s) }
-        else
-          argv << arg
-        end
-      end
-      { line: argv.join(' '), options: { boom: true } }
-    end
-
-    def exec(command, _args = [])
-      stdout, stderr, status = Open3.capture3(command[:line])
-      { output: stdout + stderr, exit_code: status.exitstatus }
-    end
-  end
-
-  # Minimal FilePathUtils: the includes path only asks it for two scratch locations.
-  class ScratchFilePathUtils
-    def initialize(root) = @root = root
-    def form_test_preprocess_files_path(test) = _ensure(File.join(@root, 'preprocess', test.to_s))
-    def form_preprocessed_includes_list_filepath(filepath, test)
-      File.join(_ensure(File.join(@root, 'includes', test.to_s)), File.basename(filepath) + '.yml')
-    end
-    def form_preprocessed_file_raw_directives_only_filepath(filepath, test)
-      File.join(_ensure(File.join(@root, 'donly', 'raw', test.to_s)), File.basename(filepath))
-    end
-    def form_preprocessed_file_compacted_directives_only_filepath(filepath, test)
-      File.join(_ensure(File.join(@root, 'donly', test.to_s)), File.basename(filepath))
-    end
-    private
-    def _ensure(dir) = (FileUtils.mkdir_p(dir); dir)
-  end
-
-  # Facade: `reconcile` lays out the same call sequence a real build's
-  # `stage_preprocess_*` does for one file -- optionally generate the directives-only
-  # output, then hand it to `Preprocessinator#preprocess_file_includes_common` -- and
-  # returns the reconciled, sanitized Include list (Strings via `#to_s` for assertions
-  # come from the spec).
-  class IncludesExtractionHarness
-    def initialize(work_dir)
-      @root         = Dir.mktmpdir('ceedling-includes-harness-')
-      @cfg          = StubConfigurator.new
-      @tool_exec    = ShellingToolExecutor.new
-      @fpu          = ScratchFilePathUtils.new(@root)
-      @file_wrapper = FileWrapper.new(loginator: _null, verbosinator: _null)
-      factory       = IncludeFactory.new(configurator: @cfg)
-      line_marker   = PreprocessinatorLineMarkerIncludesExtractor.new(
-                        include_factory: factory, file_wrapper: @file_wrapper)
-
-      @handler = PreprocessinatorIncludesHandler.new(
-        configurator:                                    @cfg,
-        preprocessinator_line_marker_includes_extractor: line_marker,
-        include_factory:                                 factory,
-        tool_executor:                                   @tool_exec,
-        file_wrapper:                                    @file_wrapper,
-        file_path_utils:                                 @fpu,
-        yaml_wrapper:                                    _null,
-        parsing_parcels:                                 ParsingParcels.new,
-        loginator:                                       _null,
-        reportinator:                                    _null
-      )
-      @handler.setup
-
-      @preprocessinator = Preprocessinator.new(
-        preprocessinator_includes_handler: @handler,
-        preprocessinator_comment_stripper: _null,
-        preprocessinator_file_assembler:   _null,
-        preprocessinator_reconstructor:    _null,
-        file_path_utils:                   @fpu,
-        tool_executor:                     @tool_exec,
-        plugin_manager:                    _null,
-        configurator:                      @cfg,
-        loginator:                         _null,
-        reportinator:                      _null
-      )
-      @preprocessinator.setup
-    end
-
-    # kind: :header (mockable header / partial header) or :source (partial source) --
-    #   only affects logging in production; the includes result is identical.
-    # fallback: force the text-scan path (skip directives-only generation).
-    def reconcile(file:, test: 'itest', defines: [], search_paths:, fallback: false)
-      donly = nil
-      unless fallback
-        donly = @preprocessinator.generate_directives_only_output(
-          filepath: file, test: test, flags: [],
-          include_paths: search_paths, vendor_paths: [], defines: defines
-        )
-      end
-
-      @preprocessinator.preprocess_file_includes_common(
-        test: test,
-        filepath: file,
-        directives_only_filepath: donly,
-        fallback: (fallback || donly.nil?),
-        flags: [],
-        include_paths: search_paths,
-        vendor_paths: [],
-        defines: defines
-      )
-    end
-
-    def _null = IntegrationSpecHelpers::NULL
   end
 end
 
