@@ -12,6 +12,7 @@ require 'pathname'
 require 'tmpdir'
 require 'ceedling/constants'
 require 'ceedling/system_wrapper'
+require 'ceedling/exceptions'
 
 
 class FileWrapper
@@ -122,6 +123,59 @@ class FileWrapper
     File.open(filepath, flags) do |file|
       yield(file)
     end
+  end
+
+  # A handful of scheduled backoff delays (seconds) shared by #open_with_retry and
+  # #exist_with_retry? below -- both exist for the same reason: a shell-out that has
+  # already exited 0 doesn't guarantee the file it just wrote is visible to the very
+  # next read/exist? check (a transient AV/EDR share-lock or cloud-sync filter driver
+  # holding the file a beat longer than the process itself did, chiefly on Windows).
+  # Four retries, capped a little under half a second total, is enough to ride out that
+  # kind of transient delay without masking a real, permanent failure for long.
+  TRANSIENT_IO_RETRY_DELAYS = [0.02, 0.05, 0.1, 0.2].freeze unless const_defined?(:TRANSIENT_IO_RETRY_DELAYS, false)
+
+  # As #open, but retries the whole open-and-yield on a transient OS-level error
+  # (Errno::EACCES, Errno::ENOENT, ...) instead of surfacing it on the first attempt --
+  # the direct fix for a file a shell-out just wrote not yet being visible to the very
+  # next read. Deliberately scoped to SystemCallError, not StandardError: a programming
+  # bug elsewhere in the block (a parse error, a bad argument) must never be silently
+  # retried or masked, only a genuine OS-level access error. A failure that never
+  # clears still surfaces just as loudly as a bare #open would -- as a CeedlingException
+  # naming the file and how many attempts were made, not a bare, unhelpful SystemCallError.
+  def open_with_retry(filepath, flags)
+    attempts_remaining = TRANSIENT_IO_RETRY_DELAYS.dup
+    begin
+      open(filepath, flags) { |file| yield(file) }
+    rescue SystemCallError => e
+      if attempts_remaining.empty?
+        msg = "Failed to open '#{filepath}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}"
+        @loginator.log(msg, Verbosity::ERRORS)
+        raise CeedlingException, msg
+      end
+      delay = attempts_remaining.shift
+      @loginator.log("Retrying read of '#{filepath}' after a transient error: #{e.message}", Verbosity::DEBUG)
+      sleep(delay)
+      retry
+    end
+  end
+
+  # As #exist?, but a false result is retried a few times before being trusted -- the
+  # same transient-visibility race #open_with_retry guards against, for the many call
+  # sites that gate on presence (`exist?(path) ? register... : skip`) rather than
+  # opening the file directly. Returns true the moment any attempt sees the file. If
+  # every attempt still misses, logs a NOTICE naming the file and how long it waited
+  # before handing callers the same `false` a bare #exist? would -- so a genuine,
+  # permanent absence is at least visible in the log, not silently indistinguishable
+  # from a file that was only ever checked once.
+  def exist_with_retry?(filepath)
+    return true if exist?(filepath)
+    TRANSIENT_IO_RETRY_DELAYS.each do |delay|
+      sleep(delay)
+      return true if exist?(filepath)
+    end
+    waited = TRANSIENT_IO_RETRY_DELAYS.sum
+    @loginator.log("'#{filepath}' still not present after waiting #{waited}s across #{TRANSIENT_IO_RETRY_DELAYS.size} retries", Verbosity::NORMAL)
+    false
   end
 
   def read(filepath, length=nil)

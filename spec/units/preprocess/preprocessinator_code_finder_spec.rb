@@ -362,7 +362,7 @@ describe PreprocessinatorCodeFinder do
   context "#find_in_preprocessed_file" do
     it "opens the file through FileWrapper in read mode and delegates to the string search" do
       content = "# 1 \"source.c\"\nint foo(void) { return 0; }\n"
-      allow(@file_wrapper).to receive(:open).with('source.c', 'r').and_yield(StringIO.new(content))
+      allow(@file_wrapper).to receive(:open_with_retry).with('source.c', 'r').and_yield(StringIO.new(content))
 
       expect( @finder.find_in_preprocessed_file( 'source.c', 'int foo(void) { return 0; }' ) ).to eq 1
     end

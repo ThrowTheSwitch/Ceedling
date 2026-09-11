@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/preprocess/c_comment_scanner'
 require 'ceedling/preprocess/preprocessinator_comment_stripper'
 require 'ceedling/preprocess/preprocessinator_code_finder'
+require 'ceedling/file_wrapper'
 
 RSpec.describe PreprocessinatorCommentStripper do
 
@@ -597,7 +598,7 @@ RSpec.describe PreprocessinatorCommentStripper do
 
     it 'reads the file in binary mode and returns false without writing when there are no comments' do
       content = "# 1 \"foo.c\"\nint x;\n"
-      allow(@file_wrapper).to receive(:open).with('foo.c', 'rb').and_yield(StringIO.new(content))
+      allow(@file_wrapper).to receive(:open_with_retry).with('foo.c', 'rb').and_yield(StringIO.new(content))
 
       expect(@file_wrapper).not_to receive(:write)
       expect(@stripper.strip_file('foo.c')).to be false
@@ -605,14 +606,14 @@ RSpec.describe PreprocessinatorCommentStripper do
 
     it 'writes stripped content back in binary mode and returns true when comments are found' do
       content = "# 1 \"foo.c\"\n// comment\nint x;\n"
-      allow(@file_wrapper).to receive(:open).with('foo.c', 'rb').and_yield(StringIO.new(content))
+      allow(@file_wrapper).to receive(:open_with_retry).with('foo.c', 'rb').and_yield(StringIO.new(content))
 
       expect(@file_wrapper).to receive(:write).with('foo.c', anything, 'wb')
       expect(@stripper.strip_file('foo.c')).to be true
     end
 
     it 'wraps a read failure in a CeedlingException identifying the file' do
-      allow(@file_wrapper).to receive(:open).and_raise(Errno::ENOENT.new('no such file'))
+      allow(@file_wrapper).to receive(:open_with_retry).and_raise(Errno::ENOENT.new('no such file'))
 
       expect { @stripper.strip_file('missing.c') }
         .to raise_error(CeedlingException, /Failed to read 'missing\.c' for comment stripping/)
@@ -620,11 +621,39 @@ RSpec.describe PreprocessinatorCommentStripper do
 
     it 'wraps a write failure in a CeedlingException identifying the file' do
       content = "# 1 \"foo.c\"\n// comment\nint x;\n"
-      allow(@file_wrapper).to receive(:open).with('foo.c', 'rb').and_yield(StringIO.new(content))
+      allow(@file_wrapper).to receive(:open_with_retry).with('foo.c', 'rb').and_yield(StringIO.new(content))
       allow(@file_wrapper).to receive(:write).and_raise(Errno::EACCES.new('permission denied'))
 
       expect { @stripper.strip_file('foo.c') }
         .to raise_error(CeedlingException, /Failed to rewrite 'foo\.c' after comment stripping/)
+    end
+
+    # Fix 3 (concurrency/file-presence Stage 2): confirms strip_file itself now
+    # tolerates a transient fault, end to end through a real FileWrapper -- the
+    # exhaustive proof of the retry/backoff mechanism's own behavior lives in
+    # file_wrapper_spec.rb, so this is just the one representative, focused
+    # call-site proof that strip_file is actually wired to it. Uses a real
+    # FileWrapper (not a double) specifically so open_with_retry's own internal
+    # retry loop is what's exercised, not a stand-in for it; only File.open is
+    # stubbed, and the fault clears on the very first retry so this still runs
+    # near-instantly (one real ~20ms sleep, not the full backoff schedule).
+    it 'tolerates a transient read fault that clears on retry, via open_with_retry' do
+      content = "# 1 \"foo.c\"\nint x;\n"
+      call_count = 0
+      allow(File).to receive(:open) do |*_args, &block|
+        call_count += 1
+        raise Errno::EACCES, 'transient' if call_count == 1
+        block.call(StringIO.new(content))
+      end
+
+      real_file_wrapper = FileWrapper.new(loginator: double('loginator').as_null_object, verbosinator: double('verbosinator').as_null_object)
+      stripper = PreprocessinatorCommentStripper.new(
+        c_comment_scanner: CCommentScanner.new,
+        file_wrapper:      real_file_wrapper
+      )
+
+      expect(stripper.strip_file('foo.c')).to be false
+      expect(call_count).to eq(2)
     end
 
   end

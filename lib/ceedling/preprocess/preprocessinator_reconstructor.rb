@@ -8,6 +8,7 @@
 require 'ceedling/constants'
 require 'ceedling/encodinator'
 require 'ceedling/parsing_parcels'
+require 'ceedling/exceptions'
 
 class PreprocessinatorReconstructor
 
@@ -110,10 +111,20 @@ class PreprocessinatorReconstructor
     # read again downstream by code that depends on its line count being exact.
     # Windows text mode would rewrite "\n" to "\r\n" on write, which this
     # content must not be subject to.
-    @file_wrapper.open( input_filepath, 'rb' ) do |input|
-      @file_wrapper.open( output_filepath, 'wb' ) do |output|
-        compact_from_expansion( input: input, filepath: source_filepath, output: output )
+    # `input_filepath` is this same build's own gcc expansion output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    # `output_filepath` is a fresh write, not a read of something just produced, so it
+    # stays a plain open. Both opens stay nested (compact_from_expansion streams straight
+    # from input to output rather than buffering) so one rescue wraps the pair, same as
+    # strip_file's own single rescue around its one file operation.
+    begin
+      @file_wrapper.open_with_retry( input_filepath, 'rb' ) do |input|
+        @file_wrapper.open( output_filepath, 'wb' ) do |output|
+          compact_from_expansion( input: input, filepath: source_filepath, output: output )
+        end
       end
+    rescue => e
+      raise CeedlingException.new("Failed to compact expansion output for '#{input_filepath}' ⏩️ #{e}")
     end
   end
 

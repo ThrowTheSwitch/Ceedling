@@ -84,7 +84,10 @@ describe TestBuildExecutor do
     # Default: no prior `.d` file on disk, and the tracker reports every target
     # stale -- i.e. every real build in this spec proceeds as an unconditional
     # fresh compile unless a test overrides `stale?` to exercise the skip path.
+    # exist_with_retry? backs every .d-file presence check now (Fix 4); exist?
+    # itself is still called directly for the unrelated sibling-header check.
     allow(@file_wrapper).to receive(:exist?).and_return( false )
+    allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
     # Default: no plugin implements the new pre-*-register hooks -- each is a
     # no-op that leaves the arg_hash it's handed untouched.
     allow(@plugin_manager).to receive(:pre_test_compile_register)
@@ -197,7 +200,7 @@ describe TestBuildExecutor do
     it "registers the object's source before checking staleness, and its freshly-written gcc deps file after a real compile" do
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
       allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
-      allow(@file_wrapper).to receive(:exist?).with('build/deps').and_return( true )
+      allow(@file_wrapper).to receive(:exist_with_retry?).with('build/deps').and_return( true )
 
       expect(@dependinator).to receive(:register).with( 'build/foo.o', files: ['src/foo.c'], meta: anything ).ordered
       expect(@dependinator).to receive(:register_gcc_deps_file).with('build/deps').ordered # pre-compile: prior .d file, if any
@@ -205,6 +208,41 @@ describe TestBuildExecutor do
       expect(@generator).to receive(:generate_object_file_c).ordered
       expect(@dependinator).to receive(:register_gcc_deps_file).with('build/deps').ordered # post-compile: freshly-written .d file
       expect(@dependinator).to receive(:mark_fresh).with('build/foo.o').ordered
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    # Fix 4 (concurrency/file-presence Stage 2, Finding 2): a .d file that's genuinely
+    # on disk but missed by the very first existence check (the transient-visibility
+    # race a shell-out's own writer can lose against) must still get registered THIS
+    # run via exist_with_retry?'s retry, not silently skipped until a follow-up run
+    # self-corrects it -- Experiment B's own shape, committed as a permanent case.
+    # exist_with_retry?'s own retry/backoff mechanism is already proven exhaustively
+    # in file_wrapper_spec.rb; this uses a real FileWrapper only to prove the wiring
+    # at this call site actually benefits from it.
+    it "registers a .d file that's on disk but missed on the first presence check, via exist_with_retry?" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+
+      # A stand-in for exist_with_retry? itself missing on its first internal check and
+      # catching the file on a later one -- the mechanism's own retry/backoff is already
+      # proven exhaustively in file_wrapper_spec.rb, so this call site only needs to see
+      # that a "found, but not on the very first look" result still reaches registration.
+      call_count = 0
+      allow(@file_wrapper).to receive(:exist_with_retry?).with('build/deps') do
+        call_count += 1
+        call_count >= 2
+      end
+
+      expect(@generator).to receive(:generate_object_file_c)
+      # Pre-compile's own check (register_and_check_object_staleness) is the one that
+      # misses in this scenario -- there's no prior .d file to register yet regardless.
+      # Post-compile's check is what matters: this run's freshly-written .d file must
+      # still be registered despite a miss earlier in the very same run.
+      expect(@dependinator).to receive(:register_gcc_deps_file).with('build/deps').once
 
       @executor.send(
         :compile_test_component,
@@ -276,7 +314,7 @@ describe TestBuildExecutor do
       before(:each) do
         allow(@file_wrapper).to receive(:extname).with( 'test/a_test.c' ).and_return( '.c' )
         allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
-        allow(@file_wrapper).to receive(:exist?).with( 'build/deps' ).and_return( true )
+        allow(@file_wrapper).to receive(:exist_with_retry?).with( 'build/deps' ).and_return( true )
         allow(@file_wrapper).to receive(:read).and_return( '' )
 
         @state.testables[:a_test].filepath = 'test/a_test.c'
@@ -430,7 +468,7 @@ describe TestBuildExecutor do
 
       it "does not attempt isolation on a skip when there is no existing .d file yet" do
         allow(@dependinator).to receive(:stale?).with( 'build/foo.o' ).and_return( false )
-        allow(@file_wrapper).to receive(:exist?).with( 'build/deps' ).and_return( false )
+        allow(@file_wrapper).to receive(:exist_with_retry?).with( 'build/deps' ).and_return( false )
 
         expect(@gcc_dependency_parser).to_not receive(:parse)
         expect(@generator).to_not receive(:generate_object_file_c)
