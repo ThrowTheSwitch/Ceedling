@@ -200,6 +200,20 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
       expect( paths_of(includes) ).to eq( ['/proj/test/common/helper.h'] )
     end
 
+    it 'collapses a .. segment in an absolute Windows drive-letter marker path, preserving the drive letter' do
+      # Collapsed with a plain segment walk, not File.expand_path -- which is
+      # CWD/drive-dependent and would silently inject the CURRENT process's own
+      # drive letter here instead of preserving this marker's own "C:".
+      content = <<~OUTPUT
+        # 1 "C:\\proj\\test\\unit\\test_dotdot.c"
+        # 1 "C:\\proj\\test\\unit\\..\\common\\helper.h" 1
+      OUTPUT
+
+      includes = @extractor.extract_includes_from_string( content, 'C:\\proj\\test\\unit\\test_dotdot.c', described_class::USER )
+
+      expect( paths_of(includes) ).to eq( ['C:/proj/test/common/helper.h'] )
+    end
+
     it 'deduplicates a path reached more than once (e.g. via an include guard)' do
       content = <<~OUTPUT
         # 1 "test.c"

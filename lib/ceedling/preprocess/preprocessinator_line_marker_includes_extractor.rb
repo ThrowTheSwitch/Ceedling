@@ -224,15 +224,29 @@ class PreprocessinatorLineMarkerIncludesExtractor
   # untouched (its own documented contract defers that case to a File.expand_path-
   # based comparison elsewhere) -- reachable whenever the file actually being
   # preprocessed has an absolute path of its own, which makes GCC's marker for a
-  # directory-relative include absolute too. File.expand_path collapses the rest of
-  # the way; called only when the result is still absolute AND still carries a
-  # literal `..` segment, since it's a no-op for the ordinary, already-clean case and
-  # would otherwise wrongly prepend this process's own CWD onto an already
-  # project-relative result.
+  # directory-relative include absolute too. Collapsed here with a plain segment
+  # walk rather than File.expand_path, which is CWD- and drive-dependent on Windows
+  # and would silently inject the current process's own drive letter into an
+  # already-absolute Unix-style path instead of leaving it alone. Only reached when
+  # the result is still absolute AND still carries a literal `..` segment -- a no-op
+  # for the ordinary, already-clean case.
   def canonicalize_marker_path(path)
     resolved = PathMatcher.resolve_relative( path, anchor: '' )
-    return resolved unless resolved.start_with?('/') && resolved.split(%r{[\\/]}).include?('..')
-    File.expand_path( resolved )
+    segments = resolved.split(%r{[\\/]}).reject(&:empty?)
+    return resolved unless segments.include?('..')
+
+    # Absolute forms this can see: a leading "/" (Unix), or a drive letter
+    # ("C:\..." / "C:/..."). Either way, remember the prefix so the collapsed
+    # result stays just as absolute as it started -- neither form's own marker is
+    # ever a bare relative path once resolve_relative has already left it untouched.
+    drive_match = resolved.match(/\A([A-Za-z]:)[\\\/]/)
+    prefix = drive_match ? "#{drive_match[1]}/" : '/'
+    segments.shift if drive_match
+
+    collapsed = []
+    segments.each { |segment| segment == '..' ? collapsed.pop : collapsed << segment }
+
+    "#{prefix}#{collapsed.join('/')}"
   end
 
   def validate_type_argument(type)
