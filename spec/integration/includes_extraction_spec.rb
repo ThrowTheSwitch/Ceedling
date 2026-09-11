@@ -254,26 +254,79 @@ describe 'Includes extraction (integration)' do
 
   # --- Path / search-path shapes -----------------------------------------
 
-  it 'currently drops the subdir from a subdir-qualified quoted include' do
+  it 'renders a subdir-qualified quoted include by basename alone when nothing else in the file collides with it' do
+    # Ceedling adds every real directory as its own individual search path, so a
+    # unique basename already finds the right file -- preserving more of the
+    # directive's own written path here would add nothing findable a plain
+    # basename doesn't already provide, and (see the collision cases below) can
+    # actively break the build the moment it reaches further than any one
+    # configured search directory covers.
     tree = {
       'app.c'          => %(#include "drivers/uart.h"\nint a(void){return UART_BAUD;}\n),
       'drivers/uart.h' => %(#ifndef DRIVERS_UART_H\n#define DRIVERS_UART_H\n#define UART_BAUD 115200\n#endif\n)
     }
-    # Characterization: a user include renders from its basename alone, so
-    # `"drivers/uart.h"` comes back `"uart.h"`.
     expect(extracted(tree, 'app.c')).to eq(['#include "uart.h"'])
   end
 
-  it 'currently collides two headers that share a basename in different directories' do
+  it 'renders a ..-relative include by basename alone when nothing else in the file collides with it' do
+    tree = {
+      'test/foo.c'      => %(#include "../common/helper.h"\nint f(void){return HELPER_VALUE;}\n),
+      'common/helper.h' => %(#ifndef COMMON_HELPER_H\n#define COMMON_HELPER_H\n#define HELPER_VALUE 5\n#endif\n)
+    }
+    expect(extracted(tree, 'test/foo.c')).to eq(['#include "helper.h"'])
+  end
+
+  it 'keeps two headers that share a basename in different directories distinct, disambiguated by their own real paths' do
     tree = {
       'app.c'        => %(#include "hw/config.h"\n#include "app/config.h"\nint a(void){return HW_CFG + APP_CFG;}\n),
       'hw/config.h'  => %(#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\n#define HW_CFG 1\n#endif\n),
       'app/config.h' => %(#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define APP_CFG 2\n#endif\n)
     }
-    # Characterization of a known limitation: reconciliation keys on basename and a user
-    # include renders from its basename, so two distinct `config.h` headers merge into
-    # one. Fixing this belongs to the Include value model, out of scope for this work.
-    expect(extracted(tree, 'app.c')).to eq(['#include "config.h"'])
+    expect(extracted(tree, 'app.c')).to contain_exactly(
+      '#include "hw/config.h"', '#include "app/config.h"'
+    )
+  end
+
+  it 'grows the disambiguating suffix past one directory level when two colliding paths still share it' do
+    tree = {
+      'app.c' => %(#include "sensors/adc/config.h"\n#include "drivers/adc/config.h"\nint a(void){return S_CFG + D_CFG;}\n),
+      'sensors/adc/config.h' => %(#ifndef SENSORS_ADC_CONFIG_H\n#define SENSORS_ADC_CONFIG_H\n#define S_CFG 1\n#endif\n),
+      'drivers/adc/config.h' => %(#ifndef DRIVERS_ADC_CONFIG_H\n#define DRIVERS_ADC_CONFIG_H\n#define D_CFG 2\n#endif\n)
+    }
+    expect(extracted(tree, 'app.c')).to contain_exactly(
+      '#include "sensors/adc/config.h"', '#include "drivers/adc/config.h"'
+    )
+  end
+
+  it 'composes a non-colliding subdir include (basename-only) with a colliding one (disambiguated) in the same file' do
+    tree = {
+      'src/app.c'         => <<~C,
+        #include "drivers/uart.h"
+        #include "hw/config.h"
+        #include "local/config.h"
+        int a(void) { return UART_BAUD + HW_CFG + LOCAL_CFG; }
+      C
+      'src/drivers/uart.h' => %(#ifndef DRIVERS_UART_H\n#define DRIVERS_UART_H\n#define UART_BAUD 115200\n#endif\n),
+      'src/hw/config.h'    => %(#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\n#define HW_CFG 1\n#endif\n),
+      'src/local/config.h' => %(#ifndef LOCAL_CONFIG_H\n#define LOCAL_CONFIG_H\n#define LOCAL_CFG 2\n#endif\n)
+    }
+    expect(extracted(tree, 'src/app.c')).to contain_exactly(
+      '#include "uart.h"', '#include "hw/config.h"', '#include "local/config.h"'
+    )
+  end
+
+  it 'drops a subdirectory-qualified real header when its mock is also included' do
+    # The mock-supersedes filter matches by filename (Includes.sanitize!), unaffected
+    # by the real header's own directory nesting -- it's dropped before basename
+    # collision/disambiguation ever come into play.
+    tree = {
+      'consumer.c'       => %(#include "drivers/sensor.h"\n#include "mock_sensor.h"\nint c(void){return 0;}\n),
+      'drivers/sensor.h' => %(#ifndef SENSOR_H\n#define SENSOR_H\nint sensor_read(void);\n#endif\n),
+      'mock_sensor.h'    => %(#ifndef MOCK_SENSOR_H\n#define MOCK_SENSOR_H\nint sensor_read(void);\n#endif\n)
+    }
+    result = extracted(tree, 'consumer.c')
+    expect(result.any? { |s| s.include?('mock_sensor.h') }).to be true
+    expect(result.any? { |s| s =~ %r{(^|/)sensor\.h"} }).to be false
   end
 
   # --- Partial-source shape ----------------------------------------------

@@ -196,19 +196,29 @@ class Includes
   # text -- via `best_bare_match`, so `<sys/stat.h>` renders as written instead of
   # collapsing to `<stat.h>`.
   #
-  # A matched user include is deliberately left rendering filename-only, even when its
-  # own `#include` was genuinely subdirectory-qualified as written. Recovering "the
-  # original spelling" from `bare` the same way system includes do isn't safe here: a
-  # quoted include's bare-includes pass still performs GCC's standard directory-relative
-  # search for the including file (nothing about `-nostdinc` suppresses that), so a bare
-  # `#include "Types.h"` inside `src/LightSensor.h` resolves in the bare pass itself to
-  # `src/Types.h`, the moment a real `src/Types.h` exists on disk -- there's no literal
-  # spelling left in `bare` to recover at that point. Rendering that resolved path
-  # verbatim breaks Ceedling's own convention of adding every source directory as its
-  # own search path (`src/Types.h` isn't found via a `-Isrc` search path; only
-  # `Types.h` is). A system include's bare entry never has this problem: `<...>`
-  # includes are never resolved against a real file under `-nostdinc`, so its bare text
-  # is always exactly what was written.
+  # A matched user include renders filename-only whenever its basename is unique
+  # among this reconciliation's own results -- deliberately not the literal,
+  # as-written subdirectory spelling, even when one was available. Ceedling adds
+  # every real source/test/include directory as its OWN individual search path
+  # (nothing project-root-relative), so a header's basename alone already finds the
+  # right file precisely when nothing else in this same file's own includes shares
+  # it; preserving more path than that would achieve nothing (see the class comment
+  # on `best_bare_match` for the analogous reasoning already applied to a resolved
+  # `gcc -M` bare entry) and can actively break the build the moment it reaches
+  # further than a single configured search directory ever will (there is no
+  # project-root search path for a fuller, project-relative spelling to resolve
+  # against once rendered into a generated file living somewhere else entirely).
+  #
+  # When two or more matched user includes DO share a basename -- the genuinely
+  # destructive case, since a plain basename-only render for either one would then
+  # be ambiguous and silently pick just one of the real files, dropping the other's
+  # declarations from the reconstructed file entirely -- `reconcile` disambiguates
+  # them using each one's own REAL, RESOLVED `filepath` (from the accurate pass or
+  # the fallback text scan, never a literal, unresolved directive), computing the
+  # shortest trailing-path suffix that's unique among that colliding group. This
+  # never needs to reach further than the two (or more) files' own real, distinct
+  # containing directories, so it never risks reaching past what Ceedling's own
+  # per-directory search paths can find. See `disambiguating_user_include_path`.
   #
   # `test_filepath` is the anchor a bare entry's own `..` resolves against -- a bare
   # scan sees a directory-relative #include exactly as written, `..` and all, so it's
@@ -276,10 +286,17 @@ class Includes
 
       on_ambiguous&.call(bare_include.filepath, filepath, matched[1..]) if matched.length > 1
 
-      # Deliberately not carrying an include_path override here -- see the class
-      # comment above `reconcile` for why that isn't safe for a user include the way
-      # it is for a system include. This renders filename-only, same as it always has.
       user_includes << user_by_filepath[filepath]
+    end
+
+    # Disambiguate same-basename results -- see the class comment above. A group of
+    # one (the overwhelmingly common case) is left completely untouched.
+    by_basename = user_includes.group_by(&:filename)
+    user_includes = user_includes.map do |include|
+      siblings = by_basename[include.filename]
+      next include if siblings.length <= 1
+      suffix = disambiguating_user_include_path(siblings.map(&:filepath), include.filepath)
+      include.class.new(include.filepath, include_path: suffix)
     end
 
     # Always system includes first (C best practice).
@@ -318,6 +335,29 @@ class Includes
     return pool.max_by { |bare_include| bare_include.filepath.split(/[\\\/]/).reject(&:empty?).length }
   end
   private_class_method :best_bare_match
+
+  # The shortest trailing-path suffix of `filepath` (a matched user include's own
+  # real, resolved location) that distinguishes it from every OTHER real filepath in
+  # `sibling_filepaths` -- the full set of matched user includes sharing this one's
+  # basename, `filepath` included. Starts at 2 segments (1 alone is the plain
+  # basename these are colliding on in the first place) and grows only as far as
+  # actually needed. Two files can share a basename yet still share a longer
+  # trailing run too (e.g. two same-named headers nested identically under
+  # different top-level trees) -- growth continues past any length that isn't yet
+  # unique among the group, falling back to `filepath` in full only if every
+  # shorter suffix remains ambiguous.
+  def self.disambiguating_user_include_path(sibling_filepaths, filepath)
+    segments = filepath.split(/[\\\/]/).reject(&:empty?)
+    others = (sibling_filepaths - [filepath]).map { |fp| fp.split(/[\\\/]/).reject(&:empty?) }
+
+    (2..segments.length).each do |n|
+      suffix = segments.last(n)
+      return suffix.join('/') unless others.any? { |seg| seg.last(n) == suffix }
+    end
+
+    segments.join('/')
+  end
+  private_class_method :disambiguating_user_include_path
 
   # Sort list so system includes are at the beginning
   # (Best practice)

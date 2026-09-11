@@ -164,6 +164,18 @@ describe PathMatcher do
     it 'treats a backslash-separated .. query the same as a forward-slash one' do
       expect(described_class.resolve_relative('..\\common\\helper.h', anchor: 'test/unit')).to eq('test/common/helper.h')
     end
+
+    it 'preserves a leading / when the anchor itself is an absolute Unix path' do
+      # segments() rejects the empty string a leading "/" splits off -- naively
+      # rejoining with "/" then loses that leading slash entirely, silently turning
+      # an absolute anchor into a relative-looking result with the same text minus
+      # its leading "/". A caller anchoring against a real absolute file path (e.g.
+      # PreprocessinatorIncludesHandler#tag_literal_include, anchoring on
+      # File.dirname(filepath)) needs the result to still BE absolute.
+      expect(
+        described_class.resolve_relative('../common/helper.h', anchor: '/var/project/test')
+      ).to eq('/var/project/common/helper.h')
+    end
   end
 
 end

@@ -93,6 +93,11 @@ class PathMatcher
       )
     end
 
+    # segments() strips the empty string a leading "/" splits off, so a Unix
+    # absolute anchor's own "/"-ness has to be remembered separately here and
+    # reapplied below -- otherwise the result quietly turns into a relative-looking
+    # path carrying the same text minus its leading "/".
+    anchor_was_absolute = anchor.start_with?('/')
     resolved = segments(anchor)
 
     query_segments.each do |segment|
@@ -106,7 +111,8 @@ class PathMatcher
       end
     end
 
-    resolved.join('/')
+    joined = resolved.join('/')
+    anchor_was_absolute ? "/#{joined}" : joined
   end
 
   # Two filepaths correspond if the shorter one's path segments equal the longer
