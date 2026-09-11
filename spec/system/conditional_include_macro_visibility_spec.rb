@@ -13,13 +13,14 @@ require 'spec_system_helper'
 ##
 ## The detail of how Ceedling reconciles a file's #includes across its bare and
 ## accurate preprocessor passes -- project-:defines guards, same-file #define
-## guards, sibling-header-macro guards (issue #1223), transitive headers not
-## promoted to spurious top-level entries -- is characterized directly against
-## real GCC in spec/integration/includes_extraction_spec.rb. This spec keeps one
-## full `ceedling` build over all of those shapes at once, to prove the pieces
-## still fit together through a real Partials build.
+## guards, sibling-header-macro guards (issue #1223), a sibling-header-macro-guarded
+## *computed* include split across a backslash continuation (issue #1267),
+## transitive headers not promoted to spurious top-level entries -- is characterized
+## directly against real GCC in spec/integration/includes_extraction_spec.rb. This
+## spec keeps one full `ceedling` build over all of those shapes at once, to prove
+## the pieces still fit together through a real Partials build.
 ##
-## Assets: assets/tests_with_conditional_includes/
+## Assets: assets/fixtures/tests_with_conditional_includes/
 ##
 
 ceedling_system_tests do
@@ -44,6 +45,7 @@ ceedling_system_tests do
             widget.h widget.c project_flag_extra.h local_flag_extra.h
             nested_wrapper.h nested_extra.h macro_target_extra.h
             widget_feature.h widget_feature.c feature_config.h feature_extra.h
+            feature_extra2.h
           ].each { |f| FileUtils.cp test_asset_path("tests_with_conditional_includes/src/#{f}"), 'src/' }
           %w[test_widget.c test_widget_feature.c].each do |f|
             FileUtils.cp test_asset_path("tests_with_conditional_includes/test/#{f}"), 'test/'

@@ -278,19 +278,26 @@ class PreprocessinatorIncludesHandler
   # a bare token rather than a literal `"..."` or `<...>` -- i.e. a macro the
   # preprocessor must expand before any filename exists. `code_lines_with_num` has
   # already stripped comments and folded backslash continuations, so a commented-out
-  # or string-embedded `#include` never reaches here, and a continued directive
-  # reports the line its first physical line sat on.
+  # or string-embedded `#include` never reaches here.
+  #
+  # The line reported is the directive's ENDING physical line, not its first --
+  # `-fdirectives-only` attributes a consumed multi-line directive's own entering
+  # marker to the last physical line it spans (the marker literally replaces that
+  # line in the output stream; see PreprocessinatorLineMarkerIncludesExtractor's own
+  # correlation walk and preprocess/README.md), so this must name the same line or
+  # resolve_computed_includes never finds a match. For an ordinary, single-line
+  # directive the start and end line are identical, so this is a no-op there.
   def computed_include_source_lines(filepath)
     lines = []
 
     # Binary read for the same reason the sibling text scans use it: a text-mode read
     # can raise on an invalid byte sequence before code_lines' encoding cleanup runs.
     @file_wrapper.open( filepath, 'rb' ) do |input|
-      @parsing_parcels.code_lines_with_num( input ) do |line, line_num|
+      @parsing_parcels.code_lines_with_num( input ) do |line, _line_num, end_line_num|
         next unless line.match?( INCLUDE_DIRECTIVE )
         next if line.match?( PATTERNS::USER_INCLUDE_DIRECTIVE_FILENAME )
         next if line.match?( PATTERNS::SYSTEM_INCLUDE_DIRECTIVE_FILENAME )
-        lines << line_num
+        lines << end_line_num
       end
     end
 

@@ -482,6 +482,22 @@ RSpec.describe PreprocessinatorIncludesHandler do
       subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
     end
 
+    # -fdirectives-only attributes a consumed multi-line directive's own entering
+    # marker to its LAST physical line, not its first (see preprocess/README.md) --
+    # so the line asked about here must be the line the backslash continuation ends
+    # on, not the line it starts on, or a correlating marker at the right line never
+    # matches.
+    it 'asks about the LAST physical line of a backslash-continued computed #include, not the first' do
+      content = "#include \"literal.h\"\n#include \\\n  DEVICE_HEADER(a)\nint m(void) { return 0; }\n"
+      stub_file_open(filepath, content)
+
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:resolve_computed_includes).with(
+        hash_including( source_lines: [3] )
+      ).and_return( {} )
+
+      subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+    end
+
     it 'drops a computed-include line the extractor could not correlate to an entered header' do
       content = %(#include ACTIVE_MACRO\n#include INACTIVE_MACRO\nint m(void){return 0;}\n)
       stub_file_open(filepath, content)

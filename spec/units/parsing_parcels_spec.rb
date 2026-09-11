@@ -154,5 +154,51 @@ describe ParsingParcels do
 
       expect( got ).to eq expected
     end
+
+    # Characterizes today's contract before a 3rd yielded value is added below: for a
+    # folded backslash continuation, the 2nd value (num) is the FIRST physical line of
+    # the run, not the last. This must keep passing unmodified -- every existing
+    # consumer of this 2nd value (generator_test_runner.rb#remap_line_numbers!, and
+    # every code_lines caller via its own 1-arg pass-through) depends on this exact
+    # meaning never changing.
+    it "reports the first physical line of a folded continuation as its (2-arg) line number" do
+      file_contents = "one\ntwo \\\nthree\nfour\n"
+      got = []
+
+      @parsing_parcels.code_lines_with_num( StringIO.new( file_contents ) ) do |line, num|
+        got << [line.strip, num]
+      end
+
+      expect( got ).to eq( [['one', 1], ['two three', 2], ['four', 4]] )
+    end
+
+    # A block declaring a 3rd parameter receives the line's ENDING physical line number
+    # too -- for an ordinary, uncontinued line this is identical to the 2nd value; for a
+    # folded continuation it's the run's LAST physical line, not its first. This is what
+    # PreprocessinatorIncludesHandler#computed_include_source_lines needs to correlate a
+    # multi-physical-line computed #include against -fdirectives-only's own line markers
+    # (see preprocess/README.md) -- gcc attributes a consumed directive's entering marker
+    # to its last physical line, not its first.
+    it "reports the ending physical line as a 3rd yielded value, distinct from the start for a continuation" do
+      file_contents = "one\ntwo \\\nthree\nfour\n"
+      got = []
+
+      @parsing_parcels.code_lines_with_num( StringIO.new( file_contents ) ) do |line, start_num, end_num|
+        got << [line.strip, start_num, end_num]
+      end
+
+      expect( got ).to eq( [['one', 1, 1], ['two three', 2, 3], ['four', 4, 4]] )
+    end
+
+    it "reports the ending physical line across a 3-physical-line continuation" do
+      file_contents = "a\nb \\\nc \\\nd\ne\n"
+      got = []
+
+      @parsing_parcels.code_lines_with_num( StringIO.new( file_contents ) ) do |line, start_num, end_num|
+        got << [line.strip, start_num, end_num]
+      end
+
+      expect( got ).to eq( [['a', 1, 1], ['b c d', 2, 4], ['e', 5, 5]] )
+    end
   end
 end
