@@ -16,7 +16,7 @@ Known issues are complemented by three other documents:
 
 ## 1.2.0 — Prerelease
 
-No known fundamental limitations.
+TBD
 
 ## 1.1.0 — 2026-07-16
 
@@ -24,6 +24,8 @@ No known fundamental limitations.
 1. While header file search paths are now customizable per executable, this currently only applies to the search paths the compiler uses. Distinguishing test files or header files of the same name in different directories for test runner and mock generation respectively continues to rely on educated guesses in Ceedling code.
 1. All header files needed for test compilation must be within the `:includes` path collection. Relative paths in include directives that extend outside the path collection will cause build problems.
 1. Any path for a C file specified with `TEST_SOURCE_FILE(...)` is in relation to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, many of your `TEST_SOURCE_FILE(...)` calls may need to be updated. A more flexible and dynamic approach to path handling will come in a future update.
+1. In certain combinations of conditional preprocessing blocks with dependent symbols defined in another file, Ceedling can silently fail to extract computed includes (e.g. `#include SOME_MACRO()`).
+1. User includes (`#include "path/user.h"`) from source C files lose their relative path when Partial and mock header files are generated from source. Compilation failures can result from certain uncommon cases involving headers of the same names in different directories and a source file including both such headers.
 1. The Bullseye code coverage plugin has been temporarily disabled as of 1.0.0. The makers of Bullseye have generously provided a license for development, and the plugin will be available in the next minor release.
 
 ---
