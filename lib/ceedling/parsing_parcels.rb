@@ -27,11 +27,17 @@ class ParsingParcels
   # continuations are still handled one logical line at a time after that.
   #
   # @param input [IO, File, String] The input source to parse line by line
-  # @yield [line, line_num] Gives each cleaned line and its line number to the block
+  # @yield [line, line_num, end_line_num] Gives each cleaned line, its starting line number,
+  #   and its ending line number to the block
   # @yieldparam line [String] The cleaned code line
   # @yieldparam line_num [Integer] The line number (1-indexed) where this line appears in the input.
   #   For continuation lines (lines ending with backslash), the line number of the first line in the
   #   continuation sequence is provided.
+  # @yieldparam end_line_num [Integer] The line number (1-indexed) of the LAST physical line this
+  #   logical line spans. Identical to `line_num` for an ordinary, uncontinued line; for a folded
+  #   backslash continuation it's the run's final physical line, not its first. A block that only
+  #   declares 2 params never sees this value -- Ruby silently drops extra yielded values rather
+  #   than raising, so every existing 2-param caller is unaffected by its addition.
   def code_lines_with_num(input)
     comment_block = false
     full_line = ''
@@ -57,10 +63,12 @@ class ParsingParcels
         continuation_start_line = line_num if full_line == m[1]
       elsif full_line.empty?
         _line, comment_block = clean_code_line( line, comment_block )
-        yield( _line, line_num )
+        yield( _line, line_num, line_num )
       else
         _line, comment_block = clean_code_line( full_line + line, comment_block )
-        yield( _line, continuation_start_line )
+        # line_num is still this iteration's own physical line -- the last one the
+        # continuation run folded in -- so it doubles as the run's ending line number.
+        yield( _line, continuation_start_line, line_num )
         full_line = ''
         continuation_start_line = 0
       end

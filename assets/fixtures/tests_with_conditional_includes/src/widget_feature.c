@@ -21,9 +21,25 @@
 #include "feature_extra.h"      /* defines FEATURE_EXTRA_MACRO */
 #endif
 
+/* Same sibling-header-macro guard as above, but the target is a macro
+ * invocation (issue #1267) split across a backslash continuation rather than
+ * a literal filename. GCC's -fdirectives-only attributes a consumed
+ * multi-line directive's own entering marker to its LAST physical line, not
+ * its first -- proves the computed-include correlation fix reaches a real
+ * Partials build for a multi-physical-line directive, not just the
+ * single-line shape already covered at the integration tier. */
+#define WF_STR2(x) #x
+#define WF_STR(x) WF_STR2(x)
+#define WF_PICK(name) WF_STR(name.h)
+
+#if FEATURE_LEVEL > 1
+#include \
+  WF_PICK(feature_extra2)      /* defines FEATURE_EXTRA2_MACRO */
+#endif
+
 static int WidgetFeature__FromFeatureLevel(void)
 {
-    return FEATURE_EXTRA_MACRO;
+    return FEATURE_EXTRA_MACRO + FEATURE_EXTRA2_MACRO;
 }
 
 int WidgetFeature_FromFeatureLevel(void) { return WidgetFeature__FromFeatureLevel(); }

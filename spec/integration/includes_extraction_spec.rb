@@ -426,12 +426,54 @@ describe 'Includes extraction (integration)' do
     )
   end
 
-  it 'does not correlate a computed #include split across a backslash continuation' do
+  it 'resolves a sibling-macro-guarded computed #include split across a backslash continuation' do
     skip 'accurate (-fdirectives-only) path unavailable on this toolchain' unless @accurate
-    # Documented limitation: the raw-source scan reports the directive at its first
-    # physical line, but GCC attributes the entered header to a line shifted by the
-    # continuation, so the two never line up. A single-physical-line computed
-    # #include (every other case here) is unaffected.
+    # GCC's -fdirectives-only attributes a consumed multi-line directive's own entering
+    # marker to its LAST physical line, not its first -- computed_include_source_lines
+    # now reports that same last line (ParsingParcels#code_lines_with_num's 3rd yielded
+    # value), so the two agree.
+    tree = {
+      'widget.c' => <<~C,
+        #include "device_config.h"
+        #{COMPUTED}
+        #if DEVICE_COUNT > 1
+        #include \\
+          PICK(device_extra)
+        #endif
+        int w(void) { return DEVICE_EXTRA_MACRO; }
+      C
+      'device_config.h' => %(#ifndef DEVICE_CONFIG_H\n#define DEVICE_CONFIG_H\n#define DEVICE_COUNT 2\n#endif\n),
+      'device_extra.h'  => %(#ifndef DEVICE_EXTRA_H\n#define DEVICE_EXTRA_H\n#define DEVICE_EXTRA_MACRO (42)\n#endif\n)
+    }
+    expect(extracted(tree, 'widget.c')).to contain_exactly(
+      '#include "device_config.h"', '#include "device_extra.h"'
+    )
+  end
+
+  it 'resolves the same shape split across a 3-physical-line continuation' do
+    skip 'accurate (-fdirectives-only) path unavailable on this toolchain' unless @accurate
+    tree = {
+      'widget.c' => <<~C,
+        #include "device_config.h"
+        #{COMPUTED}
+        #if DEVICE_COUNT > 1
+        #include \\
+          PICK( \\
+          device_extra)
+        #endif
+        int w(void) { return DEVICE_EXTRA_MACRO; }
+      C
+      'device_config.h' => %(#ifndef DEVICE_CONFIG_H\n#define DEVICE_CONFIG_H\n#define DEVICE_COUNT 2\n#endif\n),
+      'device_extra.h'  => %(#ifndef DEVICE_EXTRA_H\n#define DEVICE_EXTRA_H\n#define DEVICE_EXTRA_MACRO (42)\n#endif\n)
+    }
+    expect(extracted(tree, 'widget.c')).to contain_exactly(
+      '#include "device_config.h"', '#include "device_extra.h"'
+    )
+  end
+
+  it 'still does not resolve a backslash-continued computed #include on the forced text-scan path' do
+    # Same documented fallback limitation as the single-line shape below: no
+    # directives-only stream exists in fallback to correlate against at all.
     tree = {
       'widget.c' => <<~C,
         #include "device_config.h"
@@ -445,7 +487,7 @@ describe 'Includes extraction (integration)' do
       'device_config.h' => %(#ifndef DEVICE_CONFIG_H\n#define DEVICE_CONFIG_H\n#define DEVICE_COUNT 2\n#endif\n),
       'device_extra.h'  => %(#ifndef DEVICE_EXTRA_H\n#define DEVICE_EXTRA_H\n#define DEVICE_EXTRA_MACRO (42)\n#endif\n)
     }
-    expect(extracted(tree, 'widget.c')).to eq(['#include "device_config.h"'])
+    expect(extracted(tree, 'widget.c', fallback: true)).to eq(['#include "device_config.h"'])
   end
 
   it 'does not resolve a sibling-macro-guarded computed #include on the forced text-scan path' do
