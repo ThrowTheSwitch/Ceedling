@@ -117,7 +117,7 @@ RSpec.describe Preprocessinator do
     end
 
     # Both bare sources finding the same entry must not produce a duplicate
-    # (the union is deduplicated by filename before being handed to reconcile).
+    # (the union is deduplicated by filepath before being handed to reconcile).
     it "does not duplicate an entry both bare passes agree on" do
       allow(@includes_handler).to receive(:extract_bare_includes).and_return(
         [ Include.new('Types.h') ]
@@ -132,6 +132,26 @@ RSpec.describe Preprocessinator do
       result = call_it()
 
       expect(result.map(&:filename)).to eq(['Types.h'])
+    end
+
+    # The union dedups by filepath, not filename -- two bare entries that merely
+    # SHARE a basename but are genuinely different files (different filepath) must
+    # both survive into reconcile. Deduping by filename alone would silently drop
+    # one distinct header and everything it declares from the reconstructed file.
+    it "keeps two bare entries with the same basename but different filepaths distinct" do
+      allow(@includes_handler).to receive(:extract_bare_includes).and_return(
+        [ Include.new('hw/config.h') ]
+      )
+      allow(@includes_handler).to receive(:extract_bare_includes_from_text).and_return(
+        [ Include.new('hw/config.h'), Include.new('app/config.h') ]
+      )
+      allow(@includes_handler).to receive(:extract_user_includes_preprocess).and_return(
+        [ UserInclude.new('hw/config.h'), UserInclude.new('app/config.h') ]
+      )
+
+      result = call_it()
+
+      expect(result.map(&:filepath)).to contain_exactly('hw/config.h', 'app/config.h')
     end
 
   end

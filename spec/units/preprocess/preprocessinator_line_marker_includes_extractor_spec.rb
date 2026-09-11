@@ -181,6 +181,25 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
       expect( paths_of(includes) ).to eq( ['test/common/helper.h'] )
     end
 
+    it 'collapses a .. segment even when GCC emits an absolute marker path' do
+      # PathMatcher.resolve_relative deliberately leaves an ABSOLUTE query's own ..
+      # untouched (its documented contract defers that case to File.expand_path-based
+      # comparison elsewhere) -- reachable here whenever the file actually being
+      # preprocessed has an absolute path of its own, which makes GCC's own marker
+      # text for a directory-relative include absolute too. Left uncanonicalized (as
+      # it was before this test), the marker's own literal '..' segment can never
+      # correspond to the project's real, ..-free file list downstream, and the
+      # include silently vanishes.
+      content = <<~OUTPUT
+        # 1 "/proj/test/unit/test_dotdot.c"
+        # 1 "/proj/test/unit/../common/helper.h" 1
+      OUTPUT
+
+      includes = @extractor.extract_includes_from_string( content, '/proj/test/unit/test_dotdot.c', described_class::USER )
+
+      expect( paths_of(includes) ).to eq( ['/proj/test/common/helper.h'] )
+    end
+
     it 'deduplicates a path reached more than once (e.g. via an include guard)' do
       content = <<~OUTPUT
         # 1 "test.c"

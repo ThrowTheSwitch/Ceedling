@@ -1263,10 +1263,12 @@ describe "Includes reconciliation" do
     end
 
     it "renders a matched user include filename-only even when both bare and candidate carry the same subdirectory" do
-      # Deliberately not preserving subdirectory qualification for user includes, unlike
-      # system includes -- a bare quoted #include is resolved by GCC's own
-      # directory-relative search even under -nostdinc, so bare's own text can't be
+      # Deliberately not preserving subdirectory qualification for an UNTAGGED bare
+      # entry -- a bare quoted #include is resolved by GCC's own directory-relative
+      # search even under -nostdinc, so an ordinary bare entry's own text can't be
       # trusted as "the literal, as-written spelling" the way a system include's can.
+      # A bare entry carrying `include_path` (see the tests below) is a different,
+      # known-literal case -- this one stays untagged.
       bare = [Include.new("drivers/gpio.h")]
       user = [UserInclude.new("drivers/gpio.h")]
       system = []
@@ -1276,6 +1278,70 @@ describe "Includes reconciliation" do
       expect(result.length).to eq(1)
       expect(result[0]).to be_a(UserInclude)
       expect("#{result[0]}").to eq('#include "gpio.h"')
+    end
+
+    it "disambiguates two matched user includes that collide on a basename, using each one's own real resolved path" do
+      # Both bare entries genuinely differ (see the "keeps two genuinely different
+      # same-basename candidates distinct" case above -- this proves what reconcile
+      # then RENDERS for each, not merely that both survive as separate results).
+      # Neither candidate's `filepath` is a literal/unresolved directive text --
+      # these come from the accurate pass or the fallback text scan, always a real,
+      # resolved location -- disambiguation works from that, not from `bare` at all.
+      bare = [
+        Include.new("hw/config.h"),
+        Include.new("app/config.h")
+      ]
+      user = [
+        UserInclude.new("hw/config.h"),
+        UserInclude.new("app/config.h")
+      ]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:to_s)).to contain_exactly('#include "hw/config.h"', '#include "app/config.h"')
+    end
+
+    it "grows the disambiguating suffix past 2 segments when a shorter one is still ambiguous" do
+      # "sensors/adc/config.h" and "drivers/adc/config.h" still collide at 2
+      # segments ("adc/config.h" both times) -- the 3rd segment (sensors vs drivers)
+      # is where they first diverge.
+      bare = [
+        Include.new("sensors/adc/config.h"),
+        Include.new("drivers/adc/config.h")
+      ]
+      user = [
+        UserInclude.new("sensors/adc/config.h"),
+        UserInclude.new("drivers/adc/config.h")
+      ]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.map(&:to_s)).to contain_exactly(
+        '#include "sensors/adc/config.h"', '#include "drivers/adc/config.h"'
+      )
+    end
+
+    it "disambiguates three colliding basenames at once, each needing only its own minimal suffix" do
+      bare = [
+        Include.new("drivers/config.h"),
+        Include.new("app/config.h"),
+        Include.new("shared/config.h")
+      ]
+      user = [
+        UserInclude.new("src/module/drivers/config.h"),
+        UserInclude.new("src/module/app/config.h"),
+        UserInclude.new("src/shared/config.h")
+      ]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.map(&:to_s)).to contain_exactly(
+        '#include "drivers/config.h"', '#include "app/config.h"', '#include "shared/config.h"'
+      )
     end
 
     it "renders a bare, unqualified UserInclude bare even when its candidate resolves to a fuller path" do

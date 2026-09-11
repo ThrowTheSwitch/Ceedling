@@ -571,9 +571,17 @@ class Preprocessinator
     # all, since none exists until a real preprocessor expands the macro. The
     # two passes catch different, non-overlapping failure modes; keeping both
     # covers both.
+    #
+    # Deduped by filepath, not filename: two bare entries sharing only a basename
+    # (e.g. "hw/config.h" and "app/config.h") are genuinely different files and must
+    # both survive into reconcile below, which disambiguates same-basename user
+    # includes using each one's own real resolved path (see Includes.reconcile) --
+    # collapsing them by filename here would silently drop whichever one lost, along
+    # with everything it declares, from the reconstructed file, before reconcile
+    # ever got the chance.
     bare_includes = (
       bare_includes + @includes_handler.extract_bare_includes_from_text( filepath: filepath )
-    ).uniq( &:filename )
+    ).uniq( &:filepath )
 
     # Supplement again with computed #includes -- a directive whose target is a macro
     # invocation rather than a literal filename. Both bare passes above are blind to
@@ -590,7 +598,7 @@ class Preprocessinator
         bare_includes + @includes_handler.extract_computed_includes(
           filepath: filepath, directives_only_filepath: directives_only_filepath
         )
-      ).uniq( &:filename )
+      ).uniq( &:filepath )
     end
 
     # Extract user includes

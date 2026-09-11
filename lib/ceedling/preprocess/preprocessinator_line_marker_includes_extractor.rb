@@ -195,7 +195,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
       marker_path = match[2]
       next if marker_path.start_with?('<')  # <built-in>, <command-line>
 
-      marker_path = PathMatcher.resolve_relative(marker_path, anchor: '')
+      marker_path = canonicalize_marker_path( marker_path )
       flags = match[3] ? match[3].split.map(&:to_i) : []
 
       if File.basename(marker_path) == source_basename
@@ -217,6 +217,22 @@ class PreprocessinatorLineMarkerIncludesExtractor
     end
 
     resolved
+  end
+
+  # GCC's own marker text is real and complete but sometimes left uncanonicalized:
+  # PathMatcher.resolve_relative deliberately leaves an ABSOLUTE query's own `..`
+  # untouched (its own documented contract defers that case to a File.expand_path-
+  # based comparison elsewhere) -- reachable whenever the file actually being
+  # preprocessed has an absolute path of its own, which makes GCC's marker for a
+  # directory-relative include absolute too. File.expand_path collapses the rest of
+  # the way; called only when the result is still absolute AND still carries a
+  # literal `..` segment, since it's a no-op for the ordinary, already-clean case and
+  # would otherwise wrongly prepend this process's own CWD onto an already
+  # project-relative result.
+  def canonicalize_marker_path(path)
+    resolved = PathMatcher.resolve_relative( path, anchor: '' )
+    return resolved unless resolved.start_with?('/') && resolved.split(%r{[\\/]}).include?('..')
+    File.expand_path( resolved )
   end
 
   def validate_type_argument(type)
@@ -260,7 +276,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
         # text -- real and complete, but left uncanonicalized. Collapsing any ..
         # here, once, means this path can correspond to the project's own real,
         # ..-free file list the same way any other candidate already does.
-        filepath = PathMatcher.resolve_relative( filepath, anchor: '' )
+        filepath = canonicalize_marker_path( filepath )
 
         # Integer line number
         line_number = match[1].to_i
