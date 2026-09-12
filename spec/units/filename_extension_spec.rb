@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'yaml'
 require 'ceedling/filename_extension'
 
 describe FilenameExtension do
@@ -86,6 +87,22 @@ describe FilenameExtension do
 
     it 'is false when configured with at least one extension' do
       expect(FilenameExtension.new('.c').empty?).to be false
+    end
+  end
+
+  # `dumpconfig` (and anything else that YAML-dumps project configuration) must
+  # produce clean, safe YAML any tool can read back -- not a tagged Ruby object
+  # only Ceedling's own unsafe-load path could round-trip. Entirely in-memory:
+  # YAML.dump with no IO argument returns a String directly, never touching disk.
+  describe '#encode_with (YAML serialization)' do
+    it 'dumps as a plain YAML sequence, not a tagged Ruby object' do
+      dumped = YAML.dump(FilenameExtension.new(['.s', '.S']))
+      expect(dumped).not_to include('!ruby/object')
+    end
+
+    it 'round-trips through a safe YAML load back to the plain extensions list' do
+      dumped = YAML.dump(FilenameExtension.new(['.s', '.S']))
+      expect(YAML.safe_load(dumped)).to eq(['.s', '.S'])
     end
   end
 

@@ -287,7 +287,12 @@ class CliHandler
 
     _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
-    @cli_helper.console_project_name( config )
+    # A nil filepath means --stdout was set -- the YAML itself is the only thing
+    # that may reach stdout in that case, for a consuming tool to parse cleanly,
+    # so every banner/notice below is skipped rather than interleaved into it.
+    stdout_mode = filepath.nil?
+
+    @cli_helper.console_project_name( config ) unless stdout_mode
 
     # Exception handling to ensure we dump the configuration regardless of config validation errors
     begin
@@ -301,18 +306,18 @@ class CliHandler
 
         _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
-        config = @helper.load_ceedling( 
+        config = @helper.load_ceedling(
           config: config,
           rakefile_path: path,
           default_tasks: default_tasks
         )
       else
-        @loginator.console( " > Skipped loading Ceedling application" )
+        @loginator.console( " > Skipped loading Ceedling application" ) unless stdout_mode
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
 
-      @loginator.console( "\nDumped project configuration to #{filepath}\n", LogLabels::TITLE )      
+      @loginator.console( "\nDumped project configuration to #{filepath}\n", LogLabels::TITLE ) unless stdout_mode
     end
   end
 

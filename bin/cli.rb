@@ -394,11 +394,12 @@ module CeedlingTasks
 
 
     # simplecov:disable line
-    desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and write final config to a YAML file"
+    desc "dumpconfig [FILEPATH] [SECTIONS...]", "Process project configuration and write final config to a YAML file"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
                   :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :app, :type => :boolean, :default => true, :desc => "Runs Ceedling application and its config manipulations"
+    method_option :stdout, :type => :boolean, :default => false, :desc => "Write YAML to standard output instead of FILEPATH, for consuming tools"
     method_option :ruby_replacement, :type => :boolean, :default => false, :desc => DOC_RUBY_REPLACEMENT_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
@@ -406,7 +407,8 @@ module CeedlingTasks
       `ceedling dumpconfig` loads your project configuration, including all manipulations & merges,
       and writes the final config to a YAML file.
 
-      FILEPATH is a required path to a destination YAML file. A nonexistent path will be created.
+      FILEPATH is a required path to a destination YAML file unless `--stdout` is set. A
+      nonexistent path will be created.
 
       SECTIONS is an optional config “path” that extracts a portion of a configuration. The
       top-level YAML container will be the path’s last element.
@@ -421,15 +423,29 @@ module CeedlingTasks
       the configuration. Disabling it dumps project config after any mixins but before any
       application manipulations.
 
+      • `--stdout` writes the YAML directly to standard output instead of FILEPATH -- handy for a
+      consuming tool that wants Ceedling's resolved configuration without a temp file. Omit FILEPATH
+      when using this flag; any positional arguments given are treated as SECTIONS instead.
+      \x5> ceedling dumpconfig --stdout tools test_compiler
+
       • #{LONGDOC_RUBY_REPLACEMENT_FLAG}
       LONGDESC
     ) )
-    def dumpconfig(filepath, *sections)
+    def dumpconfig(filepath = nil, *sections)
       @handler.validate_string_param(
         options[:project],
         CLI_MISSING_PARAMETER_DEFAULT,
         "--project is missing a required filepath parameter"
       )
+
+      if options[:stdout]
+        # No destination-file slot to occupy in stdout mode -- every positional
+        # argument given is a section path element instead.
+        sections = [filepath, *sections].compact
+        filepath = nil
+      elsif filepath.nil?
+        raise Thor::Error.new("FILEPATH is a required parameter unless --stdout is set")
+      end
 
       # Get an unfrozen copy so we can add / modify
       _options = options.dup()
