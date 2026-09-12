@@ -111,12 +111,12 @@ configuration. If no tasks are provided, built-in default tasks or your
 
 ---
 
-### `ceedling dumpconfig FILEPATH [SECTIONS...]`
+### `ceedling dumpconfig [FILEPATH] [SECTIONS...]`
 
 Process project configuration and write final result to a YAML file.
 
-`FILEPATH` is a required path to a destination YAML file. A nonexistent 
-path will be created.
+`FILEPATH` is a required path to a destination YAML file, unless `--stdout` is 
+set (see below). A nonexistent path will be created.
 
 `SECTIONS` is an optional config “path” that extracts a portion of a 
 configuration. The top-level YAML container will be the path’s last 
@@ -127,7 +127,17 @@ element. Example: `ceedling dumpconfig my/path/config.yml tools test_compiler`.
 | `--project` | `-p` | Loads the filepath as your base project configuration | none |
 | `--mixin` | `-m` | Merges the configuration mixin by name, filepath, or inline YAML (`=` sigil). Repeatable. | `[]` |
 | `--app` | | Runs Ceedling application and its config manipulations | `true` |
+| `--stdout` | | Writes YAML to standard output instead of `FILEPATH`, for consuming tools | `false` (disabled) |
 | `--ruby-replacement` | | Enables inline Ruby string expansion (`#{...}`) in project configuration | `false` (disabled) |
+
+Use `--stdout` when a consuming tool wants Ceedling’s fully resolved 
+configuration piped directly into its own process rather than written to 
+a temp file and read back. Omit `FILEPATH` when using this flag — any 
+positional arguments given are treated as `SECTIONS` instead:
+
+```
+ceedling dumpconfig --stdout tools test_compiler
+```
 
 ---
 
