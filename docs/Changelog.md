@@ -47,17 +47,21 @@ Ceedling now integrates Unity’s features for randomizing test case execution w
 ### Subtractive paths in `TEST_SOURCE_FILE()`
 The [`TEST_SOURCE_FILE()` build directive macro](https://throwtheswitch.github.io/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file-subtractive-notation) can now be used to remove source files from a test executable build using the same `-:` filepath decorator as available in `:paths` project configuration (ex. `TEST_SOURCE_FILE("-:foo/bar/file.c")`). This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
 
-### Filepath limit checks
-Platform filepath limits (especially on Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
-
 ### `ceedling.yml` as an alternate default project file
 [#1250](https://github.com/ThrowTheSwitch/Ceedling/issues/1250) `ceedling.yml` is now recognized as an alternate default project filename alongside `project.yml`. Either name is loaded the same way; neither is preferred over the other. If both exist in the same directory, Ceedling raises an error. `ceedling new` continues to generate `project.yml` by default; pass `--ceedling-yml` to generate `ceedling.yml` instead. See [Loading a Project Configuration](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/loading/).
 
-### Gcovr raw custom arguments
+### Gcov plugin
+#### Gcovr raw custom arguments
 [#1159](https://github.com/ThrowTheSwitch/Ceedling/issues/1159) Added [`:gcov` ↳ `:gcovr` ↳ `:custom_args:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/gcov/gcovr/), a list of raw command line arguments passed straight through to `gcovr`. This is an escape hatch for any `gcovr` flag Ceedling has no named option for (e.g. limiting gcovr’s search root), mirroring the `:report_generator` ↳ `:custom_args:` option that already existed for the ReportGenerator side of the Gcov plugin. Unlike every other GCovr option, `:custom_args:` still applies even when `:config_file` is set.
 
-### ReportGenerator coverage-threshold parity
+#### ReportGenerator coverage-threshold parity
 Added `:gcov` ↳ `:report_generator` ↳ `:fail_under_line`/`:fail_under_branch`/`:fail_under_method`/`:fail_under_full_method`, ReportGenerator’s own coverage-threshold options mirroring the Gcovr side’s existing `:fail_under_*` family. A configured threshold breaks the build in the same way as these options do with Gcovr.
+
+### Filepath limit checks
+Platform filepath limits (especially on Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
+
+### Retry handling for child process generated file dependencies
+In certain intervening circumstances, particularly on Windows, a child process may successfully generate a file that Ceedling expects to be present but OS-related issues (e.g. virus software, security checks, cloud storage syncing) delay from actually appearing in the file system. A new application-wide retry mechanism deals with the situations and fails properly if the delay exceeds the retry limit.
 
 ## 💪 Fixed
 
