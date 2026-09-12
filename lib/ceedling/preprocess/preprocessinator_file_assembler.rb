@@ -55,7 +55,9 @@ class PreprocessinatorFileAssembler
     )    
     @tool_executor.exec( command )
 
-    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+    # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, filepath )
     end
 
@@ -110,7 +112,9 @@ class PreprocessinatorFileAssembler
 
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( source_filepath, test )
 
-    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+    # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
     end
 
@@ -180,7 +184,9 @@ class PreprocessinatorFileAssembler
 
     full_expansion_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
 
-    @file_wrapper.open( full_expansion_filepath, 'r' ) do |file|
+    # `full_expansion_filepath` is this same build's own gcc output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( full_expansion_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
     end
 
@@ -265,7 +271,9 @@ class PreprocessinatorFileAssembler
     )
     @tool_executor.exec( command )
 
-    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+    # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, filepath )
     end
 
@@ -330,7 +338,9 @@ class PreprocessinatorFileAssembler
         _filter_conditionals( _contents, defines )
       end
     else
-      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
+      # `directives_only_filepath` is this same build's own gcc output -- open_with_retry
+      # rides out the file briefly not yet being visible right after the shell-out exits.
+      @file_wrapper.open_with_retry( directives_only_filepath, 'r' ) do |file|
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
         @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
       end

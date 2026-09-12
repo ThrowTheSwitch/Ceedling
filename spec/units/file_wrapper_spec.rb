@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/file_wrapper'
 require 'ceedling/system_wrapper'
+require 'ceedling/exceptions'
 
 describe FileWrapper do
   before(:each) do
@@ -196,6 +197,97 @@ describe FileWrapper do
       expect(@loginator).to have_received(:log).with(
         a_string_including( @source_a ), Verbosity::DEBUG
       )
+    end
+  end
+
+  # Retries a transient OS-level failure a few times before giving up -- covers
+  # the "shell out, then immediately read/check the file that process just
+  # wrote" race (sporadic Windows AV/share-lock reports, chiefly) without ever
+  # masking a real, non-transient failure. Entirely stub-based: no real
+  # filesystem or real timing is involved -- `sleep` is stubbed away so these
+  # run instantly regardless of the configured delays, and the real-filesystem/
+  # real-timing proof of this mechanism lives at the integration tier instead
+  # (`spec/integration/preprocessing_transient_io_retry_spec.rb`).
+  describe '#open_with_retry' do
+    before(:each) do
+      allow(@file_wrapper).to receive(:sleep)
+    end
+
+    it 'behaves identically to #open when nothing fails' do
+      yielded = nil
+      allow(File).to receive(:open).with('/f.txt', 'r').and_yield(:the_file)
+
+      @file_wrapper.open_with_retry('/f.txt', 'r') { |f| yielded = f }
+
+      expect(yielded).to eq(:the_file)
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+
+    it 'retries past a SystemCallError and succeeds once the underlying open stops raising' do
+      call_count = 0
+      allow(File).to receive(:open) do |*_args, &block|
+        call_count += 1
+        raise Errno::EACCES, 'transient' if call_count < 3
+        block.call(:the_file)
+      end
+
+      yielded = nil
+      @file_wrapper.open_with_retry('/f.txt', 'r') { |f| yielded = f }
+
+      expect(yielded).to eq(:the_file)
+      expect(call_count).to eq(3)
+      expect(@file_wrapper).to have_received(:sleep).twice
+    end
+
+    it 'raises a CeedlingException naming the filepath and retry count once every retry is exhausted, and logs it' do
+      allow(File).to receive(:open).and_raise(Errno::EACCES, 'still locked')
+
+      expect { @file_wrapper.open_with_retry('/f.txt', 'r') { |f| f } }.to raise_error(CeedlingException, /\/f\.txt/)
+      expect(@loginator).to have_received(:log).with(a_string_including('/f.txt'), Verbosity::ERRORS)
+      # Initial attempt + one retry per configured delay.
+      expect(File).to have_received(:open).exactly(FileWrapper::TRANSIENT_IO_RETRY_DELAYS.size + 1).times
+    end
+
+    it 'does not retry a non-SystemCallError raised from inside the block -- propagates immediately' do
+      allow(File).to receive(:open).and_yield(:the_file)
+
+      expect {
+        @file_wrapper.open_with_retry('/f.txt', 'r') { |_f| raise ArgumentError, 'not transient' }
+      }.to raise_error(ArgumentError, 'not transient')
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+  end
+
+  describe '#exist_with_retry?' do
+    before(:each) do
+      allow(@file_wrapper).to receive(:sleep)
+    end
+
+    it 'returns true immediately when the file exists on the first check' do
+      allow(File).to receive(:exist?).with('/f.txt').and_return(true)
+
+      expect(@file_wrapper.exist_with_retry?('/f.txt')).to be true
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+
+    it 'returns true once a later check sees the file' do
+      call_count = 0
+      allow(File).to receive(:exist?) do
+        call_count += 1
+        call_count >= 3
+      end
+
+      expect(@file_wrapper.exist_with_retry?('/f.txt')).to be true
+      expect(call_count).to eq(3)
+    end
+
+    it 'returns false, and logs a NOTICE naming the filepath, only once every attempt misses' do
+      allow(File).to receive(:exist?).and_return(false)
+
+      expect(@file_wrapper.exist_with_retry?('/f.txt')).to be false
+      expect(@loginator).to have_received(:log).with(a_string_including('/f.txt'), Verbosity::NORMAL)
+      # Initial check + one retry per configured delay.
+      expect(File).to have_received(:exist?).exactly(FileWrapper::TRANSIENT_IO_RETRY_DELAYS.size + 1).times
     end
   end
 

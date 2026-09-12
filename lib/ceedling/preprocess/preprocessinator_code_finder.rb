@@ -20,7 +20,9 @@ class PreprocessinatorCodeFinder
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for production use where preprocessor output resides on disk.
   def find_in_preprocessed_file(filepath, code)
-    @file_wrapper.open( filepath, 'r' ) do |file|
+    # `filepath` is this same build's own gcc preprocessor output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( filepath, 'r' ) do |file|
       return find_in_preprocessed_content( io: file, search: code )
     end
   end

@@ -47,9 +47,12 @@ RSpec.describe PreprocessinatorFileAssembler do
     )
   end
 
-  # Helper: stub file_wrapper.open to yield StringIO of content
+  # Helper: stub file_wrapper.open (or, for a real-mode 'r' read -- every one of
+  # which in this file reads a file this same build just produced via gcc --
+  # open_with_retry) to yield StringIO of content.
   def stub_file_open(filepath, content, mode='rb')
-    allow(@file_wrapper).to receive(:open).with(filepath, mode).and_yield(StringIO.new(content))
+    method = (mode == 'r') ? :open_with_retry : :open
+    allow(@file_wrapper).to receive(method).with(filepath, mode).and_yield(StringIO.new(content))
   end
 
 

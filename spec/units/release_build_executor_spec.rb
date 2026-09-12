@@ -46,7 +46,9 @@ describe ReleaseBuildExecutor do
     # Default: no prior `.d` file on disk, and the tracker reports every target
     # stale -- i.e. every real build in this spec proceeds as an unconditional
     # fresh compile/link unless a test overrides `stale?` to exercise the skip path.
-    allow(@file_wrapper).to receive(:exist?).and_return( false )
+    # exist_with_retry? backs every presence check here now (Fix 4) -- release_build_executor
+    # has no remaining plain-exist? call site.
+    allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
     allow(@file_wrapper).to receive(:mkdir)
     allow(@dependinator).to receive(:register)
     allow(@dependinator).to receive(:register_gcc_deps_file)
@@ -164,7 +166,7 @@ describe ReleaseBuildExecutor do
     it "registers the object's source before checking staleness, and its freshly-written gcc deps file after a real compile" do
       allow(@file_finder).to receive(:find_build_input_file).and_return( 'src/foo.c' )
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
-      allow(@file_wrapper).to receive(:exist?).with('build/release/dependencies/deps').and_return( true )
+      allow(@file_wrapper).to receive(:exist_with_retry?).with('build/release/dependencies/deps').and_return( true )
 
       expect(@dependinator).to receive(:register).with( 'build/release/out/foo.o', files: ['src/foo.c'], meta: anything ).ordered
       expect(@dependinator).to receive(:register_gcc_deps_file).with('build/release/dependencies/deps').ordered # pre-compile: prior .d file, if any
@@ -172,6 +174,33 @@ describe ReleaseBuildExecutor do
       expect(@generator).to receive(:generate_object_file_c).ordered
       expect(@dependinator).to receive(:register_gcc_deps_file).with('build/release/dependencies/deps').ordered # post-compile: freshly-written .d file
       expect(@dependinator).to receive(:mark_fresh).with('build/release/out/foo.o').ordered
+
+      @state.objects = ['build/release/out/foo.o']
+      @executor.compile_objects( @state )
+    end
+
+    # Fix 4 (concurrency/file-presence Stage 2, Finding 2): a .d file that's genuinely
+    # on disk but missed by the very first existence check must still get registered
+    # THIS run via exist_with_retry?'s retry, not silently skipped until a follow-up
+    # run self-corrects it -- Experiment B's own shape, committed as a permanent case.
+    # exist_with_retry?'s own retry/backoff mechanism is already proven exhaustively in
+    # file_wrapper_spec.rb; this proves only that this call site's wiring benefits from it.
+    it "registers a .d file that's on disk but missed on the first presence check, via exist_with_retry?" do
+      allow(@file_finder).to receive(:find_build_input_file).and_return( 'src/foo.c' )
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+
+      # Pre-compile's own check (register_and_check_object_staleness) is the one that
+      # misses -- there's no prior .d file to register yet regardless. Post-compile's
+      # check is what matters: this run's freshly-written .d file must still be
+      # registered despite a miss earlier in the very same run.
+      call_count = 0
+      allow(@file_wrapper).to receive(:exist_with_retry?).with('build/release/dependencies/deps') do
+        call_count += 1
+        call_count >= 2
+      end
+
+      expect(@generator).to receive(:generate_object_file_c)
+      expect(@dependinator).to receive(:register_gcc_deps_file).with('build/release/dependencies/deps').once
 
       @state.objects = ['build/release/out/foo.o']
       @executor.compile_objects( @state )
@@ -307,7 +336,7 @@ describe ReleaseBuildExecutor do
     it "copies the artifact, map file, and configured extra artifacts when the executable was rebuilt" do
       @state.executable_rebuilt = true
       allow(@configurator).to receive(:release_build_artifacts).and_return( ['README.md'] )
-      allow(@file_wrapper).to receive(:exist?).and_return( true )
+      allow(@file_wrapper).to receive(:exist_with_retry?).and_return( true )
 
       expect(@file_wrapper).to receive(:cp).with( 'build/release/out/project.out', 'build/artifacts/release' )
       expect(@file_wrapper).to receive(:cp).with( 'build/release/out/project.map', 'build/artifacts/release' )
@@ -335,7 +364,7 @@ describe ReleaseBuildExecutor do
 
     it "logs no summary line when the executable was rebuilt" do
       @state.executable_rebuilt = true
-      allow(@file_wrapper).to receive(:exist?).and_return( true )
+      allow(@file_wrapper).to receive(:exist_with_retry?).and_return( true )
       allow(@file_wrapper).to receive(:cp)
 
       expect(@loginator).to_not receive(:log).with( /Skipping artifact collection/ )
@@ -345,7 +374,7 @@ describe ReleaseBuildExecutor do
 
     it "skips a configured artifact that doesn't exist on disk" do
       @state.executable_rebuilt = true
-      allow(@file_wrapper).to receive(:exist?).and_return( false )
+      allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
 
       expect(@file_wrapper).to_not receive(:cp)
 

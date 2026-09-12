@@ -907,7 +907,7 @@ describe PreprocessinatorReconstructor do
       input_handle  = StringIO.new( '# 1 "WANT.c" 5' + "\n" + 'text_we_want();' + "\n" )
       output_handle = StringIO.new
 
-      expect(@file_wrapper).to receive(:open).with( 'input.c', 'rb' ).and_yield( input_handle )
+      expect(@file_wrapper).to receive(:open_with_retry).with( 'input.c', 'rb' ).and_yield( input_handle )
       expect(@file_wrapper).to receive(:open).with( 'output.c', 'wb' ).and_yield( output_handle )
 
       @extractor.compact_file_from_expansion(
@@ -930,9 +930,9 @@ describe PreprocessinatorReconstructor do
       lf_output   = StringIO.new
       crlf_output = StringIO.new
 
-      allow(@file_wrapper).to receive(:open).with( 'lf.c', 'rb' ).and_yield( lf_input )
+      allow(@file_wrapper).to receive(:open_with_retry).with( 'lf.c', 'rb' ).and_yield( lf_input )
       allow(@file_wrapper).to receive(:open).with( 'lf_out.c', 'wb' ).and_yield( lf_output )
-      allow(@file_wrapper).to receive(:open).with( 'crlf.c', 'rb' ).and_yield( crlf_input )
+      allow(@file_wrapper).to receive(:open_with_retry).with( 'crlf.c', 'rb' ).and_yield( crlf_input )
       allow(@file_wrapper).to receive(:open).with( 'crlf_out.c', 'wb' ).and_yield( crlf_output )
 
       @extractor.compact_file_from_expansion(

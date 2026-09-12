@@ -25,7 +25,9 @@ class PreprocessinatorCommentStripper
       # Open in binary mode to avoid locale-dependent encoding failures.
       # GCC preprocessor output may contain localized strings (e.g. <組み込み> under ja_JP locale).
       # CCommentScanner already operates byte-accurately internally.
-      @file_wrapper.open(filepath, 'rb') do |buffer|
+      # `filepath` is this same build's own gcc output -- open_with_retry rides out
+      # the file briefly not yet being visible right after the shell-out exits.
+      @file_wrapper.open_with_retry(filepath, 'rb') do |buffer|
         stripped = strip(buffer)
       end
     rescue => e

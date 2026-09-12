@@ -235,14 +235,14 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
     # accurate pass still opens the header and emits an ordinary entering marker.
 
     def resolve(content, basename, lines)
-      allow(@file_wrapper).to receive(:open).with('donly.c', 'rb').and_yield( StringIO.new(content) )
+      allow(@file_wrapper).to receive(:open_with_retry).with('donly.c', 'rb').and_yield( StringIO.new(content) )
       @extractor.resolve_computed_includes(
         preprocessed_filepath: 'donly.c', source_basename: basename, source_lines: lines
       )
     end
 
     it 'returns an empty hash (and reads nothing) when no source lines are wanted' do
-      expect(@file_wrapper).to_not receive(:open)
+      expect(@file_wrapper).to_not receive(:open_with_retry)
       expect(
         @extractor.resolve_computed_includes(
           preprocessed_filepath: 'donly.c', source_basename: 'foo.c', source_lines: []
@@ -342,7 +342,7 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
     end
 
     it 'wraps an underlying read failure in a CeedlingException naming the file' do
-      allow(@file_wrapper).to receive(:open).and_raise( StandardError.new('gone') )
+      allow(@file_wrapper).to receive(:open_with_retry).and_raise( StandardError.new('gone') )
 
       expect {
         @extractor.resolve_computed_includes(
@@ -362,7 +362,7 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
         # 1 "widget.h" 1
       OUTPUT
 
-      allow(@file_wrapper).to receive(:open).with('build/test.c', 'rb').and_yield( StringIO.new(content) )
+      allow(@file_wrapper).to receive(:open_with_retry).with('build/test.c', 'rb').and_yield( StringIO.new(content) )
 
       includes = @extractor.extract_includes_from_file( 'build/test.c', described_class::USER )
 
@@ -370,7 +370,7 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
     end
 
     it 'wraps an underlying failure in a CeedlingException identifying the file and type' do
-      allow(@file_wrapper).to receive(:open).and_raise( StandardError.new('file vanished') )
+      allow(@file_wrapper).to receive(:open_with_retry).and_raise( StandardError.new('file vanished') )
 
       expect {
         @extractor.extract_includes_from_file( 'directives_only.txt', described_class::SYSTEM )

@@ -24,10 +24,15 @@ module ReleaseInvokerTypes
                           # tracker: by then the executable has already been marked
                           # fresh (if it was rebuilt), so a fresh staleness query
                           # would always answer false regardless of what happened.
+    :lock,               # Mutex for thread-safe shared-counter writes
     keyword_init: true
   ) do
     def initialize(**kwargs)
       kwargs[:objects] ||= []
+      # Defaulted here, unlike PipelineState's explicit-at-call-site convention --
+      # ReleaseState has exactly one construction site, so there's no risk of a
+      # caller forgetting to supply it.
+      kwargs[:lock] ||= Mutex.new
       super(**kwargs)
     end
   end unless const_defined?(:ReleaseState, false)

@@ -113,7 +113,9 @@ class PreprocessinatorLineMarkerIncludesExtractor
       # their first byte is 0x3C — ASCII '<' — regardless of the surrounding encoding.
       # NOTE: binary mode means \r\n line endings are NOT translated on Windows; the
       # extract_includes method calls line.chomp! before regex matching to handle this.
-      @file_wrapper.open(filepath, 'rb') do |file|
+      # `filepath` is this same build's own gcc output -- open_with_retry rides out
+      # the file briefly not yet being visible right after the shell-out exits.
+      @file_wrapper.open_with_retry(filepath, 'rb') do |file|
         includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth, test: test)
       end
     rescue StandardError => e
@@ -155,7 +157,9 @@ class PreprocessinatorLineMarkerIncludesExtractor
       # Binary mode for the same reason extract_includes_from_file uses it: GCC output
       # under a non-C locale carries non-ASCII bytes, and \r\n must survive untranslated
       # for the per-line chomp! below to normalize.
-      @file_wrapper.open( preprocessed_filepath, 'rb' ) do |file|
+      # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
+      # rides out the file briefly not yet being visible right after the shell-out exits.
+      @file_wrapper.open_with_retry( preprocessed_filepath, 'rb' ) do |file|
         return correlate_computed_includes( io: file, source_basename: source_basename, wanted: Set.new( wanted ) )
       end
     rescue StandardError => e

@@ -411,6 +411,20 @@ class TestBuildExecutor
   # testable's search paths; every other object in the same test needs to compile
   # against the corrected paths, never the original ones, and a real barrier
   # between the two groups is the only way parallel compilation can guarantee that.
+  #
+  # BARRIER INVARIANT (see also apply_sibling_isolation's own note): each pair below
+  # runs through @batchinator.exec -- real worker threads via Parallel.map -- and
+  # `compile_pass.call( test_file_pairs )` fully drains (Parallel.map blocks until
+  # every thread in that call is done) before `compile_pass.call( other_pairs )`
+  # even starts. That's what makes apply_sibling_isolation's unguarded writes to
+  # testable.search_paths/isolated_headers_path safe: the only thread that ever
+  # writes them is the one compiling that test's own file, in the first batch, and
+  # every thread reading them afterward starts only once that write has already
+  # happened. Merging or reordering these two calls -- e.g. to parallelize them
+  # together for speed -- would reintroduce a real, unguarded data race on those
+  # fields, confirmed experimentally (see concurrency-file-presence-factfinding
+  # memory, Finding 4): a merged single-pass variant of this exact shape saw
+  # violations on 97%+ of reads once the barrier was removed.
   def stage_build_objects(state)
     skipped = 0
 
@@ -742,7 +756,7 @@ class TestBuildExecutor
         # of whether anything actually changed. The existing .d file already on disk
         # (from whichever run last actually compiled this file) is what a skip has
         # to go on -- there's no fresh one to write this run.
-        if source == testable.filepath && @file_wrapper.exist?( dependencies )
+        if source == testable.filepath && @file_wrapper.exist_with_retry?( dependencies )
           apply_sibling_isolation( testable: testable, dependencies_filepath: dependencies )
         end
 
@@ -780,12 +794,16 @@ class TestBuildExecutor
       # gcc's dependency output is a side effect of preprocessing -- already written to
       # disk by the time a later parse/type-check phase can still fail -- so this
       # attempt's own .d file is worth registering whether or not it went on to fail.
-      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+      # exist_with_retry? rides out the file briefly not yet being visible right after
+      # the shell-out exits (a raw miss here silently drops this compile's discovered
+      # header dependencies -- self-correcting into one extra recompile next run, but
+      # worth riding out directly).
+      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist_with_retry?( dependencies )
 
       # Only the test file's own compile is ever checked here directly -- every other
       # object in the same test's build already sees whatever search paths that check
       # settled on (see stage_build_objects's own two-pass split).
-      if source == testable.filepath && @file_wrapper.exist?( dependencies )
+      if source == testable.filepath && @file_wrapper.exist_with_retry?( dependencies )
         isolation = apply_sibling_isolation( testable: testable, dependencies_filepath: dependencies )
 
         if isolation
@@ -849,7 +867,7 @@ class TestBuildExecutor
       # register_gcc_deps_file again to pick up the freshly-written `.d` file's current
       # header set (a no-op call here regardless, since the assembler tool has no
       # -MMD/-MF of its own) before recording this target's new baseline.
-      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist_with_retry?( dependencies )
     else
       return false
     end
@@ -911,6 +929,15 @@ class TestBuildExecutor
   # in place to apply whatever it finds -- the one path both a real compile and a
   # skipped one share, so search_paths reads the same way regardless of which one
   # happened this run. Returns whatever isolate_sibling_headers itself returned.
+  # BARRIER INVARIANT (see also stage_build_objects's own note): the writes below to
+  # testable.search_paths/isolated_headers_path are completely unguarded -- no mutex --
+  # which is only safe because this method is only ever called while compiling a
+  # test's own file, and stage_build_objects's two-pass split guarantees every other
+  # object belonging to that same test compiles in a later, separate batch that starts
+  # only after this one has fully finished. That ordering, not anything visible at
+  # these two lines, is the entire safety argument -- do not call this from, or read
+  # these fields during, a batch that could run concurrently with a test's own-file
+  # compile.
   def apply_sibling_isolation(testable:, dependencies_filepath:)
     isolation = isolate_sibling_headers( testable: testable, dependencies_filepath: dependencies_filepath )
     return nil if isolation.nil?
@@ -1067,7 +1094,7 @@ class TestBuildExecutor
   # if headers changed, that's exactly what makes this stale.
   def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:)
     @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths, tools: [tool] ) )
-    @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+    @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist_with_retry?( dependencies )
     @dependinator.stale?( object )
   end
 
