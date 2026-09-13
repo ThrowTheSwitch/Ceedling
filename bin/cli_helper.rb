@@ -450,7 +450,13 @@ class CliHelper
       _config = { _sections.last => value }
     end
 
-    File.open( filepath, 'w' ) {|out| YAML.dump( _config, out )}
+    # A nil filepath is the --stdout signal threaded down from the CLI layer --
+    # write the YAML directly to standard output instead of a file.
+    if filepath.nil?
+      YAML.dump( _config, $stdout )
+    else
+      File.open( filepath, 'w' ) {|out| YAML.dump( _config, out )}
+    end
   end
 
 

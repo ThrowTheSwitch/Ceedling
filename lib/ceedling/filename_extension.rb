@@ -80,4 +80,12 @@ class FilenameExtension
     @extensions.join(' or ')
   end
 
+  # Psych's dump hook: rendered as a plain YAML sequence of the configured
+  # extensions, not a `!ruby/object:FilenameExtension` tag -- `dumpconfig`
+  # (and anything else that YAML-dumps project configuration) must produce
+  # clean, safe YAML any tool can read back, not just Ceedling itself.
+  def encode_with(coder)
+    coder.represent_seq(nil, @extensions)
+  end
+
 end
