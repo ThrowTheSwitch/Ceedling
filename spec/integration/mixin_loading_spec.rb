@@ -334,6 +334,27 @@ describe 'Mixin loading and merging (integration)' do
       end
     end
 
+    # MixinStandardizer's own promotion/re-keying job: a config value already
+    # shaped as an all-matches matcher hash, loaded raw from YAML, carries a
+    # String '*' key (only colon-prefixed keys deserialize as Symbols -- see
+    # YamlWrapper) until something re-keys it. A mixin merging an Array into
+    # that same slot is the trigger -- this was never a deliberately-named
+    # scenario in the original system spec, just an accidental side effect of
+    # using a real example project's own already-matcher-shaped :defines
+    # section as a fixture; named explicitly here instead.
+    it "promotes a mixin's plain list to a matcher hash and re-keys the config's own String '*' to a Symbol" do
+      with_project_tree(
+        'add_define.yml' => ":defines:\n  :test:\n    - MIXIN_DEFINE\n",
+        'project.yml' => ":project:\n  :build_root: build\n:defines:\n  :test:\n    '*':\n      - BASE_DEFINE\n"
+      ) do |dir|
+        config = resolve(dir: dir, mixins: [File.join(dir, 'add_define.yml')])
+        matcher = config.dig(:defines, :test)
+        expect(matcher).to be_a(Hash)
+        expect(matcher.keys).to eq([:*]) # re-keyed from String '*' to Symbol :*
+        expect(matcher[:*]).to include('BASE_DEFINE', 'MIXIN_DEFINE')
+      end
+    end
+
   end
 
 end
