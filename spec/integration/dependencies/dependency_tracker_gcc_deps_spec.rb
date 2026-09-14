@@ -6,17 +6,17 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'dependency_tracker_system_helper'
+require 'dependency_tracker_integration_helper'
 
-# System-level coverage of DependencyTracker's gcc -M/-MM/-MMD ingestion
+# Integration-level coverage of DependencyTracker's gcc -M/-MM/-MMD ingestion
 # (register_gcc_deps_string / register_gcc_deps_file) against real files on
 # disk. No real gcc invocation happens anywhere in this suite -- gcc's
 # Makefile-dialect output is simulated with constructed heredoc content,
 # exactly as gcc's `-MF` flag would have written it, and real dependency
 # files matching that content are written to a real temp directory so
 # staleness genuinely round-trips through real file content changes.
-describe 'DependencyTracker gcc -M/-MM/-MMD ingestion (system)' do
-  include DependencyTrackerSystemHelper
+describe 'DependencyTracker gcc -M/-MM/-MMD ingestion (integration)' do
+  include DependencyTrackerIntegrationHelper
 
   # A single target, several dependencies, exactly gcc's plain `-MMD` shape.
   it 'registers a single target with several dependencies from constructed gcc -MMD content' do

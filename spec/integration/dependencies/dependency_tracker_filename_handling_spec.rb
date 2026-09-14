@@ -6,9 +6,9 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'dependency_tracker_system_helper'
+require 'dependency_tracker_integration_helper'
 
-# System-level coverage of design point (D), platform-appropriate filename
+# Integration-level coverage of design point (D), platform-appropriate filename
 # handling, against the *real, current* filesystem this suite happens to be
 # running on -- not a simulated one. Path equality is platform-dependent
 # (case-sensitive on Linux; case-insensitive-but-case-preserving by default
@@ -20,8 +20,8 @@ require 'dependency_tracker_system_helper'
 # something that isn't true of the machine actually running the suite.
 # (spec/units/dependencies/dependency_path_normalizer_spec.rb covers both
 # branches unconditionally, via a mocked, fully-controlled fake filesystem.)
-describe 'DependencyTracker platform-appropriate filename handling (system)' do
-  include DependencyTrackerSystemHelper
+describe 'DependencyTracker platform-appropriate filename handling (integration)' do
+  include DependencyTrackerIntegrationHelper
 
   # Always true, on any filesystem: registering and querying with the exact
   # same casing the file was created under works trivially.

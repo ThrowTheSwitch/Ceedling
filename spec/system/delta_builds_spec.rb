@@ -9,7 +9,7 @@ require 'spec_system_helper'
 
 # End-to-end coverage of DependencyTracker's integration into the real test-build
 # pipeline (content-hash-based rebuild staleness -- see lib/ceedling/dependencies/).
-# Unlike the module-level specs in spec/system/dependencies/, these exercise the
+# Unlike the module-level specs in spec/integration/dependencies/, these exercise the
 # actual `ceedling` CLI against a real example project on disk, asserting on the
 # presence/absence of "Compiling"/"Linking"/"Running" activity in real build output
 # across a *sequence* of invocations against the *same* project directory -- proving

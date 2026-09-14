@@ -5,13 +5,16 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# Shared plumbing for DependencyTracker *system* specs: real FileWrapper,
+# Shared plumbing for DependencyTracker *integration* specs: real FileWrapper,
 # real SystemWrapper, real hashing, real JSON on a real temp directory on
 # disk -- as opposed to the module's unit specs (spec/units/dependencies),
-# which mock FileWrapper entirely. Only Loginator is a null-object double
-# here: it never touches disk itself, and instantiating the real one drags
-# in a background worker thread and $loginator global that these specs have
-# no need of.
+# which mock FileWrapper entirely. No CLI subprocess or gem deployment is
+# involved, unlike spec/system/ -- these specs exercise DependencyTracker's
+# real object graph directly, which is what actually puts them at integration
+# tier rather than system tier. Only Loginator is a null-object double here:
+# it never touches disk itself, and instantiating the real one drags in a
+# background worker thread and $loginator global that these specs have no
+# need of.
 
 require 'fileutils'
 require 'tmpdir'
@@ -26,7 +29,7 @@ require 'ceedling/dependencies/dependency_debug_tree'
 require 'ceedling/dependencies/dependency_differ'
 require 'ceedling/dependencies/dependency_tracker'
 
-module DependencyTrackerSystemHelper
+module DependencyTrackerIntegrationHelper
 
   # Builds a fully real, opened DependencyTracker rooted at nothing in
   # particular -- `store_path` is the caller's responsibility, typically
