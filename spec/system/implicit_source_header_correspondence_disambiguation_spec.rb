@@ -32,7 +32,8 @@ require 'spec_system_helper'
 ## Coverage for TEST_SOURCE_FILE() itself -- both mixing with this implicit
 ## convention (overriding a same-basename match) and its own `-:` removal
 ## notation -- lives together in spec/system/test_source_file_directive_spec.rb,
-## which reuses this same alpha/beta dup.{h,c} fixture pair.
+## which reuses this same alpha/beta dup.{h,c} fixture pair (via the shared
+## copy_duplicate_dup_pairs helper in spec_system_helper.rb).
 ##
 ## Test assets: assets/fixtures/implicit_source_header_correspondence/
 ##   - alpha/dup.h, alpha/dup.c: declares/defines dup_value() returning 111
@@ -43,60 +44,28 @@ require 'spec_system_helper'
 ##
 
 ceedling_system_tests do
-
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
-
-  before { @proj_name = unique_proj_name("dup_header_source_pair") }
+  include_context "a fresh ceedling gem project", "dup_header_source_pair"
 
   describe "Deployed as a gem" do
-
-    def copy_duplicate_dup_pairs(proj_name)
-      @c.with_context do
-        Dir.chdir proj_name do
-          FileUtils.mkdir_p 'src/alpha'
-          FileUtils.mkdir_p 'src/beta'
-          FileUtils.cp test_asset_path("implicit_source_header_correspondence/alpha/dup.h"), 'src/alpha/'
-          FileUtils.cp test_asset_path("implicit_source_header_correspondence/alpha/dup.c"), 'src/alpha/'
-          FileUtils.cp test_asset_path("implicit_source_header_correspondence/beta/dup.h"), 'src/beta/'
-          FileUtils.cp test_asset_path("implicit_source_header_correspondence/beta/dup.c"), 'src/beta/'
-        end
-      end
-    end
 
     # =========================================================================
     describe "A project with two same-named header+source pairs and a bare #include" do
     # =========================================================================
 
       before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_duplicate_dup_pairs(@proj_name)
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("implicit_source_header_correspondence/test_dup_bare.c"), 'test/'
-          end
-        end
+        copy_duplicate_dup_pairs
+        in_project { copy_fixture("implicit_source_header_correspondence/test_dup_bare.c", 'test') }
       end
 
       it "resolves the header and its implicitly-compiled source to the first candidate by search-path order, logging a NOTICE naming the other" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/Multiple files matched/)
-            expect(output).to match(/alpha[\/\\]dup\.h/)
-            expect(output).to match(/beta[\/\\]dup\.h/)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/Multiple files matched/)
+          expect(output).to match(/alpha[\/\\]dup\.h/)
+          expect(output).to match(/beta[\/\\]dup\.h/)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
         end
       end
 
@@ -107,27 +76,20 @@ ceedling_system_tests do
     # =========================================================================
 
       before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_duplicate_dup_pairs(@proj_name)
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("implicit_source_header_correspondence/test_dup_alpha.c"), 'test/'
-            FileUtils.cp test_asset_path("implicit_source_header_correspondence/test_dup_beta.c"), 'test/'
-          end
+        copy_duplicate_dup_pairs
+        in_project do
+          copy_fixture("implicit_source_header_correspondence/test_dup_alpha.c", 'test')
+          copy_fixture("implicit_source_header_correspondence/test_dup_beta.c", 'test')
         end
       end
 
       it "compiles, links, and passes both tests, each correctly linked against its own same-named header/source pair" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to_not match(/Multiple files matched/)
-            expect(output).to match(/TESTED:\s+2/)
-            expect(output).to match(/PASSED:\s+2/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Multiple files matched/)
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/PASSED:\s+2/)
         end
       end
 

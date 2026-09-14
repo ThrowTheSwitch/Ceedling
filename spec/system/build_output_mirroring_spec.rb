@@ -34,35 +34,20 @@ require 'spec_system_helper'
 
 ceedling_system_tests do
 
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
-
-  before { @proj_name = unique_proj_name("dup_source_name") }
-
   describe "Deployed as a gem" do
+    include_context "a fresh ceedling gem project", "dup_source_name"
+
     before do
-      @c.with_context do
-        @c.ceedling_appcmd_exec("new #{@proj_name}")
+      in_project do
+        @c.merge_project_yml_for_test({ :project => { :release_build => true } })
 
-        Dir.chdir @proj_name do
-          @c.merge_project_yml_for_test({ :project => { :release_build => true } })
-
-          FileUtils.mkdir_p 'src/foo'
-          FileUtils.mkdir_p 'src/baz'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/foo/bar.c"), 'src/foo/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/foo/bar.h"), 'src/foo/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/baz/bar.c"), 'src/baz/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/baz/bar.h"), 'src/baz/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/main.c"), 'src/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/test_foo_bar.c"), 'test/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/test_baz_bar.c"), 'test/'
-        end
+        copy_fixture("sources_with_duplicate_basenames/foo/bar.c", 'src/foo')
+        copy_fixture("sources_with_duplicate_basenames/foo/bar.h", 'src/foo')
+        copy_fixture("sources_with_duplicate_basenames/baz/bar.c", 'src/baz')
+        copy_fixture("sources_with_duplicate_basenames/baz/bar.h", 'src/baz')
+        copy_fixture("sources_with_duplicate_basenames/main.c", 'src')
+        copy_fixture("sources_with_duplicate_basenames/test_foo_bar.c", 'test')
+        copy_fixture("sources_with_duplicate_basenames/test_baz_bar.c", 'test')
       end
     end
 
@@ -71,33 +56,29 @@ ceedling_system_tests do
     # =========================================================================
 
       it "compiles and links both same-named sources into one release binary" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("release")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to_not match(/Ambiguous/)
-            expect(output).to match(/^Linking /)
+        in_project do
+          output = @c.ceedling_build_exec("release")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Ambiguous/)
+          expect(output).to match(/^Linking /)
 
-            expect(File.exist?('build/release/out/foo/bar.o')).to be true
-            expect(File.exist?('build/release/out/baz/bar.o')).to be true
+          expect(File.exist?('build/release/out/foo/bar.o')).to be true
+          expect(File.exist?('build/release/out/baz/bar.o')).to be true
 
-            binary = Dir.glob('build/artifacts/release/*.out').first
-            run_output = `#{binary}`
-            expect(run_output).to match(/foo_bar_value=111/)
-            expect(run_output).to match(/baz_bar_value=222/)
-          end
+          binary = Dir.glob('build/artifacts/release/*.out').first
+          run_output = `#{binary}`
+          expect(run_output).to match(/foo_bar_value=111/)
+          expect(run_output).to match(/baz_bar_value=222/)
         end
       end
 
       it "compiles, links, and passes two separate tests each exercising one of the same-named sources" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to_not match(/Ambiguous/)
-            expect(output).to match(/TESTED:\s+2/)
-            expect(output).to match(/PASSED:\s+2/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Ambiguous/)
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/PASSED:\s+2/)
         end
       end
 

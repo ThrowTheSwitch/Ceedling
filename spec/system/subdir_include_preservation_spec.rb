@@ -31,49 +31,31 @@ require 'spec_system_helper'
 ##
 
 ceedling_system_tests do
-
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
-
-  before { @proj_name = unique_proj_name("subdir_inc") }
+  include_context "a fresh ceedling gem project", "subdir_inc"
 
   describe "Deployed as a gem" do
     before do
-      @c.with_context do
-        @c.ceedling_appcmd_exec("new #{@proj_name}")
-        Dir.chdir @proj_name do
-          %w[
-            module/sensor.h module/sensor.c
-            module/drivers/config.h module/app/config.h
-          ].each do |f|
-            dest = File.join('src', File.dirname(f))
-            FileUtils.mkdir_p(dest)
-            FileUtils.cp test_asset_path("tests_with_subdir_includes/src/#{f}"), dest
-          end
-          FileUtils.mkdir_p('src/shared')
-          FileUtils.cp test_asset_path("tests_with_subdir_includes/src/shared/config.h"), 'src/shared/'
-          FileUtils.cp test_asset_path("tests_with_subdir_includes/test/test_sensor.c"), 'test/'
-
-          @c.merge_project_yml_for_test(:project => { :use_partials => true })
+      in_project do
+        %w[
+          module/sensor.h module/sensor.c
+          module/drivers/config.h module/app/config.h
+        ].each do |f|
+          copy_fixture("tests_with_subdir_includes/src/#{f}", File.join('src', File.dirname(f)))
         end
+        copy_fixture("tests_with_subdir_includes/src/shared/config.h", 'src/shared')
+        copy_fixture("tests_with_subdir_includes/test/test_sensor.c", 'test')
+
+        @c.merge_project_yml_for_test(:project => { :use_partials => true })
       end
     end
 
     it "reaches the generated Partial with each same-basename header's own disambiguating path" do
-      @c.with_context do
-        Dir.chdir @proj_name do
-          output = @c.ceedling_build_exec("test:sensor")
-          expect(@c.last_exit_status).to eq(0)
-          expect(output).to match(/TESTED:\s+1/)
-          expect(output).to match(/PASSED:\s+1/)
-          expect(output).to match(/FAILED:\s+0/)
-        end
+      in_project do
+        output = @c.ceedling_build_exec("test:sensor")
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
       end
     end
   end

@@ -34,33 +34,17 @@ require 'spec_system_helper'
 ##
 
 ceedling_system_tests do
-
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
-
-  before { @proj_name = unique_proj_name("dup_release_source_name") }
+  include_context "a fresh ceedling gem project", "dup_release_source_name"
 
   describe "Deployed as a gem" do
     before do
-      @c.with_context do
-        @c.ceedling_appcmd_exec("new #{@proj_name}")
+      in_project do
+        @c.merge_project_yml_for_test({ :project => { :release_build => true } })
 
-        Dir.chdir @proj_name do
-          @c.merge_project_yml_for_test({ :project => { :release_build => true } })
-
-          FileUtils.mkdir_p 'src/foo'
-          FileUtils.mkdir_p 'src/baz'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/foo/bar.c"), 'src/foo/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/foo/bar.h"), 'src/foo/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/baz/bar.c"), 'src/baz/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/baz/bar.h"), 'src/baz/'
-        end
+        copy_fixture("sources_with_duplicate_basenames/foo/bar.c", 'src/foo')
+        copy_fixture("sources_with_duplicate_basenames/foo/bar.h", 'src/foo')
+        copy_fixture("sources_with_duplicate_basenames/baz/bar.c", 'src/baz')
+        copy_fixture("sources_with_duplicate_basenames/baz/bar.h", 'src/baz')
       end
     end
 
@@ -69,46 +53,40 @@ ceedling_system_tests do
     # =========================================================================
 
       it "resolves to the first candidate by search-path order when release:compile: is invoked by bare basename, logging a NOTICE naming the other" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("release:compile:bar.c")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/Multiple files matched/)
-            expect(output).to match(/foo[\/\\]bar\.c/)
-            expect(output).to match(/baz[\/\\]bar\.c/)
-            expect(output).to match(/^Compiling bar\.c/)
+        in_project do
+          output = @c.ceedling_build_exec("release:compile:bar.c")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/Multiple files matched/)
+          expect(output).to match(/foo[\/\\]bar\.c/)
+          expect(output).to match(/baz[\/\\]bar\.c/)
+          expect(output).to match(/^Compiling bar\.c/)
 
-            expect(File.exist?('build/release/out/baz/bar.o')).to be true
-            expect(File.exist?('build/release/out/foo/bar.o')).to be false
-          end
+          expect(File.exist?('build/release/out/baz/bar.o')).to be true
+          expect(File.exist?('build/release/out/foo/bar.o')).to be false
         end
       end
 
       it "compiles exactly the foo module when disambiguated by path" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("release:compile:foo/bar.c")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/^Compiling bar\.c/)
-            expect(output).to_not match(/^Linking /)
+        in_project do
+          output = @c.ceedling_build_exec("release:compile:foo/bar.c")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/^Compiling bar\.c/)
+          expect(output).to_not match(/^Linking /)
 
-            expect(File.exist?('build/release/out/foo/bar.o')).to be true
-            expect(File.exist?('build/release/out/baz/bar.o')).to be false
-          end
+          expect(File.exist?('build/release/out/foo/bar.o')).to be true
+          expect(File.exist?('build/release/out/baz/bar.o')).to be false
         end
       end
 
       it "compiles exactly the baz module when disambiguated by path" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("release:compile:baz/bar.c")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/^Compiling bar\.c/)
-            expect(output).to_not match(/^Linking /)
+        in_project do
+          output = @c.ceedling_build_exec("release:compile:baz/bar.c")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/^Compiling bar\.c/)
+          expect(output).to_not match(/^Linking /)
 
-            expect(File.exist?('build/release/out/baz/bar.o')).to be true
-            expect(File.exist?('build/release/out/foo/bar.o')).to be false
-          end
+          expect(File.exist?('build/release/out/baz/bar.o')).to be true
+          expect(File.exist?('build/release/out/foo/bar.o')).to be false
         end
       end
 
