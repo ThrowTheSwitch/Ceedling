@@ -26,6 +26,14 @@ require 'yaml'
 ##    without a temp file -- every console banner/notice dumpconfig would
 ##    otherwise print must be suppressed so the stream stays pure YAML.
 ##
+## 3. `--no-app` itself: dumps project config after mixins but before any
+##    application manipulation (settings, defaults, plugins, validation) --
+##    every other dumpconfig-shaped spec in this suite (mixin_loading_spec.rb,
+##    mixin_ordering_spec.rb, ruby_replacement_spec.rb) uses `--no-app` as a
+##    means to an end (a clean lens onto some other concern's merged config),
+##    not as the thing under test; this is the one place `--no-app` itself is
+##    the assertion.
+##
 ceedling_system_tests do
 
   before :all do
@@ -90,6 +98,29 @@ ceedling_system_tests do
 
       config = YAML.safe_load(output.to_s, permitted_classes: [Symbol])
       expect(config.keys).to eq([:test_compiler])
+    end
+
+    it "skips application manipulation and prints a notice with --no-app" do
+      output = nil
+      dump_file = nil
+      @c.with_context do
+        Dir.chdir @proj_name do
+          dump_file = File.expand_path('dump_no_app.yml')
+          output = @c.ceedling_appcmd_exec("dumpconfig --no-app #{dump_file}")
+        end
+      end
+
+      expect(output).to match(/Skipped loading Ceedling application/)
+
+      # :extension ↳ :source only exists once app-load processing
+      # (Configurator#populate_with_defaults) merges in the project defaults and
+      # wraps every file-type entry in a FilenameExtension -- the file's own raw
+      # :extension section (just :executable, set directly by `ceedling new`'s
+      # own template) survives untouched, but :source's absence is a second,
+      # independent signal that app manipulation was truly skipped, not just
+      # that the notice printed.
+      config = YAML.safe_load(File.read(dump_file), permitted_classes: [Symbol])
+      expect(config.dig(:extension, :source)).to be_nil
     end
 
     it "fails with a clear error and non-zero exit status when FILEPATH is omitted without --stdout" do
