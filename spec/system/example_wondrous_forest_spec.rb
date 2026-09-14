@@ -7,6 +7,20 @@
 
 require 'spec_system_helper'
 
+##
+## wondrous_forest Example Project
+## ==================================
+##
+## `files:*`/`paths:*` reporting, previously checked here too, now lives
+## solely in files_paths_reporting_spec.rb. The examples-listing check is
+## dropped as redundant (kept only in example_temp_sensor_spec.rb), and
+## `test:pattern[Sensor]` is dropped as redundant with
+## pinned_thread_count_spec.rb/delta_builds_spec.rb's own pattern-test
+## coverage. What's left: `test:all`, and `test:SoilMoisture`, which becomes
+## the suite's sole remaining single-module-test example (a promotion, not a
+## loss -- temp_sensor's equivalent was trimmed in favor of this one).
+##
+
 ceedling_system_tests do
   include CommonSystemTestCases
 
@@ -20,18 +34,6 @@ ceedling_system_tests do
   end
 
   before { @proj_name = "wondrous_forest" }
-
-  describe "Command: `ceedling examples`" do
-    before do
-      @c.with_context do
-        @output = @c.ceedling_appcmd_exec("examples")
-      end
-    end
-
-    it "should list wondrous_forest as an available example" do
-      expect(@output).to match(/wondrous_forest/)
-    end
-  end
 
   describe "Command: `ceedling example wondrous_forest`" do
     describe "wondrous_forest" do
@@ -73,54 +75,6 @@ ceedling_system_tests do
         end
       end
 
-      it "should be able to test multiple modules matching a pattern" do
-        @c.with_context do
-          Dir.chdir "wondrous_forest" do
-            @output = @c.ceedling_build_exec("test:pattern[Sensor]")
-            expect(@output).to match(/PASSED/)
-            expect(@output).to match(/TemperatureSensor\.out/i)
-            expect(@output).to match(/HumiditySensor\.out/i)
-            expect(@output).to match(/LightSensor\.out/i)
-          end
-        end
-      end
-
-      it "should be able to report header files" do
-        @c.with_context do
-          Dir.chdir "wondrous_forest" do
-            @output = @c.ceedling_build_exec("files:header")
-            expect(@output).to match(/Header files:/i)
-            expect(@output).to match(/TemperatureSensor\.h/i)
-            expect(@output).to match(/AlertManager\.h/i)
-            expect(@output).to match(/EventQueue\.h/i)
-            expect(@output).to match(/ForestMonitor\.h/i)
-          end
-        end
-      end
-
-      it "should be able to report source files" do
-        @c.with_context do
-          Dir.chdir "wondrous_forest" do
-            @output = @c.ceedling_build_exec("files:source")
-            expect(@output).to match(/Source files:/i)
-            expect(@output).to match(/TemperatureSensor\.c/i)
-            expect(@output).to match(/SensorHal\.c/i)
-            expect(@output).to match(/ForestMonitor\.c/i)
-          end
-        end
-      end
-
-      it "should be able to report test files" do
-        @c.with_context do
-          Dir.chdir "wondrous_forest" do
-            @output = @c.ceedling_build_exec("files:test")
-            expect(@output).to match(/Test files:/i)
-            expect(@output).to match(/TestTemperatureSensor\.c/i)
-            expect(@output).to match(/TestAlertManager\.c/i)
-            expect(@output).to match(/TestForestMonitor\.c/i)
-          end
-        end
-      end
     end
   end
 end
