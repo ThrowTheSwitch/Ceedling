@@ -30,32 +30,16 @@ require 'spec_system_helper'
 ##
 
 ceedling_system_tests do
-
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
-
-  before { @proj_name = unique_proj_name("dup_include_name") }
+  include_context "a fresh ceedling gem project", "dup_include_name"
 
   describe "Deployed as a gem" do
     before do
-      @c.with_context do
-        @c.ceedling_appcmd_exec("new #{@proj_name}")
-
-        Dir.chdir @proj_name do
-          FileUtils.mkdir_p 'src/foo'
-          FileUtils.mkdir_p 'src/baz'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/foo/bar.c"), 'src/foo/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/foo/bar.h"), 'src/foo/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/baz/bar.c"), 'src/baz/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/baz/bar.h"), 'src/baz/'
-          FileUtils.cp test_asset_path("sources_with_duplicate_basenames/test_both_bars.c"), 'test/'
-        end
+      in_project do
+        copy_fixture("sources_with_duplicate_basenames/foo/bar.c", 'src/foo')
+        copy_fixture("sources_with_duplicate_basenames/foo/bar.h", 'src/foo')
+        copy_fixture("sources_with_duplicate_basenames/baz/bar.c", 'src/baz')
+        copy_fixture("sources_with_duplicate_basenames/baz/bar.h", 'src/baz')
+        copy_fixture("sources_with_duplicate_basenames/test_both_bars.c", 'test')
       end
     end
 
@@ -64,14 +48,12 @@ ceedling_system_tests do
     # =========================================================================
 
       it "compiles, links, and passes with both modules-under-test present and correct" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to_not match(/Ambiguous/)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Ambiguous/)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
         end
       end
 

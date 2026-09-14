@@ -25,39 +25,21 @@ require 'spec_system_helper'
 ##
 
 ceedling_system_tests do
-
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
-
-  before { @proj_name = unique_proj_name("dotdot") }
+  include_context "a fresh ceedling gem project", "dotdot"
 
   describe "Deployed as a gem" do
-    def copy_dotdot_include_assets(proj_name)
-      @c.with_context do
-        Dir.chdir proj_name do
-          FileUtils.mkdir_p 'test/common'
-          FileUtils.mkdir_p 'test/unit'
-          FileUtils.cp test_asset_path("parent_directory_references/common/helper.h"), 'test/common/'
-          FileUtils.cp test_asset_path("parent_directory_references/common/helper.c"), 'test/common/'
-          FileUtils.cp test_asset_path("parent_directory_references/unit/test_dotdot_include.c"), 'test/unit/'
-        end
+    def copy_dotdot_include_assets
+      in_project do
+        copy_fixture("parent_directory_references/common/helper.h", 'test/common')
+        copy_fixture("parent_directory_references/common/helper.c", 'test/common')
+        copy_fixture("parent_directory_references/unit/test_dotdot_include.c", 'test/unit')
       end
     end
 
-    def copy_dotdot_source_assets(proj_name)
-      @c.with_context do
-        Dir.chdir proj_name do
-          FileUtils.mkdir_p 'test/alpha'
-          FileUtils.mkdir_p 'test/unit'
-          FileUtils.cp test_asset_path("parent_directory_references/alpha/extra.c"), 'test/alpha/'
-          FileUtils.cp test_asset_path("parent_directory_references/unit/test_dotdot_source.c"), 'test/unit/'
-        end
+    def copy_dotdot_source_assets
+      in_project do
+        copy_fixture("parent_directory_references/alpha/extra.c", 'test/alpha')
+        copy_fixture("parent_directory_references/unit/test_dotdot_source.c", 'test/unit')
       end
     end
 
@@ -65,38 +47,29 @@ ceedling_system_tests do
     describe "A test file that #includes a header in a sibling directory via .." do
     # =========================================================================
 
-      before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_dotdot_include_assets(@proj_name)
-      end
+      before { copy_dotdot_include_assets }
 
       it "compiles, links, and passes with preprocessing disabled -- the bare-scan fallback path" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            settings = { :project => { :use_test_preprocessor => :none } }
-            @c.merge_project_yml_for_test(settings)
+        in_project do
+          settings = { :project => { :use_test_preprocessor => :none } }
+          @c.merge_project_yml_for_test(settings)
 
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
-          end
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
         end
       end
 
       it "compiles, links, and passes with full test preprocessing enabled -- the GCC directives-only path" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            settings = { :project => { :use_test_preprocessor => :all } }
-            @c.merge_project_yml_for_test(settings)
+        in_project do
+          settings = { :project => { :use_test_preprocessor => :all } }
+          @c.merge_project_yml_for_test(settings)
 
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
-          end
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
         end
       end
 
@@ -106,21 +79,14 @@ ceedling_system_tests do
     describe "A test file with a TEST_SOURCE_FILE() entry naming a sibling directory via .." do
     # =========================================================================
 
-      before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_dotdot_source_assets(@proj_name)
-      end
+      before { copy_dotdot_source_assets }
 
       it "compiles, links, and passes, resolving the directive against the test file's own directory" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
         end
       end
 
@@ -130,21 +96,14 @@ ceedling_system_tests do
     describe "A `ceedling test:` task name containing .." do
     # =========================================================================
 
-      before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_dotdot_include_assets(@proj_name)
-      end
+      before { copy_dotdot_include_assets }
 
       it "fails clearly, naming .. as unsupported rather than a generic file-not-found" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:../unit/test_dotdot_include")
-            expect(@c.last_exit_status).to_not eq(0)
-            expect(output).to match(/\.\./)
-            expect(output).to match(/context/i)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:../unit/test_dotdot_include")
+          expect(@c.last_exit_status).to_not eq(0)
+          expect(output).to match(/\.\./)
+          expect(output).to match(/context/i)
         end
       end
 

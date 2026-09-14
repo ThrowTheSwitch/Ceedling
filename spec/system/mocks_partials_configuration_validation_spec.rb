@@ -43,68 +43,45 @@ PARTIAL_WITHOUT_CONFIG_C = <<~C
 C
 
 ceedling_system_tests do
-
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
-
-  before { @proj_name = unique_proj_name("mocks_partials_config") }
+  include_context "a fresh ceedling gem project", "mocks_partials_config"
 
   describe "Deployed as a gem" do
-    before do
-      @c.with_context do
-        @c.ceedling_appcmd_exec("new #{@proj_name}")
-      end
-    end
 
     describe "a test #including a mock while mocking is disabled" do
       before do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            @c.merge_project_yml_for_test({ :project => { :use_mocks => false } })
-            File.write('test/test_mock_without_config.c', MOCK_WITHOUT_CONFIG_C)
-          end
+        in_project do
+          @c.merge_project_yml_for_test({ :project => { :use_mocks => false } })
+          File.write('test/test_mock_without_config.c', MOCK_WITHOUT_CONFIG_C)
         end
       end
 
       it "fails the build naming the offending test file and mock" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).not_to eq(0)
-            expect(output).to match(/not configured for mocking/)
-            expect(output).to match(/test_mock_without_config\.c/)
-            expect(output).to match(/mock_foo\.h/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).not_to eq(0)
+          expect(output).to match(/not configured for mocking/)
+          expect(output).to match(/test_mock_without_config\.c/)
+          expect(output).to match(/mock_foo\.h/)
         end
       end
     end
 
     describe "a test using a Partial while Partials are disabled (the project default)" do
       before do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            # Partials configuration macros are only scanned for when test
-            # preprocessing is on -- off (:none) is this project's own default.
-            @c.merge_project_yml_for_test({ :project => { :use_test_preprocessor => :all } })
-            File.write('test/test_partial_without_config.c', PARTIAL_WITHOUT_CONFIG_C)
-          end
+        in_project do
+          # Partials configuration macros are only scanned for when test
+          # preprocessing is on -- off (:none) is this project's own default.
+          @c.merge_project_yml_for_test({ :project => { :use_test_preprocessor => :all } })
+          File.write('test/test_partial_without_config.c', PARTIAL_WITHOUT_CONFIG_C)
         end
       end
 
       it "fails the build naming the offending test file" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).not_to eq(0)
-            expect(output).to match(/not configured for Partials/)
-            expect(output).to match(/test_partial_without_config\.c/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).not_to eq(0)
+          expect(output).to match(/not configured for Partials/)
+          expect(output).to match(/test_partial_without_config\.c/)
         end
       end
     end

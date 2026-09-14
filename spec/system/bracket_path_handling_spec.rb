@@ -68,51 +68,31 @@ TRIVIAL_TEST_C = <<~C
 C
 
 ceedling_system_tests do
-
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
-
-  before { @proj_name = unique_proj_name("bracket_path") }
+  include_context "a fresh ceedling gem project", "bracket_path"
 
   describe "Deployed as a gem" do
     before do
-      @c.with_context do
-        @c.ceedling_appcmd_exec("new #{@proj_name}")
-      end
-    end
-
-    before do
-      @c.with_context do
-        Dir.chdir @proj_name do
-          # The default :paths: ↳ :source/:include is `src/**` -- already recursive,
-          # so a bracket-named subdirectory needs no extra :paths: config to exercise
-          # the bug; it's dropped (or, pre-fix validation, hard-errored) purely by
-          # virtue of Dir.glob never matching '[legacy]' as a literal directory name.
-          FileUtils.mkdir_p('src/[legacy]')
-          File.write('src/[legacy]/example_file_bracket.h', EXAMPLE_HEADER_BRACKET_PATH)
-          File.write('src/[legacy]/example_file_bracket.c', EXAMPLE_SOURCE_BRACKET_PATH)
-          File.write('test/test_bracket_path.c', TEST_BRACKET_PATH_C)
-        end
+      in_project do
+        # The default :paths: ↳ :source/:include is `src/**` -- already recursive,
+        # so a bracket-named subdirectory needs no extra :paths: config to exercise
+        # the bug; it's dropped (or, pre-fix validation, hard-errored) purely by
+        # virtue of Dir.glob never matching '[legacy]' as a literal directory name.
+        FileUtils.mkdir_p('src/[legacy]')
+        File.write('src/[legacy]/example_file_bracket.h', EXAMPLE_HEADER_BRACKET_PATH)
+        File.write('src/[legacy]/example_file_bracket.c', EXAMPLE_SOURCE_BRACKET_PATH)
+        File.write('test/test_bracket_path.c', TEST_BRACKET_PATH_C)
       end
     end
 
     it "compiles and tests a source file living under a bracket-named directory" do
-      @c.with_context do
-        Dir.chdir @proj_name do
-          output = @c.ceedling_build_exec("test:all")
+      in_project do
+        output = @c.ceedling_build_exec("test:all")
 
-          expect(@c.last_exit_status).to eq(0)
-          expect(output).to_not match(/yielded no directories/)
-          expect(output).to match(/TESTED:\s+1/)
-          expect(output).to match(/PASSED:\s+1/)
-          expect(output).to match(/FAILED:\s+0/)
-        end
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to_not match(/yielded no directories/)
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
       end
     end
   end
@@ -132,31 +112,21 @@ ceedling_system_tests do
 
   describe "Deployed as a gem, test file under a bracket-named directory" do
     before do
-      @c.with_context do
-        @c.ceedling_appcmd_exec("new #{@proj_name}")
-      end
-    end
-
-    before do
-      @c.with_context do
-        Dir.chdir @proj_name do
-          FileUtils.mkdir_p('test/[legacy]')
-          File.write('test/[legacy]/test_trivial.c', TRIVIAL_TEST_C)
-        end
+      in_project do
+        FileUtils.mkdir_p('test/[legacy]')
+        File.write('test/[legacy]/test_trivial.c', TRIVIAL_TEST_C)
       end
     end
 
     it "compiles and tests a test file living under a bracket-named directory" do
-      @c.with_context do
-        Dir.chdir @proj_name do
-          output = @c.ceedling_build_exec("test:all")
+      in_project do
+        output = @c.ceedling_build_exec("test:all")
 
-          expect(@c.last_exit_status).to eq(0)
-          expect(output).to_not match(/yielded no directories/)
-          expect(output).to match(/TESTED:\s+1/)
-          expect(output).to match(/PASSED:\s+1/)
-          expect(output).to match(/FAILED:\s+0/)
-        end
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to_not match(/yielded no directories/)
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
       end
     end
   end
@@ -179,36 +149,26 @@ ceedling_system_tests do
 
   describe "Deployed as a gem, absolute build root under a bracket-named directory" do
     before do
-      @c.with_context do
-        @c.ceedling_appcmd_exec("new #{@proj_name}")
-      end
-    end
+      in_project do
+        File.write('test/test_trivial.c', TRIVIAL_TEST_C)
 
-    before do
-      @c.with_context do
-        Dir.chdir @proj_name do
-          File.write('test/test_trivial.c', TRIVIAL_TEST_C)
-
-          # Absolute :build_root: under a bracket-named directory -- forces every
-          # vendor framework path (derived from :build_root:) to carry the bracket
-          # literally in the glob pattern text, unlike the default relative 'build'.
-          bracket_build_root = File.expand_path( File.join('[build-staging]', 'build') )
-          @c.merge_project_yml_for_test({ :project => { :build_root => bracket_build_root } })
-        end
+        # Absolute :build_root: under a bracket-named directory -- forces every
+        # vendor framework path (derived from :build_root:) to carry the bracket
+        # literally in the glob pattern text, unlike the default relative 'build'.
+        bracket_build_root = File.expand_path( File.join('[build-staging]', 'build') )
+        @c.merge_project_yml_for_test({ :project => { :build_root => bracket_build_root } })
       end
     end
 
     it "compiles and tests a project whose absolute build root falls under a bracket-named directory" do
-      @c.with_context do
-        Dir.chdir @proj_name do
-          output = @c.ceedling_build_exec("test:all")
+      in_project do
+        output = @c.ceedling_build_exec("test:all")
 
-          expect(@c.last_exit_status).to eq(0)
-          expect(output).to_not match(/yielded no directories/)
-          expect(output).to match(/TESTED:\s+1/)
-          expect(output).to match(/PASSED:\s+1/)
-          expect(output).to match(/FAILED:\s+0/)
-        end
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to_not match(/yielded no directories/)
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
       end
     end
   end

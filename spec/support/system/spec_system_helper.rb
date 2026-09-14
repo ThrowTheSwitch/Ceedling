@@ -152,6 +152,40 @@ def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', 'fixtures', asset_file_name)
 end
 
+# Collapses the `@c.with_context { Dir.chdir(@proj_name) { ... } }` triple-nesting
+# repeated at nearly every before-hook and example body across the path/name
+# disambiguation specs (spec/system/*_disambiguation*, *_path*, etc.) into one call.
+# `@c`/`@proj_name` are instance state set by the "a fresh ceedling gem project"
+# shared context below -- any spec using this helper needs that context (or
+# equivalent) included first.
+def in_project(&block)
+  @c.with_context { Dir.chdir(@proj_name, &block) }
+end
+
+# Copies test_asset_path(fixture_relative_path) into dest_dir (created if it doesn't
+# already exist) -- collapses the FileUtils.mkdir_p + FileUtils.cp test_asset_path(...)
+# pair repeated identically across every fixture-loading before-hook in the
+# test_asset_path-based specs in this same cluster.
+def copy_fixture(fixture_relative_path, dest_dir)
+  FileUtils.mkdir_p(dest_dir)
+  FileUtils.cp(test_asset_path(fixture_relative_path), dest_dir)
+end
+
+# Copies the alpha/dup.{h,c} + beta/dup.{h,c} fixture pair -- two identically-shaped
+# header+source pairs in different directories -- into the current example's project.
+# Shared by implicit_source_header_correspondence_disambiguation_spec.rb and
+# test_source_file_directive_spec.rb, which both build scenarios around this same
+# same-basename ambiguity (previously a byte-for-byte duplicate private method in
+# both files).
+def copy_duplicate_dup_pairs
+  in_project do
+    copy_fixture("implicit_source_header_correspondence/alpha/dup.h", 'src/alpha')
+    copy_fixture("implicit_source_header_correspondence/alpha/dup.c", 'src/alpha')
+    copy_fixture("implicit_source_header_correspondence/beta/dup.h", 'src/beta')
+    copy_fixture("implicit_source_header_correspondence/beta/dup.c", 'src/beta')
+  end
+end
+
 def feature_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', 'features', asset_file_name)
 end
@@ -221,6 +255,28 @@ def ubsan_available?
     File.write(source, "int main(void) { return 0; }\n")
     tool_available?(%(gcc -fsanitize=undefined -o "#{binary}" "#{source}" 2>&1))
   end
+end
+
+# Collapses the before(:all)/after(:all) SystemContext setup/teardown pair plus the
+# `ceedling new` scaffold call -- identical across every "Deployed as a gem" spec in
+# the path/name disambiguation cluster -- into one `include_context` line. `proj_prefix`
+# feeds `unique_proj_name`, matching each file's own former hardcoded prefix string.
+RSpec.shared_context "a fresh ceedling gem project" do |proj_prefix|
+  before :all do
+    @c = SystemContext.new
+    @c.deploy_gem
+  end
+
+  after :all do
+    @c.done!
+  end
+
+  before { @proj_name = unique_proj_name(proj_prefix) }
+
+  # Not in_project -- the project directory doesn't exist until this call creates
+  # it, so there's nothing yet to Dir.chdir into. Every subsequent step (fixture
+  # loading, build/test invocations) uses in_project as normal.
+  before { @c.with_context { @c.ceedling_appcmd_exec("new #{@proj_name}") } }
 end
 
 RSpec.shared_context "requires gdb" do

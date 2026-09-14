@@ -59,55 +59,35 @@ require 'spec_system_helper'
 ##
 
 ceedling_system_tests do
-
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
-
-  before { @proj_name = unique_proj_name("header_path_validation") }
+  include_context "a fresh ceedling gem project", "header_path_validation"
 
   describe "Deployed as a gem" do
-    before do
-      @c.with_context do
-        @c.ceedling_appcmd_exec("new #{@proj_name}")
-      end
-    end
 
     # =========================================================================
     describe "A mock whose real header lives in a subdirectory" do
     # =========================================================================
 
       before do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.mkdir_p 'src/drivers'
-            FileUtils.cp test_asset_path("header_include_path_validation/drivers/foo.h"), 'src/drivers/'
-            FileUtils.cp test_asset_path("header_include_path_validation/test_bare_mock.c"), 'test/'
-            FileUtils.cp test_asset_path("header_include_path_validation/test_pathed_mock.c"), 'test/'
-          end
+        in_project do
+          copy_fixture("header_include_path_validation/drivers/foo.h", 'src/drivers')
+          copy_fixture("header_include_path_validation/test_bare_mock.c", 'test')
+          copy_fixture("header_include_path_validation/test_pathed_mock.c", 'test')
         end
       end
 
       it "compiles whether the #include is bare or carries a disambiguating path" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to_not match(/Ambiguous/)
-            expect(output).to match(/TESTED:\s+2/)
-            expect(output).to match(/PASSED:\s+2/)
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Ambiguous/)
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/PASSED:\s+2/)
 
-            # A mock's location mirrors its real header's resolved path, not whatever path its
-            # own #include happened to write, so both tests' mocks land at the identical
-            # location -- each #include names the same real header, drivers/foo.h.
-            expect(File.exist?('build/test/mocks/test_bare_mock/drivers/mock_foo.h')).to be true
-            expect(File.exist?('build/test/mocks/test_pathed_mock/drivers/mock_foo.h')).to be true
-          end
+          # A mock's location mirrors its real header's resolved path, not whatever path its
+          # own #include happened to write, so both tests' mocks land at the identical
+          # location -- each #include names the same real header, drivers/foo.h.
+          expect(File.exist?('build/test/mocks/test_bare_mock/drivers/mock_foo.h')).to be true
+          expect(File.exist?('build/test/mocks/test_pathed_mock/drivers/mock_foo.h')).to be true
         end
       end
 
@@ -118,22 +98,17 @@ ceedling_system_tests do
     # =========================================================================
 
       before do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.mkdir_p 'src/drivers'
-            FileUtils.cp test_asset_path("header_include_path_validation/drivers/foo.h"), 'src/drivers/'
-            FileUtils.cp test_asset_path("header_include_path_validation/test_bogus_mock_path.c"), 'test/'
-          end
+        in_project do
+          copy_fixture("header_include_path_validation/drivers/foo.h", 'src/drivers')
+          copy_fixture("header_include_path_validation/test_bogus_mock_path.c", 'test')
         end
       end
 
       it "is rejected rather than silently resolved by basename alone" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).not_to eq(0)
-            expect(output).to_not match(/TESTED:\s+1/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).not_to eq(0)
+          expect(output).to_not match(/TESTED:\s+1/)
         end
       end
 
@@ -144,21 +119,17 @@ ceedling_system_tests do
     # =========================================================================
 
       before do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("header_include_path_validation/bar.h"), 'src/'
-            FileUtils.cp test_asset_path("header_include_path_validation/test_bogus_vanilla_path.c"), 'test/'
-          end
+        in_project do
+          copy_fixture("header_include_path_validation/bar.h", 'src')
+          copy_fixture("header_include_path_validation/test_bogus_vanilla_path.c", 'test')
         end
       end
 
       it "is rejected rather than being silently ignored" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).not_to eq(0)
-            expect(output).to_not match(/TESTED:\s+1/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).not_to eq(0)
+          expect(output).to_not match(/TESTED:\s+1/)
         end
       end
 
@@ -169,47 +140,39 @@ ceedling_system_tests do
     # =========================================================================
 
       before do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.mkdir_p 'src/drivers'
-            FileUtils.mkdir_p 'src/alt_drivers'
-            FileUtils.cp test_asset_path("header_include_path_validation/drivers/foo.h"), 'src/drivers/'
-            FileUtils.cp test_asset_path("header_include_path_validation/alt_drivers/foo.h"), 'src/alt_drivers/'
-            FileUtils.cp test_asset_path("header_include_path_validation/test_ambiguous_mock.c"), 'test/'
-          end
+        in_project do
+          copy_fixture("header_include_path_validation/drivers/foo.h", 'src/drivers')
+          copy_fixture("header_include_path_validation/alt_drivers/foo.h", 'src/alt_drivers')
+          copy_fixture("header_include_path_validation/test_ambiguous_mock.c", 'test')
         end
       end
 
       it "resolves to the first candidate by search-path order, logging a NOTICE naming the other" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/Multiple files matched/)
-            expect(output).to match(/alt_drivers[\/\\]foo\.h/)
-            expect(output).to match(/drivers[\/\\]foo\.h/)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/Multiple files matched/)
+          expect(output).to match(/alt_drivers[\/\\]foo\.h/)
+          expect(output).to match(/drivers[\/\\]foo\.h/)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
 
-            # alt_drivers sorts ahead of drivers within :include's single src/** glob,
-            # so the generated mock mirrors alt_drivers/foo.h's own location.
-            expect(File.exist?('build/test/mocks/test_ambiguous_mock/alt_drivers/mock_foo.h')).to be true
-          end
+          # alt_drivers sorts ahead of drivers within :include's single src/** glob,
+          # so the generated mock mirrors alt_drivers/foo.h's own location.
+          expect(File.exist?('build/test/mocks/test_ambiguous_mock/alt_drivers/mock_foo.h')).to be true
         end
       end
 
       it "resolves to the non-default candidate when disambiguated by path, logging nothing" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("header_include_path_validation/test_pathed_mock_ambiguous.c"), 'test/'
-            output = @c.ceedling_build_exec("test:test_pathed_mock_ambiguous.c")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to_not match(/Multiple files matched/)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
+        in_project do
+          copy_fixture("header_include_path_validation/test_pathed_mock_ambiguous.c", 'test')
+          output = @c.ceedling_build_exec("test:test_pathed_mock_ambiguous.c")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Multiple files matched/)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
 
-            expect(File.exist?('build/test/mocks/test_pathed_mock_ambiguous/drivers/mock_foo.h')).to be true
-          end
+          expect(File.exist?('build/test/mocks/test_pathed_mock_ambiguous/drivers/mock_foo.h')).to be true
         end
       end
 
@@ -220,43 +183,35 @@ ceedling_system_tests do
     # =========================================================================
 
       before do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.mkdir_p 'other_inc'
-            FileUtils.cp test_asset_path("header_include_path_validation/other_inc/dup.h"), 'other_inc/'
-            FileUtils.cp test_asset_path("header_include_path_validation/dup.h"), 'src/'
-            FileUtils.cp test_asset_path("header_include_path_validation/test_test_include_path_outranks_include.c"), 'test/'
-          end
+        in_project do
+          copy_fixture("header_include_path_validation/other_inc/dup.h", 'other_inc')
+          copy_fixture("header_include_path_validation/dup.h", 'src')
+          copy_fixture("header_include_path_validation/test_test_include_path_outranks_include.c", 'test')
         end
       end
 
       it "resolves to the TEST_INCLUDE_PATH()-supplied header, ranked ahead of :include" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/Multiple files matched/)
-            expect(output).to match(/other_inc[\/\\]dup\.h/)
-            expect(output).to match(/src[\/\\]dup\.h/)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/Multiple files matched/)
+          expect(output).to match(/other_inc[\/\\]dup\.h/)
+          expect(output).to match(/src[\/\\]dup\.h/)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
         end
       end
 
       it "resolves to the :include-supplied header instead when disambiguated by path, logging nothing" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.mkdir_p 'src/inc_dup'
-            FileUtils.cp test_asset_path("header_include_path_validation/dup.h"), 'src/inc_dup/'
-            FileUtils.cp test_asset_path("header_include_path_validation/test_include_outranks_test_include_path.c"), 'test/'
+        in_project do
+          copy_fixture("header_include_path_validation/dup.h", 'src/inc_dup')
+          copy_fixture("header_include_path_validation/test_include_outranks_test_include_path.c", 'test')
 
-            output = @c.ceedling_build_exec("test:test_include_outranks_test_include_path.c")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to_not match(/Multiple files matched/)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
-          end
+          output = @c.ceedling_build_exec("test:test_include_outranks_test_include_path.c")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Multiple files matched/)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
         end
       end
 

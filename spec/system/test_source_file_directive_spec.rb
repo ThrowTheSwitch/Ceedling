@@ -72,82 +72,50 @@ require 'spec_system_helper'
 ##     TEST_SOURCE_FILE("-:beta/dup.c"), asserts 111 -- removing a real file
 ##     that was never part of this test's own list changes nothing
 ##
+## copy_duplicate_dup_pairs (the alpha/beta dup.{h,c} fixture pair used by the
+## "overriding and removing" scenarios below) is shared with
+## implicit_source_header_correspondence_disambiguation_spec.rb via
+## spec_system_helper.rb -- both files build scenarios around this same
+## same-basename ambiguity.
+##
 
 ceedling_system_tests do
-
-  before :all do
-    @c = SystemContext.new
-    @c.deploy_gem
-  end
-
-  after :all do
-    @c.done!
-  end
+  include_context "a fresh ceedling gem project", "test_source_file_directive"
 
   describe "Deployed as a gem" do
 
-    def copy_duplicate_calc_sources(proj_name)
-      @c.with_context do
-        Dir.chdir proj_name do
-          FileUtils.mkdir_p 'src/alpha'
-          FileUtils.mkdir_p 'src/beta'
-          FileUtils.cp test_asset_path("test_source_file_duplicate_basenames/alpha/calc.c"), 'src/alpha/'
-          FileUtils.cp test_asset_path("test_source_file_duplicate_basenames/beta/calc.c"), 'src/beta/'
-        end
+    # Unique to this file -- the same-basename-but-no-header shape TEST_SOURCE_FILE()
+    # itself is documented for, distinct from copy_duplicate_dup_pairs's header+source
+    # pairs (which exercise TEST_SOURCE_FILE() overriding/removing an implicit match).
+    def copy_duplicate_calc_sources
+      in_project do
+        copy_fixture("test_source_file_duplicate_basenames/alpha/calc.c", 'src/alpha')
+        copy_fixture("test_source_file_duplicate_basenames/beta/calc.c", 'src/beta')
       end
     end
 
-    def copy_duplicate_dup_pairs(proj_name)
-      @c.with_context do
-        Dir.chdir proj_name do
-          FileUtils.mkdir_p 'src/alpha'
-          FileUtils.mkdir_p 'src/beta'
-          FileUtils.cp test_asset_path("implicit_source_header_correspondence/alpha/dup.h"), 'src/alpha/'
-          FileUtils.cp test_asset_path("implicit_source_header_correspondence/alpha/dup.c"), 'src/alpha/'
-          FileUtils.cp test_asset_path("implicit_source_header_correspondence/beta/dup.h"), 'src/beta/'
-          FileUtils.cp test_asset_path("implicit_source_header_correspondence/beta/dup.c"), 'src/beta/'
-        end
-      end
-    end
-
-    def copy_gamma_dup_replacement(proj_name)
-      @c.with_context do
-        Dir.chdir proj_name do
-          FileUtils.mkdir_p 'src/gamma'
-          FileUtils.cp test_asset_path("implicit_source_header_correspondence/gamma/dup_gamma.c"), 'src/gamma/'
-        end
-      end
+    def copy_gamma_dup_replacement
+      in_project { copy_fixture("implicit_source_header_correspondence/gamma/dup_gamma.c", 'src/gamma') }
     end
 
     # =========================================================================
     describe "A project with two same-named, header-less sources and a bare TEST_SOURCE_FILE() reference" do
     # =========================================================================
 
-      before { @proj_name = unique_proj_name("dup_test_source_file") }
-
       before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_duplicate_calc_sources(@proj_name)
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("test_source_file_duplicate_basenames/test_calc_ambiguous.c"), 'test/'
-          end
-        end
+        copy_duplicate_calc_sources
+        in_project { copy_fixture("test_source_file_duplicate_basenames/test_calc_ambiguous.c", 'test') }
       end
 
       it "resolves to the first candidate by search-path order, logging a NOTICE naming the other" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/Multiple files matched/)
-            expect(output).to match(/alpha[\/\\]calc\.c/)
-            expect(output).to match(/beta[\/\\]calc\.c/)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/Multiple files matched/)
+          expect(output).to match(/alpha[\/\\]calc\.c/)
+          expect(output).to match(/beta[\/\\]calc\.c/)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
         end
       end
 
@@ -157,30 +125,21 @@ ceedling_system_tests do
     describe "A project with two same-named, header-less sources, each identified by a disambiguating TEST_SOURCE_FILE() path" do
     # =========================================================================
 
-      before { @proj_name = unique_proj_name("dup_test_source_file") }
-
       before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_duplicate_calc_sources(@proj_name)
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("test_source_file_duplicate_basenames/test_calc_alpha.c"), 'test/'
-            FileUtils.cp test_asset_path("test_source_file_duplicate_basenames/test_calc_beta.c"), 'test/'
-          end
+        copy_duplicate_calc_sources
+        in_project do
+          copy_fixture("test_source_file_duplicate_basenames/test_calc_alpha.c", 'test')
+          copy_fixture("test_source_file_duplicate_basenames/test_calc_beta.c", 'test')
         end
       end
 
       it "compiles, links, and passes both tests, each correctly linked against its own same-named source" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to_not match(/Ambiguous/)
-            expect(output).to match(/TESTED:\s+2/)
-            expect(output).to match(/PASSED:\s+2/)
-          end
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Ambiguous/)
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/PASSED:\s+2/)
         end
       end
 
@@ -190,41 +149,30 @@ ceedling_system_tests do
     describe "A test file that both #includes a header and names a same-basename TEST_SOURCE_FILE()" do
     # =========================================================================
 
-      before { @proj_name = unique_proj_name("dup_header_source_pair") }
-
       before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_duplicate_dup_pairs(@proj_name)
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("implicit_source_header_correspondence/test_dup_override.c"), 'test/'
-          end
-        end
+        copy_duplicate_dup_pairs
+        in_project { copy_fixture("implicit_source_header_correspondence/test_dup_override.c", 'test') }
       end
 
       it "lets TEST_SOURCE_FILE() override the implicit convention's own resolution rather than compiling both same-named sources" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
 
-            # The bare #include "dup.h" is still itself ambiguous (validate_header_includes
-            # is untouched by the override), so its own NOTICE still fires -- but the
-            # correctly-linked pass above already proves only beta/dup.c was ever compiled,
-            # not both. A duplicate-symbol link error would have failed the build otherwise.
-            expect(File.exist?('build/test/out/test_dup_override/beta/dup.o')).to be true
-            expect(File.exist?('build/test/out/test_dup_override/alpha/dup.o')).to be false
+          # The bare #include "dup.h" is still itself ambiguous (validate_header_includes
+          # is untouched by the override), so its own NOTICE still fires -- but the
+          # correctly-linked pass above already proves only beta/dup.c was ever compiled,
+          # not both. A duplicate-symbol link error would have failed the build otherwise.
+          expect(File.exist?('build/test/out/test_dup_override/beta/dup.o')).to be true
+          expect(File.exist?('build/test/out/test_dup_override/alpha/dup.o')).to be false
 
-            # A second, distinct NOTICE -- from extract_sources's own override, not the
-            # header-ambiguity NOTICE above -- names the winning TEST_SOURCE_FILE() entry
-            # and the #include it overrode.
-            expect(output).to match(/TEST_SOURCE_FILE\(\).*beta[\/\\]dup\.c/)
-            expect(output).to match(/dup\.h/)
-          end
+          # A second, distinct NOTICE -- from extract_sources's own override, not the
+          # header-ambiguity NOTICE above -- names the winning TEST_SOURCE_FILE() entry
+          # and the #include it overrode.
+          expect(output).to match(/TEST_SOURCE_FILE\(\).*beta[\/\\]dup\.c/)
+          expect(output).to match(/dup\.h/)
         end
       end
 
@@ -234,36 +182,25 @@ ceedling_system_tests do
     describe "A test file that removes an unambiguously-matched implicit source and supplies a different one" do
     # =========================================================================
 
-      before { @proj_name = unique_proj_name("dup_subtractive") }
-
       before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_duplicate_dup_pairs(@proj_name)
-        copy_gamma_dup_replacement(@proj_name)
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("implicit_source_header_correspondence/test_dup_subtractive.c"), 'test/'
-          end
-        end
+        copy_duplicate_dup_pairs
+        copy_gamma_dup_replacement
+        in_project { copy_fixture("implicit_source_header_correspondence/test_dup_subtractive.c", 'test') }
       end
 
       it "never compiles the removed file, compiles and links the supplied one instead, and logs a NOTICE naming the removal" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
 
-            expect(File.exist?('build/test/out/test_dup_subtractive/alpha/dup.o')).to be false
-            expect(File.exist?('build/test/out/test_dup_subtractive/gamma/dup_gamma.o')).to be true
+          expect(File.exist?('build/test/out/test_dup_subtractive/alpha/dup.o')).to be false
+          expect(File.exist?('build/test/out/test_dup_subtractive/gamma/dup_gamma.o')).to be true
 
-            expect(output).to match(/TEST_SOURCE_FILE\(.*-:alpha[\/\\]dup\.c.*\)/)
-            expect(output).to match(/removed/)
-            expect(output).to match(/alpha[\/\\]dup\.c/)
-          end
+          expect(output).to match(/TEST_SOURCE_FILE\(.*-:alpha[\/\\]dup\.c.*\)/)
+          expect(output).to match(/removed/)
+          expect(output).to match(/alpha[\/\\]dup\.c/)
         end
       end
 
@@ -273,32 +210,21 @@ ceedling_system_tests do
     describe "A test file whose subtractive entry names a file never part of its own compile/link list" do
     # =========================================================================
 
-      before { @proj_name = unique_proj_name("dup_subtractive_noop") }
-
       before do
-        @c.with_context do
-          @c.ceedling_appcmd_exec("new #{@proj_name}")
-        end
-        copy_duplicate_dup_pairs(@proj_name)
-        @c.with_context do
-          Dir.chdir @proj_name do
-            FileUtils.cp test_asset_path("implicit_source_header_correspondence/test_dup_subtractive_noop.c"), 'test/'
-          end
-        end
+        copy_duplicate_dup_pairs
+        in_project { copy_fixture("implicit_source_header_correspondence/test_dup_subtractive_noop.c", 'test') }
       end
 
       it "builds and passes normally, logging no removal NOTICE" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            output = @c.ceedling_build_exec("test:all")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/TESTED:\s+1/)
-            expect(output).to match(/PASSED:\s+1/)
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
 
-            expect(File.exist?('build/test/out/test_dup_subtractive_noop/alpha/dup.o')).to be true
+          expect(File.exist?('build/test/out/test_dup_subtractive_noop/alpha/dup.o')).to be true
 
-            expect(output).to_not match(/TEST_SOURCE_FILE\(.*removed/)
-          end
+          expect(output).to_not match(/TEST_SOURCE_FILE\(.*removed/)
         end
       end
 
