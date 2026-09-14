@@ -8,11 +8,11 @@
 require 'spec_helper'
 require 'json'
 require 'digest'
-require 'dependency_tracker_system_helper'
+require 'dependency_tracker_integration_helper'
 require 'ceedling/dependencies/dependency_cache_store'
 require 'ceedling/dependencies/dependency_hasher'
 
-# System-level coverage of the production-hardening design's three
+# Integration-level coverage of the production-hardening design's three
 # cache-file concerns, all exercised against real files on disk:
 #   (A) Debug modes (Tier :none / :meta / :full)
 #   (B) Cache schema versioning
@@ -23,8 +23,8 @@ require 'ceedling/dependencies/dependency_hasher'
 # that file is constructed directly as a heredoc and written to disk before
 # opening a tracker against it -- simulating a cache left behind by another
 # Ceedling version, an interrupted write, or manual editing.
-describe 'DependencyTracker cache hardening (system)' do
-  include DependencyTrackerSystemHelper
+describe 'DependencyTracker cache hardening (integration)' do
+  include DependencyTrackerIntegrationHelper
 
   def real_sha256(path)
     Digest::SHA256.hexdigest( File.read( path ) )

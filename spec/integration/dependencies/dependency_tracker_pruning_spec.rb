@@ -7,9 +7,9 @@
 
 require 'spec_helper'
 require 'json'
-require 'dependency_tracker_system_helper'
+require 'dependency_tracker_integration_helper'
 
-# System-level coverage of DependencyTracker's two entry-pruning mechanisms,
+# Integration-level coverage of DependencyTracker's two entry-pruning mechanisms,
 # against real files, a real persisted cache, and a real second tracker
 # instance standing in for the next Ceedling invocation's process:
 #
@@ -23,8 +23,8 @@ require 'dependency_tracker_system_helper'
 #   #flush): naively pruning "not touched this run" would wipe cache
 #   entries for every target a partial build (`ceedling test:some_file.c`)
 #   simply didn't happen to touch.
-describe 'DependencyTracker entry pruning (system)' do
-  include DependencyTrackerSystemHelper
+describe 'DependencyTracker entry pruning (integration)' do
+  include DependencyTrackerIntegrationHelper
 
   def persisted_entries(store_path)
     JSON.parse( File.read( store_path ) )['entries']

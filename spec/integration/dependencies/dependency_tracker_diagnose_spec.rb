@@ -7,17 +7,17 @@
 
 require 'spec_helper'
 require 'yaml'
-require 'dependency_tracker_system_helper'
+require 'dependency_tracker_integration_helper'
 
-# System-level coverage of DependencyTracker#diagnose and its
+# Integration-level coverage of DependencyTracker#diagnose and its
 # DependencyDebugTree/DependencyDiffer collaborators, against real files, a
 # real persisted cache, and real YAML written to a real debug tree on disk
 # -- the detailed, human-readable troubleshooting output requested to
 # explain both the tracker's own behavior and the (eventual) main
 # application's use of it: what SHA mismatched, the diff that triggered it,
 # and which antecedent(s) were responsible.
-describe 'DependencyTracker#diagnose (system)' do
-  include DependencyTrackerSystemHelper
+describe 'DependencyTracker#diagnose (integration)' do
+  include DependencyTrackerIntegrationHelper
 
   def read_yaml_file(path)
     YAML.safe_load( File.read( path ) )

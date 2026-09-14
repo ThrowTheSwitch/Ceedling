@@ -6,16 +6,16 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'dependency_tracker_system_helper'
+require 'dependency_tracker_integration_helper'
 
-# System-level coverage of DependencyTracker's core query API -- register,
+# Integration-level coverage of DependencyTracker's core query API -- register,
 # stale?, mark_fresh, invalidate, flush -- against a real FileWrapper, real
 # SHA-256 hashing, and real files on a real temp directory. Unlike the unit
 # specs (spec/units/dependencies), nothing here is mocked at the filesystem
 # boundary: dependency and target "files" are real heredoc-written source-ish
 # content, and staleness is driven by actually rewriting those files on disk.
-describe 'DependencyTracker core tracking (system)' do
-  include DependencyTrackerSystemHelper
+describe 'DependencyTracker core tracking (integration)' do
+  include DependencyTrackerIntegrationHelper
 
   # A minimal, syntactically-plausible C translation unit and header, just
   # realistic enough to read like genuine build inputs in test output.

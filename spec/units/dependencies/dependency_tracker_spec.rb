@@ -524,7 +524,7 @@ describe DependencyTracker do
     # registrations are the complete, current target set (see the class
     # comment on #flush). A cache entry left over for a target this run
     # never registered -- simulated directly here rather than via a real
-    # two-process round trip, which spec/system/dependencies covers -- is
+    # two-process round trip, which spec/integration/dependencies covers -- is
     # exactly the scenario `prune:` exists to handle.
     context 'prune: option' do
       it 'keeps a cache entry for a target not registered this run by default (prune: false)' do
