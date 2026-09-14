@@ -50,6 +50,9 @@ The [`TEST_SOURCE_FILE()` build directive macro](https://throwtheswitch.github.i
 ### `ceedling.yml` as an alternate default project file
 [#1250](https://github.com/ThrowTheSwitch/Ceedling/issues/1250) `ceedling.yml` is now recognized as an alternate default project filename alongside `project.yml`. Either name is loaded the same way; neither is preferred over the other. If both exist in the same directory, Ceedling raises an error. `ceedling new` continues to generate `project.yml` by default; pass `--ceedling-yml` to generate `ceedling.yml` instead. See [Loading a Project Configuration](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/loading/).
 
+### `ceedling dumpconfig` gains a `--stdout` option
+Running the `dumpconfig` application command to produce a fully resolved project configuration now supports an option to send the resulting YAML directly to `$stdout` instead of a filepath. This is one small step towards Ceedling support for working with other tooling (e.g. agentic coding tools) in future releases.
+
 ### Gcov plugin
 #### Gcovr raw custom arguments
 [#1159](https://github.com/ThrowTheSwitch/Ceedling/issues/1159) Added [`:gcov` ↳ `:gcovr` ↳ `:custom_args:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/gcov/gcovr/), a list of raw command line arguments passed straight through to `gcovr`. This is an escape hatch for any `gcovr` flag Ceedling has no named option for (e.g. limiting gcovr’s search root), mirroring the `:report_generator` ↳ `:custom_args:` option that already existed for the ReportGenerator side of the Gcov plugin. Unlike every other GCovr option, `:custom_args:` still applies even when `:config_file` is set.
@@ -116,7 +119,7 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 ---
 
-# [1.1.8] — Prerelease
+# [1.1.8] — 2026-09-10
 
 ## 💪 Fixed
 
