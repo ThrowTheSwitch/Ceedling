@@ -119,13 +119,17 @@ RSpec.configure do |config|
              # (e.g. "s_" from "Project's" -> "Project_s_" when the cut lands mid-segment).
              .then { |s| s.length > 120 ? s[-120..].sub(/\A[^_]*_+/, '') : s }
 
-    timestamp   = Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
+    # PID + microsecond precision, not just a second-precision timestamp -- two concurrent
+    # processes writing a log for identically-described tests in the same UTC second would
+    # otherwise silently overwrite one another. Mirrors simplecov_boot.rb's own resultset
+    # directory naming, which solves the same concurrent-writer problem for coverage data.
+    timestamp   = Time.now.utc.strftime('%Y%m%dT%H%M%S%6NZ')
     # Centralize all system test result logs so CI can upload one directory as an artifact.
     results_dir = File.join(Dir.pwd, 'systests')
     FileUtils.mkdir_p(results_dir)
 
     result_tag = is_failure ? 'fail' : 'pass'
-    log_path   = File.join(results_dir, "systest.#{result_tag}.#{test_name}.#{timestamp}.log")
+    log_path   = File.join(results_dir, "systest.#{result_tag}.#{test_name}.#{Process.pid}-#{timestamp}.log")
 
     log_content = ""
     log_content << "Command: `#{@c.last_cmd}`\n\n" if @c.respond_to?(:last_cmd) && !@c.last_cmd.nil?
