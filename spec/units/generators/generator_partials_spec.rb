@@ -241,6 +241,25 @@ describe GeneratorPartials do
       expect(result).to be_nil
     end
 
+    it "writes nothing when the module's only CStatement is a bare macro invocation (not type-defining)" do
+      allow(@file_wrapper).to receive(:open)
+
+      invocation = CExtractorTypes::CStatement.new(text: "FOO(0)", line_num: 1)
+      c_module = CExtractorTypes::CModule.new(
+        macro_invocations: [invocation],
+        element_sequence:  [invocation]
+      )
+
+      result = @generator.generate_types(
+        name: 'my_module',
+        c_module: c_module,
+        output_path: '/path/to/output'
+      )
+
+      expect(@file_wrapper).not_to have_received(:open)
+      expect(result).to be_nil
+    end
+
     it "writes the typedefs and aggregate definitions, guarded and in element_sequence order, carrying forward a macro that precedes one of them, and returns the bare filename" do
       file_contents = <<~CONTENTS
       #ifndef __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
@@ -742,6 +761,67 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
+    # make_module bins every CStatement into macro_definitions, the wrong bucket for a
+    # macro_invocations item -- CModule is constructed by hand here instead, same as
+    # this describe block's other macro_invocations-specific tests below.
+    #
+    # A bare macro invocation is never emitted into any header, implementation or
+    # interface, include_variables true or false -- unlike a #define (safe to repeat
+    # identically across translation units), its expansion is real executable code
+    # (typically a function definition), and both kinds of generated header routinely
+    # get #include'd into more than one separately-compiled source for one test build
+    # (the implementation source file, the test file itself, and the generated test
+    # runner all #include the implementation header) -- landing it in any header risks
+    # a one-definition-rule violation the moment more than one of those objects ends up
+    # containing it. See #generate_source for where it actually belongs.
+    it "should not emit a bare macro invocation in the implementation header (include_variables true)" do
+      file_contents = <<~CONTENTS
+      #ifndef __CEEDLING_GENERATED_IMPL_INVOCATION_H__
+      #define __CEEDLING_GENERATED_IMPL_INVOCATION_H__
+
+      #define FOO(x) void bar##x(void) { }
+
+      #endif // __CEEDLING_GENERATED_IMPL_INVOCATION_H__
+
+      CONTENTS
+
+      macro_stmt = make_stmt(text: "#define FOO(x) void bar##x(void) { }", line_num: 1)
+      invocation = make_stmt(text: "FOO(0)", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        macro_definitions: [macro_stmt],
+        macro_invocations: [invocation],
+        element_sequence:  [macro_stmt, invocation]
+      )
+
+      @generator.send(:generate_header, buf, 'impl_invocation', [], [], c_module, true)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "should not emit a bare macro invocation in the mockable interface header (include_variables false)" do
+      file_contents = <<~CONTENTS
+      #ifndef __CEEDLING_GENERATED_INTERFACE_INVOCATION_H__
+      #define __CEEDLING_GENERATED_INTERFACE_INVOCATION_H__
+
+      #define FOO(x) void bar##x(void) { }
+
+      #endif // __CEEDLING_GENERATED_INTERFACE_INVOCATION_H__
+
+      CONTENTS
+
+      macro_stmt = make_stmt(text: "#define FOO(x) void bar##x(void) { }", line_num: 1)
+      invocation = make_stmt(text: "FOO(0)", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        macro_definitions: [macro_stmt],
+        macro_invocations: [invocation],
+        element_sequence:  [macro_stmt, invocation]
+      )
+
+      @generator.send(:generate_header, buf, 'interface_invocation', [], [], c_module, false)
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
     it "should interleave functions with other elements in element_sequence order, skipping a leading typedef routed to the shared types header" do
       file_contents = <<~CONTENTS
       #ifndef __CEEDLING_GENERATED_INTERLEAVED_H__
@@ -875,6 +955,30 @@ describe GeneratorPartials do
       @generator.send(:generate_source, buf, [], [], c_module)
 
       expect(buf.string).to include('volatile cmd_t cmd = { 0 };')
+    end
+
+    it "should emit a bare macro invocation -- this is the one file that compiles to the one object its real function definition can safely live in" do
+      invocation = make_stmt(text: "FOO(0)", line_num: 1)
+      c_module = CExtractorTypes::CModule.new(
+        macro_invocations: [invocation],
+        element_sequence:  [invocation]
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).to include('FOO(0)')
+    end
+
+    it "should not emit a plain macro definition or other non-invocation CStatement in source (headers only)" do
+      macro_stmt = make_stmt(text: "#define FOO 1", line_num: 1)
+      c_module = CExtractorTypes::CModule.new(
+        macro_definitions: [macro_stmt],
+        element_sequence:  [macro_stmt]
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).not_to include('#define FOO 1')
     end
 
     it "should generate a source file with include directives, variable declarations, and functions" do

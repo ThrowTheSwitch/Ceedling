@@ -372,10 +372,38 @@ describe CExtractor do
         content = "/* comment across\nchunk boundary */PATTERN"
         io = StringIO.new(content)
         extractor = create_pattern_extractor.call(/PATTERN/)
-        
+
         result = extract_feature.call(io, 1000, extractor)
-        
+
         expect(result).to eq("PATTERN")
+      end
+
+      # try_extract_bare_macro_invocation's own success/failure decision depends on
+      # peeking past the invocation's closing ')' for a terminating ';'/'{' -- if that
+      # peek lands exactly at eos? because only THIS chunk has been read so far (not
+      # because the real file has ended), it must fail and let extract_next_feature grow
+      # the buffer and retry, never treat a mid-buffer eos? as "no terminator follows."
+      # Round-tripped through the real extract_next_feature (not called directly) so
+      # this exercises the real growth-and-retry behavior the fix depends on.
+      it "does not falsely succeed when a bare invocation's terminator would only appear in the next chunk" do
+        code_text     = CExtractorCodeText.new
+        preprocessing = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
+
+        # chunk_size=10: "FOO(0123)" is exactly 10 characters, so the first chunk read
+        # ends precisely at the invocation's closing ')' -- the very next character (a
+        # real terminating ';', making this NOT a bare invocation) only exists once a
+        # second chunk is read.
+        content = "FOO(0123);"
+        io = StringIO.new(content)
+
+        obj = build_extractor.call()
+        obj.chunk_size = 10
+        feature, _start = obj.send(
+          :extract_next_feature, io: io, max_length: 1000,
+          extractor: preprocessing.method(:try_extract_bare_macro_invocation)
+        )
+
+        expect(feature).to be_nil
       end
     end
 

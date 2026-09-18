@@ -192,6 +192,18 @@ class GeneratorPartials
         # generate_types instead of here, so that content defines a type exactly once no
         # matter how many of a module's generated headers end up in the same test file.
         next if type_defining?(item, c_module)
+        # A bare macro invocation expands to real executable code (typically a function
+        # definition) once actually compiled. Unlike a #define (safe to repeat
+        # identically across translation units) or an extern declaration (no symbol of
+        # its own), a real function definition violates the one-definition rule the
+        # moment more than one compiled object contains it -- and both of this method's
+        # callers' generated headers routinely get #include'd into more than one
+        # separately-compiled source for one test build (the implementation source
+        # file, the test file itself, and the generated test runner all #include the
+        # implementation header). Never emitted here, in any header; see generate_source
+        # for where it actually belongs -- the one file that compiles to the one object
+        # the real definition can safely live in.
+        next if c_module.macro_invocations.include?(item)
         io << item.text << "\n"
         last_was_func = false
         anything_emitted = true
@@ -222,7 +234,9 @@ class GeneratorPartials
   # Emit a partial source file.
   #
   # Iterates c_module.element_sequence to emit CVariableDeclaration and
-  # CFunctionDefinition items in their original extraction order. CStatement and
+  # CFunctionDefinition items, plus bare-macro-invocation CStatements specifically (see
+  # the CStatement branch below for why only that one CStatement category belongs
+  # here), in their original extraction order. Every other CStatement category and
   # CFunctionDeclaration items are skipped (they belong in headers). Function items
   # are matched by name against function_definitions (pre-filtered
   # Partials::FunctionDefinition objects). Any entries not found in element_sequence
@@ -264,6 +278,19 @@ class GeneratorPartials
 
     c_module.element_sequence.each do |item|
       case item
+      when CExtractorTypes::CStatement
+        # Only a bare macro invocation belongs here -- see generate_header for why it's
+        # never emitted into any header (a real function definition, once the macro is
+        # actually applied, would violate the one-definition rule the moment more than
+        # one compiled object contains it). This is the one file that compiles to the
+        # one object the real definition can safely live in. Every other CStatement
+        # category (macro definitions, typedefs, aggregate definitions) belongs only in
+        # a header -- #line-anchored function bodies below are the only other code this
+        # file itself contributes.
+        next unless c_module.macro_invocations.include?(item)
+        io << item.text << "\n"
+        last_was_func = false
+        anything_emitted = true
       when CExtractorTypes::CVariableDeclaration
         # `item.text` is the declaration with its leading decorator run removed (see
         # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict

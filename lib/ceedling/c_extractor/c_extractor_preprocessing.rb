@@ -5,12 +5,89 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/c_extractor/c_extractor_types'
+
 class CExtractorPreprocessing
 
   # Directive type symbols for use with filter_directive()
   MACRO_DEFINITION = :macro_definition unless defined?(MACRO_DEFINITION)
 
   constructor :c_extractor_code_text
+
+  # Compiler-extension attribute forms (CExtractorCodeText#strip_compiler_extensions'
+  # own `__word__(...)`/`__declspec(...)` shapes) are indistinguishable from a bare
+  # invocation by identifier-plus-parens shape alone -- e.g. `__declspec(dllexport)
+  # void foo(int x) {...}` -- but they're a function signature's own leading
+  # decoration, always followed by more of that same signature, never a construct in
+  # their own right. Excluded in try_extract_bare_macro_invocation below so that method
+  # never steals them out from under the signature-scanning extractors it exists to run
+  # ahead of.
+  COMPILER_EXTENSION_IDENTIFIER = /\A(?:__\w+__|__declspec)\z/
+
+  # A bare, top-level, semicolon-less macro invocation (an x-macro call expanding to a
+  # full function definition once the macro itself is applied) has no leading '#', no
+  # trailing ';', and no trailing '{' -- real compilable C at file/statement scope
+  # never has IDENTIFIER(balanced-args) followed by anything else, so this shape only
+  # exists pre-macro-expansion. A trailing ';' (an ordinary call-as-statement) or '{'
+  # (a real function definition) are both explicitly NOT this shape and are left for
+  # the extractors that already handle those correctly.
+  #
+  # One accepted, pre-existing limitation, not introduced here: a K&R-style old-style
+  # function definition (`foo(a,b)\nint a; int b;\n{...}`) also matches this shape and
+  # would be misclassified -- but it already falls through to the same broken
+  # catch-all this method exists to intercept, so this swaps one already-wrong output
+  # for a different one, for a construct essentially extinct in Ceedling's actual
+  # (modern embedded C) audience. Not worth the real declaration-grammar knowledge
+  # this hand-rolled scanner doesn't have.
+  #
+  # @param scanner [StringScanner] positioned at a potential macro invocation
+  # @return [Array(Boolean, CExtractorTypes::CStatement|nil)]
+  def try_extract_bare_macro_invocation(scanner)
+    start_pos = scanner.pos
+
+    return [false, nil] unless scanner.scan(/[A-Za-z_]\w*/)
+    if scanner.matched =~ COMPILER_EXTENSION_IDENTIFIER
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+
+    @c_extractor_code_text.skip_deadspace(scanner)
+    unless scanner.peek(1) == '('
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+
+    success, _args = @c_extractor_code_text.collect_balanced(scanner, '(', ')')
+    unless success
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+
+    # Peek past trailing deadspace without consuming it as part of this element --
+    # only the invocation itself belongs to this element's own text span.
+    after_invocation = scanner.pos
+    @c_extractor_code_text.skip_deadspace(scanner)
+    # A mid-buffer eos? here is ambiguous -- it may only mean this chunk ran out, not
+    # that the real file has ended. Fail (not succeed) so extract_next_feature's own
+    # buffer-growth-and-retry sees more input before this method decides, exactly like
+    # collect_balanced/try_extract_static_assert already do at their own boundaries. A
+    # genuine, whole-file EOF right after the invocation is legitimate and handled the
+    # same way every other feature type's own unterminated-trailing-content case is
+    # (see CExtractor#extract_contents' final break) -- no special-casing needed here.
+    if scanner.eos?
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+    next_char = scanner.peek(1)
+    scanner.pos = after_invocation
+
+    if next_char == ';' || next_char == '{'
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+
+    [true, CExtractorTypes::CStatement.new(text: scanner.string[start_pos...scanner.pos])]
+  end
 
   # Scan `scanner` for calls to any macro in `macro_names` and return them as a
   # flat Array of cleaned strings in order of appearance. Each string is the full

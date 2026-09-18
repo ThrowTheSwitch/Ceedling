@@ -585,4 +585,117 @@ describe CExtractorPreprocessing do
 
   end
 
+  # A bare, top-level, semicolon-less macro invocation (e.g. an x-macro call that
+  # expands to a full function definition once the macro itself is applied) is
+  # otherwise invisible to every other extractor -- no leading '#', no trailing ';'
+  # or '{'. Structurally closest to #try_extract_static_assert (identifier +
+  # balanced parens + a terminator check), mirrored below.
+  context "#try_extract_bare_macro_invocation" do
+
+    def try_bare_invocation(text)
+      scanner = StringScanner.new(text)
+      result  = @preprocessing.try_extract_bare_macro_invocation(scanner)
+      [result, scanner.pos]
+    end
+
+    # --- Success cases ---
+
+    it "extracts a simple invocation followed by unrelated trailing content" do
+      result, pos = try_bare_invocation("FOO(0)\nint x;")
+      expect(result[0]).to be true
+      expect(result[1].text).to eq 'FOO(0)'
+      expect(pos).to eq 'FOO(0)'.length
+    end
+
+    it "extracts a zero-argument invocation" do
+      result, _pos = try_bare_invocation('FOO()\nBAR')
+      expect(result[0]).to be true
+      expect(result[1].text).to eq 'FOO()'
+    end
+
+    # A bare scanner (unlike extract_next_feature's chunked IO) cannot distinguish "no
+    # more of this chunk yet, more may follow" from "no more content anywhere" -- both
+    # look identical as scanner.eos?. Failing here either way is consistent with
+    # collect_balanced/try_extract_static_assert's own behavior at their own
+    # terminators, and with this codebase's already-established, accepted convention
+    # that unterminated trailing content is silently dropped for every feature type
+    # (an invocation genuinely at true end-of-file with nothing after it is this same,
+    # pre-existing limitation, not a new one).
+    it "does not succeed when the invocation is the only, final content (bare scanner can't tell chunk-boundary from true EOF)" do
+      result, pos = try_bare_invocation('FOO(0)')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "extracts an invocation followed directly by another bare invocation" do
+      result, pos = try_bare_invocation('FOO(0)BAR(1)')
+      expect(result[0]).to be true
+      expect(result[1].text).to eq 'FOO(0)'
+      expect(pos).to eq 'FOO(0)'.length
+    end
+
+    it "handles nested parens in the argument list" do
+      result, _pos = try_bare_invocation("FOO(BAR(1), 2)\nint x;")
+      expect(result[0]).to be true
+      expect(result[1].text).to eq 'FOO(BAR(1), 2)'
+    end
+
+    it "handles a string literal containing ')', ';', and '{' in the argument list" do
+      result, _pos = try_bare_invocation("FOO(\"a);{ b\")\nint x;")
+      expect(result[0]).to be true
+      expect(result[1].text).to eq 'FOO("a);{ b")'
+    end
+
+    it "handles a comment containing ')', ';', and '{' in the argument list" do
+      result, _pos = try_bare_invocation("FOO(/* ) ; { */ 1)\nint x;")
+      expect(result[0]).to be true
+      expect(result[1].text).to eq 'FOO(/* ) ; { */ 1)'
+    end
+
+    # --- Failure cases ---
+
+    it "returns [false, nil] when scanner is not at an identifier" do
+      result, pos = try_bare_invocation('(0)')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "returns [false, nil] for empty input" do
+      result, pos = try_bare_invocation('')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "does not advance scanner on failure" do
+      scanner = StringScanner.new('int x;')
+      @preprocessing.try_extract_bare_macro_invocation(scanner)
+      expect(scanner.pos).to eq 0
+    end
+
+    it "returns [false, nil] when the argument list is missing its closing ')'" do
+      result, pos = try_bare_invocation('FOO(0')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "does not match a bare identifier with no '(' at all -- an object-like macro name is not this shape" do
+      result, pos = try_bare_invocation("FOO\nstatic int x;")
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "defers to the ordinary call-as-statement path when followed by ';'" do
+      result, pos = try_bare_invocation('FOO(0);')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "defers to the function-definition path when followed by '{'" do
+      result, pos = try_bare_invocation('FOO(0){}')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+  end
+
 end

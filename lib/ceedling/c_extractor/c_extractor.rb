@@ -105,6 +105,7 @@ class CExtractor
     macro_definitions     = []
     type_definitions      = []
     aggregate_definitions = []
+    macro_invocations     = []
     sequence              = []
     cumulative_newlines   = 0
 
@@ -181,6 +182,35 @@ class CExtractor
         next
       end
 
+      # A bare, top-level, semicolon-less macro invocation (e.g. an x-macro call that
+      # expands to a full function definition once the macro itself is applied) has no
+      # leading '#', no trailing ';', and no trailing '{' -- directives-only
+      # preprocessing never expands it, so it reaches every extractor below as literal,
+      # unexpanded text. Tried here, before the signature-scanning extractors, because
+      # those scan forward for their own terminating '{'/';' with no check that what
+      # they started scanning actually looks like a signature -- given this shape
+      # immediately followed by an unrelated typedef, aggregate, or real function, they
+      # will happily treat that construct's own opening brace as if it belonged to this
+      # invocation, silently discarding the real content it swallows. Catching the
+      # invocation here, before any of that can happen, protects every construct that
+      # can follow it, not only variable declarations (the narrower, original shape).
+      invocation, invocation_start = extract_next_feature(
+        io:         io,
+        max_length: @max_buffer_length,
+        extractor:  @preprocessing.method(:try_extract_bare_macro_invocation)
+      )
+      if invocation
+        # try_extract_bare_macro_invocation already returns a full CStatement (matching
+        # the function extractors' own convention of returning a complete object, not a
+        # bare string for the dispatch loop to wrap) -- only line_num is set here.
+        line_num, cumulative_newlines =
+          _compute_line_info(io, call_start, invocation_start, cumulative_newlines)
+        invocation.line_num = line_num
+        macro_invocations << invocation
+        sequence << invocation
+        next
+      end
+
       # Extract a function definition (most unique non-preprocessor feature)
       func, func_start = extract_next_feature(
         io: io,
@@ -240,6 +270,7 @@ class CExtractor
       macro_definitions:     macro_definitions,
       type_definitions:      type_definitions,
       aggregate_definitions: aggregate_definitions,
+      macro_invocations:     macro_invocations,
       element_sequence:      sequence
     )
   ensure
