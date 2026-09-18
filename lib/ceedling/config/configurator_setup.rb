@@ -57,27 +57,60 @@ class ConfiguratorSetup
     end
   end
 
+  # A vendor destination directory, and the marker file that must live directly inside
+  # it (unity.c, cmock.c, CException.c -- Issue #1292's own reported symptom), must both
+  # be the type they claim: the destination a directory, the marker file a plain file
+  # inside it. If a prior interrupted/corrupted run (or a race against a second
+  # concurrent Ceedling invocation) left either one as the wrong type, cp_r would crash
+  # trying to use it as intended. Clear the whole destination so the copy below can
+  # recreate it clean rather than surfacing that crash on every subsequent build.
+  def heal_vendor_path(path, marker_file)
+    corrupted =
+      ( @file_wrapper.exist?( path ) && !@file_wrapper.directory?( path ) ) ||
+      ( @file_wrapper.exist?( File.join( path, marker_file ) ) &&
+        @file_wrapper.directory?( File.join( path, marker_file ) ) )
+    return unless corrupted
+
+    @loginator.log(
+      "Removing corrupted vendor path (unexpected file/directory type): #{path}",
+      Verbosity::COMPLAIN,
+      LogLabels::NOTICE
+    )
+    @file_wrapper.rm_rf( path )
+  end
+
   def vendor_frameworks_and_support_files(ceedling_lib_path, flattened_config)
-    # Copy Unity C files into build/vendor directory structure
-    @file_wrapper.cp_r(
+    # Copy Unity C files into build/vendor directory structure.
+    # Always copies, every run -- never skipped just because the destination already
+    # looks populated. An errant edit under build/vendor/ (by hand, an IDE, or an
+    # automated agent) must be overwritten from the canonical source on the very next
+    # build, not silently left in place.
+    heal_vendor_path( flattened_config[:project_build_vendor_unity_path], UNITY_C_FILE )
+    @file_wrapper.cp_r_with_retry(
       # '/.' to cause cp_r to copy directory contents
       File.join( flattened_config[:unity_vendor_path], UNITY_LIB_PATH, '/.' ),
       flattened_config[:project_build_vendor_unity_path]
     )
 
     # Copy CMock C files into build/vendor directory structure
-    @file_wrapper.cp_r(
-      # '/.' to cause cp_r to copy directory contents
-      File.join( flattened_config[:cmock_vendor_path], CMOCK_LIB_PATH, '/.' ),
-      flattened_config[:project_build_vendor_cmock_path]
-    ) if flattened_config[:project_use_mocks]
+    if flattened_config[:project_use_mocks]
+      heal_vendor_path( flattened_config[:project_build_vendor_cmock_path], CMOCK_C_FILE )
+      @file_wrapper.cp_r_with_retry(
+        # '/.' to cause cp_r to copy directory contents
+        File.join( flattened_config[:cmock_vendor_path], CMOCK_LIB_PATH, '/.' ),
+        flattened_config[:project_build_vendor_cmock_path]
+      )
+    end
 
     # Copy CException C files into build/vendor directory structure
-    @file_wrapper.cp_r(
-      # '/.' to cause cp_r to copy directory contents
-      File.join( flattened_config[:cexception_vendor_path], CEXCEPTION_LIB_PATH, '/.' ),
-      flattened_config[:project_build_vendor_cexception_path]
-    ) if flattened_config[:project_use_exceptions]
+    if flattened_config[:project_use_exceptions]
+      heal_vendor_path( flattened_config[:project_build_vendor_cexception_path], CEXCEPTION_C_FILE )
+      @file_wrapper.cp_r_with_retry(
+        # '/.' to cause cp_r to copy directory contents
+        File.join( flattened_config[:cexception_vendor_path], CEXCEPTION_LIB_PATH, '/.' ),
+        flattened_config[:project_build_vendor_cexception_path]
+      )
+    end
 
     # Copy backtrace debugging script into build/test directory structure.
     # Ensure the destination exists first — it may not on a fresh build since
