@@ -114,14 +114,14 @@ class Partializer
     _includes = includes.clone()
 
     # Splice the implementation header in at this module's own header's original list
-    # position (Issue #1293), same rationale as #splice_in_replacement -- the generated
+    # position, same rationale as #splice_in_replacement -- the generated
     # implementation header carries the shared types header in correctly-ordered
     # position internally, but that alone doesn't help if THIS file's own separate
     # include list still reaches an unrelated header that transitively re-includes the
     # real module header before the implementation header (and everything it carries)
     # is ever reached. Appending it at the very end (after this file's own copy of every
-    # other real include, `types2.h` included) put it after exactly that kind of
-    # transitive re-inclusion instead of before it.
+    # other real include) would put it after exactly that kind of transitive
+    # re-inclusion instead of before it.
     _includes = splice_in_replacement(
       includes: _includes,
       name: name,
@@ -465,8 +465,8 @@ class Partializer
   # implementation header, which itself carries the types header) spoof the real
   # header's own include guard (a top-of-file `#define <ORIGINAL_GUARD>`) so that if the
   # real header is *also* reached a second way -- e.g. a transitively-included,
-  # differently-named header (Issue #1293: `types2.h`) that itself does a genuine
-  # `#include` of this module's real header -- the real header's guard is already
+  # differently-named header that itself does a genuine `#include` of this module's
+  # real header -- the real header's guard is already
   # tripped and its content (a second, conflicting copy of the same typedefs/structs)
   # never gets processed. That only works if the spoofing macro is defined *before*
   # such a transitive re-inclusion is reached, not after. Appending at the very end put

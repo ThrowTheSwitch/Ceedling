@@ -548,7 +548,7 @@ describe Partializer do
       expect(result).to match_array([UserInclude.new('header1.h')])
     end
 
-    # Issue #1293: the shared types header's own top-of-file guard-spoofing macro must
+    # The shared types header's own top-of-file guard-spoofing macro must
     # be defined before anything later in the list gets a chance to transitively
     # re-include this module's real header a second, unguarded way -- splicing the
     # types header in at the module's own original position (rather than appending it
@@ -774,9 +774,8 @@ describe Partializer do
       expect(result).to match_array([UserInclude.new('header1.h')])
     end
 
-    # Issue #1293 -- see the matching example in #remap_implementation_header_includes
-    # for the full rationale; the mockable interface header needs the identical
-    # ordering guarantee.
+    # See the matching example in #remap_implementation_header_includes for the full
+    # rationale; the mockable interface header needs the identical ordering guarantee.
     it "splices the shared types header in at the module's own original list position, not at the end" do
       includes = [
         UserInclude.new('header1.h'),
