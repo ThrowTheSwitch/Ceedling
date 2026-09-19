@@ -258,6 +258,57 @@ describe FileWrapper do
     end
   end
 
+  # Same transient-visibility race as #open_with_retry, here hitting FileUtils.cp_r's
+  # own internal stat-then-open sequence instead of a bare File.open (Issue #1292:
+  # a vendor destination briefly reporting the wrong file/directory type mid-copy).
+  # Stub-based, matching #open_with_retry's own spec above -- no real filesystem or
+  # timing involved.
+  describe '#cp_r_with_retry' do
+    before(:each) do
+      allow(@file_wrapper).to receive(:sleep)
+    end
+
+    it 'behaves identically to #cp_r when nothing fails' do
+      allow(FileUtils).to receive(:cp_r)
+
+      @file_wrapper.cp_r_with_retry('/src/.', '/dest')
+
+      expect(FileUtils).to have_received(:cp_r).with('/src/.', '/dest')
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+
+    it 'retries past a SystemCallError and succeeds once the underlying copy stops raising' do
+      call_count = 0
+      allow(FileUtils).to receive(:cp_r) do
+        call_count += 1
+        raise Errno::EISDIR, 'transient' if call_count < 3
+      end
+
+      @file_wrapper.cp_r_with_retry('/src/.', '/dest')
+
+      expect(call_count).to eq(3)
+      expect(@file_wrapper).to have_received(:sleep).twice
+    end
+
+    it 'raises a CeedlingException naming the destination and retry count once every retry is exhausted, and logs it' do
+      allow(FileUtils).to receive(:cp_r).and_raise(Errno::ENOTDIR, 'still wrong type')
+
+      expect { @file_wrapper.cp_r_with_retry('/src/.', '/dest') }.to raise_error(CeedlingException, /\/dest/)
+      expect(@loginator).to have_received(:log).with(a_string_including('/dest'), Verbosity::ERRORS)
+      # Initial attempt + one retry per configured delay.
+      expect(FileUtils).to have_received(:cp_r).exactly(FileWrapper::TRANSIENT_IO_RETRY_DELAYS.size + 1).times
+    end
+
+    it 'does not retry a non-SystemCallError -- propagates immediately' do
+      allow(FileUtils).to receive(:cp_r).and_raise(ArgumentError, 'not transient')
+
+      expect {
+        @file_wrapper.cp_r_with_retry('/src/.', '/dest')
+      }.to raise_error(ArgumentError, 'not transient')
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+  end
+
   describe '#exist_with_retry?' do
     before(:each) do
       allow(@file_wrapper).to receive(:sleep)

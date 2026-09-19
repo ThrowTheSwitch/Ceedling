@@ -178,6 +178,36 @@ class FileWrapper
     false
   end
 
+  # As #cp_r, but retries the whole copy on a transient OS-level error instead of
+  # surfacing it on the first attempt -- the same transient-visibility race
+  # #open_with_retry guards against, here hitting FileUtils.cp_r's own internal
+  # stat-then-open sequence on either the source or destination tree. A source/dest
+  # entry briefly reporting the wrong type (a directory where a file was just stat'd,
+  # or vice versa) mid-copy raises Errno::ENOTDIR/EISDIR from deep inside cp_r; a
+  # retry a moment later re-walks the tree fresh rather than trusting stale type info
+  # from the failed attempt. A failure that never clears still surfaces as a
+  # CeedlingException naming the destination and how many attempts were made, not a
+  # bare, unhelpful Errno.
+  def cp_r_with_retry(source, destination, options={})
+    attempts_remaining = TRANSIENT_IO_RETRY_DELAYS.dup
+    begin
+      cp_r(source, destination, options)
+    rescue SystemCallError => e
+      if attempts_remaining.empty?
+        msg = "Failed to copy into '#{destination}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}\n" \
+              "This path may be corrupted (a file exists where Ceedling expects a directory, or vice versa). " \
+              "Try deleting this project's build/ directory and rebuilding -- or, if the error names a path " \
+              "under your Ruby gem install, reinstall the ceedling gem."
+        @loginator.log(msg, Verbosity::ERRORS)
+        raise CeedlingException, msg
+      end
+      delay = attempts_remaining.shift
+      @loginator.log("Retrying copy into '#{destination}' after a transient error: #{e.message}", Verbosity::DEBUG)
+      sleep(delay)
+      retry
+    end
+  end
+
   def read(filepath, length=nil)
     return File.read(filepath, length)
   end
