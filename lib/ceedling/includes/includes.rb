@@ -254,8 +254,15 @@ class Includes
     return _includes
   end
 
+  # Ruby's sort/sort_by family does not guarantee a stable sort -- the relative order
+  # of elements a comparator treats as equal (every UserInclude here, all mapping to
+  # the same "1") is free to come out differently across Ruby versions and platforms.
+  # partition sidesteps the question entirely: it's a simple filter, not a comparator
+  # sort, so each group's own original relative order is preserved by definition, on
+  # every Ruby version and platform, with nothing to be unstable about.
   def self.sort!(includes)
-    includes.sort_by! { |include| include.is_a?(SystemInclude) ? 0 : 1 }
+    system, other = includes.partition { |include| include.is_a?(SystemInclude) }
+    includes.replace(system + other)
     return includes
   end
 end

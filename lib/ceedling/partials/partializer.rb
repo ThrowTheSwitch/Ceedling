@@ -86,19 +86,16 @@ class Partializer
   def remap_implementation_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
     _includes = includes.clone()
 
-    # Get list of all partialized module names
-    partialized_modules = partials.keys
+    # This module's own header include is spliced out in favor of the shared types
+    # header at its exact original list position -- see #splice_in_replacement.
+    _includes = splice_in_replacement(includes: _includes, name: name, replacement: types_header)
 
-    # Remove includes for all partialized modules
-    # Remove our own orginal name as well
+    # Remove includes for every other partialized module (this module's own name was
+    # already handled above)
     _includes = remove_matching_includes(
       includes: _includes,
-      modules: ([name] + partialized_modules)
+      modules: (partials.keys - [name])
     )
-
-    # When this module has any typedefs or aggregate definitions, they live in a shared
-    # header generated once and included here rather than duplicated inline.
-    _includes << UserInclude.new(types_header) if types_header
 
     # Remove any duplicates
     Includes.sanitize!(_includes)
@@ -116,9 +113,19 @@ class Partializer
   def remap_implementation_source_includes(name:, includes:, partials:, test: nil)
     _includes = includes.clone()
 
-    # Add implementation header
-    _includes << UserInclude.new(
-      @file_path_utils.form_partial_implementation_header_filename(name)
+    # Splice the implementation header in at this module's own header's original list
+    # position, same rationale as #splice_in_replacement -- the generated
+    # implementation header carries the shared types header in correctly-ordered
+    # position internally, but that alone doesn't help if THIS file's own separate
+    # include list still reaches an unrelated header that transitively re-includes the
+    # real module header before the implementation header (and everything it carries)
+    # is ever reached. Appending it at the very end (after this file's own copy of every
+    # other real include) would put it after exactly that kind of transitive
+    # re-inclusion instead of before it.
+    _includes = splice_in_replacement(
+      includes: _includes,
+      name: name,
+      replacement: @file_path_utils.form_partial_implementation_header_filename(name)
     )
 
     mockable_modules = []
@@ -144,11 +151,12 @@ class Partializer
       end
     end
 
-    # Remove the original module header now that it's remapped to mockable interface
-    # Remove our own orginal name as well
+    # Remove the original headers of any OTHER modules now remapped to mockable
+    # interfaces above -- this module's own original header was already handled by
+    # the splice above.
     _includes = remove_matching_includes(
       includes: _includes,
-      modules: ([name] + mockable_modules)
+      modules: mockable_modules
     )
 
     # Remove any duplicates
@@ -167,19 +175,16 @@ class Partializer
   def remap_interface_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
     _includes = includes.clone()
 
-    # Get list of all partialized module names
-    partialized_modules = partials.keys
+    # This module's own header include is spliced out in favor of the shared types
+    # header at its exact original list position -- see #splice_in_replacement.
+    _includes = splice_in_replacement(includes: _includes, name: name, replacement: types_header)
 
-    # Remove includes for all partialized modules
-    # Remove our own orginal name as well
+    # Remove includes for every other partialized module (this module's own name was
+    # already handled above)
     _includes = remove_matching_includes(
       includes: _includes,
-      modules: ([name] + partialized_modules)
+      modules: (partials.keys - [name])
     )
-
-    # When this module has any typedefs or aggregate definitions, they live in a shared
-    # header generated once and included here rather than duplicated inline.
-    _includes << UserInclude.new(types_header) if types_header
 
     # Remove any duplicates
     Includes.sanitize!(_includes)
@@ -450,6 +455,46 @@ class Partializer
       "Mockable functions for Partial #{test}::#{partial}:",
       Verbosity::OBNOXIOUS
     )
+  end
+
+  # Swaps `name`'s own header include for `replacement` at that same list position,
+  # instead of stripping it out and appending the replacement at the very end.
+  #
+  # Both call sites' generated replacements (the shared types header; the generated
+  # implementation header, which itself carries the types header) spoof the real
+  # header's own include guard (a top-of-file `#define <ORIGINAL_GUARD>`) so that if the
+  # real header is *also* reached a second way -- e.g. a transitively-included,
+  # differently-named header that itself does a genuine `#include` of this module's
+  # real header -- the real header's guard is already
+  # tripped and its content (a second, conflicting copy of the same typedefs/structs)
+  # never gets processed. That only works if the spoofing macro is defined *before*
+  # such a transitive re-inclusion is reached, not after. Appending at the very end put
+  # it after any such re-inclusion instead of before it. Keeping the replacement at the
+  # original header's own list position preserves everything the generated content
+  # depends on that came before it in the source's own working include order (e.g. a
+  # shared Types.h), while still landing ahead of anything transitively re-reaching the
+  # real header afterward.
+  def splice_in_replacement(includes:, name:, replacement:)
+    return remove_matching_includes(includes: includes, modules: [name]) unless replacement
+
+    replaced = false
+    spliced = includes.map do |include|
+      if !replaced && include.filename.ext().downcase() == name.downcase()
+        replaced = true
+        UserInclude.new(replacement)
+      else
+        include
+      end
+    end
+    # This module's own header wasn't in the includes list at all -- no original
+    # position to preserve, so fall back to appending.
+    spliced << UserInclude.new(replacement) unless replaced
+
+    # A duplicate/case-variant entry beyond the first match (e.g. both 'module.h' and
+    # 'MODULE.H' present) has no meaningful position of its own to preserve -- drop it
+    # like remove_matching_includes always has.
+    spliced = remove_matching_includes(includes: spliced, modules: [name])
+    spliced
   end
 
   # Remove includes that match the given module names (case-insensitive)
