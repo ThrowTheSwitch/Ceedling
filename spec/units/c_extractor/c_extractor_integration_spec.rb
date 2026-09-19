@@ -1007,6 +1007,24 @@ describe CExtractor do
       expect(plain.decorators).to eq([])
     end
 
+    it "normalizes a preprocessor-inserted space before ## in a backslash-continued macro definition" do
+      file_contents = <<~CONTENTS
+      #define MODULE_DEV_TYPE_CB(dev_type)      \\
+          void MODULE_TrigCbDev ##dev_type(void) \\
+          {                                     \\
+              MODULE_CommonTrigCb();            \\
+          }
+
+      static AlertEntry_t s_alert_table[ALERT_MANAGER_MAX_ALERTS];
+      CONTENTS
+
+      contents = extract_from.call(file_contents)
+
+      expect(contents.macro_definitions.length).to eq 1
+      expect(contents.macro_definitions[0].text).to include('MODULE_TrigCbDev##dev_type')
+      expect(contents.macro_definitions[0].text).not_to include('MODULE_TrigCbDev ##dev_type')
+    end
+
   end
 
 end
