@@ -14,9 +14,13 @@ require 'ceedling/c_extractor/c_extractor_preprocessing'
 require 'ceedling/c_extractor/c_extractor_definitions'
 
 ##
-## These integration tests exercise the composition of all CExtractor* objects
-## in extracting features from C source code.
-## Other unit tests exhaustively exerise individual methods, including of CExtractor itself.
+## These tests exercise the composition of all CExtractor* objects -- real,
+## fully-wired collaborators, not mocked -- extracting features from real C source
+## code. Migrated here from spec/units/c_extractor/ (its former name,
+## c_extractor_integration_spec.rb, already said what it was; the directory now
+## conveys the tier instead of the filename needing to). spec/units/c_extractor/
+## still holds exhaustive per-method unit coverage of each CExtractor* class in
+## isolation, including of CExtractor itself.
 ##
 describe CExtractor do
 
@@ -1006,6 +1010,172 @@ describe CExtractor do
       plain = contents.variable_declarations.find { |v| v.name == 'plain_var' }
       expect(plain.type).to eq('int')
       expect(plain.decorators).to eq([])
+    end
+
+    # A bare, top-level, semicolon-less macro invocation (an x-macro call expanding to
+    # a full function definition once the macro itself is applied) has no leading '#',
+    # no trailing ';', and no trailing '{' -- directives-only preprocessing never
+    # expands it, so every extractor below sees it as literal, unexpanded text. Left
+    # unhandled, whichever extractor's own forward scan reaches it next either
+    # swallows it as a bogus prefix (the variable-declaration catch-all) or actively
+    # misinterprets a later, unrelated '{' as its own body (the function-signature
+    # scanners), silently losing whatever real content that brace belonged to (GH #1294).
+    context "bare macro invocations" do
+      it "should extract a bare macro-invocation-as-statement without corrupting the following variable declaration (GH #1294)" do
+        file_contents = <<~CONTENTS
+        #define MODULE_DEV_TYPE_CB(dev_type)      \\
+            void MODULE_TrigCbDev##dev_type(void) \\
+            {                                     \\
+                MODULE_CommonTrigCb();            \\
+            }
+
+        MODULE_DEV_TYPE_CB(0)
+
+        static AlertEntry_t s_alert_table[ALERT_MANAGER_MAX_ALERTS];
+        CONTENTS
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.macro_invocations.length).to eq 1
+        expect(contents.macro_invocations[0].text).to eq 'MODULE_DEV_TYPE_CB(0)'
+
+        expect(contents.variable_declarations.length).to eq 1
+        var = contents.variable_declarations[0]
+        expect(var.name).to eq 's_alert_table'
+        expect(var.type).to eq 'AlertEntry_t'
+        expect(var.decorators).to eq ['static']
+
+        # macro definition, then the bare invocation, then the variable -- in that order
+        texts = contents.element_sequence.map { |item| item.is_a?(CExtractorTypes::CVariableDeclaration) ? item.name : item.text }
+        expect(texts).to eq [
+          "#define MODULE_DEV_TYPE_CB(dev_type)      \\\n    void MODULE_TrigCbDev##dev_type(void) \\\n    {                                     \\\n        MODULE_CommonTrigCb();            \\\n    }",
+          'MODULE_DEV_TYPE_CB(0)',
+          's_alert_table'
+        ]
+      end
+
+      it "should extract a bare macro invocation without losing the typedef that follows it" do
+        file_contents = <<~CONTENTS
+        #define FOO(x) void bar##x(void) { }
+        FOO(0)
+        typedef struct { int a; } Baz_t;
+        CONTENTS
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.macro_invocations.length).to eq 1
+        expect(contents.macro_invocations[0].text).to eq 'FOO(0)'
+
+        expect(contents.type_definitions.length).to eq 1
+        expect(contents.type_definitions[0].text).to include('Baz_t')
+      end
+
+      it "should extract a bare macro invocation without losing the aggregate definition that follows it" do
+        file_contents = <<~CONTENTS
+        #define FOO(x) void bar##x(void) { }
+        FOO(0)
+        struct Baz { int a; };
+        CONTENTS
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.macro_invocations.length).to eq 1
+        expect(contents.aggregate_definitions.length).to eq 1
+        expect(contents.aggregate_definitions[0].text).to include('struct Baz')
+      end
+
+      it "should extract a bare macro invocation without losing the real function definition that follows it" do
+        file_contents = <<~CONTENTS
+        #define FOO(x) void bar##x(void) { }
+        FOO(0)
+        void RealFunc(void) { }
+        CONTENTS
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.macro_invocations.length).to eq 1
+        expect(contents.function_definitions.length).to eq 1
+        expect(contents.function_definitions[0].name).to eq 'RealFunc'
+      end
+
+      it "should extract a bare macro invocation without losing the real function declaration that follows it" do
+        file_contents = <<~CONTENTS
+        #define FOO(x) void bar##x(void) { }
+        FOO(0)
+        void RealFunc(void);
+        CONTENTS
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.macro_invocations.length).to eq 1
+        expect(contents.function_declarations.length).to eq 1
+        expect(contents.function_declarations[0].name).to eq 'RealFunc'
+      end
+
+      it "should extract multiple consecutive bare macro invocations, each individually, without losing what follows" do
+        file_contents = <<~CONTENTS
+        #define FOO(x) void bar##x(void) { }
+        FOO(0)
+        FOO(1)
+        FOO(2)
+        static int x;
+        CONTENTS
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.macro_invocations.map(&:text)).to eq ['FOO(0)', 'FOO(1)', 'FOO(2)']
+
+        expect(contents.variable_declarations.length).to eq 1
+        expect(contents.variable_declarations[0].name).to eq 'x'
+        expect(contents.variable_declarations[0].decorators).to eq ['static']
+      end
+
+      # A bare invocation with genuinely nothing after it (not even a newline) is
+      # indistinguishable, at extraction time, from "not enough of the file has been
+      # read yet" -- unterminated trailing content is already silently dropped for
+      # every other feature type in this codebase (a file ending in `int x` with no
+      # trailing ';' is dropped the same way), so this is a pre-existing, accepted
+      # limitation this fix doesn't change, not a new gap it introduces.
+      it "silently drops a bare macro invocation trailing at the very end of the file with nothing after it, consistent with every other unterminated trailing construct" do
+        file_contents = "static int x;\n#define FOO(dev) void bar##dev(void) { }\nFOO(0)"
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.variable_declarations.length).to eq 1
+        expect(contents.variable_declarations[0].name).to eq 'x'
+
+        expect(contents.macro_invocations.length).to eq 0
+      end
+
+      it "still silently drops a trailing bare macro invocation even with a trailing newline after it -- a newline alone doesn't resolve the chunk-boundary ambiguity" do
+        file_contents = <<~CONTENTS
+        static int x;
+        #define FOO(dev) void bar##dev(void) { }
+        FOO(0)
+        CONTENTS
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.variable_declarations.length).to eq 1
+        expect(contents.variable_declarations[0].name).to eq 'x'
+
+        expect(contents.macro_invocations.length).to eq 0
+      end
+
+      it "extracts a bare macro invocation followed by further real (non-deadspace) content" do
+        file_contents = <<~CONTENTS
+        static int x;
+        #define FOO(dev) void bar##dev(void) { }
+        FOO(0)
+        static int y;
+        CONTENTS
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.variable_declarations.map(&:name)).to eq ['x', 'y']
+        expect(contents.macro_invocations.length).to eq 1
+        expect(contents.macro_invocations[0].text).to eq 'FOO(0)'
+      end
     end
 
   end
