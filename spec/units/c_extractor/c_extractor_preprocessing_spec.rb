@@ -388,6 +388,89 @@ describe CExtractorPreprocessing do
       expect(scanner.pos).to eq 0
     end
 
+    # The C standard specifies #/## token semantics but not the exact whitespace a
+    # preprocessor emits when reconstructing macro text -- real toolchains can and do
+    # disagree here. Ceedling regenerates this text into partials; it doesn't promise
+    # byte-for-byte reproduction of that spacing, so whitespace immediately touching a
+    # #/## operator is normalized away unconditionally, regardless of which toolchain
+    # (or which of the user's own source formatting choices) put it there.
+    context "whitespace around # and ## operators" do
+      it "trims a space before ##" do
+        result, _pos = try_directive("#define M(x) void f ##x(void) { g(); }\n")
+        expect(result).to eq [true, "#define M(x) void f##x(void) { g(); }"]
+      end
+
+      it "trims a space after ##" do
+        result, _pos = try_directive("#define M(x) void f## x(void) { g(); }\n")
+        expect(result).to eq [true, "#define M(x) void f##x(void) { g(); }"]
+      end
+
+      it "trims space on both sides of ##" do
+        result, _pos = try_directive("#define M(x) void f ## x(void) { g(); }\n")
+        expect(result).to eq [true, "#define M(x) void f##x(void) { g(); }"]
+      end
+
+      it "trims a space after the stringize operator #" do
+        result, _pos = try_directive("#define S(x) # x\n")
+        expect(result).to eq [true, "#define S(x) #x"]
+      end
+
+      it "trims a space before a stringize operator directly gluing onto a preceding identifier" do
+        result, _pos = try_directive("#define M(a, b) a #b\n")
+        expect(result).to eq [true, "#define M(a, b) a#b"]
+      end
+
+      it "does not touch whitespace before # or ## when preceded by punctuation, not an identifier being pasted" do
+        # The space here separates the macro's own parameter list from a
+        # replacement list that happens to start with the operator -- that's
+        # ordinary formatting, not preprocessor-reconstruction spacing around an
+        # operand being pasted, so it's out of this fix's scope.
+        result, _pos = try_directive("#define S(x)  #x\n")
+        expect(result).to eq [true, "#define S(x)  #x"]
+      end
+
+      it "normalizes the GNU comma-deletion ,##__VA_ARGS__ form" do
+        result, _pos = try_directive("#define LOG(fmt, ...) printf(fmt, ## __VA_ARGS__)\n")
+        expect(result).to eq [true, "#define LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)"]
+      end
+
+      it "is idempotent for already-canonical ## spacing" do
+        input = "#define M(x) void f##x(void) { g(); }\n"
+        result, _pos = try_directive(input)
+        expect(result).to eq [true, input.rstrip]
+      end
+
+      it "is idempotent for already-canonical # spacing" do
+        input = "#define S(x) #x\n"
+        result, _pos = try_directive(input)
+        expect(result).to eq [true, input.rstrip]
+      end
+
+      it "does not touch ## inside a string literal" do
+        input = %q{#define M(x) "a ## b"} + "\n"
+        result, _pos = try_directive(input)
+        expect(result).to eq [true, input.rstrip]
+      end
+
+      it "does not touch ## inside a // comment" do
+        input = "#define M(x) x // a ## b\n"
+        result, _pos = try_directive(input)
+        expect(result).to eq [true, input.rstrip]
+      end
+
+      it "does not touch ## inside a /* */ comment" do
+        input = "#define M(x) x /* a ## b */\n"
+        result, _pos = try_directive(input)
+        expect(result).to eq [true, input.rstrip]
+      end
+
+      it "leaves ordinary whitespace unrelated to # or ## untouched" do
+        input = "#define M(x) void  f  (  )  ;\n"
+        result, _pos = try_directive(input)
+        expect(result).to eq [true, input.rstrip]
+      end
+    end
+
   end
 
   context "#filter_directive" do

@@ -323,7 +323,10 @@ class CExtractorPreprocessing
       # literal run -- it has to be seen and dispatched on its own below, before
       # any '"' or "'" inside the comment's own text gets mistaken for the start
       # of a string/char literal (see the // and /* branches for why that matters).
-      text << (scanner.scan(/[^"'\\\n\/]*/) || '')
+      # '#' is excluded the same way, so a #/## operator is seen and dispatched on
+      # its own below rather than absorbed into this run along with whatever
+      # whitespace happens to surround it (see the ## and # branches for why).
+      text << (scanner.scan(/[^"'\\\n\/#]*/) || '')
 
       if scanner.scan(%r{//})
         # A trailing line comment (e.g. "// don't change this") can contain an
@@ -356,6 +359,31 @@ class CExtractorPreprocessing
 
       elsif scanner.scan(%r{/})
         text << '/'
+
+      elsif scanner.scan(/##/)
+        # The C standard specifies ##'s token-paste semantics but not the exact
+        # whitespace a preprocessor emits when reconstructing macro text -- real
+        # toolchains can and do disagree here, and Ceedling regenerates this text
+        # into partials rather than promising byte-for-byte reproduction of that
+        # spacing. Discard whatever immediately follows the operator in the source,
+        # so its right-hand operand always glues on directly. The left side only
+        # trims when a word character (the operand actually being pasted) is
+        # immediately adjacent -- a lookbehind, not a blind rstrip -- so unrelated
+        # punctuation spacing that happens to precede the operator (e.g. the space
+        # after a macro argument's comma, or after the parameter list's closing
+        # paren when the replacement list itself starts with the operator) is left
+        # alone; that space was never the preprocessor-reconstruction artifact this
+        # is defending against. ## checked before bare '#' below so a real paste
+        # operator is never split into two stringize matches.
+        text.sub!(/(?<=\w)[ \t]+\z/, '')
+        scanner.scan(/[ \t]*/)
+        text << '##'
+
+      elsif scanner.scan(/#/)
+        # Same rationale as ## above, for the stringize operator.
+        text.sub!(/(?<=\w)[ \t]+\z/, '')
+        scanner.scan(/[ \t]*/)
+        text << '#'
 
       elsif (ch = scanner.peek(1)) == '"' || ch == "'"
         before = scanner.pos

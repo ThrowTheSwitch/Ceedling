@@ -1054,6 +1054,32 @@ describe CExtractor do
         ]
       end
 
+      # Same reporter-shape fixture as above, but with a stray space before ## on the
+      # continuation line -- simulating the exact cross-toolchain divergence issue #1294
+      # originally reported (a real preprocessor's own reconstruction of this macro
+      # text, not something Ceedling's extraction ever added on its own). Proves the
+      # whitespace-canonicalization fix engages correctly end to end, through the real
+      # backslash-continuation handling, not just in the isolated scanner unit tests.
+      it "normalizes a preprocessor-inserted space before ## in a backslash-continued macro definition" do
+        file_contents = <<~CONTENTS
+        #define MODULE_DEV_TYPE_CB(dev_type)      \\
+            void MODULE_TrigCbDev ##dev_type(void) \\
+            {                                     \\
+                MODULE_CommonTrigCb();            \\
+            }
+
+        MODULE_DEV_TYPE_CB(0)
+
+        static AlertEntry_t s_alert_table[ALERT_MANAGER_MAX_ALERTS];
+        CONTENTS
+
+        contents = extract_from.call(file_contents)
+
+        expect(contents.macro_definitions.length).to eq 1
+        expect(contents.macro_definitions[0].text).to include('MODULE_TrigCbDev##dev_type')
+        expect(contents.macro_definitions[0].text).not_to include('MODULE_TrigCbDev ##dev_type')
+      end
+
       it "should extract a bare macro invocation without losing the typedef that follows it" do
         file_contents = <<~CONTENTS
         #define FOO(x) void bar##x(void) { }
