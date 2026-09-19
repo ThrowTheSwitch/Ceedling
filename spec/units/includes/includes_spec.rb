@@ -427,13 +427,31 @@ describe "Includes sorting" do
         MockInclude.new("mock_module.h"),
         UserInclude.new("config.h")
       ]
-      
+
       Includes.sort!(includes)
-      
+
       expect(includes.length).to eq(3)
       expect(includes[0]).to be_a(UserInclude)
       expect(includes[1]).to be_a(UserInclude)
       expect(includes[2]).to be_a(UserInclude)
+    end
+
+    # Ruby's sort/sort_by family does not guarantee a stable sort -- every UserInclude
+    # here ties on the same comparator value, so a comparator-sort-based implementation
+    # is free to reorder them unpredictably across Ruby versions/platforms even with no
+    # actual duplicates present. This is the shape that exposed that gap in practice.
+    it "preserves each group's own original relative order exactly, not just which group it ends up in" do
+      header1 = UserInclude.new("header1.h")
+      header2 = UserInclude.new("header2.h")
+      header3 = UserInclude.new("header3.h")
+      stdio   = SystemInclude.new("stdio.h")
+      stdlib  = SystemInclude.new("stdlib.h")
+
+      includes = [header1, stdio, header2, stdlib, header3]
+
+      result = Includes.sort!(includes)
+
+      expect(result).to eq([stdio, stdlib, header1, header2, header3])
     end
 
     it "handles empty array" do

@@ -159,6 +159,10 @@ class FilePathUtils
     pairs = paths.map { |p| [p, p.gsub('\\', '/').chomp('/')] }
 
     # Sort shallowest-first so ancestors are always encountered before their descendants.
+    # No tiebreaker for same-depth entries needed: Ruby's sort_by doesn't guarantee a
+    # stable order among ties, but two same-depth paths can never be each other's
+    # ancestor, so the ancestor-exclusion check below is correct regardless of which
+    # order same-depth ties come out in.
     pairs.sort_by! { |_, normalized| normalized.count('/') }
 
     kept = []

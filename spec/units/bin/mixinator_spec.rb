@@ -119,6 +119,23 @@ describe Mixinator do
       ])
     end
 
+    # CEEDLING_MIXIN_1 and CEEDLING_MIXIN_01 are two distinct, simultaneously-settable
+    # env var names that both parse to the same numeric value -- a genuine tie for
+    # sort_by, which Ruby doesn't guarantee resolves the same way on every version/
+    # platform. The full original name is a second tiebreaker precisely so this case
+    # has one fixed, deterministic answer instead of depending on sort stability.
+    it 'resolves two same-numbered spellings (with and without a leading zero) in a fixed order when both are set at once' do
+      env = {
+        'CEEDLING_MIXIN_1'  => 'path/mixin1.yml',
+        'CEEDLING_MIXIN_01' => 'path/mixin01.yml',
+      }
+      result = @mixinator.fetch_env_filepaths(env)
+      expect(result.map { |e| e.keys.first }).to eq([
+        'CEEDLING_MIXIN_01',
+        'CEEDLING_MIXIN_1'
+      ])
+    end
+
     it 'raises a clear error for a malformed mixin variable name instead of crashing' do
       env = {'CEEDLING_MIXIN_1_OLD' => 'path/to/mixin.yml'}
       expect { @mixinator.fetch_env_filepaths(env) }.to raise_error( /CEEDLING_MIXIN_1_OLD/ )

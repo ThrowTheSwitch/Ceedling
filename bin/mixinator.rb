@@ -71,7 +71,12 @@ class Mixinator
     end
 
     # Ascending numeric order; to_i() ignores leading zeros so CEEDLING_MIXIN_01 sorts as 1
-    var_names.sort_by! {|name| name.sub( 'CEEDLING_MIXIN_', '' ).to_i() }
+    # -- meaning CEEDLING_MIXIN_1 and CEEDLING_MIXIN_01, two distinct, simultaneously-
+    # settable env var names, are a genuine tie here. Ruby's sort_by doesn't guarantee a
+    # stable order among ties, so the full original name is a second tiebreaker: both
+    # spellings resolve in a fixed, deterministic order instead of depending on sort
+    # stability for a case that can otherwise reach it.
+    var_names.sort_by! {|name| [name.sub( 'CEEDLING_MIXIN_', '' ).to_i(), name] }
 
     _vars = []
     # Iterate over sorted environment variable names
