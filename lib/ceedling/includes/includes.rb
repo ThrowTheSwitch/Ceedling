@@ -367,13 +367,19 @@ class Includes
     return _includes
   end
 
-  # `sort_by!` alone is not a stable sort -- with only two possible keys (system vs.
-  # everything else), most elements tie, and an unstable sort is free to reorder tied
-  # elements arbitrarily. Decorating each element with its original index as a tiebreaker
-  # forces ties to resolve in original order, regardless of platform or Ruby version.
+  # Ruby's sort/sort_by family does not guarantee a stable sort -- confirmed by Ruby
+  # core team (https://redmine.ruby-lang.org/issues/20226), not a version-specific bug.
+  # With only two possible keys (system vs. everything else), most elements tie, and an
+  # index-decorated sort_by (this method's own prior approach) turns out not to be the
+  # airtight guarantee it looks like -- observed producing a different relative order
+  # among tied elements on Windows Ruby 3.0-3.2 specifically, despite the explicit
+  # tiebreaker, where every other platform/version combination tested came out fine.
+  # partition sidesteps the question entirely: it's a simple filter, not a comparator
+  # sort, so each group's own original relative order is preserved by definition, on
+  # every Ruby version and platform, with nothing to be unstable about.
   def self.sort!(includes)
-    stable = includes.each_with_index.sort_by { |include, i| [include.is_a?(SystemInclude) ? 0 : 1, i] }
-    includes.replace( stable.map(&:first) )
+    system, other = includes.partition { |include| include.is_a?(SystemInclude) }
+    includes.replace(system + other)
     return includes
   end
 end
