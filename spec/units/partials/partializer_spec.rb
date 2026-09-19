@@ -547,6 +547,46 @@ describe Partializer do
 
       expect(result).to match_array([UserInclude.new('header1.h')])
     end
+
+    # The shared types header's own top-of-file guard-spoofing macro must
+    # be defined before anything later in the list gets a chance to transitively
+    # re-include this module's real header a second, unguarded way -- splicing the
+    # types header in at the module's own original position (rather than appending it
+    # after everything else) is what guarantees that ordering.
+    it "splices the shared types header in at the module's own original list position, not at the end" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('module.h'),
+        UserInclude.new('header2.h')
+      ]
+      result = @partializer.remap_implementation_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: {},
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to eq([
+        UserInclude.new('header1.h'),
+        UserInclude.new('ceedling_partial_module_types.h'),
+        UserInclude.new('header2.h')
+      ])
+    end
+
+    it "appends the shared types header when the module's own header wasn't in the includes list to begin with" do
+      includes = [UserInclude.new('header1.h')]
+      result = @partializer.remap_implementation_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: {},
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to eq([
+        UserInclude.new('header1.h'),
+        UserInclude.new('ceedling_partial_module_types.h')
+      ])
+    end
   end
 
   ###
@@ -732,6 +772,28 @@ describe Partializer do
       )
 
       expect(result).to match_array([UserInclude.new('header1.h')])
+    end
+
+    # See the matching example in #remap_implementation_header_includes for the full
+    # rationale; the mockable interface header needs the identical ordering guarantee.
+    it "splices the shared types header in at the module's own original list position, not at the end" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('module.h'),
+        UserInclude.new('header2.h')
+      ]
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: {},
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to eq([
+        UserInclude.new('header1.h'),
+        UserInclude.new('ceedling_partial_module_types.h'),
+        UserInclude.new('header2.h')
+      ])
     end
   end
 
