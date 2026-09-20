@@ -10,6 +10,24 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.1.9] — 2026-09-20
+
+## 💪 Fixed
+
+### Partials
+
+- [#1293](https://github.com/ThrowTheSwitch/Ceedling/issues/1293) Fixed a Partials-generated header occasionally redefining a type already declared by the real header it replaces, causing a `typedef redefinition with different types` compilation error. The triggering condition involved a source file whose real header was reachable both directly and through a macro-included intermediate file allowed by incomplete Partials include directive ordering.
+
+### Preprocessing
+
+- Fixed whitespace occasionally inserted by the underlying compiler's preprocessor around a `#` or `##` operator (e.g. `x ##y` becoming `x ## y`) being carried through verbatim into Partials-generated and reconstructed macro definitions. Extracted macro text is now normalized so preprocessing stringize and token-paste operators always sit directly against their operands, regardless of what a given toolchain's preprocessor happens to emit.
+
+## ⚠️ Changed
+
+- Updated Unity to latest version.
+
+---
+
 # [1.1.8] — 2026-09-10
 
 ## 💪 Fixed
