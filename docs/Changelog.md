@@ -73,6 +73,12 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - A CLI parameter string mutation issue that could corrupt certain build or plugin task invocations.
 - Fixed a Unity `TEST_IGNORE_MESSAGE()` test case being misreported as crash evidence during crash-diagnosis retries when it shares a test file with a genuine crash.
 - [#104](https://github.com/ThrowTheSwitch/Ceedling/issues/104) Fixed a literal `[` or `]` in a path being silently misread as a glob or regular expression syntax. This could drop files from a build with no error, cause issues with a `:build_root` entry, or cause a passing test run to be reported as "no tests executed."
+- [#1292](https://github.com/ThrowTheSwitch/Ceedling/issues/1292) Fixed an intermittent `Errno::ENOTDIR`/`EISDIR` crash when automatically vendoring Unity, CMock, and CException into a project's build directory, caused by a transient file-system race (e.g. an antivirus/EDR lock, a cloud-sync filter driver, or a second concurrent Ceedling invocation). The copy step now retries transient races and self-heals a stale, wrong-typed leftover from a previous failed copy.
+- Fixed a rare, Ruby-version- and platform-dependent misordering of include lists and mixin environment variable resolution caused by relying on `sort`/`sort_by`'s ordering among tied elements, which Ruby does not guarantee to be stable.
+
+### Partials
+
+- Fixed a bare, top-level macro invocation that expands to a full function definition (a common x-macro boilerplate idiom) silently corrupting or losing whatever construct followed it during Partials extraction.
 
 ### Mixins
 
@@ -116,6 +122,20 @@ Historically, Ceedling automatically compiles and links into a test executable a
 
 ### `report_build_warnings_log` plugin warning lines
 `report_build_warnings_log`’s log files now contain only the actual warning line(s) from a build step’s output, not that step’s entire lengthy console output whenever it happened to contain the word "warning."
+
+---
+
+# [1.1.9] — 2026-09-20
+
+## 💪 Fixed
+
+### Partials
+
+- [#1293](https://github.com/ThrowTheSwitch/Ceedling/issues/1293) Fixed a Partials-generated header occasionally redefining a type already declared by the real header it replaces, causing a `typedef redefinition with different types` compilation error. The triggering condition involved a source file whose real header was reachable both directly and through a macro-included intermediate file allowed by incomplete Partials include directive ordering.
+
+### Preprocessing
+
+- Fixed whitespace occasionally inserted by the underlying compiler's preprocessor around a `#` or `##` operator (e.g. `x ##y` becoming `x ## y`) being carried through verbatim into Partials-generated and reconstructed macro definitions. Extracted macro text is now normalized so preprocessing stringize and token-paste operators always sit directly against their operands, regardless of what a given toolchain's preprocessor happens to emit.
 
 ---
 
