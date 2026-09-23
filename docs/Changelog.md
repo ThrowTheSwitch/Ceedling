@@ -123,6 +123,9 @@ Historically, Ceedling automatically compiles and links into a test executable a
 ### `report_build_warnings_log` plugin warning lines
 `report_build_warnings_log`’s log files now contain only the actual warning line(s) from a build step’s output, not that step’s entire lengthy console output whenever it happened to contain the word "warning."
 
+### Internal verbosity level mapping for Ceedling to CMock
+Ceedling and CMock are interdependent but distinct tools. They each perform their own logging and have different verbosity level conventions. The internal mapping has been adjusted to configure CMock for verbosity levels that match the spirit of the selected top-level Ceedling logging verbosity level.
+
 ---
 
 # [1.1.9] — 2026-09-20
