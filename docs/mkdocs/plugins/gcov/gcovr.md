@@ -27,9 +27,14 @@ GCovr can be configured in two ways:
     CLI arguments. You must provide any settings that would have been provided 
     by the Gcov plugin.
 
-To preserve filtering of test and build files from coverage results when
-using a Gcovr config file, you must provide explicit exclusion patterns matching 
-your project layout (example below).
+A Gcovr config file replaces Ceedling's own automatically generated exclusion
+patterns (see [Results filtering](#results-filtering) below) entirely — it is
+the only way to override or remove one of those defaults, since the
+project-configuration `:report_exclude` option can only add further
+exclusions on top of them, never take one away. To preserve the same
+filtering of test and build files when switching to a Gcovr config file, you
+must provide equivalent explicit exclusion patterns matching your project
+layout yourself (example below).
 
 ```ini
 ; You will need to revise these example exclude patterns to match your
@@ -44,6 +49,99 @@ exclude = .*test.*/test_.+\.c$
 ; Build path exlcude for all generated C files (runners, mocks, partials).
 exclude = .*build/.+\.c$
 ```
+
+## Results filtering
+
+By default, this plugin configures `gcovr` to excludes three categories of 
+`.c` files from coverage results. These defaults exist because a
+coverage percentage is typically only meaningful over the production code 
+you're actually trying to exercise with test coverage. Test code, test 
+support code, and every file Ceedling itself generates as part of a build 
+will skew that number if left in coverage reporting.
+
+The list that follows details the filtering this plugin injects into 
+Gcovr coverage report generation. The examples are usable regular 
+expressions that mirror the defaults in use. The plugin dynamically 
+generates these regular expressions from your project configuration.
+When creating them youself, you will need to match your project 
+configuration settings with static strings.
+
+1.  **Test files** — matched by `:test_file_prefix` within your configured
+    `:paths` ↳ `:test` directories.
+
+    Given `:test_file_prefix` ⇒ `test_` and a `:paths` ↳ `:test` entry of
+    `test/`:
+
+    ```
+    .*test/.*/test_.+\.c$
+    ```
+
+2.  **Test support files** — any `.c` file within your configured `:paths` ↳
+    `:support` directories, regardless of name. Helpers, stubs, and fixtures
+    living there are no more production code than the test files themselves.
+
+    Given a `:paths` ↳ `:support` entry of `test/support/`:
+
+    ```
+    .*test/support/.+\.c$
+    ```
+
+3.  **Generated and vendored files** — any `.c` file anywhere below your
+    `:build_root`: generated mocks, test runners, Partials output, and the
+    vendored Unity/CMock/CException framework sources Ceedling copies in to
+    build against. This pattern always matches a literal `.c` extension
+    regardless of your project's own `:extension` ↳ `:source` setting, since
+    every file it catches is one Ceedling itself writes in plain C.
+
+    Given `:build_root` ⇒ `build/`:
+
+    ```
+    .*build/.+\.c$
+    ```
+
+These patterns are generated automatically and combined with whatever you
+provide via [`:report_exclude`](#report_exclude) below.
+
+!!! warning "Not applied when using a Gcovr configuration file"
+    These defaults are only generated when Ceedling builds `gcovr`'s command
+    line directly. As covered in
+    [Gcovr configuration file](#gcovr-configuration-file) above, setting
+    `:config_file` bypasses this entirely — none of the three patterns above
+    are applied, and you must supply equivalent exclusions in the config file
+    yourself.
+
+### Overriding the defaults
+
+[`:report_exclude`](#report_exclude) can only add exclusions on top of the
+three defaults above — `gcovr --exclude` is a deny-list with no way to
+"un-exclude" a pattern already passed to it, and this plugin always passes its
+own three patterns ahead of anything you configure there. Setting
+[`:report_include`](#report_include) doesn't help either; it narrows which
+files are considered at all, but an exclude pattern still wins over it for
+any file matching both.
+
+The only way to actually remove or replace one of these defaults — for
+example, to include test files in coverage results so you can confirm a
+conditional test build compiled the branches you expect — is a
+[Gcovr configuration file](#gcovr-configuration-file). Setting `:config_file`
+stops Ceedling from generating any of the three patterns at all, handing you
+full control:
+
+```ini
+; gcovr.cfg — omits the test-file exclude pattern so test files remain in
+; coverage results, while still keeping generated/vendored build output out.
+exclude = .*build/.+\.c$
+```
+
+```yaml
+:gcov:
+  :gcovr:
+    :config_file: gcovr.cfg
+```
+
+Note that this isn't scoped per category. Once a default is dropped, any
+file it would have excluded is folded into the same combined report as your
+production code, not broken out separately.
 
 ## Plugin configuration
 
@@ -198,6 +296,13 @@ is in addition to any other configured reports. (`gcovr --print-summary`)
 Keep only source files that match this filter. Filters are regular
 expressions. (`gcovr --filter`)
 
+This narrows which files are considered at all, but does not override
+[Results filtering](#results-filtering)'s automatic exclusion defaults — a
+file excluded by one of those three default patterns stays excluded even if
+it also matches `:report_include`. See
+[Overriding the defaults](#overriding-the-defaults) if you need to remove one
+of them.
+
 **Example:** `"^src"`
 
 ---
@@ -206,6 +311,15 @@ expressions. (`gcovr --filter`)
 
 Exclude source files that match this filter. Filters are regular expressions.
 (`gcovr --exclude`)
+
+Ceedling automatically generates and prepends its own exclusion patterns for
+test files, test support files, and generated/vendored build files — see
+[Results filtering](#results-filtering) above for exactly what these cover
+and why. Anything you provide here is combined with those defaults, not a
+replacement for them. This option can only add further exclusions, never
+remove or override one of the three defaults.
+See [Overriding the defaults](#overriding-the-defaults) for how to do 
+that instead.
 
 **Example:** `"^vendor.*|^build.*|^test.*|^lib.*"`
 
