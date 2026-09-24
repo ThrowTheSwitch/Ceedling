@@ -3093,6 +3093,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#results-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results filtering
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Results filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#coverage-generation-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage generation filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#report-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Report filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overriding-the-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overriding the defaults
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#plugin-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4280,6 +4330,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#results-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results filtering
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Results filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#coverage-generation-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coverage generation filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#report-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Report filtering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overriding-the-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overriding the defaults
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#plugin-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4552,6 +4652,85 @@
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="nt">:custom_args</span><span class="p">:</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;-title:MyProject&quot;</span>
 </code></pre></div>
+<h2 id="results-filtering">Results filtering</h2>
+<p>This plugin filters coverage results for <code>reportgenerator</code> coverage reporting
+in two separate stages, each with its own defaults.</p>
+<h3 id="coverage-generation-filtering">Coverage generation filtering</h3>
+<p>Before <code>reportgenerator</code> ever runs, this plugin runs <code>gcov</code> itself against each
+<code>.gcno</code> file produced by the coverage test build, skipping any that match an 
+exclusion pattern — no <code>.gcov</code> data is ever produced for a skipped file, so 
+nothing downstream can put it back into a report.</p>
+<p>By default this skips:</p>
+<ul>
+<li><strong>Test files</strong> — matched by <code>:test_file_prefix</code>, wherever the file appears.</li>
+<li><strong>Mocks, test runners, and vendored Unity/CMock sources</strong> — matched by
+  <code>:mock_prefix</code>, a filename containing <code>_runner</code>, or <code>unity.gcno</code>/
+  <code>cmock.gcno</code> by name, but only within your <code>:build_root</code> — the only place
+  Ceedling ever generates these.</li>
+</ul>
+<p>Given <code>:test_file_prefix</code> ⇒ <code>test_</code>, CMock's default <code>:mock_prefix</code> ⇒
+<code>Mock</code>, and <code>:build_root</code> ⇒ <code>build</code>, the equivalent patterns are:</p>
+<p>Matched anywhere:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>test_[^\/\\]*
+</code></pre></div>
+<p>Matched only under <code>build/</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Mock[^\/\\]*
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>[^\/\\]*_runner[^\/\\]*
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>unity
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>cmock
+</code></pre></div>
+<p>These combine with whatever you add via <a href="#gcov_exclude"><code>:gcov_exclude</code></a>
+below. Your patterns extend this list, they don't replace it.</p>
+<h3 id="report-filtering">Report filtering</h3>
+<p>Separately, once <code>.gcov</code> files exist, ReportGenerator's own <code>-filefilters:</code>
+argument controls which of them actually appear in the generated report(s).
+By default this excludes:</p>
+<ol>
+<li>
+<p><strong>Test paths</strong> — every file anywhere under each of your configured
+    <code>:paths</code> ↳ <code>:test</code> directories, not only files matching
+    <code>:test_file_prefix</code>. A support subdirectory nested under a test path
+    (e.g. <code>test/support/</code>) is excluded as a side effect of this — the whole
+    tree goes, not just prefixed test files.</p>
+<p>Given a <code>:paths</code> ↳ <code>:test</code> entry of <code>test/</code>:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>-./test/**/*
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>The build root</strong> — every generated and vendored file: mocks, test
+    runners, Partials output, Unity, CMock, CException.</p>
+<p>Given <code>:build_root</code> ⇒ <code>build/</code>:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>-./build/**/*
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Partial-generated files</strong> — only when <code>:use_partials</code> is enabled, any
+    file whose name starts with Ceedling's Partial filename prefix, wherever
+    it's found (not only under the build root).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>-ceedling_partial_*
+</code></pre></div>
+</li>
+</ol>
+<p>These patterns are generated automatically and placed ahead of whatever you
+provide via <a href="#file_filters"><code>:file_filters</code></a> below.</p>
+<h3 id="overriding-the-defaults">Overriding the defaults</h3>
+<p>Neither filtering stage above can be overridden or narrowed by plugin
+configuration — only added to.</p>
+<p>For <a href="#coverage-generation-filtering">coverage generation filtering</a>,
+<a href="#gcov_exclude"><code>:gcov_exclude</code></a> only ever adds more exclusion patterns; there
+is no plugin option to disable one of the built-in exclusions, and no way to
+resurrect <code>.gcov</code> data for a file <code>gcov</code> was never run against in the first
+place.</p>
+<p>For <a href="#report-filtering">report filtering</a>, the natural instinct is to reach
+for <a href="#custom_args"><code>:custom_args</code></a> to pass a second, conflicting
+<code>-filefilters:</code> argument, but this is not an option because of ReportGenerator's
+rules and the order in which the filters are provided by the plugin.</p>
+<p>In short, there's no supported way to broaden what this plugin reports
+beyond its defaults. If you need to override coverage reporting filtering, 
+use the <a href="../gcovr/">Gcovr option for this pluing</a> instead. Its
+<code>:config_file</code> option hands full control to a <code>gcovr</code> configuration file,
+bypassing Ceedling's generated exclusions entirely (see
+<a href="../gcovr/#results-filtering">Gcovr's Results filtering</a>).</p>
 <h2 id="plugin-configuration">Plugin configuration</h2>
 <h3 id="history_directory"><code>:history_directory</code></h3>
 <p>Optional directory for storing persistent coverage information. Can be used
@@ -4577,10 +4756,15 @@ filters. Wildcards are allowed, but not regular expressions.</p>
 <h3 id="file_filters"><code>:file_filters</code></h3>
 <p>Optional list of files that should be included or excluded in the report
 (separated by semicolon). Exclusion filters take precedence over inclusion
-filters. Wildcards are allowed, but not regular expressions. Ceedling places
-your own patterns first, ahead of the exclusions it generates automatically
-for test paths, the build root, and (when Partials are in use) Partial
-source files, so your patterns take precedence.</p>
+filters regardless of order. Wildcards are allowed, but not regular
+expressions.</p>
+<p>This plugin places your own patterns first, ahead of the exclusions it
+generates automatically for test paths, the build root, and (when Partials
+are in use) Partial-generated files (see
+<a href="#report-filtering">Report filtering</a> above for exactly what those defaults
+cover). Because exclusions always win, your patterns can add further
+exclusions or includes but cannot override or remove one of those defaults;
+see <a href="#overriding-the-defaults">Overriding the defaults</a> above.</p>
 <p><strong>Example:</strong> <code>"-./vendor/*;-./build/*;-./test/*;-./lib/*;+./src/*"</code></p>
 <hr />
 <h3 id="verbosity"><code>:verbosity</code></h3>
@@ -4616,11 +4800,17 @@ percentage. (ReportGenerator <code>minimumCoverageThresholds:fullMethodCoverage<
 (<code>.gcno</code>) files that match these filters from coverage processing — these
 files are never run through <code>gcov</code> at all. A trailing <code>.gcov</code> or <code>.gcno</code>
 suffix on a pattern is stripped automatically, so either form works.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:gcov</span><span class="p">:</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:report_generator</span><span class="p">:</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nt">:gcov_exclude</span><span class="p">:</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;regex&gt;</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<p>Ceedling combines your patterns with exclusions it generates automatically
+for test files, mocks, test runners, and vendored Unity/CMock sources (see
+<a href="#coverage-generation-filtering">Coverage generation filtering</a> above for
+exactly what these cover). Your patterns can only add further exclusions;
+there's no way to override or remove one of the defaults — see
+<a href="#overriding-the-defaults">Overriding the defaults</a> above.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">:gcov</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">:report_generator</span><span class="p">:</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="nt">:gcov_exclude</span><span class="p">:</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;regex&gt;</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
 </code></pre></div>
 <p><strong>Default:</strong> <code>[]</code></p>
 <hr />
@@ -4638,11 +4828,11 @@ covered by the options above. See the
 <p>Note: This can be accomplished with Ceedling's tool configuration options
 outside of plugin configuration but is supported here to collect
 configuration options in one place.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:gcov</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:report_generator</span><span class="p">:</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">:custom_args</span><span class="p">:</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;argument&gt;</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">:gcov</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">:report_generator</span><span class="p">:</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="nt">:custom_args</span><span class="p">:</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;argument&gt;</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
 </code></pre></div>
 <p><strong>Default:</strong> <code>[]</code></p>
 <p><br/><br/></p>

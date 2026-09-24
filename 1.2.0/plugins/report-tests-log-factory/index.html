@@ -4480,7 +4480,7 @@
 <p>If a test report produced by this plugin does not work for your needs or is not recognized by your report processing tool of choice, well, sadly, this is not all that uncommon. You have at least two options:</p>
 <ol>
 <li>Use a script or other tool to post-process the report into a format that works for you. You might be surprised how many of these hacks are commonly necessary and exist peppered throughout online forums. You can incorporate any such post-processing step by enabling the <code>command_hooks</code> Ceedling plugin (lower in the plugin list than this plugin) and configuring a Ceedling tool to run the needed transformation.</li>
-<li>Use Ceedling's abilities plus features of this plugin (documented below) to generate your own test report with a minimal amount of Ruby code.</li>
+<li>Use Ceedling’s abilities plus features of this plugin (documented below) to generate your own test report with a minimal amount of Ruby code.</li>
 </ol>
 <h2 id="setup">Setup</h2>
 <p>Enable the plugin in your Ceedling project file by adding <code>report_tests_log_factory</code> to the list of enabled plugins.</p>
@@ -4488,7 +4488,7 @@
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_log_factory</span>
 </code></pre></div>
-<p>All generated reports are written to <code>&lt;build root&gt;/artifacts/&lt;context&gt;</code>. Your Ceedling project file specifies <code>&lt;build root&gt;</code> as a required entry for any build. Your build's context defaults to <code>test</code>. Certain other test build plugins (e.g. GCov) provide a different context (e.g. <code>gcov</code>) for test builds, generally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than <code>test/</code>, <code>gcov/</code>.</p>
+<p>All generated reports are written to <code>&lt;build root&gt;/artifacts/&lt;context&gt;</code>. Your Ceedling project file specifies <code>&lt;build root&gt;</code> as a required entry for any build. Your build’s context defaults to <code>test</code>. Certain other test build plugins (e.g. GCov) provide a different context (e.g. <code>gcov</code>) for test builds, generally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than <code>test/</code>, <code>gcov/</code>.</p>
 <h2 id="configuration">Configuration</h2>
 <p>Enable the reports you wish to generate — <code>json</code>, <code>junit</code>, and/or <code>cppunit</code> — within the <code>:report_tests_log_factory</code> ↳ <code>:reports</code> configuration list.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:report_tests_log_factory</span><span class="p">:</span>
@@ -4521,7 +4521,7 @@
 <h3 id="execution-duration-values">Execution duration values</h3>
 <p>Some test reporting formats include the execution time (duration) for aspects of a test suite run. Various granularities exist from the total time for all tests to the time of each suite (per the relevant defition of a suite) to the time required to run individual test cases. See <em>CeedlingPacket</em> for the details on time duration values.</p>
 <p>Ceedling automatically gathers all the relevant durations. In fact, Ceedling itself performs the needed timing and arithmetric in all cases, except one. Individual test case exection time tracking is specifically a <a href="https://github.com/ThrowTheSwitch/Unity">Unity</a> feature (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values and make them available to reports.</p>
-<p>To enable test case duration measurements, they must be enabled as a Unity compilation option. Add <code>UNITY_INCLUDE_EXEC_TIME</code> to Unity's compilation symbols (<code>:unity</code> ↳ <code>:defines</code>) in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest. Unity test case durations as reported by Ceedling default to 0 if this Unity compilation option is not configured.</p>
+<p>To enable test case duration measurements, they must be enabled as a Unity compilation option. Add <code>UNITY_INCLUDE_EXEC_TIME</code> to Unity’s compilation symbols (<code>:unity</code> ↳ <code>:defines</code>) in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest. Unity test case durations as reported by Ceedling default to 0 if this Unity compilation option is not configured.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:unity</span><span class="p">:</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:defines</span><span class="p">:</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">UNITY_INCLUDE_EXEC_TIME</span>
@@ -4700,7 +4700,7 @@
 <p>Configuration steps, (1) and (3) above, are documented by example below. Conventions simplify the Ruby programming and require certain naming rules that extend into your project configuration.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nt">:plugins</span><span class="p">:</span>
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span><span class="nt">:load_paths</span><span class="p">:</span><span class="w">              </span><span class="c1"># Paths can be relative or absolute</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scripts/</span><span class="w">              </span><span class="c1"># Add &lt;build root&gt;/scripts to Ruby&#39;s load paths</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scripts/</span><span class="w">              </span><span class="c1"># Add &lt;build root&gt;/scripts to Ruby’s load paths</span>
 <a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
 <a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_log_factory</span>
 <a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>
@@ -4709,17 +4709,22 @@
 <a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fancy_shmancy</span><span class="w">         </span><span class="c1"># Your custom report must follow naming rules (below)</span>
 </code></pre></div>
 <h3 id="custom-testsreporter-code">Custom <code>TestsReporter</code> code</h3>
-<p>To create a custom report, here's what you gotta do:</p>
+<p>To create a custom report, here’s what you gotta do:</p>
 <ol>
 <li>Create a Ruby file in your configured additional load path named <code>&lt;custom_report&gt;_tests_reporter.rb</code>. <code>&lt;custom_report&gt;</code> should be in lower case and use underscores if you wish to seperate words (i.e. snakecase).</li>
 <li>The Ruby code itself must subclass an existing plugin class, <code>TestsReporter</code>.</li>
 <li>Your new subclass must be named <code>&lt;CustomReport&gt;TestsReporter</code> where <code>&lt;CustomReport&gt;</code> is the camelcase version of your report name from (1).</li>
-<li>Fill out up to four methods in your custom <code>TestsReporter</code> subclass:<ul>
+<li>
+<p>Fill out up to four methods in your custom <code>TestsReporter</code> subclass:</p>
+<ul>
 <li><code>setup()</code></li>
 <li><code>header()</code> (optional)</li>
 <li><code>body()</code></li>
 <li><code>footer()</code> (optional)</li>
 </ul>
+<p><code>header()</code>, <code>body()</code>, and <code>footer()</code> each receive the same four keyword
+arguments — <code>stream:</code>, <code>name:</code>, <code>results:</code>, and <code>duration_s:</code> — whether
+or not your own implementation needs all of them.</p>
 </li>
 </ol>
 <p>Overriding the default filename of your custom report happens just as it does for the built-in reports. In fact, apart from the custom load path, the built-in reports documented above use the same mechanisms as a custom report. These Ruby files can and should be used as references.</p>
@@ -4747,13 +4752,13 @@
 <a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>
 <a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a><span class="w">  </span><span class="c1"># If your report includes a header section, fill out this method.</span>
 <a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a><span class="w">  </span><span class="c1"># If no header in your report, this method is not needed in this file at all.</span>
-<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a><span class="w">  </span><span class="k">def</span><span class="w"> </span><span class="nf">header</span><span class="p">(</span><span class="ss">results</span><span class="p">:,</span><span class="w"> </span><span class="ss">stream</span><span class="p">:)</span>
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a><span class="w">  </span><span class="k">def</span><span class="w"> </span><span class="nf">header</span><span class="p">(</span><span class="ss">stream</span><span class="p">:,</span><span class="w"> </span><span class="nb">name</span><span class="p">:,</span><span class="w"> </span><span class="ss">results</span><span class="p">:,</span><span class="w"> </span><span class="ss">duration_s</span><span class="p">:)</span>
 <a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a><span class="w">    </span><span class="n">stream</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="w"> </span><span class="s1">&#39;&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;&#39;</span><span class="w"> </span><span class="p">)</span>
-<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a><span class="w">    </span><span class="n">stream</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="w"> </span><span class="s2">&quot;&lt;FancyShmancy TestCount=</span><span class="si">#{</span><span class="n">results</span><span class="o">[</span><span class="ss">:counts</span><span class="o">][</span><span class="ss">:total</span><span class="o">]</span><span class="si">}</span><span class="s2">&gt;&quot;</span><span class="w"> </span><span class="p">)</span>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a><span class="w">    </span><span class="n">stream</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="w"> </span><span class="s2">&quot;&lt;FancyShmancy Name=</span><span class="se">\&quot;</span><span class="si">#{</span><span class="nb">name</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2"> TestCount=</span><span class="si">#{</span><span class="n">results</span><span class="o">[</span><span class="ss">:counts</span><span class="o">][</span><span class="ss">:total</span><span class="o">]</span><span class="si">}</span><span class="s2">&gt;&quot;</span><span class="w"> </span><span class="p">)</span>
 <a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a><span class="w">  </span><span class="k">end</span>
 <a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a>
 <a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a><span class="w">  </span><span class="c1"># Process test results into report records</span>
-<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a><span class="w">  </span><span class="k">def</span><span class="w"> </span><span class="nf">body</span><span class="p">(</span><span class="ss">results</span><span class="p">:,</span><span class="w"> </span><span class="ss">stream</span><span class="p">:)</span>
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a><span class="w">  </span><span class="k">def</span><span class="w"> </span><span class="nf">body</span><span class="p">(</span><span class="ss">stream</span><span class="p">:,</span><span class="w"> </span><span class="nb">name</span><span class="p">:,</span><span class="w"> </span><span class="ss">results</span><span class="p">:,</span><span class="w"> </span><span class="ss">duration_s</span><span class="p">:)</span>
 <a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a><span class="w">    </span><span class="n">results</span><span class="o">.</span><span class="n">each</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">result</span><span class="o">|</span>
 <a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a><span class="w">      </span><span class="n">result</span><span class="o">[</span><span class="ss">:collection</span><span class="o">].</span><span class="n">each</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">item</span><span class="o">|</span>
 <a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a><span class="w">        </span><span class="n">write_test</span><span class="p">(</span><span class="w"> </span><span class="n">item</span><span class="p">,</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="p">)</span>
@@ -4762,8 +4767,8 @@
 <a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a><span class="w">  </span><span class="k">end</span>
 <a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a>
 <a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a><span class="w">  </span><span class="c1"># If your report includes a footer section, fill out this method.</span>
-<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a><span class="w">  </span><span class="c1"># If no footer in your report, this method is not needed in this file at all.</span>
-<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a><span class="w">  </span><span class="k">def</span><span class="w"> </span><span class="nf">footer</span><span class="p">(</span><span class="ss">results</span><span class="p">:,</span><span class="w"> </span><span class="ss">stream</span><span class="p">:)</span>
+<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a><span class="w">  </span><span class="c1"># If you have no footer in your report, this method is not needed in this file at all.</span>
+<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a><span class="w">  </span><span class="k">def</span><span class="w"> </span><span class="nf">footer</span><span class="p">(</span><span class="ss">stream</span><span class="p">:,</span><span class="w"> </span><span class="nb">name</span><span class="p">:,</span><span class="w"> </span><span class="ss">results</span><span class="p">:,</span><span class="w"> </span><span class="ss">duration_s</span><span class="p">:)</span>
 <a id="__codelineno-15-39" name="__codelineno-15-39" href="#__codelineno-15-39"></a><span class="w">    </span><span class="n">stream</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="w"> </span><span class="s2">&quot;&lt;/FancyShmancy&gt;&quot;</span><span class="w"> </span><span class="p">)</span>
 <a id="__codelineno-15-40" name="__codelineno-15-40" href="#__codelineno-15-40"></a><span class="w">  </span><span class="k">end</span>
 <a id="__codelineno-15-41" name="__codelineno-15-41" href="#__codelineno-15-41"></a>
@@ -4783,11 +4788,11 @@
 </code></pre></div>
 <h4 id="plugin-hooks-test-results-data-structure">Plugin hooks &amp; test results data structure</h4>
 <p>See <a href="../../development/plugins/"><em>PluginDevelopmentGuide</em></a> for documentation of the test results data structure (i.e. the <code>results</code> method arguments in above sample code).</p>
-<p>See this plugin's built-in <code>TestsReports</code> subclasses — <code>json_tests_reporter.rb</code>, <code>junit_tests_reporter.rb</code>, and <code>cppunit_tests_reporter.rb</code> — for examples of using test results.</p>
+<p>See this plugin’s built-in <code>TestsReports</code> subclasses — <code>json_tests_reporter.rb</code>, <code>junit_tests_reporter.rb</code>, and <code>cppunit_tests_reporter.rb</code> — for examples of using test results.</p>
 <h4 id="testsreporter-utility-methods"><code>TestsReporter</code> utility methods</h4>
 <h5 id="configuration-access-fetch_config_valuekeys">Configuration access: <code>fetch_config_value(*keys)</code></h5>
 <p>You may call the private method <code>fetch_config_value(*keys)</code> of the parent class <code>TestReporters</code> from your custom subclass to retrieve configuration entries.</p>
-<p>This method automatically indexes into <code>:report_tests_log_factory</code> configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns <code>nil</code>. Otherwise, it returns the hash, list, string, boolean, or numeric value for the specified key walk into your report's configuration.</p>
+<p>This method automatically indexes into <code>:report_tests_log_factory</code> configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns <code>nil</code>. Otherwise, it returns the hash, list, string, boolean, or numeric value for the specified key walk into your report’s configuration.</p>
 <p><code>fetch_config_value(*keys)</code> expects a list of keys and only accesses configuration beneath <code>:report_tests_log_factory</code> ↳ <code>:&lt;custom_report&gt;</code>.</p>
 <h6 id="example-fancyshmancy-configuration-testsreporterfetch_config_value-calls">Example <em>FancyShmancy</em> configuration + <code>TestsReporter.fetch_config_value()</code> calls</h6>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nt">report_tests_log_factory</span><span class="p">:</span>

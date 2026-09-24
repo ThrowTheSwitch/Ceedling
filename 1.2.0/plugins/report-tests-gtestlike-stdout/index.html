@@ -4317,7 +4317,7 @@ other <code>report_tests_*_stdout</code> plugin.</p>
 <p>No additional configuration is needed once the plugin is enabled.</p>
 <h2 id="plugin-output">Plugin Output</h2>
 <h3 id="ceedling-mapped-to-googletest-reporting-elements">Ceedling mapped to GoogleTest reporting elements</h3>
-<p>Ceedling's conventions and output map to GTest format as the following:</p>
+<p>Ceedling’s conventions and output map to GTest format as the following:</p>
 <ul>
 <li>A Ceedling test file — ultimately an individual test executable — is a GTest 
   <em>test case</em>.</li>
@@ -4331,6 +4331,12 @@ results incrementally as well, but its plugin reporting structure does not
 collect and format statistics until the end of a build. This plugin duplicates
 the tense of the wording in a GTest report, but it is unintentionally somewhat 
 misleading.</p>
+<p>GTest has no native concept of an ignored (a.k.a. skipped) test case. A
+Ceedling test case marked <code>TEST_IGNORE()</code> is therefore left out of this
+report entirely — it is not listed as <code>OK</code> or <code>FAILED</code>, and it is not
+counted in the running total header or the passed/failed footer. A test
+file whose every test case is ignored produces no section for that file at
+all.</p>
 <h3 id="example-output-snippet">Example output (snippet)</h3>
 <p>The GTest format is verbose. It lists all tests with success and failure results.</p>
 <p>The example output below shows the header and footer of test results for a suite 
