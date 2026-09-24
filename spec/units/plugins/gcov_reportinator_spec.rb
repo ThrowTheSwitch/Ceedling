@@ -237,5 +237,36 @@ describe GcovReportinator do
         src_extension: '.c'
       })
     end
+
+    it 'reads multiple test/support paths and an array-valued source extension without collapsing them' do
+      configurator = double('configurator',
+        collection_paths_test:    ['test', 'more_tests'],
+        collection_paths_support: ['support', 'more_support'],
+        project_test_file_prefix: 'test_',
+        cmock_mock_prefix:        'Mock',
+        project_build_root:       'build',
+        extension_source:         ['.c', '.cpp']
+      )
+      reportinator.instance_variable_set(:@configurator, configurator)
+
+      data = reportinator.send(:build_exclusion_data)
+      expect(data[:test_paths]).to eq(['test', 'more_tests'])
+      expect(data[:support_paths]).to eq(['support', 'more_support'])
+      expect(data[:src_extension]).to eq(['.c', '.cpp'])
+    end
+  end
+
+  describe '#strip_leading_dot_slash' do
+    it 'removes a single leading "./" from a path' do
+      expect(reportinator.send(:strip_leading_dot_slash, './build')).to eq('build')
+    end
+
+    it 'leaves a path with no leading "./" unchanged' do
+      expect(reportinator.send(:strip_leading_dot_slash, 'build')).to eq('build')
+    end
+
+    it 'does not touch a "./" that is not at the very start of the path' do
+      expect(reportinator.send(:strip_leading_dot_slash, 'build/./sub')).to eq('build/./sub')
+    end
   end
 end

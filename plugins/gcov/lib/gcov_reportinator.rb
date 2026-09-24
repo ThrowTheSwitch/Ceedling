@@ -71,6 +71,21 @@ class GcovReportinator
   end
 
 
+  # A configured path reaching build_exclusion_data's callers is usually the actual
+  # resolved directory Ceedling itself found on disk: :paths entries are glob-expanded
+  # and shortened to a relative path in FilePathCollectionUtils#collect_paths.
+  # :build_root is the one exception -- it passes through only
+  # FilePathUtils.standardize_in_place, which normalizes separators but does not strip a
+  # leading './'. A leading './' names the same directory as the bare form but is a
+  # different literal substring, and every pattern built from these values matches the
+  # escaped literal -- so a project that writes ':build_root: ./build' would otherwise
+  # get a pattern requiring a literal './build/' substring that real reported filepaths
+  # (which don't carry that prefix) never contain, silently excluding nothing.
+  def strip_leading_dot_slash(path)
+    path.sub(%r{\A\./}, '')
+  end
+
+
   # Shared "escape hatch" handling for arbitrary user-supplied CLI arguments, applied
   # even when a config/report file is otherwise in full control -- both GcovrReportinator's
   # :custom_args and ReportGeneratorReportinator's :custom_args use this identical pattern.

@@ -123,6 +123,63 @@ describe ReportGeneratorReportinator do
       result = reportinator.send(:collect_reportgenerator_opts, opts)
       expect(result[:file_filters]).to start_with('user-filter;')
     end
+
+    context 'when :project_use_partials is true' do
+      it 'appends a Ceedling-Partial exclusion after user filters and auto-generated exclusions' do
+        allow(configurator).to receive(:project_use_partials).and_return(true)
+        result = reportinator.send(:collect_reportgenerator_opts, { gcov_report_generator: { file_filters: 'user-filter' } })
+        expect(result[:file_filters]).to end_with(";-#{PARTIAL_FILENAME_PREFIX}*")
+      end
+
+      it 'still appends the Ceedling-Partial exclusion when no user :file_filters are configured' do
+        allow(configurator).to receive(:project_use_partials).and_return(true)
+        result = reportinator.send(:collect_reportgenerator_opts, { gcov_report_generator: {} })
+        expect(result[:file_filters]).to include("-#{PARTIAL_FILENAME_PREFIX}*")
+      end
+    end
+
+    it 'never inserts a Ceedling-Partial exclusion when :project_use_partials is false' do
+      result = reportinator.send(:collect_reportgenerator_opts, { gcov_report_generator: {} })
+      expect(result[:file_filters]).to_not include(PARTIAL_FILENAME_PREFIX)
+    end
+
+    it 'sets :file_filters from auto-generated exclusions alone when no user filter is configured' do
+      allow(configurator).to receive(:collection_paths_test).and_return(['test'])
+      allow(configurator).to receive(:project_build_root).and_return('build')
+      result = reportinator.send(:collect_reportgenerator_opts, { gcov_report_generator: {} })
+      expect(result[:file_filters]).to eq('-./test/**/*;-./build/**/*')
+    end
+
+    it 'combines user :file_filters, auto-generated exclusions, and (when enabled) the partials exclusion in that exact order' do
+      allow(configurator).to receive(:project_use_partials).and_return(true)
+      allow(configurator).to receive(:collection_paths_test).and_return(['test'])
+      allow(configurator).to receive(:project_build_root).and_return('build')
+      result = reportinator.send(:collect_reportgenerator_opts, { gcov_report_generator: { file_filters: 'user-filter' } })
+      expect(result[:file_filters]).to eq("user-filter;-./test/**/*;-./build/**/*;-#{PARTIAL_FILENAME_PREFIX}*")
+    end
+  end
+
+  describe '#build_filefilter_exclusions' do
+    it 'emits a -./path/**/* glob exclusion for every configured test path' do
+      allow(configurator).to receive(:collection_paths_test).and_return(['test', 'more_tests'])
+      patterns = reportinator.send(:build_filefilter_exclusions)
+      expect(patterns).to include('-./test/**/*')
+      expect(patterns).to include('-./more_tests/**/*')
+    end
+
+    it 'emits a -./build_root/**/* glob exclusion' do
+      allow(configurator).to receive(:project_build_root).and_return('build')
+      patterns = reportinator.send(:build_filefilter_exclusions)
+      expect(patterns).to include('-./build/**/*')
+    end
+
+    it 'uses a literal-prefixed glob, not a regex, so a similarly-named directory does not match' do
+      allow(configurator).to receive(:collection_paths_test).and_return(['test'])
+      pattern = reportinator.send(:build_filefilter_exclusions).first
+      glob = pattern.sub(/\A-/, '')
+      expect(File.fnmatch(glob, './latest/test_bar.c', File::FNM_PATHNAME)).to eq(false)
+      expect(File.fnmatch(glob, './test/test_bar.c', File::FNM_PATHNAME)).to eq(true)
+    end
   end
 
   describe '#build_gcno_exclusions' do
@@ -131,9 +188,16 @@ describe ReportGeneratorReportinator do
       allow(configurator).to receive(:cmock_mock_prefix).and_return('Mock+')
 
       exclusions = reportinator.send(:build_gcno_exclusions)
-      combined = exclusions.join('|')
+      combined = (exclusions[:basename] + exclusions[:build_root_scoped]).join('|')
       expect(combined).to include('test\\.')
       expect(combined).to include('Mock\\+')
+    end
+
+    it 'places test_prefix in the basename bucket and mock/runner/framework fragments in the build_root_scoped bucket' do
+      exclusions = reportinator.send(:build_gcno_exclusions)
+      expect(exclusions[:basename].join('|')).to include('test_')
+      expect(exclusions[:build_root_scoped].join('|')).to include('Mock')
+      expect(exclusions[:build_root_scoped].join('|')).to include('_runner')
     end
   end
 
@@ -153,6 +217,66 @@ describe ReportGeneratorReportinator do
       # reachable if none of those match either -- not exercised further here.
       rg_opts = { gcov_exclude: [] }
       expect( reportinator.send(:build_gcno_exclude_regex, rg_opts) ).to_not be_nil
+    end
+
+    it 'matches a user-supplied exclusion pattern with no .gcov/.gcno suffix at all' do
+      regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: ['legacy_code'] })
+      expect('/build/gcov/out/legacy_code.gcno').to match(regex)
+    end
+
+    it 'matches both a user-supplied pattern and an auto-generated pattern from the same combined regex' do
+      regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: ['legacy_code'] })
+      expect('src/legacy_code.gcno').to match(regex)
+      expect('build/gcov/out/test_foo.gcno').to match(regex)
+    end
+
+    # Mock/runner/framework filename fragments only identify files Ceedling itself
+    # generates under :build_root, so a match additionally requires a :build_root
+    # path-segment ancestor. This regex gates whether gcov is invoked on a file at all,
+    # so an unscoped match would silently and permanently drop that file's coverage data,
+    # for any report type.
+    context 'build_root scoping for mock/runner/framework fragments' do
+      it 'does not match a production file merely containing the mock prefix as a substring, outside build_root' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: [] })
+        expect('src/MockupRenderer.gcno').to_not match(regex)
+      end
+
+      it 'does not match a production file merely containing "_runner" as a substring, outside build_root' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: [] })
+        expect('src/task_runner_queue.gcno').to_not match(regex)
+      end
+
+      it 'does not match a file under a directory that merely contains build_root as a substring (e.g. "rebuild")' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: [] })
+        expect('rebuild/thing/MockFoo.gcno').to_not match(regex)
+      end
+
+      it 'still matches a legitimate generated mock under build_root' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: [] })
+        expect('build/gcov/out/test_foo/MockBar.gcno').to match(regex)
+      end
+
+      it 'still matches a legitimate generated test runner under build_root' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: [] })
+        expect('build/gcov/out/test_foo/test_foo_runner.gcno').to match(regex)
+      end
+
+      it 'still matches unity.gcno and cmock.gcno under build_root' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: [] })
+        expect('build/gcov/out/unity.gcno').to match(regex)
+        expect('build/gcov/out/cmock.gcno').to match(regex)
+      end
+
+      it 'does not build-root-scope user-supplied :gcov_exclude patterns' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: ['legacy_code'] })
+        expect('src/legacy_code.gcno').to match(regex)
+      end
+
+      it 'matches under build_root the same way whether or not it is configured with a leading "./"' do
+        allow(configurator).to receive(:project_build_root).and_return('./build')
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: [] })
+        expect('build/gcov/out/test_foo/MockBar.gcno').to match(regex)
+      end
     end
   end
 
