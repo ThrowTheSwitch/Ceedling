@@ -4574,29 +4574,31 @@ below. Your patterns extend this list, they don't replace it.</p>
 argument controls which of them actually appear in the generated report(s).
 By default this excludes:</p>
 <ol>
-<li><strong>Test paths</strong> — every file anywhere under each of your configured
-   <code>:paths</code> ↳ <code>:test</code> directories, not only files matching
-   <code>:test_file_prefix</code>. A support subdirectory nested under a test path
-   (e.g. <code>test/support/</code>) is excluded as a side effect of this — the whole
-   tree goes, not just prefixed test files.</li>
-</ol>
+<li>
+<p><strong>Test paths</strong> — every file anywhere under each of your configured
+    <code>:paths</code> ↳ <code>:test</code> directories, not only files matching
+    <code>:test_file_prefix</code>. A support subdirectory nested under a test path
+    (e.g. <code>test/support/</code>) is excluded as a side effect of this — the whole
+    tree goes, not just prefixed test files.</p>
 <p>Given a <code>:paths</code> ↳ <code>:test</code> entry of <code>test/</code>:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>-./test/**/*
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>-./test/**/*
 </code></pre></div></p>
-<ol>
-<li><strong>The build root</strong> — every generated and vendored file: mocks, test
-   runners, Partials output, Unity, CMock, CException.</li>
-</ol>
+</li>
+<li>
+<p><strong>The build root</strong> — every generated and vendored file: mocks, test
+    runners, Partials output, Unity, CMock, CException.</p>
 <p>Given <code>:build_root</code> ⇒ <code>build/</code>:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>-./build/**/*
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>-./build/**/*
 </code></pre></div></p>
-<ol>
-<li><strong>Partial-generated files</strong> — only when <code>:use_partials</code> is enabled, any
-   file whose name starts with Ceedling's Partial filename prefix, wherever
-   it's found (not only under the build root).</li>
-</ol>
+</li>
+<li>
+<p><strong>Partial-generated files</strong> — only when <code>:use_partials</code> is enabled, any
+    file whose name starts with Ceedling's Partial filename prefix, wherever
+    it's found (not only under the build root).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>-ceedling_partial_*
 </code></pre></div>
+</li>
+</ol>
 <p>These patterns are generated automatically and placed ahead of whatever you
 provide via <a href="#file_filters"><code>:file_filters</code></a> below.</p>
 <h3 id="overriding-the-defaults">Overriding the defaults</h3>
