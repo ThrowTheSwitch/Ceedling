@@ -3044,6 +3044,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#results-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results filtering
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Results filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overriding-the-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overriding the defaults
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#plugin-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3104,6 +3132,17 @@
     <span class="md-ellipsis">
       
         :fail_under_decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :decisions
       
     </span>
   </a>
@@ -4675,6 +4714,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#results-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results filtering
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Results filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overriding-the-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overriding the defaults
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#plugin-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4735,6 +4802,17 @@
     <span class="md-ellipsis">
       
         :fail_under_decision
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :decisions
       
     </span>
   </a>
@@ -5317,9 +5395,14 @@ plugin configuration. This prevents overriding config file settings with
 CLI arguments. You must provide any settings that would have been provided 
 by the Gcov plugin.</p>
 </div>
-<p>To preserve filtering of test and build files from coverage results when
-using a Gcovr config file, you must provide explicit exclusion patterns matching 
-your project layout (example below).</p>
+<p>A Gcovr config file replaces Ceedling's own automatically generated exclusion
+patterns (see <a href="#results-filtering">Results filtering</a> below) entirely — it is
+the only way to override or remove one of those defaults, since the
+project-configuration <code>:report_exclude</code> option can only add further
+exclusions on top of them, never take one away. To preserve the same
+filtering of test and build files when switching to a Gcovr config file, you
+must provide equivalent explicit exclusion patterns matching your project
+layout yourself (example below).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">; You will need to revise these example exclude patterns to match your</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">; project directories and file naming as they cannot be automatically </span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1">; provided to Gcovr when a Gcovr configuration file is in use.</span>
@@ -5332,6 +5415,82 @@ your project layout (example below).</p>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1">; Build path exlcude for all generated C files (runners, mocks, partials).</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="na">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">.*build/.+\.c$</span>
 </code></pre></div>
+<h2 id="results-filtering">Results filtering</h2>
+<p>By default, this plugin configures <code>gcovr</code> to excludes three categories of 
+<code>.c</code> files from coverage results. These defaults exist because a
+coverage percentage is typically only meaningful over the production code 
+you're actually trying to exercise with test coverage. Test code, test 
+support code, and every file Ceedling itself generates as part of a build 
+will skew that number if left in coverage reporting.</p>
+<p>The list that follows details the filtering this plugin injects into 
+Gcovr coverage report generation. The examples are usable regular 
+expressions that mirror the defaults in use. The plugin dynamically 
+generates these regular expressions from your project configuration.
+When creating them youself, you will need to match your project 
+configuration settings with static strings.</p>
+<ol>
+<li><strong>Test files</strong> — matched by <code>:test_file_prefix</code> within your configured
+   <code>:paths</code> ↳ <code>:test</code> directories.</li>
+</ol>
+<p>Given <code>:test_file_prefix</code> ⇒ <code>test_</code> and a <code>:paths</code> ↳ <code>:test</code> entry of
+   <code>test/</code>:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>.*test/.*/test_.+\.c$
+</code></pre></div></p>
+<ol>
+<li><strong>Test support files</strong> — any <code>.c</code> file within your configured <code>:paths</code> ↳
+   <code>:support</code> directories, regardless of name. Helpers, stubs, and fixtures
+   living there are no more production code than the test files themselves.</li>
+</ol>
+<p>Given a <code>:paths</code> ↳ <code>:support</code> entry of <code>test/support/</code>:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>.*test/support/.+\.c$
+</code></pre></div></p>
+<ol>
+<li><strong>Generated and vendored files</strong> — any <code>.c</code> file anywhere below your
+   <code>:build_root</code>: generated mocks, test runners, Partials output, and the
+   vendored Unity/CMock/CException framework sources Ceedling copies in to
+   build against. This pattern always matches a literal <code>.c</code> extension
+   regardless of your project's own <code>:extension</code> ↳ <code>:source</code> setting, since
+   every file it catches is one Ceedling itself writes in plain C.</li>
+</ol>
+<p>Given <code>:build_root</code> ⇒ <code>build/</code>:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>.*build/.+\.c$
+</code></pre></div></p>
+<p>These patterns are generated automatically and combined with whatever you
+provide via <a href="#report_exclude"><code>:report_exclude</code></a> below.</p>
+<div class="admonition warning">
+<p class="admonition-title">Not applied when using a Gcovr configuration file</p>
+<p>These defaults are only generated when Ceedling builds <code>gcovr</code>'s command
+line directly. As covered in
+<a href="#gcovr-configuration-file">Gcovr configuration file</a> above, setting
+<code>:config_file</code> bypasses this entirely — none of the three patterns above
+are applied, and you must supply equivalent exclusions in the config file
+yourself.</p>
+</div>
+<h3 id="overriding-the-defaults">Overriding the defaults</h3>
+<p><a href="#report_exclude"><code>:report_exclude</code></a> can only add exclusions on top of the
+three defaults above — <code>gcovr --exclude</code> is a deny-list with no way to
+"un-exclude" a pattern already passed to it, and this plugin always passes its
+own three patterns ahead of anything you configure there. Setting
+<a href="#report_include"><code>:report_include</code></a> doesn't help either; it narrows which
+files are considered at all, but an exclude pattern still wins over it for
+any file matching both.</p>
+<p>The only way to actually remove or replace one of these defaults — for
+example, to include test files in coverage results so you can confirm a
+conditional test build compiled the branches you expect — is a
+<a href="#gcovr-configuration-file">Gcovr configuration file</a>. Setting <code>:config_file</code>
+stops Ceedling from generating any of the three patterns at all, handing you
+full control:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">; gcovr.cfg — omits the test-file exclude pattern so test files remain in</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1">; coverage results, while still keeping generated/vendored build output out.</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="na">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">.*build/.+\.c$</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">:gcov</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">:gcovr</span><span class="p">:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">:config_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcovr.cfg</span>
+</code></pre></div>
+<p>Note that this isn't scoped per category. Once a default is dropped, any
+file it would have excluded is folded into the same combined report as your
+production code, not broken out separately.</p>
 <h2 id="plugin-configuration">Plugin configuration</h2>
 <p>The following options are exposed through your project configuration file, all
 beneath <code>:gcov</code> ↳ <code>:gcovr</code>. Only specify those you need or those whose defaults
@@ -5377,7 +5536,17 @@ percentage. Can be ORed with the exit status of other <code>:fail_under_*</code>
 <p>Exit with a status of 8 if the total decision coverage is less than this minimum
 percentage. Can be ORed with the exit status of other <code>:fail_under_*</code> options.
 (<code>gcovr --fail-under-decision</code>)</p>
+<p><code>gcovr</code> treats <code>--fail-under-decision</code> as a no-op without <code>--decisions</code> also
+present — setting this option implies <code>:decisions</code> (below) automatically, so
+it's never silently non-functional.</p>
 <p><strong>Values:</strong> <code>1</code>–<code>100</code></p>
+<p><strong>Requires:</strong> <code>gcovr</code> 7.0 or higher</p>
+<hr />
+<h3 id="decisions"><code>:decisions</code></h3>
+<p>Report the decision coverage. For HTML, JSON, and the summary report.
+(<code>gcovr --decisions</code>)</p>
+<p>Implied automatically whenever <code>:fail_under_decision</code> is set.</p>
+<p><strong>Requires:</strong> <code>gcovr</code> 5.1 or higher</p>
 <hr />
 <h3 id="fail_under_function"><code>:fail_under_function</code></h3>
 <p>Exit with a status of 16 if the total function coverage is less than this minimum
@@ -5397,15 +5566,20 @@ logs a warning without breaking the build.</p>
 <hr />
 <h3 id="branches"><code>:branches</code></h3>
 <p>Report the branch coverage instead of the line coverage. Applies to the text
-report only. (<code>gcovr --branches</code>)</p>
+report only. Uses <code>gcovr --txt-metric branch</code> on <code>gcovr</code> 7.0+ (<code>--branches</code> is
+deprecated as of 7.0, though still functional); <code>gcovr --branches</code> below it.</p>
 <hr />
 <h3 id="sort_uncovered"><code>:sort_uncovered</code></h3>
 <p>Sort entries by increasing number of uncovered lines. Applies to text and HTML
-reports. (<code>gcovr --sort-uncovered</code>)</p>
+reports. Uses <code>gcovr --sort uncovered-number</code> on <code>gcovr</code> 7.0+
+(<code>--sort-uncovered</code> is deprecated as of 7.0, though still functional);
+<code>gcovr --sort-uncovered</code> below it.</p>
 <hr />
 <h3 id="sort_percentage"><code>:sort_percentage</code></h3>
 <p>Sort entries by increasing percentage of uncovered lines. Applies to text and
-HTML reports. (<code>gcovr --sort-percentage</code>)</p>
+HTML reports. Uses <code>gcovr --sort uncovered-percent</code> on <code>gcovr</code> 7.0+
+(<code>--sort-percentage</code> is deprecated as of 7.0, though still functional);
+<code>gcovr --sort-percentage</code> below it.</p>
 <hr />
 <h3 id="print_summary"><code>:print_summary</code></h3>
 <p>Print a small report to stdout with line and branch percentage coverage. This
@@ -5414,11 +5588,25 @@ is in addition to any other configured reports. (<code>gcovr --print-summary</co
 <h3 id="report_include"><code>:report_include</code></h3>
 <p>Keep only source files that match this filter. Filters are regular
 expressions. (<code>gcovr --filter</code>)</p>
+<p>This narrows which files are considered at all, but does not override
+<a href="#results-filtering">Results filtering</a>'s automatic exclusion defaults — a
+file excluded by one of those three default patterns stays excluded even if
+it also matches <code>:report_include</code>. See
+<a href="#overriding-the-defaults">Overriding the defaults</a> if you need to remove one
+of them.</p>
 <p><strong>Example:</strong> <code>"^src"</code></p>
 <hr />
 <h3 id="report_exclude"><code>:report_exclude</code></h3>
 <p>Exclude source files that match this filter. Filters are regular expressions.
 (<code>gcovr --exclude</code>)</p>
+<p>Ceedling automatically generates and prepends its own exclusion patterns for
+test files, test support files, and generated/vendored build files — see
+<a href="#results-filtering">Results filtering</a> above for exactly what these cover
+and why. Anything you provide here is combined with those defaults, not a
+replacement for them. This option can only add further exclusions, never
+remove or override one of the three defaults.
+See <a href="#overriding-the-defaults">Overriding the defaults</a> for how to do 
+that instead.</p>
 <p><strong>Example:</strong> <code>"^vendor.*|^build.*|^test.*|^lib.*"</code></p>
 <hr />
 <h3 id="gcov_filter"><code>:gcov_filter</code></h3>
