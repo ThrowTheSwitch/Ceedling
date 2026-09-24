@@ -5429,32 +5429,34 @@ generates these regular expressions from your project configuration.
 When creating them youself, you will need to match your project 
 configuration settings with static strings.</p>
 <ol>
-<li><strong>Test files</strong> — matched by <code>:test_file_prefix</code> within your configured
-   <code>:paths</code> ↳ <code>:test</code> directories.</li>
-</ol>
+<li>
+<p><strong>Test files</strong> — matched by <code>:test_file_prefix</code> within your configured
+    <code>:paths</code> ↳ <code>:test</code> directories.</p>
 <p>Given <code>:test_file_prefix</code> ⇒ <code>test_</code> and a <code>:paths</code> ↳ <code>:test</code> entry of
-   <code>test/</code>:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>.*test/.*/test_.+\.c$
-</code></pre></div></p>
-<ol>
-<li><strong>Test support files</strong> — any <code>.c</code> file within your configured <code>:paths</code> ↳
-   <code>:support</code> directories, regardless of name. Helpers, stubs, and fixtures
-   living there are no more production code than the test files themselves.</li>
+<code>test/</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>.*test/.*/test_.+\.c$
+</code></pre></div>
+</li>
+<li>
+<p><strong>Test support files</strong> — any <code>.c</code> file within your configured <code>:paths</code> ↳
+    <code>:support</code> directories, regardless of name. Helpers, stubs, and fixtures
+    living there are no more production code than the test files themselves.</p>
+<p>Given a <code>:paths</code> ↳ <code>:support</code> entry of <code>test/support/</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>.*test/support/.+\.c$
+</code></pre></div>
+</li>
+<li>
+<p><strong>Generated and vendored files</strong> — any <code>.c</code> file anywhere below your
+    <code>:build_root</code>: generated mocks, test runners, Partials output, and the
+    vendored Unity/CMock/CException framework sources Ceedling copies in to
+    build against. This pattern always matches a literal <code>.c</code> extension
+    regardless of your project's own <code>:extension</code> ↳ <code>:source</code> setting, since
+    every file it catches is one Ceedling itself writes in plain C.</p>
+<p>Given <code>:build_root</code> ⇒ <code>build/</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>.*build/.+\.c$
+</code></pre></div>
+</li>
 </ol>
-<p>Given a <code>:paths</code> ↳ <code>:support</code> entry of <code>test/support/</code>:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>.*test/support/.+\.c$
-</code></pre></div></p>
-<ol>
-<li><strong>Generated and vendored files</strong> — any <code>.c</code> file anywhere below your
-   <code>:build_root</code>: generated mocks, test runners, Partials output, and the
-   vendored Unity/CMock/CException framework sources Ceedling copies in to
-   build against. This pattern always matches a literal <code>.c</code> extension
-   regardless of your project's own <code>:extension</code> ↳ <code>:source</code> setting, since
-   every file it catches is one Ceedling itself writes in plain C.</li>
-</ol>
-<p>Given <code>:build_root</code> ⇒ <code>build/</code>:
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>.*build/.+\.c$
-</code></pre></div></p>
 <p>These patterns are generated automatically and combined with whatever you
 provide via <a href="#report_exclude"><code>:report_exclude</code></a> below.</p>
 <div class="admonition warning">
