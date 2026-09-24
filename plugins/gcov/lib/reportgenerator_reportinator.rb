@@ -208,6 +208,7 @@ class ReportGeneratorReportinator < GcovReportinator
   # combining user-specified patterns with internally-generated ones.
   # Returns nil when empty.
   def build_gcno_exclude_regex(rg_opts)
+    data = build_exclusion_data
     gcno_exclusions = []
 
     # Collect user-specified coverage results exclusions.
@@ -223,16 +224,35 @@ class ReportGeneratorReportinator < GcovReportinator
       gcno_exclusions << gcno_exclude_expression
     end
 
-    # Auto-generated exclusions: test files, mocks, and test runners.
-    # These are never production source, so there's no need to run gcov on them.
-    gcno_exclusions += build_gcno_exclusions()
+    # Auto-generated exclusions: test files, matched anywhere a real basename could
+    # appear. Mocks/runners/framework files are handled separately below, scoped to
+    # :build_root -- see build_gcno_exclusions.
+    auto = build_gcno_exclusions()
+    gcno_exclusions += auto[:basename]
 
-    # Build a single regex from all exclusion patterns. (\/|\\\\) matches the path
-    # separator preceding the filename on both Unix and Windows, which prevents a
-    # fragment from accidentally matching mid-path. \.gcno anchors to the file extension.
-    # nil when the list is empty so callers can skip the regex check entirely.
-    gcno_exclusions.empty? ? nil :
-      Regexp.new("(\/|\\\\)(#{gcno_exclusions.join('|')})\\#{EXTENSION_GCNO}")
+    patterns = []
+
+    # User excludes + test_prefix. (\/|\\\\) matches the path separator preceding the
+    # filename on both Unix and Windows, which prevents a fragment from accidentally
+    # matching mid-path. \.gcno anchors to the file extension. User patterns are
+    # intentionally not build-root-scoped -- a user may legitimately want to exclude
+    # arbitrary paths anywhere in the tree.
+    unless gcno_exclusions.empty?
+      patterns << "(\/|\\\\)(#{gcno_exclusions.join('|')})\\#{EXTENSION_GCNO}"
+    end
+
+    # Mock/runner/framework fragments additionally require a :build_root path-segment
+    # ancestor, since that's the only place these files are ever actually generated.
+    # (^|[\/\\]) requires build_root to be a real path segment (not e.g. 'rebuild');
+    # '.*' allows any subdirectory depth below build_root before the final
+    # separator+basename.
+    unless auto[:build_root_scoped].empty?
+      build_root = Regexp.escape(strip_leading_dot_slash(data[:build_root].to_s))
+      patterns << "(^|[\/\\\\])#{build_root}[\/\\\\].*[\/\\\\](#{auto[:build_root_scoped].join('|')})\\#{EXTENSION_GCNO}"
+    end
+
+    # nil when both buckets are empty so callers can skip the regex check entirely.
+    patterns.empty? ? nil : Regexp.new(patterns.map { |p| "(?:#{p})" }.join('|'))
   end
 
 
@@ -316,9 +336,21 @@ class ReportGeneratorReportinator < GcovReportinator
   end
 
 
-  # Build filename-fragment patterns for the .gcno scan exclusion regex.
-  # Excludes test files, generated mocks, and test runners from gcov processing.
-  # The '.*' suffix handles source extensions embedded in .gcno filenames (e.g. test_foo.c.gcno).
+  # Build filename-fragment patterns for the .gcno scan exclusion regex, split into two
+  # buckets by how they must be anchored:
+  #  - :basename           — test_prefix identifies a file by its own basename anywhere
+  #    it may appear; already basename-anchored by the caller's enclosing
+  #    "(\/|\\\\)...[^\/\\]*\.gcno" structure, no further scoping needed.
+  #  - :build_root_scoped  — mock/runner/framework fragments identify files Ceedling
+  #    itself generates exclusively under :build_root (mocks: configurator.rb
+  #    populate_cmock_defaults; runners: configurator_builder.rb
+  #    project_test_runners_path), so the caller additionally requires a :build_root
+  #    path-segment ancestor for these -- their own fragments have no word boundary or
+  #    other anchor within the basename itself.
+  # .gcno basenames are simple (e.g. 'test_foo.gcno', not 'test_foo.c.gcno') -- confirmed
+  # via form_test_object_filepath and Ruby's String#ext, which replaces rather than
+  # appends the extension. [^\/\\]* exists to tolerate whatever characters follow the
+  # prefix within the basename, not to skip an embedded source extension.
   # test_prefix/mock_prefix are config-driven, so they're Regexp-escaped -- unescaped, a
   # metacharacter in either (e.g. a literal '.') would silently over- or under-match.
   def build_gcno_exclusions
@@ -326,13 +358,17 @@ class ReportGeneratorReportinator < GcovReportinator
     # Use [^\/\\]* (no path separators) rather than .* to match filenames only.
     # Ceedling names build output dirs after test files (e.g. build/gcov/out/test_foo/),
     # so .* would greedily match test_foo/bar.c and exclude ALL production sources.
-    [
-      "#{Regexp.escape(data[:test_prefix].to_s)}[^\\/\\\\]*",  # test_foo.gcno
-      "#{Regexp.escape(data[:mock_prefix].to_s)}[^\\/\\\\]*",  # MockBar.gcno
-      "[^\\/\\\\]*_runner[^\\/\\\\]*",                          # test_foo_runner.gcno
-      Regexp.escape(File.basename(UNITY_C_FILE, '.*')),        # unity.gcno
-      Regexp.escape(File.basename(CMOCK_C_FILE, '.*'))         # cmock.gcno
-    ]
+    {
+      basename: [
+        "#{Regexp.escape(data[:test_prefix].to_s)}[^\\/\\\\]*"   # test_foo.gcno
+      ],
+      build_root_scoped: [
+        "#{Regexp.escape(data[:mock_prefix].to_s)}[^\\/\\\\]*",  # MockBar.gcno
+        "[^\\/\\\\]*_runner[^\\/\\\\]*",                          # test_foo_runner.gcno
+        Regexp.escape(File.basename(UNITY_C_FILE, '.*')),        # unity.gcno
+        Regexp.escape(File.basename(CMOCK_C_FILE, '.*'))         # cmock.gcno
+      ]
+    }
   end
 
 

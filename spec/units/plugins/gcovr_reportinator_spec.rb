@@ -198,6 +198,88 @@ describe GcovrReportinator do
       expect(combined).to include('build\\.out')
       expect(combined).to_not include('test.+')  # unescaped '.' would let literal 'testX' match too
     end
+
+    # A configured directory name must match as a real path segment, not merely appear
+    # as a substring somewhere else in the path.
+    context 'path-segment anchoring for configured directories' do
+      it 'does not treat a configured test path as matching inside a longer path segment' do
+        allow(configurator).to receive(:collection_paths_test).and_return(['test'])
+        reportinator = build_reportinator({})
+        regex = Regexp.union(reportinator.send(:build_report_exclusions).map { |p| Regexp.new(p) })
+        expect('latest/test_bar.c').to_not match(regex)
+        expect('contest_results/test_bar.c').to_not match(regex)
+      end
+
+      it 'still excludes a legitimate test file under the configured test path' do
+        allow(configurator).to receive(:collection_paths_test).and_return(['test'])
+        reportinator = build_reportinator({})
+        regex = Regexp.union(reportinator.send(:build_report_exclusions).map { |p| Regexp.new(p) })
+        expect('test/test_foo.c').to match(regex)
+        expect('test/sub/test_foo.c').to match(regex)
+      end
+
+      it 'does not treat a configured build_root as matching inside a longer path segment' do
+        allow(configurator).to receive(:project_build_root).and_return('build')
+        reportinator = build_reportinator({})
+        regex = Regexp.new(reportinator.send(:build_report_exclusions).last)
+        expect('unbuild/thing/foo.c').to_not match(regex)
+        expect('build/thing/foo.c').to match(regex)
+      end
+
+      it 'does not treat a configured support path as matching inside a longer path segment' do
+        allow(configurator).to receive(:collection_paths_support).and_return(['test/support'])
+        reportinator = build_reportinator({})
+        support_pattern = reportinator.send(:build_report_exclusions).find { |p| p.include?('support') }
+        regex = Regexp.new(support_pattern)
+        expect('old_test/support/helper.c').to_not match(regex)
+        expect('test/support/helper.c').to match(regex)
+      end
+
+      it 'excludes files under every configured test path when more than one is given' do
+        allow(configurator).to receive(:collection_paths_test).and_return(['test', 'more_tests'])
+        reportinator = build_reportinator({})
+        regex = Regexp.union(reportinator.send(:build_report_exclusions).map { |p| Regexp.new(p) })
+        expect('test/test_foo.c').to match(regex)
+        expect('more_tests/test_bar.c').to match(regex)
+      end
+
+      it 'excludes files under build_root the same way whether or not it is configured with a leading "./"' do
+        allow(configurator).to receive(:project_build_root).and_return('./build')
+        reportinator = build_reportinator({})
+        regex = Regexp.new(reportinator.send(:build_report_exclusions).last)
+        expect('build/thing/foo.c').to match(regex)
+      end
+    end
+
+    # The file's own basename, not merely an earlier path segment, must start with
+    # test_prefix.
+    context 'basename-only test_prefix matching' do
+      it "does not match a file whose own basename does not start with test_prefix, even under a test_prefix-named subdirectory" do
+        allow(configurator).to receive(:collection_paths_test).and_return(['test'])
+        reportinator = build_reportinator({})
+        regex = Regexp.new(reportinator.send(:build_report_exclusions).first)
+        expect('test/test_helpers/utility.c').to_not match(regex)
+        expect('test/sub/test_only_dir/notatest.c').to_not match(regex)
+      end
+
+      it 'still matches a genuine test file nested under an intermediate directory' do
+        allow(configurator).to receive(:collection_paths_test).and_return(['test'])
+        reportinator = build_reportinator({})
+        regex = Regexp.new(reportinator.send(:build_report_exclusions).first)
+        expect('test/test_helpers/test_utility.c').to match(regex)
+      end
+    end
+
+    it 'alternates every configured source extension, not just the first' do
+      allow(configurator).to receive(:extension_source).and_return(['.c', '.cpp'])
+      allow(configurator).to receive(:collection_paths_support).and_return(['support'])
+      reportinator = build_reportinator({})
+      support_pattern = reportinator.send(:build_report_exclusions).find { |p| p.include?('support') }
+      regex = Regexp.new(support_pattern)
+      expect('support/helper.c').to match(regex)
+      expect('support/helper.cpp').to match(regex)
+      expect('support/helper.h').to_not match(regex)
+    end
   end
 
   describe '#gcovr_exec_exception?' do
@@ -401,6 +483,21 @@ describe GcovrReportinator do
       without_mcdc = reportinator.send(:collect_gcovr_opts, { gcov_gcovr: {}, gcov_mcdc: false })
       expect(with_mcdc).to_not have_key(:mcdc)
       expect(without_mcdc).to_not have_key(:mcdc)
+    end
+
+    it 'places every user-supplied :report_exclude entry ahead of every generated exclusion, preserving order of both' do
+      result = reportinator.send(:collect_gcovr_opts, { gcov_gcovr: { report_exclude: ['user-a', 'user-b'] } })
+      generated = reportinator.send(:build_report_exclusions)
+      expect(result[:report_exclude]).to eq(['user-a', 'user-b'] + generated)
+    end
+
+    it 'passes gcov_reports and gcov_html_report_type through onto the returned opts' do
+      result = reportinator.send(
+        :collect_gcovr_opts,
+        { gcov_gcovr: {}, gcov_reports: ['html'], gcov_html_report_type: 'detailed' }
+      )
+      expect(result[:gcov_reports]).to eq(['html'])
+      expect(result[:gcov_html_report_type]).to eq('detailed')
     end
   end
 

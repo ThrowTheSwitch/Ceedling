@@ -126,6 +126,9 @@ Historically, Ceedling automatically compiles and links into a test executable a
 ### Internal verbosity level mapping for Ceedling to CMock
 Ceedling and CMock are interdependent but distinct tools. They each perform their own logging and have different verbosity level conventions. The internal mapping has been adjusted to configure CMock for verbosity levels that match the spirit of the selected top-level Ceedling logging verbosity level.
 
+### More strict regex matching to exclude test artifacts from Gcov plugin coverage reports
+Gcovr and ReportGenerator support within the GCov plugin now make use of more sophisticated and explicit regular expressions to filter out test files and test-build-generated files from coverage reporting. This helps prevent mistaken exclusions of source filenames with substrings (e.g. "_runner") that might otherwise match test filenames or generated files.
+
 ---
 
 # [1.1.9] — 2026-09-20

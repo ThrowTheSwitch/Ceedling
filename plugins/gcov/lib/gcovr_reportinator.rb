@@ -446,20 +446,32 @@ class GcovrReportinator < GcovReportinator
     # are joined into one alternation rather than assuming there's only ever one to match.
     src_extension_alternation = data[:src_extension].to_a.map { |ext| Regexp.escape(ext) }.join('|')
     test_prefix = Regexp.escape(data[:test_prefix].to_s)
-    build_root = Regexp.escape(data[:build_root].to_s)
+    build_root = Regexp.escape(strip_leading_dot_slash(data[:build_root].to_s))
 
     data[:test_paths].each do |path|
-      # Test files (e.g. test_foo.c)
-      patterns << ".*#{Regexp.escape(path)}.*/#{test_prefix}.+(?:#{src_extension_alternation})$"
+      # Test files (e.g. test_foo.c). '(?:^|/)path/' requires the configured path to
+      # appear as a real path segment -- preceded by string-start or '/', never mid-word,
+      # so a path merely containing the configured directory name as a substring (e.g.
+      # 'latest' containing 'test') isn't treated as that directory. '(?:.*/)?' still
+      # allows an arbitrary nested subdirectory before the basename, but the required
+      # 'test_prefix[^/]+' can never itself cross a '/', so a same-named subdirectory
+      # (e.g. test/test_helpers/) never stands in for the file's own basename.
+      patterns << ".*(?:^|/)#{Regexp.escape(strip_leading_dot_slash(path))}/(?:.*/)?#{test_prefix}[^/]+(?:#{src_extension_alternation})$"
     end
 
-    # Support files (e.g. helpers, stubs, fixtures) — never production source
+    # Support files (e.g. helpers, stubs, fixtures) — never production source.
+    # Same path-segment anchoring as above; the trailing '.+' is intentionally left
+    # unrestricted (unlike the test-file pattern) since every file anywhere under a
+    # configured support path is non-production, not just ones with a particular basename.
     data[:support_paths].each do |path|
-      patterns << ".*#{Regexp.escape(path)}/.+(?:#{src_extension_alternation})$"
+      patterns << ".*(?:^|/)#{Regexp.escape(strip_leading_dot_slash(path))}/.+(?:#{src_extension_alternation})$"
     end
 
-    # Any generated files for tests or vendored framework C source files below the root of the build directory
-    patterns << ".*#{build_root}/.+\\#{EXTENSION_CORE_SOURCE}$"
+    # Any generated files for tests or vendored framework C source files below the root
+    # of the build directory. Same path-segment anchoring as above, so a directory that
+    # merely contains the build root's name as a substring (e.g. 'unbuild') is not
+    # treated as the build root.
+    patterns << ".*(?:^|/)#{build_root}/.+\\#{EXTENSION_CORE_SOURCE}$"
 
     return patterns
   end
