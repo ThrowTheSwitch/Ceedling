@@ -388,6 +388,20 @@ describe CExtractorPreprocessing do
       expect(scanner.pos).to eq 0
     end
 
+    it "preserves a lone '/' that isn't part of a comment or operator" do
+      input = "#define RATIO (1/2)\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input.rstrip]
+      expect(pos).to eq input.length
+    end
+
+    it "preserves a lone trailing '\\' not immediately followed by a newline" do
+      input = "#define X \\a\n"
+      result, pos = try_directive(input)
+      expect(result).to eq [true, input.rstrip]
+      expect(pos).to eq input.length
+    end
+
     # The C standard specifies #/## token semantics but not the exact whitespace a
     # preprocessor emits when reconstructing macro text -- real toolchains can and do
     # disagree here. Ceedling regenerates this text into partials; it doesn't promise
@@ -775,6 +789,18 @@ describe CExtractorPreprocessing do
 
     it "defers to the function-definition path when followed by '{'" do
       result, pos = try_bare_invocation('FOO(0){}')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "excludes a __declspec(...) compiler extension -- not a bare invocation in its own right" do
+      result, pos = try_bare_invocation('__declspec(dllexport)')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    it "excludes a __word__(...) compiler extension (e.g. __attribute__) -- not a bare invocation in its own right" do
+      result, pos = try_bare_invocation('__attribute__((unused))')
       expect(result).to eq [false, nil]
       expect(pos).to eq 0
     end

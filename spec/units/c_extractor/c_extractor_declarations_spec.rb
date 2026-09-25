@@ -909,5 +909,75 @@ describe CExtractorDeclarations do
                      text: 'void (*cb)(int);', array_suffix: '')
       end
     end
+
+    context "comments and malformed input" do
+      it "scans past a block comment mid-declaration and still finds the real terminator" do
+        content = "int x /* note */ = 5;"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable).to be_an(Array)
+        expect(variable.length).to eq 1
+        expect(pos).to eq content.length
+        expect(rest).to eq ''
+      end
+
+      it "scans past a line comment containing a ';' without treating it as the terminator" do
+        content = "int x // ;\n = 5;"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable).to be_an(Array)
+        expect(variable.length).to eq 1
+        # If the ';' inside the comment had wrongly terminated the scan, pos would land
+        # mid-string instead of consuming the real, later terminator.
+        expect(pos).to eq content.length
+        expect(rest).to eq ''
+      end
+
+      it "rejects an unbalanced closing paren with no matching open" do
+        content = ");"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be false
+        expect(variable).to be_nil
+        expect(pos).to eq 0
+        expect(rest).to eq content
+      end
+
+      it "rejects an unbalanced closing bracket with no matching open" do
+        content = "];"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be false
+        expect(variable).to be_nil
+        expect(pos).to eq 0
+        expect(rest).to eq content
+      end
+
+      it "rejects an unbalanced closing brace with no matching open" do
+        content = "};"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be false
+        expect(variable).to be_nil
+        expect(pos).to eq 0
+        expect(rest).to eq content
+      end
+
+      it "scans past a lone '/' that doesn't start a comment" do
+        content = "int x /y;"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable).to be_an(Array)
+        expect(variable.length).to eq 1
+        expect(pos).to eq content.length
+        expect(rest).to eq ''
+      end
+
+      it "rejects a bare semicolon that doesn't look like a valid declaration" do
+        content = ";"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be false
+        expect(variable).to be_nil
+        expect(pos).to eq 0
+        expect(rest).to eq content
+      end
+    end
   end
 end

@@ -37,20 +37,14 @@ class CExtractorFunctions
   def try_extract_function_definition(scanner, filepath)
     start_pos = scanner.pos
 
-    # Look for function signature
+    # Look for function signature. extract_function_signature only ever returns
+    # non-nil for :definition mode by matching the '{' case in its own scan loop, and
+    # that case never consumes the brace -- the scanner is always left positioned
+    # exactly on the real '{' here, so there's no separate deadspace-skip/brace-check
+    # step to perform first.
     signature = extract_function_signature(scanner, :definition)
     return [false, CFunctionDefinition.new] unless signature
-    
-    @code_text.skip_deadspace(scanner)
 
-    unless scanner.peek(1) == '{'
-      return [false, CFunctionDefinition.new(
-        name: extract_function_name(signature),
-        signature: signature,
-        filepath: filepath
-      )]
-    end
-    
     # Extract function body
     success, braced_body = @code_text.extract_balanced_braces(scanner)
     unless success

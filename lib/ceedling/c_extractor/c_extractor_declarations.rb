@@ -97,18 +97,16 @@ class CExtractorDeclarations
         string_char = char
         scanner.getch
       when '/'
-        # Handle comments
-        if scanner.peek(2) =~ %r{^(/[/*])}
-          if scanner.peek(2) == '//'
-            # Line comment -- skip to end of line
-            scanner.scan_until(/\n/) || scanner.terminate
-          elsif scanner.peek(2) == '/*'
-            # Block comment -- skip to closing */
-            scanner.pos += 2
-            scanner.scan_until(%r{\*/})
-          else
-            scanner.getch
-          end
+        # Handle comments -- peek(2) starting with '/' is only ever exactly '//' or '/*'
+        # when it's a comment opener at all; anything else (a lone '/' or '/' followed by
+        # some other character) falls through to the plain-character else below.
+        if scanner.peek(2) == '//'
+          # Line comment -- skip to end of line
+          scanner.scan_until(/\n/) || scanner.terminate
+        elsif scanner.peek(2) == '/*'
+          # Block comment -- skip to closing */
+          scanner.pos += 2
+          scanner.scan_until(%r{\*/})
         else
           scanner.getch
         end
