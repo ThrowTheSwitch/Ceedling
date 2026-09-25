@@ -119,6 +119,24 @@ describe 'ToolExecutor (integration)' do
     end
   end
 
+  it 'builds and runs a real command line using the tools.md-documented hash-style array-substitution shortcut' do
+    with_source_tree({ 'echo_args.rb' => 'print ARGV.join(",")' }) do |dir|
+      # Mirrors tools.md's own :test_linker example ("-l$-lib:" with a YAML array of
+      # plain library names) -- each array item is a literal value, not a Ruby constant
+      # or expression, dropped into the substitution string as-is.
+      tool = {
+        name: 'ruby_probe',
+        executable: RbConfig.ruby,
+        arguments: [File.join(dir, 'echo_args.rb'), { '$-suffix' => ['foo', 'bar'] }],
+      }
+
+      command = executor.build_command_line(tool, [])
+      result = executor.exec(command)
+
+      expect(result[:stdout]).to eq('foo-suffix,bar-suffix')
+    end
+  end
+
   # Platform-detection-is-the-thing-under-test: SystemWrapper.windows?/SystemUtils#tcsh_shell?
   # are the exact predicates ToolExecutorHelper itself branches on, so asserting against them
   # directly checks "does the real resulting command actually work on this real platform" --

@@ -514,35 +514,51 @@ describe ToolExecutor do
       }.to raise_error(CeedlingException, /CEEDLING_SPEC_TOOL_EXECUTOR_NIL_CONST.*nil/)
     end
 
-    it "raises CeedlingException for a String value that is neither a Ruby-replacement pattern nor a known constant" do
+    it "uses a plain String value directly as a literal when it's neither a Ruby-replacement pattern nor a recognized constant" do
       allow(@system_wrapper).to receive(:constants_include?).and_return(false)
-      tool_config = { :name => 'my_tool', :executable => 'exe', :arguments => [{ '-v$' => 'NOT_A_REAL_THING' }] }
-
-      expect {
-        @tool_executor.build_command_line(tool_config, [])
-      }.to raise_error(CeedlingException, /cannot expand nonexistent value 'NOT_A_REAL_THING'/)
-    end
-
-    # NOTE: an Array-valued hash substitution (e.g. the ":arguments" shortcut
-    # "-l$-lib:\n  - foo\n  - bar" documented in tools.md) and a hash value of an
-    # unsupported scalar type (e.g. an Integer) are deliberately NOT covered here.
-    # Investigating this area during TDD surfaced a real, confirmed-against-the-real-class
-    # bug: Ruby 3.2 removed the default Object#=~, so `item =~ PATTERNS::RUBY_STRING_REPLACEMENT`
-    # (dehashify_argument_elements' first per-item check) raises NoMethodError for ANY
-    # non-String item -- Array-classed and Integer items alike -- before ever reaching the
-    # CeedlingException-based error handling those branches were clearly written to provide.
-    # This affects Ceedling's own documented YAML array-substitution example directly. Out of
-    # scope for this pass by explicit direction; flagged separately for its own scoped fix.
-
-    it 'unescapes \$ within the built substitution string across multiple joined elements, not just the first' do
-      allow(@system_wrapper).to receive(:constants_include?).with('RUBY_VERSION').and_return(true)
-      allow(@system_wrapper).to receive(:constants_include?).with('RUBY_PLATFORM').and_return(true)
-      tool_config = { :name => 't', :executable => 'exe', :arguments => [{ '\$flag=$' => ['RUBY_VERSION', 'RUBY_PLATFORM'] }] }
+      tool_config = { :name => 'my_tool', :executable => 'exe', :arguments => [{ '-D$' => 'FOO' }] }
 
       command = @tool_executor.build_command_line(tool_config, [])
 
-      expect(command[:line]).to include("$flag=#{RUBY_VERSION}")
-      expect(command[:line]).to include("$flag=#{RUBY_PLATFORM}")
+      expect(command[:line]).to include('-DFOO')
+    end
+
+    it 'treats an Array hash value as a list of literal elements, each producing its own repeated argument -- the tools.md-documented -l$-lib shortcut' do
+      allow(@system_wrapper).to receive(:constants_include?).and_return(false)
+      tool_config = { :name => 'test_linker', :executable => 'linker.exe', :arguments => [{ '-l$-lib' => ['foo', 'bar'] }] }
+
+      command = @tool_executor.build_command_line(tool_config, [])
+
+      expect(command[:line]).to include('-lfoo-lib')
+      expect(command[:line]).to include('-lbar-lib')
+    end
+
+    it 'flattens a nested Array item within the hash value into its own separate repeated arguments' do
+      allow(@system_wrapper).to receive(:constants_include?).and_return(false)
+      tool_config = { :name => 't', :executable => 'exe', :arguments => [{ '-D$' => [['nested1', 'nested2']] }] }
+
+      command = @tool_executor.build_command_line(tool_config, [])
+
+      expect(command[:line]).to include('-Dnested1')
+      expect(command[:line]).to include('-Dnested2')
+    end
+
+    it 'raises CeedlingException for an array item of an unsupported type (e.g. Integer), rather than crashing' do
+      tool_config = { :name => 'my_tool', :executable => 'exe', :arguments => [{ '-v$' => [42] }] }
+
+      expect {
+        @tool_executor.build_command_line(tool_config, [])
+      }.to raise_error(CeedlingException, /cannot expand value having type 'Integer'/)
+    end
+
+    it 'unescapes \$ within the built substitution string across multiple joined literal elements, not just the first' do
+      allow(@system_wrapper).to receive(:constants_include?).and_return(false)
+      tool_config = { :name => 't', :executable => 'exe', :arguments => [{ '\$flag=$' => ['A', 'B'] }] }
+
+      command = @tool_executor.build_command_line(tool_config, [])
+
+      expect(command[:line]).to include('$flag=A')
+      expect(command[:line]).to include('$flag=B')
     end
   end
 
