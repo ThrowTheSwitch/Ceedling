@@ -16,7 +16,7 @@ class ToolExecutor
     tool[:name] = default if tool[:name].nil?
   end
 
-  constructor :configurator, :tool_executor_helper, :loginator, :verbosinator, :system_wrapper, :ruby_expandinator
+  constructor :tool_executor_helper, :loginator, :verbosinator, :system_wrapper, :ruby_expandinator
 
   # build up a command line from yaml provided config
 
@@ -88,7 +88,7 @@ class ToolExecutor
       # Scrub the string for illegal output
       unless shell_result[:output].nil?
         shell_result[:output] = shell_result[:output].scrub if "".respond_to?(:scrub)
-        shell_result[:output].gsub!(/\033\[\d\dm/,'')
+        shell_result[:output].gsub!(/\033\[[\d;]*m/,'')
       end
 
       @tool_executor_helper.log_results( command_line, shell_result )
@@ -142,10 +142,13 @@ class ToolExecutor
     to_process = nil
     args_index = 0
 
-    # Handle ${#} input replacement
-    if (element =~ PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
+    # Handle ${#} input replacement, unless the operator itself is escaped (`\${#}`) --
+    # an escaped token is left for the unconditional `\$` unescape below to turn into
+    # literal '${#}' text instead of triggering substitution.
+    match_data = element.match(PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
+    if match_data && !match_data.pre_match.end_with?('\\')
       # Convert argument numbering from configuration 1-indexed to array 0-indexed
-      args_index = ($2.to_i - 1)
+      args_index = (match_data[2].to_i - 1)
 
       args_size = args.nil? ? 0 : args.size()
 
@@ -155,11 +158,11 @@ class ToolExecutor
       end
 
       if (args_index >= args_size)
-        error = "Command building for tool '#{tool_name}' was provided only #{args_size} arguments but references a replacement operator #{$1}."
+        error = "Command building for tool '#{tool_name}' was provided only #{args_size} arguments but references a replacement operator #{match_data[1]}."
         raise CeedlingException.new( error )
       end
 
-      match = /#{Regexp.escape($1)}/
+      match = /#{Regexp.escape(match_data[1])}/
       to_process = args[args_index]
     end
 

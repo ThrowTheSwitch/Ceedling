@@ -51,7 +51,6 @@ test_runner_manager:
 
 tool_executor:
   compose:
-    - configurator
     - tool_executor_helper
     - loginator
     - verbosinator
