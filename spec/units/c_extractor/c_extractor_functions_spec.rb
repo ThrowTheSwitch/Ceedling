@@ -731,10 +731,69 @@ describe CExtractorFunctions do
       it "extracts signature with deeply nested parentheses" do
         content = "void complex(int (*(*(*f)(int))(int))(int)){"
         signature, pos, rest = extract_signature.call(content, :definition)
-        
+
         expect(signature).to eq("void complex(int (*(*(*f)(int))(int))(int))")
         expect(pos).to eq(43)
         expect(rest).to eq("{")
+      end
+    end
+
+    context "malformed and unusual signature scanning" do
+      it "scans past a lone '/' that doesn't start a comment" do
+        content = "void foo(int a/b){"
+        signature, pos, rest = extract_signature.call(content, :definition)
+
+        expect(signature).to eq("void foo(int a/b)")
+        expect(pos).to eq(17)
+        expect(rest).to eq("{")
+      end
+
+      it "scans past an escaped quote inside a string literal in the signature" do
+        content = 'void foo(char* s = "a\"b"){'
+        signature, pos, rest = extract_signature.call(content, :definition)
+
+        expect(signature).to eq('void foo(char* s = "a\"b")')
+        expect(pos).to eq(26)
+        expect(rest).to eq("{")
+      end
+
+      it "rejects an unbalanced extra closing paren" do
+        content = "void foo(int a)) {"
+        signature, pos, rest = extract_signature.call(content, :definition)
+
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq(content)
+      end
+
+      it "rejects a brace reached with no balanced parens seen yet, in :definition mode" do
+        content = "void foo{"
+        signature, pos, rest = extract_signature.call(content, :definition)
+
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq(content)
+      end
+
+      it "rejects a :declaration signature that, after stripping a trailing compiler attribute, doesn't end in a closing paren" do
+        # Exactly the shape the surrounding production code's own comment names: without
+        # stripping the attribute first, the attribute's own trailing ')' would fool this
+        # check into misreading a variable declaration as a function declaration.
+        content = "int flag __attribute__((unused));"
+        signature, pos, rest = extract_signature.call(content, :declaration)
+
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq(content)
+      end
+
+      it "reaches EOF with no terminating ')'/'{'/';' and returns nil" do
+        content = "void foo(int a"
+        signature, pos, rest = extract_signature.call(content, :definition)
+
+        expect(signature).to be_nil
+        expect(pos).to eq(0)
+        expect(rest).to eq(content)
       end
     end
 
@@ -2116,6 +2175,21 @@ describe CExtractorFunctions do
         expect(success3).to be true
         expect(func3.name).to eq("third")
         expect(func3.source_filepath).to eq(filepath)
+      end
+    end
+
+    context "partial result when the function body's braces never balance" do
+      it "returns false with a partial CFunctionDefinition, not a bare failure" do
+        content = "void foo(int a) { int x = 1;"
+        success, func, pos, rest = try_extract.call(content)
+
+        expect(success).to be false
+        expect(func.name).to eq("foo")
+        expect(func.signature).to eq("void foo(int a)")
+        expect(func.code_block).to eq(content)
+        expect(func.body).to be_nil
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
       end
     end
   end

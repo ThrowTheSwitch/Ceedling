@@ -426,16 +426,216 @@ describe CExtractor do
         content = "A B C D E F G H I J"
         io = StringIO.new(content)
         extractor = create_pattern_extractor.call(/\w/)
-        
+
         results = []
         10.times do
           result = extract_feature.call(io, 1000, extractor)
           break unless result
           results << result
         end
-        
+
         expect(results).to eq(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"])
       end
+    end
+  end
+
+  ###
+  ### extract_contents() -- dispatch priority, termination, and cleanup
+  ###
+  ### extract_contents' own end-to-end dispatch correctness for every real construct
+  ### type, and element_sequence ordering, is already exhaustively proven with real
+  ### parsing by spec/integration/c_extractor_composition_spec.rb. These tests are
+  ### scoped narrowly to ordering/termination/cleanup behavior that a mocked-collaborator
+  ### test can isolate but a real-parsing test structurally can't (real C syntax is
+  ### rarely ambiguous between two constructs at the same position).
+  ###
+  describe "#extract_contents (private method testing)" do
+    # Helper to build a fully-wired CExtractor via DI, returning both the extractor and
+    # its individual real collaborators so tests can stub one collaborator's method while
+    # leaving the rest of the graph real -- mirrors #extract_next_feature's own
+    # build_extractor helper above.
+    let(:build_extractor) do
+      ->() do
+        code_text      = CExtractorCodeText.new
+        declarations   = CExtractorDeclarations.new({ c_extractor_code_text: code_text })
+        functions      = CExtractorFunctions.new({ c_extractor_code_text: code_text })
+        preprocessing  = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
+        definitions    = CExtractorDefinitions.new({ c_extractor_code_text: code_text })
+        declarations.setup()
+        functions.setup()
+        extractor = CExtractor.new(
+          {
+            c_extractor_code_text:    code_text,
+            c_extractor_functions:    functions,
+            c_extractor_declarations: declarations,
+            c_extractor_preprocessing: preprocessing,
+            c_extractor_definitions:  definitions,
+            configurator:             double('Configurator'),
+            loginator:                double('Loginator').as_null_object,
+            file_wrapper:             double('FileWrapper').as_null_object
+          }
+        )
+        extractor.setup()
+        {
+          extractor:     extractor,
+          preprocessing: preprocessing,
+          definitions:   definitions,
+          functions:     functions,
+          declarations:  declarations
+        }
+      end
+    end
+
+    it "tries directive extraction before typedef extraction at the same position" do
+      built = build_extractor.call()
+
+      allow(built[:preprocessing]).to receive(:try_extract_directive) do |scanner|
+        scanner.terminate
+        [true, "#define X 1"]
+      end
+      expect(built[:definitions]).not_to receive(:try_extract_typedef)
+
+      io = StringIO.new("TOKEN")
+      result = built[:extractor].send(:extract_contents, io, nil)
+
+      expect(result).to be_a(CExtractorTypes::CModule)
+      expect(result.macro_definitions.length).to eq(1)
+    end
+
+    it "tries typedef extraction before static-assert extraction at the same position" do
+      built = build_extractor.call()
+
+      allow(built[:definitions]).to receive(:try_extract_typedef) do |scanner|
+        scanner.terminate
+        [true, "typedef int foo_t;"]
+      end
+      expect(built[:preprocessing]).not_to receive(:try_extract_static_assert)
+
+      io = StringIO.new("TOKEN")
+      result = built[:extractor].send(:extract_contents, io, nil)
+
+      expect(result.type_definitions.length).to eq(1)
+    end
+
+    it "tries bare-macro-invocation extraction before function-definition extraction at the same position" do
+      built = build_extractor.call()
+
+      allow(built[:preprocessing]).to receive(:try_extract_bare_macro_invocation) do |scanner|
+        scanner.terminate
+        [true, CExtractorTypes::CStatement.new(text: "FOO(0)")]
+      end
+      expect(built[:functions]).not_to receive(:try_extract_function_definition)
+
+      io = StringIO.new("TOKEN")
+      result = built[:extractor].send(:extract_contents, io, nil)
+
+      expect(result.macro_invocations.length).to eq(1)
+    end
+
+    it "breaks out of the loop and returns the accumulated CModule when no extractor succeeds anywhere" do
+      built = build_extractor.call()
+
+      # None of the six extractors recognize this content at all (no leading '#',
+      # no keyword, no identifier characters), so every one of them fails and the
+      # loop must break rather than looping forever or raising.
+      io = StringIO.new("@@@")
+      result = built[:extractor].send(:extract_contents, io, nil)
+
+      expect(result).to be_a(CExtractorTypes::CModule)
+      expect(result.function_definitions).to eq([])
+      expect(result.function_declarations).to eq([])
+      expect(result.variable_declarations).to eq([])
+      expect(result.macro_definitions).to eq([])
+      expect(result.type_definitions).to eq([])
+      expect(result.aggregate_definitions).to eq([])
+      expect(result.macro_invocations).to eq([])
+      expect(result.element_sequence).to eq([])
+    end
+
+    it "closes the IO via ensure even when a collaborator raises mid-loop" do
+      built = build_extractor.call()
+      allow(built[:preprocessing]).to receive(:try_extract_directive).and_raise(StandardError, "boom")
+
+      io = StringIO.new("TOKEN")
+
+      expect {
+        built[:extractor].send(:extract_contents, io, nil)
+      }.to raise_error(StandardError, "boom")
+
+      expect(io.closed?).to be true
+    end
+  end
+
+  ###
+  ### _compute_line_info()
+  ###
+  describe "#_compute_line_info (private method testing)" do
+    let(:extractor) do
+      CExtractor.new(
+        {
+          c_extractor_code_text:     CExtractorCodeText.new,
+          c_extractor_functions:     CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new }),
+          c_extractor_declarations:  CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new }),
+          c_extractor_preprocessing: CExtractorPreprocessing.new({ c_extractor_code_text: CExtractorCodeText.new }),
+          c_extractor_definitions:   CExtractorDefinitions.new({ c_extractor_code_text: CExtractorCodeText.new }),
+          configurator:              double('Configurator'),
+          loginator:                 double('Loginator').as_null_object,
+          file_wrapper:              double('FileWrapper').as_null_object
+        }
+      ).tap { |e| e.setup() }
+    end
+
+    it "reports line 1 when nothing consumed contains a newline" do
+      io = StringIO.new("int x; int y;")
+      io.seek(7) # positioned right after "int x; "
+
+      line, cumulative = extractor.send(:_compute_line_info, io, 0, 7, 0)
+
+      expect(line).to eq(1)
+      expect(cumulative).to eq(0)
+    end
+
+    it "advances the line number when newlines precede the feature start" do
+      io = StringIO.new("int x;\nint y;\nint z;")
+      io.seek(14) # positioned right after the second line
+
+      line, cumulative = extractor.send(:_compute_line_info, io, 0, 14, 0)
+
+      expect(line).to eq(3)
+      expect(cumulative).to eq(2)
+    end
+
+    it "does not count newlines consumed after the feature start toward this call's reported line" do
+      io = StringIO.new("int x;\nint y;\n")
+      io.seek(14)
+
+      # feature_start (0) is before any newline, but the call consumed through both lines --
+      # this call's own reported line must reflect only the gap up to feature_start, while
+      # the returned cumulative count reflects everything actually consumed.
+      line, cumulative = extractor.send(:_compute_line_info, io, 0, 0, 0)
+
+      expect(line).to eq(1)
+      expect(cumulative).to eq(2)
+    end
+
+    it "handles a zero-length gap where the feature starts exactly at call_start" do
+      io = StringIO.new("int x;\nint y;")
+      io.seek(7)
+
+      line, cumulative = extractor.send(:_compute_line_info, io, 7, 7, 3)
+
+      expect(line).to eq(4)
+      expect(cumulative).to eq(3)
+    end
+
+    it "adds newly consumed newlines on top of a nonzero starting cumulative count" do
+      io = StringIO.new("first\nsecond\nthird")
+      io.seek(13) # after "first\nsecond\n"
+
+      line, cumulative = extractor.send(:_compute_line_info, io, 0, 13, 5)
+
+      expect(line).to eq(8)
+      expect(cumulative).to eq(7)
     end
   end
 
