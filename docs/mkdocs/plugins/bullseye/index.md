@@ -83,10 +83,10 @@ also supply the path.
 
 !!! note "Docker images"
     Ceedling's `madsciencelab-plugins` Docker images do not include Bullseye.
-    It is commercial software requiring its own license, so it cannot be
-    bundled into a freely distributable image. See
-    [Licensing](licensing.md#using-bullseye-in-a-container) for how to install
-    it into a container yourself.
+    Distributing its executables requires a license that a freely available
+    image cannot carry. Download Bullseye yourself, then either extend the
+    image or install into a running container. See
+    [Using Bullseye in a container](licensing.md#using-bullseye-in-a-container).
 
 ### Enable the plugin
 

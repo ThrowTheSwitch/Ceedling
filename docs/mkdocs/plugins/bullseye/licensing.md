@@ -136,18 +136,84 @@ Interrupting a build can therefore leave a license checked out. Run
 
 ## Using Bullseye in a container
 
-Ceedling's `madsciencelab-plugins` Docker images do not include Bullseye. It is
-commercial software requiring a license, so it cannot be bundled into a freely
-distributable image. Install it into a running container yourself.
+Ceedling's `madsciencelab-plugins` Docker images do not include Bullseye. No
+Ceedling image can. Bullseye is commercial software, and distributing its
+executables requires a license that a freely available image cannot carry.
+Shipping the tools unlicensed is not possible either.
 
-Mount your Bullseye installer into the container and install with `--prefix`,
-which avoids needing root.
+Download Bullseye yourself and add it to a container. There are two ways to do
+that. Extend the image when you want a reusable environment. Install into a
+running container when you want a one-off.
+
+!!! note "Check the image's Ceedling version"
+    Adding Bullseye to an image is only half of what you need. The image's own
+    Ceedling must also be a release in which this plugin is enabled. Ceedling
+    1.1.0 and earlier ship it disabled and refuse to load it. Run
+    `ceedling version` against your image to check.
+
+!!! warning "Never commit a license key"
+    Supply your key through a build argument, an environment variable, or a
+    secret. A key committed to a repository is a key you have to rotate. Treat
+    any image carrying an activated Bullseye license as private to your
+    organization, and never push one to a public registry.
+
+### Extending the image
+
+Build your own layer on top of `madsciencelab-plugins`. This is the better
+option for repeated use and for CI, because the install happens once at image
+build time rather than on every container start.
+
+Place your downloaded Bullseye installer beside this `Dockerfile`.
+
+```dockerfile
+FROM throwtheswitch/madsciencelab-plugins:latest
+
+# Your downloaded, unpacked Bullseye installer directory
+COPY --chown=dev:nonroot BullseyeCoverage-9.25.9 /tmp/bullseye-installer
+
+# Supplied at build time, never baked into the Dockerfile itself
+ARG BULLSEYE_LICENSE_KEY
+
+RUN /tmp/bullseye-installer/install \
+      --prefix /home/dev/bullseye \
+      --key "$BULLSEYE_LICENSE_KEY" \
+      --search "/usr/bin:/usr/local/bin" \
+    && rm -rf /tmp/bullseye-installer
+
+ENV PATH="/home/dev/bullseye/bin:${PATH}"
+```
+
+Build it with your key passed in.
+
+```shell
+ > docker build --build-arg BULLSEYE_LICENSE_KEY="$BULLSEYE_LICENSE_KEY" -t my-ceedling-bullseye .
+```
+
+Then run your project against the image you built.
+
+```shell
+ > docker run --rm -v /path/to/your/project:/home/dev/project my-ceedling-bullseye ceedling bullseye:all
+```
+
+!!! note "Build arguments are recorded in image history"
+    `docker build --build-arg` leaves the value visible in the built image's
+    metadata. Use BuildKit secrets instead if that matters to you, or build the
+    image somewhere its history stays private.
+
+### Installing into a running container
+
+Mount your installer into a stock `madsciencelab-plugins` container and install
+it there. Nothing persists after the container exits, so this suits a quick
+experiment rather than repeated use.
+
+`--prefix` installs somewhere writable, which avoids needing root.
 
 ```shell
  > docker run -it --rm \
+     -e BULLSEYE_LICENSE_KEY \
      -v /path/to/your/project:/home/dev/project \
      -v /path/to/BullseyeCoverage-9.25.9:/opt/bullseye-installer:ro \
-     throwtheswitch/madsciencelab-plugins:1.1.0
+     throwtheswitch/madsciencelab-plugins:latest
 ```
 
 Inside the container, install and put the tools on `PATH`.
@@ -160,15 +226,6 @@ Inside the container, install and put the tools on `PATH`.
  > export PATH=/home/dev/bullseye/bin:$PATH
  > ceedling utils:bullseye_license
 ```
-
-!!! warning "Never commit a license key"
-    Supply your key through an environment variable or a secret. Passing
-    `-e BULLSEYE_LICENSE_KEY` to `docker run` keeps it out of your project
-    files. A key committed to a repository is a key you have to rotate.
-
-Installing into a running container means reinstalling each time you start a
-fresh one. Building your own image layer avoids that. Treat any image carrying
-an activated license as private to your organization.
 
 ## What this plugin does not do
 
