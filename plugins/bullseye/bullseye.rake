@@ -115,12 +115,14 @@ namespace BULLSEYE_SYM do
 end
 
 # If bullseye config enables dedicated report generation task, create the task
-if not @ceedling[BULLSEYE_SYM].automatic_html_reporting_enabled?
+if not @ceedling[BULLSEYE_SYM].automatic_reporting_enabled?
 namespace BULLSEYE_REPORT_NAMESPACE_SYM do
 
-  desc "Generate HTML coverage report (Note: a #{BULLSEYE_SYM}: task must be executed first)"
+  desc "Generate coverage reports (Note: a #{BULLSEYE_SYM}: task must be executed first)"
   task BULLSEYE_SYM do
     @ceedling[:bullseye].generate_html_report()
+    # Does nothing unless :xml_report names a format
+    @ceedling[:bullseye].generate_xml_report()
   end
 
 end
@@ -132,6 +134,14 @@ namespace UTILS_SYM do
   task BULLSEYE_SYM do
     command = @ceedling[:tool_executor].build_command_line( TOOLS_BULLSEYE_BROWSER, [] )
     @ceedling[:tool_executor].exec( command )
+  end
+
+  # A flat task name rather than a `utils:bullseye:license` namespace. Rake allows a
+  # task and a namespace to share the name `utils:bullseye`, but the pairing reads
+  # poorly in `ceedling help`.
+  desc "Report Bullseye license status"
+  task "#{BULLSEYE_ROOT_NAME}_license" do
+    @ceedling[:bullseye].report_license_status()
   end
 
 end

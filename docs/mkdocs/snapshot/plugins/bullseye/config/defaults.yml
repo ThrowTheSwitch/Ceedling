@@ -11,6 +11,11 @@
   :summaries: TRUE               # Enable covsrc totals banner + per-source covfn dump to console after tests
   :report_task: FALSE            # Disable dedicated report generation task (this enables automatic report generation)
   :untested_sources: :list       # :ignore (skip entirely), :list (log filepaths not in report), :compile (compile all for 0% coverage)
+  :branch_detail: :none          # Annotated source listing of uncovered branches. :none, :uncovered (covbr --uncover), :all (covbr --all)
+  :xml_report: :none             # Machine-readable coverage report. :none, :native (Bullseye schema), :cobertura (CI-friendly)
+  :fail_under:                   # Fail the build below these coverage percentages. 0 disables the check.
+    :functions: 0
+    :branches: 0
   :license_manager_file:         # Path to a Bullseye floating-license manager file (sets COVLM); irrelevant for node-locked/unlimited licenses
 
 ...
