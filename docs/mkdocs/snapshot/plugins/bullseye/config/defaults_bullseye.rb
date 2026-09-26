@@ -57,14 +57,18 @@ DEFAULT_BULLSEYE_FIXTURE_TOOL = {
   :arguments => [].freeze
   }
 
-# Whole-COVFILE totals report, printed to console after a bullseye: task run
+# Whole-COVFILE totals report. Only the totals are consumed. The plugin parses them
+# and renders its own console summary, so this output is never shown to the user.
+# `--csv` yields a quoted "Total" row with discrete percentage fields. Parsing that is
+# stable against changes to the column widths and alignment of the human-readable
+# report. No `-w` width is set because width is meaningless for CSV.
 DEFAULT_BULLSEYE_REPORT_COVSRC_TOOL = {
   :executable => FilePathUtils.os_executable_ext('covsrc').freeze,
   :name => 'default_bullseye_report_covsrc'.freeze,
   :optional => true.freeze,
   :arguments => [
     "-q".freeze,
-    "-w140".freeze,
+    "--csv".freeze,
     ].freeze
   }
 
@@ -77,6 +81,50 @@ DEFAULT_BULLSEYE_REPORT_COVFN_TOOL = {
     "--width 120".freeze,
     "--no-source".freeze,
     "\"${1}\"".freeze,
+    ].freeze
+  }
+
+# Annotated source listing showing which individual conditions and decisions went
+# uncovered. covsrc and covfn report branch coverage only as a percentage. This is the
+# only console report that identifies the specific branches behind that number.
+# `${1}` carries the mode flag chosen by :bullseye ↳ :branch_detail.
+# Invoked once against the whole coverage file. covbr honors covselect's persisted
+# exclusions on its own, so no region arguments are needed.
+DEFAULT_BULLSEYE_REPORT_COVBR_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('covbr').freeze,
+  :name => 'default_bullseye_report_covbr'.freeze,
+  :optional => true.freeze,
+  :arguments => [
+    "-q".freeze,
+    "--width 120".freeze,
+    "${1}".freeze, # Mode flag
+    ].freeze
+  }
+
+# Machine-readable coverage report for CI tooling. covxml emits Bullseye's own XML
+# schema by default. `--cobertura` switches it to Cobertura format for the many CI
+# dashboards that already read that. `${1}` carries the format flag chosen by
+# :bullseye ↳ :xml_report and is empty for the native format.
+DEFAULT_BULLSEYE_REPORT_COVXML_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('covxml').freeze,
+  :name => 'default_bullseye_report_covxml'.freeze,
+  :optional => true.freeze,
+  :arguments => [
+    "-q".freeze,
+    "${1}".freeze,        # Format flag
+    "-o \"${2}\"".freeze, # Output filepath
+    ].freeze
+  }
+
+# Reports Bullseye license utilization for the `utils:bullseye_license` task.
+# No `-q` or `--no-banner` is passed. covlmgr prints the license number and expiry
+# date in its banner, which is the most useful part of the diagnostic.
+DEFAULT_BULLSEYE_LICENSE_STATUS_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('covlmgr').freeze,
+  :name => 'default_bullseye_license_status'.freeze,
+  :optional => true.freeze,
+  :arguments => [
+    "--status".freeze,
     ].freeze
   }
 
@@ -124,8 +172,11 @@ def get_default_config
     :bullseye_fixture        => DEFAULT_BULLSEYE_FIXTURE_TOOL,
     :bullseye_report_covsrc  => DEFAULT_BULLSEYE_REPORT_COVSRC_TOOL,
     :bullseye_report_covfn   => DEFAULT_BULLSEYE_REPORT_COVFN_TOOL,
+    :bullseye_report_covbr   => DEFAULT_BULLSEYE_REPORT_COVBR_TOOL,
+    :bullseye_report_covxml  => DEFAULT_BULLSEYE_REPORT_COVXML_TOOL,
     :bullseye_report_covhtml => DEFAULT_BULLSEYE_REPORT_COVHTML_TOOL,
     :bullseye_covselect      => DEFAULT_BULLSEYE_COVSELECT_TOOL,
+    :bullseye_license_status => DEFAULT_BULLSEYE_LICENSE_STATUS_TOOL,
     :bullseye_browser        => DEFAULT_BULLSEYE_BROWSER_TOOL,
   }
 end

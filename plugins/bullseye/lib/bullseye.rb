@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'csv'
 require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
@@ -25,8 +26,11 @@ class Bullseye < Plugin
 
     @project_config = @ceedling[:configurator].project_config_hash
 
-    # Validate :untested_sources configuration value — fail fast at setup, not at report time
+    # Validate enumerated configuration values. Failing here is fast and specific.
+    # Deferring to report time would surface a mistake as a skipped feature.
     validate_untested_sources( @project_config )
+    validate_branch_detail( @project_config )
+    validate_xml_report( @project_config )
 
     # COVFILE environment variable — collected by PluginManager across all plugins, flattened
     # into the ENVIRONMENT_COVFILE global constant and the real COVFILE env var by Configurator
@@ -132,12 +136,25 @@ class Bullseye < Plugin
     # the same persisted selections, so this isn't just a console-output concern
     apply_report_exclusions()
 
+    # Totals are collected once. The console summary and the coverage threshold check
+    # both consume them. Collection is skipped when neither one needs them.
+    totals = nil
+    totals = collect_coverage_totals() if summaries_enabled? or thresholds_configured?
+
     if summaries_enabled?
       report_per_function_coverage_results()
-      report_coverage_results_all()
+      report_coverage_results_all( totals )
     end
 
-    generate_html_report() if automatic_html_reporting_enabled?
+    report_branch_coverage_results()
+
+    if automatic_reporting_enabled?
+      generate_html_report()
+      generate_xml_report()
+    end
+
+    # Runs last so the developer sees every report before the build fails.
+    enforce_coverage_thresholds( totals )
   end
 
   def summary
@@ -154,12 +171,14 @@ class Bullseye < Plugin
     @plugin_reportinator.run_test_results_report(hash)
 
     # coverage results
-    report_coverage_results_all() if summaries_enabled?
+    report_coverage_results_all( collect_coverage_totals() ) if summaries_enabled?
   end
 
   # Called within class and also externally by plugin Rakefile
   # No parameters enables the opportunity for latter mechanism
-  def automatic_html_reporting_enabled?
+  # Gates both the HTML and XML reports. A dedicated report task and automatic
+  # report generation are mutually exclusive.
+  def automatic_reporting_enabled?
     return (@project_config[:bullseye_report_task] == false)
   end
 
@@ -294,6 +313,52 @@ class Bullseye < Plugin
 
       @loginator.log( "Bullseye HTML coverage report: #{BULLSEYE_HTML_ARTIFACTS_PATH}" )
     rescue => ex
+      @ceedling[:plugin_manager].register_build_failure( BULLSEYE_SYM, license_guidance( ex.message ) )
+    end
+  end
+
+  # Generates a machine-readable coverage report for CI tooling.
+  # Called within class and also externally by plugin Rakefile (report:bullseye / post_build).
+  # Does nothing unless :xml_report names a format.
+  def generate_xml_report()
+    format = @project_config[:bullseye_xml_report]
+    return if format == BULLSEYE_XML_REPORT_NONE
+
+    begin
+      @ceedling[:tool_validator].validate( tool: TOOLS_BULLSEYE_REPORT_COVXML, boom: true )
+
+      @file_wrapper.mkdir( BULLSEYE_ARTIFACTS_PATH ) unless @file_wrapper.exist?( BULLSEYE_ARTIFACTS_PATH )
+
+      command = @tool_executor.build_command_line(
+        TOOLS_BULLSEYE_REPORT_COVXML, [],
+        BULLSEYE_XML_REPORT_FLAGS[format],
+        BULLSEYE_XML_ARTIFACT_PATH
+      )
+      @tool_executor.exec( command )
+
+      @loginator.log( "Bullseye #{format} XML coverage report: #{BULLSEYE_XML_ARTIFACT_PATH}" )
+    rescue => ex
+      @ceedling[:plugin_manager].register_build_failure( BULLSEYE_SYM, license_guidance( ex.message ) )
+    end
+  end
+
+  # Reports Bullseye license status to the console.
+  # Called externally by plugin Rakefile (utils:bullseye_license).
+  #
+  # covlmgr reports the license number and expiry date in its banner for every
+  # license type. It then reports license manager utilization. An unlimited license
+  # cannot use the license manager at all. "License manager disabled" is therefore
+  # the expected result for one, not a problem to report.
+  def report_license_status()
+    begin
+      @ceedling[:tool_validator].validate( tool: TOOLS_BULLSEYE_LICENSE_STATUS, boom: true )
+
+      command      = @tool_executor.build_command_line( TOOLS_BULLSEYE_LICENSE_STATUS, [] )
+      shell_result = @tool_executor.exec( command )
+
+      banner = @plugin_reportinator.generate_banner( "#{BULLSEYE_ROOT_NAME.upcase}: LICENSE STATUS" )
+      @loginator.log "\n" + banner + shell_result[:output].to_s.strip + "\n\n"
+    rescue => ex
       @ceedling[:plugin_manager].register_build_failure( BULLSEYE_SYM, ex.message )
     end
   end
@@ -301,12 +366,35 @@ class Bullseye < Plugin
   private ###################################
 
   def validate_untested_sources(config)
-    value = config[:bullseye_untested_sources]
-    if not BULLSEYE_UNTESTED_SOURCES_OPTIONS.include?( value )
-      options = BULLSEYE_UNTESTED_SOURCES_OPTIONS.map{ |opt| "':#{opt}'" }.join(', ')
-      msg = "Plugin configuration :bullseye ↳ :untested_sources ➡️ `#{value.inspect}` is not a recognized option {#{options}}."
-      raise CeedlingException.new(msg)
-    end
+    validate_enumerated_option( config, :bullseye_untested_sources, ':untested_sources', BULLSEYE_UNTESTED_SOURCES_OPTIONS )
+  end
+
+  def validate_branch_detail(config)
+    validate_enumerated_option( config, :bullseye_branch_detail, ':branch_detail', BULLSEYE_BRANCH_DETAIL_OPTIONS )
+  end
+
+  def validate_xml_report(config)
+    validate_enumerated_option( config, :bullseye_xml_report, ':xml_report', BULLSEYE_XML_REPORT_OPTIONS )
+  end
+
+  # Rejects an unrecognized value for any enumerated plugin setting.
+  # Raising at setup names the offending setting directly. Deferring to report time
+  # would surface the mistake as a silently skipped feature instead.
+  def validate_enumerated_option(config, key, label, options)
+    value = config[key]
+    return if options.include?( value )
+
+    list = options.map{ |opt| "':#{opt}'" }.join(', ')
+    msg = "Plugin configuration :bullseye ↳ #{label} ➡️ `#{value.inspect}` is not a recognized option {#{list}}."
+    raise CeedlingException.new(msg)
+  end
+
+  # An unlicensed or expired Bullseye installation surfaces only as an opaque failure
+  # from the tool itself. Naming the license diagnostic turns that into a next step.
+  def license_guidance(message)
+    return "#{message}\n" \
+           "NOTE: Bullseye tools also fail this way when no valid license is available.\n" \
+           "Run `ceedling utils:bullseye_license` to report Bullseye license status.\n\n"
   end
 
   # All project sources minus every source any test references
@@ -347,33 +435,111 @@ class Bullseye < Plugin
     end
   end
 
-  # No region arguments are passed to covsrc here — it reports against the whole
-  # coverage file, honoring whatever exclusions apply_report_exclusions already
-  # registered via covselect.
-  def report_coverage_results_all()
+  # Runs covsrc and returns whole-project coverage percentages.
+  #
+  # No region arguments are passed. covsrc reports against the whole coverage file.
+  # It honors whatever exclusions apply_report_exclusions already registered through
+  # covselect.
+  #
+  # The tool is configured for `--csv`. Its final row carries the project total.
+  # The columns are source, function covered, function total, function percent,
+  # condition/decision covered, condition/decision total, condition/decision percent.
+  def collect_coverage_totals()
     @ceedling[:tool_validator].validate( tool: TOOLS_BULLSEYE_REPORT_COVSRC, boom: false, respect_optional: true )
 
-    command      = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC, [])
-    shell_result = @ceedling[:tool_executor].exec( command )
-    coverage     = shell_result[:output]
+    command      = @tool_executor.build_command_line(TOOLS_BULLSEYE_REPORT_COVSRC, [])
+    shell_result = @tool_executor.exec( command )
 
+    totals = { :functions => nil, :branches => nil }
+
+    # Tool output is an external boundary. Malformed rows yield no totals rather
+    # than aborting a build whose tests already ran and passed.
+    begin
+      CSV.parse( shell_result[:output] ) do |row|
+        next if row.nil? or (row[0] != 'Total')
+        totals[:functions] = extract_coverage_percentage( row[3] )
+        totals[:branches]  = extract_coverage_percentage( row[6] )
+      end
+    rescue CSV::MalformedCSVError
+      @loginator.log( 'Could not parse Bullseye coverage totals from covsrc.', Verbosity::COMPLAIN )
+    end
+
+    return totals
+  end
+
+  # covsrc renders a CSV percentage as digits followed by '%'. A source with no
+  # measurable probes yields an empty field instead of a percentage.
+  def extract_coverage_percentage(field)
+    match = field.to_s.match( /(\d+)\s*%/ )
+    return nil if match.nil?
+    return match[1].to_i
+  end
+
+  def report_coverage_results_all(totals)
     results = {
-      :context => BULLSEYE_SYM,
-      :coverage => {
-        :functions => nil,
-        :branches  => nil
-      }
+      :context  => BULLSEYE_SYM,
+      :coverage => totals
     }
 
-    if (coverage =~ /^Total.*?=\s+([0-9]+)\%/)
-      results[:coverage][:functions] = $1.to_i
-    end
-
-    if (coverage =~ /^Total.*=\s+([0-9]+)\%\s*$/)
-      results[:coverage][:branches] = $1.to_i
-    end
-
     @plugin_reportinator.run_report( @coverage_template_all, results )
+  end
+
+  # Prints an annotated source listing identifying individual uncovered branches.
+  # covsrc and covfn report branch coverage only as a percentage. This is the one
+  # console report naming the branches behind that number.
+  #
+  # Invoked once against the whole coverage file. covbr honors covselect's persisted
+  # exclusions on its own. No region arguments are needed.
+  def report_branch_coverage_results()
+    mode = @project_config[:bullseye_branch_detail]
+    return if mode == BULLSEYE_BRANCH_DETAIL_NONE
+
+    @ceedling[:tool_validator].validate( tool: TOOLS_BULLSEYE_REPORT_COVBR, boom: false, respect_optional: true )
+
+    banner = @plugin_reportinator.generate_banner( "#{BULLSEYE_ROOT_NAME.upcase}: BRANCH COVERAGE DETAIL" )
+    @loginator.log "\n" + banner
+
+    command      = @tool_executor.build_command_line( TOOLS_BULLSEYE_REPORT_COVBR, [], BULLSEYE_BRANCH_DETAIL_FLAGS[mode] )
+    shell_result = @tool_executor.exec( command )
+    detail       = shell_result[:output].to_s.strip
+
+    # covbr prints nothing in :uncovered mode when every probe is fully covered.
+    if detail.empty?
+      @loginator.log( "No uncovered branches.\n" )
+    else
+      @loginator.log( detail + "\n" )
+    end
+  end
+
+  def thresholds_configured?
+    thresholds = @project_config[:bullseye_fail_under] || {}
+    return [thresholds[:functions].to_i, thresholds[:branches].to_i].any? { |minimum| minimum > 0 }
+  end
+
+  # Fails the build when measured coverage falls below a configured minimum.
+  # A minimum of zero disables the check for that metric.
+  #
+  # Each shortfall is registered separately. The build failure summary then lists one
+  # bullet per metric instead of one bullet carrying embedded newlines.
+  def enforce_coverage_thresholds(totals)
+    thresholds = @project_config[:bullseye_fail_under] || {}
+
+    { :functions => 'Function', :branches => 'Branch' }.each do |metric, label|
+      minimum = thresholds[metric].to_i
+      next if minimum <= 0
+
+      actual = totals.nil? ? nil : totals[metric]
+
+      if actual.nil?
+        message = "#{label} coverage is unavailable, but a minimum of #{minimum}% is configured."
+      elsif actual < minimum
+        message = "#{label} coverage #{actual}% is below the configured minimum of #{minimum}%."
+      else
+        next
+      end
+
+      @ceedling[:plugin_manager].register_build_failure( BULLSEYE_SYM, message )
+    end
   end
 
   def report_per_function_coverage_results()

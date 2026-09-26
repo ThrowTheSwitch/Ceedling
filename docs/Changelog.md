@@ -60,6 +60,23 @@ Running the `dumpconfig` application command to produce a fully resolved project
 #### ReportGenerator coverage-threshold parity
 Added `:gcov` ↳ `:report_generator` ↳ `:fail_under_line`/`:fail_under_branch`/`:fail_under_method`/`:fail_under_full_method`, ReportGenerator’s own coverage-threshold options mirroring the Gcovr side’s existing `:fail_under_*` family. A configured threshold breaks the build in the same way as these options do with Gcovr.
 
+### Bullseye plugin
+
+#### Plugin re-enabled
+The [Bullseye](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/bullseye/) code coverage plugin is enabled again. It was disabled as of 1.0.0 because updating it required a license for the commercial Bullseye tooling. The makers of Bullseye generously provided one. The plugin has been brought forward to Ceedling’s current plugin architecture and its documentation rewritten.
+
+#### Branch coverage detail
+Added [`:bullseye` ↳ `:branch_detail:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/bullseye/#branch_detail), an annotated source listing naming the individual conditions and decisions that went uncovered. Console summaries report branch coverage only as a percentage. Nothing previously said which branches accounted for that number. Accepts `:none`, `:uncovered`, or `:all`.
+
+#### Machine-readable coverage reports
+Added [`:bullseye` ↳ `:xml_report:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/bullseye/#xml_report) for CI consumption. Accepts `:none`, `:native` for Bullseye’s own schema, or `:cobertura` for the format many CI dashboards already read.
+
+#### Coverage thresholds
+Added [`:bullseye` ↳ `:fail_under:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/bullseye/#fail_under) with separate function and branch minimums. A configured threshold breaks the build in the same way the Gcov plugin’s own `:fail_under_*` options do. Reports still generate before the failure is reported.
+
+#### License status task
+Added `utils:bullseye_license`, reporting Bullseye license number, expiry, and license manager utilization. An unlicensed or expired installation otherwise surfaces only as an opaque tool failure. Bullseye report tools that fail now name this task.
+
 ### Filepath limit checks
 Platform filepath limits (especially on Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
 
