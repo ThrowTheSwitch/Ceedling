@@ -146,10 +146,9 @@ that. Extend the image when you want a reusable environment. Install into a
 running container when you want a one-off.
 
 !!! note "Check the image's Ceedling version"
-    Adding Bullseye to an image is only half of what you need. The image's own
-    Ceedling must also be a release in which this plugin is enabled. Ceedling
-    1.1.0 and earlier ship it disabled and refuse to load it. Run
-    `ceedling version` against your image to check.
+    Adding Bullseye to an image is only half of what you need. This plugin
+    requires Ceedling 1.2.0 or newer. Releases before that ship it disabled and
+    refuse to load it. Run `ceedling version` against your image to check.
 
 !!! warning "Never commit a license key"
     Supply your key through a build argument, an environment variable, or a

@@ -23,7 +23,7 @@ for how to enable built-in plugins and load custom plugins in your project.
 !!! warning
     Build-related plugins intentionally execute duplicated builds.
 
-Plugins including [Gcov](gcov/index.md), Bullseye, and [Valgrind](valgrind.md)
+Plugins including [Gcov](gcov/index.md), [Bullseye](bullseye/index.md), and [Valgrind](valgrind.md)
 recreate test build tasks. That is, the command line build task `test:foo` also exists 
 as `gcov:foo`, `bullseye:foo`, and/or `valgrind:foo` if these plugins are enabled.
 Each of these triggers a full rebuild of the named test with instrumentation 
@@ -175,7 +175,7 @@ not because of the file itself.
     and .Net-based [ReportGenerator] to produce coverage reports in a
     variety of formats.
 
--   :material-percent: **`bullseye`**
+-   :material-percent: **[`bullseye`](bullseye/index.md)**
 
     ---
 
@@ -183,8 +183,8 @@ not because of the file itself.
     provided by the commercial [Bullseye] tool, which provides visualization
     and report generation from the coverage results.
 
-    Note: Bullseye was disabled as of 1.0.0 and is being updated for 1.2.0 but
-    is currently not usable.
+    Note: Bullseye requires a commercial license. It was disabled as of 1.0.0
+    and is enabled again as of 1.2.0.
 
 </div>
 
