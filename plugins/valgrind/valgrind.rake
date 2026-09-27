@@ -13,16 +13,28 @@
 
 CLEAN.include(File.join(VALGRIND_ARTIFACTS_PATH, '*'))
 
+# Declares the artifacts path as a Rake directory task so the `directories`
+# prerequisite below can actually resolve it. Without this the prerequisite only
+# resolved because the directory already happened to exist on disk.
+directory(VALGRIND_ARTIFACTS_PATH)
+
 task directories: [VALGRIND_ARTIFACTS_PATH]
 
-task :valgrind => [:prepare] do
+# Every valgrind: task depends on this. It is the one place the Valgrind executable
+# and the host platform are checked, so a build that never runs a valgrind: task
+# never requires Valgrind to be installed. See Valgrind#validate_environment!.
+task :valgrind_deps do
+  @ceedling[VALGRIND_SYM].validate_environment!
+end
+
+task :valgrind => [:prepare, :valgrind_deps] do
   Rake.application['valgrind:all'].invoke
 end
 
 namespace VALGRIND_SYM do
 
   desc "Run all unit tests under Valgrind (also just 'valgrind' works)."
-  task :all => [:prepare] do
+  task :all => [:prepare, :valgrind_deps] do
     @ceedling[:test_invoker].setup_and_invoke(
       tests: COLLECTION_ALL_TESTS,
       context: VALGRIND_SYM,
@@ -39,7 +51,7 @@ namespace VALGRIND_SYM do
   end
 
   desc "Run Valgrind tests by matching regular expression pattern."
-  task :pattern, [:regex] => [:prepare] do |_t, args|
+  task :pattern, [:regex] => [:prepare, :valgrind_deps] do |_t, args|
     matches = []
     COLLECTION_ALL_TESTS.each { |test| matches << test if test =~ /#{args.regex}/ }
     if !matches.empty?
@@ -54,7 +66,7 @@ namespace VALGRIND_SYM do
   end
 
   desc "Run Valgrind tests whose test path contains [dir] or [dir] substring."
-  task :path, [:dir] => [:prepare] do |_t, args|
+  task :path, [:dir] => [:prepare, :valgrind_deps] do |_t, args|
     matches = []
     COLLECTION_ALL_TESTS.each { |test| matches << test if File.dirname(test).include?(args.dir.tr('\\', '/')) }
     if !matches.empty?
@@ -80,6 +92,7 @@ rule(/^#{VALGRIND_TASK_ROOT}\S+$/ => [
   end
 ]) do |test|
   @ceedling[:rake_wrapper][:prepare].invoke
+  @ceedling[:rake_wrapper][:valgrind_deps].invoke
   @ceedling[:test_invoker].setup_and_invoke(
     tests: [test.source],
     context: VALGRIND_SYM,

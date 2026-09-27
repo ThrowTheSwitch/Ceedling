@@ -363,15 +363,19 @@ describe Cppcheck do
       })
     end
 
-    it 'adds xml and extension glob patterns when path does not exist' do
+    it 'adds xml and extension glob patterns when path does not exist, and warns' do
       allow(file_wrapper).to receive(:exist?).with('missing/').and_return(false)
       expect(file_list).to receive(:include).with('missing/*.xml')
       expect(file_list).to receive(:include).with('missing/*.cfg')
+      # A nonexistent path globs to nothing. Without the warning a typo looks exactly
+      # like a directory holding no suppression files.
+      expect(loginator).to receive(:log).with(/'missing\/' does not exist/, anything, anything)
 
       cppcheck = build_cppcheck(
         config: {},
         file_wrapper: file_wrapper,
-        file_path_collection_utils: file_path_collection_utils
+        file_path_collection_utils: file_path_collection_utils,
+        loginator: loginator
       )
       cppcheck.send(:collect_suppressions, {
         collection_paths_cppcheck: ['missing/'],
@@ -397,6 +401,291 @@ describe Cppcheck do
       expect(result).to have_key(:collection_all_cppcheck)
     end
   end
+
+  # -------------------------------------------------------------------------
+  describe '#validate_environment!' do
+    it 'validates the Cppcheck tool' do
+      stub_const('TOOLS_CPPCHECK', { executable: 'cppcheck' })
+      tool_validator = double('tool_validator')
+      cppcheck = build_cppcheck(config: {})
+      cppcheck.instance_variable_set(:@tool_validator, tool_validator)
+
+      expect(tool_validator).to receive(:validate).with(
+        tool: { executable: 'cppcheck' }, boom: true
+      )
+
+      cppcheck.validate_environment!
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe '#validate_fail_build_severities' do
+    it 'accepts every severity Cppcheck reports' do
+      cppcheck = build_cppcheck(config: { fail_build_severities: CPPCHECK_SEVERITIES })
+
+      expect { cppcheck.send(:validate_fail_build_severities) }.to_not raise_error
+    end
+
+    it 'accepts an empty list' do
+      cppcheck = build_cppcheck(config: {})
+
+      expect { cppcheck.send(:validate_fail_build_severities) }.to_not raise_error
+    end
+
+    # An unrecognized severity would otherwise silently never match a finding.
+    it 'raises CeedlingException naming the bad value and listing valid severities' do
+      cppcheck = build_cppcheck(config: { fail_build_severities: ['error', 'bogus'] })
+
+      expect { cppcheck.send(:validate_fail_build_severities) }.to raise_error(
+        CeedlingException, /bogus.*'error'.*'warning'.*'information'/m
+      )
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe '#tally_findings' do
+    def build_tally(contents, exists: true)
+      wrapper = double('file_wrapper', exist?: exists, read: contents)
+      build_cppcheck(config: {}, file_wrapper: wrapper, loginator: loginator)
+    end
+
+    it 'counts findings by severity attribute' do
+      xml = '<results><errors>' \
+            '<error id="a" severity="error" msg="x"></error>' \
+            '<error id="b" severity="style" msg="y"></error>' \
+            '<error id="c" severity="style" msg="z"></error>' \
+            '</errors></results>'
+
+      expect(build_tally(xml).send(:tally_findings, 'r.xml')).to eq({ 'error' => 1, 'style' => 2 })
+    end
+
+    it 'returns an empty tally for a report with no findings' do
+      xml = '<results><errors></errors></results>'
+
+      expect(build_tally(xml).send(:tally_findings, 'r.xml')).to eq({})
+    end
+
+    it 'warns and returns nil when no report was written' do
+      cppcheck = build_tally('', exists: false)
+
+      expect(loginator).to receive(:log).with(/wrote no XML report/, anything, anything)
+      expect(cppcheck.send(:tally_findings, 'r.xml')).to be_nil
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe '#report_findings' do
+    def build_reporter(config, contents)
+      wrapper = double('file_wrapper', exist?: true, read: contents)
+      build_cppcheck(config: config, file_wrapper: wrapper, loginator: loginator)
+    end
+
+    let(:xml_report) { double('xml_report', artifact_filepath: 'r.xml') }
+    let(:one_error)  { '<error id="a" severity="error" msg="x"></error>' }
+
+    it 'does nothing without an XML report' do
+      cppcheck = build_reporter({}, '')
+
+      expect(loginator).to_not receive(:log)
+
+      cppcheck.send(:report_findings, nil)
+    end
+
+    it 'reports that nothing was found for an empty tally' do
+      cppcheck = build_reporter({}, '<results/>')
+
+      expect(loginator).to receive(:log).with(/found no issues/, anything)
+
+      cppcheck.send(:report_findings, xml_report)
+    end
+
+    it 'summarizes findings by severity' do
+      cppcheck = build_reporter({}, one_error)
+
+      expect(loginator).to receive(:log).with(/findings: 1 error/, anything)
+
+      cppcheck.send(:report_findings, xml_report)
+    end
+
+    it 'raises naming the matching severities when :fail_build is enabled' do
+      cppcheck = build_reporter({ fail_build: true, fail_build_severities: ['error'] }, one_error)
+
+      expect { cppcheck.send(:report_findings, xml_report) }.to raise_error(
+        CeedlingException, /1 finding matching.*1 error/m
+      )
+    end
+
+    it 'does not raise when findings fall outside the configured severities' do
+      cppcheck = build_reporter({ fail_build: true, fail_build_severities: ['portability'] }, one_error)
+
+      expect { cppcheck.send(:report_findings, xml_report) }.to_not raise_error
+    end
+
+    it 'does not raise when :fail_build is disabled' do
+      cppcheck = build_reporter({ fail_build: false, fail_build_severities: ['error'] }, one_error)
+
+      expect { cppcheck.send(:report_findings, xml_report) }.to_not raise_error
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe '#build_reports' do
+    before(:each) do
+      stub_const('CPPCHECK_ARTIFACTS_PATH', 'artifacts/cppcheck')
+      stub_const('CPPCHECK_ARTIFACTS_FILE_XML', 'CppcheckReport.xml')
+      stub_const('CPPCHECK_ARTIFACTS_FILE_TEXT', 'CppcheckReport.txt')
+    end
+
+    def build_lazy(config)
+      cppcheck = build_cppcheck(config: config, loginator: loginator)
+      cppcheck.instance_variable_set(:@reports, nil)
+      # Report constructors receive this hash and pull their own collaborators from it.
+      cppcheck.instance_variable_set(:@ceedling, build_system_objects(
+        loginator:      loginator,
+        tool_executor:  double('tool_executor'),
+        tool_validator: double('tool_validator', validate: nil),
+        file_wrapper:   double('file_wrapper')
+      ))
+      cppcheck
+    end
+
+    it 'builds nothing when no report is configured' do
+      expect(build_lazy({ reports: [] }).send(:build_reports)).to eq({})
+    end
+
+    it 'builds the configured report types' do
+      reports = build_lazy({ reports: ['text'] }).send(:build_reports)
+
+      expect(reports.keys).to eq([:text])
+    end
+
+    it 'memoizes so reports are constructed once' do
+      cppcheck = build_lazy({ reports: ['text'] })
+
+      expect(cppcheck.send(:build_reports)).to be(cppcheck.send(:build_reports))
+    end
+
+    # Findings are counted from Cppcheck's own XML, so :fail_build needs that report
+    # to exist. This mirrors how :html already implies :xml.
+    it 'implies an XML report when :fail_build is enabled' do
+      reports = build_lazy({ reports: ['text'], fail_build: true }).send(:build_reports)
+
+      expect(reports.keys).to include(:xml)
+    end
+
+    it 'does not duplicate an XML report already requested' do
+      reports = build_lazy({ reports: ['xml'], fail_build: true }).send(:build_reports)
+
+      expect(reports.keys).to eq([:xml])
+    end
+
+    # HTML needs the XML artifact as its own input, so requesting it implies XML.
+    it 'implies an XML report when HTML is requested' do
+      stub_const('TOOLS_CPPCHECK_HTMLREPORT', { executable: 'cppcheck-htmlreport' })
+      stub_const('CPPCHECK_ARTIFACTS_HTML_PATH', 'artifacts/cppcheck/html')
+
+      reports = build_lazy({ reports: ['html'] }).send(:build_reports)
+
+      expect(reports.keys).to include(:xml, :html)
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe '#new_report' do
+    it 'logs an error and returns nil for an unrecognized report type' do
+      cppcheck = build_cppcheck(config: {}, loginator: loginator)
+
+      expect(loginator).to receive(:log).with(/'bogus' is not supported/, anything)
+      expect(cppcheck.send(:new_report, :bogus)).to be_nil
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe '#generate_reports' do
+    before(:each) do
+      stub_const('COLLECTION_PATHS_INCLUDE', ['src'])
+      stub_const('COLLECTION_PATHS_SOURCE', ['src'])
+    end
+
+    def build_generator(config, reports)
+      cppcheck = build_cppcheck(config: config, loginator: loginator)
+      cppcheck.instance_variable_set(:@reports, reports)
+      cppcheck
+    end
+
+    # Cppcheck only runs as part of generating a report. With no report configured
+    # this task analyzed nothing and said nothing, which reads like a clean run.
+    it 'warns and runs nothing when no report is configured' do
+      cppcheck = build_generator({ reports: [], project: nil }, {})
+
+      expect(loginator).to receive(:log).with(/No Cppcheck reports are configured/, anything, anything)
+
+      cppcheck.generate_reports()
+    end
+
+    it 'generates each configured report' do
+      report = double('report', generate: nil, artifact_filepath: 'r.txt')
+      cppcheck = build_generator({ reports: ['text'], project: nil }, { text: report })
+
+      expect(report).to receive(:generate)
+
+      cppcheck.generate_reports()
+    end
+
+    # cppcheck-htmlreport consumes the XML artifact, so XML has to be written first.
+    it 'generates the XML report before the HTML report' do
+      order = []
+      xml  = double('xml',  artifact_filepath: 'r.xml')
+      html = double('html', artifact_filepath: 'html')
+      allow(xml).to receive(:generate)  { order << :xml }
+      allow(html).to receive(:generate) { order << :html }
+
+      cppcheck = build_generator({ reports: ['html'], project: nil }, { html: html, xml: xml })
+      allow(cppcheck).to receive(:report_findings)
+
+      cppcheck.generate_reports()
+
+      expect(order).to eq([:xml, :html])
+    end
+
+    # :project hands source and include discovery to Cppcheck itself.
+    it 'passes no Ceedling source or include paths when :project is configured' do
+      report = double('report', artifact_filepath: 'r.txt')
+      cppcheck = build_generator({ reports: ['text'], project: 'compile_commands.json' }, { text: report })
+
+      expect(report).to receive(:generate).with(anything, [], [])
+
+      cppcheck.generate_reports()
+    end
+
+    it 'passes Ceedling source and include paths when :project is not configured' do
+      report = double('report', artifact_filepath: 'r.txt')
+      cppcheck = build_generator({ reports: ['text'], project: nil }, { text: report })
+
+      expect(report).to receive(:generate).with(anything, ['src'], ['src'])
+
+      cppcheck.generate_reports()
+    end
+  end
+
+  # -------------------------------------------------------------------------
+  describe '#analyze_file' do
+    before(:each) { stub_const('COLLECTION_PATHS_INCLUDE', ['src']) }
+
+    it 'runs Cppcheck against the single file and logs its output' do
+      stub_const('TOOLS_CPPCHECK', { executable: 'cppcheck' })
+      reportinator = double('reportinator', generate_progress: 'PROGRESS')
+      cppcheck = build_cppcheck(config: { enable_checks: ['style'] }, loginator: loginator)
+      cppcheck.instance_variable_set(:@reportinator, reportinator)
+
+      expect(cppcheck).to receive(:run_tool).with(
+        { executable: 'cppcheck' }, ['--enable=style'], ['src'], 'src/thing.c'
+      ).and_return({ output: 'FINDINGS' })
+      expect(loginator).to receive(:log).with('FINDINGS', anything, anything)
+
+      cppcheck.analyze_file('src/thing.c')
+    end
+  end
 end
 
 # ===========================================================================
@@ -419,8 +708,15 @@ describe CppcheckXmlReport do
     stub_const('CPPCHECK_ARTIFACTS_FILE_XML', 'CppcheckReport.xml')
   end
 
-  it 'uses --xml-version=3 by default' do
+  # Version 2 is accepted by every Cppcheck. Version 3 requires a newer Cppcheck and
+  # is rejected outright by older ones, so it is not a safe default.
+  it 'uses --xml-version=2 by default' do
     report = described_class.new(system_objects, {})
+    expect(report.send(:build_opts)).to include('--xml', '--xml-version=2')
+  end
+
+  it 'uses --xml-version=3 when version 3 is requested' do
+    report = described_class.new(system_objects, { xml_report_version: 3 })
     expect(report.send(:build_opts)).to include('--xml', '--xml-version=3')
   end
 
@@ -495,9 +791,12 @@ describe CppcheckHtmlReport do
     expect(report.send(:build_opts)).not_to include(a_string_starting_with('--title'))
   end
 
-  it 'validates the htmlreport tool during initialization' do
+  # respect_optional honors the tool's own `:optional => true` default, so a missing
+  # cppcheck-htmlreport does not hard-fail a build that never generates HTML.
+  it 'validates the htmlreport tool during initialization, respecting its optional flag' do
     expect(tool_validator).to receive(:validate).with(
       tool: { executable: 'cppcheck-htmlreport' },
+      respect_optional: true,
       boom: true
     )
     build_html_report

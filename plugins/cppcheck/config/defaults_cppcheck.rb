@@ -5,11 +5,15 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+# `:optional => true` keeps Ceedling's project-wide tool validation from failing a
+# build merely because this plugin is enabled. Cppcheck is an external tool, so an
+# enabled plugin is not evidence the executable exists. The plugin validates it for
+# real at `cppcheck:` task time instead. See the :cppcheck_deps Rake task.
 DEFAULT_CPPCHECK_TOOL = {
   :executable => (ENV['CPPCHECK'].nil? ? FilePathUtils.os_executable_ext('cppcheck') : ENV['CPPCHECK'].split[0]).freeze,
   :name => 'default_cppcheck'.freeze,
   :stderr_redirect => StdErrRedirect::AUTO.freeze,
-  :optional => false.freeze,
+  :optional => true.freeze,
   :arguments => [
     '-I"${1}"'.freeze,
     '${2}'.freeze

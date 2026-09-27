@@ -9,9 +9,8 @@ require 'fileutils'
 
 module ValgrindHelpers
 
-  def valgrind_available?
-    tool_available?('valgrind --version 2>&1')
-  end
+  # valgrind_available? lives in spec_system_helper.rb beside the other tool probes,
+  # paired with the "requires valgrind" shared context.
 
   def prep_project_yml_for_valgrind
     FileUtils.cp feature_asset_path("project.yml"), "project.yml"

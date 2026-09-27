@@ -65,6 +65,22 @@ The [Bullseye code coverage plugin](https://docs.throwtheswitch.org/Ceedling/1.2
 
 The refreshed Bullseye plugin offers additional features over the original version including support for branch coverage detail, machine-readable coverage reports (XML flavors), and an optional coverage threshold that will break a test build.
 
+### Valgrind plugin
+
+#### Suppression files
+Added [`:valgrind` ↳ `:suppressions:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/valgrind/#suppressions), a list of Valgrind suppression files. Each becomes its own `--suppressions=` argument. Previously a user had to hand-inject the flag into `:arguments:`.
+
+#### XML reports
+Added [`:valgrind` ↳ `:xml_report:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/valgrind/#xml_report), writing a machine-readable report per test binary alongside the text log for CI consumption. Error counts come from the XML when it is enabled, because Valgrind writes no error summary to the text log once `--xml=yes` is active.
+
+### Cppcheck plugin
+
+#### Failing a build on findings
+Added [`:cppcheck` ↳ `:fail_build:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/cppcheck/#fail_build) and `:fail_build_severities:`. Cppcheck exits successfully even when it finds defects, so `cppcheck:all` previously could not fail a CI build at all. Findings are counted from Cppcheck's own XML report, which `:fail_build:` implies. Only `error` severity fails a build by default, since whole project analysis always runs with `--enable=all`.
+
+#### Findings summary
+Whole project analysis now prints a per-severity tally of findings. Previously results landed only in report files with nothing shown at the console.
+
 ### Filepath limit checks
 Platform filepath limits (especially on Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
 
@@ -74,6 +90,39 @@ In certain intervening circumstances, particularly on Windows, a child process m
 ## 💪 Fixed
 
 Note: 1.2.0 includes all bug fixes for 1.1.x.
+
+### Valgrind and Cppcheck plugins no longer require their tool for unrelated builds
+Enabling either plugin made its external tool a hard dependency of *every* Ceedling command, including plain `test:all`. This is the same defect fixed for the Gcov plugin in [#1252](https://github.com/ThrowTheSwitch/Ceedling/issues/1252). It was worse for Valgrind, which cannot be installed on Windows or macOS at all, so a project listing `valgrind` among its enabled plugins could run no Ceedling command on those platforms. Both plugins now validate their tool only when one of their own tasks runs. `ceedling files:cppcheck`, which only lists suppression files, no longer needs Cppcheck installed either.
+
+### Valgrind reports a platform constraint rather than a missing executable
+A `valgrind:` task on a platform without Valgrind now explains that Valgrind runs on Linux and other Unix-like systems, instead of reporting only that the executable was not found.
+
+### Valgrind undercounted memory errors for tests that fork
+Valgrind writes one `ERROR SUMMARY` line per traced process. The plugin read only the first, so a test whose child process reported its own errors was undercounted. Every summary is now summed.
+
+### Valgrind silently treated a missing report as a clean result
+A test whose Valgrind report could not be read was counted as processed and contributed nothing, which was indistinguishable from finding no errors. The plugin now warns that the memory error status is unknown.
+
+### Valgrind repeated its report summary
+The "Wrote N Valgrind report(s)" summary was emitted once per erroring test as well as at the end of the build, producing several copies with different partial counts. It is now reported once, and counts reports actually written rather than tests attempted.
+
+### Valgrind discarded other configured tool settings
+The plugin rebuilt its fixture tool from scratch, silently dropping any other key set under `:tools:` ↳ `:valgrind:`, such as `:stderr_redirect:`. Those settings are now preserved.
+
+### Cppcheck XML report default was rejected by older Cppcheck
+`:cppcheck` ↳ `:xml_report_version:` defaulted to `3`, which older Cppcheck releases reject outright, failing the build. The default is now `2`, which every release accepts. Both versions carry the same severity information.
+
+### Cppcheck `cppcheck-htmlreport` was treated as mandatory
+The HTML report validated `cppcheck-htmlreport` in a way that contradicted that tool's own optional default, so requesting an HTML report made it a hard dependency. Its optional status is now respected.
+
+### Cppcheck said nothing when no report was configured
+`cppcheck:all` runs Cppcheck only as part of generating a report. With none configured it analyzed nothing and reported nothing, which read like a successful run. It now says so.
+
+### Cppcheck skipped Ruby expansion for mixed-type configuration lists
+A configuration list containing one non-String entry silently disabled `#{...}` expansion for every other entry in that same list. Each String entry is now expanded independently.
+
+### Cppcheck silently ignored a nonexistent suppressions path
+A misspelled path under `:paths:` ↳ `:cppcheck:` collected nothing and looked identical to a directory holding no suppression files. The plugin now warns.
 
 - A CLI parameter string mutation issue that could corrupt certain build or plugin task invocations.
 - Fixed a Unity `TEST_IGNORE_MESSAGE()` test case being misreported as crash evidence during crash-diagnosis retries when it shares a test file with a genuine crash.
