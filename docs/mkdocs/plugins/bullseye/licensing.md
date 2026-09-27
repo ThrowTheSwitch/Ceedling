@@ -28,7 +28,7 @@ Obtain an installer from [Bullseye's download page][bullseye-download].
 Run this task at any time to report your license state.
 
 ```shell
- > ceedling utils:bullseye_license
+ > ceedling bullseye:license
 ```
 
 It reports your license number, its expiry date, and license manager
@@ -223,7 +223,7 @@ Inside the container, install and put the tools on `PATH`.
      --key "$BULLSEYE_LICENSE_KEY" \
      --search "/usr/bin:/usr/local/bin"
  > export PATH=/home/dev/bullseye/bin:$PATH
- > ceedling utils:bullseye_license
+ > ceedling bullseye:license
 ```
 
 ## What this plugin does not do

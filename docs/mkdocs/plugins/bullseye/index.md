@@ -360,20 +360,20 @@ class and namespace. This plugin uses filename-pattern exclusions only. See
 
 ### Coverage Browser
 
-The `utils:bullseye` task opens Bullseye's graphical Coverage Browser against
-your project's coverage data file.
+The `bullseye:browser` task opens Bullseye's graphical Coverage Browser
+against your project's coverage data file.
 
 ```shell
- > ceedling utils:bullseye
+ > ceedling bullseye:browser
 ```
 
 ### License status
 
-The `utils:bullseye_license` task reports your Bullseye license number, its
-expiry date, and license manager utilization.
+The `bullseye:license` task reports your Bullseye license number, its expiry
+date, and license manager utilization.
 
 ```shell
- > ceedling utils:bullseye_license
+ > ceedling bullseye:license
 ```
 
 See [Licensing](licensing.md) for how to read its output.
@@ -407,7 +407,7 @@ compiler's name. So must any flags Ceedling injects through `:defines` and
 A flag that belongs to `gcc` landed before the wrapped compiler's name. See
 [Tool wrapping and custom flags](#tool-wrapping-and-custom-flags).
 
-### `utils:bullseye` fails to launch `CoverageBrowser`
+### `bullseye:browser` fails to launch `CoverageBrowser`
 
 `CoverageBrowser` is a GUI application with its own runtime dependencies. GTK
 is one example on Linux. Install your platform's GUI toolkit dependencies

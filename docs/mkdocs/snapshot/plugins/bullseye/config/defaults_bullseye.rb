@@ -116,7 +116,7 @@ DEFAULT_BULLSEYE_REPORT_COVXML_TOOL = {
     ].freeze
   }
 
-# Reports Bullseye license utilization for the `utils:bullseye_license` task.
+# Reports Bullseye license utilization for the `bullseye:license` task.
 # No `-q` or `--no-banner` is passed. covlmgr prints the license number and expiry
 # date in its banner, which is the most useful part of the diagnostic.
 DEFAULT_BULLSEYE_LICENSE_STATUS_TOOL = {

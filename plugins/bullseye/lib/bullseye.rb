@@ -343,7 +343,7 @@ class Bullseye < Plugin
   end
 
   # Reports Bullseye license status to the console.
-  # Called externally by plugin Rakefile (utils:bullseye_license).
+  # Called externally by plugin Rakefile (bullseye:license).
   #
   # covlmgr reports the license number and expiry date in its banner for every
   # license type. It then reports license manager utilization. An unlimited license
@@ -394,7 +394,7 @@ class Bullseye < Plugin
   def license_guidance(message)
     return "#{message}\n" \
            "NOTE: Bullseye tools also fail this way when no valid license is available.\n" \
-           "Run `ceedling utils:bullseye_license` to report Bullseye license status.\n\n"
+           "Run `ceedling bullseye:license` to report Bullseye license status.\n\n"
   end
 
   # All project sources minus every source any test references

@@ -549,7 +549,7 @@ describe Bullseye do
       expect(plugin_manager).to receive(:register_build_failure) do |context, message|
         expect(context).to eq(BULLSEYE_SYM)
         expect(message).to match(/covhtml exploded/)
-        expect(message).to match(/utils:bullseye_license/)
+        expect(message).to match(/bullseye:license/)
       end
 
       bullseye.generate_html_report()
@@ -593,7 +593,7 @@ describe Bullseye do
 
       expect(plugin_manager).to receive(:register_build_failure) do |_context, message|
         expect(message).to match(/covxml exploded/)
-        expect(message).to match(/utils:bullseye_license/)
+        expect(message).to match(/bullseye:license/)
       end
 
       bullseye.generate_xml_report()

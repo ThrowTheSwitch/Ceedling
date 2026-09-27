@@ -253,8 +253,7 @@ module BullseyeCommonTestCases
       Dir.chdir @proj_name do
         prep_project_yml_for_coverage
 
-        # Not a `build` command, so this goes through the application-command path.
-        output = @c.ceedling_appcmd_exec('utils:bullseye_license')
+        output = @c.ceedling_build_exec('bullseye:license')
 
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/LICENSE STATUS/)
