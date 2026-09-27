@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://throwtheswitch.github.io/Ceedling/latest/plugins/cppcheck/">
+        <link rel="canonical" href="https://docs.throwtheswitch.org/Ceedling/latest/plugins/cppcheck/">
       
       
         <link rel="prev" href="../gcov/troubleshooting/">
@@ -2506,6 +2506,8 @@
       
         
       
+        
+      
     
     
     
@@ -3155,13 +3157,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
+  <a href="#installation-set-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setup
+        Installation &amp; set up
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Installation &amp; set up">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enable-the-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable the plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3181,7 +3211,7 @@
   <a href="#reports" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reports
+        :reports:
       
     </span>
   </a>
@@ -3189,10 +3219,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#import-project-file" class="md-nav__link">
+  <a href="#fail_build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Import project file
+        :fail_build:
       
     </span>
   </a>
@@ -3200,10 +3230,109 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#preprocessor-defines" class="md-nav__link">
+  <a href="#fail_build_severities" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Preprocessor defines
+        :fail_build_severities:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#html_title" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :html_title:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sarif_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :sarif_artifact_filename:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#text_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :text_artifact_filename:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :template:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#xml_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :xml_artifact_filename:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#xml_report_version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :xml_report_version:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :project:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#defines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :defines:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#undefines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :undefines:
       
     </span>
   </a>
@@ -3214,7 +3343,7 @@
   <a href="#includes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Includes
+        :includes:
       
     </span>
   </a>
@@ -3225,7 +3354,7 @@
   <a href="#excludes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Excludes
+        :excludes:
       
     </span>
   </a>
@@ -3236,7 +3365,7 @@
   <a href="#platform" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Platform
+        :platform:
       
     </span>
   </a>
@@ -3247,7 +3376,7 @@
   <a href="#standard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Standard
+        :standard:
       
     </span>
   </a>
@@ -3255,10 +3384,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#check-level" class="md-nav__link">
+  <a href="#check_level" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Check level
+        :check_level:
       
     </span>
   </a>
@@ -3269,7 +3398,7 @@
   <a href="#addons" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Addons
+        :addons:
       
     </span>
   </a>
@@ -3277,10 +3406,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
+  <a href="#enable_checks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Checks
+        :enable_checks:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#disable_checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :disable_checks:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inline_suppressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :inline_suppressions:
       
     </span>
   </a>
@@ -3291,7 +3442,7 @@
   <a href="#suppressions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Suppressions
+        :suppressions:
       
     </span>
   </a>
@@ -3299,10 +3450,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#library-configuration" class="md-nav__link">
+  <a href="#libraries" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Library configuration
+        :libraries:
       
     </span>
   </a>
@@ -3313,7 +3464,7 @@
   <a href="#rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Rules
+        :rules:
       
     </span>
   </a>
@@ -3321,10 +3472,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#extra-options" class="md-nav__link">
+  <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Extra options
+        :options:
       
     </span>
   </a>
@@ -3370,8 +3521,41 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#list-suppression-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List suppression files
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#artifacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifacts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting results
+      
+    </span>
+  </a>
   
 </li>
       
@@ -3407,6 +3591,114 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../bullseye/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bullseye (Coverage)
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bullseye (Coverage)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bullseye/licensing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Licensing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -4328,13 +4620,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
+  <a href="#installation-set-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Setup
+        Installation &amp; set up
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Installation &amp; set up">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enable-the-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable the plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4354,7 +4674,7 @@
   <a href="#reports" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reports
+        :reports:
       
     </span>
   </a>
@@ -4362,10 +4682,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#import-project-file" class="md-nav__link">
+  <a href="#fail_build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Import project file
+        :fail_build:
       
     </span>
   </a>
@@ -4373,10 +4693,109 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#preprocessor-defines" class="md-nav__link">
+  <a href="#fail_build_severities" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Preprocessor defines
+        :fail_build_severities:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#html_title" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :html_title:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sarif_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :sarif_artifact_filename:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#text_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :text_artifact_filename:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :template:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#xml_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :xml_artifact_filename:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#xml_report_version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :xml_report_version:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :project:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#defines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :defines:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#undefines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :undefines:
       
     </span>
   </a>
@@ -4387,7 +4806,7 @@
   <a href="#includes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Includes
+        :includes:
       
     </span>
   </a>
@@ -4398,7 +4817,7 @@
   <a href="#excludes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Excludes
+        :excludes:
       
     </span>
   </a>
@@ -4409,7 +4828,7 @@
   <a href="#platform" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Platform
+        :platform:
       
     </span>
   </a>
@@ -4420,7 +4839,7 @@
   <a href="#standard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Standard
+        :standard:
       
     </span>
   </a>
@@ -4428,10 +4847,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#check-level" class="md-nav__link">
+  <a href="#check_level" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Check level
+        :check_level:
       
     </span>
   </a>
@@ -4442,7 +4861,7 @@
   <a href="#addons" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Addons
+        :addons:
       
     </span>
   </a>
@@ -4450,10 +4869,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
+  <a href="#enable_checks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Checks
+        :enable_checks:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#disable_checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :disable_checks:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inline_suppressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :inline_suppressions:
       
     </span>
   </a>
@@ -4464,7 +4905,7 @@
   <a href="#suppressions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Suppressions
+        :suppressions:
       
     </span>
   </a>
@@ -4472,10 +4913,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#library-configuration" class="md-nav__link">
+  <a href="#libraries" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Library configuration
+        :libraries:
       
     </span>
   </a>
@@ -4486,7 +4927,7 @@
   <a href="#rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Rules
+        :rules:
       
     </span>
   </a>
@@ -4494,10 +4935,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#extra-options" class="md-nav__link">
+  <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Extra options
+        :options:
       
     </span>
   </a>
@@ -4543,8 +4984,41 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#list-suppression-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        List suppression files
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#artifacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifacts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting results
+      
+    </span>
+  </a>
   
 </li>
       
@@ -4617,256 +5091,436 @@
 
 
 <h1 id="cppcheck">Cppcheck</h1>
-<p>Adds Ceedling tasks to execute Cppcheck static analysis, helping detect
-undefined behavior, dangerous code patterns, and style issues across your
-project or individual files.</p>
+<p>Adds Ceedling tasks to run <a href="https://cppcheck.sourceforge.io">Cppcheck</a> static analysis. Cppcheck finds undefined
+behavior, dangerous code patterns, and style issues across your project or in a
+single file, without running your code.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A <code>cppcheck:</code> task analyzes source. It builds and runs nothing, so it is not
+a <a href="../../getting-started/builds/">delta build</a> and shares no state with your
+<code>test:</code> builds.</p>
+</div>
+<hr />
 <h2 id="plugin-overview">Plugin overview</h2>
-<p>The Cppcheck plugin integrates <a href="https://cppcheck.sourceforge.io">Cppcheck</a>
-static analysis into Ceedling, facilitating automated code quality checks as
-part of your development workflow. It provides two analysis modes:</p>
+<p>The Cppcheck plugin runs <a href="https://cppcheck.sourceforge.io">Cppcheck</a> over your project and writes reports to the
+build artifacts directory. It provides two analysis modes.</p>
 <ul>
-<li><strong>Whole project analysis</strong>: By running <code>ceedling cppcheck:all</code>, all project
-source files will be analyzed with all checks enabled (<code>--enable=all</code>) and
-configurable reports can be generated in multiple formats.</li>
-<li><strong>Single file analysis</strong>: By running <code>ceedling cppcheck:&lt;filename&gt;</code>, an
-individual source file will be analyzed using the checks configured in the
-<code>:enable_checks</code> list (defaults to <code>style</code>).</li>
+<li><strong>Whole project analysis</strong>: <code>ceedling cppcheck:all</code> analyzes all project
+  sources with every check enabled (<code>--enable=all</code>) and writes the reports you
+  configure.</li>
+<li><strong>Single file analysis</strong>: <code>ceedling cppcheck:&lt;filename&gt;</code> analyzes one source
+  file using the checks in <a href="#enable_checks"><code>:enable_checks:</code></a>, and prints
+  findings to the console.</li>
 </ul>
-<p>The plugin supports extensive Cppcheck configuration options such as platform,
-language standard, preprocessor defines, include/exclude paths, and suppression
-management. It also integrates with advanced features like MISRA addons, custom
-check levels, library configuration files, and regular expression rules. All of
-these can be configured in your <code>project.yml</code> file.</p>
-<p>The plugin can produce reports in HTML, SARIF, text, and XML (v2 and v3)
-formats, all stored under the build artifacts directory.</p>
-<p>It also suppoprts using a project file (such as <code>compile_commands.json</code> or a
-Cppcheck GUI project), in which case, the plugin delegates source and include
-path discovery to Cppcheck rather than using Ceedling's own file collection.</p>
-<h2 id="setup">Setup</h2>
+<p>Reports are available in HTML, SARIF, text, and XML. The plugin also exposes
+most of Cppcheck's configuration surface, including platform, language
+standard, preprocessor defines, include and exclude paths, addons such as
+MISRA, library configuration files, regular expression rules, and suppression
+management.</p>
+<p>A build can be failed on findings. See <a href="#fail_build"><code>:fail_build:</code></a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Analysis runs once per report format</p>
+<p>Cppcheck emits one format per invocation, so each entry in
+<a href="#reports"><code>:reports:</code></a> costs its own full analysis pass. Cppcheck's own
+<code>--cppcheck-build-dir</code> cache reduces the cost of passes after the first.</p>
+</div>
+<h2 id="installation-set-up">Installation &amp; set up</h2>
+<h3 id="installation">Installation</h3>
+<p>You have several options for getting the <code>cppcheck</code> tool working on your
+system, including one readymade option.</p>
+<h4 id="linux-package-manager">Linux package manager</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>cppcheck<span class="w">   </span><span class="c1"># Debian / Ubuntu</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>cppcheck<span class="w">       </span><span class="c1"># Fedora / RHEL</span>
+</code></pre></div>
+<h4 id="macos">macOS</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>brew<span class="w"> </span>install<span class="w"> </span>cppcheck
+</code></pre></div>
+<h4 id="windows">Windows</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>choco<span class="w"> </span>install<span class="w"> </span>cppcheck
+</code></pre></div>
+<p>Alternatively, use the installer from <a href="https://cppcheck.sourceforge.io/#download">Cppcheck's site</a>.</p>
+<h4 id="build-from-source">Build from source</h4>
+<p>Source releases are available from <a href="https://github.com/danmar/cppcheck/releases">Cppcheck's GitHub releases</a>.</p>
+<h4 id="madsciencelab-docker-images"><em>MadScienceLab</em> Docker images</h4>
+<p>Fully packaged <a href="https://hub.docker.com/repository/docker/throwtheswitch/"><em>MadScienceLab</em> Docker images</a> containing Ruby,
+Ceedling, the GCC toolchain, and more are available. The <code>-plugins</code> variants
+of the images come with all of Ceedling's plugin tools preinstalled.</p>
+<div class="admonition note">
+<p class="admonition-title">HTML reports need a second tool</p>
+<p>The <a href="#reports"><code>html</code></a> report is produced by <code>cppcheck-htmlreport</code>, which
+ships alongside Cppcheck in most distributions. It is optional. Every other
+report format needs only <code>cppcheck</code> itself.</p>
+</div>
+<h3 id="enable-the-plugin">Enable the plugin</h3>
 <p>Enable the plugin by adding <code>cppcheck</code> to the enabled plugins list in your
-<code>project.yml</code> file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:plugins</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cppcheck</span>
+project configuration:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cppcheck</span>
 </code></pre></div>
+<p>Enabling the plugin alone requires no Cppcheck installation. The executable is
+only needed when a <code>cppcheck:</code> task actually runs.</p>
 <h2 id="configuration">Configuration</h2>
-<p>Add <code>cppcheck</code> section to your <code>project.yml</code> specifying configuration options.
-e.g:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:reports</span><span class="p">:</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">html</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">:addons</span><span class="p">:</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">misra</span>
-</code></pre></div>
-<h3 id="reports">Reports</h3>
-<p>Four types of reports are available:</p>
-<ul>
-<li>html</li>
-<li>sarif</li>
-<li>text</li>
-<li>xml (v2 and v3)</li>
-</ul>
-<p>They can be enabled by listing them on the <code>:reports</code> list:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:reports</span><span class="p">:</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">text</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">html</span>
-</code></pre></div>
-<h4 id="html">HTML</h4>
-<p>HTML title can be configured:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:html_title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Awesome Project</span>
-</code></pre></div>
-<p><em>Notes:</em></p>
-<ul>
-<li>This report requires the <code>cppcheck-htmlreport</code> tool to be available.</li>
-<li>This report implies the <code>xml</code> report.</li>
-</ul>
-<h4 id="sarif">Sarif</h4>
-<p>Artifact file can be configured:</p>
+<p>All settings live in a top-level <code>:cppcheck</code> section of your project file.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">:sarif_artifact_filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CppcheckResults.sarif</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">:reports</span><span class="p">:</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">html</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">:addons</span><span class="p">:</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">misra</span>
 </code></pre></div>
-<h4 id="text">Text</h4>
-<p>Artifact file and output format can be configured:</p>
+<h3 id="reports"><code>:reports:</code></h3>
+<p>The report formats to produce. Each entry costs its own analysis pass.</p>
+<ul>
+<li><code>html</code> — Browsable HTML. Requires <code>cppcheck-htmlreport</code> and implies <code>xml</code>.</li>
+<li><code>sarif</code> — SARIF, consumed by many code-scanning dashboards.</li>
+<li><code>text</code> — Plain text.</li>
+<li><code>xml</code> — Cppcheck's own XML schema.</li>
+</ul>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">:text_artifact_filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CppcheckResults.txt</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">:template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcc</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">:reports</span><span class="p">:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">text</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">html</span>
 </code></pre></div>
-<p><code>:template</code> can be any of the ones included with Cppcheck or custom format string.</p>
-<h4 id="xml">XML</h4>
-<p>Artifact file and XML version can be configured:</p>
+<p><strong>Default:</strong> <code>[]</code> (no reports, so <code>cppcheck:all</code> analyzes nothing and says so)</p>
+<h3 id="fail_build"><code>:fail_build:</code></h3>
+<p>When <code>true</code>, findings matching <a href="#fail_build_severities"><code>:fail_build_severities:</code></a>
+fail the build. Enabling this implies the <code>xml</code> report, because findings are
+counted from Cppcheck's own XML output.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">:xml_artifact_filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CppcheckResults.xml</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">:xml_report_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">:fail_build</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
-<h3 id="import-project-file">Import project file</h3>
-<p>You can import some project files and build configurations into Cppcheck.
-Some of compatible files are:</p>
-<ul>
-<li>Cppcheck GUI project (*.cppcheck)</li>
-<li>Compile Commands (compile_commands.json)</li>
-<li>Visual Studio projects (*.vcxproj, *.sln)</li>
-</ul>
+<p><strong>Default:</strong> <code>false</code></p>
+<p>Cppcheck exits successfully even when it finds defects, so without this setting
+a <code>cppcheck:all</code> run can never fail a CI build.</p>
+<h3 id="fail_build_severities"><code>:fail_build_severities:</code></h3>
+<p>Which finding severities fail the build when
+<a href="#fail_build"><code>:fail_build:</code></a> is enabled. Valid values are <code>error</code>, <code>warning</code>,
+<code>style</code>, <code>performance</code>, <code>portability</code>, and <code>information</code>. An unrecognized value
+is rejected when the plugin loads.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">:project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/to/compile_commands.json</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">:fail_build_severities</span><span class="p">:</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">error</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
 </code></pre></div>
-<p><em>Note: If configured, Cppcheck won't look for sources and includes paths from</em>
-<em><em>Ceedling</em> configuration files.</em></p>
-<h3 id="preprocessor-defines">Preprocessor defines</h3>
-<h4 id="define">Define</h4>
+<p><strong>Default:</strong> <code>[error]</code></p>
+<div class="admonition tip">
+<p class="admonition-title">Why not every severity by default</p>
+<p>Whole project analysis always runs with <code>--enable=all</code>, so a typical run
+reports many <code>style</code> and <code>information</code> findings. Failing on all of them
+would make this setting impractical on most projects.</p>
+</div>
+<h3 id="html_title"><code>:html_title:</code></h3>
+<p>Title shown in the HTML report.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">:defines</span><span class="p">:</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">B</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">C=1</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">:html_title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Awesome Project</span>
 </code></pre></div>
-<h4 id="undefine">Undefine</h4>
+<p><strong>Default:</strong> unset</p>
+<h3 id="sarif_artifact_filename"><code>:sarif_artifact_filename:</code></h3>
+<p>Filename for the SARIF report.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">:undefines</span><span class="p">:</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">B</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">C</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">:sarif_artifact_filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CppcheckResults.sarif</span>
 </code></pre></div>
-<p><em>Note: By default <code>TEST</code> is undefined so the analysis is performed against production code.</em></p>
-<h3 id="includes">Includes</h3>
-<p>Force inclusion of files before checked files.</p>
+<p><strong>Default:</strong> <code>CppcheckReport.sarif</code></p>
+<h3 id="text_artifact_filename"><code>:text_artifact_filename:</code></h3>
+<p>Filename for the text report.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">:includes</span><span class="p">:</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file1.h</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file2.h</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">:text_artifact_filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CppcheckResults.txt</span>
 </code></pre></div>
-<h3 id="excludes">Excludes</h3>
-<p>Exclude files from the analysis.</p>
+<p><strong>Default:</strong> <code>CppcheckReport.txt</code></p>
+<h3 id="template"><code>:template:</code></h3>
+<p>Output format for the text report. Accepts any template name Cppcheck ships
+with, such as <code>gcc</code>, or a custom format string.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">:excludes</span><span class="p">:</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file1.c</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file2.c</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">:template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gcc</span>
 </code></pre></div>
-<h3 id="platform">Platform</h3>
-<p>Specify platform to use for the analysis, can be any of the ones included with
-Cppcheck, e.g.: unix64, or the path of the platform XML file.</p>
+<p><strong>Default:</strong> unset (Cppcheck's own default)</p>
+<h3 id="xml_artifact_filename"><code>:xml_artifact_filename:</code></h3>
+<p>Filename for the XML report.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span><span class="nt">:platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unix64</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span><span class="nt">:xml_artifact_filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CppcheckResults.xml</span>
 </code></pre></div>
-<h3 id="standard">Standard</h3>
-<p>Specify C/C++ language standard.</p>
+<p><strong>Default:</strong> <code>CppcheckReport.xml</code></p>
+<h3 id="xml_report_version"><code>:xml_report_version:</code></h3>
+<p>Cppcheck XML schema version. Accepts <code>2</code> or <code>3</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span><span class="nt">:standard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c99</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span><span class="nt">:xml_report_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
 </code></pre></div>
-<h3 id="check-level">Check level</h3>
-<p>Specify the check level to be used.</p>
-<ul>
-<li><em>normal</em></li>
-<li><em>exhaustive</em></li>
-</ul>
+<p><strong>Default:</strong> <code>2</code></p>
+<div class="admonition warning">
+<p class="admonition-title">Version 3 requires a newer Cppcheck</p>
+<p>Older Cppcheck releases reject <code>--xml-version=3</code> outright and fail the
+build. Version 2 is accepted by every release. Both versions carry the same
+severity information, so this plugin's finding counts work with either.</p>
+</div>
+<h3 id="project"><code>:project:</code></h3>
+<p>Import a project file and let Cppcheck discover sources and include paths
+itself. Compatible files include Cppcheck GUI projects (<code>*.cppcheck</code>),
+compilation databases (<code>compile_commands.json</code>), and Visual Studio projects
+(<code>*.vcxproj</code>, <code>*.sln</code>).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span><span class="nt">:check_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exhaustive</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span><span class="nt">:project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/to/compile_commands.json</span>
 </code></pre></div>
-<h3 id="addons">Addons</h3>
-<p>Addons to be run.</p>
+<p><strong>Default:</strong> unset</p>
+<div class="admonition note">
+<p class="admonition-title">What <code>:project:</code> does and does not replace</p>
+<p>Setting this stops the plugin passing Ceedling's own source and include
+path collections. Every other setting in this section still applies.
+<code>:defines:</code>, <code>:includes:</code>, <code>:excludes:</code>, <code>:suppressions:</code>, <code>:addons:</code>, and
+the rest are all still added to the command line.</p>
+</div>
+<h3 id="defines"><code>:defines:</code></h3>
+<p>Preprocessor symbols to define.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="nt">:addons</span><span class="p">:</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">misra</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/to/addon.py</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="nt">:defines</span><span class="p">:</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">B</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">C=1</span>
 </code></pre></div>
-<h4 id="misra-with-rule-texts-file">MISRA with rule texts file</h4>
-<p>Locate your rules text file or copy it to your project.
-e.g.: <code>&lt;your-project&gt;/misra.txt</code> and create the addon file <code>misra.json</code> inside
-your project:</p>
-<h5 id="misrajson"><strong><code>misra.json</code></strong></h5>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="p">{</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">    </span><span class="nt">&quot;script&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;misra&quot;</span><span class="p">,</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--rule-texts=misra.txt&quot;</span><span class="p">]</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="p">}</span>
+<p><strong>Default:</strong> <code>[]</code></p>
+<h3 id="undefines"><code>:undefines:</code></h3>
+<p>Preprocessor symbols to undefine.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span><span class="nt">:undefines</span><span class="p">:</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">A</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">B</span>
 </code></pre></div>
-<p>Enable the addon:</p>
+<p><strong>Default:</strong> <code>[TEST]</code></p>
+<p><code>TEST</code> is undefined by default so analysis runs against production code rather
+than test builds.</p>
+<h3 id="includes"><code>:includes:</code></h3>
+<p>Files force-included ahead of each analyzed file.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span><span class="nt">:addons</span><span class="p">:</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">misra.json</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span><span class="nt">:includes</span><span class="p">:</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file1.h</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file2.h</span>
 </code></pre></div>
-<h3 id="checks">Checks</h3>
-<p>Enable additional checks.
-Default is <em>style</em>.</p>
+<p><strong>Default:</strong> <code>[]</code></p>
+<h3 id="excludes"><code>:excludes:</code></h3>
+<p>Files excluded from analysis.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span><span class="nt">:enable_checks</span><span class="p">:</span>
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">performance</span>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">portability</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span><span class="nt">:excludes</span><span class="p">:</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file1.c</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file2.c</span>
 </code></pre></div>
-<p><em>Note: These are only used for single file analysis.</em>
-<em>Whole project analysis always enable all checks.</em></p>
-<p>Disable individual checks:</p>
+<p><strong>Default:</strong> <code>[]</code></p>
+<h3 id="platform"><code>:platform:</code></h3>
+<p>Platform to analyze for. Accepts any platform Cppcheck ships with, such as
+<code>unix64</code>, or the path to a platform XML file.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span><span class="nt">:disable_checks</span><span class="p">:</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">style</span>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">information</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span><span class="nt">:platform</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unix64</span>
 </code></pre></div>
-<h3 id="suppressions">Suppressions</h3>
-<h4 id="inline">Inline</h4>
-<p>Inline suppressions are disabled by default, they can be enabled with:</p>
+<p><strong>Default:</strong> unset</p>
+<h3 id="standard"><code>:standard:</code></h3>
+<p>C or C++ language standard.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="nt">:inline_suppressions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="nt">:standard</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">c99</span>
 </code></pre></div>
-<h4 id="list-files">List files</h4>
-<p>Suppressions files can be used by giving the search paths and/or files in the
-<code>:paths</code> and <code>:files</code> sections of  your <code>project.yml</code> respectively.
-e.g.:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nt">:paths</span><span class="p">:</span>
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">suppressions/</span>
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">source/*/suppressions/</span>
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>
-<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="nt">:files</span><span class="p">:</span>
-<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="w">  </span><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">suppressions.xml</span>
+<p><strong>Default:</strong> unset</p>
+<h3 id="check_level"><code>:check_level:</code></h3>
+<p>Analysis depth. Accepts the levels your Cppcheck supports, commonly <code>normal</code>
+and <code>exhaustive</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span><span class="nt">:check_level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exhaustive</span>
 </code></pre></div>
-<p>Both XML and text files are supported, and for the latter, the file extension
-can be configured. The default is <code>.txt</code>.
-e.g.:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nt">:extension</span><span class="p">:</span>
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span><span class="nt">:cppcheck</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.txt</span>
+<p><strong>Default:</strong> unset</p>
+<h3 id="addons"><code>:addons:</code></h3>
+<p>Addons to run. Entries may be built-in addon names or paths to addon scripts
+and JSON addon configurations.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span><span class="nt">:addons</span><span class="p">:</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">misra</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/to/addon.py</span>
 </code></pre></div>
-<p>The files that will ultimately be used can be verified with:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>files:cppcheck
+<p><strong>Default:</strong> <code>[]</code></p>
+<p>MISRA needs a rule texts file, which is not distributed with Cppcheck. Place
+your copy in the project, for example at <code>misra.txt</code>, then create an addon
+configuration naming it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="p">{</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">    </span><span class="nt">&quot;script&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;misra&quot;</span><span class="p">,</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">    </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;--rule-texts=misra.txt&quot;</span><span class="p">]</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="p">}</span>
 </code></pre></div>
-<h4 id="command-line">Command line</h4>
-<p>Command line suppressions can also be added:</p>
+<p>Enable that configuration rather than the bare addon name:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span><span class="nt">:suppressions</span><span class="p">:</span>
-<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">memleak:src/file1.cpp</span>
-<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exceptNew:src/file1.cpp</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span><span class="nt">:addons</span><span class="p">:</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">misra.json</span>
 </code></pre></div>
-<h3 id="library-configuration">Library configuration</h3>
-<p>Add library configuration files:</p>
+<h3 id="enable_checks"><code>:enable_checks:</code></h3>
+<p>Additional checks enabled for single file analysis.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="w">  </span><span class="nt">:libraries</span><span class="p">:</span>
-<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lib1.cfg</span>
-<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lib2.cfg</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="w">  </span><span class="nt">:enable_checks</span><span class="p">:</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">performance</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">portability</span>
 </code></pre></div>
-<h3 id="rules">Rules</h3>
-<p>Regular expression rules:</p>
+<p><strong>Default:</strong> <code>[style]</code></p>
+<div class="admonition note">
+<p class="admonition-title">Single file analysis only</p>
+<p>Whole project analysis always enables every check with <code>--enable=all</code>, so
+this setting does not affect <code>cppcheck:all</code>.</p>
+</div>
+<h3 id="disable_checks"><code>:disable_checks:</code></h3>
+<p>Checks to disable. Applies to both analysis modes.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="w">  </span><span class="nt">:rules</span><span class="p">:</span>
-<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">if \( p \) { free \( p \) ; }</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a><span class="w">  </span><span class="nt">:disable_checks</span><span class="p">:</span>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">style</span>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">information</span>
 </code></pre></div>
-<h3 id="extra-options">Extra options</h3>
-<p>For things not covered above, add extra command line options:</p>
+<p><strong>Default:</strong> <code>[]</code></p>
+<h3 id="inline_suppressions"><code>:inline_suppressions:</code></h3>
+<p>Honor suppression comments written inline in source.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
-<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="w">  </span><span class="nt">:options</span><span class="p">:</span>
-<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--max-configs=&lt;limit&gt;</span>
-<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--suppressions-list=&lt;file&gt;</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="w">  </span><span class="nt">:inline_suppressions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
+<p><strong>Default:</strong> <code>false</code></p>
+<h3 id="suppressions"><code>:suppressions:</code></h3>
+<p>Suppressions given directly on the command line.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="w">  </span><span class="nt">:suppressions</span><span class="p">:</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">memleak:src/file1.c</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">exceptNew:src/file1.c</span>
+</code></pre></div>
+<p><strong>Default:</strong> <code>[]</code></p>
+<p>Suppression <em>files</em> are collected separately, through Ceedling's path and file
+collections rather than this list:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="nt">:paths</span><span class="p">:</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="w">  </span><span class="nt">:cppcheck</span><span class="p">:</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">suppressions/</span>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">source/*/suppressions/</span>
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a><span class="nt">:files</span><span class="p">:</span>
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a><span class="w">  </span><span class="nt">:cppcheck</span><span class="p">:</span>
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">suppressions.xml</span>
+</code></pre></div>
+<p>Both XML and text suppression files are supported. The extension used to find
+text suppression files is configurable:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="nt">:extension</span><span class="p">:</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="w">  </span><span class="nt">:cppcheck</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.txt</span>
+</code></pre></div>
+<p>Confirm which files were collected with the
+<a href="#list-suppression-files"><code>files:cppcheck</code></a> task.</p>
+<h3 id="libraries"><code>:libraries:</code></h3>
+<p>Library configuration files.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="w">  </span><span class="nt">:libraries</span><span class="p">:</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lib1.cfg</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lib2.cfg</span>
+</code></pre></div>
+<p><strong>Default:</strong> <code>[]</code></p>
+<h3 id="rules"><code>:rules:</code></h3>
+<p>Regular expression rules.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="w">  </span><span class="nt">:rules</span><span class="p">:</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">if \( p \) { free \( p \) ; }</span>
+</code></pre></div>
+<p><strong>Default:</strong> <code>[]</code></p>
+<h3 id="options"><code>:options:</code></h3>
+<p>Raw command line arguments passed straight through to Cppcheck. This is the
+escape hatch for anything the settings above do not cover.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="nt">:cppcheck</span><span class="p">:</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="w">  </span><span class="nt">:options</span><span class="p">:</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--max-configs=&lt;limit&gt;</span>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--suppressions-list=&lt;file&gt;</span>
+</code></pre></div>
+<p><strong>Default:</strong> <code>[]</code></p>
 <h2 id="usage">Usage</h2>
 <h3 id="analyze-whole-project">Analyze whole project</h3>
-<p>Run analysis for all project sources:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>cppcheck:all
+<p>Run analysis across all project sources:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>cppcheck:all
 </code></pre></div>
-<p><em>Note: Analysis is run with</em> all <em>checks enabled.</em></p>
+<p>Every check is enabled for this mode. Configure at least one entry in
+<a href="#reports"><code>:reports:</code></a> or enable <a href="#fail_build"><code>:fail_build:</code></a>, or this task
+has nothing to produce and says so.</p>
 <h3 id="analyze-single-file">Analyze single file</h3>
-<p>Run analysis for single source file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>cppcheck:&lt;filename&gt;
+<p>Run analysis for one source file, by filename with no path:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>cppcheck:example_file.c
 </code></pre></div>
-<p><em>Note: Analysis will run with the checks in <a href="#checks"><code>:enable_checks</code></a> list enabled.</em></p>
+<p>Findings print to the console. This mode uses the checks in
+<a href="#enable_checks"><code>:enable_checks:</code></a>.</p>
+<h3 id="list-suppression-files">List suppression files</h3>
+<p>Show which suppression files were collected from your configured paths and
+files:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>$<span class="w"> </span>ceedling<span class="w"> </span>files:cppcheck
+</code></pre></div>
+<p>This task needs no Cppcheck installation.</p>
+<h2 id="artifacts">Artifacts</h2>
+<p>Reports are written to <code>build/artifacts/cppcheck/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Report</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTML</td>
+<td><code>build/artifacts/cppcheck/html/index.html</code></td>
+</tr>
+<tr>
+<td>SARIF</td>
+<td><code>build/artifacts/cppcheck/CppcheckReport.sarif</code></td>
+</tr>
+<tr>
+<td>Text</td>
+<td><code>build/artifacts/cppcheck/CppcheckReport.txt</code></td>
+</tr>
+<tr>
+<td>XML</td>
+<td><code>build/artifacts/cppcheck/CppcheckReport.xml</code></td>
+</tr>
+</tbody>
+</table>
+<p>Filenames other than the HTML directory are configurable. See the
+<code>*_artifact_filename</code> settings above.</p>
+<p>These artifacts are included in <code>ceedling clean</code> targets.</p>
+<h2 id="interpreting-results">Interpreting results</h2>
+<p>Whole project analysis prints a per-severity tally after it runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>Cppcheck findings: 1 error, 2 information, 2 style
+</code></pre></div>
+<p>Cppcheck assigns every finding one of six severities.</p>
+<table>
+<thead>
+<tr>
+<th>Severity</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>error</code></td>
+<td>A definite defect, such as a double free or buffer overrun</td>
+</tr>
+<tr>
+<td><code>warning</code></td>
+<td>Likely a defect, worth review</td>
+</tr>
+<tr>
+<td><code>style</code></td>
+<td>Stylistic issue, including unused code</td>
+</tr>
+<tr>
+<td><code>performance</code></td>
+<td>Code that is correct but avoidably slow</td>
+</tr>
+<tr>
+<td><code>portability</code></td>
+<td>Behavior that differs across compilers or platforms</td>
+</tr>
+<tr>
+<td><code>information</code></td>
+<td>Notes about the analysis itself, such as missing includes</td>
+</tr>
+</tbody>
+</table>
+<p>Only <code>error</code> fails a build by default. Widen that with
+<a href="#fail_build_severities"><code>:fail_build_severities:</code></a>.</p>
+<p>For finding-by-finding detail, open a configured report. The text report is
+easiest to read at the terminal:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>$<span class="w"> </span>cat<span class="w"> </span>build/artifacts/cppcheck/CppcheckReport.txt
+</code></pre></div>
+<p>See <a href="https://cppcheck.sourceforge.io/manual.pdf">Cppcheck's manual</a> for what each check means and how to
+suppress findings you have reviewed.</p>
+<p><br/><br/></p>
 
 
 

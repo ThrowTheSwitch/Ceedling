@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://throwtheswitch.github.io/Ceedling/latest/plugins/">
+        <link rel="canonical" href="https://docs.throwtheswitch.org/Ceedling/latest/plugins/">
       
       
         <link rel="prev" href="../configuration/reference/tools/">
@@ -2506,6 +2506,8 @@
       
         
       
+        
+      
     
     
     
@@ -3128,6 +3130,114 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="bullseye/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bullseye (Coverage)
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bullseye (Coverage)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="bullseye/licensing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Licensing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -4233,7 +4343,7 @@ for how to enable built-in plugins and load custom plugins in your project.</p>
 <p class="admonition-title">Warning</p>
 <p>Build-related plugins intentionally execute duplicated builds.</p>
 </div>
-<p>Plugins including <a href="gcov/">Gcov</a>, Bullseye, and <a href="valgrind/">Valgrind</a>
+<p>Plugins including <a href="gcov/">Gcov</a>, <a href="bullseye/">Bullseye</a>, and <a href="valgrind/">Valgrind</a>
 recreate test build tasks. That is, the command line build task <code>test:foo</code> also exists 
 as <code>gcov:foo</code>, <code>bullseye:foo</code>, and/or <code>valgrind:foo</code> if these plugins are enabled.
 Each of these triggers a full rebuild of the named test with instrumentation 
@@ -4370,13 +4480,13 @@ and .Net-based <a href="https://reportgenerator.io">ReportGenerator</a> to produ
 variety of formats.</p>
 </li>
 <li>
-<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m18.5 3.5-15 15 2 2 15-15M7 4a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m10 10a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3"/></svg></span> <strong><code>bullseye</code></strong></p>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m18.5 3.5-15 15 2 2 15-15M7 4a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m10 10a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3"/></svg></span> <strong><a href="bullseye/"><code>bullseye</code></a></strong></p>
 <hr />
 <p>Adds Ceedling tasks to execute tests with code coverage instrumentation
 provided by the commercial <a href="http://www.bullseye.com">Bullseye</a> tool, which provides visualization
 and report generation from the coverage results.</p>
-<p>Note: Bullseye was disabled as of 1.0.0 and is being updated for 1.2.0 but
-is currently not usable.</p>
+<p>Note: Bullseye requires a commercial license. It was disabled as of 1.0.0
+and is enabled again as of 1.2.0.</p>
 </li>
 </ul>
 </div>

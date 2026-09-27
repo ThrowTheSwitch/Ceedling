@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://throwtheswitch.github.io/Ceedling/latest/testing-guide/conventions/">
+        <link rel="canonical" href="https://docs.throwtheswitch.org/Ceedling/latest/testing-guide/conventions/">
       
       
         <link rel="prev" href="../test-suite-anatomy/">
@@ -1536,23 +1536,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Dependency tracking">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#not-so-smart-rebuilds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        (Not so) smart rebuilds
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -2892,6 +2875,8 @@
       
         
       
+        
+      
     
     
     
@@ -3508,6 +3493,111 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../plugins/bullseye/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bullseye (Coverage)
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bullseye (Coverage)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../plugins/bullseye/licensing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Licensing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -4670,23 +4760,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Dependency tracking">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#not-so-smart-rebuilds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        (Not so) smart rebuilds
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -5286,32 +5359,16 @@ compilation option is not set.</p>
  range. Unity would require special rigging that is inconsistently available
  across platforms to measure test case durations at a finer resolution.</p>
 <h2 id="dependency-tracking">Dependency tracking</h2>
-<p>Previous versions of Ceedling used features of Rake to offer
-various kinds of smart rebuilds — that is, only regenerating files, 
-recompiling code files, or relinking executables when changes within 
-the project had occurred since the last build. Optional Ceedling 
-features discovered “deep dependencies” such that, for example, a 
-change in a header file several nested layers deep in <code>#include</code> 
-statements would cause all the correct test executables to be 
-updated and run.</p>
-<p>These features have been temporarily disabled and/or removed for 
-test suites and remain in limited form for release build while
-Ceedling undergoes a major overhaul.</p>
-<p>Please see the <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md">Release Notes</a>.</p>
-<h3 id="not-so-smart-rebuilds">(Not so) smart rebuilds</h3>
-<ul>
-<li>
-<p>New features that are a part of the Ceedling overhaul can 
-  significantly speed up test suite execution and release builds 
-  despite the present behavior of brute force running all build 
-  steps. See the discussion of enabling multi-threaded builds in 
-  later sections.</p>
-</li>
-<li>
-<p>When smart rebuilds return, they will further speed up builds as
-  will other planned optimizations.</p>
-</li>
-</ul>
+<p>Ceedling only regenerates, compiles, links, or runs an element of the build
+pipeline if a change in the dependency tree requires it. This includes “deep
+dependencies” wherein a change in a header file several nested layers deep in
+<code>#include</code> statements correctly triggers a rebuild of every test executable
+that depends on it, directly or indirectly.</p>
+<p>This is called a delta build. Delta builds are automatic, need no
+configuration, and complement Ceedling's parallel build steps for further
+build time speedups. See <a href="../../getting-started/builds/">Delta Builds</a> for the
+full picture, including how test result caching works and the
+<code>--force-test-rerun</code> flag.</p>
 <h2 id="build-output">Build output</h2>
 <p>Ceedling requires a top-level build directory for all the stuff
 that it, the accompanying test tools, and your toolchain generate.
