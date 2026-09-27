@@ -4364,13 +4364,14 @@ embedded systems developers.</p>
 <p class="admonition-title">Ceedling 1.2.0 adds the most requested features and improvements</p>
 <p>👀 See the <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md">Changelog</a>.</p>
 </div>
-<p>Ceedling 1.2.0 (prerelease) includes:</p>
+<p>Ceedling 1.2.0 includes:</p>
 <ul>
 <li><a href="getting-started/builds/"><strong>Delta builds</strong></a> have been restored so that file regeneration and build actions only occur because of changed files or configuration.</li>
 <li><strong><code>#include</code> relative paths &amp; duplicate filename disambiguation</strong>. Ceedling now fully <a href="testing-guide/conventions/#distinguishing-same-named-files">supports relative paths everywhere</a> and offers options to distinguish files of the same name.</li>
 <li><strong>Multiple file extensions per file type.</strong> You may now provide a list of file types (e.g. <code>.c</code> and <code>.cc</code>) via <a href="configuration/reference/extension/"><code>:extension</code></a> to gather files into your project’s build.</li>
 <li><strong>Dedicated mocks and test runner generation <a href="getting-started/command-line/#build-plugin-tasks">build tasks</a>.</strong> You may now run the test build pipeline only up through generating mocks or test runners with no compilation or test runs.</li>
 </ul>
+<p>And, the headlining feature of Ceedling 1.1.0 was <a href="testing-guide/partials/"><em>Partias</em></a>. A Partial is your C code sliced and diced to expose functional elements for testing that you could not otherwise access without rewriting your source code. Think of Partials as a scalpel for testing your code.</p>
 <hr />
 <h2 id="overview">Overview</h2>
 <div class="grid cards">
