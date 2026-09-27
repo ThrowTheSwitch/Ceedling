@@ -240,6 +240,10 @@ def valgrind_available?
   tool_available?('valgrind --version 2>&1')
 end
 
+def cppcheck_available?
+  tool_available?('cppcheck --version 2>&1')
+end
+
 def bullseye_available?
   # covc has no --version flag (unrecognized options always exit non-zero,
   # licensed or not) — --help is the cheapest licensed command that succeeds.
@@ -300,6 +304,16 @@ RSpec.shared_context "requires valgrind" do
 
   before do
     skip "valgrind is not installed or not in PATH" unless @valgrind_available
+  end
+end
+
+RSpec.shared_context "requires cppcheck" do
+  before :all do
+    @cppcheck_available = cppcheck_available?
+  end
+
+  before do
+    skip "cppcheck is not installed or not in PATH" unless @cppcheck_available
   end
 end
 

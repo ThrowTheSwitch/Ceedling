@@ -13,7 +13,13 @@ CLEAN.include(File.join(CPPCHECK_ARTIFACTS_PATH, '*'))
 
 CLOBBER.include(File.join(CPPCHECK_BUILD_PATH, '**/*'))
 
-task :cppcheck_deps => [:directories, CPPCHECK_BUILD_PATH, CPPCHECK_ARTIFACTS_PATH]
+# Every cppcheck: task depends on this. It is the one place the Cppcheck executable
+# is checked, so a build that never runs a cppcheck: task never requires Cppcheck to
+# be installed. `files:cppcheck` deliberately does not depend on it, since listing
+# suppression files needs no executable. See Cppcheck#validate_environment!.
+task :cppcheck_deps => [:directories, CPPCHECK_BUILD_PATH, CPPCHECK_ARTIFACTS_PATH] do
+  @ceedling[CPPCHECK_SYM].validate_environment!
+end
 task :cppcheck => ['cppcheck:all']
 
 namespace CPPCHECK_SYM do

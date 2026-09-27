@@ -20,6 +20,11 @@ command line plugin tasks. [This is intentional and needed](index.md#understandi
     Valgrind runs on Linux and other Unix-like systems. It is not available
     on Windows or macOS (ARM).
 
+    Enabling this plugin on a platform without Valgrind does not affect your
+    other builds. `ceedling test:all` and every non-`valgrind:` task run
+    normally. Only a `valgrind:` task requires the executable, and it reports
+    the platform constraint when it cannot find one.
+
 The Valgrind plugin integrates [Valgrind] dynamic analysis into Ceedling,
 building and then running test executables under Valgrind’s Memcheck tool.
 
@@ -127,11 +132,48 @@ not marked as failed.
   :fail_build: false
 ```
 
-!!! note "Detection uses log parsing, not Valgrind’s exit code"
+!!! note "Detection uses report parsing, not Valgrind’s exit code"
     Valgrind’s `--error-exitcode` flag is not used because its exit code would
     overlap with Unity’s own exit code, which equals the number of failing test
-    cases. Instead, the plugin parses the `ERROR SUMMARY: N errors` line written
-    to the Valgrind log file.
+    cases. Instead, the plugin counts errors from the report it wrote.
+
+    With [`:xml_report:`](#xml_report) disabled, it sums every
+    `ERROR SUMMARY: N errors` line in the text log. Valgrind writes one such
+    line per traced process, so a test that forks reports more than one.
+
+    With `:xml_report:` enabled, it counts `<error>` elements in the XML
+    instead. Valgrind writes no error summary to the text log once XML output
+    is active.
+
+### `:suppressions:`
+
+A list of Valgrind suppression files. Each becomes one `--suppressions=`
+argument, placed ahead of your own `:arguments:` entries.
+
+```yaml
+:valgrind:
+  :suppressions:
+    - suppressions/third_party.supp
+```
+
+**Default:** `[]`
+
+!!! warning "A malformed suppression file aborts the run"
+    Valgrind refuses to start when it cannot parse a suppression file, which
+    surfaces as a test executable that produced no output. Each suppression
+    needs at least one location line that is not `...`.
+
+### `:xml_report:`
+
+When `true`, writes a machine-readable XML report per test binary alongside the
+text log. Useful for CI systems that consume Valgrind output directly.
+
+```yaml
+:valgrind:
+  :xml_report: true
+```
+
+**Default:** `false`
 
 ## Usage
 
@@ -168,6 +210,13 @@ Each test executable produces a Valgrind log file at:
 build/artifacts/valgrind/<test_name>.log
 ```
 
+With [`:xml_report:`](#xml_report) enabled, a machine-readable report is written
+beside it:
+
+```
+build/artifacts/valgrind/<test_name>.xml
+```
+
 For example, running `ceedling valgrind:test_my_module.c` produces:
 
 ```
@@ -200,3 +249,5 @@ Common Valgrind findings include:
 See [Valgrind] documentation for more details.
 
 [Valgrind]: https://valgrind.org
+
+<br/><br/>

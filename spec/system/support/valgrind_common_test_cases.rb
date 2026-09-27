@@ -117,4 +117,86 @@ module ValgrindCommonTestCases
     end
   end
 
+  def run_valgrind_with_xml_report
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_valgrind
+        @c.merge_project_yml_for_test({ valgrind: { xml_report: true } })
+
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        @c.ceedling_build_exec("valgrind:all")
+
+        expect(@c.last_exit_status).to eq(0)
+
+        xml_path = 'build/artifacts/valgrind/test_example_file_success.xml'
+        expect(File.exist?(xml_path)).to eq(true)
+        expect(File.read(xml_path)).to match(/<valgrindoutput>/)
+      end
+    end
+  end
+
+  def run_valgrind_with_suppressions
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_valgrind
+
+        # A well-formed suppression. Valgrind aborts the whole run when
+        # --suppressions names a file it cannot parse, so a clean build proves the
+        # argument reached Valgrind and was accepted. A suppression needs at least
+        # one location line that is not "...".
+        File.write('all.supp', "{\n   placeholder\n   Memcheck:Leak\n   fun:malloc\n}\n")
+        @c.merge_project_yml_for_test({ valgrind: { suppressions: ['all.supp'] } })
+
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        @c.ceedling_build_exec("valgrind:all")
+
+        expect(@c.last_exit_status).to eq(0)
+        expect(File.exist?('build/artifacts/valgrind/test_example_file_success.log')).to eq(true)
+      end
+    end
+  end
+
+  # Enabling the plugin must not make Valgrind a dependency of unrelated builds.
+  # Regression coverage for the same defect class as issue #1252 in the Gcov plugin.
+  # Only meaningful where Valgrind is absent, which is every non-Linux platform.
+  def test_build_unaffected_when_valgrind_absent
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_valgrind
+
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = @c.ceedling_build_exec("test:all")
+
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/PASSED:\s+\d/)
+      end
+    end
+  end
+
+  def valgrind_task_reports_platform_constraint
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_valgrind
+
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = @c.ceedling_build_exec("valgrind:all")
+
+        expect(@c.last_exit_status).to eq(1)
+        expect(output).to match(/Linux and other Unix-like systems|does not run on Windows/i)
+      end
+    end
+  end
+
 end

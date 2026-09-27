@@ -49,5 +49,40 @@ ceedling_system_tests do
       test_case :run_valgrind_memory_error_fail_build_enabled
       test_case :run_valgrind_memory_error_fail_build_disabled
     end
+
+    describe "Reporting options" do
+      include_context "requires valgrind"
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :run_valgrind_with_xml_report
+      test_case :run_valgrind_with_suppressions
+    end
+
+    # Gated in the opposite direction from every block above. These assert what the
+    # plugin does where Valgrind cannot run, so they are meaningful only where it is
+    # absent. That is every non-Linux platform, including this project's macOS and
+    # Windows CI legs.
+    describe "Platforms without Valgrind" do
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      it "Test build unaffected when valgrind absent",
+         skip: (valgrind_available? ? 'Valgrind is installed; this covers hosts without it' : false) do
+        test_build_unaffected_when_valgrind_absent
+      end
+
+      it "Valgrind task reports platform constraint",
+         skip: (valgrind_available? ? 'Valgrind is installed; this covers hosts without it' : false) do
+        valgrind_task_reports_platform_constraint
+      end
+    end
   end
 end

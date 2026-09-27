@@ -9,13 +9,15 @@ require 'fileutils'
 
 module CppcheckHelpers
 
-  def cppcheck_available?
-    begin
-      `cppcheck --version 2>&1`
-      $?.exitstatus == 0
-    rescue
-      false
-    end
+  # cppcheck_available? lives in spec_system_helper.rb beside the other tool probes,
+  # paired with the "requires cppcheck" shared context.
+
+  # Copies a source Cppcheck reports exactly one error-severity finding for.
+  # See assets/fixtures/cppcheck_findings/findings.c.
+  def copy_cppcheck_findings_fixture
+    asset_base = test_asset_path('cppcheck_findings')
+    FileUtils.cp "#{asset_base}/findings.h", 'src/'
+    FileUtils.cp "#{asset_base}/findings.c", 'src/'
   end
 
   def prep_project_yml_for_cppcheck(reports: [:text])
