@@ -177,15 +177,26 @@ class Cppcheck < Plugin
     total  = failing.values.sum
     detail = failing.sort.map { |severity, count| "#{count} #{severity}" }.join(', ')
 
-    # Raised rather than registered through PluginManager#register_build_failure.
-    # Registered failures are only printed for namespaces tagged as build tasks, and
-    # cppcheck: tasks drive no test or release pipeline. A registered failure would
-    # never reach the user and would never change the exit code.
-    raise CeedlingException.new(
+    @ceedling[:plugin_manager].register_build_failure(
+      CPPCHECK_SYM,
       "Cppcheck found #{total} #{total == 1 ? 'finding' : 'findings'} " \
-      "matching :cppcheck ↳ :fail_build_severities (#{detail}).\n" \
+      "matching :cppcheck ↳ :fail_build_severities (#{detail}). " \
       "See the report in #{CPPCHECK_ARTIFACTS_PATH}."
     )
+
+    fail_build()
+  end
+
+  # Surfaces a registered failure and sets a non-zero exit code.
+  #
+  # Ceedling's end-of-run handler prints registered plugin failures and fails the
+  # build only for namespaces it treats as build tasks. It identifies those by
+  # scanning Rake files for test and release pipeline invocations. A cppcheck: task
+  # drives neither, so a failure registered above would otherwise never reach the
+  # user and never change the exit code.
+  def fail_build()
+    @ceedling[:plugin_manager].print_plugin_failures
+    @ceedling[:application].register_build_failure
   end
 
   # Returns a severity => count hash, or nil when the report could not be read.

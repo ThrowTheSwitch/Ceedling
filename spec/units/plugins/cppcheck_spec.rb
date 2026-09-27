@@ -475,9 +475,17 @@ describe Cppcheck do
 
   # -------------------------------------------------------------------------
   describe '#report_findings' do
+    let(:plugin_manager) { double('plugin_manager', register_build_failure: nil, print_plugin_failures: nil) }
+    let(:application)    { double('application', register_build_failure: nil) }
+
     def build_reporter(config, contents)
       wrapper = double('file_wrapper', exist?: true, read: contents)
-      build_cppcheck(config: config, file_wrapper: wrapper, loginator: loginator)
+      cppcheck = build_cppcheck(config: config, file_wrapper: wrapper, loginator: loginator)
+      cppcheck.instance_variable_set(:@ceedling, {
+        plugin_manager: plugin_manager,
+        application:    application
+      })
+      cppcheck
     end
 
     let(:xml_report) { double('xml_report', artifact_filepath: 'r.xml') }
@@ -507,24 +515,43 @@ describe Cppcheck do
       cppcheck.send(:report_findings, xml_report)
     end
 
-    it 'raises naming the matching severities when :fail_build is enabled' do
+    it 'registers a build failure naming the matching severities when :fail_build is enabled' do
       cppcheck = build_reporter({ fail_build: true, fail_build_severities: ['error'] }, one_error)
 
-      expect { cppcheck.send(:report_findings, xml_report) }.to raise_error(
-        CeedlingException, /1 finding matching.*1 error/m
+      expect(plugin_manager).to receive(:register_build_failure).with(
+        CPPCHECK_SYM, /1 finding matching :cppcheck.*1 error/
       )
+
+      cppcheck.send(:report_findings, xml_report)
     end
 
-    it 'does not raise when findings fall outside the configured severities' do
+    # A cppcheck: task is not one Ceedling treats as a build task, so its end-of-run
+    # handler neither prints the registered failure nor fails the build.
+    it 'prints the failure summary and fails the build itself' do
+      cppcheck = build_reporter({ fail_build: true, fail_build_severities: ['error'] }, one_error)
+
+      expect(plugin_manager).to receive(:print_plugin_failures)
+      expect(application).to receive(:register_build_failure)
+
+      cppcheck.send(:report_findings, xml_report)
+    end
+
+    it 'registers nothing when findings fall outside the configured severities' do
       cppcheck = build_reporter({ fail_build: true, fail_build_severities: ['portability'] }, one_error)
 
-      expect { cppcheck.send(:report_findings, xml_report) }.to_not raise_error
+      expect(plugin_manager).to_not receive(:register_build_failure)
+      expect(application).to_not receive(:register_build_failure)
+
+      cppcheck.send(:report_findings, xml_report)
     end
 
-    it 'does not raise when :fail_build is disabled' do
+    it 'registers nothing when :fail_build is disabled' do
       cppcheck = build_reporter({ fail_build: false, fail_build_severities: ['error'] }, one_error)
 
-      expect { cppcheck.send(:report_findings, xml_report) }.to_not raise_error
+      expect(plugin_manager).to_not receive(:register_build_failure)
+      expect(application).to_not receive(:register_build_failure)
+
+      cppcheck.send(:report_findings, xml_report)
     end
   end
 
