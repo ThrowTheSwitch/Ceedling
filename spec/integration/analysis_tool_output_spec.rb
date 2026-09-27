@@ -152,6 +152,14 @@ describe 'Analysis tool output parsing (integration)' do
       C
     end
 
+    # Returns the report path, or nil if Cppcheck did not actually produce one.
+    #
+    # A `cppcheck` found on PATH is not proof it can run. Some environments
+    # (Windows CI runner images among them) preinstall a Cppcheck shim that
+    # cannot locate its own cfg/std.cfg directory, so a run silently produces no
+    # output. Verifying the report exists, rather than trusting the shell
+    # command's exit status, catches that failure the same way a hung or
+    # partially-written file would.
     def run_cppcheck(dir, xml_version)
       output = File.join(dir, "report#{xml_version}.xml")
       system(
@@ -159,14 +167,16 @@ describe 'Analysis tool output parsing (integration)' do
         "--output-file=\"#{output}\" #{File.join(dir, 'defect.c')}",
         out: File::NULL, err: File::NULL
       )
-      output
+      return output if File.exist?(output) && File.size(output) > 0
+      nil
     end
 
     it 'tallies severities from a real XML version 2 report' do
       with_source_tree({ 'defect.c' => defective_source }) do |dir|
-        counts = tally_severities( File.read( run_cppcheck(dir, 2) ) )
+        output = run_cppcheck(dir, 2)
+        skip 'this Cppcheck could not complete a real analysis run' if output.nil?
 
-        expect(counts['error']).to be > 0
+        expect(tally_severities( File.read(output) )['error']).to be > 0
       end
     end
 
@@ -176,8 +186,7 @@ describe 'Analysis tool output parsing (integration)' do
     it 'tallies severities from a real XML version 3 report where supported' do
       with_source_tree({ 'defect.c' => defective_source }) do |dir|
         output = run_cppcheck(dir, 3)
-
-        skip 'this Cppcheck does not support XML version 3' unless File.exist?(output) && File.size(output) > 0
+        skip 'this Cppcheck does not support XML version 3, or could not complete a real analysis run' if output.nil?
 
         expect(tally_severities( File.read(output) )['error']).to be > 0
       end
@@ -185,9 +194,10 @@ describe 'Analysis tool output parsing (integration)' do
 
     it 'reports an empty tally for a clean source' do
       with_source_tree({ 'defect.c' => "int clean(int a) { return a + 1; }\n" }) do |dir|
-        counts = tally_severities( File.read( run_cppcheck(dir, 2) ) )
+        output = run_cppcheck(dir, 2)
+        skip 'this Cppcheck could not complete a real analysis run' if output.nil?
 
-        expect(counts['error']).to eq(0)
+        expect(tally_severities( File.read(output) )['error']).to eq(0)
       end
     end
   end
