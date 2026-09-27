@@ -1,9 +1,9 @@
 # Bullseye
 
-This plugin measures code coverage with [Bullseye Coverage][bullseye]. It adds
-a set of `bullseye:` build tasks that mirror Ceedling's `test:` tasks. Those
-tasks instrument your code, run your tests, and report how much of your source
-the tests actually exercised.
+This plugin measures code coverage with the commercially available 
+[Bullseye Coverage][bullseye] tool. It adds a set of `bullseye:` build tasks 
+that mirror Ceedling's `test:` tasks. These tasks instrument your code, 
+run your tests, and report how much of your source the tests actually exercised.
 
 !!! warning "Requires a commercial license"
     Bullseye Coverage is commercial software. You need your own licensed
@@ -67,8 +67,7 @@ Coverage data accumulates across runs. Use `ceedling clean` or
 
 This plugin is verified against Bullseye Coverage 9.25.9 on Linux x64. It
 relies on command-line conventions that have been stable across Bullseye's
-release history. Other versions are likely to work. They have not been
-verified.
+release history and across platforms.
 
 ## Installation and set up
 
@@ -82,11 +81,11 @@ Bullseye's tools must be on your `PATH`. Ceedling's
 also supply the path.
 
 !!! note "Docker images"
-    Ceedling's `madsciencelab-plugins` Docker images do not include Bullseye.
-    Distributing its executables requires a license that a freely available
-    image cannot carry. Download Bullseye yourself, then either extend the
-    image or install into a running container. See
-    [Using Bullseye in a container](licensing.md#using-bullseye-in-a-container).
+    Ceedling's `madsciencelab-plugins` Docker image variants do not include
+    Bullseye. This requires a license that a freely available image cannot carry. 
+    Download Bullseye and then either extend the image or install into a running 
+    container.
+    See [Using Bullseye in a container](licensing.md#using-bullseye-in-a-container).
 
 ### Enable the plugin
 
@@ -103,7 +102,7 @@ No further configuration is required.
 
 ## Configuration
 
-All settings live in a top-level `:bullseye:` section of your project file.
+All settings live in a top-level `:bullseye` section of your project file.
 
 ### `:summaries:`
 
@@ -137,7 +136,7 @@ one of three values.
 **Default:** `:list`
 
 !!! warning
-    **Compiling all untested sources for 0% coverage reporting (`:compile`) will likely require additional work.**
+    **Compiling all untested sources for 0% coverage reporting will likely require additional work.**
 
     Successful compilation of untested source files may require certain
     symbols to be defined, certain flags to be set, or entire stand-in shims
@@ -190,7 +189,8 @@ three values.
 
 * `:none` — No XML report.
 * `:native` — Bullseye's own XML schema.
-* `:cobertura` — Cobertura format, which many CI dashboards already read.
+* `:cobertura` — Cobertura format (a popular format across coverage reporting
+    tools and CI dashboards).
 
 ```yaml
 :bullseye:
@@ -263,9 +263,7 @@ to floating and evaluation licenses. See
 
 ## Reporting
 
-Bullseye is a single self-contained toolchain. This plugin has no `:reports:`
-list to configure and no choice of reporting utility. Ceedling's `gcov` plugin
-differs here because it supports three interchangeable report tools.
+Bullseye is a single self-contained toolchain.
 
 ### Console summaries
 
@@ -421,7 +419,7 @@ reports, and XML reports have no GUI dependencies at all.
 ### Relocating the coverage data file
 
 Region-based exclusions may stop matching if you relocate the coverage data
-file through your own `:tools:` overrides. See
+file through your own `:tools` overrides. See
 [The coverage data file](#the-coverage-data-file) for why its location
 matters.
 
