@@ -254,7 +254,7 @@ configuration is in `mkdocs.yml` while the local site bundle configuration is in
 port 8000, VS Code detects it and shows a notification. The **Ports** panel also
 provides an **Open in Browser** button.
 
-**Hosted site:** [https://throwtheswitch.github.io/Ceedling/](https://throwtheswitch.github.io/Ceedling/)
+**Hosted site:** [https://docs.throwtheswitch.org/Ceedling/](https://docs.throwtheswitch.org/Ceedling/)
 
 [MkDocs]: https://www.mkdocs.org
 [Material theme]: https://squidfunk.github.io/mkdocs-material/

@@ -33,7 +33,7 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
   s.metadata = {
     "homepage_uri"      => s.homepage,
     "bug_tracker_uri"   => "https://github.com/ThrowTheSwitch/Ceedling/issues",
-    "documentation_uri" => "https://throwtheswitch.github.io/Ceedling/",
+    "documentation_uri" => "https://docs.throwtheswitch.org/Ceedling/",
     "mailing_list_uri"  => "https://throwtheswitch.discourse.group",
     "source_code_uri"   => "https://github.com/ThrowTheSwitch/Ceedling",
     "funding_uri"       => "https://github.com/sponsors/ThrowTheSwitch"

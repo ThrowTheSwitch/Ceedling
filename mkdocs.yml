@@ -8,7 +8,7 @@
 # Site metadata
 site_name: Ceedling
 site_description: Test-Centered Build System for C
-site_url: https://throwtheswitch.github.io/Ceedling/
+site_url: https://docs.throwtheswitch.org/Ceedling/
 repo_url: https://github.com/ThrowTheSwitch/Ceedling
 repo_name: ThrowTheSwitch/Ceedling
 
