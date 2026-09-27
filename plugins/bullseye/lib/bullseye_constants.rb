@@ -18,6 +18,9 @@ BULLSEYE_DEPENDENCIES_PATH   = File.join(BULLSEYE_BUILD_PATH, BUILD_DEPENDENCIES
 BULLSEYE_ARTIFACTS_PATH      = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, BULLSEYE_ROOT_NAME)
 BULLSEYE_HTML_ARTIFACTS_PATH = File.join(BULLSEYE_ARTIFACTS_PATH, 'covhtml')
 
+# One filename serves both XML formats. Only one format is ever active per build.
+BULLSEYE_XML_ARTIFACT_PATH   = File.join(BULLSEYE_ARTIFACTS_PATH, 'coverage.xml')
+
 # Bullseye records each source's path in the .cov file relative to the .cov file's own
 # directory, and region-exclusion glob patterns (covselect, and covsrc/covfn/covhtml's
 # automatic honoring of covselect's persisted selections) match against that raw stored
@@ -53,3 +56,45 @@ BULLSEYE_UNTESTED_SOURCES_OPTIONS = [
   BULLSEYE_UNTESTED_SOURCES_LIST,
   BULLSEYE_UNTESTED_SOURCES_COMPILE
 ]
+
+# Branch Coverage Detail Modes
+# Bullseye's covsrc totals report a branch coverage percentage but never say which
+# branches went uncovered. covbr answers that with an annotated source listing.
+# :none      — No annotated listing.
+# :uncovered — Annotate only probes that are not fully covered (covbr --uncover).
+# :all       — Annotate every source line (covbr --all).
+# --uncover and --all are mutually exclusive per Bullseye's own reference.
+BULLSEYE_BRANCH_DETAIL_NONE      = :none
+BULLSEYE_BRANCH_DETAIL_UNCOVERED = :uncovered
+BULLSEYE_BRANCH_DETAIL_ALL       = :all
+BULLSEYE_BRANCH_DETAIL_OPTIONS   = [
+  BULLSEYE_BRANCH_DETAIL_NONE,
+  BULLSEYE_BRANCH_DETAIL_UNCOVERED,
+  BULLSEYE_BRANCH_DETAIL_ALL
+]
+
+# covbr mode flags keyed by configuration value
+BULLSEYE_BRANCH_DETAIL_FLAGS = {
+  BULLSEYE_BRANCH_DETAIL_UNCOVERED => '--uncover',
+  BULLSEYE_BRANCH_DETAIL_ALL       => '--all'
+}
+
+# XML Report Formats
+# :none      — Generate no XML report.
+# :native    — Bullseye's own XML schema (covxml default output).
+# :cobertura — Cobertura format for CI tools that consume it (covxml --cobertura).
+BULLSEYE_XML_REPORT_NONE      = :none
+BULLSEYE_XML_REPORT_NATIVE    = :native
+BULLSEYE_XML_REPORT_COBERTURA = :cobertura
+BULLSEYE_XML_REPORT_OPTIONS   = [
+  BULLSEYE_XML_REPORT_NONE,
+  BULLSEYE_XML_REPORT_NATIVE,
+  BULLSEYE_XML_REPORT_COBERTURA
+]
+
+# covxml format flags keyed by configuration value. Native format is covxml's
+# default and needs no flag, so it maps to an empty argument.
+BULLSEYE_XML_REPORT_FLAGS = {
+  BULLSEYE_XML_REPORT_NATIVE    => '',
+  BULLSEYE_XML_REPORT_COBERTURA => '--cobertura'
+}

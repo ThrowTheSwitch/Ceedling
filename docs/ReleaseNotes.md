@@ -30,13 +30,13 @@ The incomplete list of goodies:
 * Integrates latest [Unity](https://github.com/ThrowTheSwitch/Unity) ([2.7.0](https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityChangeLog.md)).
 * Integrates latest [CMock](https://github.com/ThrowTheSwitch/CMock) ([2.7.0](https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMockChangeLog.md)).
 
-[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
-[example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/
-[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
-[valgrind-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/
-[cppcheck-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/
-[gcov-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/
-[mixins-inline-yaml]: https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins/?h=mixins#-mixin-command-line-flags
+[partials-docs]: https://docs.throwtheswitch.org/Ceedling/1.1.0/testing-guide/partials/
+[example-projects]: https://docs.throwtheswitch.org/Ceedling/latest/getting-started/example-projects/
+[ceedling-docs-site]: https://docs.throwtheswitch.org/Ceedling/
+[valgrind-plugin]: https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/valgrind/
+[cppcheck-plugin]: https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/cppcheck/
+[gcov-plugin]: https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/gcov/
+[mixins-inline-yaml]: https://docs.throwtheswitch.org/Ceedling/latest/configuration/mixins/?h=mixins#-mixin-command-line-flags
 
 ## 🔢 Ruby version support
 
@@ -44,7 +44,7 @@ Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4 on 
 
 Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world.
 
-To avoid Ruby version and installation environment complications, consider using [the readymade MadScienceLab Docker images](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
+To avoid Ruby version and installation environment complications, consider using [the readymade MadScienceLab Docker images](https://docs.throwtheswitch.org/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
 
 ## 📖 Configuration Cheatsheet for 1.1.0 Changes
 

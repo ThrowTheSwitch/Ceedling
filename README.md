@@ -17,6 +17,17 @@ project set up.
 * **Dedicated mocks and test runner generation build tasks.** It is now possible to run the test build pipeline only up through generating mocks or test runners without running the rest of a build using `ceedling gen:mocks:<test>` and `ceedling gen:test_runner:<test>` mirroring the convention of `test:` tasks.
 * **Shuffled test order.** Ceedling now supports Unity’s randomized test case ordering (via a `:unity` configuration setting). Delta builds automatically adjust to always rerun test executables so test case ordering is shuffled.
 * The `TEST_SOURCE_FILE()` build directive macro can now be used to remove source files from a test executable build. This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
+* [Bullseye code coverage plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) re-enabled and modernized (disabled since 1.0.0).
+
+**Goodness introduced in 1.1.0:**
+* A [Partial][partials-docs] allows a test to mix mocked and real functions 
+from the same source module in a single test file and enables testing of 
+`static` and `inline` functions without modifying source code.
+* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site]
+  available both online and as a local bundle exported from Ceedling’s 
+  command line.
+* A new [Discourse community forum](https://throwtheswitch.discourse.group) to 
+  supersede the old, spammy Google Group and handful of disparate support channels.
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -110,7 +121,7 @@ library builds & dependency management, and more.
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
-[FFF-plugin]: https://throwtheswitch.github.io/Ceedling/latest/plugins/fff/
+[FFF-plugin]: https://docs.throwtheswitch.org/Ceedling/latest/plugins/fff/
 
 <br/>
 
@@ -417,7 +428,7 @@ The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedl
 
 _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustrating project configuration option changes for new releases in the form of a Ceedling project YAML configuration file. This may be especially useful to those already familiar with the tool wanting to update to the latest and greatest as quickly as possible.
 
-[ceedling-docs-plugins]: https://throwtheswitch.github.io/Ceedling/latest/plugins/
+[ceedling-docs-plugins]: https://docs.throwtheswitch.org/Ceedling/latest/plugins/
 
 ## Library and courses
 
@@ -447,7 +458,7 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 👀 See the **_[Quick Start][ceedling-docs-quick-start]_** section of Ceedling’s documentation site.
 
-[ceedling-docs-quick-start]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/quick-start/
+[ceedling-docs-quick-start]: https://docs.throwtheswitch.org/Ceedling/latest/getting-started/quick-start/
 
 ## The basics
 
@@ -579,7 +590,7 @@ Or, use Ceedling’s built-in `examples` & `example` commands to extract a sampl
 See the [configuration section][ceedling-docs-config] of Ceedling’s documentation for way more details on your project configuration options than we can provide here.
 
 [example-config-file]: assets/features/project.yml
-[ceedling-docs-config]: https://throwtheswitch.github.io/Ceedling/latest/configuration/
+[ceedling-docs-config]: https://docs.throwtheswitch.org/Ceedling/latest/configuration/
 
 ## Using Ceedling’s command line (and related)
 
@@ -720,4 +731,4 @@ the **[Ceedling development workflow][ceedling-dev-workflow]** guide.
 
 [coding-standard]: docs/ThrowTheSwitchCodingStandard.md
 [pr-checklist]: docs/CeedlingPullRequestChecklist.md
-[ceedling-dev-workflow]: https://throwtheswitch.github.io/Ceedling/latest/development/workflow/
+[ceedling-dev-workflow]: https://docs.throwtheswitch.org/Ceedling/latest/development/workflow/

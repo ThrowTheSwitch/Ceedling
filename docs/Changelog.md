@@ -15,7 +15,7 @@ This changelog is complemented by three other documents:
 ## 🌟 Added
 
 ### Delta builds
-[Delta builds](https://throwtheswitch.github.io/Ceedling/1.2.0/getting-started/builds/) have been restored after a temporary hiatus following a major refactoring for 1.0.0 ([Restore delta test builds to Ceedling 1.0.0+](https://github.com/ThrowTheSwitch/Ceedling/issues/1143)).
+[Delta builds](https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/builds/) have been restored after a temporary hiatus following a major refactoring for 1.0.0 ([Restore delta test builds to Ceedling 1.0.0+](https://github.com/ThrowTheSwitch/Ceedling/issues/1143)).
 
 A delta build is simply a build run that only performs regeneration, compilation, linking, or execution as needed because of changed files or configuration. Ceedling 1.0.0 introduced threaded parallel build steps but had to remove delta builds in the process. As of 1.2.0, both build speedups are now available. Delta builds are automatic with no configuration needed.
 
@@ -24,12 +24,12 @@ If a build requests a test to be built/run but no changes for it exist, its cach
 Delta builds are fully integrated with test build plugins (e.g. GCov, Valgrind). Each runs its own build through the same test pipeline as an ordinary test build, under its own build context, so it benefits from the same staleness tracking within its own isolated dependency cache
 
 ### `#include` relative paths & duplicate filename disambiguation
-Added support for properly [distinguishing all C files by filepath](https://throwtheswitch.github.io/Ceedling/1.2.0/testing-guide/conventions/#distinguishing-same-named-files) (addressing [#1167](https://github.com/ThrowTheSwitch/Ceedling/issues) specifically but also the fundamental problem generally).
+Added support for properly [distinguishing all C files by filepath](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#distinguishing-same-named-files) (addressing [#1167](https://github.com/ThrowTheSwitch/Ceedling/issues) specifically but also the fundamental problem generally).
 
 In Ceedling’s early history simplicity won out with the assumption that every C file would be uniquely named. But, for example, this meant _dir1/foo.h_ and _dir2/foo.h_ were indistiguishable and Ceedling “guessed” to disambiguate using the ordering of filepath collections. This worked, but there was no ability to use partial paths to explicitly select a specific file. Now Ceedling fully utilizes filepaths to distinguish all elements of a test build. Relative paths are supported in `#include` directives. `test:` build tasks at the command line can optionally include a filepath to distinguish test files of the same name. The previous convention still works where the ordering of paths is identical among compiler search paths and those used to find files for test builds, but now additional path information can be provided to target specific files in your source collection.
 
 ### Multiple file extensions per file type
-Added support for multiple [file extensions](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
+Added support for multiple [file extensions](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
 
 ### Dedicated mocks and test runner generation build tasks
 Some users have asked for the ability to run the test build pipeline only up through generating mocks or test runners without running the rest of a build. This is now possible.
@@ -42,23 +42,28 @@ Tasks mirroring command line `test:` task invocation but with an early terminati
 Like with command line `test:` tasks, `<test>` can be `all`, a test file name, or a source file name that has a corresponding test file.
 
 ### Test case shuffling at runtime
-Ceedling now integrates Unity’s features for randomizing test case execution within a test executable ([PR #1041](https://github.com/ThrowTheSwitch/Ceedling/pull/1041) via [`:unity` ↳ `:shuffle_tests`](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/reference/unity/#shuffle_tests) ⇒ `TRUE`. If enabled, the behavior of delta builds automatically adjusts to always execute test executables even if no code changes have occurred. This ensures the randomization occurs when test executables would otherwise fail to run for lack of any code or configuration changes up the dependency tree.
+Ceedling now integrates Unity’s features for randomizing test case execution within a test executable ([PR #1041](https://github.com/ThrowTheSwitch/Ceedling/pull/1041) via [`:unity` ↳ `:shuffle_tests`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/unity/#shuffle_tests) ⇒ `TRUE`. If enabled, the behavior of delta builds automatically adjusts to always execute test executables even if no code changes have occurred. This ensures the randomization occurs when test executables would otherwise fail to run for lack of any code or configuration changes up the dependency tree.
 
 ### Subtractive paths in `TEST_SOURCE_FILE()`
-The [`TEST_SOURCE_FILE()` build directive macro](https://throwtheswitch.github.io/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file-subtractive-notation) can now be used to remove source files from a test executable build using the same `-:` filepath decorator as available in `:paths` project configuration (ex. `TEST_SOURCE_FILE("-:foo/bar/file.c")`). This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
+The [`TEST_SOURCE_FILE()` build directive macro](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file-subtractive-notation) can now be used to remove source files from a test executable build using the same `-:` filepath decorator as available in `:paths` project configuration (ex. `TEST_SOURCE_FILE("-:foo/bar/file.c")`). This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
 
 ### `ceedling.yml` as an alternate default project file
-[#1250](https://github.com/ThrowTheSwitch/Ceedling/issues/1250) `ceedling.yml` is now recognized as an alternate default project filename alongside `project.yml`. Either name is loaded the same way; neither is preferred over the other. If both exist in the same directory, Ceedling raises an error. `ceedling new` continues to generate `project.yml` by default; pass `--ceedling-yml` to generate `ceedling.yml` instead. See [Loading a Project Configuration](https://throwtheswitch.github.io/Ceedling/1.2.0/configuration/loading/).
+[#1250](https://github.com/ThrowTheSwitch/Ceedling/issues/1250) `ceedling.yml` is now recognized as an alternate default project filename alongside `project.yml`. Either name is loaded the same way; neither is preferred over the other. If both exist in the same directory, Ceedling raises an error. `ceedling new` continues to generate `project.yml` by default; pass `--ceedling-yml` to generate `ceedling.yml` instead. See [Loading a Project Configuration](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/loading/).
 
 ### `ceedling dumpconfig` gains a `--stdout` option
 Running the `dumpconfig` application command to produce a fully resolved project configuration now supports an option to send the resulting YAML directly to `$stdout` instead of a filepath. This is one small step towards Ceedling support for working with other tooling (e.g. agentic coding tools) in future releases.
 
 ### Gcov plugin
 #### Gcovr raw custom arguments
-[#1159](https://github.com/ThrowTheSwitch/Ceedling/issues/1159) Added [`:gcov` ↳ `:gcovr` ↳ `:custom_args:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/gcov/gcovr/), a list of raw command line arguments passed straight through to `gcovr`. This is an escape hatch for any `gcovr` flag Ceedling has no named option for (e.g. limiting gcovr’s search root), mirroring the `:report_generator` ↳ `:custom_args:` option that already existed for the ReportGenerator side of the Gcov plugin. Unlike every other GCovr option, `:custom_args:` still applies even when `:config_file` is set.
+[#1159](https://github.com/ThrowTheSwitch/Ceedling/issues/1159) Added [`:gcov` ↳ `:gcovr` ↳ `:custom_args:`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/gcov/gcovr/), a list of raw command line arguments passed straight through to `gcovr`. This is an escape hatch for any `gcovr` flag Ceedling has no named option for (e.g. limiting gcovr’s search root), mirroring the `:report_generator` ↳ `:custom_args:` option that already existed for the ReportGenerator side of the Gcov plugin. Unlike every other GCovr option, `:custom_args:` still applies even when `:config_file` is set.
 
 #### ReportGenerator coverage-threshold parity
 Added `:gcov` ↳ `:report_generator` ↳ `:fail_under_line`/`:fail_under_branch`/`:fail_under_method`/`:fail_under_full_method`, ReportGenerator’s own coverage-threshold options mirroring the Gcovr side’s existing `:fail_under_*` family. A configured threshold breaks the build in the same way as these options do with Gcovr.
+
+### Bullseye plugin
+The [Bullseye code coverage plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) using the commercial [Bullseye](https://www.bullseye.com/) tool is enabled again (disabled since 1.0.0). The makers of Bullseye generously provided a license in order to modernize the plugin.
+
+The refreshed Bullseye plugin offers additional features over the original version including support for branch coverage detail, machine-readable coverage reports (XML flavors), and an optional coverage threshold that will break a test build.
 
 ### Filepath limit checks
 Platform filepath limits (especially on Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
@@ -261,7 +266,7 @@ Gcovr and ReportGenerator support within the GCov plugin now make use of more so
 
 ## 🌟 Added
 
-- Gcov plugin ➡️ Warning logging for disallowed Gcovr configuration values set at the same time as a Gcovr configuration file (`:config_file`) is in use. Disallowed values are ignored. See clarified discussion of [Gcovr options](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/gcovr/#gcovr-options) for more.
+- Gcov plugin ➡️ Warning logging for disallowed Gcovr configuration values set at the same time as a Gcovr configuration file (`:config_file`) is in use. Disallowed values are ignored. See clarified discussion of [Gcovr options](https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/gcov/gcovr/#gcovr-options) for more.
 
 ## 💪 Fixed
 
@@ -278,7 +283,7 @@ Gcovr and ReportGenerator support within the GCov plugin now make use of more so
 
 ## ⚠️ Changed
 
-- Clarified and reorganized [Gcovr configuration documentation](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/gcovr/) for the Gcov plugin.
+- Clarified and reorganized [Gcovr configuration documentation](https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/gcov/gcovr/) for the Gcov plugin.
 - Added to plugin documentation explanation of necessary plugin task separation (e.g. why `gcov:` is a separate set of tasks that largely duplicates `test:` builds).
 
 ---
@@ -289,7 +294,7 @@ Gcovr and ReportGenerator support within the GCov plugin now make use of more so
 
 ### Partials
 
-[A Partial](https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/) is a new feature that allows a test author to work with portions of the same C module under test differently from within the same test file.
+[A Partial](https://docs.throwtheswitch.org/Ceedling/1.1.0/testing-guide/partials/) is a new feature that allows a test author to work with portions of the same C module under test differently from within the same test file.
 
 With Partials, a test can now cause some functions in the source module under test to be mocked while other source functions are executed against assertions (see [#936](https://github.com/ThrowTheSwitch/Ceedling/issues/936)). Partials also allow testing of `static` and `inline` functions with no modification of your source code under test.
 
@@ -297,16 +302,16 @@ With Partials, a test can now cause some functions in the source module under te
 
 ### Two more example projects plus expanded `temp_sensor` project
 
-`wondrous_forest` and `cipher_quest` join the existing `temp_sensor` project. All example projects now have [comprehensive documentation](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/example-projects/).
+`wondrous_forest` and `cipher_quest` join the existing `temp_sensor` project. All example projects now have [comprehensive documentation](https://docs.throwtheswitch.org/Ceedling/1.1.0/getting-started/example-projects/).
 
-1. The `wondrous_forest` test-only project demonstrates using [Partials](https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/) in sample code reasonably representative of real-world use.
-1. The `cipher_quest` project is both a release and test build project that demonstrates conditional compilation builds (`ifdef`) and using [Mixins](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/mixins) to control builds.
+1. The `wondrous_forest` test-only project demonstrates using [Partials](https://docs.throwtheswitch.org/Ceedling/1.1.0/testing-guide/partials/) in sample code reasonably representative of real-world use.
+1. The `cipher_quest` project is both a release and test build project that demonstrates conditional compilation builds (`ifdef`) and using [Mixins](https://docs.throwtheswitch.org/Ceedling/1.1.0/configuration/mixins) to control builds.
 
 The existing `temp_sensor` project has been expanded to more fully illustrate testing for embbeded development. It now shows a pure C approach to creating hardware access standins that allow testing of peripheral manipulation. The approach demonstrated divorces unit tests from any actual hardware dependence while preserving production C code as is.
 
 ### Documentation site
 
-Ceedling is now complemented by a full, searchable [documentation site](https://throwtheswitch.github.io/Ceedling/).
+Ceedling is now complemented by a full, searchable [documentation site](https://docs.throwtheswitch.org/Ceedling/).
 
 A local verion of this site that is navigable with your web browser from your filesystem is included within Ceedling and exportable through CLI commands.
 
@@ -321,20 +326,20 @@ A local verion of this site that is navigable with your web browser from your fi
 
 #### Mixins inline YAML
 
-The optional `--mixin` flag for all application commands supporting it now additionally [supports inline YAML](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/mixins/#-mixin-command-line-flags). Example: `--mixin "=defines: {release: ['MY_SYMBOL']}"`
+The optional `--mixin` flag for all application commands supporting it now additionally [supports inline YAML](https://docs.throwtheswitch.org/Ceedling/1.1.0/configuration/mixins/#-mixin-command-line-flags). Example: `--mixin "=defines: {release: ['MY_SYMBOL']}"`
 
 ### Cppcheck static analysis plugin
 
-[Alejandro Rosso](https://github.com/deltalejo)’s excellent [Cppcheck plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/) has been added to the stock plugin collection (with Alejandro’s permission). We’re excited to make it easier for everyone to use this great addition!
+[Alejandro Rosso](https://github.com/deltalejo)’s excellent [Cppcheck plugin](https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/cppcheck/) has been added to the stock plugin collection (with Alejandro’s permission). We’re excited to make it easier for everyone to use this great addition!
 
 ### Valgrind memory check plugin
 
-[James Raphael Tiovalen](https://github.com/jamestiotio)’s helpful [Valgrind plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/) has been updated to work with the latest Ceedling and added to the stock plugin collection. Thank you, James for the great contribution!
+[James Raphael Tiovalen](https://github.com/jamestiotio)’s helpful [Valgrind plugin](https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/valgrind/) has been updated to work with the latest Ceedling and added to the stock plugin collection. Thank you, James for the great contribution!
 
 ### GCov plugin code coverage enhancements
 
 #### Support for Modified Condition / Decision Coverage
-Ceedling’s [GCov plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/) for coverage reporting now supports the [Modified Condition / Decision Coverage](https://ldra.com/capabilities/mc-dc/) abilities of GCC 14+ and optionally GCovr 8+.
+Ceedling’s [GCov plugin](https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/gcov/) for coverage reporting now supports the [Modified Condition / Decision Coverage](https://ldra.com/capabilities/mc-dc/) abilities of GCC 14+ and optionally GCovr 8+.
 
 _NOTE:_ The `ReportGenerator` tool does not support extracting MC/DC even if those metrics are available in the coverage data dumps that it processes. The GCov plugin can provide MC/DC metrics through its simplistic console reports and through the rich reports generated by GCovr.
 
@@ -346,7 +351,7 @@ The Gcov plugin now includes an `:untested_sources` option that controls how sou
 
 When `:compile` is active, a `gcov:untested_sources` task is available for iterating coverage compilation for untested sources without needing to re-run an entire `gcov:` test suite build each time. Untested sources can require defines, flags, and platform headers & symbols not present in a test suite configuration.
 
-See the [GCov plugin documentation](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/setup#coverage-for-untested-sources) for more details on the new `:untested_sources` option.
+See the [GCov plugin documentation](https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/gcov/setup#coverage-for-untested-sources) for more details on the new `:untested_sources` option.
 
 ### Preprocessing for tests
 
@@ -388,7 +393,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 ### Mixins
 - [#984](https://github.com/ThrowTheSwitch/Ceedling/issues/1128) Resolve differing "shapes" of `:defines` when Mixins in use.
 - [#1128](https://github.com/ThrowTheSwitch/Ceedling/issues/1128) Command line mixin precedence.
-- Revisions to [Mixin documentation](https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
+- Revisions to [Mixin documentation](https://docs.throwtheswitch.org/Ceedling/latest/configuration/mixins) to correct merge order explanations and clarify Mixins generally.
 
 ### `#include`s handling and preprocessing
 - Extensive improvements throughout.
@@ -419,7 +424,7 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 - Integrates latest [Unity](https://github.com/ThrowTheSwitch/Unity) ([2.7.0](https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityChangeLog.md)).
 - Integrates latest [CMock](https://github.com/ThrowTheSwitch/CMock) ([2.7.0](https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMockChangeLog.md)).
 
-### Expanded [Backtrace handling](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/reference/project/#use_backtrace)
+### Expanded [Backtrace handling](https://docs.throwtheswitch.org/Ceedling/1.1.0/configuration/reference/project/#use_backtrace)
 - Provides more and better crash details for `:simple` and `:gdb` options.
 - `:gdb` option captures a full log file from `gdb` output and provides that filepath in the test case crash report.
 
@@ -435,8 +440,8 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
    - `pre/post_release` hooks renamed to `pre_release_build` & `post_release_build`.
    - Build event hooks include stopwatch values in seconds (floating point) as arguments.
    - Test build steps include a new context argument that exposes event origination (e.g. `test`, `gcov`, etc.).
-- [`command_hooks` plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/command-hooks/) updated with new hooks and arguments.
-- [`report_tests_log_factory` plugin](https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/report-tests-log-factory/)
+- [`command_hooks` plugin](https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/command-hooks/) updated with new hooks and arguments.
+- [`report_tests_log_factory` plugin](https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/report-tests-log-factory/)
    - All generated reports incorporate `:project` ↳ `:name` from your configuration, if available.
    - Incorporated new test build time tracking in reports that support it.
    - Improved the design of the HTML report option.
@@ -444,13 +449,13 @@ When test preprocessing is enabled, Ceedling discovers whether your toolchain su
 
 ### Security
 - Migrated all YAML processing to use safe loading. Safe loading constrains YAML deserialization to data structures such as hashes and lists. Unsafe loading is capable of deserializing arbitrary Ruby objects that could be used maliciously by a bad actor polluting a YAML file loaded by Ceedling.
-- [Inline Ruby string expansion](https://throwtheswitch.github.io/Ceedling/1.1.0/configuration/project-file/#inline-ruby-string-expansion) available in project configuration handling is now disabled by default. It can only be enabled via a Ceedling command line flag `--ruby-replacement`.
+- [Inline Ruby string expansion](https://docs.throwtheswitch.org/Ceedling/1.1.0/configuration/project-file/#inline-ruby-string-expansion) available in project configuration handling is now disabled by default. It can only be enabled via a Ceedling command line flag `--ruby-replacement`.
 
 ## 👋 Removed
 
 - `:use_deep_preprocessor` was a short-lived workaround option added after 1.0.0 for certain preprpocessing limitations. Those limitations are fully resolved, and test preprocessor options are now only `:use_test_preprocessor` and `:preprocess_force_fallback`. The latter should rarely be needed, leaving only the former as the only preprocessing feature toggle in Ceedling.
-- _CeedlingPacket.md_ user manual (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
-- _PluginDevelopmentGuide.md_ (superseded by [new documentation site](https://throwtheswitch.github.io/Ceedling/) and local bundle).
+- _CeedlingPacket.md_ user manual (superseded by [new documentation site](https://docs.throwtheswitch.org/Ceedling/) and local bundle).
+- _PluginDevelopmentGuide.md_ (superseded by [new documentation site](https://docs.throwtheswitch.org/Ceedling/) and local bundle).
 
 ---
 

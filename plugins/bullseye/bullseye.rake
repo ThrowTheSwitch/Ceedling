@@ -112,26 +112,29 @@ namespace BULLSEYE_SYM do
     end
   end
 
-end
-
-# If bullseye config enables dedicated report generation task, create the task
-if not @ceedling[BULLSEYE_SYM].automatic_html_reporting_enabled?
-namespace BULLSEYE_REPORT_NAMESPACE_SYM do
-
-  desc "Generate HTML coverage report (Note: a #{BULLSEYE_SYM}: task must be executed first)"
-  task BULLSEYE_SYM do
-    @ceedling[:bullseye].generate_html_report()
-  end
-
-end
-end
-
-namespace UTILS_SYM do
-
-  desc "Open Bullseye code coverage browser"
-  task BULLSEYE_SYM do
+  desc 'Open Bullseye code coverage browser'
+  task :browser do
     command = @ceedling[:tool_executor].build_command_line( TOOLS_BULLSEYE_BROWSER, [] )
     @ceedling[:tool_executor].exec( command )
   end
 
+  desc 'Report Bullseye license status'
+  task :license do
+    @ceedling[:bullseye].report_license_status()
+  end
+
+end
+
+# If bullseye config enables dedicated report generation task, create the task
+if not @ceedling[BULLSEYE_SYM].automatic_reporting_enabled?
+namespace BULLSEYE_REPORT_NAMESPACE_SYM do
+
+  desc "Generate coverage reports (Note: a #{BULLSEYE_SYM}: task must be executed first)"
+  task BULLSEYE_SYM do
+    @ceedling[:bullseye].generate_html_report()
+    # Does nothing unless :xml_report names a format
+    @ceedling[:bullseye].generate_xml_report()
+  end
+
+end
 end

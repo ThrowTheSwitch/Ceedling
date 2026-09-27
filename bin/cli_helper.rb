@@ -49,7 +49,7 @@ class CliHelper
 
     # Documentation incorporating Ceedling version tag in URL
     msg = "Ceedling Packet User Manual (v#{ceedling_tag})\n" +
-          "https://throwtheswitch.github.io/Ceedling/#{ceedling_tag}/\n\n"
+          "https://docs.throwtheswitch.org/Ceedling/#{ceedling_tag}/\n\n"
     @loginator.console( msg, LogLabels::DOCUMENTATION )
 
     # Ceedling Suite
