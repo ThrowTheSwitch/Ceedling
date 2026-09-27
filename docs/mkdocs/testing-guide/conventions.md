@@ -565,31 +565,17 @@ _NOTE:_ Most test cases are quite short, and most computers are quite fast. As
 
 ## Dependency tracking
 
-Previous versions of Ceedling used features of Rake to offer
-various kinds of smart rebuilds — that is, only regenerating files, 
-recompiling code files, or relinking executables when changes within 
-the project had occurred since the last build. Optional Ceedling 
-features discovered “deep dependencies” such that, for example, a 
-change in a header file several nested layers deep in `#include` 
-statements would cause all the correct test executables to be 
-updated and run.
+Ceedling only regenerates, compiles, links, or runs an element of the build
+pipeline if a change in the dependency tree requires it. This includes “deep
+dependencies” wherein a change in a header file several nested layers deep in
+`#include` statements correctly triggers a rebuild of every test executable
+that depends on it, directly or indirectly.
 
-These features have been temporarily disabled and/or removed for 
-test suites and remain in limited form for release build while
-Ceedling undergoes a major overhaul.
-
-Please see the [Release Notes](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md).
-
-### (Not so) smart rebuilds
-
-* New features that are a part of the Ceedling overhaul can 
-  significantly speed up test suite execution and release builds 
-  despite the present behavior of brute force running all build 
-  steps. See the discussion of enabling multi-threaded builds in 
-  later sections.
-
-* When smart rebuilds return, they will further speed up builds as
-  will other planned optimizations.
+This is called a delta build. Delta builds are automatic, need no
+configuration, and complement Ceedling's parallel build steps for further
+build time speedups. See [Delta Builds](../getting-started/builds.md) for the
+full picture, including how test result caching works and the
+`--force-test-rerun` flag.
 
 ## Build output
 
