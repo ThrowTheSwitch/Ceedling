@@ -864,7 +864,7 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
+        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
         output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
       end
@@ -887,7 +887,7 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
+        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
         output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
@@ -918,7 +918,7 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
+        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
         output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
@@ -949,7 +949,7 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
+        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
         output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
@@ -987,9 +987,17 @@ module CommonSystemTestCases
         log_path = './build/logs/test/test_example_file_crash_assert/test_add_numbers_triggers_assert.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         # Windwos gdb output for an assertion failure can be quite different from Linux.
-        # Windows gdb reports do not seem to cite the signal "SIGABRT" and may be quite brief, 
+        # Windows gdb reports do not seem to cite the signal "SIGABRT" and may be quite brief,
         # only citing an assertion failure.
-        expect(File.read(log_path)).to match(/SIGABRT|abort|assert/i)
+        #
+        # A bare "assert" alternative here is a false-positive trap: this test case's own
+        # name is `test_add_numbers_triggers_assert`, and do_gdb writes that name into the
+        # log's own header line regardless of whether gdb produced anything useful. A gdb
+        # that cannot attach at all (e.g. lost macOS codesigning trust) writes a log whose
+        # only "assert" is that header -- matching a bare substring and passing this
+        # assertion despite gdb reporting nothing real. Requiring "fail" near "Assertion"
+        # anchors the match to an actual assertion-failure report instead.
+        expect(File.read(log_path)).to match(/SIGABRT|Aborted|Assertion.{0,100}fail/i)
         expect(output).to match(/test_add_numbers_triggers_assert\.gdb\.log/)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
