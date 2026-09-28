@@ -4863,6 +4863,18 @@ summary the offending line of code or failing <code>assert()</code> from the rep
 provided in the crash summary. The log filepath will comprise the containing 
 test executable as a subdirectory and the name of the crashing test case 
 function as the filename.</p>
+<div class="admonition warning">
+<p class="admonition-title">macOS: a working <code>gdb</code> can stop attaching to processes</p>
+<p>macOS restricts which debuggers may attach to a process. A Homebrew <code>gdb</code>
+needs to be codesigned to attach at all, and that trust is fragile — a
+<code>brew upgrade</code>, a macOS system update, or a Gatekeeper/<code>taskgated</code> cache
+reset can silently revoke it, even for a <code>gdb</code> that worked yesterday.</p>
+<p>Ceedling checks for this at build startup. If <code>:use_backtrace:</code> is <code>:gdb</code>
+but <code>gdb</code> cannot actually attach to a process, Ceedling logs a warning and
+automatically falls back to <code>:simple</code> for that run rather than failing the
+build. To restore <code>:gdb</code> backtraces, re-codesign <code>gdb</code> following the
+<a href="https://sourceware.org/gdb/wiki/PermissionsDarwin">Homebrew <code>gdb</code> instructions</a> and see <code>taskgated(8)</code>.</p>
+</div>
 <p>Sample Ceedling run output with backtrace <code>:gdb</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>👟 Executing
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>------------
