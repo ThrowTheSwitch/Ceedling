@@ -996,6 +996,9 @@ describe TestBuildExecutor do
     before(:each) do
       stub_batchinator_exec()
       allow(@plugin_manager).to receive(:post_test)
+      # Flushed once after every testable in this stage has executed -- see
+      # `report_gdb_attach_health`'s own spec for its actual behavior.
+      allow(@generator).to receive(:report_gdb_attach_health)
 
       # This context's own tests are about executable_rebuilt/force_rerun/shuffle
       # deciding whether a fixture reruns, so the fixture-target's own staleness

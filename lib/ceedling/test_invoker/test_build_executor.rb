@@ -636,6 +636,11 @@ class TestBuildExecutor
       end
     end
 
+    # `@batchinator.exec` above fully drains before returning -- every test executable
+    # in this run has finished executing, so this is the one correct point to flush the
+    # whole-suite gdb health summary, once, before final results reporting.
+    @generator.report_gdb_attach_health()
+
     log_skip_summary( task: "test execution", count: skipped, noun: "tests", reason: "reusing cached results" )
   end
 
