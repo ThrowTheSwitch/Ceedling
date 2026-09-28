@@ -288,6 +288,18 @@ provided in the crash summary. The log filepath will comprise the containing
 test executable as a subdirectory and the name of the crashing test case 
 function as the filename.
 
+!!! warning "macOS: a working `gdb` can stop attaching to processes"
+    macOS restricts which debuggers may attach to a process. A Homebrew `gdb`
+    needs to be codesigned to attach at all, and that trust is fragile — a
+    `brew upgrade`, a macOS system update, or a Gatekeeper/`taskgated` cache
+    reset can silently revoke it, even for a `gdb` that worked yesterday.
+
+    Ceedling checks for this at build startup. If `:use_backtrace:` is `:gdb`
+    but `gdb` cannot actually attach to a process, Ceedling logs a warning and
+    automatically falls back to `:simple` for that run rather than failing the
+    build. To restore `:gdb` backtraces, re-codesign `gdb` following the
+    [Homebrew `gdb` instructions][gdb-homebrew] and see `taskgated(8)`.
+
 Sample Ceedling run output with backtrace `:gdb`:
 
 ```
@@ -327,6 +339,7 @@ IGNORED: 0
    or any sort of simulator-based test fixture.
 
 [gdb]: https://www.sourceware.org/gdb/
+[gdb-homebrew]: https://sourceware.org/gdb/wiki/PermissionsDarwin
 
 **Default**: `:simple`
 

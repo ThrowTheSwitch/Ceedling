@@ -92,6 +92,8 @@ configurator_setup:
     - loginator
     - reportinator
     - file_wrapper
+    - system_wrapper
+    - tool_executor
 
 configurator_plugins:
   compose:

@@ -92,6 +92,11 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - [#1292](https://github.com/ThrowTheSwitch/Ceedling/issues/1292) Fixed an intermittent `Errno::ENOTDIR`/`EISDIR` crash when automatically vendoring Unity, CMock, and CException into a project's build directory, caused by a transient file-system race (e.g. an antivirus/EDR lock, a cloud-sync filter driver, or a second concurrent Ceedling invocation). The copy step now retries transient races and self-heals a stale, wrong-typed leftover from a previous failed copy.
 - Fixed a rare, Ruby-version- and platform-dependent misordering of include lists and mixin environment variable resolution caused by relying on `sort`/`sort_by`'s ordering among tied elements, which Ruby does not guarantee to be stable.
 
+### Backtrace / `gdb` handling
+
+- Fixed `:use_backtrace` ⇒ `:gdb` remaining active on a machine where `gdb` cannot actually attach to a process (e.g. lost macOS codesigning trust after a system update or Homebrew upgrade). Previously, Ceedling validated that `gdb` was available but not its ability to probe a process. Ceedling now detects a degraded `gdb` at build startup and falls back to `:simple` automatically, with a prominent warning for the condition.
+- Fixed handling for a crashed test executable that `gdb` could not usefully explain looking identical to an ordinary crash report. Ceedling now better detects this and prominently warns when this happens.
+
 ### Partials
 
 - Fixed a bare, top-level macro invocation that expands to a full function definition (a common x-macro boilerplate idiom) silently corrupting or losing whatever construct followed it during Partials extraction.

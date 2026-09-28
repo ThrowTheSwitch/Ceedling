@@ -20,6 +20,8 @@ describe ConfiguratorSetup do
     @loginator              = double('Loginator')
     @reportinator           = Reportinator.new
     @file_wrapper           = double('FileWrapper')
+    @system_wrapper         = double('SystemWrapper')
+    @tool_executor          = double('ToolExecutor')
 
     @setup = described_class.new(
       {
@@ -28,7 +30,9 @@ describe ConfiguratorSetup do
         configurator_plugins:   @configurator_plugins,
         loginator:              @loginator,
         reportinator:           @reportinator,
-        file_wrapper:           @file_wrapper
+        file_wrapper:           @file_wrapper,
+        system_wrapper:         @system_wrapper,
+        tool_executor:          @tool_executor
       }
     )
   end
@@ -56,6 +60,78 @@ describe ConfiguratorSetup do
       expect(@loginator).to receive(:log)
         .with(/:partials ↳ :max_extraction_length must be at least 10/, Verbosity::ERRORS)
       expect(@setup.validate_partials(config)).to be false
+    end
+  end
+
+  # `gdb --version` answers on a machine where gdb cannot actually attach to a process --
+  # macOS revokes a Homebrew gdb's debugger entitlement often enough (a Homebrew upgrade,
+  # a macOS system update, a Gatekeeper/taskgated cache reset) that trusting `--version`
+  # alone leaves `:use_backtrace: :gdb` silently producing unhelpful crash reports build
+  # after build. `validate_tools` probes a real attach and falls back to `:simple`
+  # automatically when gdb cannot do the job, rather than failing validation outright.
+  context "#validate_tools gdb attach capability" do
+    def config(use_backtrace: :gdb)
+      { tools: {}, project: { use_backtrace: use_backtrace } }
+    end
+
+    before do
+      allow(@configurator_validator).to receive(:validate_tool).and_return(true)
+    end
+
+    it "does not probe when :use_backtrace is not :gdb" do
+      allow(@system_wrapper).to receive(:macos?).and_return(true)
+      expect(@tool_executor).to_not receive(:exec)
+
+      expect(@setup.validate_tools(config(use_backtrace: :simple))).to be true
+    end
+
+    it "does not probe on a non-macOS platform" do
+      allow(@system_wrapper).to receive(:macos?).and_return(false)
+      expect(@tool_executor).to_not receive(:exec)
+
+      cfg = config
+      expect(@setup.validate_tools(cfg)).to be true
+      expect(cfg[:project][:use_backtrace]).to eq(:gdb)
+    end
+
+    it "leaves :use_backtrace as :gdb when the attach probe succeeds" do
+      allow(@system_wrapper).to receive(:macos?).and_return(true)
+      allow(@tool_executor).to receive(:exec).and_return(
+        status: double('Process::Status', success?: true), output: ''
+      )
+      expect(@loginator).to_not receive(:log)
+
+      cfg = config
+      expect(@setup.validate_tools(cfg)).to be true
+      expect(cfg[:project][:use_backtrace]).to eq(:gdb)
+    end
+
+    it "downgrades to :simple and logs a codesigning-specific WARNING when the probe shows the Mach task port failure" do
+      allow(@system_wrapper).to receive(:macos?).and_return(true)
+      allow(@tool_executor).to receive(:exec).and_return(
+        status: double('Process::Status', success?: false),
+        output: "Unable to find Mach task port for process-id 123: (os/kern) failure (0x5).\n" \
+                " (please check gdb is codesigned - see taskgated(8))"
+      )
+      expect(@loginator).to receive(:log)
+        .with(a_string_including('codesigning'), Verbosity::ERRORS, LogLabels::WARNING)
+
+      cfg = config
+      expect(@setup.validate_tools(cfg)).to be true
+      expect(cfg[:project][:use_backtrace]).to eq(:simple)
+    end
+
+    it "downgrades to :simple and logs a generic WARNING when the probe fails for an unrecognized reason" do
+      allow(@system_wrapper).to receive(:macos?).and_return(true)
+      allow(@tool_executor).to receive(:exec).and_return(
+        status: double('Process::Status', success?: false), output: 'gdb: some other failure'
+      )
+      expect(@loginator).to receive(:log)
+        .with(a_string_including('could not attach to a probe process'), Verbosity::ERRORS, LogLabels::WARNING)
+
+      cfg = config
+      expect(@setup.validate_tools(cfg)).to be true
+      expect(cfg[:project][:use_backtrace]).to eq(:simple)
     end
   end
 

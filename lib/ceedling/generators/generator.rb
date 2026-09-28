@@ -469,4 +469,13 @@ class Generator
     shell_result
   end
 
+  # Flushes the whole-suite gdb health check accumulated across every crashing test
+  # executable's `do_gdb` retry in this run. Call once, after every test executable
+  # in the suite has finished executing and before final results reporting -- see
+  # `GeneratorTestResultsBacktrace#report_gdb_attach_health`. A no-op run (`:none` or
+  # `:simple` backtraces, or no crashes at all) never accumulates anything here.
+  def report_gdb_attach_health()
+    @backtrace.report_gdb_attach_health()
+  end
+
 end

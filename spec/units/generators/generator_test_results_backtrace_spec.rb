@@ -445,6 +445,89 @@ describe GeneratorTestResultsBacktrace do
       expect(crash_line).not_to include('(log: ')
       expect(crash_line).to include('(/build/logs/test/test_lib/test_asserting.gdb.log)')
     end
+
+    # A crashed test case that resolves to no useful gdb report is worth flagging on
+    # its own, not just silently folded into the generic crash message -- COMPLAIN
+    # level (not ERRORS/WARNING) because this is per-case noise, not yet evidence
+    # that gdb itself is broken. See `#report_gdb_attach_health` below for the
+    # stronger, whole-suite signal.
+    it 'logs a per-occurrence COMPLAIN message (default decorator) when a test case falls back to "no useful report"' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
+
+      expect(@loginator).to receive(:log)
+        .with(a_string_including('test_asserting'), Verbosity::COMPLAIN)
+
+      @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+    end
+  end
+
+  # ── #report_gdb_attach_health ────────────────────────────────────────────────
+
+  describe '#report_gdb_attach_health' do
+    let(:filename)    { 'test_lib.c' }
+    let(:executable)  { 'build/test/out/test_lib/test_lib.out' }
+    let(:shell_result){ { exit_code: 1, output: '', time: 0.0 } }
+    let(:test_cases)  { [{ test: 'test_asserting', symbol: 'test_asserting', line_number: 8 }] }
+
+    before(:each) do
+      allow(@configurator).to receive(:project_build_tests_root).and_return('build/test')
+      allow(@configurator).to receive(:tools_test_backtrace_gdb).and_return({})
+    end
+
+    it 'logs nothing when no do_gdb call has ever run (no crash in this suite)' do
+      expect(@loginator).to_not receive(:log)
+        .with(anything, Verbosity::ERRORS, LogLabels::WARNING)
+
+      @backtrace.report_gdb_attach_health()
+    end
+
+    # This is the whole point: gdb explaining not one single crash across an entire
+    # suite is a materially stronger signal than any one hard-to-diagnose crash, and
+    # deserves exactly one summary -- not one per crashing test executable.
+    it 'logs one summary WARNING after multiple test executables all fell back to "no useful report"' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
+
+      @backtrace.do_gdb( 'test_lib.c', executable, shell_result.dup, test_cases, context: :test )
+      @backtrace.do_gdb( 'test_module.c', executable, shell_result.dup, test_cases, context: :test )
+
+      expect(@loginator).to receive(:log)
+        .with(a_string_including('test suite run'), Verbosity::ERRORS, LogLabels::WARNING).once
+
+      @backtrace.report_gdb_attach_health()
+    end
+
+    it 'does not log when at least one test executable in the suite got a useful report' do
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: GDB_SIGSEGV_OUTPUT, time: 0.5, exit_code: 139, stderr: '', status: @ok_status }
+      )
+      @backtrace.do_gdb(
+        'TestUsartModel.c', executable, shell_result.dup,
+        [{ test: 'testCrash', symbol: 'testCrash', line_number: 37 }], context: :test
+      )
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
+      @backtrace.do_gdb( 'test_lib.c', executable, shell_result.dup, test_cases, context: :test )
+
+      expect(@loginator).to_not receive(:log)
+        .with(anything, Verbosity::ERRORS, LogLabels::WARNING)
+
+      @backtrace.report_gdb_attach_health()
+    end
+
+    it 'only flushes once -- a second call logs nothing further without a new crash' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
+      @backtrace.do_gdb( filename, executable, shell_result.dup, test_cases, context: :test )
+
+      expect(@loginator).to receive(:log)
+        .with(anything, Verbosity::ERRORS, LogLabels::WARNING).once
+
+      @backtrace.report_gdb_attach_health()
+      @backtrace.report_gdb_attach_health()
+    end
   end
 
   # ── #do_simple ─────────────────────────────────────────────────────────────

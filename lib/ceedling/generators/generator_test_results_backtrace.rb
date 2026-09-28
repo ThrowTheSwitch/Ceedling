@@ -14,6 +14,16 @@ class GeneratorTestResultsBacktrace
     @RESULTS_COLLECTOR = Struct.new( :passed, :failed, :ignored, :output, keyword_init:true )
     # Alias, matching Generator's own convention for the same dependency.
     @helper = @generator_helper
+
+    # Tracks whether gdb ever explained a crash across the *whole test suite run*, not
+    # just one test executable's `do_gdb` call. `do_gdb` runs once per crashing test
+    # executable and different executables can run concurrently (see `stage_execute`'s
+    # `Batchinator#exec`), so this state is mutex-guarded. `report_gdb_attach_health`
+    # flushes it exactly once, after every test executable in the run has executed --
+    # see that method for why a per-executable summary would be the wrong shape.
+    @gdb_health_mutex = Mutex.new
+    @any_gdb_crash_in_suite = false
+    @any_useful_gdb_report_in_suite = false
   end
 
   # Re-runs each test case (or, for a parameterized test, each group of parameterized
@@ -38,6 +48,11 @@ class GeneratorTestResultsBacktrace
     # reproduced or attributed the crash the main run already detected, and none of it
     # can be trusted -- see the fallback after the loop.
     any_group_crashed = false
+
+    # True once some group's crash resolves to an actual signal or assertion label --
+    # as opposed to the generic "failed to extract `gdb` report" fallback. Feeds the
+    # whole-suite accumulator below -- see `report_gdb_attach_health`.
+    any_useful_report = false
 
     # Iterate on test cases, one sub-process run per group (see `group_test_cases`)
     group_test_cases( test_cases ).each do |group|
@@ -128,6 +143,8 @@ class GeneratorTestResultsBacktrace
 
           # If we found an error report line containing `test_case() at filename.c:###` in `gdb` output
           if matched
+            any_useful_report = true
+
             # Line number
             line_number = matched[1]
 
@@ -155,11 +172,19 @@ class GeneratorTestResultsBacktrace
             label = format_signal_label( crash_result[:output] )
 
             if !label.empty?
+              any_useful_report = true
+
               group_results[:output] <<
                 "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed" \
                 " >> #{label}" \
                 "#{NEWLINE_TOKEN}(#{log_path})"
             else
+              @loginator.log(
+                "`gdb` produced no usable diagnostics for crashed test case `#{test_case[:test]}` " \
+                "-- see #{log_path}",
+                Verbosity::COMPLAIN
+              )
+
               group_results[:output] <<
                 "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: " \
                 "Test case crashed (failed to extract `gdb` report)" \
@@ -208,6 +233,14 @@ class GeneratorTestResultsBacktrace
       return @generator_test_results.create_crash_failure( filename, shell_result, test_cases )
     end
 
+    # Record this executable's contribution to the whole suite's gdb health --
+    # `report_gdb_attach_health` flushes the actual summary once, after every test
+    # executable in the run has executed.
+    @gdb_health_mutex.synchronize do
+      @any_gdb_crash_in_suite = true
+      @any_useful_gdb_report_in_suite ||= any_useful_report
+    end
+
     # Reset shell result exit code and output
     shell_result[:exit_code] = test_case_results[:failed]
     shell_result[:output] =
@@ -219,6 +252,32 @@ class GeneratorTestResultsBacktrace
       )
 
     return shell_result
+  end
+
+  # Flushes the whole-suite gdb health check accumulated across every `do_gdb` call in
+  # this run. Call once, after every test executable in the suite has finished
+  # executing and before final results reporting.
+  #
+  # A crash that gdb never explained is worth a summary at the single-test-case level
+  # (see the `Verbosity::COMPLAIN` log inside `do_gdb`), but a crash that gdb never
+  # explained *for any test executable in the whole run* is a materially different,
+  # stronger signal: gdb itself is the more likely problem, not an unusually
+  # hard-to-diagnose crash (e.g. it lost the ability to attach to a process). That
+  # deserves its own summary, once per suite, not once per crashing test executable.
+  def report_gdb_attach_health()
+    @gdb_health_mutex.synchronize do
+      return unless @any_gdb_crash_in_suite
+      return if @any_useful_gdb_report_in_suite
+
+      @loginator.log(
+        "`gdb` produced no usable diagnostics for any crash in this test suite run " \
+        "-- validate that `gdb` has permissions to attach to processes and check `gdb`'s own results directly.",
+        Verbosity::ERRORS, LogLabels::WARNING
+      )
+
+      @any_gdb_crash_in_suite = false
+      @any_useful_gdb_report_in_suite = false
+    end
   end
 
   # Re-runs each test case (or, for a parameterized test, each group of parameterized

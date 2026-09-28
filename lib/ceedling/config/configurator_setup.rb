@@ -20,7 +20,8 @@ end
 
 class ConfiguratorSetup
 
-  constructor :configurator_builder, :configurator_validator, :configurator_plugins, :loginator, :reportinator, :file_wrapper
+  constructor :configurator_builder, :configurator_validator, :configurator_plugins, :loginator, :reportinator, :file_wrapper,
+              :system_wrapper, :tool_executor
 
 
   # Override to prevent exception handling from walking & stringifying the object variables.
@@ -216,7 +217,59 @@ class ConfiguratorSetup
       valid &= @configurator_validator.validate_tool( config:config, key:tool )
     end
 
+    validate_gdb_attach_capability( config )
+
     return valid
+  end
+
+  # A gdb that answers `--version` is not proof it can attach to a process. macOS
+  # revokes a Homebrew gdb's debugger entitlement often -- a Homebrew upgrade, a
+  # macOS system update, or a Gatekeeper/taskgated cache reset can each silently
+  # break a previously working gdb. A project configured for `:use_backtrace: :gdb`
+  # on a machine where gdb cannot actually attach gets an automatic, working
+  # fallback here instead of silently unhelpful crash reports build after build.
+  #
+  # This is not a hard validation failure -- it downgrades the project configuration
+  # in place and warns, so the build proceeds under `:simple` backtraces.
+  def validate_gdb_attach_capability(config)
+    return unless config[:project][:use_backtrace] == :gdb
+    return unless @system_wrapper.macos?
+
+    result = probe_gdb_attach()
+    # `:exit_code` in a ToolExecutor result only reflects the real exit code when
+    # `:boom` is true (see SystemWrapper#shell_capture3) -- this probe runs with
+    # `:boom` false so a failed attach doesn't blow up the build, so the real
+    # process status has to be read directly instead.
+    return if result[:status]&.success?
+
+    config[:project][:use_backtrace] = :simple
+
+    reason =
+      if result[:output].to_s.match?( /Unable to find Mach task port/ )
+        "`gdb` could not attach to a probe process -- this is a macOS `gdb` codesigning / trust problem"
+      else
+        "`gdb` could not attach to a probe process"
+      end
+
+    walk = @reportinator.generate_config_walk( [:project, :use_backtrace] )
+    msg = "#{walk} is ':gdb' but #{reason}. Falling back to ':simple' for this run."
+    @loginator.log( msg, Verbosity::ERRORS, LogLabels::WARNING )
+  end
+
+  # Launches a short-lived real process and attempts the cheapest possible gdb
+  # attach/detach against it. A clean attach proves gdb can do real work here --
+  # `--version` alone cannot. Runs entirely inside one shell command so the success
+  # path stays fast: no sourced script, no test executable, attach then detach
+  # immediately. A failing attach is not held to that bar -- that cost falls only on
+  # a machine whose gdb needs fixing.
+  def probe_gdb_attach()
+    command = {
+      name: 'gdb_attach_probe',
+      line: %q{sh -c 'sleep 5 & pid=$!; gdb -q --batch --pid "$pid" --eval-command detach 2>&1; rc=$?; kill "$pid" 2>/dev/null; exit $rc'},
+      options: { boom: false }
+    }
+
+    return @tool_executor.exec( command )
   end
 
   def validate_test_runner_generation(config, include_test_case, exclude_test_case)

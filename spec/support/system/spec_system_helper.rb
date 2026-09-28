@@ -232,8 +232,23 @@ rescue
   false
 end
 
+# `gdb --version` answers on a machine where gdb cannot actually attach to a
+# process -- macOS revokes a Homebrew gdb's debugger entitlement often enough (a
+# Homebrew upgrade, a macOS system update, a Gatekeeper/taskgated cache reset) that
+# trusting `--version` alone would let these system tests run under a gdb that can
+# never do real work, producing confusing failures instead of a clean skip. A
+# short-lived real process and a minimal attach/detach proves gdb can actually do
+# the job -- the same real-probe shape as `ConfiguratorSetup#probe_gdb_attach` in
+# `lib/ceedling` (a separate implementation: that one is shipped library code, this
+# is spec-only support code). Linux/macOS only, matching `ubsan_available?` below --
+# gdb system tests are already gated off Windows entirely.
 def gdb_available?
-  tool_available?('gdb --version 2>&1')
+  return false unless RUBY_PLATFORM.downcase.match?(/linux|darwin/)
+  return false unless tool_available?('gdb --version 2>&1')
+
+  tool_available?(
+    %q{sh -c 'sleep 5 & pid=$!; gdb -q --batch --pid "$pid" --eval-command detach 2>&1; rc=$?; kill "$pid" 2>/dev/null; exit $rc'}
+  )
 end
 
 def valgrind_available?
@@ -293,7 +308,8 @@ RSpec.shared_context "requires gdb" do
   end
 
   before do
-    skip "gdb is not installed or not in PATH" unless @gdb_available
+    skip "gdb is not installed, not in PATH, or cannot attach to a process " \
+         "(e.g. a macOS codesigning trust problem -- see taskgated(8))" unless @gdb_available
   end
 end
 

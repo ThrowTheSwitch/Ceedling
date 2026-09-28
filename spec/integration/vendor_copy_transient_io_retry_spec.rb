@@ -59,7 +59,9 @@ describe 'Vendor-copy transient I/O retry (integration)' do
       configurator_plugins:   IntegrationSpecHelpers::NULL,
       loginator:               IntegrationSpecHelpers::NULL,
       reportinator:            IntegrationSpecHelpers::NULL,
-      file_wrapper:            file_wrapper
+      file_wrapper:            file_wrapper,
+      system_wrapper:          IntegrationSpecHelpers::NULL,
+      tool_executor:           IntegrationSpecHelpers::NULL
     )
   end
 
