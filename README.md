@@ -472,10 +472,10 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 ### Local installation from the RubyGems repository
 
-1. Install [Ruby]. (Only Ruby 3+ supported.)
+1. Install [Ruby]. (Ceedling requires Ruby 3+ but only unoficially supports Ruby 4.)
 1. Install the Ceedling gem from the RubyGems repository. All supporting frameworks are included and this style of installation installs dependencies as well.
    ```shell
-   > gem install ceedling
+   > gem install ceedling --no-document
    ```
 1. Begin crafting your project:
    1. Create an empty Ceedling project.
@@ -487,6 +487,7 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
    ```shell
    > ceedling test:all release
    ```
+
 ### Local installation of the .gem file downloaded from this repo
 
 If you are working with prerelease versions of Ceedling or some other off-the-beaten-path installation scenario, you may want to directly install the Ceedling .gem file attached to any of the Github releases. No problem.
