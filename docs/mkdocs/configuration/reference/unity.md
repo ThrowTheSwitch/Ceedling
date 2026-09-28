@@ -56,8 +56,11 @@ an earlier test.
 The randomization seed can be pinned to a fixed value for reproducible
 ordering — see [`:test_runner` ↳ `:rng_seed`][test-runner-rng-seed].
 
+Ceedling’s [delta builds][delta-builds] also work together with shuffled test.
+
 **Default**: `false`
 
 <br/><br/>
 
 [test-runner-rng-seed]: test-runner.md#test_runner-rng_seed
+[delta-builds]: ../../getting-started/builds.md
