@@ -242,13 +242,29 @@ end
 # `lib/ceedling` (a separate implementation: that one is shipped library code, this
 # is spec-only support code). Linux/macOS only, matching `ubsan_available?` below --
 # gdb system tests are already gated off Windows entirely.
+def gdb_real_attach_succeeds?
+  tool_available?(
+    %q{sh -c 'sleep 5 & pid=$!; gdb -q --batch --pid "$pid" --eval-command detach 2>&1; rc=$?; kill "$pid" 2>/dev/null; exit $rc'}
+  )
+end
+
 def gdb_available?
   return false unless RUBY_PLATFORM.downcase.match?(/linux|darwin/)
   return false unless tool_available?('gdb --version 2>&1')
 
-  tool_available?(
-    %q{sh -c 'sleep 5 & pid=$!; gdb -q --batch --pid "$pid" --eval-command detach 2>&1; rc=$?; kill "$pid" 2>/dev/null; exit $rc'}
-  )
+  gdb_real_attach_succeeds?
+end
+
+# True when gdb is installed but confirmed unable to attach to a process --
+# the exact condition ConfiguratorSetup#validate_gdb_attach_capability detects
+# and downgrades :use_backtrace from :gdb to :simple for. macOS-only, matching
+# that production check's own platform gate: a hobbled Linux gdb wouldn't
+# trigger the fallback at all, so there'd be nothing here to exercise.
+def gdb_installed_but_unusable?
+  return false unless RUBY_PLATFORM.downcase.include?('darwin')
+  return false unless tool_available?('gdb --version 2>&1')
+
+  !gdb_real_attach_succeeds?
 end
 
 def valgrind_available?
@@ -310,6 +326,17 @@ RSpec.shared_context "requires gdb" do
   before do
     skip "gdb is not installed, not in PATH, or cannot attach to a process " \
          "(e.g. a macOS codesigning trust problem -- see taskgated(8))" unless @gdb_available
+  end
+end
+
+RSpec.shared_context "requires a hobbled gdb" do
+  before :all do
+    @gdb_hobbled = gdb_installed_but_unusable?
+  end
+
+  before do
+    skip "gdb is fully functional, not installed, or this isn't macOS " \
+         "(the only platform Ceedling currently auto-detects this on)" unless @gdb_hobbled
   end
 end
 

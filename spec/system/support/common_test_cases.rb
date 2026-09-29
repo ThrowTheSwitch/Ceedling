@@ -1144,6 +1144,42 @@ module CommonSystemTestCases
     end
   end
 
+  # Validates the inverse of the other five gdb system tests: when gdb is
+  # installed but cannot actually attach to a process (the exact macOS
+  # codesigning-trust-loss scenario those five tests gate around and skip on),
+  # Ceedling detects this at build startup and automatically falls back to
+  # :simple backtraces rather than leaving :use_backtrace: :gdb configured but
+  # non-functional. See ConfiguratorSetup#validate_gdb_attach_capability.
+  def crash_gdb_hobbled_falls_back_to_simple
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
+
+        # Ceedling detected the hobbled gdb and downgraded automatically
+        expect(output).to match(/:use_backtrace.*is ':gdb'/)
+        expect(output).to match(/could not attach to a probe process/i)
+        expect(output).to match(/Falling back to ':simple'/i)
+
+        # The crash is reported the :simple way, not the :gdb way
+        expect(output).to match(/Test Case Crashed/i)
+        expect(output).to match(/Unit test failures/)
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
+        expect(output).to match(/IGNORED:\s+0/)
+
+        # do_gdb never ran, so no .gdb.log was ever written
+        expect(Dir.glob('./build/logs/**/*.gdb.log')).to be_empty
+      end
+    end
+  end
+
   # Regression test for issue #1198: a custom :test_fixture tool (e.g. a wrapper
   # enabling a sanitizer's halt-on-error) can correctly detect a crash on the main run,
   # only for that crash to be silently overwritten by a :simple backtrace diagnostic

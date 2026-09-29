@@ -119,6 +119,12 @@ ceedling_system_tests do
       test_case :crash_gdb_sigsegv_with_parameterized_test
     end
 
+    describe "Backtrace with GDB (hobbled)" do
+      include_context "requires a hobbled gdb"
+
+      test_case :crash_gdb_hobbled_falls_back_to_simple
+    end
+
     describe "Test filtering" do
       test_case :run_single_test_with_full_name_filter
       test_case :run_single_test_with_partial_name_filter
