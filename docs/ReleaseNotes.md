@@ -8,6 +8,35 @@ These release notes are complemented by three other documents:
 
 ---
 
+# 1.2.0 — Prelease
+
+## 👀 Highlights
+
+...
+
+## 🔢 Ruby version support
+
+Ceedling 1.2.0 is known to work well across all versions of Ruby 3.0 – 3.4 on Linux, Windows, and macOS. Ruby 2.x support was removed with 1.0.0.
+
+Ceedling 1.2.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world. Ceedling 1.2.0 has had no Ruby 4.0 compatibility work.
+
+## 📣 Shout-outs and Special Thank-You's
+
+### Sponsors
+
+  - [ThingamaByte, LLC](https://thingamabyte.com) - For continuing to nurture these projects and community with so much of their time.
+
+### Major Code/Doc Contributors
+
+These individuals contributed significant features, bugfixes, and improvements.
+
+  - Michael Karlesky
+  - Mark VanderVoord
+
+### Also, thanks for your contributions!
+
+James Raphael Tiovalen, Kamil Sroka
+
 # 1.1.0 — July 16, 2026
 
 ## 👀 Highlights
@@ -40,7 +69,7 @@ The incomplete list of goodies:
 
 ## 🔢 Ruby version support
 
-Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4 on Linux, Windows, and macOS. Ruby 2.x support was removed with 1.1.0.
+Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4 on Linux, Windows, and macOS. Ruby 2.x support was removed with 1.0.0.
 
 Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world.
 
