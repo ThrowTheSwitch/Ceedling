@@ -179,6 +179,27 @@ ceedling_system_tests do
         end
       end
     end
+
+    # Actionator replaced Thor::Actions and reproduces its status lines verbatim, so
+    # upgrading Ceedling does not change how these commands look. Nothing else in the
+    # suite pins that format. One real invocation covers the twelve column verb
+    # justification, the two space gutter, and the path shortened against the
+    # destination root.
+    #
+    # Output is captured through a pipe, so the child's stdout is not a terminal and
+    # the lines must arrive uncolored. That makes this an assertion about the terminal
+    # check too, which is what keeps redirected output free of escape sequences.
+    it "reports created paths with Thor-compatible status lines" do
+      @c.with_context do
+        status_proj_name = "#{@proj_name}_status"
+        output = @c.ceedling_appcmd_exec("new #{status_proj_name}")
+
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to include("      create  #{status_proj_name}/src")
+        expect(output).to include("      create  #{status_proj_name}/test/support")
+        expect(output).to_not match(/\e\[/)
+      end
+    end
   end
 
   describe "No project required" do
