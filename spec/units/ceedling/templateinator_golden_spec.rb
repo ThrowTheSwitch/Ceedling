@@ -23,6 +23,22 @@ require 'template_render_cases'
 # need refreshing, and regenerating them would destroy the only reference that
 # remains.
 describe 'Report template rendering against captured ERB output' do
+  # .gitattributes marks these fixtures as unconverted so their bytes survive a
+  # checkout intact. A clone made before that was added keeps its converted copies,
+  # because git does not re-check-out files whose content did not change, and every
+  # example below would then fail against bytes nobody recorded. Said plainly once
+  # here rather than discovered across 56 byte-level diffs.
+  before(:all) do
+    converted = Dir.glob( File.join( TemplateRenderCases::FIXTURES_PATH, '*.txt' ) ).select do |path|
+      File.binread( path ).include?( "\r\n" )
+    end
+
+    unless converted.empty?
+      raise "#{converted.length} golden fixture(s) hold carriage returns, so this checkout converted " +
+            "their line endings. Restore them with: git checkout -- spec/support/fixtures/templates/"
+    end
+  end
+
   def render(template, hash)
     captured = nil
     loginator = double('loginator')
@@ -54,7 +70,13 @@ describe 'Report template rendering against captured ERB output' do
           # gets its own deep copy rather than one shared across examples.
           output = render( template, Marshal.load( Marshal.dump( hash ) ) )
 
-          expect(output).to eq( File.binread( fixture ) )
+          # Compared as bytes on both sides. A rendered string carries the encoding
+          # its template was read with, while binread always yields ASCII-8BIT, and
+          # Ruby only treats two encodings as equal when both hold nothing but
+          # ASCII. Today every fixture is ASCII, so this changes no result, but one
+          # non-ASCII character in a future template would otherwise fail here for a
+          # reason that has nothing to do with rendering.
+          expect(output.b).to eq( File.binread( fixture ) )
         end
       end
     end

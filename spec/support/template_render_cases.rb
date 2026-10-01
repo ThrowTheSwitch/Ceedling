@@ -28,13 +28,38 @@ module TemplateRenderCases
 
   # Name => template string. The ide template is a constant rather than an asset
   # file, which is why it is read differently from the other three.
+  #
+  # Every template is normalized to line feeds. The fixtures record what ERB
+  # produced from the canonical template content, so the comparison has to be about
+  # rendering rather than about how a checkout happened to store the templates.
+  # Git converts line endings per .gitattributes, Ruby's text mode converts again
+  # when reading on Windows, and the ide template arrives from a Ruby source file
+  # subject to both. Without this the same rendering logic would be measured
+  # against three different inputs depending on platform and git settings.
+  #
+  # Rendering of carriage returns is not skipped by doing this. It is pinned
+  # directly in templateinator_spec.rb, by an example whose template is an inline
+  # string and therefore immune to any of the above.
   def self.templates
     return {
-      'pretty'    => File.read( File.join( ROOT, 'plugins', 'report_tests_pretty_stdout', 'assets', 'test_results.template' ) ),
-      'gtestlike' => File.read( File.join( ROOT, 'plugins', 'report_tests_gtestlike_stdout', 'assets', 'test_results.template' ) ),
-      'bullseye'  => File.read( File.join( ROOT, 'plugins', 'bullseye', 'assets', 'coverage.template' ) ),
-      'ide'       => DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE,
+      'pretty'    => read_template( 'plugins', 'report_tests_pretty_stdout', 'assets', 'test_results.template' ),
+      'gtestlike' => read_template( 'plugins', 'report_tests_gtestlike_stdout', 'assets', 'test_results.template' ),
+      'bullseye'  => read_template( 'plugins', 'bullseye', 'assets', 'coverage.template' ),
+      'ide'       => normalize_newlines( DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE ),
     }
+  end
+
+  # Read as bytes, then labeled UTF-8 rather than left at whatever the platform's
+  # default external encoding happens to be. Templates are UTF-8 in the repo, and a
+  # template string carrying a different label would fail to concatenate with the
+  # compiler's own literals the moment one held a non-ASCII character.
+  def self.read_template(*path_parts)
+    bytes = File.binread( File.join( ROOT, *path_parts ) )
+    return normalize_newlines( bytes.force_encoding( Encoding::UTF_8 ) )
+  end
+
+  def self.normalize_newlines(template)
+    return template.gsub( "\r\n", "\n" )
   end
 
   MULTILINE_MESSAGE = "Expected 1 Was 2.\nsecond line\nthird line"
