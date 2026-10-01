@@ -41,7 +41,10 @@ loginator:
 # ----------------
 #
 
-actions_wrapper:
+actionator:
+  compose:
+    - file_wrapper
+    - loginator
 
 # Separation of logic from CLI user interface
 cli_handler:
@@ -51,7 +54,7 @@ cli_handler:
     - cli_helper
     - path_validator
     - rake_task_registry
-    - actions_wrapper
+    - actionator
     - loginator
 
 cli_helper:
@@ -59,7 +62,7 @@ cli_helper:
     - file_wrapper
     - config_walkinator
     - path_validator
-    - actions_wrapper
+    - actionator
     - rake_task_registry
     - loginator
     - reportinator

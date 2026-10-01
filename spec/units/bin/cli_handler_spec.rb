@@ -49,7 +49,7 @@ describe CliHandler do
       :cli_helper         => @helper,
       :path_validator     => double('path_validator').as_null_object,
       :rake_task_registry => double('rake_task_registry').as_null_object,
-      :actions_wrapper    => double('actions_wrapper').as_null_object,
+      :actionator         => double('actionator').as_null_object,
       :loginator          => @loginator,
     })
   end
@@ -150,7 +150,7 @@ describe CliHandler do
       })
       real_cli_helper = CliHelper.new({
         :file_wrapper       => double('file_wrapper').as_null_object,
-        :actions_wrapper    => double('actions_wrapper').as_null_object,
+        :actionator         => double('actionator').as_null_object,
         :config_walkinator  => double('config_walkinator').as_null_object,
         :path_validator     => real_path_validator,
         :rake_task_registry => double('rake_task_registry').as_null_object,
@@ -166,7 +166,7 @@ describe CliHandler do
         :cli_helper         => real_cli_helper,
         :path_validator     => real_path_validator,
         :rake_task_registry => double('rake_task_registry').as_null_object,
-        :actions_wrapper    => double('actions_wrapper').as_null_object,
+        :actionator         => double('actionator').as_null_object,
         :loginator          => double('loginator').as_null_object,
       })
     end
