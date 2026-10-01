@@ -110,4 +110,36 @@ describe ReportTestsStdoutPlugin do
       @plugin.summary
     end
   end
+
+  # Ceedling's own template assets were renamed when ERB was removed, since
+  # template.erb described neither the contents nor the engine any longer. An
+  # out-of-tree plugin subclass may still ship only the old filename, so the old
+  # name is still honored.
+  describe '#load_template' do
+    before(:each) do
+      @file_wrapper = double('file_wrapper')
+      @plugin.instance_variable_set(:@plugin_root_path, '/plugin')
+      @plugin.instance_variable_set(:@ceedling, { file_wrapper: @file_wrapper })
+    end
+
+    def load_template
+      return @plugin.send( :load_template )
+    end
+
+    it 'reads the current asset name when it is present' do
+      allow(@file_wrapper).to receive(:exist?).with('/plugin/assets/test_results.template').and_return( true )
+
+      expect(@file_wrapper).to receive(:read).with('/plugin/assets/test_results.template').and_return( 'current' )
+
+      expect(load_template).to eq( 'current' )
+    end
+
+    it 'falls back to the historical name when only that one is present' do
+      allow(@file_wrapper).to receive(:exist?).with('/plugin/assets/test_results.template').and_return( false )
+
+      expect(@file_wrapper).to receive(:read).with('/plugin/assets/template.erb').and_return( 'legacy' )
+
+      expect(load_template).to eq( 'legacy' )
+    end
+  end
 end

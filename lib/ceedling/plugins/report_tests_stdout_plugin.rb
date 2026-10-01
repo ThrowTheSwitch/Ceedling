@@ -10,7 +10,7 @@ require 'ceedling/defaults'
 
 # Base class for stdout test-results reporting plugins.
 # Subclasses need only override the private `load_template` method to supply
-# a different ERB template string. All hook logic lives here.
+# a different template string. All hook logic lives here.
 class ReportTestsStdoutPlugin < Plugin
 
   # `Plugin` setup()
@@ -81,11 +81,21 @@ class ReportTestsStdoutPlugin < Plugin
 
   private
 
-  # Returns the ERB template string used for test results reports.
-  # Default: reads assets/template.erb from the plugin's own root path.
+  # Returns the template string used for test results reports.
+  # Default: reads assets/test_results.template from the plugin's own root path.
   # Override in a subclass to supply a different template string.
+  #
+  # Falls back to the historical assets/template.erb name so an out-of-tree plugin
+  # subclass shipping only that file keeps working. Ceedling no longer renders with
+  # ERB, so the old name describes neither the contents nor the engine, but breaking
+  # those plugins to correct a filename would be a poor trade.
   def load_template
-    return @ceedling[:file_wrapper].read( File.join( @plugin_root_path, 'assets/template.erb' ) )
+    preferred = File.join( @plugin_root_path, 'assets/test_results.template' )
+    legacy    = File.join( @plugin_root_path, 'assets/template.erb' )
+
+    path = @ceedling[:file_wrapper].exist?( preferred ) ? preferred : legacy
+
+    return @ceedling[:file_wrapper].read( path )
   end
 
 end

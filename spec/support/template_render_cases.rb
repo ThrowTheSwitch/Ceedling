@@ -30,9 +30,9 @@ module TemplateRenderCases
   # file, which is why it is read differently from the other three.
   def self.templates
     return {
-      'pretty'    => File.read( File.join( ROOT, 'plugins', 'report_tests_pretty_stdout', 'assets', 'template.erb' ) ),
-      'gtestlike' => File.read( File.join( ROOT, 'plugins', 'report_tests_gtestlike_stdout', 'assets', 'template.erb' ) ),
-      'bullseye'  => File.read( File.join( ROOT, 'plugins', 'bullseye', 'assets', 'template.erb' ) ),
+      'pretty'    => File.read( File.join( ROOT, 'plugins', 'report_tests_pretty_stdout', 'assets', 'test_results.template' ) ),
+      'gtestlike' => File.read( File.join( ROOT, 'plugins', 'report_tests_gtestlike_stdout', 'assets', 'test_results.template' ) ),
+      'bullseye'  => File.read( File.join( ROOT, 'plugins', 'bullseye', 'assets', 'coverage.template' ) ),
       'ide'       => DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE,
     }
   end

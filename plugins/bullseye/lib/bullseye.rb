@@ -44,7 +44,14 @@ class Bullseye < Plugin
     license_manager_file = @project_config[:bullseye_license_manager_file]
     @environment << {:covlm => license_manager_file} unless license_manager_file.nil?
 
-    @coverage_template_all = @ceedling[:file_wrapper].read( File.join( @plugin_root_path, 'assets/template.erb' ) )
+    # Falls back to the historical name for the same reason load_template does in
+    # lib/ceedling/plugins/report_tests_stdout_plugin.rb.
+    coverage_template_path = File.join( @plugin_root_path, 'assets/coverage.template' )
+    unless @ceedling[:file_wrapper].exist?( coverage_template_path )
+      coverage_template_path = File.join( @plugin_root_path, 'assets/template.erb' )
+    end
+
+    @coverage_template_all = @ceedling[:file_wrapper].read( coverage_template_path )
 
     # Convenient instance variable references
     @configurator        = @ceedling[:configurator]
