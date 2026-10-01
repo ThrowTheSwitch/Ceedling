@@ -66,7 +66,7 @@ class SystemContext
         # dependencies under a completely different Gemfile.
         deploy_output = Bundler.with_unbundled_env do
           output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
-          # --prefer-local: Without it, Bundler resolves gems (e.g. `erb`) fresh from
+          # --prefer-local: Without it, Bundler resolves gems (e.g. `benchmark`) fresh from
           # rubygems repository even when Ruby's default-gem copy satisfies the Gemfile constraint.
           output += `bundle install --prefer-local 2>&1`
           output

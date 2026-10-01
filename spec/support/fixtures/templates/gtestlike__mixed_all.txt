@@ -1,0 +1,32 @@
+
+[==========] Running 4 tests from 2 test cases.
+[----------] Global test environment set-up.
+[----------] 3 tests from test/TestFoo.c
+[ RUN      ] test/TestFoo.c.test_passes_1
+[       OK ] test/TestFoo.c.test_passes_1 (0 ms)
+[ RUN      ] test/TestFoo.c.test_passes_2
+[       OK ] test/TestFoo.c.test_passes_2 (0 ms)
+[ RUN      ] test/TestFoo.c.test_fails
+test/TestFoo.c(30): error: Expected 1 Was 2.
+second line
+third line
+ Actual:   2
+ Expected: 1
+[  FAILED  ] test/TestFoo.c.test_fails (0 ms)
+[----------] 3 tests from test/TestFoo.c (12 ms total)
+[----------] 1 tests from test/TestBar.c
+[ RUN      ] test/TestBar.c.test_fails
+test/TestBar.c(30): error: Expected 3 Was 4.
+ Actual:   4
+ Expected: 3
+[  FAILED  ] test/TestBar.c.test_fails (0 ms)
+[----------] 1 tests from test/TestBar.c (500 ms total)
+
+[----------] Global test environment tear-down.
+[==========] 4 tests from 2 test cases ran.
+[  PASSED  ] 2 tests.
+[  FAILED  ] 2 tests, listed below:
+[  FAILED  ] test/TestFoo.c.test_fails
+[  FAILED  ] test/TestBar.c.test_fails
+
+ 2 FAILED TESTS

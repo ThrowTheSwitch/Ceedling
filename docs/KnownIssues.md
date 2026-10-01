@@ -10,7 +10,7 @@ Known issues are complemented by three other documents:
 
 ## All versions
 
-- Ceedling installation as a gem (variations of `gem install ceedling`) can fail if installation is allowed to run the default step of RDoc scanning. **Always use `--no-document` to opt out of the RDoc tool’s code scanning during Ceedling installation.** This documentation step is not needed by a user, and, more importantly, RDoc can cause installation failures due to bugs or language incompatibilities in RDoc’s custom language parser. The prepackaged _MadScienceLab_ Docker images avoid this issue entirely.
+- Ceedling installation as a gem (variations of `gem install ceedling`) can fail if installation is allowed to run the default step of RDoc scanning. **Always use `--no-document` to opt out of the RDoc tool’s code scanning during Ceedling installation.** This documentation step is not needed by a Ceedling user, and, more importantly, RDoc can cause installation failures due to bugs or language incompatibilities in RDoc’s custom Ruby language parser. The prepackaged _MadScienceLab_ Docker images avoid this issue entirely.
 
 ---
 
@@ -32,6 +32,7 @@ Ceedling 1.2.0 requires Ruby 3+ but only unoficially supports Ruby 4.
 1. User includes (`#include "path/user.h"`) from source C files lose their relative path when Partial and mock header files are generated from source. Compilation failures can result from certain uncommon cases involving headers of the same names in different directories and a source file including both such headers.
 1. The automatic vendor copying of Unity, CMock, and CException into a project's build directory can intermittently fail with a file/directory type error, most often under antivirus/EDR file locking, cloud-sync filter drivers, or two concurrent Ceedling invocations racing the same destination. Deleting `build/` (or reinstalling the gem) and rebuilding works around it.
 1. The Bullseye code coverage plugin has been temporarily disabled as of 1.0.0. The makers of Bullseye have generously provided a license for development, and the plugin will be available in 1.2.0.
+1. Ceedling depends on the `erb` gem. Published `erb` versions include those affected by CVE-2026-41316, a flaw in how ERB reconstructs a template object from serialized data. Ceedling never reconstructs a template object this way, so Ceedling itself is not exposed. Dependency and security scanners may still flag the `erb` gem because the dependency is present. The `erb` dependency will be removed entirely as of 1.2.0 for multiple reasons beyond resolving the security issue.
 
 ---
 

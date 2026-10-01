@@ -1,0 +1,14 @@
+
+[==========] Running 1 tests from 1 test cases.
+[----------] Global test environment set-up.
+[----------] 1 tests from test/TestFoo.c
+[ RUN      ] test/TestFoo.c.test_passes_1
+[       OK ] test/TestFoo.c.test_passes_1 (0 ms)
+[----------] 1 tests from test/TestFoo.c (12 ms total)
+
+[----------] Global test environment tear-down.
+[==========] 1 tests from 1 test cases ran.
+[  PASSED  ] 1 tests.
+[  FAILED  ] 0 tests.
+
+ 0 FAILED TESTS

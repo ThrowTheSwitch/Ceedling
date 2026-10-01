@@ -1,0 +1,15 @@
+
+-------------------
+FAILED TEST SUMMARY
+-------------------
+[test/TestFoo.c]
+  Test: test_fails
+  At line (30):
+
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  2
+PASSED:  1
+FAILED:  1
+IGNORED: 0

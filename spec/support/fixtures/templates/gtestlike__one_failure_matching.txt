@@ -1,0 +1,20 @@
+
+[==========] Running 2 tests from 1 test cases.
+[----------] Global test environment set-up.
+[----------] 2 tests from test/TestFoo.c
+[ RUN      ] test/TestFoo.c.test_passes_1
+[       OK ] test/TestFoo.c.test_passes_1 (0 ms)
+[ RUN      ] test/TestFoo.c.test_fails
+test/TestFoo.c(30): error: Expected 1 Was 2.
+ Actual:   2
+ Expected: 1
+[  FAILED  ] test/TestFoo.c.test_fails (0 ms)
+[----------] 2 tests from test/TestFoo.c (12 ms total)
+
+[----------] Global test environment tear-down.
+[==========] 2 tests from 1 test cases ran.
+[  PASSED  ] 1 tests.
+[  FAILED  ] 1 tests, listed below:
+[  FAILED  ] test/TestFoo.c.test_fails
+
+ 1 FAILED TESTS

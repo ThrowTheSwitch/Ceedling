@@ -1,0 +1,6 @@
+---------------------------
+TEST: CODE COVERAGE SUMMARY
+---------------------------
+FUNCTIONS: none
+BRANCHES:  7%
+

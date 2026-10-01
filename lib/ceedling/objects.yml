@@ -139,6 +139,9 @@ plugin_reportinator:
     - plugin_manager
     - reportinator
     - loginator
+    - templateinator
+
+templateinator:
 
 plugin_reportinator_helper:
   compose:
@@ -541,6 +544,3 @@ dependency_tracker:
     - dependency_debug_tree
     - dependency_differ
 
-erb_wrapper:
-  compose:
-    - file_wrapper

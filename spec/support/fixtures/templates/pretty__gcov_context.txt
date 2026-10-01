@@ -1,0 +1,31 @@
+
+-----------------
+GCOV: TEST OUTPUT
+-----------------
+[test/TestFoo.c]
+  - "debug line one"
+  - "debug line two"
+
+--------------------------
+GCOV: IGNORED TEST SUMMARY
+--------------------------
+[test/TestFoo.c]
+  Test: test_ignored
+  At line (40): "skipped"
+
+-------------------------
+GCOV: FAILED TEST SUMMARY
+-------------------------
+[test/TestFoo.c]
+  Test: test_fails
+  At line (30): "Expected 1 Was 2.
+                second line
+                third line"
+
+--------------------------
+GCOV: OVERALL TEST SUMMARY
+--------------------------
+TESTED:  3
+PASSED:  1
+FAILED:  1
+IGNORED: 1

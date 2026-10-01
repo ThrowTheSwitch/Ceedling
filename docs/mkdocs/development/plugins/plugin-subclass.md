@@ -601,6 +601,105 @@ hash/array Ruby code with comments and with some edits to reduce line length.
 }
 ```
 
+## Test results report templates
+
+Ceedling renders test results reports from templates. A plugin that prints test
+results supplies a template, and Ceedling compiles these templates with its own 
+compiler rather than with ERB.
+
+ERB was removed as a Ceedling dependency in 1.2.0. The template language Ceedling
+accepts is now a deliberate subset of what ERB accepted. Every template Ceedling
+ships stays within that subset. A template written for an earlier Ceedling works
+unchanged if it does the same.
+
+### Supplying a template
+
+A `ReportTestsStdoutPlugin` subclass supplies a template by overriding the private
+`load_template` method. That method returns the template as a String. The base
+class registers the template during `setup()` and owns every build step hook, so a
+subclass needs nothing else.
+
+The default `load_template` reads `assets/test_results.template` from the plugin's
+own root path. It falls back to the historical `assets/template.erb` name when only
+that older file exists. A plugin shipping the old filename therefore keeps working.
+
+Two stock plugins demonstrate both approaches. `report_tests_pretty_stdout` has an
+empty subclass body and inherits the asset file default.
+`report_tests_ide_stdout` overrides `load_template` and returns the
+`DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE` constant from `lib/ceedling/defaults.rb`.
+
+A plugin can also render a template directly. `@ceedling[:plugin_reportinator]`
+exposes `run_report(template, hash)` for this. The Bullseye plugin uses it to
+render its coverage summary from `assets/coverage.template`.
+
+### Supported syntax
+
+Five constructs are available, and two of them carry nearly every template. A
+percent sign in column zero introduces a line of Ruby. A `<%= expression %>` tag
+inserts that expression's value into the output.
+
+| Construct | Effect |
+| --- | --- |
+| `% ruby_code` | Executes the line as Ruby. Nothing is emitted. |
+| `%%` | Emits one literal percent sign. Column zero only. |
+| `<%= expression %>` | Emits the expression, converted with `to_s`. |
+| `<% ruby_code %>` | Executes the code. Nothing is emitted. |
+| `<%# comment %>` | Emits nothing. |
+
+A percent sign is only special in column zero. Whitespace may follow it freely, so
+a template can indent Ruby lines to show nesting. A percent sign anywhere else on a
+line is literal text.
+
+All Ruby in a template shares one scope. A value assigned on a percent line is
+visible to every later line and tag, including across block boundaries.
+
+### Newline trimming
+
+A line whose first tag opens it and whose last tag closes it contributes no newline
+of its own. Text between those two tags does not change that. Every other line
+keeps its newline. Ceedling's own templates depend on this behavior to control
+blank lines in report output.
+
+### What a template can reference
+
+Templates render against `PluginReportinator`'s own binding. The report data
+arrives as a local named `hash`. Global constants such as `TEST_SYM` resolve
+normally.
+
+`@ceedling[:plugin_reportinator]` exposes several helpers intended for templates.
+
+| Helper | Purpose |
+| --- | --- |
+| `test_report_preamble(hash)` | Returns the counts and banner prefix every stdout report needs. |
+| `generate_banner(text)` | Formats a section divider. |
+| `generate_heading(text)` | Formats a heading. |
+| `reflow_message(message, continuation_prefix)` | Indents the second and later lines of a multi-line message. |
+| `decorate_summary_banner(text, failed_count)` | Colors a summary banner by outcome. |
+
+### Unsupported syntax
+
+Four ERB constructs are unavailable. A template relying on any of them needs
+revision.
+
+| Construct | Behavior |
+| --- | --- |
+| `-%>` | Raises `SyntaxError`. ERB offered this only under a trim mode Ceedling never used. |
+| `<%%` | Not an escape. The characters are not translated to a literal `<%`. |
+| A tag spanning lines | Raises `CeedlingException` naming the template line. |
+| A tag never closed on its line | Raises `CeedlingException` naming the template line. |
+
+The last two are deliberate. ERB accepted a multi-line tag. ERB also responded to
+an unclosed tag by treating the rest of the template as Ruby, which produced
+garbled output rather than an error. Naming the offending line is more useful to a
+template author than either behavior.
+
+!!! warning "Porting a template written for ERB"
+    Ceedling's own templates never used the unsupported constructs above, and
+    neither did any template this project has seen. Check a template against the
+    table before assuming it needs no changes. A Ruby error inside a template
+    reports its location as `(ceedling template):<line>`, where the line number is
+    the template's own.
+
 [preprocessing]: ../../testing-guide/conventions.md#test-preprocessing
 
 <br/><br/>

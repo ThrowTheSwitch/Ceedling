@@ -93,7 +93,8 @@ describe Bullseye do
         :loginator    => loginator,
         :reportinator => reportinator_obj,
         :test_invoker => double('test_invoker'),
-        :file_wrapper => double('file_wrapper', read: 'TEMPLATE')
+        # exist? drives the coverage template's fallback to its historical filename.
+        :file_wrapper => double('file_wrapper', read: 'TEMPLATE', exist?: true)
       )
 
       instance = Bullseye.allocate

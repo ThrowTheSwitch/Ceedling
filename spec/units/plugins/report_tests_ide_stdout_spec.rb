@@ -10,10 +10,11 @@ require 'ceedling/constants'
 require 'ceedling/reportinator'
 require 'ceedling/defaults'
 require 'ceedling/plugins/plugin_reportinator'
+require 'ceedling/templateinator'
 
 # Renders DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE (lib/ceedling/defaults.rb) --
 # this plugin's actual template asset, despite its generic-sounding name --
-# through the real ERB/PluginReportinator pipeline.
+# through the real PluginReportinator pipeline.
 describe "report_tests_ide_stdout template" do
   before(:each) do
     @loginator = double('loginator')
@@ -22,7 +23,8 @@ describe "report_tests_ide_stdout template" do
     @plugin_reportinator = PluginReportinator.new(
       {
         plugin_reportinator_helper: nil, plugin_manager: nil,
-        reportinator: Reportinator.new, loginator: @loginator
+        reportinator: Reportinator.new, loginator: @loginator,
+        templateinator: Templateinator.new
       }
     )
     @plugin_reportinator.set_system_objects({ plugin_reportinator: @plugin_reportinator })
