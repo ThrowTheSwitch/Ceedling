@@ -39,7 +39,7 @@ describe CliHelper do
 
     @cli_helper = described_class.new({
       :file_wrapper       => @file_wrapper,
-      :actions_wrapper    => double('actions_wrapper').as_null_object,
+      :actionator         => double('actionator').as_null_object,
       :config_walkinator  => @config_walkinator,
       :path_validator     => @path_validator,
       :rake_task_registry => @rake_task_registry,

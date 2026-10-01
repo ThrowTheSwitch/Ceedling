@@ -15,11 +15,11 @@ require 'versionator' # Outside DIY context
 
 class CliHelper
 
-  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :reportinator, :system_wrapper, :ruby_expandinator
+  constructor :file_wrapper, :actionator, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :reportinator, :system_wrapper, :ruby_expandinator
 
   def setup
     # Aliases
-    @actions = @actions_wrapper
+    @actions = @actionator
     @registry = @rake_task_registry
   end
 
@@ -84,23 +84,23 @@ class CliHelper
     source_filepath = File.join( 'assets', 'features', DEFAULT_PROJECT_FILENAME )
 
     # Clone the project file
-    @actions._copy_file( source_filepath, project_filepath, :force => true)
+    @actions.copy_file( source_filepath, project_filepath, force: true)
 
     # Silently update internal version
-    @actions._gsub_file(
+    @actions.gsub_file(
       project_filepath,
       /:ceedling_version:\s+'\?'/,
       ":ceedling_version: #{ceedling_tag}",
-      :verbose => false
+      verbose: false
     )
 
     # Silently path to point at local install
     if local
-      @actions._gsub_file(
+      @actions.gsub_file(
         project_filepath,
         /:which_ceedling:\s+gem/,
         ":which_ceedling: vendor/ceedling",
-        :verbose => false
+        verbose: false
       )
     end
   end
@@ -526,13 +526,13 @@ class CliHelper
 
     # Copy all individual documentation files gathered up
     doc_files.each_pair do |_dest, src|
-      @actions._copy_file(src, File.join( dest, _dest ), :force => true )
+      @actions.copy_file(src, File.join( dest, _dest ), force: true )
     end
 
     # If present copy internl HTML documentation bundle (site-local/) to docs/ceedling/
     site_local_path = File.join( ceedling_root, DOCS_SITE_LOCAL_PATH )
     if @file_wrapper.directory?( site_local_path )
-      @actions._directory( site_local_path, docs_path_ceedling, :force => true )
+      @actions.copy_directory( site_local_path, docs_path_ceedling, force: true )
     else
       @loginator.console( "Internal HTML documentation bundle not found", LogLabels::WARNING )
       return
@@ -554,15 +554,15 @@ class CliHelper
 
     # Copy folders from current Ceedling into project
     %w{plugins lib bin}.each do |folder|
-      @actions._directory( 
+      @actions.copy_directory( 
         folder,
         File.join( vendor_path, folder ),
-        :force => true
+        force: true
       )
     end
 
     # Mark ceedling as an executable
-    @actions._chmod( File.join( vendor_path, 'bin', 'ceedling' ), 0755 ) unless @system_wrapper.windows?
+    @actions.chmod( File.join( vendor_path, 'bin', 'ceedling' ), 0755 ) unless @system_wrapper.windows?
 
     # Assembly necessary subcomponent dirs
     components = [
@@ -580,9 +580,9 @@ class CliHelper
       _src = path
       _dest = File.join( vendor_path, path )
       # Copy entire directory, filter out any junk files
-      @actions._directory(
+      @actions.copy_directory(
         _src, _dest,
-        :force => true
+        force: true
       )
     end
 
@@ -610,35 +610,35 @@ class CliHelper
 
     # Copy license files into place
     license_files.each_pair do |dest, src|
-      @actions._copy_file( src, dest, :force => true)
+      @actions.copy_file( src, dest, force: true)
     end
 
     # Silently copy Git SHA file for version #.#.#-build lookups if it exists
     if @file_wrapper.exist?( File.join( ceedling_root, GIT_COMMIT_SHA_FILENAME) )
-      @actions._copy_file(
+      @actions.copy_file(
         GIT_COMMIT_SHA_FILENAME,
         File.join( vendor_path, GIT_COMMIT_SHA_FILENAME ),
-        :force => true, :verbose => false
+        force: true, verbose: false
       )
     end
 
     # Create executable helper scripts in project root
     if @system_wrapper.windows?
       # Windows command prompt launch script
-      @actions._copy_file(
+      @actions.copy_file(
         File.join( 'assets', 'features', 'ceedling.cmd'),
         File.join( dest, 'ceedling.cmd'),
-        :force => true
+        force: true
       )
     else
       # Unix shell launch script
       launch = File.join( dest, 'ceedling')
-      @actions._copy_file(
+      @actions.copy_file(
         File.join( 'assets', 'features', 'ceedling'),
         launch,
-        :force => true
+        force: true
       )
-      @actions._chmod( launch, 0755 )
+      @actions.chmod( launch, 0755 )
     end
   end
 

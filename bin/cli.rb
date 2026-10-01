@@ -152,7 +152,6 @@ module CeedlingTasks
   CLI_MISSING_PARAMETER_DEFAULT = "/<>\\||*"
 
   class CLI < Thor
-    include Thor::Actions
     extend PermissiveCLI
 
     # Ensure we bail out with non-zero exit code if the command line is wrong

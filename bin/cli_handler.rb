@@ -15,7 +15,7 @@ class CliHandler
 
   DOCS_SUBDIR = 'docs'
 
-  constructor :composinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actions_wrapper, :loginator
+  constructor :composinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actionator, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
@@ -27,7 +27,7 @@ class CliHandler
   def setup()
     # Aliases
     @helper = @cli_helper
-    @actions = @actions_wrapper
+    @actions = @actionator
     @registry = @rake_task_registry
   end
 
@@ -104,15 +104,15 @@ class CliHandler
     # Update app_cfg paths (ignore return values)
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
-    # Thor Actions for project tasks use paths in relation to this path
-    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+    # Source paths for project tasks resolve in relation to this path
+    @actions.source_root = app_cfg[:ceedling_root_path]
 
     # Blow away any existing directories and contents if --force
-    @actions.remove_dir( dest ) if options[:force]
+    @actions.remove_directory( dest ) if options[:force]
 
     # Create blank directory structure
     ['.', 'src', 'test', 'test/support'].each do |path|
-      @actions._empty_directory( File.join( dest, path) )
+      @actions.make_directory( File.join( dest, path) )
     end
 
     # Vendor the tools and install command line helper scripts
@@ -126,12 +126,12 @@ class CliHandler
 
     # Copy Git Ignore file 
     if options[:gitsupport]
-      @actions._copy_file(
+      @actions.copy_file(
         File.join( 'assets', 'features', 'default_gitignore' ),
         File.join( dest, '.gitignore' ),
-        :force => true
+        force: true
       )
-      @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
+      @actions.touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
     @loginator.console( "\nNew project created at #{File.absolute_path(dest)}/\n", LogLabels::TITLE )
@@ -155,19 +155,19 @@ class CliHandler
       @loginator.console( msg, LogLabels::NOTICE )
     end
 
-    # Thor Actions for project tasks use paths in relation to this path
-    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+    # Source paths for project tasks resolve in relation to this path
+    @actions.source_root = app_cfg[:ceedling_root_path]
 
     # Recreate vendored tools
     vendor_path = File.join( path, 'vendor', 'ceedling' )
-    @actions.remove_dir( vendor_path )
+    @actions.remove_directory( vendor_path )
     @helper.vendor_tools( app_cfg[:ceedling_root_path], path )
 
     # Recreate documentation if we find docs/ subdirectory
     docs_path = File.join( path, 'docs' )
     founds_docs = @helper.project_exists?( path, :&, File.join( 'docs', 'CeedlingPacket.md' ) )
     if founds_docs
-      @actions.remove_dir( docs_path )
+      @actions.remove_directory( docs_path )
       @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( path, DOCS_SUBDIR ) )
     end
 
@@ -458,14 +458,14 @@ class CliHandler
     dest_project  = File.join( dest, DEFAULT_PROJECT_FILENAME )
     dest_readme   = File.join( dest, 'README.md' )
 
-    # Thor Actions for project tasks use paths in relation to this path
-    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+    # Source paths for project tasks resolve in relation to this path
+    @actions.source_root = app_cfg[:ceedling_root_path]
 
-    @actions._directory( "examples/#{name}/src", dest_src, :force => true )
-    @actions._directory( "examples/#{name}/test", dest_test, :force => true )
-    @actions._directory( "examples/#{name}/mixin", dest_mixin, :force => true )
-    @actions._copy_file( "examples/#{name}/#{DEFAULT_PROJECT_FILENAME}", dest_project, :force => true )
-    @actions._copy_file( "examples/#{name}/README.md", dest_readme, :force => true )
+    @actions.copy_directory( "examples/#{name}/src", dest_src, force: true )
+    @actions.copy_directory( "examples/#{name}/test", dest_test, force: true )
+    @actions.copy_directory( "examples/#{name}/mixin", dest_mixin, force: true )
+    @actions.copy_file( "examples/#{name}/#{DEFAULT_PROJECT_FILENAME}", dest_project, force: true )
+    @actions.copy_file( "examples/#{name}/README.md", dest_readme, force: true )
 
     # Vendor the tools and install command line helper scripts
     @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
@@ -486,8 +486,8 @@ class CliHandler
 
 
   def docs(app_cfg, dest)
-    # Thor Actions file operations require an anchored source root
-    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+    # File operations require an anchored source root
+    @actions.source_root = app_cfg[:ceedling_root_path]
 
     # Default to current working directory when no destination is given
     dest ||= '.'
