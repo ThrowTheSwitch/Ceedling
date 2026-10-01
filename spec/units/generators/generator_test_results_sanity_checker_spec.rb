@@ -28,6 +28,13 @@ describe GeneratorTestResultsSanityChecker do
       :ruby_expandinator => nil
     })
 
+    # Configurator generates its `extension_*` accessors at runtime from flattened
+    # project config (:extension ↳ :executable). These examples never run
+    # Configurator#build, so the method does not exist for partial-double verification
+    # to find, even though it is perfectly real in a running build. Declared on this
+    # instance so the stubs below stay verified rather than silently unchecked.
+    def @configurator.extension_executable; end
+
     @sanity_checker = described_class.new({:configurator => @configurator, :loginator => @loginator})
   
     @results = {}

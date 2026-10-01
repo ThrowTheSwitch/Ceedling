@@ -11,7 +11,6 @@ GEM
     rake (13.2.1)
     require_all (3.0.0)
     rexml (3.4.4)
-    rr (3.1.2)
     rspec (3.13.2)
       rspec-core (~> 3.13.0)
       rspec-expectations (~> 3.13.0)
@@ -51,7 +50,6 @@ DEPENDENCIES
   rake (>= 12, < 14)
   require_all
   rexml (>= 3.2)
-  rr
   rspec (~> 3.8)
   simplecov (~> 1.1)
   stackprof (~> 0.2)

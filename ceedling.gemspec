@@ -69,10 +69,28 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
   s.files        += Dir['vendor/unity/src/**/*.[ch]']
 
   s.files        += Dir['**/*']
+  # Dir['**/*'] above sweeps the working tree, so anything a local run leaves behind
+  # would otherwise be packaged into a release.
+  #
+  # System test artifacts are the worst of it. `rake spec:system:debug:*` retains whole
+  # deployed projects under systests/, which both bloats the gem and breaks packaging
+  # outright, since a retained project nests a vendored Ceedling deep enough to exceed
+  # the tar name limit (Gem::Package::TooLongFileName).
+  #
+  # Build output matters for a second reason. Running the examples or the plugin example
+  # projects locally fills their build/ directories with object files and executables,
+  # and shipping compiled binaries in a release gem is exactly what trips the security
+  # scanners described in docs/SECURITY.md. `build` is matched as a whole path segment
+  # on purpose: each vendored submodule ships a `meson.build` file, and a substring test
+  # would silently drop all three.
   s.files.reject! do |f|
     f.start_with?('site-web/') ||                        # Hosted/versioned docs site -- not needed offline
     f == 'tools' || f.start_with?('tools/') ||            # Dev tooling the Rakefile above shells out to
-    f == 'docs/mkdocs' || f.start_with?('docs/mkdocs/')   # Raw docs source -- site-local/ is the built artifact the gem actually serves
+    f == 'docs/mkdocs' || f.start_with?('docs/mkdocs/') ||  # Raw docs source -- site-local/ is the built artifact the gem actually serves
+    f == 'systests' || f.start_with?('systests/') ||      # Retained system test projects
+    f.start_with?('systest.pass.') ||                    # System test run logs
+    f.start_with?('systest.fail.') ||
+    f == 'build' || f.start_with?('build/') || f.include?('/build/')  # Local build output
   end
 
   s.test_files = Dir['test/**/*', 'spec/**/*', 'features/**/*']

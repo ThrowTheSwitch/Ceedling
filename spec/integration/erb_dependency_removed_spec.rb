@@ -80,6 +80,51 @@ describe 'erb dependency removal (integration)' do
     end
   end
 
+  # The Gemfile does not use the `gemspec` directive. It re-declares every runtime gem
+  # by hand so the lockfile stays free of a self-referencing PATH entry, which keeps
+  # that carefully curated file small and stable. The cost is two lists that must agree
+  # and nothing enforcing it. Drift would be silent and nasty: the release gem would
+  # permit one version range while CI proved a different one.
+  describe 'release and development dependency declarations' do
+    def gemspec_runtime_requirements
+      source = File.read( File.join( CEEDLING_ROOT, 'ceedling.gemspec' ), encoding: Encoding::UTF_8 )
+      source.scan( /add_dependency\s+"([^"]+)"\s*,\s*([^\n]+?)\s*$/ ).to_h do |name, constraints|
+        [name, normalize_constraints( constraints )]
+      end
+    end
+
+    def gemfile_requirements
+      source = File.read( File.join( CEEDLING_ROOT, 'Gemfile' ), encoding: Encoding::UTF_8 )
+      source.scan( /^gem\s+"([^"]+)"\s*(?:,\s*([^\n]+))?$/ ).to_h do |name, constraints|
+        [name, normalize_constraints( constraints.to_s )]
+      end
+    end
+
+    # Reduces a declaration's tail to just its version constraints, dropping Bundler-only
+    # options the gemspec has no equivalent for.
+    def normalize_constraints(text)
+      text.split( ',' )
+          .map( &:strip )
+          .reject { |part| part.empty? || part.include?( ':' ) || part.start_with?( '->' ) }
+          .join( ', ' )
+    end
+
+    it 'agree on every gem the gemspec declares at runtime' do
+      gemspec_deps = gemspec_runtime_requirements
+      gemfile_deps = gemfile_requirements
+
+      mismatched = gemspec_deps.filter_map do |name, required|
+        next "#{name}: declared in ceedling.gemspec but absent from Gemfile" unless gemfile_deps.key?( name )
+        next if gemfile_deps[name] == required
+
+        "#{name}: ceedling.gemspec says #{required}, Gemfile says #{gemfile_deps[name]}"
+      end
+
+      expect(mismatched).to be_empty,
+        "Release and development dependency declarations have drifted:\n#{mismatched.join("\n")}"
+    end
+  end
+
   describe 'a real Ceedling boot' do
     # `version` loads bin/cli.rb and builds the whole bin-tier object graph, which
     # is where a reintroduced Thor::Actions mixin would pull erb back in.

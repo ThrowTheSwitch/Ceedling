@@ -43,6 +43,14 @@ require 'constructor'
 
 RSpec.configure do |config|
   config.raise_errors_for_deprecations!
+
+  # This suite leans heavily on `double(...)` plus `allow`/`expect(...).to receive`, so
+  # without verification a spec can stub a method the real collaborator does not have.
+  # The spec then passes while describing an interface that does not exist, and keeps
+  # passing after a rename removes the real method.
+  config.mock_with :rspec do |mocks|
+    mocks.verify_partial_doubles = true
+  end
 end
 
 here = File.dirname(__FILE__)
