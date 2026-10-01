@@ -1,0 +1,15 @@
+
+-----------
+TEST OUTPUT
+-----------
+[test/TestFoo.c]
+  - "debug line one"
+  - "debug line two"
+
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  1
+PASSED:  1
+FAILED:  0
+IGNORED: 0

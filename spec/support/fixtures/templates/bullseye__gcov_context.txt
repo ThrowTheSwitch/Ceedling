@@ -1,0 +1,6 @@
+---------------------------
+GCOV: CODE COVERAGE SUMMARY
+---------------------------
+FUNCTIONS: 91%
+BRANCHES:  72%
+
