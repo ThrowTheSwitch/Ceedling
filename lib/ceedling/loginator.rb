@@ -12,7 +12,7 @@ require 'ceedling/constants'
 class Loginator
 
   attr_reader :project_logging
-  attr_writer :decorators
+  attr_reader :decorators
 
   constructor :verbosinator, :system_wrapper
 

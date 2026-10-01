@@ -104,6 +104,11 @@ class FileWrapper
     FileUtils.mv(source, destination, **options)
   end
 
+  # Recursive so a directory argument applies the mode to its whole tree.
+  def chmod(path, mode, options={})
+    FileUtils.chmod_R(mode, path, **options)
+  end
+
   def compare(from, to)
     return FileUtils.compare_file(from, to)
   end
