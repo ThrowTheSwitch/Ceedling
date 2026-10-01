@@ -4407,6 +4407,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#test-results-report-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test results report templates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test results report templates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supplying-a-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supplying a template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#newline-trimming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Newline trimming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-a-template-can-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a template can reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unsupported-syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unsupported syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4774,6 +4846,78 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-results-report-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test results report templates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test results report templates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supplying-a-template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supplying a template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#newline-trimming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Newline trimming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-a-template-can-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a template can reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unsupported-syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unsupported syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5347,6 +5491,149 @@ hash/array Ruby code with comments and with some edits to reduce line length.</p
 <a id="__codelineno-15-60" name="__codelineno-15-60" href="#__codelineno-15-60"></a><span class="w">  </span><span class="ss">:total_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">21196400001645088</span>
 <a id="__codelineno-15-61" name="__codelineno-15-61" href="#__codelineno-15-61"></a><span class="p">}</span>
 </code></pre></div>
+<h2 id="test-results-report-templates">Test results report templates</h2>
+<p>Ceedling renders test results reports from templates. A plugin that prints test
+results supplies a template, and Ceedling compiles these templates with its own 
+compiler rather than with ERB.</p>
+<p>ERB was removed as a Ceedling dependency in 1.2.0. The template language Ceedling
+accepts is now a deliberate subset of what ERB accepted. Every template Ceedling
+ships stays within that subset. A template written for an earlier Ceedling works
+unchanged if it does the same.</p>
+<h3 id="supplying-a-template">Supplying a template</h3>
+<p>A <code>ReportTestsStdoutPlugin</code> subclass supplies a template by overriding the private
+<code>load_template</code> method. That method returns the template as a String. The base
+class registers the template during <code>setup()</code> and owns every build step hook, so a
+subclass needs nothing else.</p>
+<p>The default <code>load_template</code> reads <code>assets/test_results.template</code> from the plugin's
+own root path. It falls back to the historical <code>assets/template.erb</code> name when only
+that older file exists. A plugin shipping the old filename therefore keeps working.</p>
+<p>Two stock plugins demonstrate both approaches. <code>report_tests_pretty_stdout</code> has an
+empty subclass body and inherits the asset file default.
+<code>report_tests_ide_stdout</code> overrides <code>load_template</code> and returns the
+<code>DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE</code> constant from <code>lib/ceedling/defaults.rb</code>.</p>
+<p>A plugin can also render a template directly. <code>@ceedling[:plugin_reportinator]</code>
+exposes <code>run_report(template, hash)</code> for this. The Bullseye plugin uses it to
+render its coverage summary from <code>assets/coverage.template</code>.</p>
+<h3 id="supported-syntax">Supported syntax</h3>
+<p>Five constructs are available, and two of them carry nearly every template. A
+percent sign in column zero introduces a line of Ruby. A <code>&lt;%= expression %&gt;</code> tag
+inserts that expression's value into the output.</p>
+<table>
+<thead>
+<tr>
+<th>Construct</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>% ruby_code</code></td>
+<td>Executes the line as Ruby. Nothing is emitted.</td>
+</tr>
+<tr>
+<td><code>%%</code></td>
+<td>Emits one literal percent sign. Column zero only.</td>
+</tr>
+<tr>
+<td><code>&lt;%= expression %&gt;</code></td>
+<td>Emits the expression, converted with <code>to_s</code>.</td>
+</tr>
+<tr>
+<td><code>&lt;% ruby_code %&gt;</code></td>
+<td>Executes the code. Nothing is emitted.</td>
+</tr>
+<tr>
+<td><code>&lt;%# comment %&gt;</code></td>
+<td>Emits nothing.</td>
+</tr>
+</tbody>
+</table>
+<p>A percent sign is only special in column zero. Whitespace may follow it freely, so
+a template can indent Ruby lines to show nesting. A percent sign anywhere else on a
+line is literal text.</p>
+<p>All Ruby in a template shares one scope. A value assigned on a percent line is
+visible to every later line and tag, including across block boundaries.</p>
+<h3 id="newline-trimming">Newline trimming</h3>
+<p>A line whose first tag opens it and whose last tag closes it contributes no newline
+of its own. Text between those two tags does not change that. Every other line
+keeps its newline. Ceedling's own templates depend on this behavior to control
+blank lines in report output.</p>
+<h3 id="what-a-template-can-reference">What a template can reference</h3>
+<p>Templates render against <code>PluginReportinator</code>'s own binding. The report data
+arrives as a local named <code>hash</code>. Global constants such as <code>TEST_SYM</code> resolve
+normally.</p>
+<p><code>@ceedling[:plugin_reportinator]</code> exposes several helpers intended for templates.</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_report_preamble(hash)</code></td>
+<td>Returns the counts and banner prefix every stdout report needs.</td>
+</tr>
+<tr>
+<td><code>generate_banner(text)</code></td>
+<td>Formats a section divider.</td>
+</tr>
+<tr>
+<td><code>generate_heading(text)</code></td>
+<td>Formats a heading.</td>
+</tr>
+<tr>
+<td><code>reflow_message(message, continuation_prefix)</code></td>
+<td>Indents the second and later lines of a multi-line message.</td>
+</tr>
+<tr>
+<td><code>decorate_summary_banner(text, failed_count)</code></td>
+<td>Colors a summary banner by outcome.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="unsupported-syntax">Unsupported syntax</h3>
+<p>Four ERB constructs are unavailable. A template relying on any of them needs
+revision.</p>
+<table>
+<thead>
+<tr>
+<th>Construct</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-%&gt;</code></td>
+<td>Raises <code>SyntaxError</code>. ERB offered this only under a trim mode Ceedling never used.</td>
+</tr>
+<tr>
+<td><code>&lt;%%</code></td>
+<td>Not an escape. The characters are not translated to a literal <code>&lt;%</code>.</td>
+</tr>
+<tr>
+<td>A tag spanning lines</td>
+<td>Raises <code>CeedlingException</code> naming the template line.</td>
+</tr>
+<tr>
+<td>A tag never closed on its line</td>
+<td>Raises <code>CeedlingException</code> naming the template line.</td>
+</tr>
+</tbody>
+</table>
+<p>The last two are deliberate. ERB accepted a multi-line tag. ERB also responded to
+an unclosed tag by treating the rest of the template as Ruby, which produced
+garbled output rather than an error. Naming the offending line is more useful to a
+template author than either behavior.</p>
+<div class="admonition warning">
+<p class="admonition-title">Porting a template written for ERB</p>
+<p>Ceedling's own templates never used the unsupported constructs above, and
+neither did any template this project has seen. Check a template against the
+table before assuming it needs no changes. A Ruby error inside a template
+reports its location as <code>(ceedling template):&lt;line&gt;</code>, where the line number is
+the template's own.</p>
+</div>
 <p><br/><br/></p>
 
 
