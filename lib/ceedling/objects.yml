@@ -544,6 +544,3 @@ dependency_tracker:
     - dependency_debug_tree
     - dependency_differ
 
-erb_wrapper:
-  compose:
-    - file_wrapper

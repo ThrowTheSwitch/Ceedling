@@ -7,7 +7,6 @@
 
 require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
-require 'erb'
 require 'fileutils'
 
 class ModuleGenerator < Plugin
