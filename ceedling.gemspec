@@ -93,6 +93,29 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
     f == 'build' || f.start_with?('build/') || f.include?('/build/')  # Local build output
   end
 
+  # Dir['**/*'] cannot see dotfiles, and a few are required for the spec suites that
+  # ship with this gem to run at all. Those suites exist to support certification
+  # self-testing, driven by separate tooling against the versioned gem, which is also
+  # why spec/, Gemfile, and Gemfile.lock are packaged rather than trimmed out.
+  #
+  # .rspec carries the `-I spec/support` load paths that every spec's
+  # `require 'spec_helper'` depends on. Without it rspec cannot load a single spec file,
+  # failing with `cannot load such file -- spec_helper`.
+  #
+  # .simplecov is the shared coverage configuration that both spec/support/spec_helper.rb
+  # and spec/support/system/simplecov_boot.rb load by name.
+  #
+  # The fff plugin ships its own separate spec suite with its own .rspec.
+  #
+  # Added after the rejections above deliberately. None of these match a rejection
+  # pattern, and listing them explicitly keeps git-only dotfiles (.gitignore,
+  # .gitattributes, .gitmodules) and build output out.
+  s.files += [
+    '.rspec',
+    '.simplecov',
+    'plugins/fff/.rspec',
+  ].select { |f| File.exist?( f ) }
+
   s.test_files = Dir['test/**/*', 'spec/**/*', 'features/**/*']
   s.executables = ['ceedling'] # bin/ceedling
 
