@@ -91,6 +91,7 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - [#1267](https://github.com/ThrowTheSwitch/Ceedling/issues/1267) Fixed a conditional `#include` whose target is a macro invocation (e.g. `#include DEVICE_HEADER(x)`) being silently dropped from includes extraction whenever its own guard condition depended on a symbol defined in another header.
 - [#1292](https://github.com/ThrowTheSwitch/Ceedling/issues/1292) Fixed an intermittent `Errno::ENOTDIR`/`EISDIR` crash when automatically vendoring Unity, CMock, and CException into a project's build directory, caused by a transient file-system race (e.g. an antivirus/EDR lock, a cloud-sync filter driver, or a second concurrent Ceedling invocation). The copy step now retries transient races and self-heals a stale, wrong-typed leftover from a previous failed copy.
 - Fixed a rare, Ruby-version- and platform-dependent misordering of include lists and mixin environment variable resolution caused by relying on `sort`/`sort_by`'s ordering among tied elements, which Ruby does not guarantee to be stable.
+- Fixed a release gem build packaging leftover build output from the machine that built it, including compiled object files and executables. Fixed the same packaging omitting the configuration file that the test suites bundled with the gem need in order to run at all. Since the release gem is produced in a clean CI environment, this fix only affects a local developer running a Ceedling gem build.
 
 ### Backtrace / `gdb` handling
 
@@ -169,6 +170,16 @@ Ceedling and CMock are interdependent but distinct tools. They each perform thei
 
 ### More strict regex matching to exclude test artifacts from Gcov plugin coverage reports
 Gcovr and ReportGenerator support within the GCov plugin now make use of more sophisticated and explicit regular expressions to filter out test files and test-build-generated files from coverage reporting. This helps prevent mistaken exclusions of source filenames with substrings (e.g. "_runner") that might otherwise match test filenames or generated files.
+
+### Test results report template filenames
+The templates behind the `$stdout` test results reporting plugins have been renamed for what they produce. `report_tests_pretty_stdout` and `report_tests_gtestlike_stdout` now use `assets/test_results.template`, and the Bullseye plugin uses `assets/coverage.template`. The former `assets/template.erb` name is still honored, so a user-created custom plugin shipping that filename continues to work without changes.
+
+### Status line coloring for `ceedling new`, `ceedling example`, and `ceedling upgrade`
+The `create`, `exist`, `identical`, and `force` status lines these commands print are now colored according to Ceedling's own decoration settings rather than a separate scheme. Coloring also requires a terminal, so redirecting output to a file produces plain text. Set `CEEDLING_DECORATORS` to `0` to disable the coloring entirely.
+
+## 👋 Removed
+
+- The `erb` gem dependency. Ceedling renders some of its plugin reports with a small template compiler of its own in place of `erb`. This reduces Ceedling's external dependencies, simplifies installations where more recent versions of `erb` pull in further dependencies, and resolves security scanning findings against `erb` (CVE-2026-41316). Ceedling never used the feature that security advisory concerns, but carrying the dependency at all was enough to be flagged. Custom plugin templates are unaffected unless they use ERB syntax Ceedling itself never used — see [plugin development documentation](https://docs.throwtheswitch.org/Ceedling/1.2.0/development/plugins/plugin-subclass/) for the supported template syntax.
 
 ---
 
