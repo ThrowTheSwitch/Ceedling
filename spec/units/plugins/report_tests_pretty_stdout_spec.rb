@@ -9,8 +9,9 @@ require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/reportinator'
 require 'ceedling/plugins/plugin_reportinator'
+require 'ceedling/templateinator'
 
-# Renders the real template asset through the real ERB/PluginReportinator
+# Renders the real template asset through the real PluginReportinator
 # pipeline -- not a reimplementation of the template's own logic -- so this
 # proves actual rendered output, including the exact multi-line message
 # reindentation that must survive the upcoming refactor to shared helpers
@@ -23,7 +24,8 @@ describe "report_tests_pretty_stdout template" do
     @plugin_reportinator = PluginReportinator.new(
       {
         plugin_reportinator_helper: nil, plugin_manager: nil,
-        reportinator: Reportinator.new, loginator: @loginator
+        reportinator: Reportinator.new, loginator: @loginator,
+        templateinator: Templateinator.new
       }
     )
     @plugin_reportinator.set_system_objects({ plugin_reportinator: @plugin_reportinator })

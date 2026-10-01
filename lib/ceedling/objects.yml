@@ -139,6 +139,9 @@ plugin_reportinator:
     - plugin_manager
     - reportinator
     - loginator
+    - templateinator
+
+templateinator:
 
 plugin_reportinator_helper:
   compose:

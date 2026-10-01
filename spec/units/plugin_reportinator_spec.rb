@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/plugins/plugin_reportinator'
+require 'ceedling/templateinator'
 
 describe PluginReportinator do
   before(:each) do
@@ -21,7 +22,8 @@ describe PluginReportinator do
         :plugin_reportinator_helper => @plugin_reportinator_helper,
         :plugin_manager             => @plugin_manager,
         :reportinator               => @reportinator,
-        :loginator                  => @loginator
+        :loginator                  => @loginator,
+        :templateinator             => Templateinator.new
       }
     )
   end

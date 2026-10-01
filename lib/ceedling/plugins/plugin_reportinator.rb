@@ -5,14 +5,13 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'erb'
 require 'ceedling/constants'
 require 'ceedling/defaults'
 require 'ceedling/exceptions'
 
 class PluginReportinator
   
-  constructor :plugin_reportinator_helper, :plugin_manager, :reportinator, :loginator
+  constructor :plugin_reportinator_helper, :plugin_manager, :reportinator, :loginator, :templateinator
 
   def setup
     @test_results_template = nil
@@ -23,7 +22,7 @@ class PluginReportinator
   end
 
   def set_system_objects(system_objects)
-    # Available for use inside ERB report rendering via binding()
+    # Available for use inside report template rendering via binding()
     @ceedling = system_objects
   end
   
@@ -142,10 +141,11 @@ class PluginReportinator
   end
   
   def run_report(template, hash=nil, verbosity=Verbosity::NORMAL)
-    output = ERB.new( template, trim_mode: "%<>" )
+    # binding() is what exposes `hash` and this object's own methods to the template
+    output = @templateinator.render( template, binding() )
 
-    # Run the report template and log result with no log level heading
-    @loginator.log( output.result(binding()), verbosity, LogLabels::NONE )
+    # Log the rendered report with no log level heading
+    @loginator.log( output, verbosity, LogLabels::NONE )
   end
   
   #

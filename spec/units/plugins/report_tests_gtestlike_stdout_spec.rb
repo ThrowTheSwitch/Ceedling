@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/reportinator'
 require 'ceedling/plugins/plugin_reportinator'
+require 'ceedling/templateinator'
 
 describe "report_tests_gtestlike_stdout template" do
   before(:each) do
@@ -18,7 +19,8 @@ describe "report_tests_gtestlike_stdout template" do
     @plugin_reportinator = PluginReportinator.new(
       {
         plugin_reportinator_helper: nil, plugin_manager: nil,
-        reportinator: Reportinator.new, loginator: @loginator
+        reportinator: Reportinator.new, loginator: @loginator,
+        templateinator: Templateinator.new
       }
     )
     @plugin_reportinator.set_system_objects({ plugin_reportinator: @plugin_reportinator })
