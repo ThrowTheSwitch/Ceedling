@@ -184,7 +184,8 @@ describe Actionator do
 
   describe '#copy_directory' do
     before(:each) do
-      allow(@file_wrapper).to receive(:exist?).and_return( false )
+      # Sources exist, destinations do not, so every copy takes the create path.
+      allow(@file_wrapper).to receive(:exist?) { |path| path.start_with?( '/src' ) }
       allow(@file_wrapper).to receive(:read_binary).and_return( 'contents' )
       allow(@file_wrapper).to receive(:dirname) { |path| File.dirname( path ) }
       allow(@file_wrapper).to receive(:mkdir)
