@@ -75,9 +75,17 @@ describe 'Actionator file operations (integration)' do
 
     @loginator = ActionatorCapturingLoginator.new
 
+    # Expanded to match what production does. Actionator captures destination_root
+    # from FileWrapper#get_expanded_path, and it shortens status-line paths by
+    # prefix-matching destinations that it expands the same way. On Windows a temp
+    # directory can arrive with backslashes while File.expand_path yields forward
+    # slashes, so an unexpanded root here would never match and every status line
+    # would report an absolute path.
+    root = File.expand_path( dir )
+
     actionator = Actionator.new( file_wrapper: file_wrapper, loginator: @loginator )
-    actionator.source_root      = dir
-    actionator.destination_root = dir
+    actionator.source_root      = root
+    actionator.destination_root = root
     return actionator
   end
 

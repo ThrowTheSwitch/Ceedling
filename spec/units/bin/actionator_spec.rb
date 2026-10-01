@@ -13,6 +13,19 @@ require 'actionator'
 # messages sent to those two doubles. Real filesystem behavior lives in
 # spec/integration/actionator_file_operations_spec.rb.
 describe Actionator do
+  # Actionator resolves both roots through File.expand_path, and Windows expands a
+  # bare '/foo' by prepending the current drive letter. Every root and expected path
+  # is therefore derived the same way rather than written as a POSIX literal, so the
+  # arithmetic that shortens a path against the destination root lines up on every
+  # platform.
+  def src_path(*parts)
+    return File.join( File.expand_path( '/src' ), *parts )
+  end
+
+  def dest_path(*parts)
+    return File.join( File.expand_path( '/dest' ), *parts )
+  end
+
   before(:each) do
     @file_wrapper = double('file_wrapper')
     @loginator    = double('loginator')
@@ -20,7 +33,7 @@ describe Actionator do
     # setup() captures destination_root from FileWrapper, so this stub has to be in
     # place before construction. A null-object double would hand back a double here
     # and every relative-path assertion below would compare against garbage.
-    allow(@file_wrapper).to receive(:get_expanded_path).with('.').and_return('/dest')
+    allow(@file_wrapper).to receive(:get_expanded_path).with('.').and_return( dest_path )
 
     # Color off unless an example opts in, so status-line assertions stay readable.
     allow(@loginator).to receive(:decorators).and_return(false)
@@ -31,25 +44,25 @@ describe Actionator do
       :loginator    => @loginator
     })
 
-    @actionator.source_root = '/src'
+    @actionator.source_root = src_path
   end
 
   # Most examples copy a file that does not yet exist at its destination.
   def expect_absent_destination(path)
-    allow(@file_wrapper).to receive(:exist?).with('/src/asset.txt').and_return( true )
-    allow(@file_wrapper).to receive(:exist?).with(path).and_return( false )
-    allow(@file_wrapper).to receive(:read_binary).with('/src/asset.txt').and_return( 'contents' )
-    allow(@file_wrapper).to receive(:dirname).with(path).and_return( File.dirname(path) )
+    allow(@file_wrapper).to receive(:exist?).with( src_path('asset.txt') ).and_return( true )
+    allow(@file_wrapper).to receive(:exist?).with( path ).and_return( false )
+    allow(@file_wrapper).to receive(:read_binary).with( src_path('asset.txt') ).and_return( 'contents' )
+    allow(@file_wrapper).to receive(:dirname).with( path ).and_return( File.dirname(path) )
     allow(@file_wrapper).to receive(:mkdir)
     allow(@file_wrapper).to receive(:write)
   end
 
   describe '#copy_file' do
     it 'creates an absent destination, writes in binary mode, and reports a relative path' do
-      expect_absent_destination( '/dest/sub/asset.txt' )
+      expect_absent_destination( dest_path('sub', 'asset.txt') )
 
-      expect(@file_wrapper).to receive(:mkdir).with( '/dest/sub' )
-      expect(@file_wrapper).to receive(:write).with( '/dest/sub/asset.txt', 'contents', 'wb' )
+      expect(@file_wrapper).to receive(:mkdir).with( dest_path('sub') )
+      expect(@file_wrapper).to receive(:write).with( dest_path('sub', 'asset.txt'), 'contents', 'wb' )
       expect(@loginator).to receive(:console).with( '      create  sub/asset.txt', LogLabels::NONE )
 
       @actionator.copy_file( 'asset.txt', 'sub/asset.txt' )
@@ -57,7 +70,7 @@ describe Actionator do
 
     it 'reports an existing byte-identical destination as identical and does not write' do
       allow(@file_wrapper).to receive(:exist?).and_return( true )
-      allow(@file_wrapper).to receive(:compare).with( '/src/asset.txt', '/dest/sub/asset.txt' ).and_return( true )
+      allow(@file_wrapper).to receive(:compare).with( src_path('asset.txt'), dest_path('sub', 'asset.txt') ).and_return( true )
 
       expect(@file_wrapper).to_not receive(:write)
       expect(@loginator).to receive(:console).with( '   identical  sub/asset.txt', LogLabels::NONE )
@@ -69,10 +82,10 @@ describe Actionator do
       allow(@file_wrapper).to receive(:exist?).and_return( true )
       allow(@file_wrapper).to receive(:compare).and_return( false )
       allow(@file_wrapper).to receive(:read_binary).and_return( 'contents' )
-      allow(@file_wrapper).to receive(:dirname).and_return( '/dest/sub' )
+      allow(@file_wrapper).to receive(:dirname).and_return( dest_path('sub') )
       allow(@file_wrapper).to receive(:mkdir)
 
-      expect(@file_wrapper).to receive(:write).with( '/dest/sub/asset.txt', 'contents', 'wb' )
+      expect(@file_wrapper).to receive(:write).with( dest_path('sub', 'asset.txt'), 'contents', 'wb' )
       expect(@loginator).to receive(:console).with( '       force  sub/asset.txt', LogLabels::NONE )
 
       @actionator.copy_file( 'asset.txt', 'sub/asset.txt', force: true )
@@ -93,7 +106,7 @@ describe Actionator do
     end
 
     it 'prints no status line when verbose is false' do
-      expect_absent_destination( '/dest/sub/asset.txt' )
+      expect_absent_destination( dest_path('sub', 'asset.txt') )
 
       expect(@loginator).to_not receive(:console)
 
@@ -101,9 +114,9 @@ describe Actionator do
     end
 
     it 'resolves a relative source against the source root' do
-      expect_absent_destination( '/dest/copy.txt' )
+      expect_absent_destination( dest_path('copy.txt') )
 
-      expect(@file_wrapper).to receive(:read_binary).with( '/src/asset.txt' )
+      expect(@file_wrapper).to receive(:read_binary).with( src_path('asset.txt') )
 
       @actionator.copy_file( 'asset.txt', 'copy.txt' )
     end
@@ -111,15 +124,17 @@ describe Actionator do
     # cli_helper.rb hands over absolute paths for gathered docs and license files
     # while cli_handler.rb hands over paths relative to the Ceedling install.
     it 'leaves an absolute source untouched' do
-      allow(@file_wrapper).to receive(:exist?).with('/elsewhere/asset.txt').and_return( true )
-      allow(@file_wrapper).to receive(:exist?).with('/dest/copy.txt').and_return( false )
-      allow(@file_wrapper).to receive(:dirname).and_return( '/dest' )
+      absolute_source = File.expand_path( '/elsewhere/asset.txt' )
+
+      allow(@file_wrapper).to receive(:exist?).with( absolute_source ).and_return( true )
+      allow(@file_wrapper).to receive(:exist?).with( dest_path('copy.txt') ).and_return( false )
+      allow(@file_wrapper).to receive(:dirname).and_return( dest_path )
       allow(@file_wrapper).to receive(:mkdir)
       allow(@file_wrapper).to receive(:write)
 
-      expect(@file_wrapper).to receive(:read_binary).with( '/elsewhere/asset.txt' ).and_return( 'contents' )
+      expect(@file_wrapper).to receive(:read_binary).with( absolute_source ).and_return( 'contents' )
 
-      @actionator.copy_file( '/elsewhere/asset.txt', 'copy.txt' )
+      @actionator.copy_file( absolute_source, 'copy.txt' )
     end
 
     it 'raises naming both the source and the search root when the source is missing' do
@@ -127,7 +142,15 @@ describe Actionator do
 
       expect {
         @actionator.copy_file( 'nope.txt', 'copy.txt' )
-      }.to raise_error( CeedlingException, /nope\.txt.*\/src|\/src.*nope\.txt/m )
+      }.to raise_error( CeedlingException, /nope\.txt/ )
+    end
+
+    it 'names the search root in that same failure, so the user learns where it looked' do
+      allow(@file_wrapper).to receive(:exist?).and_return( false )
+
+      expect {
+        @actionator.copy_file( 'nope.txt', 'copy.txt' )
+      }.to raise_error( CeedlingException, /#{Regexp.escape( src_path )}/ )
     end
   end
 
@@ -145,7 +168,7 @@ describe Actionator do
 
         case verb
         when :create
-          expect_absent_destination( '/dest/sub/asset.txt' )
+          expect_absent_destination( dest_path('sub', 'asset.txt') )
           force = false
         when :identical
           allow(@file_wrapper).to receive(:exist?).and_return( true )
@@ -155,7 +178,7 @@ describe Actionator do
           allow(@file_wrapper).to receive(:exist?).and_return( true )
           allow(@file_wrapper).to receive(:compare).and_return( false )
           allow(@file_wrapper).to receive(:read_binary).and_return( 'contents' )
-          allow(@file_wrapper).to receive(:dirname).and_return( '/dest/sub' )
+          allow(@file_wrapper).to receive(:dirname).and_return( dest_path('sub') )
           allow(@file_wrapper).to receive(:mkdir)
           allow(@file_wrapper).to receive(:write)
           force = true
@@ -174,7 +197,7 @@ describe Actionator do
     it 'emits no color when decorators are enabled but the stream is not a tty' do
       allow(@loginator).to receive(:decorators).and_return( true )
       allow($stdout).to receive(:tty?).and_return( false )
-      expect_absent_destination( '/dest/sub/asset.txt' )
+      expect_absent_destination( dest_path('sub', 'asset.txt') )
 
       expect(@loginator).to receive(:console).with( '      create  sub/asset.txt', LogLabels::NONE )
 
@@ -185,7 +208,7 @@ describe Actionator do
   describe '#copy_directory' do
     before(:each) do
       # Sources exist, destinations do not, so every copy takes the create path.
-      allow(@file_wrapper).to receive(:exist?) { |path| path.start_with?( '/src' ) }
+      allow(@file_wrapper).to receive(:exist?) { |path| path.start_with?( src_path ) }
       allow(@file_wrapper).to receive(:read_binary).and_return( 'contents' )
       allow(@file_wrapper).to receive(:dirname) { |path| File.dirname( path ) }
       allow(@file_wrapper).to receive(:mkdir)
@@ -195,12 +218,12 @@ describe Actionator do
 
     it 'copies files and omits junk files' do
       allow(@file_wrapper).to receive(:directory_listing).and_return([
-        '/src/tree/keep.txt',
-        '/src/tree/thumbs.db',
-        '/src/tree/.DS_Store',
+        src_path('tree', 'keep.txt'),
+        src_path('tree', 'thumbs.db'),
+        src_path('tree', '.DS_Store'),
       ])
 
-      expect(@file_wrapper).to receive(:write).with( '/dest/out/keep.txt', 'contents', 'wb' )
+      expect(@file_wrapper).to receive(:write).with( dest_path('out', 'keep.txt'), 'contents', 'wb' )
       expect(@file_wrapper).to_not receive(:write).with( /thumbs\.db/, anything, anything )
       expect(@file_wrapper).to_not receive(:write).with( /DS_Store/, anything, anything )
 
@@ -208,16 +231,16 @@ describe Actionator do
     end
 
     it 'rebases nested sources onto the destination' do
-      allow(@file_wrapper).to receive(:directory_listing).and_return([ '/src/tree/a/b/c.txt' ])
+      allow(@file_wrapper).to receive(:directory_listing).and_return([ src_path('tree', 'a', 'b', 'c.txt') ])
 
-      expect(@file_wrapper).to receive(:write).with( '/dest/out/a/b/c.txt', 'contents', 'wb' )
+      expect(@file_wrapper).to receive(:write).with( dest_path('out', 'a', 'b', 'c.txt'), 'contents', 'wb' )
 
       @actionator.copy_directory( 'tree', 'out', force: true )
     end
 
     it 'skips directory entries in the listing' do
-      allow(@file_wrapper).to receive(:directory_listing).and_return([ '/src/tree/sub' ])
-      allow(@file_wrapper).to receive(:directory?).with('/src/tree/sub').and_return( true )
+      allow(@file_wrapper).to receive(:directory_listing).and_return([ src_path('tree', 'sub') ])
+      allow(@file_wrapper).to receive(:directory?).with( src_path('tree', 'sub') ).and_return( true )
 
       expect(@file_wrapper).to_not receive(:write).with( /sub/, anything, anything )
 
@@ -226,7 +249,7 @@ describe Actionator do
 
     # Thor reported the destination directory itself before any of its contents.
     it 'reports the destination directory before its files' do
-      allow(@file_wrapper).to receive(:directory_listing).and_return([ '/src/tree/keep.txt' ])
+      allow(@file_wrapper).to receive(:directory_listing).and_return([ src_path('tree', 'keep.txt') ])
 
       reported = []
       allow(@loginator).to receive(:console) { |message, _label| reported << message }
@@ -242,20 +265,22 @@ describe Actionator do
     # Issue #104: a Ceedling install path can contain literal glob metacharacters.
     # FileWrapper#directory_listing does not escape, so Actionator has to.
     it 'escapes glob metacharacters in the source path' do
-      @actionator.source_root = '/src/[legacy]'
+      bracketed_root = File.expand_path( '/src/[legacy]' )
+      @actionator.source_root = bracketed_root
       allow(@file_wrapper).to receive(:directory_listing).and_return([])
 
-      expect(@file_wrapper).to receive(:directory_listing).with( '/src/\[legacy\]/tree/**/*' )
+      escaped = bracketed_root.gsub( /[*?{}\[\]]/ ) { |char| '\\' + char }
+      expect(@file_wrapper).to receive(:directory_listing).with( File.join( escaped, 'tree', '**', '*' ) )
 
       @actionator.copy_directory( 'tree', 'out', force: true )
     end
 
     # cli_helper.rb passes component paths with a trailing separator.
     it 'tolerates a trailing separator on the source' do
-      allow(@file_wrapper).to receive(:directory_listing).and_return([ '/src/tree/keep.txt' ])
+      allow(@file_wrapper).to receive(:directory_listing).and_return([ src_path('tree', 'keep.txt') ])
 
-      expect(@file_wrapper).to receive(:directory_listing).with( '/src/tree/**/*' )
-      expect(@file_wrapper).to receive(:write).with( '/dest/out/keep.txt', 'contents', 'wb' )
+      expect(@file_wrapper).to receive(:directory_listing).with( File.join( src_path('tree'), '**', '*' ) )
+      expect(@file_wrapper).to receive(:write).with( dest_path('out', 'keep.txt'), 'contents', 'wb' )
 
       @actionator.copy_directory( 'tree/', 'out', force: true )
     end
@@ -263,16 +288,16 @@ describe Actionator do
 
   describe '#make_directory' do
     it 'creates an absent directory and reports it created' do
-      allow(@file_wrapper).to receive(:exist?).with('/dest/sub').and_return( false )
+      allow(@file_wrapper).to receive(:exist?).with( dest_path('sub') ).and_return( false )
 
-      expect(@file_wrapper).to receive(:mkdir).with( '/dest/sub' )
+      expect(@file_wrapper).to receive(:mkdir).with( dest_path('sub') )
       expect(@loginator).to receive(:console).with( '      create  sub', LogLabels::NONE )
 
       @actionator.make_directory( 'sub' )
     end
 
     it 'reports an existing directory without recreating it' do
-      allow(@file_wrapper).to receive(:exist?).with('/dest/sub').and_return( true )
+      allow(@file_wrapper).to receive(:exist?).with( dest_path('sub') ).and_return( true )
 
       expect(@file_wrapper).to_not receive(:mkdir)
       expect(@loginator).to receive(:console).with( '       exist  sub', LogLabels::NONE )
@@ -291,12 +316,14 @@ describe Actionator do
     end
 
     it 'reports a destination outside the destination root by its absolute path' do
+      outside = File.expand_path( '/elsewhere/sub' )
+
       allow(@file_wrapper).to receive(:exist?).and_return( false )
       allow(@file_wrapper).to receive(:mkdir)
 
-      expect(@loginator).to receive(:console).with( '      create  /elsewhere/sub', LogLabels::NONE )
+      expect(@loginator).to receive(:console).with( "      create  #{outside}", LogLabels::NONE )
 
-      @actionator.make_directory( '/elsewhere/sub' )
+      @actionator.make_directory( outside )
     end
 
     it 'reports the destination root itself as an empty path' do
@@ -304,15 +331,15 @@ describe Actionator do
 
       expect(@loginator).to receive(:console).with( '       exist  ', LogLabels::NONE )
 
-      @actionator.make_directory( '/dest' )
+      @actionator.make_directory( dest_path )
     end
   end
 
   describe '#remove_directory' do
     it 'removes an existing directory and reports it' do
-      allow(@file_wrapper).to receive(:exist?).with('/dest/vendor').and_return( true )
+      allow(@file_wrapper).to receive(:exist?).with( dest_path('vendor') ).and_return( true )
 
-      expect(@file_wrapper).to receive(:rm_rf).with( '/dest/vendor' )
+      expect(@file_wrapper).to receive(:rm_rf).with( dest_path('vendor') )
       expect(@loginator).to receive(:console).with( '      remove  vendor', LogLabels::NONE )
 
       @actionator.remove_directory( 'vendor' )
@@ -322,7 +349,7 @@ describe Actionator do
     # and Thor reported the removal before checking. Preserved so upgrade output is
     # unchanged.
     it 'reports an absent directory without attempting removal' do
-      allow(@file_wrapper).to receive(:exist?).with('/dest/vendor').and_return( false )
+      allow(@file_wrapper).to receive(:exist?).with( dest_path('vendor') ).and_return( false )
 
       expect(@file_wrapper).to_not receive(:rm_rf)
       expect(@loginator).to receive(:console).with( '      remove  vendor', LogLabels::NONE )
@@ -333,7 +360,7 @@ describe Actionator do
 
   describe '#chmod' do
     it 'changes the mode and reports it' do
-      expect(@file_wrapper).to receive(:chmod).with( '/dest/bin/ceedling', 0755 )
+      expect(@file_wrapper).to receive(:chmod).with( dest_path('bin', 'ceedling'), 0755 )
       expect(@loginator).to receive(:console).with( '       chmod  bin/ceedling', LogLabels::NONE )
 
       @actionator.chmod( 'bin/ceedling', 0755 )
@@ -342,9 +369,9 @@ describe Actionator do
 
   describe '#gsub_file' do
     it 'substitutes matched text and writes in binary mode' do
-      allow(@file_wrapper).to receive(:read_binary).with('/dest/project.yml').and_return( "version: '?'\n" )
+      allow(@file_wrapper).to receive(:read_binary).with( dest_path('project.yml') ).and_return( "version: '?'\n" )
 
-      expect(@file_wrapper).to receive(:write).with( '/dest/project.yml', "version: '1.2.0'\n", 'wb' )
+      expect(@file_wrapper).to receive(:write).with( dest_path('project.yml'), "version: '1.2.0'\n", 'wb' )
       expect(@loginator).to receive(:console).with( '        gsub  project.yml', LogLabels::NONE )
 
       @actionator.gsub_file( 'project.yml', /version:\s+'\?'/, "version: '1.2.0'" )
@@ -355,7 +382,7 @@ describe Actionator do
     it 'does not raise when the pattern matches nothing' do
       allow(@file_wrapper).to receive(:read_binary).and_return( "unrelated\n" )
 
-      expect(@file_wrapper).to receive(:write).with( '/dest/project.yml', "unrelated\n", 'wb' )
+      expect(@file_wrapper).to receive(:write).with( dest_path('project.yml'), "unrelated\n", 'wb' )
 
       expect {
         @actionator.gsub_file( 'project.yml', /nope/, 'replacement' )
