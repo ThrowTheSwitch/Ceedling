@@ -103,6 +103,14 @@ describe Templateinator do
     it 'preserves a blank line' do
       expect(render( "a\n\nb\n" )).to eq( "a\n\nb\n" )
     end
+
+    it 'renders an empty template as an empty string' do
+      expect(render( '' )).to eq( '' )
+    end
+
+    it 'renders a template of only newlines unchanged' do
+      expect(render( "\n\n\n" )).to eq( "\n\n\n" )
+    end
   end
 
   describe 'line endings' do
@@ -149,17 +157,24 @@ describe Templateinator do
       }.to raise_error( SyntaxError, /\(ceedling template\)/ )
     end
 
+    # Ruby puts the location in the backtrace rather than the message, which is
+    # where ERB surfaced it too. The frame is matched anywhere in the backtrace
+    # rather than at its head, because the caller's own scope can contribute frames
+    # of its own first. RSpec's method_missing does exactly that here.
     it 'reports an undefined reference against the template line' do
       expect {
         render( "line one\nline two\n<%=nope%>\n" )
-      }.to raise_error( NameError, /\(ceedling template\):3/ )
+      }.to raise_error( NameError ) { |error|
+        expect(error.backtrace).to include( a_string_matching( /\(ceedling template\):3/ ) )
+      }
     end
   end
 
   describe 'evaluation context' do
+    # No trailing newline, because the line both opens and closes with a tag.
     it 'evaluates against the binding it is given' do
       caller_local = 'from the caller'
-      expect(@templateinator.render( "<%=caller_local%>\n", binding )).to eq( "from the caller\n" )
+      expect(@templateinator.render( "<%=caller_local%>\n", binding )).to eq( 'from the caller' )
     end
 
     # Proves the template is evaluated in the caller's scope rather than inside
