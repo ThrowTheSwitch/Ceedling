@@ -22,10 +22,9 @@
 
     ---
 
-    Read the [policy][security-policy] for disclosure details and
-    guidance on issues vulnerability inspection tools may surface.
-    Report a vulnerability through a [private advisory][security-report] 
-    visible only to maintainers.
+    See the [policy][security-policy] for disclosure details and
+    guidance on issues that vulnerability inspection tools may surface.
+    Report a vulnerability through a [private advisory][security-report].
 
 </div>
 
