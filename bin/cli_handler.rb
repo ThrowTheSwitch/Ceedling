@@ -564,16 +564,18 @@ class CliHandler
   # standardize_paths() returns new values rather than updating its arguments in
   # place, so the mixins list can't just be passed through it directly -- inline
   # YAML mixin entries aren't filepaths at all and must be left untouched, and
-  # only the filepath/name entries come back out standardized. Matches entries
-  # by object identity rather than value so repeated identical mixin values are
-  # each replaced correctly.
+  # only the filepath/name entries come back out standardized.
+  #
+  # Entries are matched by value. standardize_paths() is a pure mapping, so two
+  # equal inputs always produce equal outputs and a repeated mixin value gets the
+  # same replacement either way.
   def standardize_project_and_mixins(project, mixins)
     _project = @path_validator.standardize_paths( project ).first
 
     file_mixins = @helper.process_mixin_filepaths( mixins )
     standardized = @path_validator.standardize_paths( *file_mixins )
-    replacements = file_mixins.each_with_index.to_h {|m, i| [m.object_id, standardized[i]] }
-    _mixins = mixins.map {|m| replacements.fetch( m.object_id, m ) }
+    replacements = file_mixins.zip( standardized ).to_h
+    _mixins = mixins.map {|m| replacements.fetch( m, m ) }
 
     return _project, _mixins
   end

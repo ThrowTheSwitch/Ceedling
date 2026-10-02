@@ -60,10 +60,13 @@ class Partializer
     )
     @loginator.log(msg, Verbosity::DEBUG)
 
+    # Report the first overlap and abort. An `each` here would read as though
+    # every offending function gets reported, which it cannot -- the raise ends
+    # the build on the first one.
     overlap = impl_names & interface_names
-    overlap.each do |func_name|
+    unless overlap.empty?
       raise CeedlingException.new(
-        "#{name}: Partial '#{partial}' ⏩️ Function '#{func_name}' cannot be both testable and mockable"
+        "#{name}: Partial '#{partial}' ⏩️ Function '#{overlap.first}' cannot be both testable and mockable"
       )
     end
   end

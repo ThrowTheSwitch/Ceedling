@@ -305,10 +305,12 @@ class PartializerHelper
     mod = config.module
 
     {TEST: config.tests, MOCK: config.mocks}.each do |label, pf|
+      # Report the first overlap and abort, as above -- an `each` would imply
+      # every offending function gets reported.
       overlap = Set.new(pf.additions) & Set.new(pf.subtractions)
-      overlap.each do |func_name|
+      unless overlap.empty?
         raise CeedlingException.new(
-          "#{name}: #{label} Partial configuration for module '#{mod}' ⏩️ Function '#{func_name}' should not be both added and subtracted"
+          "#{name}: #{label} Partial configuration for module '#{mod}' ⏩️ Function '#{overlap.first}' should not be both added and subtracted"
         )
       end
     end

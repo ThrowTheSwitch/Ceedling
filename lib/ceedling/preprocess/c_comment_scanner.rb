@@ -16,13 +16,15 @@ class CCommentScanner
   # Describes a single C comment found within source or preprocessor text.
   #
   # position      - Byte offset of the first comment character (the leading /)
-  # length        - Byte count of the complete comment text
+  # byte_count    - Byte count of the complete comment text. Named byte_count and
+  #                 not length so it cannot shadow Struct#length, which reports the
+  #                 number of members and would otherwise disagree with #size.
   # lines_removed - Number of \n characters within the comment text; equals the
   #                 number of source lines eliminated when the comment is replaced
   #                 by a single space (e.g. a // comment with no continuation → 0;
   #                 a /* ... */ comment spanning 3 physical lines → 2)
-  CommentInfo = Struct.new(:position, :length, :lines_removed, keyword_init: true) do
-    def initialize(position: nil, length: nil, lines_removed: 0)
+  CommentInfo = Struct.new(:position, :byte_count, :lines_removed, keyword_init: true) do
+    def initialize(position: nil, byte_count: nil, lines_removed: 0)
       super
     end
   end unless const_defined?(:CommentInfo, false)
@@ -55,7 +57,7 @@ class CCommentScanner
         replacement = "\n" * info.lines_removed
       end
 
-      result[info.position, info.length] = replacement
+      result[info.position, info.byte_count] = replacement
     end
 
     # Re-tag the encoding without converting bytes.  Only ASCII delimiters were
@@ -105,7 +107,7 @@ class CCommentScanner
           len = scanner.pos - start
           comments << CommentInfo.new(
             position:      start,
-            length:        len,
+            byte_count:    len,
             lines_removed: content[start, len].count("\n")
           )
 
@@ -115,7 +117,7 @@ class CCommentScanner
           len = scanner.pos - start
           comments << CommentInfo.new(
             position:      start,
-            length:        len,
+            byte_count:    len,
             lines_removed: content[start, len].count("\n")
           )
 
