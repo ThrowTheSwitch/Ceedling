@@ -266,36 +266,69 @@ PROFILE_TMP_DIR      = File.join(__dir__, 'tmp', 'profiling')
 PROFILE_SCRIPT       = File.join(__dir__, 'tools', 'profiling', 'profile_ceedling.rb')
 PROFILE_CEEDLING_BIN = File.join(__dir__, 'bin', 'ceedling')
 
+# Gate for stackprof, which is install_if:-gated in the Gemfile so an ordinary
+# `bundle install` never attempts its native extension. See unbundled_sh for why
+# the gate only ever reaches a child process.
+#
+# BUNDLE_GEMFILE is pinned because profile:run runs one command from inside the
+# scaffolded project directory. Stripping the parent's Bundler environment also
+# strips the absolute BUNDLE_GEMFILE that `bundle exec` exported, which would
+# otherwise leave Bundler searching upward from a directory that is not the
+# repository root.
+PROFILE_ENV = {
+  'CEEDLING_PROFILING' => 'true',
+  'BUNDLE_GEMFILE'     => File.join(__dir__, 'Gemfile'),
+}.freeze
+
+def profile_sh(cmd, &block)
+  unbundled_sh( PROFILE_ENV, cmd, &block )
+end
+
+# True when stackprof can actually be loaded under the gate. Probed in a child
+# process because a `require` here could never succeed, whatever is installed.
+def stackprof_available?
+  profile_sh( %q{bundle exec ruby -e "require 'stackprof'"} ) do |cmd|
+    system( cmd, out: File::NULL, err: File::NULL )
+  end
+end
+
 desc "Ensure profiling gems (stackprof) are installed"
 task 'profile:setup' do
-  # stackprof is install_if:-gated in the Gemfile so ordinary `bundle
-  # install` (CI included) never attempts it -- its native extension fails
-  # to build on Windows. This env var is Bundler's *runtime* activation
-  # check too, not just its install-time one: every later `bundle exec`
-  # (in profile:run, and this task's own `bundle install` fallback below)
-  # needs it set for the whole rest of this process, not just around one
-  # call -- hence setting it unconditionally here, before the require check,
-  # rather than only inside the rescue branch.
-  ENV['CEEDLING_PROFILING'] = 'true'
+  repo_only!( 'profile:setup' )
+
+  # stackprof's native extension fails to build on Windows (Gem::Ext::BuildError),
+  # and whether it can ever build there is untested. Declining early beats burying
+  # the developer in a failed compile. See the Gemfile's stackprof entry.
+  if Gem.win_platform?
+    raise "Profiling is not available on Windows -- stackprof's native extension " \
+          "does not build there. See the stackprof entry in the Gemfile."
+  end
 
   puts "Probing for stackprof..."
 
-  begin
-    require 'stackprof'
+  if stackprof_available?
     puts "stackprof is available."
-  rescue LoadError
-    puts "stackprof not found -- installing now via 'bundle install'..."
-
-    begin
-      sh 'bundle install'
-    rescue StandardError
-      raise "stackprof installation failed -- a native-extension build " \
-            "toolchain (e.g. the 'ruby-dev'/'ruby-devel' package on Linux) " \
-            "may be missing. See the error above for details."
-    end
-
-    raise "stackprof installed -- run this task again to verify and continue."
+    next
   end
+
+  puts "stackprof not found -- installing now via 'bundle install'..."
+
+  begin
+    profile_sh( 'bundle install' ) { |cmd| sh cmd }
+  rescue StandardError
+    raise "stackprof installation failed -- a native-extension build " \
+          "toolchain (e.g. the 'ruby-dev'/'ruby-devel' package on Linux) " \
+          "may be missing. See the error above for details."
+  end
+
+  # Re-probed rather than assumed, so a gem that installs but will not load is
+  # diagnosed here instead of surfacing as a LoadError from a grandchild process
+  # in the middle of a profiled build.
+  unless stackprof_available?
+    raise "stackprof installed but still will not load. Profiling cannot continue."
+  end
+
+  puts "stackprof installed."
 end
 
 desc "Profile a build task against an example project, generating flame graph."
@@ -336,7 +369,7 @@ task 'profile:run', [:project, :build_task] => 'profile:setup' do |_t, args|
   # about and is what actually lets build/ and the dependency cache persist
   # untouched across successive runs, which is the whole point.
   unless File.exist?(File.join(project_dir, 'project.yml'))
-    sh "bundle exec ruby \"#{PROFILE_CEEDLING_BIN}\" example #{project} \"#{scaffold_dir}\""
+    profile_sh( "bundle exec ruby \"#{PROFILE_CEEDLING_BIN}\" example #{project} \"#{scaffold_dir}\"" ) { |cmd| sh cmd }
     raise "Expected scaffolded project at #{project_dir}, not found" unless File.directory?(project_dir)
   end
 
@@ -361,11 +394,13 @@ task 'profile:run', [:project, :build_task] => 'profile:setup' do |_t, args|
   puts "Profiling 'ceedling #{build_task}' in #{project_dir}..."
 
   Dir.chdir(project_dir) do
-    sh "bundle exec ruby \"#{PROFILE_SCRIPT}\" \"#{dump_path}\" \"#{PROFILE_CEEDLING_BIN}\" -- #{build_task} --mixin=\"#{mixin_path}\""
+    profile_sh( "bundle exec ruby \"#{PROFILE_SCRIPT}\" \"#{dump_path}\" \"#{PROFILE_CEEDLING_BIN}\" -- #{build_task} --mixin=\"#{mixin_path}\"" ) { |cmd| sh cmd }
   end
 
-  sh "bundle exec stackprof \"#{dump_path}\" --text > \"#{text_path}\""
-  sh "bundle exec stackprof \"#{dump_path}\" --d3-flamegraph > \"#{html_path}\""
+  # Both commands redirect, so each must reach `sh` as one string for a shell to
+  # interpret. profile_sh yields the command unsplit.
+  profile_sh( "bundle exec stackprof \"#{dump_path}\" --text > \"#{text_path}\"" ) { |cmd| sh cmd }
+  profile_sh( "bundle exec stackprof \"#{dump_path}\" --d3-flamegraph > \"#{html_path}\"" ) { |cmd| sh cmd }
 
   puts "\nProfiling complete:"
   puts "  Project dir: #{project_dir}"
