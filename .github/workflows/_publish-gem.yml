@@ -16,10 +16,11 @@
 #   softprops/action-gh-release@v2.
 #
 # Version stamping:
-#   lib/version.rb carries a .dev suffix between releases (e.g. 1.1.1.dev).
-#   This job derives the actual release version from the Git tag and stamps
-#   it into lib/version.rb before building — the file is never manually
-#   edited to match a release tag.
+#   lib/version.rb reports a `.dev` version everywhere except here. It holds the
+#   release cycle's target version in BASE and the marker in DEV, and composes
+#   the reported version from the two. This job stamps BASE from the Git tag and
+#   empties DEV, so a published gem is the only build reporting a bare version.
+#   Neither line is ever manually edited to match a release tag.
 #
 #   Tag-to-gem-version conversion:
 #     v1.1.0-pre.1  →  1.1.0.pre.1  (hyphen becomes dot: RubyGems pre-release notation)
@@ -80,8 +81,9 @@ jobs:
           bundle install
 
       # Derive the gem version from the Git tag and stamp it into lib/version.rb.
-      # The in-tree version.rb carries a .dev suffix between releases; the release
-      # version is computed here from the tag and is never manually set.
+      # Clearing that file's `.dev` marker is part of the stamp, and it is what
+      # makes this the only build that reports a bare version. The script verifies
+      # both substitutions and fails the job if either does not apply.
       - name: Stamp Gem Version from Git Tag
         shell: bash
         run: .github/workflows/stamp_gem_version.sh "${GITHUB_REF_NAME}" lib/version.rb

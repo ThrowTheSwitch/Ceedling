@@ -18,12 +18,16 @@ module CommonSystemTestCases
     YamlWrapper.new({ file_wrapper: file_wrapper })
   end
 
+  # The `(\.dev)?` is not optional decoration. lib/version.rb appends that marker
+  # to every build the release pipeline did not produce, and these specs deploy
+  # the in-tree gem, so the suite normally sees it. A release build clears the
+  # marker, and the assertion has to hold either way.
   def can_report_version_no_git_commit_sha
     @c.with_context do
       # Version without Git commit short SHA file in project
       output = @c.ceedling_appcmd_exec("version")
       expect(@c.last_exit_status).to eq(0)
-      expect(output).to match(/Ceedling => \d\.\d\.\d\n/)
+      expect(output).to match(/Ceedling => \d+\.\d+\.\d+(\.dev)?\n/)
     end
   end
 
@@ -37,7 +41,7 @@ module CommonSystemTestCases
     @c.with_context do
       output = @c.ceedling_appcmd_exec("version")
       expect(@c.last_exit_status).to eq(0)
-      expect(output).to match(/Ceedling => \d\.\d\.\d----{-@\n/)
+      expect(output).to match(/Ceedling => \d+\.\d+\.\d+(\.dev)?----{-@\n/)
     end
   end
 
