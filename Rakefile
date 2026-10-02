@@ -225,13 +225,12 @@ Dir['spec/system/**/*_spec.rb'].each do |p|
   end
 end
 
-# Stand-in that documents the family above. Running it explains itself rather
-# than doing anything, the same technique the `test:*` and `gen:mocks:*`
-# placeholders use in lib/ceedling/rakefiles/.
-desc "Run single system spec, retaining all artifacts ([*] system spec name)."
+# Stand-in that documents the family above. It is a signpost in `rake -T` rather
+# than something to run, so the description says what to put in place of the
+# wildcard. The same technique carries the `test:*` and `gen:mocks:*` placeholders
+# in lib/ceedling/rakefiles/.
+desc "Run single system spec, retaining all artifacts (replace [*] with a system spec name)."
 task 'spec:system:debug:*' do
-  # Quoting matters to the suggestion below. zsh expands an unquoted trailing
-  # wildcard itself and fails before rake ever sees the task name.
   message = "Oops! 'spec:system:debug:*' isn't a real task. " \
             "Use a real system spec name in place of the wildcard.\n" \
             "Example: `rake spec:system:debug:cli_surface`\n" \
