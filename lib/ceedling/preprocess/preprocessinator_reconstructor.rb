@@ -319,8 +319,8 @@ class PreprocessinatorReconstructor
     # Yields pending_line (and any pending blank lines) then clears the buffer
     flush = lambda do
       unless pending_line.nil?
-        block.call( pending_line )
-        pending_blank_count.times { block.call( '' ) }
+        yield( pending_line )
+        pending_blank_count.times { yield( '' ) }
         pending_line  = nil
         pending_blank_count = 0
       end

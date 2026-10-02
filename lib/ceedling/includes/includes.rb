@@ -143,7 +143,7 @@ class Includes
 
     # Apply custom rejection with access to full list if block provided
     if block_given?
-      includes.reject! { |include| block.call(include, includes) }
+      includes.reject! { |include| yield(include, includes) }
     end
 
     # Ensure system includes come first

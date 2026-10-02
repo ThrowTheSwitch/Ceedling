@@ -47,12 +47,12 @@ class CliHandler
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
-      thor_help.call( command ) if block_given?
+      yield( command ) if block_given?
       return
     end
 
     # Display Thor-generated help listing
-    thor_help.call( command ) if block_given?
+    yield( command ) if block_given?
 
     # If project configuration is available, also display Rake tasks
     options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
