@@ -18,7 +18,11 @@ class ConfiguratorBuilder
   constructor :file_path_collection_utils, :loginator, :file_wrapper, :system_wrapper
 
 
-  def build_global_constant(elem, value)
+  # `value` is read by the module_eval string below, which RuboCop cannot see into.
+  # The cop reads the argument as unused and offers to rename it `_value`. Accepting
+  # that rename leaves the eval referencing a local that no longer exists, so every
+  # global configuration constant raises NameError. Do not autocorrect this line.
+  def build_global_constant(elem, value) # rubocop:disable Lint/UnusedMethodArgument
     # Convert key names to Ruby constant names
     # Some key names can be C file names that can include dashes
     # Upcase the key names to create consitency and Ruby constants by convention

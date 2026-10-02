@@ -18,7 +18,11 @@ class PluginManagerHelper
 		return include
   end
 
-  def instantiate_plugin(plugin, system_objects, name, root_path)
+  # All three arguments are read by the eval string below, which RuboCop cannot see
+  # into. The cop reads them as unused and offers to rename them with underscore
+  # prefixes. Accepting that rename leaves the eval referencing locals that no longer
+  # exist, so no plugin can be instantiated. Do not autocorrect this line.
+  def instantiate_plugin(plugin, system_objects, name, root_path) # rubocop:disable Lint/UnusedMethodArgument
     return eval( "#{plugin}.new(system_objects, name, root_path)" )
   end
 
