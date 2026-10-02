@@ -176,7 +176,7 @@ describe ReportGeneratorReportinator do
     it 'uses a literal-prefixed glob, not a regex, so a similarly-named directory does not match' do
       allow(configurator).to receive(:collection_paths_test).and_return(['test'])
       pattern = reportinator.send(:build_filefilter_exclusions).first
-      glob = pattern.sub(/\A-/, '')
+      glob = pattern.delete_prefix('-')
       expect(File.fnmatch(glob, './latest/test_bar.c', File::FNM_PATHNAME)).to eq(false)
       expect(File.fnmatch(glob, './test/test_bar.c', File::FNM_PATHNAME)).to eq(true)
     end

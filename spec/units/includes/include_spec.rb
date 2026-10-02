@@ -656,11 +656,15 @@ describe "Include regex matching" do
       expect(include_obj =~ /mock_sensor/).not_to be_nil
     end
 
+    # Include#=~ is the subject of these examples, not an incidental String match.
+    # RuboCop reads the receiver as a String and offers `start_with?`, which Include
+    # does not define, so accepting that correction raises NoMethodError. The nil
+    # expectations also depend on #=~ returning an index or nil rather than a boolean.
     it "supports anchored patterns" do
       include_obj = UserInclude.new("mock_module.h")
 
-      expect(include_obj =~ /\Amock_/).not_to be_nil
-      expect(include_obj =~ /\Amodule/).to be_nil
+      expect(include_obj =~ /\Amock_/).not_to be_nil # rubocop:disable Performance/StartWith
+      expect(include_obj =~ /\Amodule/).to be_nil     # rubocop:disable Performance/StartWith
     end
 
     it "can be used in Array#select via block" do
@@ -670,7 +674,7 @@ describe "Include regex matching" do
         UserInclude.new("mock_driver.h")
       ]
 
-      mocks = includes.select { |inc| inc =~ /\Amock_/ }
+      mocks = includes.select { |inc| inc =~ /\Amock_/ } # rubocop:disable Performance/StartWith
 
       expect(mocks.length).to eq(2)
       expect(mocks).to include(UserInclude.new("mock_sensor.h"))
@@ -719,7 +723,7 @@ describe "Include regex matching" do
         UserInclude.new("mock_driver.h")
       ]
 
-      non_mocks = includes.reject { |inc| inc =~ /\Amock_/ }
+      non_mocks = includes.reject { |inc| inc =~ /\Amock_/ } # rubocop:disable Performance/StartWith
 
       expect(non_mocks.length).to eq(1)
       expect(non_mocks).to include(UserInclude.new("module.h"))

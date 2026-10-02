@@ -61,7 +61,7 @@ describe DependencyHasher do
       end
 
       it 'hashes binary content with embedded CR/LF-like bytes exactly as read' do
-        binary_content = "\x00\x01\r\n\xFF\xFE".dup.force_encoding( Encoding::BINARY )
+        binary_content = (+"\x00\x01\r\n\xFF\xFE").force_encoding( Encoding::BINARY )
         allow( @file_wrapper ).to receive(:read_binary).with('foo.bin').and_return( binary_content )
 
         expect( @hasher.hash_of_file('foo.bin') ).to eq( Digest::SHA256.hexdigest( binary_content ) )
