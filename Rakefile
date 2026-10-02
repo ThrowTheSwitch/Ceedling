@@ -391,7 +391,7 @@ task 'lint:setup' do
   end
 end
 
-desc "Lint Ceedling's Ruby source (Lint, Metrics, Security, Performance)"
+desc "Lint Ceedling's Ruby source"
 task 'lint' => 'lint:setup' do
   rubocop_sh ''
 end
@@ -425,7 +425,7 @@ task 'lint:changed', [:branch] => 'lint:setup' do |_t, args|
   rubocop_sh "--force-exclusion #{changed.join(' ')}"
 end
 
-desc "Apply RuboCop's safe autocorrections"
+desc "Apply RuboCop's safe auto-corrections"
 task 'lint:fix' => 'lint:setup' do
   # Safe corrections only (-a, not -A). Review the diff before keeping it. Metrics
   # offenses are never autocorrectable, so what this changes is mostly Performance
