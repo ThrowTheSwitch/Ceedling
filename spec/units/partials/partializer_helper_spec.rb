@@ -756,6 +756,21 @@ describe PartializerHelper do
       expect { @helper.validate_no_additions_subtractions_overlap(config, name) }
         .to raise_error(CeedlingException, /test_mod.*mod.*bar/)
     end
+
+    # Only the first overlapping function is reported, since validation aborts the
+    # build rather than collecting every problem first.
+    it "raises naming the first overlapping function when several overlap" do
+      name   = "test_mod"
+      config = make_config('mod',
+        tests: make_pf(additions: ['alpha', 'beta'], subtractions: ['alpha', 'beta']),
+        mocks: make_pf
+      )
+      expect { @helper.validate_no_additions_subtractions_overlap(config, name) }
+        .to raise_error(
+          CeedlingException,
+          "test_mod: TEST Partial configuration for module 'mod' \u23e9\ufe0f Function 'alpha' should not be both added and subtracted"
+        )
+    end
   end
 
   ###

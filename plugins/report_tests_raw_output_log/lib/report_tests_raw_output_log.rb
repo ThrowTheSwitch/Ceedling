@@ -57,13 +57,13 @@ class ReportTestsRawOutputLog < ReportLogWriterPlugin
 
     raw_output.each_line do |line|
       # Skip blank lines
-      next if line =~ /^\s*\n$/
+      next if line.match?(/^\s*\n$/)
 
       # Skip test case reporting lines
-      next if line =~ /^.+:\d+:.+:(IGNORE|PASS|FAIL)/
+      next if line.match?(/^.+:\d+:.+:(IGNORE|PASS|FAIL)/)
 
       # Return early if we get to test results summary footer
-      return output if line =~/^-+\n$/
+      return output if line.match?(/^-+\n$/)
 
       # Capture all other console output from the test runner, including `printf()`-style debugging statements
       output << line

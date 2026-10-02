@@ -45,7 +45,7 @@ describe GeneratorTestRunner do
       # A raw, invalid UTF-8 byte sequence embedded in a comment above the test function.
       # This is the *original*, non-preprocessed source -- the only input `remap_line_numbers!`
       # scans. Real preprocessed content never carries this, since gcc strips comments already.
-      invalid_byte_sequence = "// \xFF\xFE garbage bytes in a comment\n".dup.force_encoding('UTF-8')
+      invalid_byte_sequence = (+"// \xFF\xFE garbage bytes in a comment\n").force_encoding('UTF-8')
       source = invalid_byte_sequence + "void test_ShouldDoSomething(void) {}\n"
 
       runner = build_runner( test_file_contents: "void test_ShouldDoSomething(void) {}\n" )

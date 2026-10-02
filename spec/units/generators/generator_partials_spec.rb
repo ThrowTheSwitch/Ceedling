@@ -321,7 +321,6 @@ describe GeneratorPartials do
       output_path = '/path/to/output'
       name = 'my_module'
       header_filename = 'my_module_types.h'
-      expected_filepath = File.join(output_path, header_filename)
 
       allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
 

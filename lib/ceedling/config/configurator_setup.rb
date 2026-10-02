@@ -440,7 +440,7 @@ class ConfiguratorSetup
 
         begin
           @configurator_validator.validate_matcher( matcher.to_s.strip() )
-        rescue Exception => ex
+        rescue StandardError => ex
           msg = "Matcher #{walk} contains #{ex.message}"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false
@@ -597,7 +597,7 @@ class ConfiguratorSetup
     return valid if test_context.nil?
 
     matchers_present = false
-    test_context.each_pair do |operation, matchers|
+    test_context.each_pair do |_operation, matchers|
       if matchers.class == Hash
         matchers_present = true
         break
@@ -650,7 +650,7 @@ class ConfiguratorSetup
 
         begin
           @configurator_validator.validate_matcher( matcher.to_s.strip() )
-        rescue Exception => ex
+        rescue StandardError => ex
           msg = "Matcher #{walk} contains #{ex.message}"
           @loginator.log( msg, Verbosity::ERRORS )
           valid = false

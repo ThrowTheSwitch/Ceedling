@@ -593,7 +593,7 @@ class Configurator
 
       # Special handling for plugin paths
       if (_config.include?( :paths ))
-        _config[:paths].update( _config[:paths] ) do |k,v| 
+        _config[:paths].update( _config[:paths] ) do |_k,v| 
           plugin_path = hash[:path].match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
           v.map {|vv| File.expand_path( vv.gsub!( /\$PLUGIN_PATH/, plugin_path) ) }
         end
@@ -616,7 +616,6 @@ class Configurator
     config[:environment].each do |hash|
       key   = hash.keys[0] # Get first (should be only) environment variable entry
       value = hash[key]    # Get associated value
-      items = []
 
       # Special case handling for :path environment variable entry
       # File::PATH_SEPARATOR => ':' (Unix-ish) or ';' (Windows)

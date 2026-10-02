@@ -242,7 +242,9 @@ class ReleaseBuildExecutor
     else
       "\\.LIBRARY"
     end
-    sorted_objects = both.group_by { |v| v.match(/.+#{extension}$/) ? :libraries : :objects }
+    # Compile once rather than once per entry in `both`
+    library_pattern = /.+#{extension}$/
+    sorted_objects = both.group_by { |v| v.match?( library_pattern ) ? :libraries : :objects }
     libraries = sorted_objects[:libraries] || []
     objects   = sorted_objects[:objects]   || []
     return objects, libraries

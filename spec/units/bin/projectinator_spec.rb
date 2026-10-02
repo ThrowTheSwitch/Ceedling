@@ -24,7 +24,7 @@ describe Projectinator do
 
     @path_validator = double('path_validator')
     allow(@path_validator).to receive(:standardize_paths) do |*paths|
-      paths.map {|p| (p.nil? || p.empty?) ? p : p.gsub("\\", '/') }
+      paths.map {|p| (p.nil? || p.empty?) ? p : p.tr("\\", '/') }
     end
 
     @yaml_wrapper = double('yaml_wrapper')

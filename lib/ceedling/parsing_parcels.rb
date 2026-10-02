@@ -57,7 +57,7 @@ class ParsingParcels
 
     content.each_line do |line|
       line_num += 1
-      m = line.match /(.*)\\\s*$/
+      m = line.match( /(.*)\\\s*$/ )
       if (!m.nil?)
         full_line += m[1]
         continuation_start_line = line_num if full_line == m[1]

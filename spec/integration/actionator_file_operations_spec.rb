@@ -247,7 +247,7 @@ describe 'Actionator file operations (integration)' do
   end
 
   describe 'chmod' do
-    it 'sets real permission bits', skip: (RUBY_PLATFORM.downcase =~ /mingw|win32/ ? 'chmod is not meaningful on Windows' : false) do
+    it 'sets real permission bits', skip: (/mingw|win32/.match?(RUBY_PLATFORM.downcase) ? 'chmod is not meaningful on Windows' : false) do
       with_source_tree({ 'launcher' => '#!/bin/sh' }) do |dir|
         actionator = build_actionator( dir )
         target = File.join( dir, 'launcher' )

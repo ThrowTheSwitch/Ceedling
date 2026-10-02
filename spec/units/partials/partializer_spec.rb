@@ -316,7 +316,10 @@ describe Partializer do
       }.to raise_error(CeedlingException, /shared/)
     end
 
-    it "raises for each overlapping function when multiple functions overlap" do
+    # Validation aborts the build on the first overlap it finds. It reports one
+    # function, not all of them, which is why this example no longer claims it
+    # raises "for each" overlapping function.
+    it "raises naming the first overlapping function when multiple functions overlap" do
       impl      = [make_impl('alpha'), make_impl('beta')]
       interface = [make_iface('alpha'), make_iface('beta')]
 
@@ -324,7 +327,10 @@ describe Partializer do
         @partializer.validate_extracted_functions(
           name: 'test_mod', partial: 'mod', impl: impl, interface: interface
         )
-      }.to raise_error(CeedlingException)
+      }.to raise_error(
+        CeedlingException,
+        "test_mod: Partial 'mod' \u23e9\ufe0f Function 'alpha' cannot be both testable and mockable"
+      )
     end
   end
 

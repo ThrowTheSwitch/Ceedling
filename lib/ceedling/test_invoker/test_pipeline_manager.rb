@@ -137,10 +137,10 @@ class TestPipelineManager
   end
 
   def build_stage_sequence
-    use_preprocessing = -> (s) { @configurator.project_use_test_preprocessor_tests }
-    use_partials      = -> (s) { @configurator.project_use_partials }
-    use_mocks         = -> (s) { @configurator.project_use_mocks }
-    use_mocks_preproc = -> (s) { @configurator.project_use_mocks && @configurator.project_use_test_preprocessor_mocks }
+    use_preprocessing = -> (_s) { @configurator.project_use_test_preprocessor_tests }
+    use_partials      = -> (_s) { @configurator.project_use_partials }
+    use_mocks         = -> (_s) { @configurator.project_use_mocks }
+    use_mocks_preproc = -> (_s) { @configurator.project_use_mocks && @configurator.project_use_test_preprocessor_mocks }
     not_mocking       = -> (s) { !s.options.include?(:mocking) }       # skip stages 11-17 (stop after stage 10)
     not_test_runner   = -> (s) { !s.options.include?(:test_runner) }   # skip stages 14-17 (stop after stage 13)
     not_build_only    = -> (s) { !s.options.include?(:build_only) }    # skip stage 17 only

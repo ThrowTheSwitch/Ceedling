@@ -25,7 +25,6 @@ class Versionator
     ##
 
     @ceedling_install_path = ceedling_root_path.clone()
-    ceedling_git_sha = nil
 
     # Set Ceedling tag
     @ceedling_tag = Ceedling::Version::TAG

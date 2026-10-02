@@ -84,8 +84,6 @@ class ConfigMatchinator
       error = ":#{primary} ↳ :#{secondary} in project configuration is neither a list nor hash."
       raise CeedlingException.new( error )
     end
-
-    return nil
   end
 
   # no_match_default: returned instead of an empty list when `filepath` matches
@@ -258,7 +256,7 @@ class ConfigMatchinator
       return false
     end
 
-    if !expr.end_with? ('/')
+    if !expr.end_with?('/')
       return false
     end
 

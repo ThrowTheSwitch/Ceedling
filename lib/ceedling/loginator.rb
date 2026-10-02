@@ -105,7 +105,12 @@ class Loginator
             end
           rescue ThreadError
             @done = true
-          rescue Exception => e
+          # Catching Exception rather than StandardError is deliberate here. This is
+          # the logging worker thread's last line of defense, and a thread that dies
+          # takes all further logging with it, silently. Narrowing this would trade a
+          # reported anomaly for a mute build. Interrupt and SignalException are
+          # delivered to the main thread, not here, so nothing is being swallowed.
+          rescue Exception => e # rubocop:disable Lint/RescueException
             puts e.inspect
           end
         end

@@ -82,7 +82,7 @@ class GcovReportinator
   # get a pattern requiring a literal './build/' substring that real reported filepaths
   # (which don't carry that prefix) never contain, silently excluding nothing.
   def strip_leading_dot_slash(path)
-    path.sub(%r{\A\./}, '')
+    path.delete_prefix('./')
   end
 
 
@@ -92,7 +92,7 @@ class GcovReportinator
   def build_custom_args(custom_args)
     return "" if custom_args.nil?
 
-    custom_args.each_with_object(String.new) do |custom_arg, args|
+    custom_args.each_with_object(+'') do |custom_arg, args|
       args << "\"#{custom_arg}\" " unless custom_arg.nil? || custom_arg.empty?
     end
   end
@@ -115,7 +115,7 @@ class GcovReportinator
   #   :min_version - [major, minor]; entry is silently omitted below this version
   #                   (distinct from VERSION_GATES-style checks, which raise instead).
   def build_args_from_table(opts, table, version: nil, component_prefix: '')
-    table.each_with_object(String.new) do |(option, spec), args|
+    table.each_with_object(+'') do |(option, spec), args|
       value = opts[option]
       next if value.nil? || value == false
       next if spec[:min_version] && !min_version?(version, *spec[:min_version])

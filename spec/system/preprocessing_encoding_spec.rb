@@ -45,7 +45,7 @@ ceedling_system_tests do
             expect(@c.last_exit_status).to eq(0)
             # Only assert non-fallback when the platform actually supports -fdirectives-only.
             # Apple clang (macOS) silently ignores the flag and ceedling falls back automatically.
-            expect(output).not_to match(/using fallback method/i) unless output.match(/lacks -fdirectives-only support/i)
+            expect(output).not_to match(/using fallback method/i) unless /lacks -fdirectives-only support/i.match?(output)
             expect(output).to match(/TESTED:\s+1/)
             expect(output).to match(/PASSED:\s+1/)
             expect(output).to match(/FAILED:\s+0/)
@@ -83,7 +83,7 @@ ceedling_system_tests do
             expect(@c.last_exit_status).to eq(0)
             # Only assert non-fallback when the platform actually supports -fdirectives-only.
             # Apple clang (macOS) silently ignores the flag and ceedling falls back automatically.
-            expect(output).not_to match(/using fallback method/i) unless output.match(/lacks -fdirectives-only support/i)
+            expect(output).not_to match(/using fallback method/i) unless /lacks -fdirectives-only support/i.match?(output)
             expect(output).to match(/TESTED:\s+1/)
             expect(output).to match(/PASSED:\s+1/)
             expect(output).to match(/FAILED:\s+0/)
@@ -126,7 +126,7 @@ ceedling_system_tests do
             # \xE4\xBD is the first two of three bytes of U+4F60 (你), missing
             # its final continuation byte. \xE4 alone is a lead byte with no
             # continuation bytes at all. Both are invalid UTF-8 on their own.
-            File.binwrite('src/truncated_encoding.h', <<~HEADER.dup.force_encoding('BINARY'))
+            File.binwrite('src/truncated_encoding.h', (+<<~HEADER).force_encoding('BINARY'))
               /* Truncated multi-byte sequence: \xE4\xBD -- missing its final continuation byte */
               #ifndef TRUNCATED_ENCODING_H
               #define TRUNCATED_ENCODING_H
@@ -137,7 +137,7 @@ ceedling_system_tests do
               #endif /* TRUNCATED_ENCODING_H */
             HEADER
 
-            File.binwrite('src/truncated_encoding.c', <<~SOURCE.dup.force_encoding('BINARY'))
+            File.binwrite('src/truncated_encoding.c', (+<<~SOURCE).force_encoding('BINARY'))
               /* Truncated multi-byte sequence in implementation: \xE4\xBD */
               #include "truncated_encoding.h"
 
@@ -167,7 +167,7 @@ ceedling_system_tests do
             @c.merge_project_yml_for_test({ :project => { :use_test_preprocessor => :mocks } })
             output = @c.ceedling_build_exec("test:truncated_encoding")
             expect(@c.last_exit_status).to eq(0)
-            expect(output).not_to match(/using fallback method/i) unless output.match(/lacks -fdirectives-only support/i)
+            expect(output).not_to match(/using fallback method/i) unless /lacks -fdirectives-only support/i.match?(output)
             expect(output).to match(/TESTED:\s+1/)
             expect(output).to match(/PASSED:\s+1/)
             expect(output).to match(/FAILED:\s+0/)

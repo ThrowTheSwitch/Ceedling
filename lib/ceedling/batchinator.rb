@@ -104,7 +104,7 @@ class Batchinator
         # simply stops the each_with_index loop before item N+1 runs).
         batch_results = things.to_a.each_with_index.map do |item, index|
           start_times[index] = Time.now
-          result = job_block.call( item )
+          result = yield( item )
           sum_elapsed += (Time.now - start_times[index])
           result
         end
@@ -120,7 +120,7 @@ class Batchinator
           in_threads: workers,
           start:  ->(_item, index) { start_times[index] = Time.now },
           finish: ->(_item, index, _result) { sum_elapsed += (Time.now - start_times[index]) }
-        ) { |key, value| job_block.call(key, value) }
+        ) { |key, value| yield(key, value) }
       end
     end
 

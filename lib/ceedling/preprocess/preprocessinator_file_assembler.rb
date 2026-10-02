@@ -35,11 +35,6 @@ class PreprocessinatorFileAssembler
     )
     contents = []
 
-    # Our extra file content to be preserved
-    # Leave these empty if :extras is false
-    pragmas = []
-    macro_defs = []
-
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
 
     # Run GCC with full preprocessor expansion
@@ -251,10 +246,6 @@ class PreprocessinatorFileAssembler
       include_paths:
     )
     contents = []
-    # TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
-    test_directives = []
-    # TEST_CASE() / TEST_RANGE() / TEST_MATRIX(), paired with the test function name each precedes
-    test_case_directives = []
 
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
 

@@ -20,7 +20,7 @@ class ToolExecutorHelper
   # * _executable_:  The executable's path.
   #
   def osify_path_separators(executable)
-    return executable.gsub(/\//, '\\') if (@system_wrapper.windows?)
+    return executable.tr('/', '\\') if (@system_wrapper.windows?)
     return executable
   end
 

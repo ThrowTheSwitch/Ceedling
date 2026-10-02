@@ -19,7 +19,7 @@ module GcovPartialsTestCases
       :gcov    => { :reports => ['Cobertura'] }
     })
 
-    output = @c.ceedling_build_exec("gcov:all")
+    @c.ceedling_build_exec("gcov:all")
     expect(@c.last_exit_status).to eq(0)
 
     cobertura_path = File.join('build', 'artifacts', 'gcov', 'gcovr', 'GcovCoverageCobertura.xml')

@@ -147,7 +147,7 @@ describe 'ToolExecutor (integration)' do
 
   context 'osify_path_separators on the real platform' do
     it 'converts forward slashes to backslashes in the real executable path used to build the command line', skip: (SystemWrapper.windows? ? false : 'Windows-only: osify_path_separators is a no-op elsewhere') do
-      forward_slash_executable = RbConfig.ruby.gsub('\\', '/')
+      forward_slash_executable = RbConfig.ruby.tr('\\', '/')
       tool = { name: 'ruby_probe', executable: forward_slash_executable, arguments: [] }
 
       command = executor.build_command_line(tool, [])

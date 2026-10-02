@@ -205,7 +205,11 @@ C code is linted with [AStyle](https://astyle.sourceforge.net/).
 
 ### Ruby Styleguide
 
-Ruby code is linted with [Rubocop](https://github.com/rubocop/rubocop)
+Ruby code is linted with [Rubocop](https://github.com/rubocop/rubocop). Linting covers the Lint, Metrics, Security, and Performance departments. Style, layout, and naming are deliberately not enforced, because this project follows the conventions described above rather than Ruby community defaults.
+
+Run `rake lint:setup` once to install the linting gems, which an ordinary `bundle install` does not fetch. Then run `rake lint` to check the whole project, or `rake lint:changed` to check only what your branch changed. `rake lint:fix` applies the corrections RuboCop can make safely.
+
+Continuous integration runs the same check on every pull request and reports findings as annotations on your diff. Linting does not currently fail the build. See Ceedling's development workflow documentation for the offense backlog recorded in `.rubocop_todo.yml`.
 
 ## :medal_sports: Certificate of Origin
 

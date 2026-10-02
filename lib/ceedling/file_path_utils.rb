@@ -17,7 +17,7 @@ require 'ceedling/path_mirror'
 def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)
   filename = File.basename(original_filepath)
   filename.replace(filename.ext(new_extension)) if (!new_extension.nil?)
-  return File.join( destination_path.gsub(/\\/, '/'), filename )
+  return File.join( destination_path.tr("\\", '/'), filename )
 end
 
 class FilePathUtils
@@ -33,7 +33,7 @@ class FilePathUtils
     if path.is_a? String
       raise CeedlingException.new("Attempted to standardize path in frozen string ⏩️ #{path.inspect}") if path.frozen?
       path.strip!
-      path.gsub!(/\\/, '/')
+      path.tr!("\\", '/')
       path.chomp!('/')
     end
     return path
@@ -156,7 +156,7 @@ class FilePathUtils
 
     # Pair each original path with a normalized form used only for ancestry comparison.
     # Normalize to forward slashes and strip any trailing separator.
-    pairs = paths.map { |p| [p, p.gsub('\\', '/').chomp('/')] }
+    pairs = paths.map { |p| [p, p.tr('\\', '/').chomp('/')] }
 
     # Sort shallowest-first so ancestors are always encountered before their descendants.
     # No tiebreaker for same-depth entries needed: Ruby's sort_by doesn't guarantee a

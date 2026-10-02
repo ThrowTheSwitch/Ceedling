@@ -46,7 +46,7 @@ class CExtractorPreprocessing
     start_pos = scanner.pos
 
     return [false, nil] unless scanner.scan(/[A-Za-z_]\w*/)
-    if scanner.matched =~ COMPILER_EXTENSION_IDENTIFIER
+    if scanner.matched.match?(COMPILER_EXTENSION_IDENTIFIER)
       scanner.pos = start_pos
       return [false, nil]
     end

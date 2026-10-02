@@ -1,83 +1,156 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# This is the configuration used to check the rubocop source code.
+# RuboCop configuration for Ceedling's own Ruby source. Run it with `rake lint`.
+#
+# This replaced a file copied from Unity years ago that was never maintained. That
+# file disabled the entire Metrics department and both Security cops it mentioned,
+# configured no Lint or Performance cops at all, and targeted a Ruby version far
+# below what Ceedling supports. It is not carried forward.
+#
+# Scope is deliberately four departments and no more. Lint, Metrics, Security, and
+# Performance find defects and complexity. Style, Layout, and Naming encode taste,
+# and enforcing them here would rewrite nearly every call site in the project for
+# no defect-detection value. ThrowTheSwitch's house style is recorded in prose in
+# docs/ThrowTheSwitchCodingStandard.md, which is the right home for it.
 
-#inherit_from: .rubocop_todo.yml
+# The generated backlog of pre-existing offenses, written by `rake lint:todo`.
+# Its presence is what lets `rake lint` exit zero today while still failing on any
+# NEW offense. It is meant to shrink, never to grow: removing records from it as the
+# underlying code improves is the whole point of baselining rather than disabling.
+inherit_from: .rubocop_todo.yml
+
+plugins:
+  # Performance cops live in a separate gem. `plugins:` (not the older `require:`)
+  # is the correct key for an extension that ships a lint_roller plugin, which
+  # rubocop-performance does as of 1.27.
+  - rubocop-performance
 
 AllCops:
-  TargetRubyVersion: 2.5
+  # Matches ceedling.gemspec's required_ruby_version. CI tests 3.0 through 3.5, so
+  # the floor is what cops must assume, not the newest version in the matrix.
+  TargetRubyVersion: 3.0
 
-# These are areas where ThrowTheSwitch's coding style diverges from the Ruby standard
-Style/SpecialGlobalVars:
-  EnforcedStyle: use_perl_names
-Style/FormatString:
-  Enabled: false
-Style/GlobalVars:
-  Enabled: false
-Style/FrozenStringLiteralComment:
-  Enabled: false
-Style/RegexpLiteral:
-  AllowInnerSlashes: true
-Style/HashSyntax:
-  EnforcedStyle: no_mixed_keys
-Style/NumericPredicate:
-  Enabled: false
-Style/MultilineBlockChain:
-  Enabled: false
-Style/Alias:
-  Enabled: false
-Style/EvalWithLocation:
-  Enabled: false
-Style/MixinUsage:
+  # Only the four departments enabled below run. Without this, RuboCop would also
+  # apply Style, Layout, Naming, Bundler, and Gemspec by default.
+  DisabledByDefault: true
+
+  # Ceedling chooses its extensions deliberately; no nagging about rubocop-rspec.
+  SuggestExtensions: false
+
+  NewCops: disable
+
+  Include:
+    - 'lib/**/*.rb'
+    - 'lib/**/*.rake'
+    - 'bin/**/*.rb'
+    - 'bin/ceedling'              # the CLI entry point, extensionless by design
+    - 'plugins/**/*.rb'
+    - 'plugins/**/*.rake'
+    - 'spec/**/*.rb'
+    - 'Rakefile'
+    - '*.gemspec'
+
+  # RuboCop walks the filesystem rather than the git index, so these exclusions are
+  # not merely tidy. `systests/` alone holds thousands of untracked files and over a
+  # million lines of retained system test projects, each nesting a whole vendored
+  # Ceedling. Without that one entry a run appears to hang.
+  Exclude:
+    - 'vendor/**/*'              # Unity, CMock, CException submodules plus in-tree diy
+    - 'plugins/fff/vendor/**/*'  # third-party fff fake-function framework
+    - 'systests/**/*'            # retained system test projects, untracked
+    - 'build/**/*'
+    - 'coverage/**/*'
+    - 'docs/**/*'                # includes generated snapshot copies of plugin config
+    - 'site-local/**/*'
+    - 'site-web/**/*'
+    - '.docsenv/**/*'            # Python virtual environment for the docs toolchain
+    - 'tmp/**/*'
+
+# The four departments in scope. Enabling a department turns on all of its cops.
+# Metrics is enabled further down, where its exclusions are explained.
+Lint:
+  Enabled: true
+
+Security:
+  Enabled: true
+
+Performance:
+  Enabled: true
+
+# Metrics measures production code only.
+#
+# Spec files are excluded because Metrics/BlockLength fires on essentially every
+# top-level `describe` in the suite and says nothing useful about test code. A
+# 2,800-line describe block is a well-organized spec file, not a defect.
+#
+# Rakefiles and the gemspec are excluded for the same reason at smaller scale: they
+# are DSLs whose natural shape is one long block.
+#
+# lib/ceedling/defaults.rb is excluded because it is a single literal configuration
+# hash several hundred lines long. Every Metrics cop fires on it and none of them
+# has anything to say about a data structure. Note this is a Metrics-only exclusion.
+# Lint still applies, and Lint/DuplicateHashKey on a hash that size is one of the
+# more valuable checks in this whole configuration.
+Metrics:
+  Enabled: true
+  Exclude:
+    - 'spec/**/*'
+    - '**/*.rake'
+    - 'Rakefile'
+    - '*.gemspec'
+    - 'lib/ceedling/defaults.rb'
+
+# The Rakefile carries a `#!/usr/bin/env rake` shebang but is invoked as `rake`
+# rather than executed directly, so it neither needs nor wants the execute bit the
+# cop asks for.
+Lint/ScriptPermission:
+  Exclude:
+    - 'Rakefile'
+
+# Underscore-prefixed local variables are house convention, not a mistake.
+# docs/CONTRIBUTING.md names underscore prefixing as a pattern to follow, and the
+# codebase uses `_src`, `_dest`, `_root_path` and friends as short-lived locals in
+# 119 places across lib/, bin/, and plugins/. The cop's objection is that an
+# underscore prefix conventionally signals "deliberately unused," which is a
+# reasonable Ruby-wide reading and simply not the convention here. Disabled rather
+# than baselined, because 119 entries of settled style would bury the real backlog.
+Lint/UnderscorePrefixedVariableName:
   Enabled: false
 
-# These are also places we diverge... but we will likely comply down the road
-Style/IfUnlessModifier:
-  Enabled: false
-Style/FormatStringToken:
-  Enabled: false
+# Several specs feed Ceedling literal `#{...}` text as input, because inline Ruby
+# string expansion in project configuration is the feature under test. Those
+# fixtures must stay single quoted or the spec would evaluate the interpolation
+# itself instead of handing it to Ceedling. Spec-wide rather than per file, since
+# any future spec covering that feature needs the same freedom.
+Lint/InterpolationCheck:
+  Exclude:
+    - 'spec/**/*'
 
-# This is disabled because it seems to get confused over nested hashes
-Layout/HashAlignment:
-  Enabled: false
-  EnforcedHashRocketStyle: table
-  EnforcedColonStyle: table
+# Defining a constant inside a describe block is ordinary RSpec practice for fixture
+# data and path roots. Nothing is gained by hoisting them out of the block that
+# gives them meaning.
+Lint/ConstantDefinitionInBlock:
+  Exclude:
+    - 'spec/**/*'
 
-# We purposefully use these insecure features because they're what makes Ruby awesome
+# Ceedling's dynamic configuration and plugin systems are built on `eval`. The
+# configurator generates an accessor per flattened config key, the plugin manager
+# instantiates plugin classes by name, and Templateinator renders report templates.
+# None of that can be rewritten without redesigning the architecture.
+#
+# Excluded per file rather than disabled outright, deliberately. The cop stays live
+# everywhere else, so a NEW `eval` introduced somewhere unexpected is still caught.
+# The previous configuration disabled the cop globally and gave up that protection.
 Security/Eval:
-  Enabled: false
-Security/YAMLLoad:
-  Enabled: false
-
-# At this point, we're not ready to enforce inline documentation requirements
-Style/Documentation:
-  Enabled: false
-Style/DocumentationMethod:
-  Enabled: false
-
-# At this point, we're not ready to enforce any metrics
-Metrics/AbcSize:
-  Enabled: false
-Metrics/BlockLength:
-  Enabled: false
-Metrics/BlockNesting:
-  Enabled: false
-Metrics/ClassLength:
-  Enabled: false
-Metrics/CyclomaticComplexity:
-  Enabled: false
-Metrics/LineLength:
-  Enabled: false
-Metrics/MethodLength:
-  Enabled: false
-Metrics/ModuleLength:
-  Enabled: false
-Metrics/ParameterLists:
-  Enabled: false
-Metrics/PerceivedComplexity:
-  Enabled: false
+  Exclude:
+    - 'lib/ceedling/config/configurator.rb'
+    - 'lib/ceedling/config/configurator_builder.rb'
+    - 'lib/ceedling/config/configurator_plugins.rb'
+    - 'lib/ceedling/plugins/plugin_manager_helper.rb'
+    - 'lib/ceedling/templateinator.rb'
+    - 'lib/ceedling/system_wrapper.rb'

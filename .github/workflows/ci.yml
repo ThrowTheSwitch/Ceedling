@@ -597,6 +597,66 @@ jobs:
           if-no-files-found: ignore
 
 
+  # Job: Lint Ceedling's own Ruby source with RuboCop
+  # Scoped to the Lint, Metrics, Security, and Performance departments (see
+  # .rubocop.yml). Pre-existing offenses are recorded in .rubocop_todo.yml, so this
+  # job reports only NEW ones.
+  #
+  # No needs:, deliberately -- linting does not depend on tests passing, and running
+  # in parallel with the test matrix means this adds no wall-clock time to CI.
+  # Deliberately absent from build-gem's needs: list as well; an advisory job must
+  # never gate the gem build.
+  lint:
+    name: "Lint Ruby Source"
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    # continue-on-error makes findings visible without failing the build. This is the
+    # only non-blocking job in this workflow, and that is a starting position rather
+    # than the intent: with a 1,200-entry .rubocop_todo.yml baseline, a regression is
+    # still common enough that blocking would mostly obstruct. Drop this line once
+    # the baseline has been burned down far enough that a new offense is a genuine
+    # surprise. Note a red-but-passing job is easy to ignore, so the annotations
+    # below (--format github, via CI_LINT_GITHUB_FORMAT) matter: they put findings
+    # inline on the pull request diff rather than only in a log nobody opens.
+    continue-on-error: true
+
+    # Both variables belong at job scope, not step scope. CEEDLING_LINT is what the
+    # Gemfile's install_if: predicate reads, and install_if: is Bundler's *runtime*
+    # activation check as well as its install-time one -- so `bundle install` and the
+    # later `bundle exec` inside rake both need it set.
+    env:
+      CEEDLING_LINT: 'true'
+      CI_LINT_GITHUB_FORMAT: 'true'
+
+    steps:
+      # Use a cache for our tools to speed up builds
+      # Key deliberately distinct from the other jobs' -- this job's bundle includes
+      # rubocop and its dependencies, which no other job installs.
+      - uses: actions/cache@v6
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-lint-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-lint-${{ runner.os }}-3.3-
+
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v7
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      - name: Lint Ruby Source
+        run: |
+          bundle exec rake lint
+
+
   # Job: Build the Ceedling gem once all tests pass
   # Verifies a clean gem build is possible; the built gem is uploaded as a
   # downloadable workflow artifact. No release is created here.

@@ -26,7 +26,7 @@ describe MixinResolvinator do
     # behavior closely enough for these specs -- most fixtures have no
     # backslashes, so this is a no-op pass-through for them.
     allow(@path_validator).to receive(:standardize_paths) do |*paths|
-      paths.map {|p| (p.nil? || p.empty?) ? p : p.gsub("\\", '/') }
+      paths.map {|p| (p.nil? || p.empty?) ? p : p.tr("\\", '/') }
     end
     allow(@path_validator).to receive(:filepath?).and_return(false)
     allow(@path_validator).to receive(:validate).and_return(true)

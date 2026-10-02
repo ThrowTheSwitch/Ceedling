@@ -185,7 +185,7 @@ class ConfiguratorValidator
       # Ensure regex is well-formed by trying to compile it
       begin
         Regexp.compile( matcher[1..-2] )
-      rescue Exception => ex
+      rescue StandardError => ex
         # Re-raise with our own message formatting
         raise "invalid regular expression:: #{ex.message}"
       end

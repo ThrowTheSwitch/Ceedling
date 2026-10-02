@@ -97,7 +97,7 @@ RSpec.describe PreprocessinatorIncludesHandler do
 
       allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return(:bare_tool)
 
-      allow(@tool_executor).to receive(:build_command_line) do |tool, extra_args, fp, defs, flgs, paths|
+      allow(@tool_executor).to receive(:build_command_line) do |tool, _extra_args, fp, defs, flgs, paths|
         { options: {}, tool: tool, filepath: fp, defines: defs, flags: flgs, search_paths: paths }
       end
 

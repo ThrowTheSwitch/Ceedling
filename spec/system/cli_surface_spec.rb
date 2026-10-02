@@ -157,7 +157,7 @@ ceedling_system_tests do
       @c.with_context do
         Dir.chdir(@proj_name) { File.write('marker.txt', 'should be wiped by --force') }
 
-        output = @c.ceedling_appcmd_exec("new #{@proj_name} --force")
+        @c.ceedling_appcmd_exec("new #{@proj_name} --force")
 
         expect(@c.last_exit_status).to eq(0)
         expect(File.exist?(File.join(@proj_name, 'marker.txt'))).to eq(false)
@@ -170,7 +170,7 @@ ceedling_system_tests do
     it "generates ceedling.yml instead of project.yml under --ceedling-yml" do
       @c.with_context do
         alt_proj_name = "#{@proj_name}_ceedling_yml"
-        output = @c.ceedling_appcmd_exec("new #{alt_proj_name} --ceedling-yml")
+        @c.ceedling_appcmd_exec("new #{alt_proj_name} --ceedling-yml")
 
         expect(@c.last_exit_status).to eq(0)
         Dir.chdir alt_proj_name do

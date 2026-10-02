@@ -62,6 +62,26 @@ end
 # non-Windows-only.
 gem "stackprof", "~> 0.2", require: false, install_if: -> { ENV['CEEDLING_PROFILING'] == 'true' }
 
+# Dev-only: Ruby linting, limited to the Lint, Metrics, Security, and Performance
+# departments (see .rubocop.yml). Not required by any runtime code path --
+# deliberately NOT declared in ceedling.gemspec, same as diff-lcs/simplecov/stackprof
+# above. install_if: keeps these out of an ordinary `bundle install` so a developer
+# who never lints never pays to fetch them; `rake lint:setup` sets CEEDLING_LINT=true
+# and installs them on demand. Unlike CEEDLING_PROFILING, CI *does* set this variable
+# -- the lint job sets it at job scope because install_if: is Bundler's runtime
+# activation predicate as well as its install-time one, so `bundle exec` needs it too.
+#
+# Note install_if: governs installation and activation, not resolution: both gems and
+# their transitive dependencies appear in Gemfile.lock regardless, exactly as stackprof
+# already does. The savings are install time and bandwidth, not lockfile size.
+#
+# Both are pinned to a patch range rather than `~> 1.x`. Every RuboCop minor release
+# adds cops, which would silently change the offense set and move CI results with no
+# commit to point at. Bumping is therefore a deliberate act that lands alongside any
+# resulting .rubocop_todo.yml churn.
+gem "rubocop", "~> 1.91.0", require: false, install_if: -> { ENV['CEEDLING_LINT'] == 'true' }
+gem "rubocop-performance", "~> 1.27.0", require: false, install_if: -> { ENV['CEEDLING_LINT'] == 'true' }
+
 # Nothing here declares `erb`, and that is deliberate. Ceedling itself no longer uses
 # it at all. RSpec does: rspec-core requires `erb` at load time (configuration_options.rb)
 # without declaring a dependency on it, and that works only because `erb` is a default

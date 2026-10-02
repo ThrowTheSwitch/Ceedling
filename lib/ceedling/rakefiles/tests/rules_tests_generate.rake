@@ -33,7 +33,7 @@ namespace GEN_SYM do
         # Normalized to forward slashes so a directory the invoker typed with backslashes
         # (a Windows-style task name run under a POSIX Ruby, e.g. WSL or Cygwin, where
         # File.dirname/basename below don't treat '\' as a separator) still splits correctly.
-        test = test.gsub( '\\', '/' )
+        test = test.tr( '\\', '/' )
 
         # Ensure the test name's own basename begins with the test file prefix, without
         # disturbing any directory the invoker supplied ahead of it.
@@ -60,7 +60,7 @@ namespace GEN_SYM do
         test = task_name.strip().sub(/^#{GENERATE_TEST_RUNNER_TASK_ROOT}/, '')
         EXTENSION_SOURCE.each { |ext| test = test.chomp( ext ) }
 
-        test = test.gsub( '\\', '/' )
+        test = test.tr( '\\', '/' )
 
         dir  = File.dirname( test )
         base = File.basename( test )

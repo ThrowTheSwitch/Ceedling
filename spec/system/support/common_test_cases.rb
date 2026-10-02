@@ -70,7 +70,6 @@ module CommonSystemTestCases
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
         expect(File.exist?("test")).to eq true
-        all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
       end
     end
   end
@@ -82,7 +81,7 @@ module CommonSystemTestCases
 
       updated_prj_yml = []
       File.read("#{@proj_name}/project.yml").split("\n").each do |line|
-        updated_prj_yml.append(line) unless line =~ /support/
+        updated_prj_yml.append(line) unless /support/.match?(line)
       end
       File.write("#{@proj_name}/project.yml", updated_prj_yml.join("\n"), mode: 'w')
 
@@ -1279,7 +1278,7 @@ module CommonSystemTestCases
         add_line = false
         updated_test_file = []
         File.read(File.join('test','test_example_file_success.c')).split("\n").each do |line|
-          if line =~ /#include "unity.h"/
+          if /#include "unity.h"/.match?(line)
             add_line = true
             updated_test_file.append(line)
           else

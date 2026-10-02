@@ -140,7 +140,6 @@ class ToolExecutor
   def expandify_element(tool_name, element, *args)
     match = //
     to_process = nil
-    args_index = 0
 
     # Handle ${#} input replacement, unless the operator itself is escaped (`\${#}`) --
     # an escaped token is left for the unconditional `\$` unescape below to turn into

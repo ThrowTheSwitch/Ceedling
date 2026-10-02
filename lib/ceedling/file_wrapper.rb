@@ -84,11 +84,11 @@ class FileWrapper
   end
 
   def rm_r(filepath, options={})
-    FileUtils.rm_r(filepath, **options={})
+    FileUtils.rm_r(filepath, **options)
   end
 
   def rm_rf(path, options={})
-    FileUtils.rm_rf(path, **options={})
+    FileUtils.rm_rf(path, **options)
   end
 
   def cp(source, destination, options={})
@@ -124,7 +124,7 @@ class FileWrapper
   def open(filepath, flags)
     # Only writing/creating/appending can run into a platform's filepath length ceiling --
     # a read-mode open is against a path that (if it exists) already fit on disk.
-    check_path_length(filepath, origin: 'FileWrapper#open') if flags.to_s =~ /[wa+]/
+    check_path_length(filepath, origin: 'FileWrapper#open') if flags.to_s.match?(/[wa+]/)
     File.open(filepath, flags) do |file|
       yield(file)
     end
@@ -150,7 +150,12 @@ class FileWrapper
   def open_with_retry(filepath, flags)
     attempts_remaining = TRANSIENT_IO_RETRY_DELAYS.dup
     begin
-      open(filepath, flags) { |file| yield(file) }
+      # This calls FileWrapper#open above, not Kernel#open, so it is neither the
+      # security risk RuboCop reads it as nor safe to rewrite as File.open. Going
+      # direct would skip this class's own path-length check and, more importantly,
+      # bypass the one seam the transient-I/O retry specs inject faults through --
+      # which is how a previous attempt at "fixing" this cop was caught.
+      open(filepath, flags) { |file| yield(file) } # rubocop:disable Security/Open
     rescue SystemCallError => e
       if attempts_remaining.empty?
         msg = "Failed to open '#{filepath}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}"

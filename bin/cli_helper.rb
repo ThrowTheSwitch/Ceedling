@@ -417,7 +417,12 @@ class CliHelper
     PROJECT_VERBOSITY.freeze()
 
     # Create global constant PROJECT_DEBUG
-    debug = (verbosity == Verbosity::DEBUG)
+    #
+    # `debug` is read by the module_eval string below, which RuboCop cannot see into.
+    # The cop reads the assignment as useless and offers to delete it. Accepting that
+    # leaves the eval referencing a local that was never assigned, so PROJECT_DEBUG
+    # raises NameError. Do not autocorrect this line.
+    debug = (verbosity == Verbosity::DEBUG) # rubocop:disable Lint/UselessAssignment
     Object.send(:remove_const, 'PROJECT_DEBUG') if Object.const_defined?('PROJECT_DEBUG')
     Object.module_eval("PROJECT_DEBUG = debug")
     PROJECT_DEBUG.freeze()
@@ -441,7 +446,7 @@ class CliHelper
       # If we fail to find the section path, blow up
       if value.nil?
         # Reformat list of symbols to list of :<section>s
-        _sections.map! {|section| ":#{section.to_s}"}
+        _sections.map! {|section| ":#{section}"}
         msg = "Cound not find configuration section #{_sections.join(' ↳ ')}"
         raise(msg)
       end

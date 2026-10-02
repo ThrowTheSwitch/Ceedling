@@ -53,7 +53,9 @@ namespace VALGRIND_SYM do
   desc "Run Valgrind tests by matching regular expression pattern."
   task :pattern, [:regex] => [:prepare, :valgrind_deps] do |_t, args|
     matches = []
-    COLLECTION_ALL_TESTS.each { |test| matches << test if test =~ /#{args.regex}/ }
+    # Compile the user's pattern once rather than once per test in the collection
+    pattern = Regexp.new( args.regex )
+    COLLECTION_ALL_TESTS.each { |test| matches << test if test.match?( pattern ) }
     if !matches.empty?
       @ceedling[:test_invoker].setup_and_invoke(
         tests: matches,

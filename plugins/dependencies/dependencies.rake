@@ -65,7 +65,7 @@ DEPENDENCIES_DEPS.each do |deplib|
   namespace DEPENDENCIES_SYM do
     namespace :deploy do
       # Add task to directly just build this dependency
-      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)) do |t,args|
+      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)) do |_t,_args|
         @ceedling[DEPENDENCIES_SYM].deploy_if_required(deplib_name)
       end
     end
@@ -90,9 +90,6 @@ DEPENDENCIES_DEPS.each do |deplib|
     end
   end
 
-
-  # grab our own reference to the main configuration hash
-  project_config = @ceedling[:configurator].project_config_hash
 
   # Add source files to our list of things to build during release
   source_files = @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)

@@ -516,10 +516,13 @@ class GeneratorTestResultsBacktrace
   # lines (PASS/FAIL/IGNORE) and not blank. These are typically stderr output
   # from the crashed test binary — assertion messages, abort text, etc.
   def extract_simple_crash_output(output, filename)
+    # Compile once rather than once per line of output
+    result_line = /^#{Regexp.escape(filename)}.+:(PASS|FAIL|IGNORE)/
+
     output.lines.filter_map do |line|
       line = line.strip
       next if line.empty?
-      next if line =~ /^#{Regexp.escape(filename)}.+:(PASS|FAIL|IGNORE)/
+      next if line.match?( result_line )
       line
     end
   end

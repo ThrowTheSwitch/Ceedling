@@ -249,7 +249,7 @@ describe ToolExecutor do
     end
 
     it 'replaces an invalid byte sequence in shell_result[:output] with the Unicode replacement character via String#scrub' do
-      stub_shell_capture3({ :output=>"abc\xFF".dup, :stdout=>'', :stderr=>'', :exit_code=>0 })
+      stub_shell_capture3({ :output=>+"abc\xFF", :stdout=>'', :stderr=>'', :exit_code=>0 })
 
       result = @tool_executor.exec(@command)
 
@@ -257,7 +257,7 @@ describe ToolExecutor do
     end
 
     it 'strips ANSI SGR codes from shell_result[:output], including single-digit codes like reset and bold' do
-      stub_shell_capture3({ :output=>"\e[1mtext\e[0m".dup, :stdout=>'', :stderr=>'', :exit_code=>0 })
+      stub_shell_capture3({ :output=>+"\e[1mtext\e[0m", :stdout=>'', :stderr=>'', :exit_code=>0 })
 
       result = @tool_executor.exec(@command)
 
@@ -265,7 +265,7 @@ describe ToolExecutor do
     end
 
     it 'strips a semicolon-joined multi-part ANSI SGR code' do
-      stub_shell_capture3({ :output=>"\e[1;31mbold red\e[0m".dup, :stdout=>'', :stderr=>'', :exit_code=>0 })
+      stub_shell_capture3({ :output=>+"\e[1;31mbold red\e[0m", :stdout=>'', :stderr=>'', :exit_code=>0 })
 
       result = @tool_executor.exec(@command)
 

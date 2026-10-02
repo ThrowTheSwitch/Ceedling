@@ -118,7 +118,7 @@ class GeneratorHelper
   # own error text happens to mention.
   def explain_possible_mock_partial_collision(output:, mocked_headers:)
     return nil if output.nil?
-    return nil unless output =~ /redeclaration of|redefinition of|conflicting types|previous definition/i
+    return nil unless output.match?(/redeclaration of|redefinition of|conflicting types|previous definition/i)
 
     mentioned = output.scan( /([^\s"]+\.h):\d+:\d+/ ).flatten.uniq
 

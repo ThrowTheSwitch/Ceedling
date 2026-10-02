@@ -127,7 +127,7 @@ class CPreprocessorConditionals
     return [] if defines.nil?
     defines.map do |d|
       # Strip leading -D if present, then strip =value suffix
-      name = d.to_s.sub(/\A-D/, '')
+      name = d.to_s.delete_prefix('-D')
       name.split('=').first.strip
     end.reject(&:empty?).uniq
   end

@@ -222,6 +222,88 @@ local Ceedling repo, list those task like this:
 
 [RSpec]: https://rspec.info
 
+## Linting
+
+Ceedling lints its own Ruby with [RuboCop]. Four departments are enforced. Lint
+and Security catch defects. Metrics tracks complexity. Performance flags
+avoidable allocations and slower idioms.
+
+Style, Layout, and Naming are deliberately not enforced. Those departments encode
+taste rather than defects, and applying them would rewrite nearly every call site
+in the project to no benefit. ThrowTheSwitch's house style is described in prose
+in the coding standard instead.
+
+Configuration lives in `.rubocop.yml` at the root of the repository. Every
+decision in that file is commented, including the cops deliberately turned down
+and the reasoning for each.
+
+The linting gems are not installed by an ordinary `bundle install`. Install them
+once with the setup task.
+
+```shell
+ > rake lint:setup
+```
+
+Then lint the whole project, or only the files your branch changed.
+
+```shell
+ > rake lint
+ > rake lint:changed
+ > rake "lint:changed[master]"
+```
+
+`lint:changed` is the faster loop while working on a branch. It compares against
+`next_version` unless you name another branch or revision. Quote the task name so
+your shell does not interpret the brackets.
+
+Changed files include both commits on your branch and uncommitted work in your
+tree. Naming a branch that does not exist is an error rather than an empty
+result.
+
+RuboCop can correct some offenses itself. Only safe corrections are applied.
+Review the resulting diff before keeping it.
+
+```shell
+ > rake lint:fix
+```
+
+Metrics offenses are never autocorrectable, so this task mostly touches
+Performance cops.
+
+### The offense backlog
+
+A passing `rake lint` means no *new* offenses rather than zero offenses.
+
+`.rubocop_todo.yml` records the offenses that already existed when RuboCop was
+adopted. Without that file every run would report all of them and bury anything 
+newly introduced.
+
+The file is generated, and it is meant to shrink. Removing records as the
+underlying code improves is the entire point of baselining. Regenerate the file
+after an improvement rather than editing it by hand.
+
+```shell
+ > rake lint:todo
+```
+
+A decision to live with a cop permanently does not belong in the backlog. Those
+belong in `.rubocop.yml`, with a comment explaining why the cop is wrong for this
+project.
+
+### Linting in continuous integration
+
+CI runs `rake lint` on every pull request. Findings appear as annotations
+directly on the changed lines of the diff.
+
+The job is advisory. It reports findings without failing the build.
+
+That is a starting position rather than the intent. The backlog is still large
+enough that a new offense is unremarkable, so blocking would obstruct more than
+it would protect. The job becomes blocking once the backlog has shrunk far enough
+that any finding is a genuine surprise.
+
+[RuboCop]: https://rubocop.org
+
 ## Documentation
 
 Ceedling’s documentation is built with [MkDocs] + [Material theme] and versioned

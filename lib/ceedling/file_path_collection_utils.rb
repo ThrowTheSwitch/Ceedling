@@ -59,7 +59,7 @@ class FilePathCollectionUtils
       # Use _path (decorator-stripped) so the suffix check is not sensitive to +:/-: prefix format.
       # path.end_with? also works today (decorators are always prefixes, never suffixes),
       # but _path expresses the correct intent and removes the implicit coupling.
-      if _path.end_with?('/**') or _path.end_with?('/*')
+      if _path.end_with?('/**', '/*')
         parents = []
 
         dirs.each {|dir| parents << File.join(dir, '..')}

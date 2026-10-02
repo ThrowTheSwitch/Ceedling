@@ -24,7 +24,7 @@ module CeedlingSystemSpecHelpers
 
   # Helper method to convert method name to readable description
   def test_case(method_name)
-    description = method_name.to_s.gsub('_', ' ').capitalize
+    description = method_name.to_s.tr('_', ' ').capitalize
     it(description) { send(method_name) }
   end
 end
@@ -215,8 +215,8 @@ def unique_proj_name(prefix)
 end
 
 def convert_slashes(path)
-  if RUBY_PLATFORM.downcase.match(/mingw|win32/)
-    path.gsub("/","\\")
+  if /mingw|win32/.match?(RUBY_PLATFORM.downcase)
+    path.tr("/","\\")
   else
     path
   end

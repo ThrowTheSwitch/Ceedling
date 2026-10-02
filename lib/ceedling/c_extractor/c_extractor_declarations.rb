@@ -161,7 +161,7 @@ class CExtractorDeclarations
           # Can end with: word character, ], ), }, or " (for string initializers)
           # `/m` flag: declaration may span multiple lines (e.g. a multiline brace
           # initializer), so '.' must match embedded newlines too
-          if declaration =~ /\w+.*[\w\]\)\}"']\s*;$/m
+          if declaration.match?(/\w+.*[\w\]\)\}"']\s*;$/m)
             return [true, expand_and_parse(declaration)]
           else
             scanner.pos = start_pos
@@ -381,7 +381,9 @@ class CExtractorDeclarations
   # Returns the complete subscript string (e.g., "[8]", "[M][N]") or "" for scalars.
   def extract_array_suffix(clean_text)
     text = clean_text.sub(/\s*;\s*$/, '').sub(/\s*=.*/, '')
-    return '' if text =~ /\(\s*\*/                       # function pointer -- no array suffix
+    # `match?` leaves $~ alone, which is safe because the line below sets it
+    # with its own match before reading $1.
+    return '' if text.match?(/\(\s*\*/)                    # function pointer -- no array suffix
     text =~ /\w+(\s*(?:\[[^\]]*\])+)\s*$/ ? $1.strip : ''
   end
 
