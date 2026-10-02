@@ -63,7 +63,7 @@ class PluginManager
 
     # If we only ran basic unit tests, there's no need to prefix the failure messages with the context.
     if (@build_fail_registry.keys.size == 1 and @build_fail_registry.keys[0] == TEST_SYM)
-      @build_fail_registry.each do |context, messages|
+      @build_fail_registry.each do |_context, messages|
         messages.each {|message| failures << message}
       end
     # Otherwise, add the context to each message so the user knows the source of the failure.

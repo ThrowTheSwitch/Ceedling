@@ -597,7 +597,7 @@ class ConfiguratorSetup
     return valid if test_context.nil?
 
     matchers_present = false
-    test_context.each_pair do |operation, matchers|
+    test_context.each_pair do |_operation, matchers|
       if matchers.class == Hash
         matchers_present = true
         break

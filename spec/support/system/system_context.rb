@@ -151,7 +151,7 @@ class SystemContext
   end
 
   def with_context
-    Dir.chdir @dir do |current_dir|
+    Dir.chdir @dir do |_current_dir|
       with_constrained_env do
         # Point bundle exec to the shared Gemfile so it works from any project directory.
         # with_constrained_env's unbundled environment has no BUNDLE_GEMFILE of its

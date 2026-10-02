@@ -70,7 +70,6 @@ module CommonSystemTestCases
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
         expect(File.exist?("test")).to eq true
-        all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
       end
     end
   end

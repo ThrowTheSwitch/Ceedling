@@ -22,7 +22,7 @@ tasks = {
 tasks.each_pair do |k,v|
   Dir.chdir(v[:dir]) do
     iterations.times do |i|
-      puts "=============== RUNNING ITERATION #{i+1}:\n#{k.to_s}\n===============\n\n"
+      puts "=============== RUNNING ITERATION #{i+1}:\n#{k}\n===============\n\n"
       stdout, stderr, status = Open3.capture3(k)
       puts stdout,stderr,status
       raise "\n\nCrashed on #{k} Iteration #{i+1}" unless status.success?

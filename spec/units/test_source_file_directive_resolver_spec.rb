@@ -72,7 +72,7 @@ describe TestSourceFileDirectiveResolver do
       allow(@file_finder).to receive(:find_build_input_file)
         .with( filepath: 'missing.c', complain: :ignore, context: :test ).and_return( nil )
 
-      additive, subtractive = @resolver.resolve( 'test/TestFoo.c', :test )
+      _, subtractive = @resolver.resolve( 'test/TestFoo.c', :test )
 
       expect(subtractive).to eq( {} )
     end
@@ -83,7 +83,7 @@ describe TestSourceFileDirectiveResolver do
       allow(@file_finder).to receive(:find_build_input_file)
         .with( filepath: 'foo.c', complain: :ignore, context: :test ).and_return( 'src/foo.c' )
 
-      additive, subtractive = @resolver.resolve( 'test/TestFoo.c', :test )
+      additive, _ = @resolver.resolve( 'test/TestFoo.c', :test )
 
       expect(additive).to eq( ['src/foo.c'] )
     end
@@ -94,7 +94,7 @@ describe TestSourceFileDirectiveResolver do
       allow(@file_finder).to receive(:find_build_input_file)
         .with( filepath: 'test/common/extra.c', complain: :ignore, context: :test ).and_return( 'test/common/extra.c' )
 
-      additive, subtractive = @resolver.resolve( 'test/unit/TestFoo.c', :test )
+      additive, _ = @resolver.resolve( 'test/unit/TestFoo.c', :test )
 
       expect(additive).to eq( ['test/common/extra.c'] )
     end
@@ -105,7 +105,7 @@ describe TestSourceFileDirectiveResolver do
       allow(@file_finder).to receive(:find_build_input_file)
         .with( filepath: 'test/common/extra.c', complain: :ignore, context: :test ).and_return( 'test/common/extra.c' )
 
-      additive, subtractive = @resolver.resolve( 'test/unit/TestFoo.c', :test )
+      _, subtractive = @resolver.resolve( 'test/unit/TestFoo.c', :test )
 
       expect(subtractive).to eq( { 'test/common/extra.c' => '-:../common/extra.c' } )
     end

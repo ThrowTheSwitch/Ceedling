@@ -696,10 +696,6 @@ Performance/RegexpMatch:
 # Offense count: 4
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: SafeMultiline.
-Performance/StartWith:
-  Exclude:
-    - 'spec/units/includes/include_spec.rb'
-
 # Offense count: 21
 # This cop supports safe autocorrection (--autocorrect).
 Performance/StringReplacement:

@@ -161,7 +161,7 @@ ceedling_system_tests do
                        }
             @c.merge_project_yml_for_test(settings)
 
-            output = @c.ceedling_build_exec
+            @c.ceedling_build_exec
             expect(@c.last_exit_status).to eq(0)
 
             runner_path = 'build/test/runners/test_ptc_runner.c'

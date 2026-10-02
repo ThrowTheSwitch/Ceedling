@@ -9,7 +9,7 @@ namespace :module do
   module_root_separator = ":"
 
   desc "Generate module (source, header and test files)"
-  task :create, :module_path do |t, args|
+  task :create, :module_path do |_t, args|
     files = [args[:module_path]] + (args.extras || [])
     optz = { :module_root_path => "" }
     ["dh", "dih", "mch", "mvp", "src", "test"].each do |pat|
@@ -34,7 +34,7 @@ namespace :module do
   end
 
   desc "Generate module stubs from header"
-  task :stub, :module_path do |t, args|
+  task :stub, :module_path do |_t, args|
     files = [args[:module_path]] + (args.extras || [])
     optz = { :module_root_path => "" }
     files.each do |v|
@@ -49,7 +49,7 @@ namespace :module do
   end
 
   desc "Destroy module (source, header and test files)"
-  task :destroy, :module_path do |t, args|
+  task :destroy, :module_path do |_t, args|
     files = [args[:module_path]] + (args.extras || [])
     optz = { :destroy => true, :module_root_path => "" }
     ["dh", "dih", "mch", "mvp", "src", "test"].each do |pat|

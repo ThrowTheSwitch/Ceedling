@@ -34,7 +34,7 @@ namespace TEST_SYM do
   end
 
   desc "Run tests by matching regular expression pattern."
-  task :pattern, [:regex] => [:prepare] do |t, args|
+  task :pattern, [:regex] => [:prepare] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each { |test| matches << test if (test =~ /#{args.regex}/) }
@@ -47,7 +47,7 @@ namespace TEST_SYM do
   end
 
   desc "Run tests whose test path contains [dir] or [dir] substring."
-  task :path, [:dir] => [:prepare] do |t, args|
+  task :path, [:dir] => [:prepare] do |_t, args|
     matches = []
 
     COLLECTION_ALL_TESTS.each { |test| matches << test if File.dirname(test).include?(args.dir.tr("\\", '/')) }

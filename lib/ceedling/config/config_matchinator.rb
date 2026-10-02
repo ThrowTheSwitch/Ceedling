@@ -256,7 +256,7 @@ class ConfigMatchinator
       return false
     end
 
-    if !expr.end_with? ('/')
+    if !expr.end_with?('/')
       return false
     end
 

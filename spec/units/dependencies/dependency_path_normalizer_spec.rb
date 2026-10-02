@@ -24,7 +24,7 @@ describe DependencyPathNormalizer do
     allow( @file_wrapper ).to receive(:dirname) { |path| File.dirname( path ) }
     allow( @file_wrapper ).to receive(:basename) { |path| File.basename( path ) }
     allow( @file_wrapper ).to receive(:get_expanded_path) { |path| path }
-    allow( @file_wrapper ).to receive(:exist?) { |path| true }
+    allow( @file_wrapper ).to receive(:exist?) { |_path| true }
 
     allow( @file_wrapper ).to receive(:directory_listing) do |glob|
       dir = File.dirname( glob )

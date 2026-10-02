@@ -400,9 +400,7 @@ class Dependencies < Plugin
   end
 
   def build_lib(blob)
-    src = []
     asm = []
-    hdr = []
     obj = []
 
     name = blob[:name] || ""

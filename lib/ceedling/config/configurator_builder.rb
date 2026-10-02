@@ -50,7 +50,7 @@ class ConfiguratorBuilder
 
   def build_accessor_methods(config, context)
     # Fill configurator object with accessor methods
-    config.each_pair do |key, value|
+    config.each_pair do |key, _value|
       # Convert key names to Ruby method names
       # Some key names can be C file names that can include dashes; dashes are not allowed in Ruby method names
       # Downcase the key names and replace any illegal dashes with legal underscores

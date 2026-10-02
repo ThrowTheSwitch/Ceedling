@@ -74,7 +74,7 @@ end
 def call_create(cmd)
   retval = `#{CEEDLING_CLI_EXEC} module:create[#{cmd}] 2>&1`
   puts retval # Debug logging
-  if retval.match? /Error/i
+  if retval.match?( /Error/i )
     raise "Received error when creating:\n#{retval}"
   else
     puts "Created #{cmd}"
@@ -84,7 +84,7 @@ end
 def call_create_expecting_error(cmd)
   retval = `#{CEEDLING_CLI_EXEC} module:create[#{cmd}] 2>&1`
   puts retval # Debug logging
-  if retval.match? /Error/i
+  if retval.match?( /Error/i )
     puts "Received expected error when creating #{cmd}"
   else
     raise "Should have received error when creating #{cmd}"
@@ -94,7 +94,7 @@ end
 def call_destroy(cmd)
   retval = `#{CEEDLING_CLI_EXEC} module:destroy[#{cmd}] 2>&1`
   puts retval # Debug logging
-  if retval.match? /Error/i
+  if retval.match?( /Error/i )
     raise "Received error when destroying:\n#{retval}"
   else
     puts "Destroyed #{cmd}"
@@ -104,7 +104,7 @@ end
 def call_stub(cmd)
   retval = `#{CEEDLING_CLI_EXEC} module:stub[#{cmd}] 2>&1`
   puts retval # Debug logging
-  if retval.match? /Error/i
+  if retval.match?( /Error/i )
     raise "Received error when stubbing:\n#{retval}"
   else
     puts "Stubbed #{cmd}"

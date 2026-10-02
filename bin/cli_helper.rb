@@ -446,7 +446,7 @@ class CliHelper
       # If we fail to find the section path, blow up
       if value.nil?
         # Reformat list of symbols to list of :<section>s
-        _sections.map! {|section| ":#{section.to_s}"}
+        _sections.map! {|section| ":#{section}"}
         msg = "Cound not find configuration section #{_sections.join(' ↳ ')}"
         raise(msg)
       end

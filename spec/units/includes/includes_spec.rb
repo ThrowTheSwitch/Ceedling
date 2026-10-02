@@ -619,7 +619,7 @@ describe "Includes sanitization" do
       ]
       
       # Reject all includes with 'std' in the filename
-      result = Includes.sanitize!(includes) do |include, all|
+      result = Includes.sanitize!(includes) do |include, _all|
         include.filename.include?('std')
       end
       
@@ -637,7 +637,7 @@ describe "Includes sanitization" do
         SystemInclude.new("stdio.h")
       ]
       
-      result = Includes.sanitize!(includes) do |include, all|
+      result = Includes.sanitize!(includes) do |include, _all|
         include.filename.include?('test')
       end
       
@@ -678,7 +678,7 @@ describe "Includes sanitization" do
         SystemInclude.new("stdio.h")
       ]
       
-      result = Includes.sanitize!(includes) { |include, all| true }
+      result = Includes.sanitize!(includes) { |_include, _all| true }
       
       expect(result).to eq([])
     end
@@ -690,7 +690,7 @@ describe "Includes sanitization" do
         UserInclude.new("config.h")
       ]
 
-      result = Includes.sanitize!(includes) { |include, all| false }
+      result = Includes.sanitize!(includes) { |_include, _all| false }
 
       expect(result.length).to eq(3)
       expect(result[0]).to be_a(SystemInclude)
