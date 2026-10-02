@@ -27,7 +27,7 @@ class ConfiguratorBuilder
     # Some key names can be C file names that can include dashes
     # Upcase the key names to create consitency and Ruby constants by convention
     # Replace dashes with underscores to match handling of Ruby accessor method names
-    formatted_key = elem.to_s.gsub('-','_').upcase
+    formatted_key = elem.to_s.tr('-','_').upcase
 
     # Undefine global constant if it already exists
     Object.send(:remove_const, formatted_key.to_sym) if @system_wrapper.constants_include?(formatted_key)
@@ -55,7 +55,7 @@ class ConfiguratorBuilder
       # Some key names can be C file names that can include dashes; dashes are not allowed in Ruby method names
       # Downcase the key names and replace any illegal dashes with legal underscores
       # Downcased key names create consistency and ensure no method names become Ruby constants by accident
-      eval("def #{key.to_s.gsub('-','_').downcase}() return @project_config_hash[:#{key}] end", context)
+      eval("def #{key.to_s.tr('-','_').downcase}() return @project_config_hash[:#{key}] end", context)
     end
   end
 

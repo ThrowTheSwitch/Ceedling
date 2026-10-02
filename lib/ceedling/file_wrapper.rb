@@ -124,7 +124,7 @@ class FileWrapper
   def open(filepath, flags)
     # Only writing/creating/appending can run into a platform's filepath length ceiling --
     # a read-mode open is against a path that (if it exists) already fit on disk.
-    check_path_length(filepath, origin: 'FileWrapper#open') if flags.to_s =~ /[wa+]/
+    check_path_length(filepath, origin: 'FileWrapper#open') if flags.to_s.match?(/[wa+]/)
     File.open(filepath, flags) do |file|
       yield(file)
     end

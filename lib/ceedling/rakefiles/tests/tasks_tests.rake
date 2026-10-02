@@ -50,7 +50,7 @@ namespace TEST_SYM do
   task :path, [:dir] => [:prepare] do |t, args|
     matches = []
 
-    COLLECTION_ALL_TESTS.each { |test| matches << test if File.dirname(test).include?(args.dir.gsub(/\\/, '/')) }
+    COLLECTION_ALL_TESTS.each { |test| matches << test if File.dirname(test).include?(args.dir.tr("\\", '/')) }
 
     if (matches.size > 0)
       @ceedling[:test_invoker].setup_and_invoke(tests: matches, options: [])

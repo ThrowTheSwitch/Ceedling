@@ -21,7 +21,7 @@ namespace TEST_SYM do
         # Normalized to forward slashes so a directory the invoker typed with backslashes
         # (a Windows-style task name run under a POSIX Ruby, e.g. WSL or Cygwin, where
         # File.dirname/basename below don't treat '\' as a separator) still splits correctly.
-        test = test.gsub( '\\', '/' )
+        test = test.tr( '\\', '/' )
 
         # Ensure the test name's own basename begins with the test file prefix, without
         # disturbing any directory the invoker supplied ahead of it.

@@ -189,7 +189,7 @@ class RakeTaskRegistry
         namespace_name =
           if raw.start_with?( ':' )
             raw[1..]                        # :symbol → 'symbol'
-          elsif raw =~ /^[A-Z_]+$/
+          elsif raw.match?(/^[A-Z_]+$/)
             begin
               Object.const_get( raw ).to_s  # CONSTANT → resolve at runtime
             rescue NameError

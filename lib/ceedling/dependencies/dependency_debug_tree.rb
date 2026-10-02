@@ -99,7 +99,7 @@ class DependencyDebugTree
   end
 
   def mirror(path)
-    normalized = path.to_s.gsub( '\\', '/' )
+    normalized = path.to_s.tr( '\\', '/' )
     normalized = normalized.sub( /\A([A-Za-z]):/, '\1' ) # C:/foo -> C/foo (Windows drive letter)
     normalized.sub( /\A\/+/, '' )                         # /foo/bar -> foo/bar (relative under debug_root)
   end

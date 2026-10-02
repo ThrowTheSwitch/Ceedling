@@ -42,7 +42,7 @@ class PathValidator
   def standardize_paths( *paths )
     paths.map do |path|
       next path if path.nil? or path.empty?
-      path.gsub( "\\", '/' )
+      path.tr( "\\", '/' )
     end
   end
 
