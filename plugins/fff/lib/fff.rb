@@ -37,15 +37,15 @@ class FffCMockWrapper
     @silent        = (@cm_config.verbosity < 2)
 
     # These are the additional files to include in the mock files.
-    @includes_h_pre_orig_header  = (@cm_config.includes || @cm_config.includes_h_pre_orig_header || []).map{|h| h =~ /</ ? h : "\"#{h}\""}
-    @includes_h_post_orig_header = (@cm_config.includes_h_post_orig_header || []).map{|h| h =~ /</ ? h : "\"#{h}\""}
-    @includes_c_pre_header       = (@cm_config.includes_c_pre_header || []).map{|h| h =~ /</ ? h : "\"#{h}\""}
-    @includes_c_post_header      = (@cm_config.includes_c_post_header || []).map{|h| h =~ /</ ? h : "\"#{h}\""}
+    @includes_h_pre_orig_header  = (@cm_config.includes || @cm_config.includes_h_pre_orig_header || []).map{|h| h.match?(/</) ? h : "\"#{h}\""}
+    @includes_h_post_orig_header = (@cm_config.includes_h_post_orig_header || []).map{|h| h.match?(/</) ? h : "\"#{h}\""}
+    @includes_c_pre_header       = (@cm_config.includes_c_pre_header || []).map{|h| h.match?(/</) ? h : "\"#{h}\""}
+    @includes_c_post_header      = (@cm_config.includes_c_post_header || []).map{|h| h.match?(/</) ? h : "\"#{h}\""}
   end
 
   def setup_mocks(files)
     [files].flatten.each do |src|
-      generate_mock (src)
+      generate_mock(src)
     end
   end
 
