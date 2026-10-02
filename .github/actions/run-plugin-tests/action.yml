@@ -23,11 +23,11 @@ inputs:
 runs:
   using: "composite"
   steps:
-    # Remove any systest results before building the gem
+    # Remove any retained system test artifacts before building the gem
     # This prevents breaking the gem build with super long filenames
     - name: Remove any system test results before gem build
       shell: bash
-      run: rm -rf systests/
+      run: rm -rf specout/
 
     # Build & Install Ceedling Gem
     # Plugin test suites require the installed gem

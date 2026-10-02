@@ -53,15 +53,15 @@ RSpec.configure do |config|
     when 'all'
       # Individual spec debug mode (and CI locale test): preserve everything for inspection.
       $stdout.puts "\n[System Tests] Artifact preservation: ALL (pass + fail)"
-      $stdout.puts "  Pass project dirs: systests/proj/pass/"
-      $stdout.puts "  Fail project dirs: systests/proj/fail/"
-      $stdout.puts "  Pass logs:         systests/systest.pass.*.log"
-      $stdout.puts "  Fail logs:         systests/systest.fail.*.log\n\n"
+      $stdout.puts "  Pass project dirs: #{SystemContext::ARTIFACTS_DIR}/proj/pass/"
+      $stdout.puts "  Fail project dirs: #{SystemContext::ARTIFACTS_DIR}/proj/fail/"
+      $stdout.puts "  Pass logs:         #{SystemContext::ARTIFACTS_DIR}/pass.*.log"
+      $stdout.puts "  Fail logs:         #{SystemContext::ARTIFACTS_DIR}/fail.*.log\n\n"
     when 'failures'
       # CI batch debug mode: preserve only failures; passing dirs are deleted immediately.
       $stdout.puts "\n[System Tests] Artifact preservation: FAILURES ONLY"
-      $stdout.puts "  Fail project dirs: systests/proj/fail/"
-      $stdout.puts "  Fail logs:         systests/systest.fail.*.log"
+      $stdout.puts "  Fail project dirs: #{SystemContext::ARTIFACTS_DIR}/proj/fail/"
+      $stdout.puts "  Fail logs:         #{SystemContext::ARTIFACTS_DIR}/fail.*.log"
       $stdout.puts "  Passing artifacts deleted immediately.\n\n"
     end
 
@@ -125,11 +125,11 @@ RSpec.configure do |config|
     # directory naming, which solves the same concurrent-writer problem for coverage data.
     timestamp   = Time.now.utc.strftime('%Y%m%dT%H%M%S%6NZ')
     # Centralize all system test result logs so CI can upload one directory as an artifact.
-    results_dir = File.join(Dir.pwd, 'systests')
+    results_dir = File.join(Dir.pwd, SystemContext::ARTIFACTS_DIR)
     FileUtils.mkdir_p(results_dir)
 
     result_tag = is_failure ? 'fail' : 'pass'
-    log_path   = File.join(results_dir, "systest.#{result_tag}.#{test_name}.#{Process.pid}-#{timestamp}.log")
+    log_path   = File.join(results_dir, "#{result_tag}.#{test_name}.#{Process.pid}-#{timestamp}.log")
 
     log_content = ""
     log_content << "Command: `#{@c.last_cmd}`\n\n" if @c.respond_to?(:last_cmd) && !@c.last_cmd.nil?

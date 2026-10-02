@@ -14,9 +14,7 @@ plugins/dependencies/example/boss/third_party/
 plugins/dependencies/example/supervisor/build/
 
 # Logs / test output
-systest.pass.*
-systest.fail.*
-systests/
+specout/
 
 # Coverage report output (CEEDLING_TEST_COVERAGE test runs)
 /coverage/

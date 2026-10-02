@@ -511,16 +511,16 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          rm -rf systests/proj/pass || true
-          rm -f systests/systest.pass.*.log || true
+          rm -rf specout/proj/pass || true
+          rm -f specout/pass.*.log || true
 
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: systest-failures-locale-ruby-3.3
-          path: systests/
+          name: specout-failures-locale-ruby-3.3
+          path: specout/
           if-no-files-found: ignore
 
 
@@ -584,16 +584,16 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          rm -rf systests/proj/pass || true
-          rm -f systests/systest.pass.*.log || true
+          rm -rf specout/proj/pass || true
+          rm -f specout/pass.*.log || true
 
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: systest-failures-encoding-stress-ruby-3.3
-          path: systests/
+          name: specout-failures-encoding-stress-ruby-3.3
+          path: specout/
           if-no-files-found: ignore
 
 

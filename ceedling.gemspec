@@ -73,7 +73,7 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
   # would otherwise be packaged into a release.
   #
   # System test artifacts are the worst of it. `rake spec:system:debug:*` retains whole
-  # deployed projects under systests/, which both bloats the gem and breaks packaging
+  # deployed projects under specout/, which both bloats the gem and breaks packaging
   # outright, since a retained project nests a vendored Ceedling deep enough to exceed
   # the tar name limit (Gem::Package::TooLongFileName).
   #
@@ -87,9 +87,7 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
     f.start_with?('site-web/') ||                        # Hosted/versioned docs site -- not needed offline
     f == 'tools' || f.start_with?('tools/') ||            # Dev tooling the Rakefile above shells out to
     f == 'docs/mkdocs' || f.start_with?('docs/mkdocs/') ||  # Raw docs source -- site-local/ is the built artifact the gem actually serves
-    f == 'systests' || f.start_with?('systests/') ||      # Retained system test projects
-    f.start_with?('systest.pass.') ||                    # System test run logs
-    f.start_with?('systest.fail.') ||
+    f == 'specout' || f.start_with?('specout/') ||        # Retained system test artifacts and run logs
     f == 'build' || f.start_with?('build/') || f.include?('/build/')  # Local build output
   end
 

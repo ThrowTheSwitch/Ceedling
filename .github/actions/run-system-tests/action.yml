@@ -53,11 +53,11 @@ runs:
 
     # Upload system test failure logs and temp project directories on test job failure.
     # In 'failures' mode, passing artifacts are never created, so there is nothing to clean up
-    # before uploading — the systests/ directory contains only failure data.
+    # before uploading — the specout/ directory contains only failure data.
     - name: Upload system test failure artifacts
       if: failure()
       uses: actions/upload-artifact@v7
       with:
-        name: systest-failures-${{ runner.os }}-ruby-${{ inputs.ruby }}
-        path: systests/
+        name: specout-failures-${{ runner.os }}-ruby-${{ inputs.ruby }}
+        path: specout/
         if-no-files-found: ignore
