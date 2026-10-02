@@ -250,6 +250,70 @@ task :default => ['specs:all']
 task :ci      => [:no_color, :default]
 
 ##
+## Gem tasks
+##
+## Build the release gem the same way CI does, for inspecting what actually gets
+## packaged. ceedling.gemspec assembles its file list by sweeping the working tree
+## with Dir['**/*'], so a local build reflects whatever is lying around -- which is
+## most of the reason to run one by hand.
+##
+
+desc "Remove built Ceedling gems from the repository root"
+task 'gem:clean' do
+  repo_only!( 'gem:clean' )
+
+  gems = Dir[ File.join( __dir__, 'ceedling-*.gem' ) ]
+
+  if gems.empty?
+    puts "No built gems to remove."
+    next
+  end
+
+  # Named as they go, since a developer may have kept one deliberately for
+  # comparison against a new build.
+  gems.each do |path|
+    puts "Removing #{File.basename( path )}"
+    FileUtils.rm_f( path )
+  end
+end
+
+desc "Build the Ceedling gem into the repository root"
+task 'gem:build' => 'gem:clean' do
+  repo_only!( 'gem:build' )
+
+  # The gemspec's file sweep has no *.gem exclusion, so a gem left from an earlier
+  # build would be packaged inside the next one. The gem:clean dependency is what
+  # prevents that.
+  #
+  # Invoked exactly as CI invokes it, with no --output, so the artifact lands in
+  # the repository root where CI's own `ceedling-*.gem` upload glob expects it.
+  sh 'gem build ceedling.gemspec'
+
+  $LOAD_PATH.unshift( File.join( __dir__, 'lib' ) )
+  require 'version'
+  expected = "ceedling-#{Ceedling::Version::GEM}.gem"
+
+  # Asserted rather than pinned with --output. A mismatch means lib/version.rb and
+  # the built gem disagree, which pinning the name would hide.
+  unless File.exist?( File.join( __dir__, expected ) )
+    raise "Expected #{expected}, which `gem build` did not produce. " \
+          "Check lib/version.rb against the built gem's name."
+  end
+
+  # site-local/ holds the offline documentation bundle and reaches the gem only
+  # through the gemspec's file sweep. CI downloads it before building. A local gem
+  # without it is still valid and still worth building, so this informs rather
+  # than fails.
+  unless File.directory?( File.join( __dir__, 'site-local' ) )
+    puts "\nNOTE: site-local/ is absent, so this gem carries no offline " \
+         "documentation bundle."
+    puts "Run `rake docs:build:local` first to match what CI packages."
+  end
+
+  puts "\nBuilt #{expected}"
+end
+
+##
 ## Profiling tasks
 ##
 ## On-demand stackprof-based profiling of a real Ceedling build/test run,
