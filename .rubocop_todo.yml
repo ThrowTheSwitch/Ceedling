@@ -114,13 +114,11 @@ Lint/UnusedBlockArgument:
 # NotImplementedExceptions: NotImplementedError
 Lint/UnusedMethodArgument:
   Exclude:
-    - 'lib/ceedling/config/configurator_builder.rb'
     - 'lib/ceedling/file_path_utils.rb'
     - 'lib/ceedling/file_wrapper.rb'
     - 'lib/ceedling/generators/generator.rb'
     - 'lib/ceedling/generators/generator_partials.rb'
     - 'lib/ceedling/generators/generator_test_results_backtrace.rb'
-    - 'lib/ceedling/plugins/plugin_manager_helper.rb'
     - 'lib/ceedling/preprocess/preprocessinator.rb'
     - 'lib/ceedling/preprocess/preprocessinator_file_assembler.rb'
     - 'plugins/cppcheck/lib/cppcheck_reports.rb'
@@ -142,7 +140,6 @@ Lint/UselessAccessModifier:
 # This cop supports safe autocorrection (--autocorrect).
 Lint/UselessAssignment:
   Exclude:
-    - 'bin/cli_helper.rb'
     - 'bin/versionator.rb'
     - 'lib/ceedling/config/configurator.rb'
     - 'lib/ceedling/file_wrapper.rb'
