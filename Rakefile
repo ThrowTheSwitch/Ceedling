@@ -211,14 +211,34 @@ Dir['spec/system/**/*_spec.rb'].each do |p|
   end
 end
 
-# Individual system specs with full artifact retention (unadvertised).
-# Developer debug mode: preserve all artifacts — both pass and fail project directories and logs
+# Individual system specs with full artifact retention. Developer debug mode:
+# preserve all artifacts, both pass and fail project directories and logs.
+#
+# Deliberately undescribed one by one. There are forty of them, and advertising
+# each would bury every other task in `rake -T`. The wildcard task below carries
+# one description for the whole family.
 Dir['spec/system/**/*_spec.rb'].each do |p|
   base = File.basename(p,'.*').gsub('_spec','')
   task "spec:system:debug:#{base}" do
     ENV['CEEDLING_SYSTEM_TEST_KEEP'] = 'all'
     Rake::Task["spec:system:#{base}"].invoke
   end
+end
+
+# Stand-in that documents the family above. Running it explains itself rather
+# than doing anything, the same technique the `test:*` and `gen:mocks:*`
+# placeholders use in lib/ceedling/rakefiles/.
+desc "Run single system spec, retaining all artifacts ([*] system spec name)."
+task 'spec:system:debug:*' do
+  # Quoting matters to the suggestion below. zsh expands an unquoted trailing
+  # wildcard itself and fails before rake ever sees the task name.
+  message = "Oops! 'spec:system:debug:*' isn't a real task. " \
+            "Use a real system spec name in place of the wildcard.\n" \
+            "Example: `rake spec:system:debug:cli_surface`\n" \
+            "Run `rake -AT spec:system:debug` to list every available name.\n" \
+            "Artifact locations are printed when the suite starts."
+
+  $stderr.puts message
 end
 
 desc "Run specs by filename matching a substring (e.g., rake \"spec:filter:filename[<substring>]\")"
