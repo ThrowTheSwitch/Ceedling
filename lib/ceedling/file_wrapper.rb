@@ -84,11 +84,11 @@ class FileWrapper
   end
 
   def rm_r(filepath, options={})
-    FileUtils.rm_r(filepath, **options={})
+    FileUtils.rm_r(filepath, **options)
   end
 
   def rm_rf(path, options={})
-    FileUtils.rm_rf(path, **options={})
+    FileUtils.rm_rf(path, **options)
   end
 
   def cp(source, destination, options={})

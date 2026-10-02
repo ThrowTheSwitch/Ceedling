@@ -309,6 +309,36 @@ describe FileWrapper do
     end
   end
 
+  # The removal methods are thin pass-throughs to FileUtils. These examples exist
+  # for one reason: to pin that a caller's options actually arrive. #rm_r and #rm_rf
+  # previously splatted an inline assignment, which replaced the caller's hash with
+  # an empty one and dropped the options on the floor.
+  describe 'removal delegation' do
+    it 'forwards caller options through #rm_f' do
+      allow(FileUtils).to receive(:rm_f)
+
+      @file_wrapper.rm_f('/f.txt', {:noop => true})
+
+      expect(FileUtils).to have_received(:rm_f).with('/f.txt', :noop => true)
+    end
+
+    it 'forwards caller options through #rm_r' do
+      allow(FileUtils).to receive(:rm_r)
+
+      @file_wrapper.rm_r('/dir', {:force => true})
+
+      expect(FileUtils).to have_received(:rm_r).with('/dir', :force => true)
+    end
+
+    it 'forwards caller options through #rm_rf' do
+      allow(FileUtils).to receive(:rm_rf)
+
+      @file_wrapper.rm_rf('/dir', {:secure => true})
+
+      expect(FileUtils).to have_received(:rm_rf).with('/dir', :secure => true)
+    end
+  end
+
   describe '#exist_with_retry?' do
     before(:each) do
       allow(@file_wrapper).to receive(:sleep)
