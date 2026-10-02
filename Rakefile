@@ -326,10 +326,116 @@ task 'profile:run', [:project, :build_task] => 'profile:setup' do |_t, args|
 end
 
 ##
+## Linting tasks
+##
+## RuboCop over Ceedling's own Ruby, limited to the Lint, Metrics, Security, and
+## Performance departments (see .rubocop.yml for why only those four). The gems
+## are install_if:-gated in the Gemfile, so `lint:setup` exists to install them on
+## demand and every other task here depends on it.
+##
+## `.rubocop_todo.yml` records the pre-existing offense backlog, so `lint` passing
+## means "no NEW offenses" rather than "no offenses." Regenerate it with
+## `lint:todo` only when deliberately re-baselining -- it is meant to shrink.
+##
+
+# Local developer gets RuboCop's default output; CI gets GitHub workflow annotations
+# so findings land inline on the pull request diff.
+LINT_FORMAT = ENV['CI_LINT_GITHUB_FORMAT'] ? '--format github' : ''
+
+# Every lint task runs RuboCop in a child process rather than loading it here, and
+# that is forced rather than stylistic. The gems are install_if:-gated, so Bundler
+# decided this process's load path before CEEDLING_LINT could possibly be set --
+# `require 'rubocop'` in this process can never succeed no matter what is installed.
+#
+# with_unbundled_env strips the parent's Bundler environment, including the
+# RUBYOPT=-rbundler/setup that `bundle exec` exports. Without that strip, a nested
+# bundler command boots bundler/setup first, validates the whole dependency set, and
+# dies on the gated gems before doing any work. The variable is then set *inside* the
+# block because with_unbundled_env restores ENV from the snapshot Bundler captured at
+# load time, which predates anything this Rakefile assigns.
+def lint_sh(cmd)
+  Bundler.with_unbundled_env do
+    ENV['CEEDLING_LINT'] = 'true'
+    yield cmd
+  end
+end
+
+# Shared runner so every lint task reports failure the same way. RuboCop exits
+# non-zero when it finds offenses, which is the intended local signal, so the message
+# says so rather than implying the tool broke.
+def rubocop_sh(args)
+  cmd = "bundle exec rubocop #{LINT_FORMAT} #{args}".squeeze(' ').strip
+  puts "Running: #{cmd}"
+  lint_sh(cmd) do |c|
+    sh(c, verbose: false) do |ok, res|
+      next if ok
+      raise "RuboCop reported offenses or failed to run (exit #{res.exitstatus})"
+    end
+  end
+end
+
+desc "Ensure linting gems (rubocop, rubocop-performance) are installed"
+task 'lint:setup' do
+  puts "Probing for rubocop..."
+
+  available = lint_sh('bundle exec rubocop --version') do |c|
+    system(c, out: File::NULL, err: File::NULL)
+  end
+
+  if available
+    puts "rubocop is available."
+  else
+    puts "rubocop not found -- installing now via 'bundle install'..."
+    lint_sh('bundle install') { |c| sh c }
+    puts "rubocop installed."
+  end
+end
+
+desc "Lint Ceedling's Ruby source (Lint, Metrics, Security, Performance)"
+task 'lint' => 'lint:setup' do
+  rubocop_sh ''
+end
+
+desc "Lint only files changed against next_version"
+task 'lint:changed' => 'lint:setup' do
+  # Diff filter drops deletions; a removed file cannot be linted. Restricted to
+  # Ruby-ish paths so a run is not wasted on changed Markdown or YAML.
+  changed  = `git diff --name-only --diff-filter=d next_version...HEAD`.split("\n")
+  changed += `git diff --name-only --diff-filter=d`.split("\n")
+  changed  = changed.uniq.grep(/\.(rb|rake|gemspec)$|^Rakefile$|^bin\//)
+
+  if changed.empty?
+    puts "No changed Ruby files to lint."
+    next
+  end
+
+  puts "Linting #{changed.length} changed file(s)..."
+  # --force-exclusion so a named file that .rubocop.yml excludes stays excluded.
+  rubocop_sh "--force-exclusion #{changed.join(' ')}"
+end
+
+desc "Apply RuboCop's safe autocorrections"
+task 'lint:fix' => 'lint:setup' do
+  # Safe corrections only (-a, not -A). Review the diff before keeping it. Metrics
+  # offenses are never autocorrectable, so what this changes is mostly Performance
+  # and a handful of Lint cops.
+  rubocop_sh '--autocorrect'
+end
+
+desc "Regenerate .rubocop_todo.yml, the pre-existing offense backlog"
+task 'lint:todo' => 'lint:setup' do
+  # --no-exclude-limit keeps per-file Exclude lists complete instead of collapsing a
+  # cop to a blanket override once it passes RuboCop's default threshold. Without it
+  # the backlog hides which files are involved, and that list is the only thing that
+  # makes the backlog actionable.
+  rubocop_sh '--auto-gen-config --no-exclude-limit'
+end
+
+##
 ## Documentation tasks
 ##
 
-task :no_color do 
+task :no_color do
   #doesn't do anything at the moment. will remove color from output for CI
 end
 
