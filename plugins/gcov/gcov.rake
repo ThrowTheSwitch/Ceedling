@@ -51,8 +51,11 @@ namespace GCOV_SYM do
   task :pattern, [:regex] => [:prepare] do |_t, args|
     matches = []
 
+    # Compile the user's pattern once rather than once per test in the collection
+    pattern = Regexp.new( args.regex )
+
     COLLECTION_ALL_TESTS.each do |test|
-      matches << test if test =~ /#{args.regex}/
+      matches << test if test.match?( pattern )
     end
 
     if !matches.empty?

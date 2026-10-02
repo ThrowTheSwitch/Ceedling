@@ -494,13 +494,11 @@ class Include
     # Remove any initial `#include` statement
     _line = line.gsub(/#\s*include/, '')
     
-    # Remove any quotation marks from an extracted user include directive
-    _line.gsub!(/"/, '')
-    
-    # Remove any angle brackets from an extracted system include directive
-    _line.gsub!(/</, '')
-    _line.gsub!(/>/, '')
-    
+    # Remove the quotation marks of a user include directive and the angle
+    # brackets of a system include directive. One `delete!` pass over the line
+    # rather than three regex substitutions -- this runs once per `#include`.
+    _line.delete!('"<>')
+
     # Whitespace cleanup
     _line.strip!
 

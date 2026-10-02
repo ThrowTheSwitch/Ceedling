@@ -200,7 +200,7 @@ class PreprocessinatorReconstructor
       # directive to, and dropping it silently is correct: an orphaned directive is inert.
       index = nil
       contents[cursor..-1].each_with_index do |line, offset|
-        if line =~ function_regex
+        if line.match?(function_regex)
           index = cursor + offset
           break
         end

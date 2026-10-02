@@ -153,7 +153,10 @@ class CExtractorFunctions
         string_char = char
         scanner.getch
       when '/'
-        if scanner.peek(2) =~ %r{^(/[/*])}
+        # Hottest comparison in the extractor -- reached for every '/' in the
+        # source. `start_with?` avoids compiling and running a regex here. The
+        # original anchored pattern matched exactly these two character pairs.
+        if scanner.peek(2).start_with?('//', '/*')
           @code_text.skip_comment(scanner)
         else
           scanner.getch
@@ -219,7 +222,7 @@ class CExtractorFunctions
           # Check if this looks like a function declaration
           # Pattern: ends with identifier followed by (...) and semicolon
           # NOT: contains (*identifier) pattern (function pointer variable)
-          if cleaned =~ /\(\s*\*\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)/
+          if cleaned.match?(/\(\s*\*\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)/)
             # This is a function pointer variable, not a function declaration
             scanner.pos = start_pos
             return nil
