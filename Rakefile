@@ -12,6 +12,55 @@ require 'fileutils'
 require 'open3'
 
 ##
+## Shared task helpers
+##
+
+# Several Gemfile entries are declared with `install_if:`. That predicate is
+# Bundler's runtime activation check as well as its install-time one, so a gated
+# gem is invisible to this process no matter what is installed. Bundler fixed this
+# process's load path at boot, before this Rakefile assigned anything. Tasks that
+# need a gated gem therefore run it in a child process through this helper.
+#
+# with_unbundled_env strips the parent's Bundler environment, including the
+# RUBYOPT=-rbundler/setup that `bundle exec` exports. Without that strip, a nested
+# bundler command boots bundler/setup first, validates the whole dependency set,
+# and dies on the gated gems before doing any work. The variables are seeded
+# *inside* the block because with_unbundled_env restores ENV from the snapshot
+# Bundler captured at load time, which predates anything assigned here.
+#
+# The command is yielded untouched and the block's value is returned. One helper
+# therefore serves both `sh` callers, which raise, and `system` callers, which want
+# the boolean. Yielding the string unsplit is also what preserves shell
+# redirections in a caller's command.
+def unbundled_sh(env, cmd)
+  Bundler.with_unbundled_env do
+    env.each { |name, value| ENV[name] = value }
+    yield cmd
+  end
+end
+
+# Marker separating a development checkout from an installed gem. The release gem
+# deliberately ships this Rakefile, the Gemfile, and spec/ so external tooling can
+# self-test the packaged gem. It carries none of the repository's own development
+# files. `.gitmodules` is the sturdiest marker available: ceedling.gemspec builds
+# its file list with Dir['**/*'], which skips dotfiles, and the few dotfiles added
+# back are named one by one.
+REPO_MARKER = File.join(__dir__, '.gitmodules')
+
+# Tasks that cannot work outside the repository say so plainly rather than failing
+# later on a missing file. __dir__ rather than Dir.pwd, since profile:run calls
+# this from inside a Dir.chdir block.
+def repo_only!(task)
+  return if File.exist?( REPO_MARKER )
+
+  raise "'#{task}' only runs from a Ceedling repository checkout.\n" \
+        "The released gem ships this Rakefile but none of the development files " \
+        "this task needs.\n" \
+        "Tasks that do work from an installed gem: specs:units, specs:integration, " \
+        "specs:system, and coverage:report."
+end
+
+##
 ## Testing tasks
 ##
 
@@ -342,22 +391,12 @@ end
 # so findings land inline on the pull request diff.
 LINT_FORMAT = ENV['CI_LINT_GITHUB_FORMAT'] ? '--format github' : ''
 
-# Every lint task runs RuboCop in a child process rather than loading it here, and
-# that is forced rather than stylistic. The gems are install_if:-gated, so Bundler
-# decided this process's load path before CEEDLING_LINT could possibly be set --
-# `require 'rubocop'` in this process can never succeed no matter what is installed.
-#
-# with_unbundled_env strips the parent's Bundler environment, including the
-# RUBYOPT=-rbundler/setup that `bundle exec` exports. Without that strip, a nested
-# bundler command boots bundler/setup first, validates the whole dependency set, and
-# dies on the gated gems before doing any work. The variable is then set *inside* the
-# block because with_unbundled_env restores ENV from the snapshot Bundler captured at
-# load time, which predates anything this Rakefile assigns.
-def lint_sh(cmd)
-  Bundler.with_unbundled_env do
-    ENV['CEEDLING_LINT'] = 'true'
-    yield cmd
-  end
+# Gate for the RuboCop gems. See unbundled_sh for why every lint task runs RuboCop
+# in a child process rather than loading it here.
+LINT_ENV = { 'CEEDLING_LINT' => 'true' }.freeze
+
+def lint_sh(cmd, &block)
+  unbundled_sh( LINT_ENV, cmd, &block )
 end
 
 # Shared runner so every lint task reports failure the same way. RuboCop exits
@@ -376,6 +415,11 @@ end
 
 desc "Ensure linting gems (rubocop, rubocop-performance) are installed"
 task 'lint:setup' do
+  # .rubocop.yml and .rubocop_todo.yml are not packaged, so linting an installed
+  # gem would silently run against RuboCop's defaults instead. Every other lint
+  # task depends on this one and inherits the check.
+  repo_only!( 'lint:setup' )
+
   puts "Probing for rubocop..."
 
   available = lint_sh('bundle exec rubocop --version') do |c|
@@ -471,6 +515,8 @@ end
 namespace :docs do
   desc "Install documentation tooling (mkdocs-material, mike) in a Python virtual environment"
   task :install do
+    repo_only!( 'docs:install' )
+
     venv_dir = '.docsenv'
 
     if File.directory?(venv_dir)
@@ -504,6 +550,10 @@ namespace :docs do
 
   desc "Snapshot versioned project files into docs/snapshot/ for documentation"
   task :snapshot do
+    # docs/mkdocs/ is not packaged. Every docs build and deploy task depends on
+    # this one, so the whole namespace inherits the check from here.
+    repo_only!( 'docs:snapshot' )
+
     snapshot_dir = 'docs/mkdocs/snapshot/'
     # Ensure the snapshot directory is empty before writing new files (to clear out anything stale)
     FileUtils.rm_rf(snapshot_dir)
