@@ -396,20 +396,31 @@ task 'lint' => 'lint:setup' do
   rubocop_sh ''
 end
 
-desc "Lint only files changed against next_version"
-task 'lint:changed' => 'lint:setup' do
+desc "Lint only changed files, against a branch (e.g., rake \"lint:changed[master]\")"
+task 'lint:changed', [:branch] => 'lint:setup' do |_t, args|
+  # next_version is the integration branch, so it is the comparison a contributor
+  # wants nearly always. Naming another branch or any revision overrides it.
+  branch = args[:branch] || 'next_version'
+
+  # Checked up front because an unresolvable revision makes `git diff` fail while
+  # the backticks below swallow the error, leaving an empty file list that reports
+  # as "nothing to lint." A typo would otherwise look like a clean branch.
+  unless system( 'git', 'rev-parse', '--verify', '--quiet', branch, out: File::NULL )
+    raise "Cannot compare against '#{branch}' -- no such branch or revision"
+  end
+
   # Diff filter drops deletions; a removed file cannot be linted. Restricted to
   # Ruby-ish paths so a run is not wasted on changed Markdown or YAML.
-  changed  = `git diff --name-only --diff-filter=d next_version...HEAD`.split("\n")
+  changed  = `git diff --name-only --diff-filter=d #{branch}...HEAD`.split("\n")
   changed += `git diff --name-only --diff-filter=d`.split("\n")
   changed  = changed.uniq.grep(/\.(rb|rake|gemspec)$|^Rakefile$|^bin\//)
 
   if changed.empty?
-    puts "No changed Ruby files to lint."
+    puts "No changed Ruby files to lint against '#{branch}'."
     next
   end
 
-  puts "Linting #{changed.length} changed file(s)..."
+  puts "Linting #{changed.length} file(s) changed against '#{branch}'..."
   # --force-exclusion so a named file that .rubocop.yml excludes stays excluded.
   rubocop_sh "--force-exclusion #{changed.join(' ')}"
 end
