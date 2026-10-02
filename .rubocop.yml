@@ -18,6 +18,12 @@
 # no defect-detection value. ThrowTheSwitch's house style is recorded in prose in
 # docs/ThrowTheSwitchCodingStandard.md, which is the right home for it.
 
+# The generated backlog of pre-existing offenses, written by `rake lint:todo`.
+# Its presence is what lets `rake lint` exit zero today while still failing on any
+# NEW offense. It is meant to shrink, never to grow: removing records from it as the
+# underlying code improves is the whole point of baselining rather than disabling.
+inherit_from: .rubocop_todo.yml
+
 plugins:
   # Performance cops live in a separate gem. `plugins:` (not the older `require:`)
   # is the correct key for an extension that ships a lint_roller plugin, which
