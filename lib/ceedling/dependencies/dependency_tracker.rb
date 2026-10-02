@@ -5,7 +5,6 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'thread'
 require 'time'
 require 'ceedling/constants'
 require 'ceedling/exceptions'

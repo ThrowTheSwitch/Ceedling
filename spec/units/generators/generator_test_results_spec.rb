@@ -330,7 +330,7 @@ describe GeneratorTestResults do
           :test_file => 'some/place/test_example.c'
         }
       )
-      result = YAML.load(IO.read(@tmp_out_file))
+      result = @yaml_wrapper.load(@tmp_out_file)
       expect(result[:counts][:passed]).to eq(2)
       expect(result[:successes][0][:unity_test_time]).to be_within(0.001).of(0.0015)
       expect(result[:successes][1][:unity_test_time]).to be_within(0.001).of(0.0003)
@@ -344,7 +344,7 @@ describe GeneratorTestResults do
           :test_file => 'some/place/test_example.c'
         }
       )
-      result = YAML.load(IO.read(@tmp_out_file))
+      result = @yaml_wrapper.load(@tmp_out_file)
       expect(result[:counts][:passed]).to eq(2)
       expect(result[:successes][0][:unity_test_time]).to be_within(0.0001).of(0.0015)
       expect(result[:successes][1][:unity_test_time]).to be_within(0.0001).of(0.0003)
@@ -359,7 +359,7 @@ describe GeneratorTestResults do
           :test_file => 'some/place/test_example.c'
         }
       )
-      result = YAML.load(IO.read(@tmp_out_file_fail))
+      result = @yaml_wrapper.load(@tmp_out_file_fail)
       expect(result[:counts]).to eq({ :total => 4, :passed => 2, :failed => 1, :ignored => 1 })
       expect(result[:successes].map { |s| s[:test] }).to eq(['test_one', 'test_four'])
       expect(result[:failures][0][:test]).to eq('test_two')
