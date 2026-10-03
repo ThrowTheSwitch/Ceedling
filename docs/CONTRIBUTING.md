@@ -90,7 +90,7 @@ We **love** pull requests! Before [forking the repo](https://help.github.com/en/
 
 - **Follow existing coding style and conventions.** Keep your code consistent with the style, formatting, and conventions in the rest of the code base. When possible, these will be enforced with a linter. Consistency makes it easier to review and modify in the future.
 
-- **Include test coverage.** Add unit tests when possible. Follow existing patterns for implementing tests.
+- **Include test coverage.** Add unit, integration, and/or system tests when possible. Follow existing patterns for implementing tests (see `spec/` directory and `spec:` tasks among root Rake tasks).
 
 - **Update the example project** if one exists to exercise any new functionality you have added.
 

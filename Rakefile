@@ -12,6 +12,55 @@ require 'fileutils'
 require 'open3'
 
 ##
+## Shared task helpers
+##
+
+# Several Gemfile entries are declared with `install_if:`. That predicate is
+# Bundler's runtime activation check as well as its install-time one, so a gated
+# gem is invisible to this process no matter what is installed. Bundler fixed this
+# process's load path at boot, before this Rakefile assigned anything. Tasks that
+# need a gated gem therefore run it in a child process through this helper.
+#
+# with_unbundled_env strips the parent's Bundler environment, including the
+# RUBYOPT=-rbundler/setup that `bundle exec` exports. Without that strip, a nested
+# bundler command boots bundler/setup first, validates the whole dependency set,
+# and dies on the gated gems before doing any work. The variables are seeded
+# *inside* the block because with_unbundled_env restores ENV from the snapshot
+# Bundler captured at load time, which predates anything assigned here.
+#
+# The command is yielded untouched and the block's value is returned. One helper
+# therefore serves both `sh` callers, which raise, and `system` callers, which want
+# the boolean. Yielding the string unsplit is also what preserves shell
+# redirections in a caller's command.
+def unbundled_sh(env, cmd)
+  Bundler.with_unbundled_env do
+    env.each { |name, value| ENV[name] = value }
+    yield cmd
+  end
+end
+
+# Marker separating a development checkout from an installed gem. The release gem
+# deliberately ships this Rakefile, the Gemfile, and spec/ so external tooling can
+# self-test the packaged gem. It carries none of the repository's own development
+# files. `.gitmodules` is the sturdiest marker available: ceedling.gemspec builds
+# its file list with Dir['**/*'], which skips dotfiles, and the few dotfiles added
+# back are named one by one.
+REPO_MARKER = File.join(__dir__, '.gitmodules')
+
+# Tasks that cannot work outside the repository say so plainly rather than failing
+# later on a missing file. __dir__ rather than Dir.pwd, since profile:run calls
+# this from inside a Dir.chdir block.
+def repo_only!(task)
+  return if File.exist?( REPO_MARKER )
+
+  raise "'#{task}' only runs from a Ceedling repository checkout.\n" \
+        "The released gem ships this Rakefile but none of the development files " \
+        "this task needs.\n" \
+        "Tasks that do work from an installed gem: specs:units, specs:integration, " \
+        "specs:system, and coverage:report."
+end
+
+##
 ## Testing tasks
 ##
 
@@ -162,14 +211,33 @@ Dir['spec/system/**/*_spec.rb'].each do |p|
   end
 end
 
-# Individual system specs with full artifact retention (unadvertised).
-# Developer debug mode: preserve all artifacts — both pass and fail project directories and logs
+# Individual system specs with full artifact retention. Developer debug mode:
+# preserve all artifacts, both pass and fail project directories and logs.
+#
+# Deliberately undescribed one by one. There are forty of them, and advertising
+# each would bury every other task in `rake -T`. The wildcard task below carries
+# one description for the whole family.
 Dir['spec/system/**/*_spec.rb'].each do |p|
   base = File.basename(p,'.*').gsub('_spec','')
   task "spec:system:debug:#{base}" do
     ENV['CEEDLING_SYSTEM_TEST_KEEP'] = 'all'
     Rake::Task["spec:system:#{base}"].invoke
   end
+end
+
+# Stand-in that documents the family above. It is a signpost in `rake -T` rather
+# than something to run, so the description says what to put in place of the
+# wildcard. The same technique carries the `test:*` and `gen:mocks:*` placeholders
+# in lib/ceedling/rakefiles/.
+desc "Run a system spec, retaining all artifacts (replace [*] with spec name)."
+task 'spec:system:debug:*' do
+  message = "Oops! 'spec:system:debug:*' isn't a real task. " \
+            "Use a real system spec name in place of the wildcard.\n" \
+            "Example: `rake spec:system:debug:cli_surface`\n" \
+            "Run `rake -AT spec:system:debug` to list every available name.\n" \
+            "Artifact locations are printed when the suite starts."
+
+  $stderr.puts message
 end
 
 desc "Run specs by filename matching a substring (e.g., rake \"spec:filter:filename[<substring>]\")"
@@ -201,6 +269,70 @@ task :default => ['specs:all']
 task :ci      => [:no_color, :default]
 
 ##
+## Gem tasks
+##
+## Build the release gem the same way CI does, for inspecting what actually gets
+## packaged. ceedling.gemspec assembles its file list by sweeping the working tree
+## with Dir['**/*'], so a local build reflects whatever is lying around -- which is
+## most of the reason to run one by hand.
+##
+
+desc "Remove built Ceedling gems from the repository root"
+task 'gem:clean' do
+  repo_only!( 'gem:clean' )
+
+  gems = Dir[ File.join( __dir__, 'ceedling-*.gem' ) ]
+
+  if gems.empty?
+    puts "No built gems to remove."
+    next
+  end
+
+  # Named as they go, since a developer may have kept one deliberately for
+  # comparison against a new build.
+  gems.each do |path|
+    puts "Removing #{File.basename( path )}"
+    FileUtils.rm_f( path )
+  end
+end
+
+desc "Build the Ceedling gem into the repository root"
+task 'gem:build' => 'gem:clean' do
+  repo_only!( 'gem:build' )
+
+  # The gemspec's file sweep has no *.gem exclusion, so a gem left from an earlier
+  # build would be packaged inside the next one. The gem:clean dependency is what
+  # prevents that.
+  #
+  # Invoked exactly as CI invokes it, with no --output, so the artifact lands in
+  # the repository root where CI's own `ceedling-*.gem` upload glob expects it.
+  sh 'gem build ceedling.gemspec'
+
+  $LOAD_PATH.unshift( File.join( __dir__, 'lib' ) )
+  require 'version'
+  expected = "ceedling-#{Ceedling::Version::GEM}.gem"
+
+  # Asserted rather than pinned with --output. A mismatch means lib/version.rb and
+  # the built gem disagree, which pinning the name would hide.
+  unless File.exist?( File.join( __dir__, expected ) )
+    raise "Expected #{expected}, which `gem build` did not produce. " \
+          "Check lib/version.rb against the built gem's name."
+  end
+
+  # site-local/ holds the offline documentation bundle and reaches the gem only
+  # through the gemspec's file sweep. CI downloads it before building. A local gem
+  # without it is still valid and still worth building, so this informs rather
+  # than fails.
+  unless File.directory?( File.join( __dir__, 'site-local' ) )
+    puts "\nNOTE: site-local/ is absent, so this gem carries no offline " \
+         "documentation bundle."
+    puts "Run `rake docs:build:local` first to match what CI packages."
+  end
+
+  puts "\nBuilt #{expected}"
+end
+
+##
 ## Profiling tasks
 ##
 ## On-demand stackprof-based profiling of a real Ceedling build/test run,
@@ -217,36 +349,69 @@ PROFILE_TMP_DIR      = File.join(__dir__, 'tmp', 'profiling')
 PROFILE_SCRIPT       = File.join(__dir__, 'tools', 'profiling', 'profile_ceedling.rb')
 PROFILE_CEEDLING_BIN = File.join(__dir__, 'bin', 'ceedling')
 
+# Gate for stackprof, which is install_if:-gated in the Gemfile so an ordinary
+# `bundle install` never attempts its native extension. See unbundled_sh for why
+# the gate only ever reaches a child process.
+#
+# BUNDLE_GEMFILE is pinned because profile:run runs one command from inside the
+# scaffolded project directory. Stripping the parent's Bundler environment also
+# strips the absolute BUNDLE_GEMFILE that `bundle exec` exported, which would
+# otherwise leave Bundler searching upward from a directory that is not the
+# repository root.
+PROFILE_ENV = {
+  'CEEDLING_PROFILING' => 'true',
+  'BUNDLE_GEMFILE'     => File.join(__dir__, 'Gemfile'),
+}.freeze
+
+def profile_sh(cmd, &block)
+  unbundled_sh( PROFILE_ENV, cmd, &block )
+end
+
+# True when stackprof can actually be loaded under the gate. Probed in a child
+# process because a `require` here could never succeed, whatever is installed.
+def stackprof_available?
+  profile_sh( %q{bundle exec ruby -e "require 'stackprof'"} ) do |cmd|
+    system( cmd, out: File::NULL, err: File::NULL )
+  end
+end
+
 desc "Ensure profiling gems (stackprof) are installed"
 task 'profile:setup' do
-  # stackprof is install_if:-gated in the Gemfile so ordinary `bundle
-  # install` (CI included) never attempts it -- its native extension fails
-  # to build on Windows. This env var is Bundler's *runtime* activation
-  # check too, not just its install-time one: every later `bundle exec`
-  # (in profile:run, and this task's own `bundle install` fallback below)
-  # needs it set for the whole rest of this process, not just around one
-  # call -- hence setting it unconditionally here, before the require check,
-  # rather than only inside the rescue branch.
-  ENV['CEEDLING_PROFILING'] = 'true'
+  repo_only!( 'profile:setup' )
+
+  # stackprof's native extension fails to build on Windows (Gem::Ext::BuildError),
+  # and whether it can ever build there is untested. Declining early beats burying
+  # the developer in a failed compile. See the Gemfile's stackprof entry.
+  if Gem.win_platform?
+    raise "Profiling is not available on Windows -- stackprof's native extension " \
+          "does not build there. See the stackprof entry in the Gemfile."
+  end
 
   puts "Probing for stackprof..."
 
-  begin
-    require 'stackprof'
+  if stackprof_available?
     puts "stackprof is available."
-  rescue LoadError
-    puts "stackprof not found -- installing now via 'bundle install'..."
-
-    begin
-      sh 'bundle install'
-    rescue StandardError
-      raise "stackprof installation failed -- a native-extension build " \
-            "toolchain (e.g. the 'ruby-dev'/'ruby-devel' package on Linux) " \
-            "may be missing. See the error above for details."
-    end
-
-    raise "stackprof installed -- run this task again to verify and continue."
+    next
   end
+
+  puts "stackprof not found -- installing now via 'bundle install'..."
+
+  begin
+    profile_sh( 'bundle install' ) { |cmd| sh cmd }
+  rescue StandardError
+    raise "stackprof installation failed -- a native-extension build " \
+          "toolchain (e.g. the 'ruby-dev'/'ruby-devel' package on Linux) " \
+          "may be missing. See the error above for details."
+  end
+
+  # Re-probed rather than assumed, so a gem that installs but will not load is
+  # diagnosed here instead of surfacing as a LoadError from a grandchild process
+  # in the middle of a profiled build.
+  unless stackprof_available?
+    raise "stackprof installed but still will not load. Profiling cannot continue."
+  end
+
+  puts "stackprof installed."
 end
 
 desc "Profile a build task against an example project, generating flame graph."
@@ -287,7 +452,7 @@ task 'profile:run', [:project, :build_task] => 'profile:setup' do |_t, args|
   # about and is what actually lets build/ and the dependency cache persist
   # untouched across successive runs, which is the whole point.
   unless File.exist?(File.join(project_dir, 'project.yml'))
-    sh "bundle exec ruby \"#{PROFILE_CEEDLING_BIN}\" example #{project} \"#{scaffold_dir}\""
+    profile_sh( "bundle exec ruby \"#{PROFILE_CEEDLING_BIN}\" example #{project} \"#{scaffold_dir}\"" ) { |cmd| sh cmd }
     raise "Expected scaffolded project at #{project_dir}, not found" unless File.directory?(project_dir)
   end
 
@@ -312,11 +477,13 @@ task 'profile:run', [:project, :build_task] => 'profile:setup' do |_t, args|
   puts "Profiling 'ceedling #{build_task}' in #{project_dir}..."
 
   Dir.chdir(project_dir) do
-    sh "bundle exec ruby \"#{PROFILE_SCRIPT}\" \"#{dump_path}\" \"#{PROFILE_CEEDLING_BIN}\" -- #{build_task} --mixin=\"#{mixin_path}\""
+    profile_sh( "bundle exec ruby \"#{PROFILE_SCRIPT}\" \"#{dump_path}\" \"#{PROFILE_CEEDLING_BIN}\" -- #{build_task} --mixin=\"#{mixin_path}\"" ) { |cmd| sh cmd }
   end
 
-  sh "bundle exec stackprof \"#{dump_path}\" --text > \"#{text_path}\""
-  sh "bundle exec stackprof \"#{dump_path}\" --d3-flamegraph > \"#{html_path}\""
+  # Both commands redirect, so each must reach `sh` as one string for a shell to
+  # interpret. profile_sh yields the command unsplit.
+  profile_sh( "bundle exec stackprof \"#{dump_path}\" --text > \"#{text_path}\"" ) { |cmd| sh cmd }
+  profile_sh( "bundle exec stackprof \"#{dump_path}\" --d3-flamegraph > \"#{html_path}\"" ) { |cmd| sh cmd }
 
   puts "\nProfiling complete:"
   puts "  Project dir: #{project_dir}"
@@ -342,22 +509,12 @@ end
 # so findings land inline on the pull request diff.
 LINT_FORMAT = ENV['CI_LINT_GITHUB_FORMAT'] ? '--format github' : ''
 
-# Every lint task runs RuboCop in a child process rather than loading it here, and
-# that is forced rather than stylistic. The gems are install_if:-gated, so Bundler
-# decided this process's load path before CEEDLING_LINT could possibly be set --
-# `require 'rubocop'` in this process can never succeed no matter what is installed.
-#
-# with_unbundled_env strips the parent's Bundler environment, including the
-# RUBYOPT=-rbundler/setup that `bundle exec` exports. Without that strip, a nested
-# bundler command boots bundler/setup first, validates the whole dependency set, and
-# dies on the gated gems before doing any work. The variable is then set *inside* the
-# block because with_unbundled_env restores ENV from the snapshot Bundler captured at
-# load time, which predates anything this Rakefile assigns.
-def lint_sh(cmd)
-  Bundler.with_unbundled_env do
-    ENV['CEEDLING_LINT'] = 'true'
-    yield cmd
-  end
+# Gate for the RuboCop gems. See unbundled_sh for why every lint task runs RuboCop
+# in a child process rather than loading it here.
+LINT_ENV = { 'CEEDLING_LINT' => 'true' }.freeze
+
+def lint_sh(cmd, &block)
+  unbundled_sh( LINT_ENV, cmd, &block )
 end
 
 # Shared runner so every lint task reports failure the same way. RuboCop exits
@@ -376,6 +533,11 @@ end
 
 desc "Ensure linting gems (rubocop, rubocop-performance) are installed"
 task 'lint:setup' do
+  # .rubocop.yml and .rubocop_todo.yml are not packaged, so linting an installed
+  # gem would silently run against RuboCop's defaults instead. Every other lint
+  # task depends on this one and inherits the check.
+  repo_only!( 'lint:setup' )
+
   puts "Probing for rubocop..."
 
   available = lint_sh('bundle exec rubocop --version') do |c|
@@ -471,6 +633,8 @@ end
 namespace :docs do
   desc "Install documentation tooling (mkdocs-material, mike) in a Python virtual environment"
   task :install do
+    repo_only!( 'docs:install' )
+
     venv_dir = '.docsenv'
 
     if File.directory?(venv_dir)
@@ -504,6 +668,10 @@ namespace :docs do
 
   desc "Snapshot versioned project files into docs/snapshot/ for documentation"
   task :snapshot do
+    # docs/mkdocs/ is not packaged. Every docs build and deploy task depends on
+    # this one, so the whole namespace inherits the check from here.
+    repo_only!( 'docs:snapshot' )
+
     snapshot_dir = 'docs/mkdocs/snapshot/'
     # Ensure the snapshot directory is empty before writing new files (to clear out anything stale)
     FileUtils.rm_rf(snapshot_dir)

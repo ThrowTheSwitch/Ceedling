@@ -200,6 +200,7 @@ nav:
   - Development:
     - development/index.md
     - Development Workflow: development/workflow.md
+    - Branching & Releases: development/releases.md
     - Plugin Development:
       - development/plugins/index.md
       - Configuration Plugin: development/plugins/configuration.md

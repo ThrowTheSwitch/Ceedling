@@ -27,7 +27,8 @@
 #   1. Push v1.0.3-pre.1 tag → CI builds ceedling-1.0.3.pre.1.gem, posts GitHub pre-release
 #   2. Iterate with v1.0.3-pre.2, etc. as needed
 #   3. Push v1.0.3 tag (release.yml) → CI builds ceedling-1.0.3.gem, posts GitHub release
-#   4. Bump lib/version.rb to 1.0.4.dev in a commit and continue
+#   4. Bump BASE in lib/version.rb to 1.0.4 in a commit and continue
+#      (the `.dev` marker is appended by that file, not typed by hand)
 #
 # Related workflows:
 #   ci.yml       — runs on every push to any branch; no publishing

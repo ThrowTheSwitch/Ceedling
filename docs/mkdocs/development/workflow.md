@@ -222,6 +222,76 @@ local Ceedling repo, list those task like this:
 
 [RSpec]: https://rspec.info
 
+## Troubleshooting system tests
+
+System test failures are diagnosed from retained artifacts rather than from spec
+output alone. Each system spec deploys a real Ceedling installation into a
+temporary directory and runs real builds there. The RSpec failure reports which
+expectation failed. It does not report what the build under test actually did.
+
+Nothing is retained by default. A normal run deletes every temporary directory as
+it finishes, so a failure leaves no evidence behind.
+
+Two Rake tasks turn retention on.
+
+```shell
+ > rake specs:system:debug
+ > rake spec:system:debug:cli_surface
+```
+
+`specs:system:debug` runs the whole suite and keeps failures only. Passing project
+directories are deleted as they finish, and passing logs are never written. This
+is the mode CI uses.
+
+`spec:system:debug:<name>` runs one spec and keeps everything, pass and fail
+alike. Reach for it while working on a single spec.
+
+!!! tip
+    `rake -T` advertises the family as `spec:system:debug:*`. Replace the wildcard
+    with a spec name. `rake -AT spec:system:debug` lists every name it accepts.
+
+Both tasks set `CEEDLING_SYSTEM_TEST_KEEP` on your behalf. Set it to `all` or
+`failures` yourself when driving RSpec directly.
+
+### Retained artifacts
+
+Everything retained lands under `specout/` in the repository root.
+
+| Path | Contents |
+|---|---|
+| `specout/proj/fail/` | Deployed project directory for each failing spec |
+| `specout/proj/pass/` | The same for passing specs, in `all` mode only |
+| `specout/fail.<description>.<pid>-<timestamp>.log` | Captured console output of a failing spec |
+| `specout/pass.<description>.<pid>-<timestamp>.log` | The same for passing specs, in `all` mode only |
+
+Each log opens with the command that produced it, followed by that command's
+combined stdout and stderr.
+
+Each retained project directory is a complete deployment, including the vendored
+Ceedling the spec installed. This is where to reproduce a failure by hand. Change
+into it and run the same `ceedling` command the log names.
+
+### Failure output at the console
+
+A failing spec prints a diagnostic block to stderr before the suite continues. The
+block names the temporary directory, names the log file, and summarizes the
+captured output.
+
+The summary carries only what is worth reading first. It collects every line
+containing `ERROR` or `EXCEPTION`, the whole of stderr, any debug backtrace, and
+the failed and overall test summaries. Full output stays in the log file.
+
+### Artifacts from a failed CI run
+
+CI uploads the same directory whenever a test job fails. Download it from the
+workflow run's summary page.
+
+Artifacts are named `specout-failures-<os>-ruby-<version>`. The two specialized
+jobs add `specout-failures-locale-ruby-3.3` and
+`specout-failures-encoding-stress-ruby-3.3`.
+
+CI runs in `failures` mode, so an artifact holds only failure data.
+
 ## Linting
 
 Ceedling lints its own Ruby with [RuboCop]. Four departments are enforced. Lint
@@ -303,6 +373,113 @@ it would protect. The job becomes blocking once the backlog has shrunk far enoug
 that any finding is a genuine surprise.
 
 [RuboCop]: https://rubocop.org
+
+## Profiling
+
+Profiling answers where a Ceedling build spends its time. It samples a real build
+of a real example project with [StackProf] and renders a flame graph.
+
+The profiling gem is not installed by an ordinary `bundle install`. Install it
+once with the setup task.
+
+```shell
+ > rake profile:setup
+```
+
+Then profile any example project against any Ceedling build task.
+
+```shell
+ > rake "profile:run[temp_sensor,test:all]"
+ > rake "profile:run[temp_sensor,clobber test:all]"
+```
+
+The first argument names a project under `examples/`. The choices are
+`cipher_quest`, `temp_sensor`, and `wondrous_forest`. The second argument is
+whatever you would type after `ceedling`. Quote the task name so your shell does
+not interpret the brackets.
+
+### Reports
+
+Three files land in `tmp/profiling/<project>/reports/`, each named by timestamp.
+
+| Extension | Contents |
+|---|---|
+| `.txt` | Ranked list of the hottest frames |
+| `.html` | Interactive flame graph |
+| `.dump` | Raw StackProf data, for your own queries |
+
+Timestamps keep successive runs from overwriting one another. A full build followed
+by a no-op rebuild produces two comparable sets.
+
+### Reading a report
+
+Profiling runs single threaded, and that is deliberate. The task pins both thread
+counts to 1 so the work stays on the thread StackProf samples. A multi-threaded run
+would hide most of the build in worker threads the profiler never sees. No flame
+graph this task produces says anything about thread contention.
+
+Expect `Kernel#sleep` and `Thread#value` to dominate every report. They represent
+time spent waiting on child processes rather than work done in Ruby. Read past
+them to the frames underneath.
+
+The scaffolded project persists between runs. `profile:run` copies the example into
+`tmp/profiling/<project>/` on first use and leaves it there, build directory and
+dependency cache included. A second run against the same project therefore
+profiles a real incremental build. Delete `tmp/profiling/<project>/` to start from
+a clean scaffold.
+
+!!! note
+    Profiling is unavailable on Windows. StackProf builds a native extension that
+    does not compile there, so `profile:setup` declines with a message rather than
+    attempting it.
+
+[StackProf]: https://github.com/tmm1/stackprof
+
+## Building the gem
+
+Building the gem locally shows what a release would actually contain. The gemspec
+assembles its file list by sweeping the working tree, so a local build reflects
+whatever happens to be lying around.
+
+```shell
+ > rake gem:build
+ > rake gem:clean
+```
+
+`gem:build` runs the same `gem build ceedling.gemspec` that CI runs and leaves
+`ceedling-<version>.gem` in the repository root. `gem:clean` removes built gems.
+
+The version carries a `.dev` suffix, so a local build is named
+`ceedling-<version>.dev.gem`. `lib/version.rb` appends that marker to every build
+the release pipeline did not produce, which is also why `ceedling version` reports
+it. See [Branching & Releases][releases] for how a release build clears it.
+
+`gem:build` depends on `gem:clean`, which matters more than it appears to. The
+gemspec has no exclusion for `.gem` files, so a gem left from an earlier build
+would be packaged inside the next one.
+
+!!! note
+    A local build omits the offline documentation bundle unless `site-local/`
+    already exists. CI builds that bundle first. Run `rake docs:build:local` to
+    match it.
+
+Unpack the result to inspect it.
+
+```shell
+ > gem unpack ceedling-1.2.0.gem
+```
+
+The packaged gem deliberately carries `spec/`, `Gemfile`, `Gemfile.lock`, and
+`.rspec`. External tooling runs Ceedling's own suites against the released gem
+as part of validating installations and environments. These files make that 
+possible.
+
+Development-only tasks refuse to run from an unpacked gem. Profiling, linting, and
+the gem tasks each need repository files the gem does not carry, so they report
+that rather than failing on a missing file. The `specs:*` tasks and
+`coverage:report` work as normal.
+
+[releases]: releases.md
 
 ## Documentation
 

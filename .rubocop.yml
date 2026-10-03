@@ -56,13 +56,13 @@ AllCops:
     - '*.gemspec'
 
   # RuboCop walks the filesystem rather than the git index, so these exclusions are
-  # not merely tidy. `systests/` alone holds thousands of untracked files and over a
+  # not merely tidy. `specout/` alone holds thousands of untracked files and over a
   # million lines of retained system test projects, each nesting a whole vendored
   # Ceedling. Without that one entry a run appears to hang.
   Exclude:
     - 'vendor/**/*'              # Unity, CMock, CException submodules plus in-tree diy
     - 'plugins/fff/vendor/**/*'  # third-party fff fake-function framework
-    - 'systests/**/*'            # retained system test projects, untracked
+    - 'specout/**/*'             # retained system test artifacts, untracked
     - 'build/**/*'
     - 'coverage/**/*'
     - 'docs/**/*'                # includes generated snapshot copies of plugin config

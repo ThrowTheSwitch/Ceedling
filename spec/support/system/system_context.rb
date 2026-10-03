@@ -20,6 +20,11 @@ class SystemContext
 
   SYSTEM_TEST_KEEP_ENV = 'CEEDLING_SYSTEM_TEST_KEEP'
 
+  # Root for retained system test artifacts, relative to the working directory.
+  # Named once here because the log writer in spec_system_helper.rb, the gemspec,
+  # .rubocop.yml, .gitignore, and CI all reach this path by name.
+  ARTIFACTS_DIR = 'specout'
+
   # Shared gem installation — built once by setup_shared_gem!, reused by every deploy_gem call.
   # Eliminates redundant `bundle install` runs (one per describe group → one per suite).
   @@shared_gem_dir = nil
@@ -99,10 +104,11 @@ class SystemContext
 
   def initialize
     if ENV[SYSTEM_TEST_KEEP_ENV]
-      # In either debug mode ('failures' or 'all'), root the temp dir inside systests/proj/
-      # so that done! can rename it to pass/ or fail/ on the same filesystem without a
-      # cross-device copy. The specific subdir (pass/ or fail/) is determined by done!.
-      base = File.join(Dir.pwd, 'systests', 'proj')
+      # In either debug mode ('failures' or 'all'), root the temp dir inside the
+      # artifacts directory's proj/ so that done! can rename it to pass/ or fail/ on
+      # the same filesystem without a cross-device copy. The specific subdir (pass/
+      # or fail/) is determined by done!.
+      base = File.join(Dir.pwd, ARTIFACTS_DIR, 'proj')
       FileUtils.mkdir_p(base)
       @dir = Dir.mktmpdir(nil, base)
     else

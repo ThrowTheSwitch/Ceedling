@@ -25,8 +25,10 @@
 #   v1.1.0  →  ceedling-1.1.0.gem
 #
 # Post-release steps (manual):
-#   After pushing a release tag, bump lib/version.rb to the next .dev
-#   version (e.g. GEM = '1.1.1.dev') and commit to continue development.
+#   After pushing a release tag, bump BASE in lib/version.rb to the next
+#   cycle's target version (e.g. BASE = '1.1.1') and commit to continue
+#   development. The `.dev` marker is not typed by hand; that file appends it
+#   to every build this pipeline did not produce.
 #
 # RubyGems.org publishing:
 #   The "Push to RubyGems.org" step in _publish-gem.yml is stubbed and
