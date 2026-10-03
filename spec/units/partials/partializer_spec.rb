@@ -69,6 +69,115 @@ describe Partializer do
       expect(result).to eq({})
     end
 
+    # --- Resolution against this test's own search paths ---
+    #
+    # A module's header is resolved against the ordered collection its own test would
+    # search, so a TEST_INCLUDE_PATH() in that test decides the outcome. Resolving
+    # against one project-wide collection instead lets two modules sharing a basename
+    # collapse to whichever appears first, regardless of which test asked.
+    context "resolving against a caller's collection" do
+      it "forwards the collection it is given to the header lookup" do
+        configs = { 'config' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+        ordered = ['include/drivers/uart/config.h']
+
+        expect(@file_finder).to receive(:find_header_file)
+          .with('config', :ignore, collection: ordered)
+          .and_return('include/drivers/uart/config.h')
+        allow(@file_finder).to receive(:find_source_file).and_return('src/drivers/uart/config.c')
+        allow(PathMirror).to receive(:relative_subdir).and_return('drivers/uart')
+
+        @partializer.populate_filepaths(configs, collection: ordered)
+      end
+    end
+
+    # A bare module name says nothing about which directory it meant, so pairing one
+    # module's header with another module's source is possible. Narrowing the source
+    # lookup by the resolved header's own directory removes that mismatch.
+    context "a bare module name whose header resolved under a directory" do
+      before(:each) do
+        @configs = { 'config' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+        allow(@file_finder).to receive(:find_header_file).and_return('include/drivers/uart/config.h')
+        allow(PathMirror).to receive(:relative_subdir).and_return('drivers/uart')
+      end
+
+      it "looks the source up under that same directory" do
+        expect(@file_finder).to receive(:find_source_file)
+          .with('drivers/uart/config', :ignore)
+          .and_return('src/drivers/uart/config.c')
+
+        @partializer.populate_filepaths(@configs)
+
+        expect(@configs['config'].source.filepath).to eq('src/drivers/uart/config.c')
+      end
+
+      # A project whose source and include trees do not mirror one another has a
+      # header under a directory and a source that is not. The bare name still has to
+      # work there.
+      it "falls back to the bare name when nothing sits under that directory" do
+        allow(@file_finder).to receive(:find_source_file).with('drivers/uart/config', :ignore).and_return(nil)
+        expect(@file_finder).to receive(:find_source_file).with('config', :ignore).and_return('src/config.c')
+
+        @partializer.populate_filepaths(@configs)
+
+        expect(@configs['config'].source.filepath).to eq('src/config.c')
+      end
+    end
+
+    context "a bare module name whose header resolved directly in a root" do
+      it "looks the source up by the bare name alone" do
+        configs = { 'config' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+        allow(@file_finder).to receive(:find_header_file).and_return('include/config.h')
+        allow(PathMirror).to receive(:relative_subdir).and_return('')
+
+        expect(@file_finder).to receive(:find_source_file).with('config', :ignore).once.and_return('src/config.c')
+
+        @partializer.populate_filepaths(configs)
+      end
+    end
+
+    # A module named by directory was spelled out by its author, so both lookups use it
+    # verbatim and neither falls back to a bare name. Falling back would defeat the
+    # point of naming the directory.
+    context "a module named by directory" do
+      it "looks both the header and the source up verbatim" do
+        configs = { 'drivers/uart/config' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+
+        allow(@file_finder).to receive(:find_header_file).and_return('include/drivers/uart/config.h')
+        expect(@file_finder).to receive(:find_source_file)
+          .with('drivers/uart/config', :ignore).once
+          .and_return('src/drivers/uart/config.c')
+
+        @partializer.populate_filepaths(configs)
+      end
+
+      it "raises when it names no header" do
+        configs = { 'drivers/uart/confg' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+
+        allow(@file_finder).to receive(:find_header_file).and_return(nil)
+        allow(@file_finder).to receive(:find_source_file).and_return(nil)
+
+        expect {
+          @partializer.populate_filepaths(configs)
+        }.to raise_error( CeedlingException, /drivers\/uart\/confg/ )
+      end
+    end
+
+    context "a Partial that only mocks public functions" do
+      it "never looks up a source, whichever way its module was named" do
+        configs = {
+          'drivers/uart/config' => make_config(
+            tests: make_tests(present: false),
+            mocks: make_mocks(present: true, type: Partials::PUBLIC)
+          )
+        }
+
+        allow(@file_finder).to receive(:find_header_file).and_return('include/drivers/uart/config.h')
+        expect(@file_finder).to_not receive(:find_source_file)
+
+        @partializer.populate_filepaths(configs)
+      end
+    end
+
     it "populates header and source for a test config" do
       configs = { 'mod' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
 
