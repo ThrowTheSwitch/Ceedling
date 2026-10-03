@@ -37,4 +37,29 @@
 #define TEST_PARTIAL_CONFIG(module, func1, ...)
 #define MOCK_PARTIAL_CONFIG(module, func1, ...)
 
+//
+// Directory-qualified variants, for naming one module among several sharing a basename.
+//
+// The directory is a qualifier Ceedling matches against trailing path segments, so only
+// as much path as it takes to distinguish the module is needed. Ceedling places the
+// generated Partial to match wherever the module's own header resolves.
+//
+// A separate directory parameter is what keeps the Partials prefix on the filename. A
+// single parameter carrying the path would stringify to a filename prefixed ahead of the
+// path instead. It is also why these macros accept no file extension: an extension in the
+// module parameter would land in the middle of the generated filename.
+//
+#define TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module) __PARTIALS_STRINGIFY(__PARTIALS_EXPAND(dir)/__PARTIALS_EXPAND(CEEDLING_PARTIALS_PREFIX)__PARTIALS_EXPAND(module)__PARTIALS_EXPAND(_impl.h))
+#define TEST_PARTIAL_PRIVATE_MODULE_AT(dir, module) TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
+#define TEST_PARTIAL_ALL_MODULE_AT(dir, module) TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
+#define TEST_PARTIAL_MODULE_AT(dir, module) TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
+#define MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module) __PARTIALS_STRINGIFY(__PARTIALS_EXPAND(dir)/__PARTIALS_EXPAND(CMOCK_MOCK_PREFIX)__PARTIALS_EXPAND(CEEDLING_PARTIALS_PREFIX)__PARTIALS_EXPAND(module)__PARTIALS_EXPAND(_interface.h))
+#define MOCK_PARTIAL_PRIVATE_MODULE_AT(dir, module) MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
+#define MOCK_PARTIAL_ALL_MODULE_AT(dir, module) MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
+#define MOCK_PARTIAL_MODULE_AT(dir, module) MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
+
+// The parameter construction ensures at least three arguments
+#define TEST_PARTIAL_CONFIG_AT(dir, module, func1, ...)
+#define MOCK_PARTIAL_CONFIG_AT(dir, module, func1, ...)
+
 #endif /* _CEEDLING_SUPPORT_H_ */

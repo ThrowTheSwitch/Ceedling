@@ -19,6 +19,10 @@ class PartializerConfig
   constructor :c_extractor_preprocessing
 
   # Macro names for all partial configuration macros
+  #
+  # Each macro has a directory-qualified `_AT` counterpart taking a leading directory
+  # parameter. Recognition requires an exact name match followed by an open parenthesis,
+  # so a name and its own `_AT` extension stay distinct however they are ordered here.
   MACRO_NAMES = [
     'TEST_PARTIAL_PUBLIC_MODULE',
     'TEST_PARTIAL_PRIVATE_MODULE',
@@ -30,6 +34,16 @@ class PartializerConfig
     'MOCK_PARTIAL_ALL_MODULE',
     'TEST_PARTIAL_CONFIG',
     'MOCK_PARTIAL_CONFIG',
+    'TEST_PARTIAL_PUBLIC_MODULE_AT',
+    'TEST_PARTIAL_PRIVATE_MODULE_AT',
+    'MOCK_PARTIAL_PUBLIC_MODULE_AT',
+    'MOCK_PARTIAL_PRIVATE_MODULE_AT',
+    'TEST_PARTIAL_MODULE_AT',
+    'MOCK_PARTIAL_MODULE_AT',
+    'TEST_PARTIAL_ALL_MODULE_AT',
+    'MOCK_PARTIAL_ALL_MODULE_AT',
+    'TEST_PARTIAL_CONFIG_AT',
+    'MOCK_PARTIAL_CONFIG_AT',
   ].freeze unless const_defined?(:MACRO_NAMES, false)
 
   # Holds function-level extraction config for tests or mocks within a Partial.

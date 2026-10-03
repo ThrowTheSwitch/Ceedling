@@ -13,7 +13,7 @@ require 'ceedling/partials/partializer_config'
 
 describe PartializerConfig do
 
-  it "defines MACRO_NAMES with the expected 10 macro name strings" do
+  it "defines MACRO_NAMES with the expected 20 macro name strings" do
     expect( PartializerConfig::MACRO_NAMES ).to include(
       'TEST_PARTIAL_PUBLIC_MODULE',
       'TEST_PARTIAL_PRIVATE_MODULE',
@@ -26,7 +26,15 @@ describe PartializerConfig do
       'TEST_PARTIAL_CONFIG',
       'MOCK_PARTIAL_CONFIG'
     )
-    expect( PartializerConfig::MACRO_NAMES.size ).to eq 10
+    expect( PartializerConfig::MACRO_NAMES.size ).to eq 20
+  end
+
+  # Every macro has a directory-qualified counterpart, so the two families stay in
+  # step. A missing `_AT` name is silently unrecognized rather than an error.
+  it "defines an _AT counterpart for every macro name" do
+    bare, qualified = PartializerConfig::MACRO_NAMES.partition { |n| !n.end_with?('_AT') }
+
+    expect( qualified.sort ).to eq( bare.map { |n| "#{n}_AT" }.sort )
   end
 
   context "#extract_configs" do
@@ -41,13 +49,18 @@ describe PartializerConfig do
       expect( result['widget'].tests.type ).to eq Partials::PUBLIC
     end
 
-    # Recognition is by exact macro name. A name not in MACRO_NAMES yields nothing
-    # at all rather than a partially understood directive, which is why a path-bearing
-    # Partial written against today's macros silently generates no Partial.
+    # Recognition is by exact macro name. A name not in MACRO_NAMES yields nothing at
+    # all rather than a partially understood directive.
     it "yields no config for a macro name it does not recognize" do
-      result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)')
+      result = @config.extract_configs('TEST_PARTIAL_SOMETHING_ELSE(config)')
 
       expect( result ).to be_empty
+    end
+
+    it "recognizes a directory-qualified macro name" do
+      result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)')
+
+      expect( result ).to_not be_empty
     end
 
     # The module argument itself is already path-tolerant. Extraction splits only on
