@@ -229,7 +229,7 @@ end
 # than something to run, so the description says what to put in place of the
 # wildcard. The same technique carries the `test:*` and `gen:mocks:*` placeholders
 # in lib/ceedling/rakefiles/.
-desc "Run single system spec, retaining all artifacts (replace [*] with a system spec name)."
+desc "Run a system spec, retaining all artifacts (replace [*] with spec name)."
 task 'spec:system:debug:*' do
   message = "Oops! 'spec:system:debug:*' isn't a real task. " \
             "Use a real system spec name in place of the wildcard.\n" \
