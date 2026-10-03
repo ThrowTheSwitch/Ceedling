@@ -40,6 +40,24 @@ describe PartializerConfig do
       result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(widget)')
       expect( result['widget'].tests.type ).to eq Partials::PUBLIC
     end
+
+    # Recognition is by exact macro name. A name not in MACRO_NAMES yields nothing
+    # at all rather than a partially understood directive, which is why a path-bearing
+    # Partial written against today's macros silently generates no Partial.
+    it "yields no config for a macro name it does not recognize" do
+      result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)')
+
+      expect( result ).to be_empty
+    end
+
+    # The module argument itself is already path-tolerant. Extraction splits only on
+    # top-level commas, so a slash reaches the config as written and the key is the
+    # argument verbatim. Nothing downstream of here understands that key yet.
+    it "passes a slash in the module argument through to the key untouched" do
+      result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(drivers/uart/config)')
+
+      expect( result.keys ).to eq( ['drivers/uart/config'] )
+    end
   end
 
   context "#extract_configs_from_string" do
