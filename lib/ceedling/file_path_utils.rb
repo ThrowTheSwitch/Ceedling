@@ -402,27 +402,43 @@ class FilePathUtils
     return File.join( @configurator.project_test_partials_path, subdir, filename.ext(EXTENSION_CORE_HEADER) )
   end
 
+  # Every generated Partial filename below is also the text a Partial directive macro
+  # expands to, so the two have to agree exactly or the compiler resolves the generated
+  # #include to nothing.
+  #
+  # A module named by directory keeps that directory and takes its prefixes on the
+  # basename, matching how the macro assembles the same name. Concatenating the whole
+  # module name instead would put the prefix on the first path segment.
+  def form_partial_filename(_module, suffix, extension, prefix: '')
+    dir      = File.dirname( _module )
+    basename = prefix + PARTIAL_FILENAME_PREFIX + File.basename( _module ) + suffix + extension
+
+    return basename if dir == '.'
+
+    return File.join( dir, basename )
+  end
+
   def form_partial_interface_header_filename(_module)
-    return PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
+    return form_partial_filename( _module, '_interface', EXTENSION_CORE_HEADER )
   end
 
   # A module's typedefs and aggregate (struct/enum/union) definitions are generated into this
   # standalone header, shared by both the implementation and interface headers below, so a
   # module tested and mocked in the same file never has its types defined more than once.
   def form_partial_types_header_filename(_module)
-    return PARTIAL_FILENAME_PREFIX + _module + '_types' + EXTENSION_CORE_HEADER
+    return form_partial_filename( _module, '_types', EXTENSION_CORE_HEADER )
   end
 
   def form_mock_partial_interface_header_filename(_module)
-    return @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
+    return form_partial_filename( _module, '_interface', EXTENSION_CORE_HEADER, prefix: @configurator.cmock_mock_prefix )
   end
 
   def form_partial_implementation_header_filename(_module)
-    return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_HEADER
+    return form_partial_filename( _module, '_impl', EXTENSION_CORE_HEADER )
   end
 
   def form_partial_implementation_source_filename(_module)
-    return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_SOURCE
+    return form_partial_filename( _module, '_impl', EXTENSION_CORE_SOURCE )
   end
 
   def form_pass_results_filelist(path, files)

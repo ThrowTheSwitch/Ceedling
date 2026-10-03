@@ -14,6 +14,13 @@ class GeneratorPartials
 
   constructor :file_wrapper, :file_path_utils, :loginator
 
+  # A module named by directory produces a nested filename, and nothing upstream creates
+  # that directory. The file write itself does not create one either.
+  def _prepare(filepath)
+    @file_wrapper.mkdir( File.dirname( filepath ) )
+    return filepath
+  end
+
   def generate_implementation(
       test:,
       name:,
@@ -26,8 +33,8 @@ class GeneratorPartials
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
 
-    header_filepath = File.join(output_path, header)
-    source_filepath = File.join(output_path, source)
+    header_filepath = _prepare( File.join(output_path, header) )
+    source_filepath = _prepare( File.join(output_path, source) )
 
     # Binary mode: the function bodies written below may already contain their
     # own line endings verbatim. Windows text mode rewrites every "\n" on
@@ -46,7 +53,7 @@ class GeneratorPartials
 
   def generate_interface(test:, name:, function_declarations:, includes:, c_module:, output_path:)
     header = @file_path_utils.form_partial_interface_header_filename(name)
-    filepath = File.join(output_path, header)
+    filepath = _prepare( File.join(output_path, header) )
 
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
@@ -73,7 +80,7 @@ class GeneratorPartials
     return nil if c_module.type_definitions.empty? && c_module.aggregate_definitions.empty?
 
     header = @file_path_utils.form_partial_types_header_filename(name)
-    filepath = File.join(output_path, header)
+    filepath = _prepare( File.join(output_path, header) )
 
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|

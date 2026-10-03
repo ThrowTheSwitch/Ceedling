@@ -18,6 +18,9 @@ describe GeneratorPartials do
     @file_path_utils = double( "FilePathUtils" )
     @loginator       = double( "Loginator" ).as_null_object
 
+    # Every generator creates its target's own directory before writing.
+    allow(@file_wrapper).to receive(:mkdir)
+
     @generator = described_class.new(
       {
         :file_wrapper    => @file_wrapper,
@@ -62,17 +65,16 @@ describe GeneratorPartials do
   end
 
   context "#generate_implementation" do
-    # Generation writes straight into the output path it is handed and creates no
-    # directory of its own. That holds only while every generated Partial filename
-    # is a bare basename, which changes once a module can be named by path.
-    it "creates no directory before writing" do
+    # A bare module name implies no directory of its own, so the directory created is
+    # just the output path it was handed.
+    it "creates the output path for a module named without a directory" do
       allow(@file_path_utils).to receive(:form_partial_implementation_source_filename).and_return( 'm_impl.c' )
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename).and_return( 'm_impl.h' )
       allow(@file_wrapper).to receive(:open).and_yield( double('handle').as_null_object )
       allow(@generator).to receive(:generate_header)
       allow(@generator).to receive(:generate_source)
 
-      expect(@file_wrapper).to_not receive(:mkdir)
+      expect(@file_wrapper).to receive(:mkdir).with( '/path/to/output' ).at_least(:once)
 
       @generator.generate_implementation(
         test: 'test_m', name: 'm', function_definitions: [],
