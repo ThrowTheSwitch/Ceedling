@@ -206,7 +206,9 @@ def copy_same_named_partial_modules(*drivers)
 
     @c.merge_project_yml_for_test(
       :project => { :use_partials => true },
-      :paths   => { :include => ['include'] }
+      # Recursive, so the namespaced headers below `include` are actually collected.
+      # A non-recursive entry collects none of them and no module resolves.
+      :paths   => { :include => ['include/**'] }
     )
   end
 end

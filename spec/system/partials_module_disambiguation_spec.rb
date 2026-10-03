@@ -47,5 +47,41 @@ ceedling_system_tests do
       end
     end
 
+    # Issue #1311's own shape: one test file Partializing two modules that share a
+    # basename, each named by its own directory.
+    context "with both same-named modules Partialized in one test" do
+      before do
+        copy_same_named_partial_modules('uart', 'spi')
+        in_project do
+          copy_fixture("partials_same_named_modules/test/test_both_configs.c", 'test')
+        end
+      end
+
+      it "builds a Partial per module and reaches each module's own functions" do
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/PASSED:\s+2/)
+          expect(output).to match(/FAILED:\s+0/)
+        end
+      end
+
+      # The two Partials are distinct files only because each sits in the subdirectory
+      # mirroring its own module. Sharing one directory would mean sharing one filename.
+      it "generates each Partial into its own mirrored subdirectory" do
+        in_project do
+          @c.ceedling_build_exec("test:all")
+
+          partials = Dir.glob('build/test/partials/**/ceedling_partial_config_impl.c')
+
+          expect(partials.length).to eq(2)
+          expect(partials.any? { |path| path.include?('drivers/uart') }).to be true
+          expect(partials.any? { |path| path.include?('drivers/spi') }).to be true
+        end
+      end
+    end
+
   end
 end
