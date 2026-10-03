@@ -190,6 +190,27 @@ def copy_duplicate_dup_pairs
   end
 end
 
+# Lays down the same-named Partial module fixture, mirroring issue #1311's own
+# project shape -- one include root, namespaced headers, and a source tree that
+# mirrors it. `drivers` names which of the two same-basename modules to copy, so a
+# caller can stage one module for an unambiguous build or both for an ambiguous one.
+#
+# Partials are enabled and the include root is added, since neither is part of a
+# `ceedling new` project.
+def copy_same_named_partial_modules(*drivers)
+  in_project do
+    drivers.each do |driver|
+      copy_fixture("partials_same_named_modules/include/drivers/#{driver}/config.h", "include/drivers/#{driver}")
+      copy_fixture("partials_same_named_modules/src/drivers/#{driver}/config.c", "src/drivers/#{driver}")
+    end
+
+    @c.merge_project_yml_for_test(
+      :project => { :use_partials => true },
+      :paths   => { :include => ['include'] }
+    )
+  end
+end
+
 def feature_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', 'features', asset_file_name)
 end
