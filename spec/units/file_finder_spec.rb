@@ -262,6 +262,8 @@ describe FileFinder do
       allow(@configurator).to receive(:project_test_build_output_path).and_return('build/test/out')
       allow(@configurator).to receive(:project_release_build_output_path).and_return('build/release/out')
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      # No configured include root contains these queries, so each keeps its own path.
+      allow(@configurator).to receive(:paths_include).and_return( ['include'] )
     end
 
     it 'never raises, rather than silently missing a build, when two release sources share a basename -- resolves to the first by project path order' do

@@ -337,11 +337,36 @@ class FileFinder
   # peel back a known per-test root (test build input queried without a test identity),
   # falls back to the bare basename -- exactly what every caller has always seen for those
   # cases.
+  # A header's own path below its configured include root, or nil when no include root
+  # contains it. Ceedling's convention correlates an #include'd header with the source
+  # beside it, and the two trees routinely sit below different roots -- headers below
+  # `include`, sources below `src`. The namespace they share below those roots is what
+  # correlates them, so comparing the roots themselves only ever fails the match.
+  #
+  # Only the root is dropped. The namespace is preserved, since that is what keeps two
+  # same-basename modules apart.
+  def header_root_relative_query(filepath)
+    file_dir = File.dirname( filepath )
+    roots    = PathMirror.clean_roots( @configurator.paths_include )
+
+    matching = roots.select { |root| file_dir == root || file_dir.start_with?( root + '/' ) }
+
+    return nil if matching.empty?
+
+    subdir   = PathMirror.relative_subdir_from_clean_roots( filepath, matching )
+    basename = File.basename( filepath ).ext('')
+
+    return subdir.empty? ? basename : File.join( subdir, basename )
+  end
+
   def mirrored_query(filepath, release:, test:, context:)
     dir = File.dirname(filepath)
     build_root = @configurator.project_build_root
 
-    return filepath.ext('') unless dir == build_root || dir.start_with?(build_root + '/')
+    unless dir == build_root || dir.start_with?(build_root + '/')
+      query = header_root_relative_query( filepath )
+      return query.nil? ? filepath.ext('') : query
+    end
 
     basename = File.basename(filepath).ext('')
 
