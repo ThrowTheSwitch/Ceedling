@@ -159,6 +159,109 @@ describe PartializerConfig do
 
     # Two directory spellings cannot work, because the generated #include the
     # preprocessor emits would never name the file Ceedling writes.
+    # Both macro styles build the generated filename through the C preprocessor, and the
+    # preprocessor emits each argument verbatim. An argument Ceedling cannot reproduce as
+    # the filename it actually writes names a file that is never written, which surfaces
+    # as a missing include for a filename the author never typed. Every rejection below
+    # is that mismatch, caught where the author can act on it.
+    context "a module argument that cannot be honored" do
+      # The prefix lands on the first path segment rather than the filename, so the
+      # expansion and the generated filename disagree.
+      it "rejects a path in a bare macro's module argument, naming the _AT form" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(drivers/uart/config)')
+        }.to raise_error( CeedlingException, /must not contain a path/ )
+      end
+
+      it "suggests the directory-qualified call that replaces it" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(drivers/uart/config)')
+        }.to raise_error( CeedlingException, %r{TEST_PARTIAL_PUBLIC_MODULE_AT\(drivers/uart, config\)} )
+      end
+
+      it "rejects a backslash path in a bare macro's module argument" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(drivers\\uart\\config)')
+        }.to raise_error( CeedlingException, /must not contain a path/ )
+      end
+
+      it "rejects a path in a qualified macro's module argument" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(drivers, uart/config)')
+        }.to raise_error( CeedlingException, /must not contain a path/ )
+      end
+
+      it "rejects a path in a CONFIG macro's module argument" do
+        expect {
+          @config.extract_configs(
+            "TEST_PARTIAL_ALL_MODULE(config)\n" \
+            "TEST_PARTIAL_CONFIG(drivers/uart/config, -helper)"
+          )
+        }.to raise_error( CeedlingException, /must not contain a path/ )
+      end
+
+      # Quotes reach the generated filename as escaped quotes. Ceedling stripped them and
+      # wrote a filename without them, so the two could never agree.
+      it "rejects a quoted module argument" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE("sensor")')
+        }.to raise_error( CeedlingException, /must not be quoted/ )
+      end
+
+      it "rejects a quoted module argument in a qualified macro" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(drivers, "sensor")')
+        }.to raise_error( CeedlingException, /must not be quoted/ )
+      end
+
+      # An unterminated string swallows the rest of the call, so it never parses as a
+      # macro at all and configures nothing. The compiler reports the malformed C.
+      it "configures nothing for an unterminated quotation mark" do
+        expect( @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(sen"sor)') ).to be_empty
+      end
+
+      # Reported rather than crashing on a nil argument.
+      it "rejects a bare macro with no module argument" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE()')
+        }.to raise_error( CeedlingException, /requires a module name/ )
+      end
+
+      it "rejects a qualified macro with no module argument" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(drivers)')
+        }.to raise_error( CeedlingException, /requires a directory and a module name/ )
+      end
+
+      it "rejects an empty module argument" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(drivers, )')
+        }.to raise_error( CeedlingException, /requires a directory and a module name/ )
+      end
+    end
+
+    context "a module argument that is honored" do
+      it "accepts a bare module name" do
+        result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(sensor)')
+
+        expect( result.keys ).to eq(['sensor'])
+      end
+
+      # Dots are legitimate: a module name may carry a version or a dotted spelling, and
+      # the prefix still lands on the whole name in both the expansion and the filename.
+      it "accepts a dotted module name" do
+        result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(sensor.v2)')
+
+        expect( result.keys ).to eq(['sensor.v2'])
+      end
+
+      it "accepts a module name alongside its own directory" do
+        result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)')
+
+        expect( result.keys ).to eq(['drivers/uart/config'])
+      end
+    end
+
     context "a directory qualifier that cannot be honored" do
       it "rejects an absolute directory" do
         expect {
@@ -171,16 +274,38 @@ describe PartializerConfig do
           @config.extract_configs('TEST_PARTIAL_ALL_MODULE_AT("drivers/uart", config)')
         }.to raise_error( CeedlingException, /quoted/ )
       end
+
+      # A Partial is written below its test's own generated directory, while the emitted
+      # #include resolves against the including file. A climbing directory makes those
+      # two different places.
+      it "rejects a directory that climbs above the project" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_ALL_MODULE_AT(../shared, config)')
+        }.to raise_error( CeedlingException, /\.\./ )
+      end
+
+      it "rejects a climbing segment anywhere in the directory" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_ALL_MODULE_AT(drivers/../shared, config)')
+        }.to raise_error( CeedlingException, /\.\./ )
+      end
+
+      it "accepts a directory whose own name merely begins with dots" do
+        result = @config.extract_configs('TEST_PARTIAL_ALL_MODULE_AT(..shared, config)')
+
+        expect( result.keys ).to eq(['..shared/config'])
+      end
+
+      it "rejects an empty directory" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_ALL_MODULE_AT(, config)')
+        }.to raise_error( CeedlingException, /requires a directory/ )
+      end
     end
 
     # The module argument itself is already path-tolerant. Extraction splits only on
     # top-level commas, so a slash reaches the config as written and the key is the
     # argument verbatim. Nothing downstream of here understands that key yet.
-    it "passes a slash in the module argument through to the key untouched" do
-      result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE(drivers/uart/config)')
-
-      expect( result.keys ).to eq( ['drivers/uart/config'] )
-    end
   end
 
   context "#extract_configs_from_string" do
@@ -306,24 +431,24 @@ describe PartializerConfig do
 
     it "raises when additions are used with TEST DEDUCT" do
       input = <<~C
-        TEST_PARTIAL_ALL_MODULE("foo")
-        TEST_PARTIAL_CONFIG("foo", "+bar")
+        TEST_PARTIAL_ALL_MODULE(foo)
+        TEST_PARTIAL_CONFIG(foo, "+bar")
       C
       expect { extract(input) }.to raise_error(CeedlingException, /foo/)
     end
 
     it "raises when additions are used with MOCK DEDUCT" do
       input = <<~C
-        MOCK_PARTIAL_ALL_MODULE("foo")
-        MOCK_PARTIAL_CONFIG("foo", "baz", "-bar")
+        MOCK_PARTIAL_ALL_MODULE(foo)
+        MOCK_PARTIAL_CONFIG(foo, "baz", "-bar")
       C
       expect { extract(input) }.to raise_error(CeedlingException, /foo/)
     end
 
     it "does not raise when only subtractions are used with DEDUCT" do
       input = <<~C
-        TEST_PARTIAL_ALL_MODULE("foo")
-        TEST_PARTIAL_CONFIG("foo", "-a", "-b")
+        TEST_PARTIAL_ALL_MODULE(foo)
+        TEST_PARTIAL_CONFIG(foo, "-a", "-b")
       C
       expect { extract(input) }.not_to raise_error
     end
@@ -331,8 +456,8 @@ describe PartializerConfig do
     it "does not raise when CONFIG is present but has no function names (empty subtractions)" do
       # A CONFIG macro with only the module name and no function args is a degenerate but valid case
       input = <<~C
-        TEST_PARTIAL_ALL_MODULE("foo")
-        TEST_PARTIAL_CONFIG("foo")
+        TEST_PARTIAL_ALL_MODULE(foo)
+        TEST_PARTIAL_CONFIG(foo)
       C
       expect { extract(input) }.not_to raise_error
     end
@@ -456,12 +581,12 @@ describe PartializerConfig do
     end
 
     it "raises when tests are ACCUMULATE without CONFIG additions (even when mocks are PUBLIC)" do
-      input = 'TEST_PARTIAL_MODULE("foo") MOCK_PARTIAL_PUBLIC_MODULE("foo")'
+      input = 'TEST_PARTIAL_MODULE(foo) MOCK_PARTIAL_PUBLIC_MODULE(foo)'
       expect { extract(input) }.to raise_error(CeedlingException, /TEST_PARTIAL_MODULE/)
     end
 
     it "does not raise when tests are PUBLIC and mocks are PRIVATE" do
-      input = 'TEST_PARTIAL_PUBLIC_MODULE("foo") MOCK_PARTIAL_PRIVATE_MODULE("foo")'
+      input = 'TEST_PARTIAL_PUBLIC_MODULE(foo) MOCK_PARTIAL_PRIVATE_MODULE(foo)'
       expect { extract(input) }.not_to raise_error
     end
 
@@ -469,24 +594,24 @@ describe PartializerConfig do
 
     it "raises when subtractions are used with TEST ACCUMULATE" do
       input = <<~C
-        TEST_PARTIAL_MODULE("foo")
-        TEST_PARTIAL_CONFIG("foo", "-bar")
+        TEST_PARTIAL_MODULE(foo)
+        TEST_PARTIAL_CONFIG(foo, "-bar")
       C
       expect { extract(input) }.to raise_error(CeedlingException, /foo/)
     end
 
     it "raises when subtractions are used with MOCK ACCUMULATE" do
       input = <<~C
-        MOCK_PARTIAL_MODULE("foo")
-        MOCK_PARTIAL_CONFIG("foo", "+baz", "-bar")
+        MOCK_PARTIAL_MODULE(foo)
+        MOCK_PARTIAL_CONFIG(foo, "+baz", "-bar")
       C
       expect { extract(input) }.to raise_error(CeedlingException, /foo/)
     end
 
     it "does not raise when only additions are used with ACCUMULATE" do
       input = <<~C
-        TEST_PARTIAL_MODULE("foo")
-        TEST_PARTIAL_CONFIG("foo", "a", "+b")
+        TEST_PARTIAL_MODULE(foo)
+        TEST_PARTIAL_CONFIG(foo, "a", "+b")
       C
       expect { extract(input) }.not_to raise_error
     end

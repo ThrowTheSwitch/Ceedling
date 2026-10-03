@@ -139,9 +139,9 @@ class Partializer
     location = test_filepath.nil? ? '' : " referenced in #{test_filepath}"
 
     raise CeedlingException.new(
-      "Partial module '#{_module}'#{location} matches no header file. " \
-      "A Partial's directory is matched against the end of a real file's path, so check " \
-      "the spelling of both the directory and the module."
+      "Partial module '#{_module}'#{location} matches no files. " \
+      "A Partial's directory is matched against the trailing end of a module's path, " \
+      "so check the spelling of both the directory and the module."
     )
   end
 

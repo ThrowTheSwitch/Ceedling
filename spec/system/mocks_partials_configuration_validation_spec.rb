@@ -21,6 +21,17 @@ require 'spec_system_helper'
 ## diagnose compile/link stage.
 ##
 
+PARTIAL_PATH_IN_MODULE_ARG_C = <<~C
+  #include "unity.h"
+  #include "ceedling.h"
+  #include TEST_PARTIAL_PUBLIC_MODULE(drivers/uart/Config)
+
+  void setUp(void) {}
+  void tearDown(void) {}
+
+  void test_dummy(void) { TEST_ASSERT_TRUE(1); }
+C
+
 MOCK_WITHOUT_CONFIG_C = <<~C
   #include "unity.h"
   #include "mock_foo.h"
@@ -82,6 +93,31 @@ ceedling_system_tests do
           expect(@c.last_exit_status).not_to eq(0)
           expect(output).to match(/not configured for Partials/)
           expect(output).to match(/test_partial_without_config\.c/)
+        end
+      end
+    end
+
+    # A path in the module argument expands with the Partials prefix on the first
+    # directory rather than the filename, naming a file Ceedling never writes. Rejected
+    # where the author can act on it, rather than reaching the compiler as a missing
+    # include for a filename nobody typed.
+    describe "a test naming a Partial module with a path in the module argument" do
+      before do
+        in_project do
+          @c.merge_project_yml_for_test({
+            :project => { :use_partials => true, :use_test_preprocessor => :all }
+          })
+          File.write('test/test_partial_path_in_module_arg.c', PARTIAL_PATH_IN_MODULE_ARG_C)
+        end
+      end
+
+      it "fails the build naming the macro, the module, and the _AT form that replaces it" do
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).not_to eq(0)
+          expect(output).to match(/must not contain a path/)
+          expect(output).to match(/TEST_PARTIAL_PUBLIC_MODULE_AT\(drivers\/uart, Config\)/)
         end
       end
     end
