@@ -505,13 +505,12 @@ describe TestBuildSetup do
         @setup.stage_collect_preprocessor_context( @state )
       end
 
-      # A Partial stand-in is placed flat beneath its test, by basename alone. Any
-      # directory the generated #include carries is dropped, and no directory is
-      # created for it. Both facts change once a Partial module can be named by path.
-      it "writes a Partial's stand-in flat beneath its test, by basename alone" do
+      # A Partial's stand-in follows its generated #include. When that #include names
+      # no directory, the stand-in sits directly beneath its test.
+      it "writes a Partial's stand-in beneath its test when its #include names no directory" do
         allow(@file_wrapper).to receive(:exist?).and_return( false )
         allow(@preprocessinator).to receive(:preprocess_bare_includes)
-          .and_return( [ Include.new('drivers/uart/ceedling_partial_config_impl.h') ] )
+          .and_return( [ Include.new('ceedling_partial_config_impl.h') ] )
 
         expect(@file_path_utils).to receive(:form_partial_header_filepath)
           .with( 'a_test', 'ceedling_partial_config_impl.h' )
@@ -538,12 +537,14 @@ describe TestBuildSetup do
         @setup.stage_collect_preprocessor_context( @state )
       end
 
-      it "creates no directory for a Partial's stand-in, unlike a mock's" do
+      it "creates a Partial stand-in's own directory, as a mock's does" do
         allow(@file_wrapper).to receive(:exist?).and_return( false )
         allow(@preprocessinator).to receive(:preprocess_bare_includes)
           .and_return( [ Include.new('ceedling_partial_config_impl.h') ] )
+        allow(@file_path_utils).to receive(:form_partial_header_filepath)
+          .and_return( 'build/test/partials/a_test/ceedling_partial_config_impl.h' )
 
-        expect(@file_wrapper).to_not receive(:mkdir)
+        expect(@file_wrapper).to receive(:mkdir).with( 'build/test/partials/a_test' )
 
         @setup.stage_collect_preprocessor_context( @state )
       end

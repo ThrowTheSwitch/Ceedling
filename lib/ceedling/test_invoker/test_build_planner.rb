@@ -57,6 +57,7 @@ class TestBuildPlanner
         if partial
           source = generate_header_input_for_mock_partial( include, test )
           input  = source
+          subdir = partial_mock_subdir( include )
         else
           source, subdir     = @file_finder.resolve_mock( include.filepath, collection: ordered_mock_header_collection( testable ) )
           preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, test )
@@ -299,11 +300,26 @@ class TestBuildPlanner
     @include_pathinator.ordered_header_files( testable.search_paths - testable.mock_search_paths )
   end
 
+  # A Partial mock's interface header is generated content with no real header to
+  # resolve against, so its directory comes from the generated #include itself rather
+  # than from a mirrored source location.
   def generate_header_input_for_mock_partial(mock, test)
+    subdir   = partial_mock_subdir( mock )
+    filename = mock.filename.delete_prefix( @configurator.cmock_mock_prefix )
+
     return @file_path_utils.form_partial_header_filepath(
       test,
-      mock.filename.delete_prefix( @configurator.cmock_mock_prefix )
+      subdir.empty? ? filename : File.join( subdir, filename )
     )
+  end
+
+  # The directory a Partial mock's own generated #include names, empty when it names
+  # none. This is what the real mock's placement has to match, since that #include is
+  # what the compiler resolves.
+  def partial_mock_subdir(mock)
+    dir = File.dirname( mock.filepath )
+
+    return dir == '.' ? '' : dir
   end
 
   def remove_mock_original_headers(filelist, mocklist)

@@ -490,7 +490,10 @@ class TestBuildSetup
     end
 
     partials.each do |include|
-      filepath = @file_path_utils.form_partial_header_filepath( test, include.filename )
+      # A Partial's own generated #include carries whatever directory its module was
+      # named by, and the stand-in has to sit where that #include points -- the same
+      # reason an ordinary mock's stand-in mirrors its real header's directory above.
+      filepath = @file_path_utils.form_partial_header_filepath( test, include.filepath )
       next if @file_wrapper.exist?( filepath )
 
       msg = @reportinator.generate_module_progress(
@@ -499,6 +502,7 @@ class TestBuildSetup
         filename:    include.filename
       )
       @loginator.log( msg, Verbosity::DEBUG )
+      @file_wrapper.mkdir( File.dirname( filepath ) )
       @file_wrapper.write_blank_file( filepath )
     end
   end
