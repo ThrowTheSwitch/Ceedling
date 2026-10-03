@@ -641,6 +641,50 @@ describe FilePathUtils do
     end
   end
 
+  # The four remaining generated Partial filenames. Each is the name a test file's
+  # own Partial directive macro expands to, so the name a macro emits and the name
+  # formed here must agree exactly or the compiler finds nothing.
+  describe 'the remaining generated Partial filenames' do
+    before(:each) do
+      @configurator = double('configurator')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => double('file_wrapper')
+      })
+    end
+
+    it 'forms an interface header filename with the partial prefix and an _interface suffix' do
+      expect( @fpu.form_partial_interface_header_filename('LightSensor') )
+        .to eq('ceedling_partial_LightSensor_interface.h')
+    end
+
+    it 'forms an implementation header filename with the partial prefix and an _impl suffix' do
+      expect( @fpu.form_partial_implementation_header_filename('LightSensor') )
+        .to eq('ceedling_partial_LightSensor_impl.h')
+    end
+
+    it 'forms an implementation source filename sharing the header name but a source extension' do
+      expect( @fpu.form_partial_implementation_source_filename('LightSensor') )
+        .to eq('ceedling_partial_LightSensor_impl.c')
+    end
+
+    # Two prefixes stack here, mock outermost. CMock generates its mock from the
+    # generated interface header, so the result carries both names.
+    it 'forms a mock interface header filename carrying the mock prefix ahead of the partial prefix' do
+      expect(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
+
+      expect( @fpu.form_mock_partial_interface_header_filename('LightSensor') )
+        .to eq('Mockceedling_partial_LightSensor_interface.h')
+    end
+
+    it 'honors a project-configured mock prefix' do
+      expect(@configurator).to receive(:cmock_mock_prefix).and_return('fake_')
+
+      expect( @fpu.form_mock_partial_interface_header_filename('LightSensor') )
+        .to eq('fake_ceedling_partial_LightSensor_interface.h')
+    end
+  end
+
   describe '#form_named_path' do
     before(:each) do
       @file_wrapper = double('file_wrapper')
