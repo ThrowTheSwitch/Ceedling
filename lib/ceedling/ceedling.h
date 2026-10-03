@@ -13,6 +13,14 @@
 #define __PARTIALS_STR(x) #x
 #define __PARTIALS_EXPAND(x) x
 
+// Joins two identifiers into one before stringification. Adjacency alone is not enough
+// when the pieces come from separate macro expansions: a preprocessor may insert a space
+// between them to keep them distinct tokens, and GCC does, which lands a space inside the
+// generated filename. Pasting produces one identifier, so the spelling is the same
+// everywhere. The outer level exists so each argument expands before the paste.
+#define __PARTIALS_JOIN_(a, b) a##b
+#define __PARTIALS_JOIN(a, b) __PARTIALS_JOIN_(a, b)
+
 // Create a unique namespaced variable name
 #define PARTIAL_LOCAL_VAR(namespace, var) partial_##namespace##_##var
 
@@ -49,11 +57,11 @@
 // path instead. It is also why these macros accept no file extension: an extension in the
 // module parameter would land in the middle of the generated filename.
 //
-#define TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module) __PARTIALS_STRINGIFY(__PARTIALS_EXPAND(dir)/__PARTIALS_EXPAND(CEEDLING_PARTIALS_PREFIX)__PARTIALS_EXPAND(module)__PARTIALS_EXPAND(_impl.h))
+#define TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module) __PARTIALS_STRINGIFY(__PARTIALS_EXPAND(dir)/__PARTIALS_JOIN(CEEDLING_PARTIALS_PREFIX, module)__PARTIALS_EXPAND(_impl.h))
 #define TEST_PARTIAL_PRIVATE_MODULE_AT(dir, module) TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
 #define TEST_PARTIAL_ALL_MODULE_AT(dir, module) TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
 #define TEST_PARTIAL_MODULE_AT(dir, module) TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
-#define MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module) __PARTIALS_STRINGIFY(__PARTIALS_EXPAND(dir)/__PARTIALS_EXPAND(CMOCK_MOCK_PREFIX)__PARTIALS_EXPAND(CEEDLING_PARTIALS_PREFIX)__PARTIALS_EXPAND(module)__PARTIALS_EXPAND(_interface.h))
+#define MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module) __PARTIALS_STRINGIFY(__PARTIALS_EXPAND(dir)/__PARTIALS_JOIN(__PARTIALS_JOIN(CMOCK_MOCK_PREFIX, CEEDLING_PARTIALS_PREFIX), module)__PARTIALS_EXPAND(_interface.h))
 #define MOCK_PARTIAL_PRIVATE_MODULE_AT(dir, module) MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
 #define MOCK_PARTIAL_ALL_MODULE_AT(dir, module) MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
 #define MOCK_PARTIAL_MODULE_AT(dir, module) MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module) // Deduplicate macro definition
