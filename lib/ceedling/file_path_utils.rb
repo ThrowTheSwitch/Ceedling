@@ -361,24 +361,70 @@ class FilePathUtils
     return File.join( File.dirname(filepath), File.basename(filepath).ext(@configurator.extension_list.primary) )
   end
 
+  # A preprocessed artifact's name below its test's own subdirectory. The test subdirectory
+  # alone kept artifacts apart while a test had at most one source of any given basename.
+  # Two same-basename sources in one test overwrite each other, so the file's own namespace
+  # below its configured root is carried forward too.
+  #
+  # A file below no configured root -- anything Ceedling generates -- mirrors nothing and
+  # keeps the flat name it has always had. Every caller derives this from the same filepath,
+  # so all of them agree on where the artifact lands without coordinating.
+  def preprocessed_file_subpath(filepath)
+    roots = @configurator.paths_source +
+            @configurator.paths_support +
+            @configurator.paths_include +
+            @configurator.paths_test
+
+    subdir   = PathMirror.relative_subdir( filepath, roots )
+    basename = File.basename( filepath )
+
+    return basename if subdir.empty?
+
+    return File.join( subdir, basename )
+  end
+
+  # Composes a preprocessed artifact's path and makes sure its directory exists.
+  #
+  # A mirrored subdirectory is created here because nothing else creates it. A test's own
+  # flat preprocess directories are created with the rest of its build paths, before any
+  # source is known. Only a nested artifact needs the extra directory, so only a nested
+  # one triggers the call. The preprocessor tools write their output directly and would
+  # otherwise fail on a missing directory.
+  def form_preprocessed_filepath(root, subdir, kind_dir, filepath, suffix: '')
+    subpath = preprocessed_file_subpath( filepath )
+    path    = File.join( *[root, subdir, kind_dir, subpath + suffix].compact )
+
+    @file_wrapper.mkdir( File.dirname( path ) ) if subpath.include?( '/' )
+
+    return path
+  end
+
   def form_preprocessed_includes_list_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_includes_path, subdir, File.basename(filepath) + EXTENSION_CORE_YAML )
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_includes_path, subdir, nil, filepath, suffix: EXTENSION_CORE_YAML
+    )
   end
 
   def form_preprocessed_file_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_files_path, subdir, File.basename(filepath) )
+    return form_preprocessed_filepath( @configurator.project_test_preprocess_files_path, subdir, nil, filepath )
   end
 
   def form_preprocessed_file_full_expansion_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_FULL_EXPANSION_DIR, File.basename(filepath) )
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_FULL_EXPANSION_DIR, filepath
+    )
   end
 
   def form_preprocessed_file_raw_directives_only_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR, File.basename(filepath) )
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR, filepath
+    )
   end
 
   def form_preprocessed_file_compacted_directives_only_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_DIRECTIVES_ONLY_DIR, File.basename(filepath) )
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_DIRECTIVES_ONLY_DIR, filepath
+    )
   end
 
   # `extra_roots` carries roots known only to the caller. A generated Partial source sits

@@ -9,19 +9,18 @@
 void setUp(void) {}
 void tearDown(void) {}
 
-// Each module defines one function the other does not. Reaching both from one test
-// proves the two Partials came from different modules rather than collapsing onto one.
-void test_each_module_only_function_is_reachable(void)
+// Each module defines functions the other does not. Reaching both from one test proves
+// the two Partials came from different modules rather than collapsing onto one.
+void test_each_module_contributes_its_own_private_function(void)
 {
   TEST_ASSERT_EQUAL_INT(1, uart_only());
   TEST_ASSERT_EQUAL_INT(2, spi_only());
 }
 
-// Both modules compute through their own private `adjust`, defined with different
-// arithmetic. Asserting both public results proves each Partial carries its own
-// module's arithmetic, not the other's.
+// Each module's private helper applies different arithmetic. Asserting both results
+// proves each Partial carries its own module's code, not the other's.
 void test_each_module_applies_its_own_arithmetic(void)
 {
-  TEST_ASSERT_EQUAL_INT(1163, uart_config_baud());
-  TEST_ASSERT_EQUAL_INT(18, spi_config_clock_div());
+  TEST_ASSERT_EQUAL_INT(15, uart_adjust(5));
+  TEST_ASSERT_EQUAL_INT(10, spi_adjust(5));
 }
