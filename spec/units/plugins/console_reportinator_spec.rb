@@ -60,6 +60,38 @@ describe ConsoleReportinator do
       expect(result).to eq(['src/bar.c', 'src/ceedling_partial_foo_impl.c'])
     end
 
+    # A Partial replaces one module, identified by its path. Matching on basename alone
+    # drops every same-named module, so a module nobody Partialized loses its coverage
+    # report entirely.
+    it 'keeps a same-named module that no Partial replaces' do
+      sources = [
+        'src/drivers/uart/config.c',
+        'src/drivers/spi/config.c',
+        'build/test/partials/t/drivers/uart/ceedling_partial_config_impl.c'
+      ]
+
+      result = reportinator.send(:remap_partial_sources, sources)
+
+      expect(result).to eq([
+        'src/drivers/spi/config.c',
+        'build/test/partials/t/drivers/uart/ceedling_partial_config_impl.c'
+      ])
+    end
+
+    it 'drops each same-named module when a Partial replaces both' do
+      sources = [
+        'src/drivers/uart/config.c',
+        'src/drivers/spi/config.c',
+        'build/test/partials/t/drivers/uart/ceedling_partial_config_impl.c',
+        'build/test/partials/t/drivers/spi/ceedling_partial_config_impl.c'
+      ]
+
+      result = reportinator.send(:remap_partial_sources, sources)
+
+      expect( result.select { |s| s.start_with?('src/') } ).to be_empty
+      expect( result.length ).to eq(2)
+    end
+
     it 'handles multiple Partials, each dropping only its own original' do
       sources = ['src/foo.c', 'src/bar.c', 'src/ceedling_partial_foo_impl.c', 'src/ceedling_partial_bar_impl.c']
       result = reportinator.send(:remap_partial_sources, sources)
