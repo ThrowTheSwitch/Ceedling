@@ -731,6 +731,73 @@ describe FilePathUtils do
     end
   end
 
+  # The inverse of the builders above. A generated Partial filename is Ceedling's own
+  # invention, so a message naming one tells a test author nothing. Recovering the
+  # module lets a message name what the author actually wrote.
+  describe '#module_from_partial_filename' do
+    before(:each) do
+      @configurator = double('configurator')
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => double('file_wrapper')
+      })
+    end
+
+    it 'recovers a module named without a directory' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_config_impl.c') )
+        .to eq('config')
+    end
+
+    it 'recovers a module named by directory, keeping the directory' do
+      expect( @fpu.module_from_partial_filename('drivers/uart/ceedling_partial_config_impl.h') )
+        .to eq('drivers/uart/config')
+    end
+
+    # Three suffixes exist, one per generated file kind.
+    it 'strips an implementation suffix' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_config_impl.h') ).to eq('config')
+    end
+
+    it 'strips an interface suffix' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_config_interface.h') ).to eq('config')
+    end
+
+    it 'strips a types suffix' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_config_types.h') ).to eq('config')
+    end
+
+    # Two prefixes stack on a mocked interface header, mock outermost.
+    it 'strips a mock prefix ahead of the partial prefix' do
+      expect( @fpu.module_from_partial_filename('drivers/uart/Mockceedling_partial_config_interface.h') )
+        .to eq('drivers/uart/config')
+    end
+
+    it 'leaves a module whose own name ends in a suffix word intact' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_impl_impl.c') ).to eq('impl')
+    end
+
+    it 'returns nil for a filename that is not a generated Partial' do
+      expect( @fpu.module_from_partial_filename('config.h') ).to be_nil
+    end
+
+    # Round trip, so the inverse stays tied to the builder it mirrors.
+    it 'round trips every builder' do
+      %w[config drivers/uart/config].each do |_module|
+        [
+          @fpu.form_partial_implementation_header_filename( _module ),
+          @fpu.form_partial_implementation_source_filename( _module ),
+          @fpu.form_partial_interface_header_filename( _module ),
+          @fpu.form_partial_types_header_filename( _module ),
+          @fpu.form_mock_partial_interface_header_filename( _module )
+        ].each do |generated|
+          expect( @fpu.module_from_partial_filename( generated ) )
+            .to( eq(_module), "#{generated} did not reverse to #{_module}" )
+        end
+      end
+    end
+  end
+
   describe '#form_named_path' do
     before(:each) do
       @file_wrapper = double('file_wrapper')

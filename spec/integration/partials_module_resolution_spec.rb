@@ -119,4 +119,69 @@ describe 'Partial module resolution (integration)' do
       expect( notices ).to be_empty
     end
   end
+
+  # Resolving a generated Partial back to its own generated source. This lookup runs
+  # on build input, long after generation, so its queries carry Ceedling's own
+  # generated filenames rather than anything the test author wrote. A message here
+  # must translate back to the module name before it can mean anything.
+  context 'resolving build input for a generated Partial' do
+    PARTIALS_BUILD_PATH = 'build/test/partials/test_both_configs'.freeze
+
+    GENERATED_PARTIAL_SOURCES = [
+      "#{PARTIALS_BUILD_PATH}/drivers/spi/ceedling_partial_config_impl.c",
+      "#{PARTIALS_BUILD_PATH}/drivers/uart/ceedling_partial_config_impl.c"
+    ].freeze
+
+    before(:each) do
+      allow(@configurator).to receive(:project_test_file_prefix).and_return('test_')
+      allow(@configurator).to receive(:test_runner_file_suffix).and_return('_runner')
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
+      allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+
+      @listing = GENERATED_PARTIAL_SOURCES
+      allow(@finder.instance_variable_get(:@file_wrapper))
+        .to receive(:directory_listing) { @listing }
+    end
+
+    def find_partial_input(filename)
+      @finder.find_build_input_file(
+        filepath: File.join('build/test/out/test_both_configs', filename),
+        complain: :ignore,
+        context: TEST_SYM,
+        test: 'test_both_configs'
+      )
+    end
+
+    it 'resolves an unambiguous generated Partial object to its generated source' do
+      @listing = [GENERATED_PARTIAL_SOURCES.last]
+
+      expect( find_partial_input('drivers/uart/ceedling_partial_config_impl.o') )
+        .to eq(GENERATED_PARTIAL_SOURCES.last)
+    end
+
+    # The message names what the author typed. Generated filenames and build paths
+    # are Ceedling's inventions and offer the author nothing to act on.
+    it 'names the module, not the generated file, when two Partials share a basename' do
+      expect { find_partial_input('drivers/uart/ceedling_partial_config_impl.o') }
+        .to raise_error( CeedlingException, /Ambiguous Partial module reference 'config'/ )
+    end
+
+    it 'offers extensionless module paths as candidates' do
+      expect { find_partial_input('drivers/uart/ceedling_partial_config_impl.o') }
+        .to raise_error( CeedlingException, %r{drivers/spi/config,} )
+    end
+
+    it 'names no generated filename or build directory' do
+      find_partial_input('drivers/uart/ceedling_partial_config_impl.o')
+    rescue CeedlingException => e
+      expect( e.message ).to_not include( PARTIAL_FILENAME_PREFIX )
+      expect( e.message ).to_not include( PARTIALS_BUILD_PATH )
+    end
+
+    # The remedy is a macro the reader may not know exists.
+    it 'shows the directory-qualified macro form that resolves the ambiguity' do
+      expect { find_partial_input('drivers/uart/ceedling_partial_config_impl.o') }
+        .to raise_error( CeedlingException, /TEST_PARTIAL_ALL_MODULE_AT\(drivers\/\w+, config\)/ )
+    end
+  end
 end
