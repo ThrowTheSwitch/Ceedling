@@ -383,20 +383,12 @@ class FilePathUtils
     return File.join( subdir, basename )
   end
 
-  # Composes a preprocessed artifact's path and makes sure its directory exists.
-  #
-  # A mirrored subdirectory is created here because nothing else creates it. A test's own
-  # flat preprocess directories are created with the rest of its build paths, before any
-  # source is known. Only a nested artifact needs the extra directory, so only a nested
-  # one triggers the call. The preprocessor tools write their output directly and would
-  # otherwise fail on a missing directory.
+  # Composes a preprocessed artifact's path. Pure, like every other path builder here:
+  # callers that merely restate a path -- a rake target declaration, a staleness check --
+  # must not leave directories behind as a side effect. Whoever writes the file creates
+  # its directory, the same way a mock's or a Partial's own writer does.
   def form_preprocessed_filepath(root, subdir, kind_dir, filepath, suffix: '')
-    subpath = preprocessed_file_subpath( filepath )
-    path    = File.join( *[root, subdir, kind_dir, subpath + suffix].compact )
-
-    @file_wrapper.mkdir( File.dirname( path ) ) if subpath.include?( '/' )
-
-    return path
+    return File.join( *[root, subdir, kind_dir, preprocessed_file_subpath( filepath ) + suffix].compact )
   end
 
   def form_preprocessed_includes_list_filepath(filepath, subdir)
@@ -497,26 +489,26 @@ class FilePathUtils
   end
 
   def form_partial_interface_header_filename(_module)
-    return form_partial_filename( _module, '_interface', EXTENSION_CORE_HEADER )
+    return form_partial_filename( _module, PARTIAL_SUFFIX_INTERFACE, EXTENSION_CORE_HEADER )
   end
 
   # A module's typedefs and aggregate (struct/enum/union) definitions are generated into this
   # standalone header, shared by both the implementation and interface headers below, so a
   # module tested and mocked in the same file never has its types defined more than once.
   def form_partial_types_header_filename(_module)
-    return form_partial_filename( _module, '_types', EXTENSION_CORE_HEADER )
+    return form_partial_filename( _module, PARTIAL_SUFFIX_TYPES, EXTENSION_CORE_HEADER )
   end
 
   def form_mock_partial_interface_header_filename(_module)
-    return form_partial_filename( _module, '_interface', EXTENSION_CORE_HEADER, prefix: @configurator.cmock_mock_prefix )
+    return form_partial_filename( _module, PARTIAL_SUFFIX_INTERFACE, EXTENSION_CORE_HEADER, prefix: @configurator.cmock_mock_prefix )
   end
 
   def form_partial_implementation_header_filename(_module)
-    return form_partial_filename( _module, '_impl', EXTENSION_CORE_HEADER )
+    return form_partial_filename( _module, PARTIAL_SUFFIX_IMPL, EXTENSION_CORE_HEADER )
   end
 
   def form_partial_implementation_source_filename(_module)
-    return form_partial_filename( _module, '_impl', EXTENSION_CORE_SOURCE )
+    return form_partial_filename( _module, PARTIAL_SUFFIX_IMPL, EXTENSION_CORE_SOURCE )
   end
 
   def form_pass_results_filelist(path, files)

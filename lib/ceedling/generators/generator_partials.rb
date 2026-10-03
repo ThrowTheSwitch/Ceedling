@@ -14,8 +14,6 @@ class GeneratorPartials
 
   constructor :file_wrapper, :file_path_utils, :loginator
 
-  # A module named by directory produces a nested filename, and nothing upstream creates
-  # that directory. The file write itself does not create one either.
   # Include guards for generated Partials fold the module's directory into the guard name.
   # Two modules sharing a basename otherwise share one guard, and whichever header the
   # compiler reads second is emptied. The directory separators are flattened first because
@@ -24,6 +22,8 @@ class GeneratorPartials
     return FileWrapper.generate_include_guard( name.gsub( %r{[\\/]}, '_' ) )
   end
 
+  # A module named by directory produces a nested filename, and nothing upstream creates
+  # that directory. The file write itself does not create one either.
   def _prepare(filepath)
     @file_wrapper.mkdir( File.dirname( filepath ) )
     return filepath

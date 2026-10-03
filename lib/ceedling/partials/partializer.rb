@@ -123,8 +123,10 @@ class Partializer
     @configurator.paths_test + @configurator.paths_support + @configurator.paths_include
   end
 
+  # Either separator counts. The qualifier validation already rejects a backslash-rooted
+  # absolute path, so a backslash reaching here is a relative directory like any other.
   def _names_directory?(_module)
-    _module.include?('/')
+    _module.match?( %r{[\\/]} )
   end
 
   # A bare module name that matches nothing keeps its older behavior, generating a

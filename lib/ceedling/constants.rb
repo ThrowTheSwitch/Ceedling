@@ -84,10 +84,17 @@ EXTENSION_CORE_YAML = '.yml'
 CEEDLING_HEADER_FILENAME = 'ceedling.h'
 CEEDLING_HEADER_FILEPATH = CEEDLING_HEADER_FILENAME # lib/ceedling/
 PARTIAL_FILENAME_PREFIX  = 'ceedling_partial_'
-# One suffix per kind of file generated for a Partialized module. Reversing a generated
-# filename strips whichever of these ends it. Ordered longest-first where one suffix could
-# otherwise shadow another.
-PARTIAL_FILENAME_SUFFIXES = ['_interface', '_types', '_impl'].freeze
+# One suffix per kind of file generated for a Partialized module. The builders that append
+# these and the reverse that strips one share this single definition, so neither can drift
+# from the other. No suffix is a suffix of another, so a generated name ends in exactly one.
+PARTIAL_SUFFIX_INTERFACE = '_interface'
+PARTIAL_SUFFIX_TYPES     = '_types'
+PARTIAL_SUFFIX_IMPL      = '_impl'
+PARTIAL_FILENAME_SUFFIXES = [
+  PARTIAL_SUFFIX_INTERFACE,
+  PARTIAL_SUFFIX_TYPES,
+  PARTIAL_SUFFIX_IMPL
+].freeze
 
 class PATTERNS
   # #104 -- `[`/`]` deliberately excluded: they're legal filename characters

@@ -156,7 +156,7 @@ class FileFinder
       # Ambiguity is detected here rather than rescued from the matching below. One
       # matching implementation stays in force, and the message is composed from the
       # module names the test author wrote instead of reworded by exception.
-      _raise_ambiguous_partial!( _source_file, collection, partials_root )
+      raise_ambiguous_partial!( _source_file, collection, partials_root )
 
       found_file =
         @file_finder_helper.find_file_in_collection( _source_file, collection, complain )
@@ -261,21 +261,19 @@ class FileFinder
   # typed, so reporting them offers nothing to act on. Candidates render as extensionless
   # module paths -- exactly what a directive macro takes -- so one can be pasted straight
   # into the macro the message names.
-  def _raise_ambiguous_partial!(query, collection, root)
+  def raise_ambiguous_partial!(query, collection, root)
     candidates = PathMatcher.candidates( query, collection )
 
     return if candidates.length < 2
 
-    _module  = @file_path_utils.module_from_partial_filename( query )
-    # Candidates arrive as paths below the generated Partials root for this test. The
-    # root is Ceedling's own, so only the module's mirrored subdirectory below it means
-    # anything to the author.
-    modules  = candidates.map do |candidate|
-      @file_path_utils.module_from_partial_filename(
-        candidate.delete_prefix( root + '/' )
-      )
-    end
-    modules  = modules.compact.uniq.sort
+    _module = @file_path_utils.module_from_partial_filename( query )
+
+    # Candidates arrive as paths below the generated Partials root for this test. The root
+    # is Ceedling's own, so only the module's mirrored subdirectory below it means anything
+    # to the author.
+    modules = candidates.map do |candidate|
+      @file_path_utils.module_from_partial_filename( candidate.delete_prefix( root + '/' ) )
+    end.compact.uniq.sort
 
     message = "Ambiguous Partial module reference '#{_module}' found.\n" \
               "  Include more trailing path to distinguish among:\n" \
@@ -326,10 +324,11 @@ class FileFinder
   # mirrored subdirectory and combining it with the bare basename recreates a query that
   # identifies the same one source PathMirror originally mirrored it from.
   #
-  # A filepath that isn't under the project's build root at all is already a source-tree-
-  # relative query in its own right -- straight from an #include or a TEST_SOURCE_FILE()
-  # directive, say -- so whatever path it already carries is preserved rather than
-  # collapsed to a bare basename that would throw away real disambiguating information.
+  # A filepath that isn't under the project's build root at all is a source-tree-relative
+  # query in its own right -- straight from an #include or a TEST_SOURCE_FILE() directive,
+  # say. Such a path keeps whatever disambiguating path it carries rather than being
+  # collapsed to a bare basename, reduced to its own namespace below a configured include
+  # root when one contains it (see header_root_relative_query below).
   #
   # A filepath that IS somewhere under the build root, but either belongs to a build
   # context this method doesn't specifically know how to mirror (a plugin's own object
@@ -337,28 +336,6 @@ class FileFinder
   # peel back a known per-test root (test build input queried without a test identity),
   # falls back to the bare basename -- exactly what every caller has always seen for those
   # cases.
-  # A header's own path below its configured include root, or nil when no include root
-  # contains it. Ceedling's convention correlates an #include'd header with the source
-  # beside it, and the two trees routinely sit below different roots -- headers below
-  # `include`, sources below `src`. The namespace they share below those roots is what
-  # correlates them, so comparing the roots themselves only ever fails the match.
-  #
-  # Only the root is dropped. The namespace is preserved, since that is what keeps two
-  # same-basename modules apart.
-  def header_root_relative_query(filepath)
-    file_dir = File.dirname( filepath )
-    roots    = PathMirror.clean_roots( @configurator.paths_include )
-
-    matching = roots.select { |root| file_dir == root || file_dir.start_with?( root + '/' ) }
-
-    return nil if matching.empty?
-
-    subdir   = PathMirror.relative_subdir_from_clean_roots( filepath, matching )
-    basename = File.basename( filepath ).ext('')
-
-    return subdir.empty? ? basename : File.join( subdir, basename )
-  end
-
   def mirrored_query(filepath, release:, test:, context:)
     dir = File.dirname(filepath)
     build_root = @configurator.project_build_root
@@ -381,6 +358,24 @@ class FileFinder
 
     subdir = PathMirror.relative_subdir(filepath, [root])
     return subdir.empty? ? basename : File.join(subdir, basename)
+  end
+
+  # A header's own path below its configured include root, or nil when no include root
+  # contains it. Ceedling's convention correlates an #include'd header with the source
+  # beside it, and the two trees routinely sit below different roots -- headers below
+  # `include`, sources below `src`. The namespace they share below those roots is what
+  # correlates them, so comparing the roots themselves only ever fails the match.
+  #
+  # Only the root is dropped. The namespace is preserved, since that is what keeps two
+  # same-basename modules apart.
+  def header_root_relative_query(filepath)
+    subdir = PathMirror.relative_subdir_if_rooted( filepath, @configurator.paths_include )
+
+    return nil if subdir.nil?
+
+    basename = File.basename( filepath ).ext('')
+
+    return subdir.empty? ? basename : File.join( subdir, basename )
   end
 
   # A file type may be named by any one of several configured extensions, so a basename

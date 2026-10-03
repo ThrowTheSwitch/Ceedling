@@ -177,6 +177,7 @@ class Includes
 
     return includes
   end
+  private_class_method :drop_shadowed!
 
   # Class method to reconcile bare, user, and system includes returning a list of
   # reconciled user and system includes.
