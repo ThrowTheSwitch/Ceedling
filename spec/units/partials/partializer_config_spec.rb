@@ -63,6 +63,111 @@ describe PartializerConfig do
       expect( result ).to_not be_empty
     end
 
+    # --- Directory-qualified macros ---
+    #
+    # A qualified macro carries its directory and its module as separate parameters.
+    # The two join into one key, so a module is identified the same way whichever
+    # macro family named it and two modules sharing a basename stay distinct.
+    context "a directory-qualified MODULE macro" do
+      it "keys the config on the directory joined to the module" do
+        result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)')
+
+        expect( result.keys ).to eq( ['drivers/uart/config'] )
+        expect( result['drivers/uart/config'].module ).to eq( 'drivers/uart/config' )
+      end
+
+      it "keeps two modules sharing a basename distinct" do
+        result = @config.extract_configs(
+          "TEST_PARTIAL_ALL_MODULE_AT(drivers/uart, config)\n" \
+          "TEST_PARTIAL_ALL_MODULE_AT(drivers/spi, config)"
+        )
+
+        expect( result.keys.sort ).to eq( ['drivers/spi/config', 'drivers/uart/config'] )
+      end
+
+      it "sets the same function type its unqualified counterpart sets" do
+        {
+          'TEST_PARTIAL_PUBLIC_MODULE_AT'  => [:tests, Partials::PUBLIC],
+          'TEST_PARTIAL_PRIVATE_MODULE_AT' => [:tests, Partials::PRIVATE],
+          'TEST_PARTIAL_MODULE_AT'         => [:tests, Partials::ACCUMULATE],
+          'TEST_PARTIAL_ALL_MODULE_AT'     => [:tests, Partials::DEDUCT],
+          'MOCK_PARTIAL_PUBLIC_MODULE_AT'  => [:mocks, Partials::PUBLIC],
+          'MOCK_PARTIAL_PRIVATE_MODULE_AT' => [:mocks, Partials::PRIVATE],
+          'MOCK_PARTIAL_MODULE_AT'         => [:mocks, Partials::ACCUMULATE],
+          'MOCK_PARTIAL_ALL_MODULE_AT'     => [:mocks, Partials::DEDUCT],
+        }.each do |macro, (side, type)|
+          result = @config.extract_configs("#{macro}(drivers/uart, config)")
+
+          expect( result['drivers/uart/config'] ).to_not( be_nil, "#{macro} produced no config" )
+          expect( result['drivers/uart/config'].send( side ).type ).to( eq(type), "#{macro} set the wrong type" )
+        end
+      end
+
+      # Only as much path as it takes to distinguish the module is needed, matching
+      # how every other file reference in a test is resolved.
+      it "accepts a partial directory qualifier" do
+        result = @config.extract_configs('TEST_PARTIAL_ALL_MODULE_AT(uart, config)')
+
+        expect( result.keys ).to eq( ['uart/config'] )
+      end
+    end
+
+    context "a directory-qualified CONFIG macro" do
+      it "pairs with the joined key of its MODULE macro" do
+        result = @config.extract_configs(
+          "TEST_PARTIAL_ALL_MODULE_AT(drivers/uart, config)\n" \
+          "TEST_PARTIAL_CONFIG_AT(drivers/uart, config, -helper)"
+        )
+
+        expect( result['drivers/uart/config'].tests.subtractions ).to eq( ['helper'] )
+      end
+
+      it "reads its function names after the directory and the module" do
+        result = @config.extract_configs(
+          "MOCK_PARTIAL_MODULE_AT(drivers/uart, config)\n" \
+          "MOCK_PARTIAL_CONFIG_AT(drivers/uart, config, one, +two)"
+        )
+
+        expect( result['drivers/uart/config'].mocks.additions ).to eq( ['one', 'two'] )
+      end
+
+      # Pairing is exact. A qualifier that does not match the one its MODULE macro
+      # used names a module that was never declared.
+      it "raises when its directory does not match its MODULE macro's" do
+        expect {
+          @config.extract_configs(
+            "TEST_PARTIAL_ALL_MODULE_AT(drivers/uart, config)\n" \
+            "TEST_PARTIAL_CONFIG_AT(drivers/spi, config, -helper)"
+          )
+        }.to raise_error( CeedlingException, /no corresponding MODULE Partial macro directive/ )
+      end
+
+      it "raises when it carries no directory while its MODULE macro does" do
+        expect {
+          @config.extract_configs(
+            "TEST_PARTIAL_ALL_MODULE_AT(drivers/uart, config)\n" \
+            "TEST_PARTIAL_CONFIG(config, -helper)"
+          )
+        }.to raise_error( CeedlingException, /no corresponding MODULE Partial macro directive/ )
+      end
+    end
+
+    # Two directory spellings cannot work, because the generated #include the
+    # preprocessor emits would never name the file Ceedling writes.
+    context "a directory qualifier that cannot be honored" do
+      it "rejects an absolute directory" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_ALL_MODULE_AT(/abs/drivers, config)')
+        }.to raise_error( CeedlingException, /absolute/ )
+      end
+
+      it "rejects a quoted directory" do
+        expect {
+          @config.extract_configs('TEST_PARTIAL_ALL_MODULE_AT("drivers/uart", config)')
+        }.to raise_error( CeedlingException, /quoted/ )
+      end
+    end
+
     # The module argument itself is already path-tolerant. Extraction splits only on
     # top-level commas, so a slash reaches the config as written and the key is the
     # argument verbatim. Nothing downstream of here understands that key yet.
