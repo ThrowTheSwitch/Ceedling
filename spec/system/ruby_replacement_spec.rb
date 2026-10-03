@@ -85,7 +85,7 @@ ceedling_system_tests do
 
           dump_file = 'dump_defines_enabled.yml'
           @c.ceedling_appcmd_exec("dumpconfig #{dump_file} defines --ruby-replacement")
-          @dump_text = File.exist?(dump_file) ? File.read(dump_file) : ''
+          @dump_text = File.exist?(dump_file) ? read_spec_file(dump_file) : ''
         end
       end
       expect(@c.last_exit_status).to eq(0)

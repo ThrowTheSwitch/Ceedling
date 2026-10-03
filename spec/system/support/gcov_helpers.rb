@@ -36,7 +36,7 @@ module GcovHelpers
   end
 
   def _add_gcov_section_in_project(project_file_path, name, values)
-    project_file_contents = File.readlines(project_file_path)
+    project_file_contents = readlines_spec_file(project_file_path)
     name_index = project_file_contents.index(":gcov:\n")
 
     if name_index.nil?
@@ -55,7 +55,7 @@ module GcovHelpers
   end
 
   def _add_gcov_option_in_project(project_file_path, option, value)
-    project_file_contents = File.readlines(project_file_path)
+    project_file_contents = readlines_spec_file(project_file_path)
     option_index = project_file_contents.index(":gcov:\n")
 
     if option_index.nil?

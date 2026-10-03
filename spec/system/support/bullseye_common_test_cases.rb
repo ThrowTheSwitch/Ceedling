@@ -165,7 +165,7 @@ module BullseyeCommonTestCases
         xml_path = File.join('build', 'artifacts', 'bullseye', 'coverage.xml')
         expect(File.exist?(xml_path)).to eq true
 
-        contents = File.read(xml_path)
+        contents = read_spec_file(xml_path)
         expect(contents).to match(/cobertura/)
         expect(contents).to match(/line-rate=/)
 
@@ -193,7 +193,7 @@ module BullseyeCommonTestCases
         xml_path = File.join('build', 'artifacts', 'bullseye', 'coverage.xml')
         expect(File.exist?(xml_path)).to eq true
 
-        contents = File.read(xml_path)
+        contents = read_spec_file(xml_path)
         expect(contents).to match(/BullseyeCoverage/)
         expect(contents).to match(/fn_cov=/)
       end

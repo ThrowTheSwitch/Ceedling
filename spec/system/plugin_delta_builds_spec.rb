@@ -113,7 +113,7 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/EXCEPTION/)
           expect(rebuild).to_not match(/Compiling.*uncovered_example_file/)
 
-          probe = File.read('src/uncovered_example_file.c')
+          probe = read_spec_file('src/uncovered_example_file.c')
           File.write('src/uncovered_example_file.c', "#{probe}\n// probe\n")
 
           recompile = @c.ceedling_build_exec("gcov:all")

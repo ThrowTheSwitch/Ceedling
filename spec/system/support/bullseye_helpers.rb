@@ -52,7 +52,7 @@ module BullseyeHelpers
   # A new section is placed before the YAML end-of-document marker. Content after
   # that marker belongs to no document and is silently ignored.
   def insert_into_bullseye_section(lines)
-    contents = File.readlines(PROJECT_FILE)
+    contents = readlines_spec_file(PROJECT_FILE)
 
     section_index = contents.index(":bullseye:\n")
 

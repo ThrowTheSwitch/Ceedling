@@ -156,6 +156,26 @@ def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', 'fixtures', asset_file_name)
 end
 
+# Reads a file a spec is inspecting -- a project source, a generated runner, a report --
+# as UTF-8 rather than at the platform default.
+#
+# Ruby resolves `Encoding.default_external` once at startup from the ambient locale, and
+# a developer machine exporting no locale resolves it to US-ASCII. A bare read of content
+# carrying any non-ASCII byte then raises `invalid byte sequence`, which reads like a
+# defect in whatever feature is under test rather than in the spec's own file handling.
+# CI hides it by exporting a UTF-8 locale.
+#
+# Reading explicitly rather than forcing the process default is deliberate: the
+# encoding-stress spec asserts that default is *not* UTF-8 and that a naive read of a
+# non-ASCII fixture still raises, which is the condition it exists to stress.
+def read_spec_file(path)
+  File.read( path, encoding: 'UTF-8' )
+end
+
+def readlines_spec_file(path)
+  File.readlines( path, encoding: 'UTF-8' )
+end
+
 # Collapses the `@c.with_context { Dir.chdir(@proj_name) { ... } }` triple-nesting
 # repeated at nearly every before-hook and example body across the path/name
 # disambiguation specs (spec/system/*_disambiguation*, *_path*, etc.) into one call.
