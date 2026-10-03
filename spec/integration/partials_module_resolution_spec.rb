@@ -13,7 +13,8 @@
 # FileFinderHelper, then PathMatcher to match trailing path segments. Those
 # collaborators are real here. Only the Configurator and the Loginator are
 # doubled, the first to supply collections and extensions and the second to
-# capture the ambiguity NOTICE.
+# capture the ambiguity NOTICE. FilePathUtils is real as well, so a message naming
+# a module is built by the same reversal production code uses.
 #
 # The project shape under test is the one issue #1311 reports: two modules
 # sharing a basename in different directories.
@@ -23,6 +24,7 @@ require 'ceedling/file_finder'
 require 'ceedling/file_finder_helper'
 require 'ceedling/filename_extension'
 require 'ceedling/path_matcher'
+require 'ceedling/file_path_utils'
 require 'ceedling/constants'
 
 describe 'Partial module resolution (integration)' do
@@ -52,7 +54,10 @@ describe 'Partial module resolution (integration)' do
     @finder = FileFinder.new({
       :configurator      => @configurator,
       :file_finder_helper => FileFinderHelper.new({ :loginator => loginator }),
-      :file_path_utils   => double('file_path_utils'),
+      :file_path_utils   => FilePathUtils.new({
+        :configurator => @configurator,
+        :file_wrapper => double('file_wrapper')
+      }),
       :file_wrapper      => double('file_wrapper'),
       :yaml_wrapper      => double('yaml_wrapper')
     })
@@ -176,6 +181,20 @@ describe 'Partial module resolution (integration)' do
     rescue CeedlingException => e
       expect( e.message ).to_not include( PARTIAL_FILENAME_PREFIX )
       expect( e.message ).to_not include( PARTIALS_BUILD_PATH )
+    end
+
+    # A bare candidate cannot serve as the hint. Naming it as a macro argument would
+    # produce the very reference that is already ambiguous.
+    it 'draws the macro hint from a candidate that carries a directory' do
+      @listing = [
+        "#{PARTIALS_BUILD_PATH}/ceedling_partial_config_impl.c",
+        GENERATED_PARTIAL_SOURCES.last
+      ]
+
+      find_partial_input('ceedling_partial_config_impl.o')
+    rescue CeedlingException => e
+      expect( e.message ).to include("Ambiguous Partial module reference 'config'")
+      expect( e.message ).to include('TEST_PARTIAL_ALL_MODULE_AT(drivers/uart, config)')
     end
 
     # The remedy is a macro the reader may not know exists.

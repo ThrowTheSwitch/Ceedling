@@ -134,13 +134,22 @@ class FileFinder
     elsif (!release) and
           (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
       _source_file = source_file + EXTENSION_CORE_SOURCE
+      collection =
+        @file_wrapper.directory_listing(
+          File.join(@configurator.project_test_partials_path, test_context, ('**/*' + EXTENSION_CORE_SOURCE))
+        )
+
+      # Ambiguity is detected here rather than rescued from the matching below. One
+      # matching implementation stays in force, and the message is composed from the
+      # module names the test author wrote instead of reworded by exception.
+      _raise_ambiguous_partial!(
+        _source_file,
+        collection,
+        File.join( @configurator.project_test_partials_path, test_context )
+      )
+
       found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @file_wrapper.directory_listing(
-            File.join(@configurator.project_test_partials_path, test_context, ('**/*' + EXTENSION_CORE_SOURCE))
-          ),
-          complain)
+        @file_finder_helper.find_file_in_collection( _source_file, collection, complain )
 
     # Vendor framework sources (unity.c, cmock.c, cexception.c, etc.)
     # Note: Taking a small chance by mixing test and release frameworks without smart checks on test/release build
@@ -236,6 +245,42 @@ class FileFinder
   ### Private ###
 
   private
+
+  # Translates a generated-Partial ambiguity into the test author's own terms. The query
+  # here is a generated filename under a build directory, neither of which the author
+  # typed, so reporting them offers nothing to act on. Candidates render as extensionless
+  # module paths -- exactly what a directive macro takes -- so one can be pasted straight
+  # into the macro the message names.
+  def _raise_ambiguous_partial!(query, collection, root)
+    candidates = PathMatcher.candidates( query, collection )
+
+    return if candidates.length < 2
+
+    _module  = @file_path_utils.module_from_partial_filename( query )
+    # Candidates arrive as paths below the generated Partials root for this test. The
+    # root is Ceedling's own, so only the module's mirrored subdirectory below it means
+    # anything to the author.
+    modules  = candidates.map do |candidate|
+      @file_path_utils.module_from_partial_filename(
+        candidate.delete_prefix( root + '/' )
+      )
+    end
+    modules  = modules.compact.uniq.sort
+
+    message = "Ambiguous Partial module reference '#{_module}' found.\n" \
+              "  Include more trailing path to distinguish among:\n" \
+              "    #{modules.join(",\n    ")}"
+
+    # The hint only helps when a candidate actually has a directory to name.
+    hint = modules.find { |candidate| File.dirname( candidate ) != '.' }
+
+    unless hint.nil?
+      message += "\n  Name one with a directory, " \
+                 "e.g. TEST_PARTIAL_ALL_MODULE_AT(#{File.dirname( hint )}, #{File.basename( hint )})"
+    end
+
+    raise CeedlingException.new( message )
+  end
 
   # A test object's build directory identity mirrors the configured test root a source
   # file lives under (e.g. `unit/test_foo` for `test/unit/test_foo.c`, plain `test_foo` for

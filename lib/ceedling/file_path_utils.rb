@@ -418,6 +418,34 @@ class FilePathUtils
     return File.join( dir, basename )
   end
 
+  # Reverses form_partial_filename(). A generated Partial filename is Ceedling's own
+  # invention, so a message naming one tells a test author nothing. Recovering the module
+  # lets a message name what the author actually wrote.
+  #
+  # Prefixes stack on a mocked interface header, mock outermost. The suffix is stripped
+  # from the end only, so a module whose own name ends in a suffix word survives. Returns
+  # nil for any filename this builder could not have produced.
+  def module_from_partial_filename(filepath)
+    dir      = File.dirname( filepath )
+    basename = File.basename( filepath ).ext('')
+
+    basename = basename.delete_prefix( @configurator.cmock_mock_prefix )
+
+    return nil unless basename.start_with?( PARTIAL_FILENAME_PREFIX )
+
+    basename = basename.delete_prefix( PARTIAL_FILENAME_PREFIX )
+
+    suffix = PARTIAL_FILENAME_SUFFIXES.find { |candidate| basename.end_with?( candidate ) }
+
+    return nil if suffix.nil?
+
+    basename = basename.delete_suffix( suffix )
+
+    return basename if dir == '.'
+
+    return File.join( dir, basename )
+  end
+
   def form_partial_interface_header_filename(_module)
     return form_partial_filename( _module, '_interface', EXTENSION_CORE_HEADER )
   end
