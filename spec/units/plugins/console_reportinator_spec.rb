@@ -196,6 +196,46 @@ describe ConsoleReportinator do
       reportinator.send(:run_gcov_summary, 'test_foo', 'src/foo.c', {})
     end
 
+    # A generated Partial sits below its own test's Partials build root, not a configured
+    # source root, so measuring against the source roots yields no subdirectory at all and
+    # gcov is pointed at the flat root while the coverage data sits one level down.
+    it 'searches a generated Partial\'s own mirrored subdirectory' do
+      allow(configurator).to receive(:paths_source).and_return(['src'])
+      allow(configurator).to receive(:paths_support).and_return([])
+      allow(configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      stub_exec(exit_code: 0, output: 'coverage text')
+
+      expect(tool_executor).to receive(:build_command_line)
+        .with(TOOLS_GCOV_SUMMARY, [], 'ceedling_partial_config_impl.c',
+              File.join('build/gcov/out/test_foo', 'drivers/uart'))
+        .and_return({ options: {} })
+
+      reportinator.send(
+        :run_gcov_summary,
+        'test_foo',
+        'build/test/partials/test_foo/drivers/uart/ceedling_partial_config_impl.c',
+        {}
+      )
+    end
+
+    it 'searches the flat root for a Partial of a module named without a directory' do
+      allow(configurator).to receive(:paths_source).and_return(['src'])
+      allow(configurator).to receive(:paths_support).and_return([])
+      allow(configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      stub_exec(exit_code: 0, output: 'coverage text')
+
+      expect(tool_executor).to receive(:build_command_line)
+        .with(TOOLS_GCOV_SUMMARY, [], 'ceedling_partial_config_impl.c', 'build/gcov/out/test_foo')
+        .and_return({ options: {} })
+
+      reportinator.send(
+        :run_gcov_summary,
+        'test_foo',
+        'build/test/partials/test_foo/ceedling_partial_config_impl.c',
+        {}
+      )
+    end
+
     it 'returns nil and logs when gcov exits non-zero' do
       stub_exec(exit_code: 1, output: 'gcov: error')
       expect(loginator).to receive(:lazy).with(Verbosity::DEBUG, LogLabels::ERROR)

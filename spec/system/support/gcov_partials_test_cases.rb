@@ -113,4 +113,43 @@ module GcovPartialsTestCases
       end
     end
   end
+
+  # Coverage reporting has to tell two same-basename modules apart. A Partial replaces one
+  # module, so the other keeps reporting its own coverage. Matching on basename alone drops
+  # both, and the module nobody Partialized disappears from the report.
+  def gcov_partials_coverage_same_named_modules
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+
+        asset_base = test_asset_path("same_named_modules")
+        ['uart', 'spi'].each do |driver|
+          FileUtils.mkdir_p "include/drivers/#{driver}"
+          FileUtils.mkdir_p "src/drivers/#{driver}"
+          FileUtils.cp "#{asset_base}/include/drivers/#{driver}/config.h", "include/drivers/#{driver}/"
+          FileUtils.cp "#{asset_base}/src/drivers/#{driver}/config.c",     "src/drivers/#{driver}/"
+        end
+        FileUtils.cp "#{asset_base}/test/test_uart_config_partial_only.c", 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_partials => true },
+          :paths   => { :include => ['include/**'] }
+        })
+
+        # The console summary is what remapping feeds. Only the uart module is Partialized,
+        # so the spi module keeps reporting against its own source. Both must appear.
+        output = @c.ceedling_build_exec("gcov:all")
+        expect(@c.last_exit_status).to eq(0)
+
+        # Both modules are labeled by basename alone, so the two are told apart by their
+        # own coverage instead: uart's private function is exercised through its Partial,
+        # while spi's module leaves one of its two lines uncovered.
+        reported = output.to_s.scan(/^config\.c \| Lines executed:([\d.]+)% of (\d+)/)
+
+        expect( reported.length ).to eq(2)
+        expect( reported ).to include(['100.00', '3'])
+        expect( reported ).to include(['50.00', '2'])
+      end
+    end
+  end
 end
