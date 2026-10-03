@@ -505,6 +505,33 @@ describe TestBuildSetup do
         @setup.stage_collect_preprocessor_context( @state )
       end
 
+      # A Partial stand-in is placed flat beneath its test, by basename alone. Any
+      # directory the generated #include carries is dropped, and no directory is
+      # created for it. Both facts change once a Partial module can be named by path.
+      it "writes a Partial's stand-in flat beneath its test, by basename alone" do
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes)
+          .and_return( [ Include.new('drivers/uart/ceedling_partial_config_impl.h') ] )
+
+        expect(@file_path_utils).to receive(:form_partial_header_filepath)
+          .with( 'a_test', 'ceedling_partial_config_impl.h' )
+          .and_return( 'build/test/partials/a_test/ceedling_partial_config_impl.h' )
+        expect(@file_wrapper).to receive(:write_blank_file)
+          .with( 'build/test/partials/a_test/ceedling_partial_config_impl.h' )
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
+      it "creates no directory for a Partial's stand-in, unlike a mock's" do
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes)
+          .and_return( [ Include.new('ceedling_partial_config_impl.h') ] )
+
+        expect(@file_wrapper).to_not receive(:mkdir)
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
       it "resolves a mocked header's real source against the ordering collect_mock_search_paths (stage 2) originally saw for it -- this test's own search_paths minus its own mock_search_paths" do
         @testable.search_paths      = ['build/test/mocks/a_test/drivers', 'src']
         @testable.mock_search_paths = ['build/test/mocks/a_test/drivers']

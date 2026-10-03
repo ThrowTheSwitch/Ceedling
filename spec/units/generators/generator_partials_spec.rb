@@ -62,6 +62,25 @@ describe GeneratorPartials do
   end
 
   context "#generate_implementation" do
+    # Generation writes straight into the output path it is handed and creates no
+    # directory of its own. That holds only while every generated Partial filename
+    # is a bare basename, which changes once a module can be named by path.
+    it "creates no directory before writing" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_source_filename).and_return( 'm_impl.c' )
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename).and_return( 'm_impl.h' )
+      allow(@file_wrapper).to receive(:open).and_yield( double('handle').as_null_object )
+      allow(@generator).to receive(:generate_header)
+      allow(@generator).to receive(:generate_source)
+
+      expect(@file_wrapper).to_not receive(:mkdir)
+
+      @generator.generate_implementation(
+        test: 'test_m', name: 'm', function_definitions: [],
+        source_includes: [], header_includes: [],
+        c_module: empty_module, output_path: '/path/to/output'
+      )
+    end
+
     it "should call generate_header() and generate_source() with correct parameters" do
       # Setup
       output_path = '/path/to/output'
