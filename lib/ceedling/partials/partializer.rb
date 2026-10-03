@@ -541,7 +541,7 @@ class Partializer
 
     replaced = false
     spliced = includes.map do |include|
-      if !replaced && include.filename.ext().downcase() == name.downcase()
+      if !replaced && module_basename( name ) == include.filename.ext().downcase()
         replaced = true
         UserInclude.new(replacement)
       else
@@ -562,12 +562,19 @@ class Partializer
   # Remove includes that match the given module names (case-insensitive)
   # Returns a new array with matching includes removed
   def remove_matching_includes(includes:, modules:)
-    # Normalize module names to lowercase for comparison
-    normalized_modules = modules.map(&:downcase)
-    
+    normalized_modules = modules.map { |_module| module_basename( _module ) }
+
     # Filter out includes (minus extension) that match any module name
     return includes.reject do |include|
       normalized_modules.include?(include.filename.ext().downcase())
     end
-  end  
+  end
+
+  # A module name reduced to what an #include actually carries. An #include names a
+  # file, not a module, so a module named by directory still has to be recognized by
+  # the basename its own header include spells out.
+  def module_basename(_module)
+    File.basename( _module ).ext().downcase()
+  end
+
 end

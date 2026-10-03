@@ -479,6 +479,49 @@ describe Partializer do
       expect(result).not_to include(UserInclude.new('module.h'))
     end
 
+    # A module's own header is compared by basename, since that is what an #include
+    # carries. Leaving it in the generated Partial would emit an #include whose own
+    # resolution depends on search path order, which is how a Partial for one module
+    # ends up reading another module's header.
+    it "removes the module's own header when the module is named by directory" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('config.h'), UserInclude.new('header2.h')]
+
+      result = @partializer.remap_implementation_header_includes(
+        name: 'drivers/uart/config',
+        includes: includes,
+        partials: {}
+      )
+
+      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+    end
+
+    it "splices the types header in at the position of a directory-named module's own header" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('config.h'), UserInclude.new('header2.h')]
+
+      result = @partializer.remap_implementation_header_includes(
+        name: 'drivers/uart/config',
+        includes: includes,
+        partials: {},
+        types_header: 'drivers/uart/ceedling_partial_config_types.h'
+      )
+
+      expect(result.map(&:filepath)).to eq(
+        ['header1.h', 'drivers/uart/ceedling_partial_config_types.h', 'header2.h']
+      )
+    end
+
+    it "removes another partialized module's header when that module is named by directory" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('other.h')]
+
+      result = @partializer.remap_implementation_header_includes(
+        name: 'drivers/uart/config',
+        includes: includes,
+        partials: { 'drivers/spi/other' => nil }
+      )
+
+      expect(result).to match_array([UserInclude.new('header1.h')])
+    end
+
     it "removes partialized module headers from includes" do
       includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
