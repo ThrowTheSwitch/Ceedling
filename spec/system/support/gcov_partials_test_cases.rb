@@ -23,7 +23,7 @@ module GcovPartialsTestCases
     expect(@c.last_exit_status).to eq(0)
 
     cobertura_path = File.join('build', 'artifacts', 'gcov', 'gcovr', 'GcovCoverageCobertura.xml')
-    doc = REXML::Document.new(File.read(cobertura_path))
+    doc = REXML::Document.new(read_spec_file(cobertura_path))
 
     doc.elements.to_a("//class[@filename='#{source_relpath}']/lines/line").each_with_object({}) do |el, h|
       h[el.attributes['number'].to_i] = el.attributes['hits'].to_i
@@ -141,16 +141,21 @@ module GcovPartialsTestCases
         output = @c.ceedling_build_exec("gcov:all")
         expect(@c.last_exit_status).to eq(0)
 
-        # Both modules are labeled by basename alone, so the two are told apart by their
-        # own coverage instead: uart's private function is exercised through its Partial,
-        # while spi's module leaves one of its two lines uncovered.
+        # Two same-named modules carry enough trailing path in the summary to tell them
+        # apart -- one directory here, which is all it takes.
+        #
+        # The figures identify each module. The spi module runs through its own public
+        # function, which reaches all three of its lines. The uart module is reached only
+        # through its Partial, which carries that module's two private functions, and the
+        # test calls one of them.
+        #
         # Deduplicated: some gcov versions repeat a file's own statistic line after its
-        # per-file block, so the count of distinct results is what identifies the modules.
-        reported = output.to_s.scan(/^config\.c \| Lines executed:([\d.]+)% of (\d+)/).uniq
+        # per-file block.
+        reported = output.to_s.scan(%r{^(\S*config\.c) \| Lines executed:([\d.]+)% of (\d+)}).uniq
 
+        expect( reported ).to include(['spi/config.c', '100.00', '3'])
+        expect( reported ).to include(['uart/config.c', '50.00', '2'])
         expect( reported.length ).to eq(2)
-        expect( reported ).to include(['100.00', '3'])
-        expect( reported ).to include(['50.00', '2'])
       end
     end
   end

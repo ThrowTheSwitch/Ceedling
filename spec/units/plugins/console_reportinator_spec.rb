@@ -146,6 +146,14 @@ describe ConsoleReportinator do
       )
     end
 
+    it 'labels the report line with a supplied disambiguating label' do
+      expect(loginator).to receive(:log).with("drivers/uart/foo.c | Lines executed:80.00% of 5\n")
+      reportinator.send(
+        :log_coverage_report, 'test_foo', 'src/foo.c', results, File.expand_path('src/foo.c'),
+        label: 'drivers/uart/foo.c'
+      )
+    end
+
     it 'logs a COMPLAIN and does not crash when a Partial\'s coverage cannot be matched at all' do
       expect(loginator).to receive(:lazy).with(Verbosity::COMPLAIN)
       reportinator.send(:log_coverage_report, 'test_foo', 'src/ceedling_partial_foo_impl.c', results, '')
@@ -276,6 +284,59 @@ describe ConsoleReportinator do
       expect(loginator).to receive(:log).with('z.c | No tests executed: 0% coverage').ordered
       # 'zzz/a.c' sorts after 'aaa/z.c' by full path, but must log a.c first by basename.
       reportinator.send(:log_untested_sources_section, ['aaa/z.c', 'zzz/a.c'])
+    end
+  end
+
+  # Every reported file is labeled by basename, so two same-named modules in one test are
+  # indistinguishable in the summary. Only a label that carries enough trailing path tells
+  # the reader which module a line belongs to.
+  describe '#disambiguated_labels' do
+    it 'labels a unique basename by basename alone' do
+      labels = reportinator.send(:disambiguated_labels, ['src/foo.c', 'src/bar.c'])
+
+      expect( labels ).to eq({ 'src/foo.c' => 'foo.c', 'src/bar.c' => 'bar.c' })
+    end
+
+    it 'extends a duplicated basename by one directory' do
+      paths = ['src/drivers/uart/config.c', 'src/drivers/spi/config.c']
+
+      expect( reportinator.send(:disambiguated_labels, paths) ).to eq({
+        'src/drivers/uart/config.c' => 'uart/config.c',
+        'src/drivers/spi/config.c'  => 'spi/config.c'
+      })
+    end
+
+    # Only as much trailing path as it takes, so a label never carries noise.
+    it 'extends only as far as it takes to distinguish' do
+      paths = ['a/shared/net/config.c', 'b/shared/net/config.c']
+
+      expect( reportinator.send(:disambiguated_labels, paths) ).to eq({
+        'a/shared/net/config.c' => 'a/shared/net/config.c',
+        'b/shared/net/config.c' => 'b/shared/net/config.c'
+      })
+    end
+
+    it 'leaves an unrelated unique basename alone while extending a duplicated one' do
+      paths = ['src/drivers/uart/config.c', 'src/drivers/spi/config.c', 'src/main.c']
+
+      labels = reportinator.send(:disambiguated_labels, paths)
+
+      expect( labels['src/main.c'] ).to eq('main.c')
+      expect( labels['src/drivers/uart/config.c'] ).to eq('uart/config.c')
+    end
+
+    it 'preserves case, these being read by a person' do
+      paths = ['src/Drivers/UART/Config.c', 'src/drivers/spi/Config.c']
+
+      labels = reportinator.send(:disambiguated_labels, paths)
+
+      expect( labels['src/Drivers/UART/Config.c'] ).to eq('UART/Config.c')
+    end
+
+    it 'handles a repeated path appearing twice' do
+      labels = reportinator.send(:disambiguated_labels, ['src/foo.c', 'src/foo.c'])
+
+      expect( labels ).to eq({ 'src/foo.c' => 'foo.c' })
     end
   end
 
