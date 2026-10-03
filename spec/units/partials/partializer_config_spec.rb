@@ -85,18 +85,23 @@ describe PartializerConfig do
         expect( result.keys.sort ).to eq( ['drivers/spi/config', 'drivers/uart/config'] )
       end
 
+      # The ACCUMULATE macros start from an empty function set, so each needs a
+      # matching config macro supplying at least one addition to be valid at all.
       it "sets the same function type its unqualified counterpart sets" do
         {
-          'TEST_PARTIAL_PUBLIC_MODULE_AT'  => [:tests, Partials::PUBLIC],
-          'TEST_PARTIAL_PRIVATE_MODULE_AT' => [:tests, Partials::PRIVATE],
-          'TEST_PARTIAL_MODULE_AT'         => [:tests, Partials::ACCUMULATE],
-          'TEST_PARTIAL_ALL_MODULE_AT'     => [:tests, Partials::DEDUCT],
-          'MOCK_PARTIAL_PUBLIC_MODULE_AT'  => [:mocks, Partials::PUBLIC],
-          'MOCK_PARTIAL_PRIVATE_MODULE_AT' => [:mocks, Partials::PRIVATE],
-          'MOCK_PARTIAL_MODULE_AT'         => [:mocks, Partials::ACCUMULATE],
-          'MOCK_PARTIAL_ALL_MODULE_AT'     => [:mocks, Partials::DEDUCT],
-        }.each do |macro, (side, type)|
-          result = @config.extract_configs("#{macro}(drivers/uart, config)")
+          'TEST_PARTIAL_PUBLIC_MODULE_AT'  => [:tests, Partials::PUBLIC,     nil],
+          'TEST_PARTIAL_PRIVATE_MODULE_AT' => [:tests, Partials::PRIVATE,    nil],
+          'TEST_PARTIAL_ALL_MODULE_AT'     => [:tests, Partials::DEDUCT,     nil],
+          'MOCK_PARTIAL_PUBLIC_MODULE_AT'  => [:mocks, Partials::PUBLIC,     nil],
+          'MOCK_PARTIAL_PRIVATE_MODULE_AT' => [:mocks, Partials::PRIVATE,    nil],
+          'MOCK_PARTIAL_ALL_MODULE_AT'     => [:mocks, Partials::DEDUCT,     nil],
+          'TEST_PARTIAL_MODULE_AT'         => [:tests, Partials::ACCUMULATE, 'TEST_PARTIAL_CONFIG_AT'],
+          'MOCK_PARTIAL_MODULE_AT'         => [:mocks, Partials::ACCUMULATE, 'MOCK_PARTIAL_CONFIG_AT'],
+        }.each do |macro, (side, type, config_macro)|
+          source = "#{macro}(drivers/uart, config)"
+          source += "\n#{config_macro}(drivers/uart, config, helper)" if config_macro
+
+          result = @config.extract_configs( source )
 
           expect( result['drivers/uart/config'] ).to_not( be_nil, "#{macro} produced no config" )
           expect( result['drivers/uart/config'].send( side ).type ).to( eq(type), "#{macro} set the wrong type" )
