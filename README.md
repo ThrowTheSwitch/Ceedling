@@ -1,4 +1,4 @@
-Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
+Ceedling [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15117/badge)](https://www.bestpractices.dev/projects/15117) ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
 **Ceedling 1.2.0** is nearing release.
