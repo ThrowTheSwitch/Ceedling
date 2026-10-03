@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/path_mirror'
+
 # Small helpers shared by more than one test pipeline stage class. Relies on
 # `@reportinator`/`@loginator` already being present via whichever including
 # class's own constructor DI provides them, the same way TestInvokerTypes is
@@ -87,16 +89,12 @@ module TestPipelineHelpers
   # take a same-named module's object from another directory, dropping a module the
   # test never Partialized and losing its functions from the link.
   def remove_partials_source_objects(objects, configs)
-    queries = configs.keys.map { |_module| path_segments( _module ) }
+    queries = configs.keys.map { |_module| PathMirror.path_segments( _module ) }
 
     objects.delete_if do |filepath|
-      segments = path_segments( filepath.ext( '' ) )
+      segments = PathMirror.path_segments( filepath.ext( '' ) )
       queries.any? { |query| segments.last( query.length ) == query }
     end
-  end
-
-  def path_segments(path)
-    path.downcase.split( %r{[\\/]} ).reject(&:empty?)
   end
 
 end

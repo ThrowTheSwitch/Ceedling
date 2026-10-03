@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/path_mirror'
+require 'ceedling/file_path_utils'
 
 PROJECT_BUILD_ROOT           = 'build'     unless defined?(PROJECT_BUILD_ROOT)
 PROJECT_BUILD_ARTIFACTS_ROOT = 'artifacts' unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
@@ -28,7 +29,12 @@ describe ConsoleReportinator do
   let(:test_invoker)        { double('test_invoker') }
   let(:tool_executor)       { double('tool_executor') }
   let(:configurator) do
-    double('configurator', paths_source: ['src'], paths_support: ['support'])
+    double('configurator', paths_source: ['src'], paths_support: ['support'], cmock_mock_prefix: 'mock_')
+  end
+  # Real, so reversing a generated Partial filename here exercises the same code that
+  # builds those filenames rather than a restatement of it. Touches no filesystem.
+  let(:file_path_utils) do
+    FilePathUtils.new({ configurator: configurator, file_wrapper: double('file_wrapper') })
   end
   let(:system_objects) do
     {
@@ -37,6 +43,7 @@ describe ConsoleReportinator do
       plugin_reportinator:  plugin_reportinator,
       test_invoker:         test_invoker,
       tool_executor:        tool_executor,
+      file_path_utils:      file_path_utils,
     }
   end
 

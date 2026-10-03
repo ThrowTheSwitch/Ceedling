@@ -33,6 +33,26 @@ class PathMirror
       .reject(&:empty?)
   end
 
+  # As `relative_subdir`, but distinguishes a file no root contains (nil) from one sitting
+  # directly in a root (''). `relative_subdir` answers '' for both, which is the right
+  # fallback for placing build output but hides the difference from a caller deciding
+  # whether a path belongs to a configured tree at all.
+  def self.relative_subdir_if_rooted(filepath, roots)
+    clean    = clean_roots( roots )
+    file_dir = File.dirname( filepath )
+
+    return nil unless clean.any? { |root| file_dir == root || file_dir.start_with?( root + '/' ) }
+
+    return relative_subdir_from_clean_roots( filepath, clean )
+  end
+
+  # A path as lowercased segments, split on either separator. One spelling for every caller
+  # that matches trailing path segments rather than whole paths, so all of them agree on
+  # what a segment is and on case folding.
+  def self.path_segments(path)
+    path.downcase.split( %r{[\\/]} ).reject(&:empty?)
+  end
+
   # As `relative_subdir`, but takes roots already reduced by `clean_roots` instead of
   # raw, possibly glob/decorator-laden `:paths` entries.
   def self.relative_subdir_from_clean_roots(filepath, clean_roots)

@@ -25,6 +25,7 @@ class ConsoleReportinator < GcovReportinator
     @plugin_reportinator  = system_objects[:plugin_reportinator]
     @test_invoker         = system_objects[:test_invoker]
     @tool_executor        = system_objects[:tool_executor]
+    @file_path_utils      = system_objects[:file_path_utils]
   end
 
   def generate_reports(opts, untested_sources: [])
@@ -91,23 +92,19 @@ class ConsoleReportinator < GcovReportinator
     return sources - replaced
   end
 
-  # The module a generated Partial replaces, as path segments. The prefix and suffix come
-  # off the basename only, leaving the mirrored subdirectory as the module's own path.
+  # The module a generated Partial replaces, as path segments. The reversal itself belongs
+  # to the same place that builds these filenames, so prefix and suffix knowledge stays in
+  # one place; the mirrored subdirectory survives as the module's own path.
   def partial_module_segments(filepath)
-    basename = File.basename( filepath, '.*' )
-                   .delete_prefix( PARTIAL_FILENAME_PREFIX )
-                   .delete_suffix( '_impl' )
+    _module = @file_path_utils.module_from_partial_filename( filepath )
 
-    dir = File.dirname( filepath )
+    return [] if _module.nil?
 
-    return path_segments( dir == '.' ? basename : File.join( dir, basename ) )
+    return PathMirror.path_segments( _module )
   end
 
   def source_segments(filepath)
-    dir      = File.dirname( filepath )
-    basename = File.basename( filepath, '.*' )
-
-    return path_segments( dir == '.' ? basename : File.join( dir, basename ) )
+    return PathMirror.path_segments( filepath.sub( /\.[^.\/\\]*\z/, '' ) )
   end
 
   # How many trailing segments two paths have in common. Zero means even the basenames
@@ -117,10 +114,6 @@ class ConsoleReportinator < GcovReportinator
     length += 1 while length < left.length && length < right.length &&
                       left[-(length + 1)] == right[-(length + 1)]
     return length
-  end
-
-  def path_segments(path)
-    path.downcase.split( %r{[\\/]} ).reject(&:empty?)
   end
 
   def run_gcov_summary(test, source, opts)
