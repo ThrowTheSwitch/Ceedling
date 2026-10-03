@@ -133,20 +133,26 @@ class FileFinder
     # Generated partials -- same per-test scoping rationale as mocks, above
     elsif (!release) and
           (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
+      # A generated Partial sits in the subdirectory mirroring its own module, so that
+      # subdirectory is what distinguishes two modules sharing a basename. It has to be
+      # measured against the generated Partials root searched below. Measuring against
+      # the out root a test object sits under yields nothing, degrading the query to a
+      # bare basename that matches both modules.
+      partials_root = File.join(@configurator.project_test_partials_path, test_context)
+      subdir = PathMirror.relative_subdir( filepath, [partials_root] )
+
       _source_file = source_file + EXTENSION_CORE_SOURCE
+      _source_file = File.join( subdir, _source_file ) unless subdir.empty?
+
       collection =
         @file_wrapper.directory_listing(
-          File.join(@configurator.project_test_partials_path, test_context, ('**/*' + EXTENSION_CORE_SOURCE))
+          File.join(partials_root, ('**/*' + EXTENSION_CORE_SOURCE))
         )
 
       # Ambiguity is detected here rather than rescued from the matching below. One
       # matching implementation stays in force, and the message is composed from the
       # module names the test author wrote instead of reworded by exception.
-      _raise_ambiguous_partial!(
-        _source_file,
-        collection,
-        File.join( @configurator.project_test_partials_path, test_context )
-      )
+      _raise_ambiguous_partial!( _source_file, collection, partials_root )
 
       found_file =
         @file_finder_helper.find_file_in_collection( _source_file, collection, complain )
