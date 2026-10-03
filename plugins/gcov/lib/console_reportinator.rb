@@ -59,18 +59,68 @@ class ConsoleReportinator < GcovReportinator
     end
   end
 
+  # Remap sources: if Partial files are present, remove the original source file they replace.
+  # Coverage is then reported against the Partial implementation rather than the original module.
+  #
+  # A Partial replaces one module, identified by its path. Generated Partials and real
+  # sources sit below different roots, so neither path is a suffix of the other and the
+  # two can only be related by the namespace they share. Each Partial therefore claims
+  # the source it shares the longest trailing path with. Matching on basename alone would
+  # drop every same-named module, and one nobody Partialized would lose its coverage
+  # report entirely.
   def remap_partial_sources(sources)
-    # Remap sources: if Partial files are present, remove the original source file they replace.
-    # Coverage is then reported against the Partial implementation rather than the original module.
     partials = sources.select { |s| File.basename(s).match?(PATTERNS::PARTIAL_IMPL_FILENAME) }
     return sources if partials.empty?
 
-    # Extract module names covered by Partials (strip prefix and _impl suffix)
-    partialized = partials.map { |p|
-      File.basename(p, '.*').delete_prefix(PARTIAL_FILENAME_PREFIX).delete_suffix('_impl')
-    }
-    # Drop any original source file whose module is now covered by a Partial
-    sources.reject { |s| partialized.include?( File.basename(s, '.*') ) }
+    originals = sources.reject { |s| File.basename(s).match?(PATTERNS::PARTIAL_IMPL_FILENAME) }
+    replaced  = []
+
+    partials.each do |partial|
+      query = partial_module_segments( partial )
+
+      scored = originals.map { |source| [source, common_suffix_length( query, source_segments( source ) )] }
+                        .reject { |_source, length| length.zero? }
+
+      next if scored.empty?
+
+      best = scored.map { |_source, length| length }.max
+
+      replaced += scored.select { |_source, length| length == best }.map(&:first)
+    end
+
+    return sources - replaced
+  end
+
+  # The module a generated Partial replaces, as path segments. The prefix and suffix come
+  # off the basename only, leaving the mirrored subdirectory as the module's own path.
+  def partial_module_segments(filepath)
+    basename = File.basename( filepath, '.*' )
+                   .delete_prefix( PARTIAL_FILENAME_PREFIX )
+                   .delete_suffix( '_impl' )
+
+    dir = File.dirname( filepath )
+
+    return path_segments( dir == '.' ? basename : File.join( dir, basename ) )
+  end
+
+  def source_segments(filepath)
+    dir      = File.dirname( filepath )
+    basename = File.basename( filepath, '.*' )
+
+    return path_segments( dir == '.' ? basename : File.join( dir, basename ) )
+  end
+
+  # How many trailing segments two paths have in common. Zero means even the basenames
+  # differ, so the two cannot name the same module.
+  def common_suffix_length(left, right)
+    length = 0
+    length += 1 while length < left.length && length < right.length &&
+                      left[-(length + 1)] == right[-(length + 1)]
+    return length
+  end
+
+  def path_segments(path)
+    path.downcase.split( %r{[\\/]} ).reject(&:empty?)
   end
 
   def run_gcov_summary(test, source, opts)
