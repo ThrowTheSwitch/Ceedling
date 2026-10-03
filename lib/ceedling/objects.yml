@@ -294,6 +294,7 @@ preprocessinator:
     - preprocessinator_file_assembler
     - preprocessinator_reconstructor
     - file_path_utils
+    - file_wrapper
     - tool_executor
     - plugin_manager
     - configurator

@@ -25,6 +25,9 @@ RSpec.describe PreprocessinatorFileAssembler do
     @tool_executor  = double('tool_executor')
     @file_path_utils = double('file_path_utils')
     @file_wrapper   = double('file_wrapper')
+    # Whoever writes a preprocessed file creates its directory, since the path may mirror
+    # a source's own namespace below the test's flat preprocess directories.
+    allow(@file_wrapper).to receive(:mkdir)
     @loginator      = double('loginator')
     @reportinator   = double('reportinator')
 
@@ -357,6 +360,34 @@ RSpec.describe PreprocessinatorFileAssembler do
 
 
   # ===========================================================================
+  # A preprocessed artifact's path mirrors its source's own namespace, so the directory may
+  # not exist yet. Whoever writes the file creates it.
+  describe 'output directory creation' do
+    it 'creates the directory before writing a preprocessed header file' do
+      allow(@file_wrapper).to receive(:open)
+
+      expect(@file_wrapper).to receive(:mkdir).with('/build/files/drivers/uart')
+
+      subject.assemble_preprocessed_header_file(
+        filename: 'config.h',
+        preprocessed_filepath: '/build/files/drivers/uart/config.h',
+        contents: [], extras: [], includes: []
+      )
+    end
+
+    it 'creates the directory before writing a preprocessed code file' do
+      allow(@file_wrapper).to receive(:open)
+
+      expect(@file_wrapper).to receive(:mkdir).with('/build/files/drivers/spi')
+
+      subject.assemble_preprocessed_code_file(
+        filename: 'config.c',
+        preprocessed_filepath: '/build/files/drivers/spi/config.c',
+        contents: [], extras: [], includes: []
+      )
+    end
+  end
+
   describe '#assemble_preprocessed_header_file' do
   # ===========================================================================
 

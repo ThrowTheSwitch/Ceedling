@@ -2033,4 +2033,21 @@ describe Partializer do
     end
   end
 
+
+  # A module named with a backslash separator still names a directory. Elsewhere this
+  # codebase treats either separator as a separator, and the qualifier validation already
+  # rejects a backslash-rooted absolute path, so detection has to agree.
+  describe 'a module named with a backslash separator' do
+    it 'is treated as naming a directory' do
+      expect( @partializer.send(:_names_directory?, 'drivers\\uart/config') ).to be true
+    end
+
+    it 'is treated as naming a directory when backslash is the only separator' do
+      expect( @partializer.send(:_names_directory?, 'drivers\\config') ).to be true
+    end
+
+    it 'leaves a bare module name naming none' do
+      expect( @partializer.send(:_names_directory?, 'config') ).to be false
+    end
+  end
 end

@@ -17,6 +17,7 @@ RSpec.describe Preprocessinator do
     @file_assembler    = double('preprocessinator_file_assembler')
     @reconstructor     = double('preprocessinator_reconstructor')
     @file_path_utils   = double('file_path_utils')
+    @file_wrapper      = double('file_wrapper')
     @tool_executor     = double('tool_executor')
     @plugin_manager    = double('plugin_manager')
     @configurator      = double('configurator')
@@ -27,6 +28,9 @@ RSpec.describe Preprocessinator do
     allow(@loginator).to receive(:log_list)
     allow(@reportinator).to receive(:generate_module_progress).and_return('')
     allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
+    # Whoever writes a preprocessed file creates its directory, since the path may mirror
+    # a source's own namespace below the test's flat preprocess directories.
+    allow(@file_wrapper).to receive(:mkdir)
   end
 
   subject do
@@ -36,6 +40,7 @@ RSpec.describe Preprocessinator do
       preprocessinator_file_assembler:   @file_assembler,
       preprocessinator_reconstructor:    @reconstructor,
       file_path_utils:                   @file_path_utils,
+      file_wrapper:                      @file_wrapper,
       tool_executor:                     @tool_executor,
       plugin_manager:                    @plugin_manager,
       configurator:                      @configurator,
@@ -266,6 +271,17 @@ RSpec.describe Preprocessinator do
       allow(@tool_executor).to receive(:build_command_line).and_return({ options: {} })
       allow(@comment_stripper).to receive(:strip_file)
       allow(@reconstructor).to receive(:compact_file_from_expansion)
+    end
+
+    # A preprocessed artifact's path mirrors its source's own namespace, so the directory
+    # may not exist yet -- a test's flat preprocess directories are created with the rest
+    # of its build paths, before any source is known. Both outputs are written here.
+    it 'creates the directory for each output it writes' do
+      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 0, output: '' })
+
+      expect(@file_wrapper).to receive(:mkdir).with('/build/directives_only').twice
+
+      call_it
     end
 
     it "sets boom: false on the command before invoking the directives-only preprocessor" do

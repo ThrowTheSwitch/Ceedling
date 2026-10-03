@@ -37,6 +37,8 @@ class PreprocessinatorFileAssembler
 
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
 
+    @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
+
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
       @configurator.tools_test_file_full_preprocessor,
@@ -202,6 +204,8 @@ class PreprocessinatorFileAssembler
     # file and may already carry their own line endings. Windows text mode
     # rewrites "\n" on write, which would alter a line ending already present
     # in that content instead of passing it through unchanged.
+    @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
+
     @file_wrapper.open( preprocessed_filepath, 'wb' ) do |file|
       # Add include guards and extra blank lines to beginning of file contents
       file << "#ifndef #{guardname}\n"
@@ -248,6 +252,8 @@ class PreprocessinatorFileAssembler
     contents = []
 
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
+
+    @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
 
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
@@ -362,6 +368,8 @@ class PreprocessinatorFileAssembler
     # file and may already carry their own line endings. Windows text mode
     # rewrites "\n" on write, which would alter a line ending already present
     # in that content instead of passing it through unchanged.
+    @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
+
     @file_wrapper.open( preprocessed_filepath, 'wb' ) do |file|
       # Reinsert #include statements into stripped down file
       # Rely on Include object stringification for formatting of incudes

@@ -545,9 +545,6 @@ describe FilePathUtils do
     before(:each) do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
-      # A mirrored subdirectory is created as the path is composed, since nothing else
-      # creates it before a preprocessor tool writes there.
-      allow(@file_wrapper).to receive(:mkdir)
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper
@@ -597,18 +594,15 @@ describe FilePathUtils do
       expect( uart ).to_not eq(spi)
     end
 
-    # Nothing else creates the mirrored directory before a preprocessor tool writes there.
-    it 'creates the mirrored directory for a nested artifact' do
-      expect(@file_wrapper).to receive(:mkdir)
-        .with('build/test/preprocess/files/test_both/directives_only/raw/drivers/uart')
-
-      @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both')
-    end
-
-    it 'creates no directory for a flat artifact, its test having one already' do
+    # Composing a path leaves nothing behind. Callers that merely restate one -- a rake
+    # target declaration, a staleness check -- must not create directories as a side
+    # effect; whoever writes the file creates its directory.
+    it 'creates no directory, composing a path only' do
       expect(@file_wrapper).to_not receive(:mkdir)
 
-      @fpu.form_preprocessed_file_raw_directives_only_filepath('src/foo.c', 'test_foo')
+      @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both')
+      @fpu.form_preprocessed_file_full_expansion_filepath('src/drivers/uart/config.c', 'test_both')
+      @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both')
     end
 
     it 'mirrors a nested header below its own include root' do
