@@ -79,11 +79,24 @@ module TestPipelineHelpers
   # generated code back to the original module's own lines) working the same way it does for
   # every other source, rather than carving out a special case for whether the result of
   # compiling it is ever actually linked.
+  # A Partialized module's own object must not reach the link, since the generated
+  # Partial already carries that module's functions.
+  #
+  # An object's path mirrors its source's own directory below the configured roots, so
+  # a module is matched by the end of that path. Matching on basename alone would also
+  # take a same-named module's object from another directory, dropping a module the
+  # test never Partialized and losing its functions from the link.
   def remove_partials_source_objects(objects, configs)
-    modules = configs.keys
+    queries = configs.keys.map { |_module| path_segments( _module ) }
+
     objects.delete_if do |filepath|
-      modules.include?( File.basename( filepath ).ext() )
+      segments = path_segments( filepath.ext( '' ) )
+      queries.any? { |query| segments.last( query.length ) == query }
     end
+  end
+
+  def path_segments(path)
+    path.downcase.split( %r{[\\/]} ).reject(&:empty?)
   end
 
 end

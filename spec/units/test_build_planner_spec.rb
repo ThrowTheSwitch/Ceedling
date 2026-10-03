@@ -527,6 +527,42 @@ describe TestBuildPlanner do
 
       expect(objects).to eq( ['build/test/out/a_test/Bar.o'] )
     end
+
+    # A Partialized module's own object must not reach the link, since the generated
+    # Partial already carries that module's functions. An object's path mirrors its
+    # source's own directory, so a module named by directory is matched by the end of
+    # that path.
+    it "removes the mirrored object of a module named by directory" do
+      objects = [
+        'build/test/out/a_test/drivers/uart/config.o',
+        'build/test/out/a_test/a_test.o'
+      ]
+
+      @planner.remove_partials_source_objects( objects, { 'drivers/uart/config' => double( "Config" ) } )
+
+      expect(objects).to eq( ['build/test/out/a_test/a_test.o'] )
+    end
+
+    # Matching on basename alone would take this one too, dropping a module the test
+    # never Partialized and losing its functions from the link.
+    it "leaves a same-named module's object in another directory alone" do
+      objects = [
+        'build/test/out/a_test/drivers/uart/config.o',
+        'build/test/out/a_test/drivers/spi/config.o'
+      ]
+
+      @planner.remove_partials_source_objects( objects, { 'drivers/uart/config' => double( "Config" ) } )
+
+      expect(objects).to eq( ['build/test/out/a_test/drivers/spi/config.o'] )
+    end
+
+    it "still removes a mirrored object for a module named without a directory" do
+      objects = ['build/test/out/a_test/drivers/uart/config.o']
+
+      @planner.remove_partials_source_objects( objects, { 'config' => double( "Config" ) } )
+
+      expect(objects).to eq( [] )
+    end
   end
 
   describe "#collect_test_framework_sources" do
