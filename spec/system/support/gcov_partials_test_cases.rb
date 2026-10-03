@@ -144,7 +144,9 @@ module GcovPartialsTestCases
         # Both modules are labeled by basename alone, so the two are told apart by their
         # own coverage instead: uart's private function is exercised through its Partial,
         # while spi's module leaves one of its two lines uncovered.
-        reported = output.to_s.scan(/^config\.c \| Lines executed:([\d.]+)% of (\d+)/)
+        # Deduplicated: some gcov versions repeat a file's own statistic line after its
+        # per-file block, so the count of distinct results is what identifies the modules.
+        reported = output.to_s.scan(/^config\.c \| Lines executed:([\d.]+)% of (\d+)/).uniq
 
         expect( reported.length ).to eq(2)
         expect( reported ).to include(['100.00', '3'])
