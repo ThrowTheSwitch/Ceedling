@@ -43,6 +43,7 @@ describe TestBuildPlanner do
     # Harmless default -- individual examples needing a specific ordered header
     # collection stub this again with a narrower `.with(...)` match.
     allow(@include_pathinator).to receive(:ordered_header_files).and_return( [] )
+    allow(@include_pathinator).to receive(:prioritized_header_files).and_return( [] )
     allow(@loginator).to receive(:log)
 
     # Harmless default for #extract_sources examples that don't care about
@@ -129,11 +130,28 @@ describe TestBuildPlanner do
         configs = { 'Foo' => double( "Config" ) }
         allow(@test_context_extractor).to receive(:lookup_partials_config)
           .with( 'test/TestFoo.c' ).and_return( configs )
-        allow(@partializer).to receive(:populate_filepaths).with( configs ).and_return( configs )
+        allow(@partializer).to receive(:populate_filepaths).and_return( configs )
 
         @planner.stage_determine_files( @state )
 
         expect(@testable.partials.configs).to eq( configs )
+      end
+
+      # Resolution has to see this one test's own ordered header list, which is what
+      # lets a TEST_INCLUDE_PATH() in the test decide which module it gets.
+      it "resolves each Partial module against this test's own ordered header list" do
+        configs = { 'config' => double( "Config" ) }
+        ordered = ['include/drivers/uart/config.h']
+
+        allow(@test_context_extractor).to receive(:lookup_partials_config).and_return( configs )
+        allow(@include_pathinator).to receive(:prioritized_header_files)
+          .with( @testable.search_paths ).and_return( ordered )
+
+        expect(@partializer).to receive(:populate_filepaths)
+          .with( configs, collection: ordered, test_filepath: 'test/TestFoo.c' )
+          .and_return( configs )
+
+        @planner.stage_determine_files( @state )
       end
     end
 

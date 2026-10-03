@@ -534,11 +534,32 @@ class TestBuildSetup
     return dirs.uniq
   end
 
+  # Every Partialized module's own directory below this test's Partials root.
+  #
+  # A generated Partial is only findable by the compiler via a search path pointing
+  # directly at where it sits, since C's own #include resolution has no notion of a
+  # recursive search path. This is the same reason each mock's own mirrored directory
+  # is collected above, and it covers the generated test runner, which includes a
+  # Partial header by basename alone.
+  #
+  # The module keys carry the directory, so nothing has to exist on disk yet.
+  def collect_partial_search_paths(filepath, paths)
+    return [] unless paths[:partials]
+
+    dirs = @context_extractor.lookup_partials_config( filepath ).keys.map do |_module|
+      dir = File.dirname( _module )
+      dir == '.' ? nil : File.join( paths[:partials], dir )
+    end
+
+    return dirs.compact.uniq
+  end
+
   def search_paths(filepath, paths, mock_search_paths = [])
     _paths = []
     _paths << paths[:mocks]    if paths[:mocks]
     _paths += mock_search_paths
     _paths << paths[:partials] if paths[:partials]
+    _paths += collect_partial_search_paths( filepath, paths )
     _paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
     _paths += @include_pathinator.collect_test_include_paths()
     _paths += @configurator.collection_paths_support

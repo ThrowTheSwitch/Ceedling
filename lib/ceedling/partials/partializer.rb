@@ -14,12 +14,13 @@ require 'ceedling/c_extractor/c_extractor'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/constants'
+require 'ceedling/path_mirror'
 
 class Partializer
 
   include Partials
 
-  constructor :partializer_helper, :file_finder, :c_extractor, :file_path_utils, :reportinator, :loginator
+  constructor :configurator, :partializer_helper, :file_finder, :c_extractor, :file_path_utils, :reportinator, :loginator
 
   def setup()
     # Alias
@@ -71,18 +72,75 @@ class Partializer
     end
   end
 
-  def populate_filepaths(configs)
+  # A Partial module is resolved the way every other file reference in a test is, by
+  # matching trailing path segments. Two things make that correct here.
+  #
+  # `collection` is the ordered header list this one test would search, so a
+  # TEST_INCLUDE_PATH() in that test decides which module it gets. Resolving against
+  # one project-wide collection instead lets two modules sharing a basename collapse
+  # to whichever appears first, no matter which test asked.
+  #
+  # The source is then found by way of the resolved header, so a bare module name
+  # cannot pair one module's header with another module's source.
+  def populate_filepaths(configs, collection: nil, test_filepath: nil)
     configs.each do |_module, config|
       # Every partial involves processing header files
-      config.header.filepath = @file_finder.find_header_file(_module, :ignore)
+      config.header.filepath = @file_finder.find_header_file(_module, :ignore, collection: collection)
+
+      _validate_named_directory_resolved!(_module, config.header.filepath, test_filepath)
 
       # Source file not needed only when mocking public functions exclusively
       unless !config.tests.present? && config.mocks.type == PUBLIC
-        config.source.filepath = @file_finder.find_source_file(_module, :ignore)
+        config.source.filepath = _find_module_source(_module, config.header.filepath)
       end
     end
 
     return configs
+  end
+
+  # A module named by directory was spelled out by its author, so it is looked up
+  # verbatim with no fallback. A bare name is narrowed by its resolved header's own
+  # directory, which is what keeps one module's header from pairing with another
+  # module's source. The fallback after that serves a project whose source and include
+  # trees do not mirror one another, where a header sits under a directory its source
+  # does not.
+  def _find_module_source(_module, header_filepath)
+    return @file_finder.find_source_file(_module, :ignore) if _names_directory?(_module)
+
+    subdir = header_filepath.nil? ? '' : PathMirror.relative_subdir(header_filepath, _header_roots)
+
+    unless subdir.empty?
+      found = @file_finder.find_source_file(File.join(subdir, _module), :ignore)
+      return found unless found.nil?
+    end
+
+    return @file_finder.find_source_file(_module, :ignore)
+  end
+
+  # Roots a header can sit beneath, which is what its mirrored directory is measured
+  # against. The same three the project-wide header collection is built from.
+  def _header_roots
+    @configurator.paths_test + @configurator.paths_support + @configurator.paths_include
+  end
+
+  def _names_directory?(_module)
+    _module.include?('/')
+  end
+
+  # A bare module name that matches nothing keeps its older behavior, generating a
+  # degenerate Partial. A directory that matches nothing is a typo worth saying so,
+  # since naming the directory was a deliberate act and no older behavior is at stake.
+  def _validate_named_directory_resolved!(_module, header_filepath, test_filepath)
+    return unless _names_directory?(_module)
+    return unless header_filepath.nil?
+
+    location = test_filepath.nil? ? '' : " referenced in #{test_filepath}"
+
+    raise CeedlingException.new(
+      "Partial module '#{_module}'#{location} matches no header file. " \
+      "A Partial's directory is matched against the end of a real file's path, so check " \
+      "the spelling of both the directory and the module."
+    )
   end
 
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.

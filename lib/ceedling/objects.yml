@@ -376,6 +376,7 @@ partializer_helper:
 
 partializer:
   compose:
+    - configurator
     - partializer_helper
     - file_finder
     - c_extractor

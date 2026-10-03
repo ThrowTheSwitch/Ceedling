@@ -23,8 +23,14 @@ describe Partializer do
     @reportinator       = Reportinator.new
     @loginator          = double("Loginator").as_null_object
 
+    @configurator = double( "Configurator" )
+    allow(@configurator).to receive(:paths_test).and_return( ['test'] )
+    allow(@configurator).to receive(:paths_support).and_return( [] )
+    allow(@configurator).to receive(:paths_include).and_return( ['include'] )
+
     @partializer = described_class.new(
       {
+        :configurator       => @configurator,
         :partializer_helper => @partializer_helper,
         :file_finder        => @file_finder,
         :c_extractor        => @c_extractor,
@@ -181,7 +187,7 @@ describe Partializer do
     it "populates header and source for a test config" do
       configs = { 'mod' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
 
-      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore, collection: nil).and_return('mod.h')
       allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
 
       @partializer.populate_filepaths(configs)
@@ -193,7 +199,7 @@ describe Partializer do
     it "populates header only for mock-public config" do
       configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PUBLIC)) }
 
-      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore, collection: nil).and_return('mod.h')
       expect(@file_finder).not_to receive(:find_source_file)
 
       @partializer.populate_filepaths(configs)
@@ -205,7 +211,7 @@ describe Partializer do
     it "populates header and source for mock-private config" do
       configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PRIVATE)) }
 
-      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore, collection: nil).and_return('mod.h')
       allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
 
       @partializer.populate_filepaths(configs)
@@ -217,7 +223,7 @@ describe Partializer do
     it "populates header and source when mocks.type is nil" do
       configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: nil)) }
 
-      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore, collection: nil).and_return('mod.h')
       allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
 
       @partializer.populate_filepaths(configs)
@@ -232,9 +238,9 @@ describe Partializer do
         'b' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PUBLIC))
       }
 
-      allow(@file_finder).to receive(:find_header_file).with('a', :ignore).and_return('a.h')
+      allow(@file_finder).to receive(:find_header_file).with('a', :ignore, collection: nil).and_return('a.h')
       allow(@file_finder).to receive(:find_source_file).with('a', :ignore).and_return('a.c')
-      allow(@file_finder).to receive(:find_header_file).with('b', :ignore).and_return('b.h')
+      allow(@file_finder).to receive(:find_header_file).with('b', :ignore, collection: nil).and_return('b.h')
       expect(@file_finder).not_to receive(:find_source_file).with('b', :ignore)
 
       @partializer.populate_filepaths(configs)

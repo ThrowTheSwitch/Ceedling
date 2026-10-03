@@ -84,7 +84,7 @@ class TestBuildPlanner
 
       partials_configs = {}
       if @configurator.project_use_partials
-        partials_configs = assemble_partials_config( filepath: filepath )
+        partials_configs = assemble_partials_config( filepath: filepath, testable: testable )
       end
 
       # `pre_test` runs outside the lock -- it's a plugin hook, not a write into
@@ -198,9 +198,19 @@ class TestBuildPlanner
   # Helper methods
   # -----------------------------------------------------------------------
 
-  def assemble_partials_config(filepath:)
+  # Each Partial module resolves against the project's headers ordered by this one
+  # test's own search paths, so a TEST_INCLUDE_PATH() in the test decides which module
+  # it gets. A module can be named by path and sit at any depth below a search path,
+  # which is why this is the prioritized whole collection rather than the immediate
+  # contents a compiler's own -I search would list.
+  def assemble_partials_config(filepath:, testable:)
     configs = @test_context_extractor.lookup_partials_config( filepath )
-    return @partializer.populate_filepaths( configs )
+
+    return @partializer.populate_filepaths(
+      configs,
+      collection:    @include_pathinator.prioritized_header_files( testable.search_paths ),
+      test_filepath: filepath
+    )
   end
 
   def collect_test_framework_sources(mocks)
