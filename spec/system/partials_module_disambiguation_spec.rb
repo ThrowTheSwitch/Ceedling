@@ -17,7 +17,7 @@ require 'spec_system_helper'
 ## module still compiles and links. A wrong resolution surfaces as a wrong value,
 ## which is the silent failure the issue warns about.
 ##
-## Assets: assets/fixtures/partials_same_named_modules/
+## Assets: assets/fixtures/same_named_modules/
 ##
 
 ceedling_system_tests do
@@ -31,7 +31,7 @@ ceedling_system_tests do
       before do
         copy_same_named_partial_modules('uart')
         in_project do
-          copy_fixture("partials_same_named_modules/test/test_uart_config_bare.c", 'test')
+          copy_fixture("same_named_modules/test/test_uart_config_bare.c", 'test')
         end
       end
 
@@ -53,7 +53,7 @@ ceedling_system_tests do
       before do
         copy_same_named_partial_modules('uart', 'spi')
         in_project do
-          copy_fixture("partials_same_named_modules/test/test_both_configs.c", 'test')
+          copy_fixture("same_named_modules/test/test_both_configs.c", 'test')
         end
       end
 

@@ -125,6 +125,46 @@ describe 'Partial module resolution (integration)' do
     end
   end
 
+  # Correlating an #include'd header with the source beside it, which is how a test
+  # names the modules it exercises. The two trees share a namespace below their own
+  # roots, which is the conventional layout: headers below `include`, sources below
+  # `src`. The shared namespace is what distinguishes two same-basename modules, and
+  # the roots themselves are what must not be compared.
+  context 'correlating a header with its source' do
+    before(:each) do
+      allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:paths_include).and_return( ['include/**'] )
+      allow(@configurator).to receive(:paths_source).and_return( ['src/**'] )
+      allow(@configurator).to receive(:paths_support).and_return( [] )
+      allow(@configurator).to receive(:release_build_use_assembly).and_return( false )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( RESOLUTION_SOURCES )
+      allow(@configurator).to receive(:collection_vendor_framework_sources).and_return( [] )
+      allow(@configurator).to receive(:project_test_file_prefix).and_return('test_')
+      allow(@configurator).to receive(:test_runner_file_suffix).and_return('_runner')
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
+    end
+
+    def correlate(header)
+      @finder.find_build_input_file(
+        filepath: header, complain: :ignore, context: TEST_SYM, test: 'test_both_modules'
+      )
+    end
+
+    it 'correlates a namespaced header with the source mirroring it' do
+      expect( correlate('include/drivers/uart/config.h') ).to eq('src/drivers/uart/config.c')
+    end
+
+    # Two headers sharing a basename must reach their own sources, not one another's.
+    it 'keeps two same-named modules apart' do
+      expect( correlate('include/drivers/spi/config.h') ).to eq('src/drivers/spi/config.c')
+    end
+
+    it 'resolves nothing for a header whose namespace matches no source' do
+      expect( correlate('include/shared/types.h') ).to be_nil
+    end
+  end
+
   # Resolving a generated Partial back to its own generated source. This lookup runs
   # on build input, long after generation, so its queries carry Ceedling's own
   # generated filenames rather than anything the test author wrote. A message here
