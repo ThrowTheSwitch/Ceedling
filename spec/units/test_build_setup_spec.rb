@@ -522,6 +522,22 @@ describe TestBuildSetup do
         @setup.stage_collect_preprocessor_context( @state )
       end
 
+      it "places a Partial's stand-in under the directory its generated #include names" do
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes)
+          .and_return( [ Include.new('drivers/uart/ceedling_partial_config_impl.h') ] )
+
+        expect(@file_path_utils).to receive(:form_partial_header_filepath)
+          .with( 'a_test', 'drivers/uart/ceedling_partial_config_impl.h' )
+          .and_return( 'build/test/partials/a_test/drivers/uart/ceedling_partial_config_impl.h' )
+        expect(@file_wrapper).to receive(:mkdir)
+          .with( 'build/test/partials/a_test/drivers/uart' )
+        expect(@file_wrapper).to receive(:write_blank_file)
+          .with( 'build/test/partials/a_test/drivers/uart/ceedling_partial_config_impl.h' )
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
       it "creates no directory for a Partial's stand-in, unlike a mock's" do
         allow(@file_wrapper).to receive(:exist?).and_return( false )
         allow(@preprocessinator).to receive(:preprocess_bare_includes)

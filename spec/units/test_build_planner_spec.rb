@@ -186,7 +186,9 @@ describe TestBuildPlanner do
           .and_return( 'build/test/partials/a_test/ceedling_partial_foo_interface.h' )
       end
 
-      it "has no real header to resolve against -- it stays flat, with no mirrored subdirectory" do
+      # A Partial mock has no real header to resolve against, so its directory comes
+      # from the generated #include rather than from a mirrored source location.
+      it "stays flat when its generated #include names no directory" do
         expect(@file_finder).to_not receive(:resolve_mock)
 
         @planner.stage_determine_files( @state )
@@ -201,6 +203,32 @@ describe TestBuildPlanner do
             partial:  true
           )
         )
+      end
+    end
+
+    context "with a Partial mocked header named by directory" do
+      before(:each) do
+        mock = MockInclude.new( 'drivers/uart/Mockceedling_partial_config_interface.h' )
+        allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+          .with( 'test/TestFoo.c' ).and_return( [mock] )
+        allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+        allow(@file_path_utils).to receive(:form_partial_header_filepath)
+          .with( 'a_test', 'drivers/uart/ceedling_partial_config_interface.h' )
+          .and_return( 'build/test/partials/a_test/drivers/uart/ceedling_partial_config_interface.h' )
+      end
+
+      # The mock's own directory has to match the generated #include, since that is
+      # what the compiler resolves. It is carried on MockDetails#path, which is where
+      # mock generation reads it.
+      it "carries the directory its generated #include names" do
+        @planner.stage_determine_files( @state )
+
+        details = @testable.mocks[:Mockceedling_partial_config_interface]
+
+        expect( details ).to_not be_nil
+        expect( details.path ).to eq( 'drivers/uart' )
+        expect( details.filepath )
+          .to eq( 'build/test/partials/a_test/drivers/uart/ceedling_partial_config_interface.h' )
       end
     end
   end

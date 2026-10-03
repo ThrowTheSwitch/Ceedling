@@ -685,6 +685,52 @@ describe FilePathUtils do
     end
   end
 
+  # A module named by directory keeps that directory, and the prefixes attach to the
+  # basename rather than to the first path segment. These results are exactly the
+  # strings a directory-qualified directive macro expands to, which is what lets the
+  # compiler resolve the generated #include.
+  describe 'generated Partial filenames for a module named by directory' do
+    before(:each) do
+      @configurator = double('configurator')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => double('file_wrapper')
+      })
+    end
+
+    it 'prefixes the basename and keeps the directory for an implementation header' do
+      expect( @fpu.form_partial_implementation_header_filename('drivers/uart/config') )
+        .to eq('drivers/uart/ceedling_partial_config_impl.h')
+    end
+
+    it 'prefixes the basename and keeps the directory for an implementation source' do
+      expect( @fpu.form_partial_implementation_source_filename('drivers/uart/config') )
+        .to eq('drivers/uart/ceedling_partial_config_impl.c')
+    end
+
+    it 'prefixes the basename and keeps the directory for an interface header' do
+      expect( @fpu.form_partial_interface_header_filename('drivers/uart/config') )
+        .to eq('drivers/uart/ceedling_partial_config_interface.h')
+    end
+
+    it 'prefixes the basename and keeps the directory for a types header' do
+      expect( @fpu.form_partial_types_header_filename('drivers/uart/config') )
+        .to eq('drivers/uart/ceedling_partial_config_types.h')
+    end
+
+    it 'stacks both prefixes on the basename for a mock interface header' do
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
+
+      expect( @fpu.form_mock_partial_interface_header_filename('drivers/uart/config') )
+        .to eq('drivers/uart/Mockceedling_partial_config_interface.h')
+    end
+
+    it 'keeps a single directory segment' do
+      expect( @fpu.form_partial_implementation_header_filename('uart/config') )
+        .to eq('uart/ceedling_partial_config_impl.h')
+    end
+  end
+
   describe '#form_named_path' do
     before(:each) do
       @file_wrapper = double('file_wrapper')

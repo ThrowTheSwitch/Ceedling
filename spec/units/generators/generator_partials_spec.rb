@@ -81,6 +81,26 @@ describe GeneratorPartials do
       )
     end
 
+    # A module named by directory produces a nested filename, so the directory has to
+    # exist before the write. Nothing else creates it.
+    it "creates the nested directory for a module named by directory" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_source_filename)
+        .and_return( 'drivers/uart/ceedling_partial_config_impl.c' )
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .and_return( 'drivers/uart/ceedling_partial_config_impl.h' )
+      allow(@file_wrapper).to receive(:open).and_yield( double('handle').as_null_object )
+      allow(@generator).to receive(:generate_header)
+      allow(@generator).to receive(:generate_source)
+
+      expect(@file_wrapper).to receive(:mkdir).with( '/path/to/output/drivers/uart' ).at_least(:once)
+
+      @generator.generate_implementation(
+        test: 'test_config', name: 'drivers/uart/config', function_definitions: [],
+        source_includes: [], header_includes: [],
+        c_module: empty_module, output_path: '/path/to/output'
+      )
+    end
+
     it "should call generate_header() and generate_source() with correct parameters" do
       # Setup
       output_path = '/path/to/output'
