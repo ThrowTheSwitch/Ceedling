@@ -103,6 +103,34 @@ describe GeneratorPartials do
       )
     end
 
+    # Two modules sharing a basename generate two headers sharing one basename. A guard
+    # built from the basename alone is the same in both, so whichever header the compiler
+    # reads second is emptied and its declarations vanish.
+    it "builds an include guard distinguishing modules that share a basename" do
+      guards = []
+
+      ['drivers/uart', 'drivers/spi'].each do |dir|
+        handle = StringIO.new
+        allow(@file_path_utils).to receive(:form_partial_implementation_source_filename)
+          .and_return( "#{dir}/ceedling_partial_config_impl.c" )
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .and_return( "#{dir}/ceedling_partial_config_impl.h" )
+        allow(@file_wrapper).to receive(:mkdir)
+        allow(@file_wrapper).to receive(:open).and_yield( handle )
+
+        @generator.generate_implementation(
+          test: 'test_both', name: "#{dir}/config", function_definitions: [],
+          source_includes: [], header_includes: [],
+          c_module: empty_module, output_path: '/path/to/output'
+        )
+
+        guards << handle.string[/#ifndef (\S+)/, 1]
+      end
+
+      expect( guards.first ).to_not be_nil
+      expect( guards.first ).to_not eq( guards.last )
+    end
+
     it "should call generate_header() and generate_source() with correct parameters" do
       # Setup
       output_path = '/path/to/output'

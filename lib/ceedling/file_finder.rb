@@ -134,12 +134,16 @@ class FileFinder
     elsif (!release) and
           (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
       # A generated Partial sits in the subdirectory mirroring its own module, so that
-      # subdirectory is what distinguishes two modules sharing a basename. It has to be
-      # measured against the generated Partials root searched below. Measuring against
-      # the out root a test object sits under yields nothing, degrading the query to a
-      # bare basename that matches both modules.
+      # subdirectory is what distinguishes two modules sharing a basename. Which root it
+      # sits below depends on who is asking. A generated #include carries the Partials
+      # root searched below; an object for the same module mirrors that subdirectory
+      # below the test's own out root instead. Measuring against only one of the two
+      # yields nothing for queries of the other kind, degrading them to a bare basename
+      # that matches every same-named module in the test.
       partials_root = File.join(@configurator.project_test_partials_path, test_context)
-      subdir = PathMirror.relative_subdir( filepath, [partials_root] )
+      out_root      = test.nil? ? nil : @file_path_utils.form_test_build_path(test, context: context)
+
+      subdir = PathMirror.relative_subdir( filepath, [partials_root, out_root].compact )
 
       _source_file = source_file + EXTENSION_CORE_SOURCE
       _source_file = File.join( subdir, _source_file ) unless subdir.empty?

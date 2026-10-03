@@ -143,6 +143,11 @@ describe 'Partial module resolution (integration)' do
       allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
       allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
 
+      # The test's own out root. Objects for generated Partials mirror below it, so the
+      # lookup measures against it as well as the Partials root.
+      allow(@finder.instance_variable_get(:@file_path_utils))
+        .to receive(:form_test_build_path).and_return('build/test/out/test_both_configs')
+
       @listing = GENERATED_PARTIAL_SOURCES
       allow(@finder.instance_variable_get(:@file_wrapper))
         .to receive(:directory_listing) { @listing }
@@ -176,6 +181,18 @@ describe 'Partial module resolution (integration)' do
 
       expect( find_partial_input('drivers/spi/ceedling_partial_config_impl.h') )
         .to eq(GENERATED_PARTIAL_SOURCES.first)
+    end
+
+    # An object for a generated Partial mirrors the Partial's subdirectory below the out
+    # root instead. Both roots have to be measured against, or a query from object build
+    # time degrades to a bare basename.
+    it 'resolves an object mirroring the Partial below the out root' do
+      expect(
+        find_partial_input(
+          'drivers/uart/ceedling_partial_config_impl.o',
+          root: 'build/test/out/test_both_configs'
+        )
+      ).to eq(GENERATED_PARTIAL_SOURCES.last)
     end
 
     it 'still reports ambiguity for a query carrying no subdirectory' do

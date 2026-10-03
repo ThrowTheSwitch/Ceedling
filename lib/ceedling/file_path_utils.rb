@@ -381,12 +381,16 @@ class FilePathUtils
     return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_DIRECTIVES_ONLY_DIR, File.basename(filepath) )
   end
 
-  def form_test_build_objects_filelist(path, sources)
+  # `extra_roots` carries roots known only to the caller. A generated Partial source sits
+  # below its own test's build root rather than a configured source root, so nothing in the
+  # standard roots mirrors it. Without its root here, two modules sharing a basename
+  # collapse onto one object filename.
+  def form_test_build_objects_filelist(path, sources, extra_roots: [])
     return mirror_build_objects(
       sources,
       root:  path,
       ext:   @configurator.extension_object.primary,
-      roots: @configurator.paths_source + @configurator.paths_support
+      roots: @configurator.paths_source + @configurator.paths_support + extra_roots
     )
   end
 

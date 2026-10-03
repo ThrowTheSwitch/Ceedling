@@ -572,6 +572,34 @@ describe FilePathUtils do
         'build/test/out/TestFoo/qux.o'
       ])
     end
+
+    # Generated Partial sources sit below their own build root, not a configured source
+    # root, so nothing in the standard roots mirrors them. Two modules sharing a basename
+    # then collapse onto one object filename.
+    it 'mirrors a generated Partial source beneath an extra root' do
+      objects = @fpu.form_test_build_objects_filelist(
+        'build/test/out/TestFoo',
+        [
+          'build/test/partials/TestFoo/drivers/uart/ceedling_partial_config_impl.c',
+          'build/test/partials/TestFoo/drivers/spi/ceedling_partial_config_impl.c'
+        ],
+        extra_roots: ['build/test/partials/TestFoo']
+      )
+
+      expect( objects ).to eq([
+        'build/test/out/TestFoo/drivers/uart/ceedling_partial_config_impl.o',
+        'build/test/out/TestFoo/drivers/spi/ceedling_partial_config_impl.o'
+      ])
+    end
+
+    it 'leaves inputs flat when no extra root is supplied' do
+      objects = @fpu.form_test_build_objects_filelist(
+        'build/test/out/TestFoo',
+        ['build/test/partials/TestFoo/drivers/uart/ceedling_partial_config_impl.c']
+      )
+
+      expect( objects ).to eq(['build/test/out/TestFoo/ceedling_partial_config_impl.o'])
+    end
   end
 
   describe '#form_pass_results_filelist' do

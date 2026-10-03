@@ -162,14 +162,21 @@ class TestBuildPlanner
       compilations += test_support
       compilations.uniq!
 
-      test_objects     = @file_path_utils.form_test_build_objects_filelist( testable.paths[:build], compilations )
+      # The generated Partials root is this test's own, so it is known here rather than in
+      # the project's configured source roots.
+      partials_roots = testable.paths[:partials].nil? ? [] : [testable.paths[:partials]]
+
+      test_objects     = @file_path_utils.form_test_build_objects_filelist(
+        testable.paths[:build], compilations, extra_roots: partials_roots
+      )
       test_executable  = @file_path_utils.form_test_executable_filepath( testable.paths[:build], filepath )
       test_pass        = @file_path_utils.form_pass_results_filepath( testable.paths[:results], filepath )
 
       test_no_link_objects =
         @file_path_utils.form_test_build_objects_filelist(
           testable.paths[:build],
-          fetch_shallow_source_includes( filepath )
+          fetch_shallow_source_includes( filepath ),
+          extra_roots: partials_roots
         )
 
       test_objects = (test_objects.uniq - test_no_link_objects)
