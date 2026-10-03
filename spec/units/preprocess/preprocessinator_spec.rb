@@ -456,6 +456,7 @@ RSpec.describe Preprocessinator do
 
     before do
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return('/build/preprocessed/module.h')
+      allow(@file_path_utils).to receive(:preprocessed_file_subpath).and_return('drivers/uart/module.h')
       allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return('/build/includes/module.h.yml')
       allow(@includes_handler).to receive(:extract_bare_includes).and_return([])
       allow(@includes_handler).to receive(:extract_bare_includes_from_text).and_return([])
@@ -495,7 +496,17 @@ RSpec.describe Preprocessinator do
       expect(captured[:contents]).to eq(['line1'])
       expect(captured[:extras]).to eq(['extra1'])
       expect(captured[:include_guard]).to eq('MODULE_H')
-      expect(captured[:filename]).to eq('module.h')
+    end
+
+    # A synthetic guard is derived from this, and a basename alone would give two headers
+    # sharing one name the same guard.
+    it "passes the header's own mirrored namespace, not a bare basename" do
+      captured = nil
+      allow(@file_assembler).to receive(:assemble_preprocessed_header_file) { |**kwargs| captured = kwargs }
+
+      call_it()
+
+      expect(captured[:filepath]).to eq('drivers/uart/module.h')
     end
 
   end
@@ -521,6 +532,7 @@ RSpec.describe Preprocessinator do
     end
 
     before do
+      allow(@file_path_utils).to receive(:preprocessed_file_subpath) { |path| File.basename(path) }
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return('/build/preprocessed/module.h')
       allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return('/build/includes/module.h.yml')
       allow(@includes_handler).to receive(:extract_bare_includes).and_return([])

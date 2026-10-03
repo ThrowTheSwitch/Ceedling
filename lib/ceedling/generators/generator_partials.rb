@@ -14,14 +14,6 @@ class GeneratorPartials
 
   constructor :file_wrapper, :file_path_utils, :loginator
 
-  # Include guards for generated Partials fold the module's directory into the guard name.
-  # Two modules sharing a basename otherwise share one guard, and whichever header the
-  # compiler reads second is emptied. The directory separators are flattened first because
-  # the shared guard builder reduces a path to its basename.
-  def _include_guard(name)
-    return FileWrapper.generate_include_guard( name.gsub( %r{[\\/]}, '_' ) )
-  end
-
   # A module named by directory produces a nested filename, and nothing upstream creates
   # that directory. The file write itself does not create one either.
   def _prepare(filepath)
@@ -92,7 +84,7 @@ class GeneratorPartials
 
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
-      guard = _include_guard( header )
+      guard = FileWrapper.generate_include_guard( header )
       file << "#ifndef #{guard}\n"
       file << "#define #{guard}\n\n"
 
@@ -175,7 +167,7 @@ class GeneratorPartials
   # @param c_module        [CExtractorTypes::CModule] Merged module with element_sequence
   # @param include_variables [Boolean] True for implementation header (emits extern vars); false for interface
   def generate_header(io, name, includes, function_list, c_module, include_variables)
-    guard = _include_guard( name )
+    guard = FileWrapper.generate_include_guard( name )
 
     io << "#ifndef #{guard}\n"
     io << "#define #{guard}\n\n"

@@ -227,7 +227,7 @@ class Preprocessinator
     contents, extras, include_guard = @file_assembler.collect_mockable_header_file_contents( **arg_hash )
 
     arg_hash = {
-      filename:              File.basename( filepath ),
+      filepath:              @file_path_utils.preprocessed_file_subpath( filepath ),
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                extras,
@@ -292,7 +292,7 @@ class Preprocessinator
     extras = fallback ? @file_assembler.collect_macros_and_pragmas_fallback( source_filepath: filepath, defines: defines ) : []
 
     arg_hash = {
-      filename:              File.basename( filepath ),
+      filepath:              @file_path_utils.preprocessed_file_subpath( filepath ),
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                extras,

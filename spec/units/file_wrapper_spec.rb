@@ -392,4 +392,36 @@ describe FileWrapper do
       )
     end
   end
+
+  # Guards a reconstructed or generated header against double inclusion. Two headers
+  # sharing a basename in one test would otherwise share one guard, and whichever the
+  # compiler reads second would be emptied of everything it declares.
+  describe '.generate_include_guard' do
+    it 'derives a guard from a bare filename' do
+      expect( FileWrapper.generate_include_guard('config.h') )
+        .to eq("__#{CEEDLING_GENERATED}_CONFIG_H__")
+    end
+
+    it 'folds a path into the guard rather than discarding it' do
+      expect( FileWrapper.generate_include_guard('drivers/uart/config.h') )
+        .to eq("__#{CEEDLING_GENERATED}_DRIVERS_UART_CONFIG_H__")
+    end
+
+    it 'distinguishes two headers sharing a basename' do
+      uart = FileWrapper.generate_include_guard('drivers/uart/config.h')
+      spi  = FileWrapper.generate_include_guard('drivers/spi/config.h')
+
+      expect( uart ).to_not eq(spi)
+    end
+
+    it 'folds a backslash separator too' do
+      expect( FileWrapper.generate_include_guard('drivers\\uart\\config.h') )
+        .to eq("__#{CEEDLING_GENERATED}_DRIVERS_UART_CONFIG_H__")
+    end
+
+    it 'strips only the extension, keeping a dotted filename otherwise intact' do
+      expect( FileWrapper.generate_include_guard('abc-XYZ.v2.h') )
+        .to eq("__#{CEEDLING_GENERATED}_ABC_XYZ_V2_H__")
+    end
+  end
 end

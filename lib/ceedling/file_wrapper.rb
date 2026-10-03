@@ -35,11 +35,17 @@ class FileWrapper
     linux:   4096,
   }.freeze unless const_defined?(:PATH_LENGTH_LIMITS, false)
 
+  # abc-XYZ.h --> __CEEDLING_GENERATED_ABC_XYZ_H__
+  # drivers/uart/config.h --> __CEEDLING_GENERATED_DRIVERS_UART_CONFIG_H__
+  #
+  # Whatever path `name` carries is folded into the guard rather than discarded. Two
+  # headers sharing a basename in one test would otherwise share one guard, and whichever
+  # the compiler reads second would be emptied of everything it declares. Separators need
+  # no special handling: the substitution below already replaces every non-word character.
   def self.generate_include_guard(name)
-    # abc-XYZ.h --> _ABC_XYZ_H_
-    base = File.basename(name, '.*') # Remove any extension
-    guard = '__' + CEEDLING_GENERATED + '_' + base.gsub(/\W/, '_').upcase + '_H__'
-    return guard
+    base = name.sub(/\.[^.\/\\]*\z/, '') # Remove any extension, keeping any path
+
+    return '__' + CEEDLING_GENERATED + '_' + base.gsub(/\W/, '_').upcase + '_H__'
   end
 
   def get_expanded_path(path)

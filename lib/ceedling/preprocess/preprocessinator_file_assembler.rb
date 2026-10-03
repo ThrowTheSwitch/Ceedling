@@ -191,12 +191,15 @@ class PreprocessinatorFileAssembler
   end
 
 
-  def assemble_preprocessed_header_file(filename:, preprocessed_filepath:, contents:, extras:, includes:, include_guard: nil)
+  # `filepath` is the header's own path below its configured root, and its only use is the
+  # synthetic guard below. A bare basename there would give two headers sharing one name
+  # the same guard.
+  def assemble_preprocessed_header_file(filepath:, preprocessed_filepath:, contents:, extras:, includes:, include_guard: nil)
     # Reuse the original header's own #include guard name when we found one so that this
     # reconstructed file is recognized as "the same header" by the preprocessor wherever both
     # are reachable (e.g. once via a mock's shadowed copy, once via the original source path).
-    # Fall back to a synthetic guard derived from the filename otherwise.
-    guardname = include_guard || FileWrapper.generate_include_guard( filename )
+    # Fall back to a synthetic guard derived from the path otherwise.
+    guardname = include_guard || FileWrapper.generate_include_guard( filepath )
 
     # Write contents of final preprocessed file a line at a time
     # ----------------------------------------------------------
