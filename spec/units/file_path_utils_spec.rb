@@ -537,6 +537,93 @@ describe FilePathUtils do
     end
   end
 
+  # Every preprocessed artifact for a test lands below that test's own subdirectory.
+  # That alone kept artifacts apart while a test had at most one source of any given
+  # basename. Two same-basename sources in one test overwrite each other, so the
+  # source's own namespace below its configured root is mirrored as well.
+  describe 'preprocessed file paths' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      # A mirrored subdirectory is created as the path is composed, since nothing else
+      # creates it before a preprocessor tool writes there.
+      allow(@file_wrapper).to receive(:mkdir)
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_test_preprocess_files_path).and_return('build/test/preprocess/files')
+      allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
+      allow(@configurator).to receive(:paths_source).and_return( ['src/**'] )
+      allow(@configurator).to receive(:paths_include).and_return( ['include/**'] )
+      allow(@configurator).to receive(:paths_support).and_return( [] )
+      allow(@configurator).to receive(:paths_test).and_return( ['test/**'] )
+    end
+
+    # A file sitting directly in a configured root has no namespace of its own, so its
+    # artifact stays flat -- the layout every project has always seen.
+    it 'keeps a file directly in a configured root flat' do
+      expect( @fpu.form_preprocessed_file_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/files/test_foo/foo.c')
+      expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/files/test_foo/full_expansion/foo.c')
+      expect( @fpu.form_preprocessed_file_raw_directives_only_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/files/test_foo/directives_only/raw/foo.c')
+      expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/files/test_foo/directives_only/foo.c')
+      expect( @fpu.form_preprocessed_includes_list_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/includes/test_foo/foo.c.yml')
+    end
+
+    it 'mirrors a nested source below the test subdirectory' do
+      expect( @fpu.form_preprocessed_file_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/full_expansion/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/directives_only/raw/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/directives_only/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/includes/test_both/drivers/uart/config.c.yml')
+    end
+
+    # The defect itself: two sources sharing a basename in one test.
+    it 'gives two same-named sources in one test distinct artifacts' do
+      uart = @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both')
+      spi  = @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/spi/config.c', 'test_both')
+
+      expect( uart ).to_not eq(spi)
+    end
+
+    # Nothing else creates the mirrored directory before a preprocessor tool writes there.
+    it 'creates the mirrored directory for a nested artifact' do
+      expect(@file_wrapper).to receive(:mkdir)
+        .with('build/test/preprocess/files/test_both/directives_only/raw/drivers/uart')
+
+      @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both')
+    end
+
+    it 'creates no directory for a flat artifact, its test having one already' do
+      expect(@file_wrapper).to_not receive(:mkdir)
+
+      @fpu.form_preprocessed_file_raw_directives_only_filepath('src/foo.c', 'test_foo')
+    end
+
+    it 'mirrors a nested header below its own include root' do
+      expect( @fpu.form_preprocessed_file_filepath('include/drivers/uart/config.h', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/drivers/uart/config.h')
+    end
+
+    # A generated file sits below no configured root, so nothing mirrors it and its
+    # artifact stays where it has always been.
+    it 'keeps a generated file flat' do
+      expect( @fpu.form_preprocessed_file_filepath('build/test/mocks/test_both/Mockconfig.h', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/Mockconfig.h')
+    end
+  end
+
   describe '#form_test_build_objects_filelist' do
     before(:each) do
       @configurator = double('configurator')
@@ -643,6 +730,11 @@ describe FilePathUtils do
       })
 
       allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
+      # The test file sits directly in its root, so nothing is mirrored here.
+      allow(@configurator).to receive(:paths_source).and_return( [] )
+      allow(@configurator).to receive(:paths_support).and_return( [] )
+      allow(@configurator).to receive(:paths_include).and_return( [] )
+      allow(@configurator).to receive(:paths_test).and_return( ['test'] )
     end
 
     it 'uses the fixed internal .yml extension regardless of a project-configured :extension ↳ :yaml setting' do
