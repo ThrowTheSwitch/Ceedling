@@ -182,6 +182,7 @@ describe 'Partial module resolution (integration)' do
       allow(@configurator).to receive(:test_runner_file_suffix).and_return('_runner')
       allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
       allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      allow(@configurator).to receive(:project_build_root).and_return('build')
 
       # The test's own out root. Objects for generated Partials mirror below it, so the
       # lookup measures against it as well as the Partials root.
@@ -233,6 +234,29 @@ describe 'Partial module resolution (integration)' do
           root: 'build/test/out/test_both_configs'
         )
       ).to eq(GENERATED_PARTIAL_SOURCES.last)
+    end
+
+    # Fallback preprocessing builds a Partial's #include from its module name rather than
+    # resolving the generated file, so the query is a synthesized relative name sitting
+    # below no build root. The directory it carries is still the module's own.
+    # A synthesized name is relative to nothing on disk, so it is queried as written.
+    def find_synthesized(name)
+      @finder.find_build_input_file(
+        filepath: name, complain: :ignore, context: TEST_SYM, test: 'test_both_configs'
+      )
+    end
+
+    it 'resolves a synthesized name by the directory it carries' do
+      expect( find_synthesized('drivers/uart/ceedling_partial_config_impl.h') )
+        .to eq(GENERATED_PARTIAL_SOURCES.last)
+
+      expect( find_synthesized('drivers/spi/ceedling_partial_config_impl.h') )
+        .to eq(GENERATED_PARTIAL_SOURCES.first)
+    end
+
+    it 'still reports ambiguity for a synthesized name carrying no directory' do
+      expect { find_synthesized('ceedling_partial_config_impl.h') }
+        .to raise_error( CeedlingException, /Ambiguous Partial module reference/ )
     end
 
     it 'still reports ambiguity for a query carrying no subdirectory' do

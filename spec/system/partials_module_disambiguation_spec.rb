@@ -68,6 +68,24 @@ ceedling_system_tests do
         end
       end
 
+      # Fallback preprocessing synthesizes each generated Partial's #include from the
+      # module name rather than resolving the real file, so the include carries its
+      # module's directory without sitting under any build root. That directory still
+      # names the module, and dropping it leaves two same-named modules indistinguishable
+      # even though the test named both by directory.
+      it "builds a Partial per module under fallback preprocessing" do
+        in_project do
+          @c.merge_project_yml_for_test({ :test_build => { :preprocess_force_fallback => true } })
+
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/PASSED:\s+2/)
+          expect(output).to match(/FAILED:\s+0/)
+        end
+      end
+
       # The two Partials are distinct files only because each sits in the subdirectory
       # mirroring its own module. Sharing one directory would mean sharing one filename.
       it "generates each Partial into its own mirrored subdirectory" do

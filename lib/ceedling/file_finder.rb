@@ -145,6 +145,12 @@ class FileFinder
 
       subdir = PathMirror.relative_subdir( filepath, [partials_root, out_root].compact )
 
+      # Below neither root, the query is a synthesized name rather than a real file's
+      # path -- fallback preprocessing builds a Partial's #include from its module name
+      # instead of resolving the generated file. Whatever directory such a name carries
+      # is the module's own, so it is kept rather than discarded.
+      subdir = partials_relative_dir( filepath ) if subdir.empty?
+
       _source_file = source_file + EXTENSION_CORE_SOURCE
       _source_file = File.join( subdir, _source_file ) unless subdir.empty?
 
@@ -358,6 +364,17 @@ class FileFinder
 
     subdir = PathMirror.relative_subdir(filepath, [root])
     return subdir.empty? ? basename : File.join(subdir, basename)
+  end
+
+  # The directory a synthesized Partial name carries, or '' when it carries none. Such a
+  # name is relative to nothing on disk, so its own dirname is all the module context
+  # there is.
+  def partials_relative_dir(filepath)
+    dir = File.dirname( filepath )
+
+    return '' if dir == '.' || dir.start_with?( @configurator.project_build_root )
+
+    return dir
   end
 
   # A header's own path below its configured include root, or nil when no include root
