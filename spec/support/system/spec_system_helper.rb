@@ -286,6 +286,62 @@ rescue
   false
 end
 
+# Probed versions, keyed by tool. Each tool is asked once per process: these shell out,
+# and the answer cannot change mid-run.
+TOOL_VERSIONS = {}
+
+# The gcov plugin gates features on tool versions two ways, and a system test exercising a
+# gated feature has to agree with whichever applies or it tests nothing:
+#
+#   - A gate that *raises*. Configuring the feature on too old a tool breaks the build by
+#     design, so a test asserting success fails for a correct reason. Loud.
+#   - A `:min_version` arg-table entry that *silently omits* the flag. The build succeeds
+#     and the feature simply did not happen, so a test can pass while asserting nothing.
+#     Quiet, and the more dangerous of the two.
+#
+# Either way the version has to be known, hence these probes rather than the presence-only
+# ones above.
+
+# A tool's version as [major, minor], or nil when the tool is absent, fails to run, or
+# prints something the pattern cannot read. All three mean the same thing to a caller:
+# this machine cannot answer for that tool, so gate on it rather than guess.
+def tool_version(key, cmd, pattern)
+  return TOOL_VERSIONS[key] if TOOL_VERSIONS.key?( key )
+
+  TOOL_VERSIONS[key] =
+    begin
+      output = `#{cmd}`
+      match  = ($?.exitstatus == 0) ? output.match( pattern ) : nil
+      match.nil? ? nil : [match[1].to_i, match[2].to_i]
+    rescue
+      nil
+    end
+end
+
+def gcovr_version
+  tool_version( :gcovr, 'gcovr --version 2>&1', /gcovr\s+(\d+)\.(\d+)/ )
+end
+
+# Deliberately the same pattern the plugin itself uses to read a GCC version, so this
+# agrees with the plugin about what counts as a readable `gcc`. A platform whose `gcc` is
+# really Clang behind a compatibility shim (macOS) prints something this cannot read, and
+# nil is the correct answer there: the plugin would raise on it too.
+def gcc_version
+  tool_version( :gcc, 'gcc --version 2>&1', /^gcc(?:\.exe)?\s+.*\s+(\d+)\.(\d+)\.\d+/ )
+end
+
+# True when `version` is at least `minimum`, both [major, minor]. A nil version is never
+# sufficient.
+def tool_version_at_least?(version, minimum)
+  return false if version.nil?
+
+  return (version <=> minimum) >= 0
+end
+
+def version_label(version)
+  version.nil? ? 'unreadable' : version.join('.')
+end
+
 # `gdb --version` answers on a machine where gdb cannot actually attach to a
 # process -- macOS revokes a Homebrew gdb's debugger entitlement often enough (a
 # Homebrew upgrade, a macOS system update, a Gatekeeper/taskgated cache reset) that
@@ -421,6 +477,47 @@ RSpec.shared_context "requires bullseye" do
 
   before do
     skip "Bullseye (covc) is not installed, licensed, or not in PATH" unless @bullseye_available
+  end
+end
+
+# Takes the minimum this group needs, as [major, minor]. Presence alone is not enough for
+# a group exercising a version-gated gcov feature: on too old a gcovr the plugin either
+# breaks the build by design or quietly drops the flag, and either way the group is not
+# testing what it claims.
+#
+#   include_context "requires gcovr", [7, 0]
+#
+# Pass nothing to require presence alone.
+RSpec.shared_context "requires gcovr" do |minimum = nil|
+  before :all do
+    @gcovr_version = gcovr_version
+  end
+
+  before do
+    if @gcovr_version.nil?
+      skip "gcovr is not installed, not in PATH, or its version could not be read"
+    elsif !minimum.nil? && !tool_version_at_least?( @gcovr_version, minimum )
+      skip "gcovr #{minimum.join('.')} or higher is required for this feature " \
+           "(found #{version_label( @gcovr_version )})"
+    end
+  end
+end
+
+# As "requires gcovr", for a feature gated on the compiler's own version rather than the
+# report tool's. A platform whose `gcc` is really Clang prints a version this cannot read,
+# which skips -- the plugin would refuse such a toolchain too.
+RSpec.shared_context "requires gcc" do |minimum = nil|
+  before :all do
+    @gcc_version = gcc_version
+  end
+
+  before do
+    if @gcc_version.nil?
+      skip "gcc is not installed, not in PATH, or is not a real GCC whose version can be read"
+    elsif !minimum.nil? && !tool_version_at_least?( @gcc_version, minimum )
+      skip "gcc #{minimum.join('.')} or higher is required for this feature " \
+           "(found #{version_label( @gcc_version )})"
+    end
   end
 end
 
