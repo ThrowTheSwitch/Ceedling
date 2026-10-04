@@ -556,6 +556,10 @@ describe FilePathUtils do
       allow(@configurator).to receive(:paths_include).and_return( ['include/**'] )
       allow(@configurator).to receive(:paths_support).and_return( [] )
       allow(@configurator).to receive(:paths_test).and_return( ['test/**'] )
+      allow(@configurator).to receive(:project_use_partials).and_return( true )
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
     end
 
     # A file sitting directly in a configured root has no namespace of its own, so its
@@ -608,6 +612,36 @@ describe FilePathUtils do
     it 'mirrors a nested header below its own include root' do
       expect( @fpu.form_preprocessed_file_filepath('include/drivers/uart/config.h', 'test_both') )
         .to eq('build/test/preprocess/files/test_both/drivers/uart/config.h')
+    end
+
+    # A generated Partial or mock sits below its own test's generated root rather than a
+    # configured source root. Two same-named modules each produce one, so those roots have
+    # to mirror too or both share a single preprocessed artifact.
+    it 'mirrors a generated Partial header below its own test root' do
+      expect(
+        @fpu.form_preprocessed_file_raw_directives_only_filepath(
+          'build/test/partials/test_both/drivers/uart/ceedling_partial_config_interface.h', 'test_both'
+        )
+      ).to eq('build/test/preprocess/files/test_both/directives_only/raw/drivers/uart/ceedling_partial_config_interface.h')
+    end
+
+    it 'gives two same-named generated Partial headers distinct artifacts' do
+      uart = @fpu.form_preprocessed_file_raw_directives_only_filepath(
+        'build/test/partials/test_both/drivers/uart/ceedling_partial_config_interface.h', 'test_both'
+      )
+      spi = @fpu.form_preprocessed_file_raw_directives_only_filepath(
+        'build/test/partials/test_both/drivers/spi/ceedling_partial_config_interface.h', 'test_both'
+      )
+
+      expect( uart ).to_not eq(spi)
+    end
+
+    it 'mirrors a generated mock below its own test root' do
+      expect(
+        @fpu.form_preprocessed_file_filepath(
+          'build/test/mocks/test_both/drivers/spi/mock_config.h', 'test_both'
+        )
+      ).to eq('build/test/preprocess/files/test_both/drivers/spi/mock_config.h')
     end
 
     # A generated file sits below no configured root, so nothing mirrors it and its
@@ -725,6 +759,8 @@ describe FilePathUtils do
 
       allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
       # The test file sits directly in its root, so nothing is mirrored here.
+      allow(@configurator).to receive(:project_use_partials).and_return( false )
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
       allow(@configurator).to receive(:paths_source).and_return( [] )
       allow(@configurator).to receive(:paths_support).and_return( [] )
       allow(@configurator).to receive(:paths_include).and_return( [] )

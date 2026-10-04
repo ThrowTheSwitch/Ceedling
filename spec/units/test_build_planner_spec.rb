@@ -74,7 +74,12 @@ describe TestBuildPlanner do
     @testable = TestInvokerTypes::Testable.new(
       :name         => 'a_test',
       :filepath     => 'test/TestFoo.c',
-      :paths        => { :build => 'build/test/out/a_test', :results => 'build/test/results/a_test' },
+      :paths        => {
+        :build    => 'build/test/out/a_test',
+        :results  => 'build/test/results/a_test',
+        :mocks    => 'build/test/mocks/a_test',
+        :partials => 'build/test/partials/a_test'
+      },
       :mocks        => {},
       :search_paths => []
     )
@@ -172,7 +177,7 @@ describe TestBuildPlanner do
 
         @planner.stage_determine_files( @state )
 
-        expect(@testable.mocks[:MockFoo]).to eq(
+        expect(@testable.mocks[:'drivers/MockFoo']).to eq(
           TestInvokerTypes::MockDetails.new(
             name:     'MockFoo',
             filepath: 'src/drivers/foo.h',
@@ -189,7 +194,7 @@ describe TestBuildPlanner do
 
         @planner.stage_determine_files( @state )
 
-        expect(@testable.mocks[:MockFoo].input).to eq( 'build/test/preprocess/files/a_test/full_expansion/foo.h' )
+        expect(@testable.mocks[:'drivers/MockFoo'].input).to eq( 'build/test/preprocess/files/a_test/full_expansion/foo.h' )
       end
     end
 
@@ -241,12 +246,45 @@ describe TestBuildPlanner do
       it "carries the directory its generated #include names" do
         @planner.stage_determine_files( @state )
 
-        details = @testable.mocks[:Mockceedling_partial_config_interface]
+        details = @testable.mocks[:'drivers/uart/Mockceedling_partial_config_interface']
 
         expect( details ).to_not be_nil
         expect( details.path ).to eq( 'drivers/uart' )
         expect( details.filepath )
           .to eq( 'build/test/partials/a_test/drivers/uart/ceedling_partial_config_interface.h' )
+      end
+    end
+
+    # Two modules sharing a basename are two modules, each needing its own mock. The
+    # collection holding them is keyed per mock, so one cannot displace the other.
+    context "with two Partial mocked headers sharing a basename" do
+      before(:each) do
+        mocks = [
+          MockInclude.new( 'drivers/uart/Mockceedling_partial_config_interface.h' ),
+          MockInclude.new( 'drivers/spi/Mockceedling_partial_config_interface.h' )
+        ]
+        allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+          .with( 'test/TestFoo.c' ).and_return( mocks )
+        allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+        allow(@file_path_utils).to receive(:form_partial_header_filepath) do |test, filename|
+          File.join( 'build/test/partials', test, filename )
+        end
+      end
+
+      it "keeps both mocks, each carrying its own directory" do
+        @planner.stage_determine_files( @state )
+
+        expect( @testable.mocks.length ).to eq(2)
+        expect( @testable.mocks.values.map(&:path).sort ).to eq(['drivers/spi', 'drivers/uart'])
+      end
+
+      # The filename each mock is written under is still the bare one, since its own
+      # directory is carried separately and joined at generation.
+      it "leaves each mock's own filename bare" do
+        @planner.stage_determine_files( @state )
+
+        expect( @testable.mocks.values.map(&:name).uniq )
+          .to eq(['Mockceedling_partial_config_interface'])
       end
     end
   end
@@ -356,6 +394,44 @@ describe TestBuildPlanner do
       allow(@file_path_utils).to receive(:form_pass_results_filepath).and_return( 'build/test/results/a_test/TestFoo.pass' )
     end
 
+    # A mock's own compiled file is the one generated below this test's mock root, in the
+    # subdirectory mirroring whatever it mocks. Naming it by basename alone leaves two
+    # same-named mocks in one test indistinguishable, and nothing to mirror its object
+    # against.
+    it "compiles each mock from its own generated path" do
+      @testable.mocks = {
+        :'drivers/uart/Mockconfig' => TestInvokerTypes::MockDetails.new(
+          name: 'Mockconfig', path: 'drivers/uart', partial: false
+        ),
+        :'drivers/spi/Mockconfig' => TestInvokerTypes::MockDetails.new(
+          name: 'Mockconfig', path: 'drivers/spi', partial: false
+        )
+      }
+
+      captured = nil
+      allow(@file_path_utils).to receive(:form_test_build_objects_filelist) do |_path, files, **_kw|
+        captured ||= files
+        []
+      end
+
+      @planner.stage_determine_artifacts( @state )
+
+      expect( captured ).to include('build/test/mocks/a_test/drivers/uart/Mockconfig.c')
+      expect( captured ).to include('build/test/mocks/a_test/drivers/spi/Mockconfig.c')
+    end
+
+    # A mock and a generated Partial both sit below their own generated root rather than a
+    # configured source root, so nothing in the standard roots mirrors them. Without those
+    # roots, two same-named mocks or modules collapse onto one object filename.
+    it "mirrors objects against this test's own generated roots as well" do
+      expect(@file_path_utils).to receive(:form_test_build_objects_filelist)
+        .with( anything, anything, extra_roots: ['build/test/partials/a_test', 'build/test/mocks/a_test'] )
+        .at_least(:once)
+        .and_return( [] )
+
+      @planner.stage_determine_artifacts( @state )
+    end
+
     it "resolves this test's sources, framework files, executable, and results paths" do
       @planner.stage_determine_artifacts( @state )
 
@@ -387,7 +463,7 @@ describe TestBuildPlanner do
       it "compiles the mock's generated core source instead of the real header's own source file" do
         @planner.stage_determine_artifacts( @state )
 
-        expect(@testable.core).to include( 'MockFoo.c' )
+        expect(@testable.core).to include( 'build/test/mocks/a_test/MockFoo.c' )
         expect(@testable.core).to_not include( 'src/Foo.c' )
       end
     end

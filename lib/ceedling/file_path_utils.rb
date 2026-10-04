@@ -369,11 +369,12 @@ class FilePathUtils
   # A file below no configured root -- anything Ceedling generates -- mirrors nothing and
   # keeps the flat name it has always had. Every caller derives this from the same filepath,
   # so all of them agree on where the artifact lands without coordinating.
-  def preprocessed_file_subpath(filepath)
+  def preprocessed_file_subpath(filepath, test = nil)
     roots = @configurator.paths_source +
             @configurator.paths_support +
             @configurator.paths_include +
-            @configurator.paths_test
+            @configurator.paths_test +
+            generated_roots( test )
 
     subdir   = PathMirror.relative_subdir( filepath, roots )
     basename = File.basename( filepath )
@@ -383,12 +384,28 @@ class FilePathUtils
     return File.join( subdir, basename )
   end
 
+  # The roots holding one test's own generated files. A mock or a generated Partial sits
+  # below one of these rather than a configured source root, and two same-named modules
+  # each produce one, so without these roots both share a single preprocessed artifact.
+  #
+  # Each root carries the test's own name, so what mirrors forward is the module's own
+  # subdirectory rather than the test name a second time.
+  def generated_roots(test)
+    return [] if test.nil?
+
+    roots = []
+    roots << File.join( @configurator.project_test_partials_path, test ) if @configurator.project_use_partials
+    roots << File.join( @configurator.cmock_mock_path, test ) if @configurator.project_use_mocks
+
+    return roots
+  end
+
   # Composes a preprocessed artifact's path. Pure, like every other path builder here:
   # callers that merely restate a path -- a rake target declaration, a staleness check --
   # must not leave directories behind as a side effect. Whoever writes the file creates
   # its directory, the same way a mock's or a Partial's own writer does.
   def form_preprocessed_filepath(root, subdir, kind_dir, filepath, suffix: '')
-    return File.join( *[root, subdir, kind_dir, preprocessed_file_subpath( filepath ) + suffix].compact )
+    return File.join( *[root, subdir, kind_dir, preprocessed_file_subpath( filepath, subdir ) + suffix].compact )
   end
 
   def form_preprocessed_includes_list_filepath(filepath, subdir)

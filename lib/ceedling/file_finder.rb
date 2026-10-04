@@ -121,12 +121,21 @@ class FileFinder
     # identically named mock (expected, routine repetition) is never mistaken for ambiguity
     elsif (!release) and
           (source_file.start_with?( @configurator.cmock_mock_prefix ))
+      # A mock mirrors the directory of whatever it mocks, so two same-named headers
+      # mocked in one test -- two modules mocked as Partials by directory, say -- are
+      # told apart only by that subdirectory. Measured the same way a generated
+      # Partial's is, below.
+      mocks_root = File.join(@configurator.cmock_mock_path, test_context)
+      subdir     = generated_file_subdir( filepath, mocks_root, test: test, context: context )
+
       _source_file = source_file + EXTENSION_CORE_SOURCE
+      _source_file = File.join( subdir, _source_file ) unless subdir.empty?
+
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
           @file_wrapper.directory_listing(
-            File.join(@configurator.cmock_mock_path, test_context, ('**/*' + EXTENSION_CORE_SOURCE))
+            File.join(mocks_root, ('**/*' + EXTENSION_CORE_SOURCE))
           ),
           complain)
 
@@ -141,15 +150,7 @@ class FileFinder
       # yields nothing for queries of the other kind, degrading them to a bare basename
       # that matches every same-named module in the test.
       partials_root = File.join(@configurator.project_test_partials_path, test_context)
-      out_root      = test.nil? ? nil : @file_path_utils.form_test_build_path(test, context: context)
-
-      subdir = PathMirror.relative_subdir( filepath, [partials_root, out_root].compact )
-
-      # Below neither root, the query is a synthesized name rather than a real file's
-      # path -- fallback preprocessing builds a Partial's #include from its module name
-      # instead of resolving the generated file. Whatever directory such a name carries
-      # is the module's own, so it is kept rather than discarded.
-      subdir = partials_relative_dir( filepath ) if subdir.empty?
+      subdir        = generated_file_subdir( filepath, partials_root, test: test, context: context )
 
       _source_file = source_file + EXTENSION_CORE_SOURCE
       _source_file = File.join( subdir, _source_file ) unless subdir.empty?
@@ -366,10 +367,31 @@ class FileFinder
     return subdir.empty? ? basename : File.join(subdir, basename)
   end
 
-  # The directory a synthesized Partial name carries, or '' when it carries none. Such a
-  # name is relative to nothing on disk, so its own dirname is all the module context
-  # there is.
-  def partials_relative_dir(filepath)
+  # The subdirectory a generated file's query carries, mirroring the module it belongs to.
+  #
+  # Which root it sits below depends on who is asking. The generated #include carries the
+  # root the file itself was written under; an object for that same file mirrors the
+  # subdirectory below the test's own out root instead. Measuring against only one of the
+  # two yields nothing for queries of the other kind, degrading them to a bare basename
+  # that matches every same-named module in the test.
+  #
+  # Below neither root, the query is a synthesized name rather than a real file's path --
+  # fallback preprocessing builds a generated #include from a module name instead of
+  # resolving the file. Whatever directory such a name carries is the module's own.
+  def generated_file_subdir(filepath, root, test:, context:)
+    out_root = test.nil? ? nil : @file_path_utils.form_test_build_path(test, context: context)
+
+    subdir = PathMirror.relative_subdir( filepath, [root, out_root].compact )
+
+    return subdir unless subdir.empty?
+
+    return synthesized_relative_dir( filepath )
+  end
+
+  # The directory a synthesized generated-file name carries, or '' when it carries none.
+  # Such a name is relative to nothing on disk, so its own dirname is all the module
+  # context there is.
+  def synthesized_relative_dir(filepath)
     dir = File.dirname( filepath )
 
     return '' if dir == '.' || dir.start_with?( @configurator.project_build_root )

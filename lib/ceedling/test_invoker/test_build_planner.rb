@@ -70,7 +70,11 @@ class TestBuildPlanner
         # by the compiler regardless of how much path the #include itself happened to spell
         # out. A Partial mock has no real header to resolve against, so it stays flat -- the
         # empty default `subdir` already reflects that.
-        mocks[name.to_sym] = MockDetails.new(
+        # Keyed by the mock's own directory alongside its name. Two modules sharing a
+        # basename are two modules, each needing its own mock, and a key of the name
+        # alone lets the second displace the first. `name` stays bare: it is the
+        # filename the mock is written under, joined with `path` at generation.
+        mocks[mock_key( name, subdir )] = MockDetails.new(
           name:     name,
           filepath: source,
           path:     subdir,
@@ -125,9 +129,11 @@ class TestBuildPlanner
   # Transform T2: Flatten mocks into a parallel-processing-friendly list.
   def stage_flatten_mocks_list(state)
     state.testables.each do |_, testable|
-      testable.mocks.each do |name, elems|
+      testable.mocks.each_value do |elems|
         state.mocks_list << MockWork.new(
-          name:                     name,
+          # The mock's own name, not its collection key -- the key disambiguates
+          # same-named mocks within a test, while this is the mock's own identity.
+          name:                     elems.name.to_sym,
           details:                  elems,
           testable:                 testable,
           directives_only_filepath: nil
@@ -143,8 +149,7 @@ class TestBuildPlanner
       mock_list = @context_extractor.lookup_mock_header_includes_list( filepath )
 
       test_sources = extract_sources( state.context, filepath, testable.partials, testable.name )
-      test_core    = test_sources +
-                     mock_list.map { |mock| mock.filename.ext( EXTENSION_CORE_SOURCE ) }
+      test_core    = test_sources + mock_sources( testable )
 
       remove_mock_original_headers(
         test_core,
@@ -162,12 +167,14 @@ class TestBuildPlanner
       compilations += test_support
       compilations.uniq!
 
-      # The generated Partials root is this test's own, so it is known here rather than in
-      # the project's configured source roots.
-      partials_roots = testable.paths[:partials].nil? ? [] : [testable.paths[:partials]]
+      # A mock and a generated Partial each sit below one of this test's own generated
+      # roots rather than a configured source root, so nothing in the standard roots
+      # mirrors them. Without these, two same-named mocks or modules collapse onto one
+      # object filename. Known here rather than in the project's configuration.
+      generated_roots = [testable.paths[:partials], testable.paths[:mocks]].compact
 
       test_objects     = @file_path_utils.form_test_build_objects_filelist(
-        testable.paths[:build], compilations, extra_roots: partials_roots
+        testable.paths[:build], compilations, extra_roots: generated_roots
       )
       test_executable  = @file_path_utils.form_test_executable_filepath( testable.paths[:build], filepath )
       test_pass        = @file_path_utils.form_pass_results_filepath( testable.paths[:results], filepath )
@@ -176,7 +183,7 @@ class TestBuildPlanner
         @file_path_utils.form_test_build_objects_filelist(
           testable.paths[:build],
           fetch_shallow_source_includes( filepath ),
-          extra_roots: partials_roots
+          extra_roots: generated_roots
         )
 
       test_objects = (test_objects.uniq - test_no_link_objects)
@@ -315,6 +322,29 @@ class TestBuildPlanner
   # one mock.
   def ordered_mock_header_collection(testable)
     @include_pathinator.ordered_header_files( testable.search_paths - testable.mock_search_paths )
+  end
+
+  # One mock's identity within its test. A mock directly in the mock root keeps the bare
+  # name it has always had, so nothing changes for a project without same-named mocks.
+  def mock_key(name, subdir)
+    return name.to_sym if subdir.nil? || subdir.empty?
+
+    return File.join( subdir, name ).to_sym
+  end
+
+  # Each mock's own generated source, below this test's mock root in the subdirectory
+  # mirroring whatever it mocks -- the same place mock generation writes it.
+  #
+  # Named by its own path rather than its basename so two same-named mocks in one test
+  # stay distinct, and so each one's object mirrors that subdirectory too.
+  def mock_sources(testable)
+    root = testable.paths[:mocks]
+
+    return [] if root.nil?
+
+    testable.mocks.each_value.map do |details|
+      File.join( *[root, details.path, details.name + EXTENSION_CORE_SOURCE].reject { |part| part.nil? || part.empty? } )
+    end
   end
 
   # A Partial mock's interface header is generated content with no real header to

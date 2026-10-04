@@ -165,6 +165,59 @@ describe 'Partial module resolution (integration)' do
     end
   end
 
+  # A mock's own generated source is found the same way, and two modules mocked as
+  # Partials by directory put two same-named mocks in one test.
+  context 'resolving build input for a generated mock' do
+    MOCKS_BUILD_PATH = 'build/test/mocks/test_both_configs'.freeze
+
+    GENERATED_MOCK_SOURCES = [
+      "#{MOCKS_BUILD_PATH}/drivers/spi/mock_ceedling_partial_config_interface.c",
+      "#{MOCKS_BUILD_PATH}/drivers/uart/mock_ceedling_partial_config_interface.c"
+    ].freeze
+
+    before(:each) do
+      allow(@configurator).to receive(:project_test_file_prefix).and_return('test_')
+      allow(@configurator).to receive(:test_runner_file_suffix).and_return('_runner')
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return('mock_')
+      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+      allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@finder.instance_variable_get(:@file_path_utils))
+        .to receive(:form_test_build_path).and_return('build/test/out/test_both_configs')
+      allow(@finder.instance_variable_get(:@file_wrapper))
+        .to receive(:directory_listing).and_return( GENERATED_MOCK_SOURCES )
+    end
+
+    def find_mock_input(filename, root: MOCKS_BUILD_PATH)
+      @finder.find_build_input_file(
+        filepath: File.join(root, filename), complain: :ignore,
+        context: TEST_SYM, test: 'test_both_configs'
+      )
+    end
+
+    it 'resolves a mock by the subdirectory it sits in' do
+      expect( find_mock_input('drivers/uart/mock_ceedling_partial_config_interface.h') )
+        .to eq(GENERATED_MOCK_SOURCES.last)
+    end
+
+    it 'resolves a mock object mirroring the mock below the out root' do
+      expect(
+        find_mock_input(
+          'drivers/spi/mock_ceedling_partial_config_interface.o',
+          root: 'build/test/out/test_both_configs'
+        )
+      ).to eq(GENERATED_MOCK_SOURCES.first)
+    end
+
+    it 'resolves a synthesized mock name by the directory it carries' do
+      expect(
+        @finder.find_build_input_file(
+          filepath: 'drivers/uart/mock_ceedling_partial_config_interface.h',
+          complain: :ignore, context: TEST_SYM, test: 'test_both_configs'
+        )
+      ).to eq(GENERATED_MOCK_SOURCES.last)
+    end
+  end
+
   # Resolving a generated Partial back to its own generated source. This lookup runs
   # on build input, long after generation, so its queries carry Ceedling's own
   # generated filenames rather than anything the test author wrote. A message here

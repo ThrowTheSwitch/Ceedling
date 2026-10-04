@@ -101,5 +101,50 @@ ceedling_system_tests do
       end
     end
 
+    # Mocking is the other half of the same feature. Two same-named modules each mocked as
+    # a Partial must each get their own mock, which only happens if the two are held apart
+    # by the directory that distinguishes them.
+    context "with both same-named modules mocked as Partials in one test" do
+      before do
+        copy_same_named_partial_modules('uart', 'spi')
+        in_project do
+          copy_fixture("same_named_modules/test/test_both_configs_mocked.c", 'test')
+        end
+      end
+
+      it "generates a mock per module and keeps their expectations separate" do
+        # CMock derives a mock's #include guard and its own _Init/_Verify/_Destroy names
+        # from the mock's filename alone. Two modules sharing a basename produce two mocks
+        # of the same filename in different directories, so the second is emptied by the
+        # first's guard and the two would define the same lifecycle symbols anyway. The
+        # directive macro fixes that filename -- the C preprocessor cannot fold a
+        # directory into it -- so closing this needs folder-qualified naming in CMock or a
+        # forwarding scheme here. Generation, placement, objects, and resolution are all
+        # correct up to that point.
+        pending 'CMock names a mock by filename alone, so two same-named mocks collide'
+
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
+          expect(output).to match(/FAILED:\s+0/)
+        end
+      end
+
+      it "generates each mock into its own mirrored subdirectory" do
+        in_project do
+          @c.ceedling_build_exec("test:all")
+
+          mocks = Dir.glob('build/test/mocks/**/mock_ceedling_partial_config_interface.c')
+
+          expect(mocks.length).to eq(2)
+          expect(mocks.any? { |path| path.include?('drivers/uart') }).to be true
+          expect(mocks.any? { |path| path.include?('drivers/spi') }).to be true
+        end
+      end
+    end
+
   end
 end
