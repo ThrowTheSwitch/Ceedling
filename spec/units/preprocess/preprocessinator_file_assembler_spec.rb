@@ -25,6 +25,9 @@ RSpec.describe PreprocessinatorFileAssembler do
     @tool_executor  = double('tool_executor')
     @file_path_utils = double('file_path_utils')
     @file_wrapper   = double('file_wrapper')
+    # Whoever writes a preprocessed file creates its directory, since the path may mirror
+    # a source's own namespace below the test's flat preprocess directories.
+    allow(@file_wrapper).to receive(:mkdir)
     @loginator      = double('loginator')
     @reportinator   = double('reportinator')
 
@@ -357,6 +360,69 @@ RSpec.describe PreprocessinatorFileAssembler do
 
 
   # ===========================================================================
+  # A reconstructed header falls back to a synthetic guard whenever its original carried
+  # none to reuse. Two headers sharing a basename in one test must not land on the same
+  # guard, or whichever the compiler reads second is emptied of its declarations.
+  describe 'synthetic include guard' do
+    def assemble(path)
+      written = StringIO.new
+      allow(@file_wrapper).to receive(:open).and_yield( written )
+
+      subject.assemble_preprocessed_header_file(
+        filepath: path,
+        preprocessed_filepath: "/build/#{path}",
+        contents: [], extras: [], includes: []
+      )
+
+      written.string[/#ifndef (\S+)/, 1]
+    end
+
+    it 'distinguishes two headers sharing a basename' do
+      expect( assemble('drivers/uart/config.h') ).to_not eq( assemble('drivers/spi/config.h') )
+    end
+
+    it 'reuses the original header-s own guard when there is one to reuse' do
+      written = StringIO.new
+      allow(@file_wrapper).to receive(:open).and_yield( written )
+
+      subject.assemble_preprocessed_header_file(
+        filepath: 'drivers/uart/config.h',
+        preprocessed_filepath: '/build/drivers/uart/config.h',
+        contents: [], extras: [], includes: [], include_guard: 'ORIGINAL_GUARD_H'
+      )
+
+      expect( written.string ).to include('#ifndef ORIGINAL_GUARD_H')
+    end
+  end
+
+  # A preprocessed artifact's path mirrors its source's own namespace, so the directory may
+  # not exist yet. Whoever writes the file creates it.
+  describe 'output directory creation' do
+    it 'creates the directory before writing a preprocessed header file' do
+      allow(@file_wrapper).to receive(:open)
+
+      expect(@file_wrapper).to receive(:mkdir).with('/build/files/drivers/uart')
+
+      subject.assemble_preprocessed_header_file(
+        filepath: 'config.h',
+        preprocessed_filepath: '/build/files/drivers/uart/config.h',
+        contents: [], extras: [], includes: []
+      )
+    end
+
+    it 'creates the directory before writing a preprocessed code file' do
+      allow(@file_wrapper).to receive(:open)
+
+      expect(@file_wrapper).to receive(:mkdir).with('/build/files/drivers/spi')
+
+      subject.assemble_preprocessed_code_file(
+        filename: 'config.c',
+        preprocessed_filepath: '/build/files/drivers/spi/config.c',
+        contents: [], extras: [], includes: []
+      )
+    end
+  end
+
   describe '#assemble_preprocessed_header_file' do
   # ===========================================================================
 
@@ -375,7 +441,7 @@ RSpec.describe PreprocessinatorFileAssembler do
       output = stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_header_file(
-        filename:              'module.h',
+        filepath:              'module.h',
         preprocessed_filepath: preprocessed_filepath,
         contents:              ['void foo(void);'],
         extras:                [],
@@ -392,7 +458,7 @@ RSpec.describe PreprocessinatorFileAssembler do
       output = stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_header_file(
-        filename:              'module.h',
+        filepath:              'module.h',
         preprocessed_filepath: preprocessed_filepath,
         contents:              ['void foo(void);'],
         extras:                [],
@@ -407,7 +473,7 @@ RSpec.describe PreprocessinatorFileAssembler do
       output = stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_header_file(
-        filename:              'module.h',
+        filepath:              'module.h',
         preprocessed_filepath: preprocessed_filepath,
         contents:              ['void foo(void);'],
         extras:                [],
@@ -423,7 +489,7 @@ RSpec.describe PreprocessinatorFileAssembler do
       stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_header_file(
-        filename:              'module.h',
+        filepath:              'module.h',
         preprocessed_filepath: preprocessed_filepath,
         contents:              [],
         extras:                [],
@@ -438,7 +504,7 @@ RSpec.describe PreprocessinatorFileAssembler do
       content_line_with_crlf = "void foo(void) {\r\n  return;\r\n}"
 
       subject.assemble_preprocessed_header_file(
-        filename:              'module.h',
+        filepath:              'module.h',
         preprocessed_filepath: preprocessed_filepath,
         contents:              [content_line_with_crlf],
         extras:                [],
@@ -452,7 +518,7 @@ RSpec.describe PreprocessinatorFileAssembler do
       output = stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_header_file(
-        filename:              'module.h',
+        filepath:              'module.h',
         preprocessed_filepath: preprocessed_filepath,
         contents:              [],
         extras:                ['#define FOO 1'],
@@ -466,7 +532,7 @@ RSpec.describe PreprocessinatorFileAssembler do
       output = stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_header_file(
-        filename:              'module.h',
+        filepath:              'module.h',
         preprocessed_filepath: preprocessed_filepath,
         contents:              [],
         extras:                [ ['#define FOO(x) \\', '  (x + 1)'] ],

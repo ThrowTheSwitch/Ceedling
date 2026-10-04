@@ -7,6 +7,7 @@
 
 require 'pathname'
 require 'ceedling/exceptions'
+require 'ceedling/file_path_utils'
 
 class IncludePathinator
 
@@ -72,6 +73,26 @@ class IncludePathinator
       headers += @file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) )
     end
     return headers.uniq
+  end
+
+  # The project's whole header collection, reordered so headers beneath this test's
+  # own earlier search paths come first.
+  #
+  # Distinct from ordered_header_files above, which lists each search path's immediate
+  # contents the way a compiler's own non-recursive -I search does. A reference naming
+  # a header by path needs the whole collection instead, since the file it names can
+  # sit at any depth below a search path, and it needs this test's own priority so a
+  # TEST_INCLUDE_PATH() decides among same-named candidates.
+  #
+  # Ordering within one priority rank is the collection's own, which is what keeps a
+  # reference that distinguishes nothing resolving exactly as it did before.
+  def prioritized_header_files(search_paths)
+    roots = search_paths.map { |path| FilePathUtils.no_decorators( path ) }.reject(&:empty?)
+
+    @configurator.collection_all_headers.to_a.each_with_index.sort_by do |header, index|
+      rank = roots.index { |root| header == root || header.start_with?( root + '/' ) } || roots.length
+      [rank, index]
+    end.map(&:first)
   end
 
   def augment_environment_header_files(headers)

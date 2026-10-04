@@ -57,4 +57,47 @@ describe PathMirror do
     end
   end
 
+
+  # Distinct from `relative_subdir`, which answers '' both for a file sitting directly in a
+  # root and for one no root contains. A caller that must tell those apart -- one deciding
+  # whether to rewrite a query at all -- needs the difference.
+  describe '.relative_subdir_if_rooted' do
+    it 'returns the subdirectory below the matching root' do
+      expect( PathMirror.relative_subdir_if_rooted('include/drivers/uart/config.h', ['include/**']) )
+        .to eq('drivers/uart')
+    end
+
+    it 'returns an empty string for a file sitting directly in a root' do
+      expect( PathMirror.relative_subdir_if_rooted('include/config.h', ['include']) ).to eq('')
+    end
+
+    it 'returns nil when no root contains the file' do
+      expect( PathMirror.relative_subdir_if_rooted('src/config.c', ['include']) ).to be_nil
+    end
+
+    it 'prefers the longest matching root' do
+      expect( PathMirror.relative_subdir_if_rooted('include/drivers/uart/config.h', ['include', 'include/drivers']) )
+        .to eq('uart')
+    end
+
+    it 'returns nil for an empty root list' do
+      expect( PathMirror.relative_subdir_if_rooted('include/config.h', []) ).to be_nil
+    end
+  end
+
+  # One spelling of path-segment comparison, shared by every caller that matches trailing
+  # path segments rather than whole paths.
+  describe '.path_segments' do
+    it 'splits on either separator' do
+      expect( PathMirror.path_segments('drivers/uart\\config') ).to eq(['drivers', 'uart', 'config'])
+    end
+
+    it 'folds case so comparison is case-insensitive' do
+      expect( PathMirror.path_segments('Drivers/UART') ).to eq(['drivers', 'uart'])
+    end
+
+    it 'drops empty segments from doubled or trailing separators' do
+      expect( PathMirror.path_segments('drivers//uart/') ).to eq(['drivers', 'uart'])
+    end
+  end
 end

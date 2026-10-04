@@ -25,6 +25,7 @@ class ConsoleReportinator < GcovReportinator
     @plugin_reportinator  = system_objects[:plugin_reportinator]
     @test_invoker         = system_objects[:test_invoker]
     @tool_executor        = system_objects[:tool_executor]
+    @file_path_utils      = system_objects[:file_path_utils]
   end
 
   def generate_reports(opts, untested_sources: [])
@@ -35,12 +36,27 @@ class ConsoleReportinator < GcovReportinator
     @test_invoker.each_test_with_sources do |test, sources|
       @loginator.log( @plugin_reportinator.generate_heading( test ) )
 
-      _sources = remap_partial_sources( sources )
-      _sources.each do |source|
+      # Collected before any report is logged, because a label can only be made
+      # unambiguous once every file this test reports on is known. The path a file is
+      # reported under is gcov's own where it could be parsed -- for a Partial that is the
+      # original module, which #line directives remap it to -- and the queried source
+      # otherwise.
+      reports = remap_partial_sources( sources ).filter_map do |source|
         results = run_gcov_summary( test, source, opts )
         next if results.nil?
+
         gcov_source = extract_gcov_source_path( results, test, source )
-        log_coverage_report( test, source, results, gcov_source )
+
+        { source: source, results: results, gcov_source: gcov_source }
+      end
+
+      labels = disambiguated_labels( reports.map { |report| reported_path( report ) } )
+
+      reports.each do |report|
+        log_coverage_report(
+          test, report[:source], report[:results], report[:gcov_source],
+          label: labels[ reported_path( report ) ]
+        )
       end
     end
 
@@ -51,6 +67,45 @@ class ConsoleReportinator < GcovReportinator
 
   private
 
+  # The path a file's coverage is reported under.
+  def reported_path(report)
+    return report[:gcov_source].empty? ? report[:source] : report[:gcov_source]
+  end
+
+  # A display label per path, each the shortest trailing path that distinguishes it from
+  # every other path sharing its basename.
+  #
+  # A basename alone is ambiguous the moment one test reports on two modules of the same
+  # name, which says nothing about which module a coverage line belongs to. Case is
+  # preserved, unlike path matching elsewhere: these are read by a person.
+  def disambiguated_labels(paths)
+    paths.uniq.group_by { |path| File.basename( path ) }.each_with_object({}) do |(_basename, group), labels|
+      depth = label_depth( group )
+
+      group.each { |path| labels[path] = display_segments( path ).last( depth ).join( '/' ) }
+    end
+  end
+
+  # The fewest trailing segments that tell every path in `group` apart. Falls back to the
+  # longest path's own depth when even whole paths repeat, which cannot be improved on.
+  def label_depth(group)
+    return 1 if group.length < 2
+
+    deepest = group.map { |path| display_segments( path ).length }.max
+
+    (1..deepest).each do |depth|
+      tails = group.map { |path| display_segments( path ).last( depth ) }
+
+      return depth if tails.uniq.length == group.length
+    end
+
+    return deepest
+  end
+
+  def display_segments(path)
+    return path.split( %r{[\\/]} ).reject(&:empty?)
+  end
+
   def log_untested_sources_section(untested_sources)
     @loginator.log( @plugin_reportinator.generate_heading("Untested Source Files") )
 
@@ -59,18 +114,60 @@ class ConsoleReportinator < GcovReportinator
     end
   end
 
+  # Remap sources: if Partial files are present, remove the original source file they replace.
+  # Coverage is then reported against the Partial implementation rather than the original module.
+  #
+  # A Partial replaces one module, identified by its path. Generated Partials and real
+  # sources sit below different roots, so neither path is a suffix of the other and the
+  # two can only be related by the namespace they share. Each Partial therefore claims
+  # the source it shares the longest trailing path with. Matching on basename alone would
+  # drop every same-named module, and one nobody Partialized would lose its coverage
+  # report entirely.
   def remap_partial_sources(sources)
-    # Remap sources: if Partial files are present, remove the original source file they replace.
-    # Coverage is then reported against the Partial implementation rather than the original module.
     partials = sources.select { |s| File.basename(s).match?(PATTERNS::PARTIAL_IMPL_FILENAME) }
     return sources if partials.empty?
 
-    # Extract module names covered by Partials (strip prefix and _impl suffix)
-    partialized = partials.map { |p|
-      File.basename(p, '.*').delete_prefix(PARTIAL_FILENAME_PREFIX).delete_suffix('_impl')
-    }
-    # Drop any original source file whose module is now covered by a Partial
-    sources.reject { |s| partialized.include?( File.basename(s, '.*') ) }
+    originals = sources.reject { |s| File.basename(s).match?(PATTERNS::PARTIAL_IMPL_FILENAME) }
+    replaced  = []
+
+    partials.each do |partial|
+      query = partial_module_segments( partial )
+
+      scored = originals.map { |source| [source, common_suffix_length( query, source_segments( source ) )] }
+                        .reject { |_source, length| length.zero? }
+
+      next if scored.empty?
+
+      best = scored.map { |_source, length| length }.max
+
+      replaced += scored.select { |_source, length| length == best }.map(&:first)
+    end
+
+    return sources - replaced
+  end
+
+  # The module a generated Partial replaces, as path segments. The reversal itself belongs
+  # to the same place that builds these filenames, so prefix and suffix knowledge stays in
+  # one place; the mirrored subdirectory survives as the module's own path.
+  def partial_module_segments(filepath)
+    _module = @file_path_utils.module_from_partial_filename( filepath )
+
+    return [] if _module.nil?
+
+    return PathMirror.path_segments( _module )
+  end
+
+  def source_segments(filepath)
+    return PathMirror.path_segments( filepath.sub( /\.[^.\/\\]*\z/, '' ) )
+  end
+
+  # How many trailing segments two paths have in common. Zero means even the basenames
+  # differ, so the two cannot name the same module.
+  def common_suffix_length(left, right)
+    length = 0
+    length += 1 while length < left.length && length < right.length &&
+                      left[-(length + 1)] == right[-(length + 1)]
+    return length
   end
 
   def run_gcov_summary(test, source, opts)
@@ -80,7 +177,17 @@ class ConsoleReportinator < GcovReportinator
     # subdirectory below whichever configured root it came from -- the same convention its actual
     # compile step already follows -- so the directory gcov is told to search must include that
     # mirrored subdirectory too, not just the flat <build>/gcov/out/<test name> root.
-    subdir  = PathMirror.relative_subdir( source, @configurator.paths_source + @configurator.paths_support )
+    # A generated Partial sits below its own test's Partials build root rather than a
+    # configured source root, so the source roots mirror nothing for it. Its own root is
+    # what carries the module's subdirectory.
+    roots =
+      if File.basename(source).match?(PATTERNS::PARTIAL_IMPL_FILENAME)
+        [File.join( @configurator.project_test_partials_path, test )]
+      else
+        @configurator.paths_source + @configurator.paths_support
+      end
+
+    subdir  = PathMirror.relative_subdir( source, roots )
     obj_dir = subdir.empty? ? File.join(GCOV_BUILD_OUTPUT_PATH, test) : File.join(GCOV_BUILD_OUTPUT_PATH, test, subdir)
 
     # Run gcov to extract the coverage summary
@@ -154,7 +261,7 @@ class ConsoleReportinator < GcovReportinator
   # gcov_source  — absolute path extracted from the `File '...'` line in gcov output; for Partial files
   #                this is the original module source (due to #line remapping), not the Partial filepath;
   #                empty string ('') when the gcov File header could not be parsed
-  def log_coverage_report(test, source, results, gcov_source)
+  def log_coverage_report(test, source, results, gcov_source, label: nil)
     filename = File.basename(source)
 
     # If gcov results include intended source (comparing absolute paths), report coverage details summaries.
@@ -163,6 +270,10 @@ class ConsoleReportinator < GcovReportinator
     if gcov_source == File.expand_path(source) || File.basename(source).match?(PATTERNS::PARTIAL_IMPL_FILENAME)
       # For Partials, use the original source name from gcov output (gcov_source) rather than the Partial filename.
       report_name = gcov_source.empty? ? filename : File.basename(gcov_source)
+
+      # The basename still matches gcov's own File header; only the printed label carries
+      # the disambiguating path.
+      report_label = label || report_name
 
       lines = results.lines
       # Find the File header line matching the queried source filename
@@ -176,7 +287,7 @@ class ConsoleReportinator < GcovReportinator
         section       = next_file_idx ? remaining[0...next_file_idx] : remaining
         # Filter out gcov informational messages emitted while inspecting coverage binary files
         section       = section.reject { |line| line.include?( File.basename( source,'.*') ) }
-        report        = section.map { |line| report_name + ' | ' + line }.join('')
+        report        = section.map { |line| report_label + ' | ' + line }.join('')
         @loginator.log( report )
       else
         # A Partial whose remapped name still doesn't match any File header in gcov's

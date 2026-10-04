@@ -19,6 +19,10 @@ class PartializerConfig
   constructor :c_extractor_preprocessing
 
   # Macro names for all partial configuration macros
+  #
+  # Each macro has a directory-qualified `_AT` counterpart taking a leading directory
+  # parameter. Recognition requires an exact name match followed by an open parenthesis,
+  # so a name and its own `_AT` extension stay distinct however they are ordered here.
   MACRO_NAMES = [
     'TEST_PARTIAL_PUBLIC_MODULE',
     'TEST_PARTIAL_PRIVATE_MODULE',
@@ -30,7 +34,20 @@ class PartializerConfig
     'MOCK_PARTIAL_ALL_MODULE',
     'TEST_PARTIAL_CONFIG',
     'MOCK_PARTIAL_CONFIG',
+    'TEST_PARTIAL_PUBLIC_MODULE_AT',
+    'TEST_PARTIAL_PRIVATE_MODULE_AT',
+    'MOCK_PARTIAL_PUBLIC_MODULE_AT',
+    'MOCK_PARTIAL_PRIVATE_MODULE_AT',
+    'TEST_PARTIAL_MODULE_AT',
+    'MOCK_PARTIAL_MODULE_AT',
+    'TEST_PARTIAL_ALL_MODULE_AT',
+    'MOCK_PARTIAL_ALL_MODULE_AT',
+    'TEST_PARTIAL_CONFIG_AT',
+    'MOCK_PARTIAL_CONFIG_AT',
   ].freeze unless const_defined?(:MACRO_NAMES, false)
+
+  # Suffix marking a macro that takes a leading directory parameter.
+  QUALIFIED_SUFFIX = '_AT' unless const_defined?(:QUALIFIED_SUFFIX, false)
 
   # Holds function-level extraction config for tests or mocks within a Partial.
   # type         -- :public, :private, or :accumulate (additions-driven); nil if unset
@@ -95,15 +112,20 @@ class PartializerConfig
       macro_name, params = @c_extractor_preprocessing.parse_macro_call(call_str)
       next if macro_name.nil?
 
-      if macro_name.end_with?('_CONFIG')
+      # A directory-qualified macro behaves exactly as its unqualified counterpart
+      # once its leading directory parameter is folded into the module key, so
+      # dispatch and validation below work from the unqualified name.
+      base_macro = _unqualified_name(macro_name)
+
+      if base_macro.end_with?('_CONFIG')
         config_calls << [macro_name, params]
         next
       end
 
-      mod = _strip_quotes(params[0])
+      mod = _module_key(macro_name, params)
       configs[mod] ||= Config.new(module: mod)
 
-      case macro_name
+      case base_macro
       when 'TEST_PARTIAL_PUBLIC_MODULE'
         _check_type_unset!(configs[mod].tests, mod, macro_name)
         configs[mod].tests.type = PUBLIC
@@ -133,7 +155,7 @@ class PartializerConfig
 
     # --- Pass 2: CONFIG macros ---
     config_calls.each do |macro_name, params|
-      mod = _strip_quotes(params[0])
+      mod = _module_key(macro_name, params)
       unless configs.key?(mod)
         raise CeedlingException.new(
           "#{macro_name} references module '#{mod}' but no corresponding MODULE Partial macro directive for that module was found"
@@ -142,7 +164,7 @@ class PartializerConfig
 
       target = macro_name.start_with?('TEST_') ? configs[mod].tests : configs[mod].mocks
 
-      params[1..].each do |raw|
+      _function_params(macro_name, params).each do |raw|
         name = _strip_quotes(raw)
         if name.start_with?('-')
           target.subtractions << name[1..]
@@ -212,6 +234,117 @@ class PartializerConfig
   def _strip_quotes(str)
     return str unless str.length >= 2 && str.start_with?('"') && str.end_with?('"')
     str[1..-2]
+  end
+
+  # True for a directory-qualified macro, which carries a leading directory parameter.
+  def _qualified?(macro_name)
+    macro_name.end_with?( QUALIFIED_SUFFIX )
+  end
+
+  def _unqualified_name(macro_name)
+    macro_name.delete_suffix( QUALIFIED_SUFFIX )
+  end
+
+  # One module identity, however the module was named. A qualified macro's directory
+  # and module parameters join here, so a module declared by one macro family pairs
+  # with a config macro from either, and two modules sharing a basename stay distinct.
+  def _module_key(macro_name, params)
+    unless _qualified?( macro_name )
+      _validate_module!( params[0], macro_name )
+      return params[0]
+    end
+
+    dir = params[0].nil? ? nil : params[0].strip
+
+    _validate_qualifier!( dir, macro_name )
+    _validate_module!( params[1], macro_name, dir: dir )
+
+    File.join( dir, params[1] )
+  end
+
+  # The module argument names one file's stem and nothing more. The preprocessor emits it
+  # verbatim into the generated filename, so anything Ceedling cannot reproduce in the
+  # filename it actually writes names a file that is never written -- surfacing much later
+  # as a missing include for a filename the author never typed.
+  def _validate_module!(mod, macro_name, dir: nil)
+    if mod.nil? || mod.empty?
+      requires = dir.nil? ? 'a module name' : 'a directory and a module name'
+      example  = dir.nil? ? 'module' : 'path/to/module, module'
+
+      raise CeedlingException.new(
+        "#{macro_name}() requires #{requires}, as in #{macro_name}(#{example})."
+      )
+    end
+
+    if mod.include?('"')
+      raise CeedlingException.new(
+        "#{macro_name}() module '#{mod}' must not be quoted. " \
+        "Write the module name as bare text, as in #{macro_name}(#{dir.nil? ? '' : dir + ', '}module)."
+      )
+    end
+
+    return unless mod.match?( %r{[\\/]} )
+
+    raise CeedlingException.new(
+      "#{macro_name}() module '#{mod}' must not contain a path. " \
+      "A module's directory belongs in its own argument, as in #{_qualified_example( macro_name, mod, dir )}. " \
+      "A path in the module argument lands the Partials prefix on the first directory " \
+      "instead of the filename, naming a file Ceedling never writes."
+    )
+  end
+
+  # The call that replaces one carrying a path in its module argument. Whatever directory
+  # the author wrote folds into the directory argument, leaving the module's own stem.
+  def _qualified_example(macro_name, mod, dir)
+    normalized = mod.tr( '\\', '/' )
+    qualifier  = File.dirname( normalized )
+    qualifier  = dir.nil? ? qualifier : File.join( dir, qualifier )
+
+    return "#{_qualified?( macro_name ) ? macro_name : macro_name + QUALIFIED_SUFFIX}" \
+           "(#{qualifier}, #{File.basename( normalized )})"
+  end
+
+  # Function names follow every leading parameter the macro declares.
+  def _function_params(macro_name, params)
+    _qualified?( macro_name ) ? params[2..] : params[1..]
+  end
+
+  # The preprocessor emits the directory verbatim into the generated #include, so a
+  # spelling Ceedling cannot reproduce as a real relative path names a file that is
+  # never written. Both rejections below are that mismatch, caught where the author
+  # can act on it rather than as a missing include much later.
+  def _validate_qualifier!(dir, macro_name)
+    if dir.nil? || dir.empty?
+      raise CeedlingException.new(
+        "#{macro_name}() requires a directory as its first argument, " \
+        "as in #{macro_name}(path/to/module, module)."
+      )
+    end
+
+    # A Partial is written below its test's own generated directory, while the emitted
+    # #include resolves against the including file. A climbing segment makes those two
+    # different places.
+    if dir.split( %r{[\\/]} ).include?( '..' )
+      raise CeedlingException.new(
+        "#{macro_name}() directory '#{dir}' must not contain '..'. " \
+        "A Partial is generated relative to the project root, so its directory cannot " \
+        "climb above it."
+      )
+    end
+
+    if dir.start_with?('"') || dir.end_with?('"')
+      raise CeedlingException.new(
+        "#{macro_name}() directory '#{dir}' must not be quoted. " \
+        "Write the path as bare text, as in #{macro_name}(path/to/module, module)."
+      )
+    end
+
+    if dir.start_with?('/', '\\') || dir.match?(/\A[A-Za-z]:[\/\\]/)
+      raise CeedlingException.new(
+        "#{macro_name}() directory '#{dir}' must be a relative path, not an absolute path. " \
+        "A Partial is generated relative to the project root."
+      )
+    end
   end
 
 end

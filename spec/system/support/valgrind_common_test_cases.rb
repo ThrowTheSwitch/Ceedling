@@ -81,7 +81,7 @@ module ValgrindCommonTestCases
         expect(File.exist?('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to eq(true)
         expect(File.size('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to be > 0
         # Expected memory error(s) detected by Valgrind
-        expect(File.read('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
+        expect(read_spec_file('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
       end
     end
   end
@@ -112,7 +112,7 @@ module ValgrindCommonTestCases
         expect(File.exist?('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to eq(true)
         expect(File.size('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to be > 0
         # Expected memory error(s) detected by Valgrind
-        expect(File.read('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
+        expect(read_spec_file('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
       end
     end
   end
@@ -133,7 +133,7 @@ module ValgrindCommonTestCases
 
         xml_path = 'build/artifacts/valgrind/test_example_file_success.xml'
         expect(File.exist?(xml_path)).to eq(true)
-        expect(File.read(xml_path)).to match(/<valgrindoutput>/)
+        expect(read_spec_file(xml_path)).to match(/<valgrindoutput>/)
       end
     end
   end

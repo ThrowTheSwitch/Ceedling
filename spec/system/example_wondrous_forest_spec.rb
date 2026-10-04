@@ -57,8 +57,8 @@ ceedling_system_tests do
         @c.with_context do
           Dir.chdir "wondrous_forest" do
             @output = @c.ceedling_build_exec("test:all")
-            expect(@output).to match(/TESTED:\s+68/)
-            expect(@output).to match(/PASSED:\s+68/)
+            expect(@output).to match(/TESTED:\s+71/)
+            expect(@output).to match(/PASSED:\s+71/)
             expect(@output).to match(/FAILED:\s+0/)
           end
         end

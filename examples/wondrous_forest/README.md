@@ -33,6 +33,8 @@ wondrous_forest/
 │   ├── ForestMonitor.c/.h
 │   ├── SensorHal.c/.h
 │   ├── UartDriver.c/.h
+│   ├── sensors/soil/Calibration.c/.h   # Same module name as the one below
+│   ├── sensors/light/Calibration.c/.h  # Told apart by directory
 │   └── Types.h
 └── test/              # Test files — Using Partials and traditional assertions/mocks
     ├── TestTemperatureSensor.c
@@ -61,6 +63,7 @@ wondrous_forest/
 | TestForestMonitor.c     | `TEST_PARTIAL_PUBLIC_MODULE` + `MOCK_PARTIAL_PRIVATE_MODULE`  |
 | TestSensorHal.c         | Traditional — HAL has no private statics                      |
 | TestUartDriver.c        | Traditional — UART driver has no private statics              |
+| TestCalibration.c       | `TEST_PARTIAL_PRIVATE_MODULE_AT` — two same-named modules      |
 
 ---
 

@@ -18,6 +18,9 @@ describe GeneratorPartials do
     @file_path_utils = double( "FilePathUtils" )
     @loginator       = double( "Loginator" ).as_null_object
 
+    # Every generator creates its target's own directory before writing.
+    allow(@file_wrapper).to receive(:mkdir)
+
     @generator = described_class.new(
       {
         :file_wrapper    => @file_wrapper,
@@ -62,6 +65,72 @@ describe GeneratorPartials do
   end
 
   context "#generate_implementation" do
+    # A bare module name implies no directory of its own, so the directory created is
+    # just the output path it was handed.
+    it "creates the output path for a module named without a directory" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_source_filename).and_return( 'm_impl.c' )
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename).and_return( 'm_impl.h' )
+      allow(@file_wrapper).to receive(:open).and_yield( double('handle').as_null_object )
+      allow(@generator).to receive(:generate_header)
+      allow(@generator).to receive(:generate_source)
+
+      expect(@file_wrapper).to receive(:mkdir).with( '/path/to/output' ).at_least(:once)
+
+      @generator.generate_implementation(
+        test: 'test_m', name: 'm', function_definitions: [],
+        source_includes: [], header_includes: [],
+        c_module: empty_module, output_path: '/path/to/output'
+      )
+    end
+
+    # A module named by directory produces a nested filename, so the directory has to
+    # exist before the write. Nothing else creates it.
+    it "creates the nested directory for a module named by directory" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_source_filename)
+        .and_return( 'drivers/uart/ceedling_partial_config_impl.c' )
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .and_return( 'drivers/uart/ceedling_partial_config_impl.h' )
+      allow(@file_wrapper).to receive(:open).and_yield( double('handle').as_null_object )
+      allow(@generator).to receive(:generate_header)
+      allow(@generator).to receive(:generate_source)
+
+      expect(@file_wrapper).to receive(:mkdir).with( '/path/to/output/drivers/uart' ).at_least(:once)
+
+      @generator.generate_implementation(
+        test: 'test_config', name: 'drivers/uart/config', function_definitions: [],
+        source_includes: [], header_includes: [],
+        c_module: empty_module, output_path: '/path/to/output'
+      )
+    end
+
+    # Two modules sharing a basename generate two headers sharing one basename. A guard
+    # built from the basename alone is the same in both, so whichever header the compiler
+    # reads second is emptied and its declarations vanish.
+    it "builds an include guard distinguishing modules that share a basename" do
+      guards = []
+
+      ['drivers/uart', 'drivers/spi'].each do |dir|
+        handle = StringIO.new
+        allow(@file_path_utils).to receive(:form_partial_implementation_source_filename)
+          .and_return( "#{dir}/ceedling_partial_config_impl.c" )
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .and_return( "#{dir}/ceedling_partial_config_impl.h" )
+        allow(@file_wrapper).to receive(:mkdir)
+        allow(@file_wrapper).to receive(:open).and_yield( handle )
+
+        @generator.generate_implementation(
+          test: 'test_both', name: "#{dir}/config", function_definitions: [],
+          source_includes: [], header_includes: [],
+          c_module: empty_module, output_path: '/path/to/output'
+        )
+
+        guards << handle.string[/#ifndef (\S+)/, 1]
+      end
+
+      expect( guards.first ).to_not be_nil
+      expect( guards.first ).to_not eq( guards.last )
+    end
+
     it "should call generate_header() and generate_source() with correct parameters" do
       # Setup
       output_path = '/path/to/output'

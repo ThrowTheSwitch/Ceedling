@@ -505,6 +505,50 @@ describe TestBuildSetup do
         @setup.stage_collect_preprocessor_context( @state )
       end
 
+      # A Partial's stand-in follows its generated #include. When that #include names
+      # no directory, the stand-in sits directly beneath its test.
+      it "writes a Partial's stand-in beneath its test when its #include names no directory" do
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes)
+          .and_return( [ Include.new('ceedling_partial_config_impl.h') ] )
+
+        expect(@file_path_utils).to receive(:form_partial_header_filepath)
+          .with( 'a_test', 'ceedling_partial_config_impl.h' )
+          .and_return( 'build/test/partials/a_test/ceedling_partial_config_impl.h' )
+        expect(@file_wrapper).to receive(:write_blank_file)
+          .with( 'build/test/partials/a_test/ceedling_partial_config_impl.h' )
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
+      it "places a Partial's stand-in under the directory its generated #include names" do
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes)
+          .and_return( [ Include.new('drivers/uart/ceedling_partial_config_impl.h') ] )
+
+        expect(@file_path_utils).to receive(:form_partial_header_filepath)
+          .with( 'a_test', 'drivers/uart/ceedling_partial_config_impl.h' )
+          .and_return( 'build/test/partials/a_test/drivers/uart/ceedling_partial_config_impl.h' )
+        expect(@file_wrapper).to receive(:mkdir)
+          .with( 'build/test/partials/a_test/drivers/uart' )
+        expect(@file_wrapper).to receive(:write_blank_file)
+          .with( 'build/test/partials/a_test/drivers/uart/ceedling_partial_config_impl.h' )
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
+      it "creates a Partial stand-in's own directory, as a mock's does" do
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes)
+          .and_return( [ Include.new('ceedling_partial_config_impl.h') ] )
+        allow(@file_path_utils).to receive(:form_partial_header_filepath)
+          .and_return( 'build/test/partials/a_test/ceedling_partial_config_impl.h' )
+
+        expect(@file_wrapper).to receive(:mkdir).with( 'build/test/partials/a_test' )
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
       it "resolves a mocked header's real source against the ordering collect_mock_search_paths (stage 2) originally saw for it -- this test's own search_paths minus its own mock_search_paths" do
         @testable.search_paths      = ['build/test/mocks/a_test/drivers', 'src']
         @testable.mock_search_paths = ['build/test/mocks/a_test/drivers']
@@ -598,6 +642,11 @@ describe TestBuildSetup do
       allow(@configurator).to receive(:collection_paths_libraries).and_return( [] )
       allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
       allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
+      # The same composition mock generation uses, so a search path cannot point somewhere
+      # a mock is not written.
+      allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
+        subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
+      end
     end
 
     it "collects each non-Partial mocked header's own mirrored directory, deduplicated" do

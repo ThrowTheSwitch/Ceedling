@@ -16,6 +16,7 @@ class Preprocessinator
     :preprocessinator_file_assembler,
     :preprocessinator_reconstructor,
     :file_path_utils,
+    :file_wrapper,
     :tool_executor,
     :plugin_manager,
     :configurator,
@@ -50,11 +51,13 @@ class Preprocessinator
   end
 
   def generate_directives_only_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
-    raw_preprocessed_filepath = 
+    raw_preprocessed_filepath = ensure_output_dir(
       @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, test )
+    )
 
-    compacted_preprocessed_fileapth =
+    compacted_preprocessed_fileapth = ensure_output_dir(
       @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, test )
+    )
 
     # Run GCC with directives-only preprocessor expansion
     command = @tool_executor.build_command_line(
@@ -120,7 +123,9 @@ class Preprocessinator
   #    they've determined it stale.
   # This method itself performs no freshness check of its own.
   def store_includes_list(test:, filepath:, includes:)
-    _filepath = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
+    _filepath = ensure_output_dir(
+      @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
+    )
 
     cache_file_lock( _filepath ).synchronize do
       @includes_handler.write_includes_list( _filepath, includes )
@@ -222,7 +227,7 @@ class Preprocessinator
     contents, extras, include_guard = @file_assembler.collect_mockable_header_file_contents( **arg_hash )
 
     arg_hash = {
-      filename:              File.basename( filepath ),
+      filepath:              @file_path_utils.preprocessed_file_subpath( filepath ),
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                extras,
@@ -287,7 +292,7 @@ class Preprocessinator
     extras = fallback ? @file_assembler.collect_macros_and_pragmas_fallback( source_filepath: filepath, defines: defines ) : []
 
     arg_hash = {
-      filename:              File.basename( filepath ),
+      filepath:              @file_path_utils.preprocessed_file_subpath( filepath ),
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                extras,
@@ -453,6 +458,36 @@ class Preprocessinator
 
   # One Mutex per includes-cache file, so concurrent testables serialize on the exact
   # file they touch and nothing more. The map itself is guarded by @file_locks_mutex.
+  # Runs the full preprocessor into `output`.
+  #
+  # `boom: false` is deliberate. ToolExecutor#exec's default raises ShellException on a
+  # nonzero exit code, which would crash the build before the caller's own graceful
+  # fallback to directives-only signatures could run.
+  def _run_full_preprocessor(filepath:, output:, flags:, include_paths:, vendor_paths:, defines:)
+    command = @tool_executor.build_command_line(
+      @configurator.tools_test_file_full_preprocessor,
+      flags,
+      filepath,
+      output,
+      defines,
+      (include_paths + vendor_paths)
+    )
+
+    command[:options][:boom] = false
+
+    return @tool_executor.exec( command )
+  end
+
+  # Creates a preprocessed artifact's own directory and hands the path back, so a caller
+  # wraps it around the path it is already assigning. The directory may not exist yet: an
+  # artifact mirrors its source's own namespace, while a test's flat preprocess
+  # directories are created with the rest of its build paths, before any source is known.
+  # The preprocessor tools write their output directly and would otherwise fail.
+  def ensure_output_dir(filepath)
+    @file_wrapper.mkdir( File.dirname( filepath ) )
+    return filepath
+  end
+
   def cache_file_lock(cache_filepath)
     @file_locks_mutex.synchronize { @file_locks[cache_filepath] ||= Mutex.new }
   end
@@ -486,22 +521,18 @@ class Preprocessinator
     )
     @loginator.log( msg )
 
-    full_expansion_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
-
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_full_preprocessor,
-      flags,
-      filepath,
-      full_expansion_filepath,
-      defines,
-      (include_paths + vendor_paths)
+    full_expansion_filepath = ensure_output_dir(
+      @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
     )
-    # Without this, ToolExecutor#exec's default boom: true raises ShellException
-    # on a nonzero exit code before the graceful-fallback check below ever runs,
-    # crashing the build instead of falling back to directives-only signatures
-    # as documented.
-    command[:options][:boom] = false
-    result = @tool_executor.exec( command )
+
+    result = _run_full_preprocessor(
+      filepath:      filepath,
+      output:        full_expansion_filepath,
+      flags:         flags,
+      include_paths: include_paths,
+      vendor_paths:  vendor_paths,
+      defines:       defines
+    )
 
     if result[:exit_code] != 0
       msg = "Failed to generate full expansion for Partial signature extraction (directives-only signatures will be used) for #{filepath}"

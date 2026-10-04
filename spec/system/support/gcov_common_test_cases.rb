@@ -354,7 +354,7 @@ module GcovCommonTestCases
         expect(output).to match(/crashed/i)
         expect(output).to match(/Unit test failures/)
         expect(File.exist?('./build/gcov/results/test_example_file_crash_sigsegv.fail'))
-        output_rd = File.read('./build/gcov/results/test_example_file_crash_sigsegv.fail')
+        output_rd = read_spec_file('./build/gcov/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
@@ -388,7 +388,7 @@ module GcovCommonTestCases
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
         expect(File.exist?('./build/gcov/results/test_example_file_crash_sigsegv.fail'))
-        output_rd = File.read('./build/gcov/results/test_example_file_crash_sigsegv.fail')
+        output_rd = read_spec_file('./build/gcov/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+0/)
@@ -421,7 +421,7 @@ module GcovCommonTestCases
                         "  TEST_ASSERT_EQUAL_INT(0, difference_between_numbers(1,1));\n" \
                         "}\n"
 
-        updated_test_file = File.read('test/test_example_file_crash_sigsegv.c').split("\n")
+        updated_test_file = read_spec_file('test/test_example_file_crash_sigsegv.c').split("\n")
         updated_test_file.insert(updated_test_file.length(), add_test_case)
         File.write('test/test_example_file_crash_sigsegv.c', updated_test_file.join("\n"), mode: 'w')
 

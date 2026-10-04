@@ -32,6 +32,19 @@ describe CExtractorPreprocessing do
       expect( scan('int x = UNRELATED(42);') ).to eq []
     end
 
+    # A requested name is only a match when its open parenthesis follows. So a name
+    # that is a strict prefix of a longer identifier cannot claim that identifier's
+    # call, and two requested names where one extends the other stay distinct
+    # whichever order they are given in.
+    it "does not match a requested name against a longer identifier that merely starts with it" do
+      expect( scan('FOO_EXTENDED(a)') ).to eq []
+    end
+
+    it "keeps a name and its own extension distinct, shorter name requested first" do
+      expect( scan('FOO(a)',          ['FOO', 'FOO_AT']) ).to eq ['FOO(a)']
+      expect( scan('FOO_AT(d, a)',    ['FOO', 'FOO_AT']) ).to eq ['FOO_AT(d, a)']
+    end
+
     # --- Basic single-macro extraction ---
 
     it "extracts a single-param macro call" do

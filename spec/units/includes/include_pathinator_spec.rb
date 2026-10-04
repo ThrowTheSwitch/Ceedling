@@ -65,6 +65,67 @@ describe IncludePathinator do
     end
   end
 
+  # Distinct from ordered_header_files: this returns the whole project collection, since a
+  # reference naming a header by path can sit at any depth below a search path.
+  describe '#prioritized_header_files' do
+    it 'returns headers at any depth below a search path, not only its immediate contents' do
+      allow(@configurator).to receive(:collection_all_headers)
+        .and_return(Rake::FileList.new(['include/drivers/uart/config.h']))
+
+      expect( @pathinator.prioritized_header_files(['include']) )
+        .to eq(['include/drivers/uart/config.h'])
+    end
+
+    it 'orders headers by their search path rank, so an earlier path wins' do
+      allow(@configurator).to receive(:collection_all_headers)
+        .and_return(Rake::FileList.new(['vendor/config.h', 'local/config.h']))
+
+      expect( @pathinator.prioritized_header_files(['local', 'vendor']) )
+        .to eq(['local/config.h', 'vendor/config.h'])
+    end
+
+    # Ties keep the collection's own order, which is what leaves a reference that
+    # distinguishes nothing resolving exactly as it did before.
+    it 'preserves collection order within one rank' do
+      allow(@configurator).to receive(:collection_all_headers)
+        .and_return(Rake::FileList.new(['include/b.h', 'include/a.h']))
+
+      expect( @pathinator.prioritized_header_files(['include']) )
+        .to eq(['include/b.h', 'include/a.h'])
+    end
+
+    it 'keeps a header below no search path, ranked last' do
+      allow(@configurator).to receive(:collection_all_headers)
+        .and_return(Rake::FileList.new(['elsewhere/z.h', 'include/a.h']))
+
+      expect( @pathinator.prioritized_header_files(['include']) )
+        .to eq(['include/a.h', 'elsewhere/z.h'])
+    end
+
+    it 'strips decorators and globs from search paths before matching' do
+      allow(@configurator).to receive(:collection_all_headers)
+        .and_return(Rake::FileList.new(['elsewhere/z.h', 'include/drivers/a.h']))
+
+      expect( @pathinator.prioritized_header_files(['include/**']) )
+        .to eq(['include/drivers/a.h', 'elsewhere/z.h'])
+    end
+
+    it 'returns the collection unchanged when no search paths are given' do
+      allow(@configurator).to receive(:collection_all_headers)
+        .and_return(Rake::FileList.new(['include/a.h', 'include/b.h']))
+
+      expect( @pathinator.prioritized_header_files([]) ).to eq(['include/a.h', 'include/b.h'])
+    end
+
+    it 'does not match a search path against a merely similarly named directory' do
+      allow(@configurator).to receive(:collection_all_headers)
+        .and_return(Rake::FileList.new(['include_extra/z.h', 'include/a.h']))
+
+      expect( @pathinator.prioritized_header_files(['include']) )
+        .to eq(['include/a.h', 'include_extra/z.h'])
+    end
+  end
+
   describe '#validate_test_build_directive_paths' do
     it 'completes without raising when inspect_include_paths yields nothing' do
       allow(@extractor).to receive(:inspect_include_paths)

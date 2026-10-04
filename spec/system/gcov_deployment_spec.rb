@@ -65,6 +65,7 @@ ceedling_system_tests do
       test_case :gcov_partials_coverage_blank_lines_in_function_body
       test_case :gcov_partials_coverage_decorators_on_own_lines
       test_case :gcov_partials_coverage_function_scope_static_promotion
+      test_case :gcov_partials_coverage_same_named_modules
     end
 
     describe "Backtrace with GDB" do

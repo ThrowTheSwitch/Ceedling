@@ -532,6 +532,49 @@ end
 
 describe "Includes sanitization" do
   describe "sanitize!()" do
+    # An unresolved include carries only the text as written, so its filepath has no
+    # directory of its own. Beside a resolved entry for the same basename it can only
+    # ever reach a file by search-path accident, and which file that is depends on
+    # search order rather than on anything the test author wrote.
+    #
+    # A header that genuinely sits at an include root is the case this must not touch.
+    # It renders bare too, but its filepath is resolved and carries a directory.
+    it "drops an unresolved include shadowed by a resolved entry for the same basename" do
+      includes = [
+        UserInclude.new('"config.h"'),
+        UserInclude.new('include/drivers/uart/config.h', include_path: 'uart/config.h'),
+        UserInclude.new('include/drivers/spi/config.h', include_path: 'spi/config.h')
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect( result.map(&:filepath) )
+        .to eq(['include/drivers/uart/config.h', 'include/drivers/spi/config.h'])
+    end
+
+    it "keeps a resolved root-level header beside a resolved nested sibling" do
+      includes = [
+        UserInclude.new('include/config.h'),
+        UserInclude.new('include/drivers/uart/config.h', include_path: 'uart/config.h')
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect( result.map(&:filepath) )
+        .to eq(['include/config.h', 'include/drivers/uart/config.h'])
+    end
+
+    it "keeps a lone unresolved include, nothing resolved shadowing it" do
+      includes = [
+        UserInclude.new('"config.h"'),
+        UserInclude.new('include/drivers/uart/other.h', include_path: 'uart/other.h')
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect( result.map(&:filepath) ).to include('config.h')
+    end
+
     it "removes duplicate includes" do
       includes = [
         UserInclude.new("header.h"),

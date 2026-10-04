@@ -1324,6 +1324,11 @@ describe TestBuildExecutor do
       allow(@configurator).to receive(:project_config_hash).and_return( {} )
       allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock' } )
       allow(@file_wrapper).to receive(:mkdir)
+      # Where a mock's files sit is composed in one shared place, so the stage that
+      # compiles a mock and the stage that generates it cannot disagree.
+      allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
+        subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
+      end
 
       @testable = TestInvokerTypes::Testable.new(
         :name  => 'a_test',

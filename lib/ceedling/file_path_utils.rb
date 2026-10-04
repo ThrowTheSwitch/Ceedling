@@ -361,33 +361,104 @@ class FilePathUtils
     return File.join( File.dirname(filepath), File.basename(filepath).ext(@configurator.extension_list.primary) )
   end
 
+  # A preprocessed artifact's name below its test's own subdirectory. The test subdirectory
+  # alone kept artifacts apart while a test had at most one source of any given basename.
+  # Two same-basename sources in one test overwrite each other, so the file's own namespace
+  # below its configured root is carried forward too.
+  #
+  # A file below none of those roots mirrors nothing and keeps the flat name it has always
+  # had. Ceedling's own generated files are the exception: `test` names which test's
+  # generated roots to measure against as well, since a mock or a Partial sits below one
+  # of those rather than anything the project configured. Every caller derives this from
+  # the same filepath, so all of them agree on where the artifact lands without
+  # coordinating.
+  def preprocessed_file_subpath(filepath, test = nil)
+    roots = @configurator.paths_source +
+            @configurator.paths_support +
+            @configurator.paths_include +
+            @configurator.paths_test +
+            generated_roots( test )
+
+    subdir   = PathMirror.relative_subdir( filepath, roots )
+    basename = File.basename( filepath )
+
+    return basename if subdir.empty?
+
+    return File.join( subdir, basename )
+  end
+
+  # The roots holding one test's own generated files. A mock or a generated Partial sits
+  # below one of these rather than a configured source root, and two same-named modules
+  # each produce one, so without these roots both share a single preprocessed artifact.
+  #
+  # Each root carries the test's own name, so what mirrors forward is the module's own
+  # subdirectory rather than the test name a second time.
+  def generated_roots(test)
+    return [] if test.nil?
+
+    roots = []
+    roots << File.join( @configurator.project_test_partials_path, test ) if @configurator.project_use_partials
+    roots << File.join( @configurator.cmock_mock_path, test ) if @configurator.project_use_mocks
+
+    return roots
+  end
+
+  # Composes a preprocessed artifact's path. Pure, like every other path builder here:
+  # callers that merely restate a path -- a rake target declaration, a staleness check --
+  # must not leave directories behind as a side effect. Whoever writes the file creates
+  # its directory, the same way a mock's or a Partial's own writer does.
+  def form_preprocessed_filepath(root, subdir, kind_dir, filepath, suffix: '')
+    return File.join( *[root, subdir, kind_dir, preprocessed_file_subpath( filepath, subdir ) + suffix].compact )
+  end
+
   def form_preprocessed_includes_list_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_includes_path, subdir, File.basename(filepath) + EXTENSION_CORE_YAML )
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_includes_path, subdir, nil, filepath, suffix: EXTENSION_CORE_YAML
+    )
   end
 
   def form_preprocessed_file_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_files_path, subdir, File.basename(filepath) )
+    return form_preprocessed_filepath( @configurator.project_test_preprocess_files_path, subdir, nil, filepath )
   end
 
   def form_preprocessed_file_full_expansion_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_FULL_EXPANSION_DIR, File.basename(filepath) )
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_FULL_EXPANSION_DIR, filepath
+    )
   end
 
   def form_preprocessed_file_raw_directives_only_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR, File.basename(filepath) )
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR, filepath
+    )
   end
 
   def form_preprocessed_file_compacted_directives_only_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_DIRECTIVES_ONLY_DIR, File.basename(filepath) )
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_DIRECTIVES_ONLY_DIR, filepath
+    )
   end
 
-  def form_test_build_objects_filelist(path, sources)
+  # `extra_roots` carries roots known only to the caller. A generated Partial source sits
+  # below its own test's build root rather than a configured source root, so nothing in the
+  # standard roots mirrors it. Without its root here, two modules sharing a basename
+  # collapse onto one object filename.
+  def form_test_build_objects_filelist(path, sources, extra_roots: [])
     return mirror_build_objects(
       sources,
       root:  path,
       ext:   @configurator.extension_object.primary,
-      roots: @configurator.paths_source + @configurator.paths_support
+      roots: @configurator.paths_source + @configurator.paths_support + extra_roots
     )
+  end
+
+  # Where one mock's generated files sit: its test's mock root, plus the subdirectory
+  # mirroring whatever it mocks. Shared by the stage that compiles a mock and the stage
+  # that generates it, so the two cannot disagree about where a mock lives.
+  def form_mock_output_path(root, subdir)
+    return root if subdir.nil? || subdir.empty?
+
+    return File.join( root, subdir )
   end
 
   def form_mock_header_filepath(subdir, filename)
@@ -402,27 +473,71 @@ class FilePathUtils
     return File.join( @configurator.project_test_partials_path, subdir, filename.ext(EXTENSION_CORE_HEADER) )
   end
 
+  # Every generated Partial filename below is also the text a Partial directive macro
+  # expands to, so the two have to agree exactly or the compiler resolves the generated
+  # #include to nothing.
+  #
+  # A module named by directory keeps that directory and takes its prefixes on the
+  # basename, matching how the macro assembles the same name. Concatenating the whole
+  # module name instead would put the prefix on the first path segment.
+  def form_partial_filename(_module, suffix, extension, prefix: '')
+    dir      = File.dirname( _module )
+    basename = prefix + PARTIAL_FILENAME_PREFIX + File.basename( _module ) + suffix + extension
+
+    return basename if dir == '.'
+
+    return File.join( dir, basename )
+  end
+
+  # Reverses form_partial_filename(). A generated Partial filename is Ceedling's own
+  # invention, so a message naming one tells a test author nothing. Recovering the module
+  # lets a message name what the author actually wrote.
+  #
+  # Prefixes stack on a mocked interface header, mock outermost. The suffix is stripped
+  # from the end only, so a module whose own name ends in a suffix word survives. Returns
+  # nil for any filename this builder could not have produced.
+  def module_from_partial_filename(filepath)
+    dir      = File.dirname( filepath )
+    basename = File.basename( filepath ).ext('')
+
+    basename = basename.delete_prefix( @configurator.cmock_mock_prefix )
+
+    return nil unless basename.start_with?( PARTIAL_FILENAME_PREFIX )
+
+    basename = basename.delete_prefix( PARTIAL_FILENAME_PREFIX )
+
+    suffix = PARTIAL_FILENAME_SUFFIXES.find { |candidate| basename.end_with?( candidate ) }
+
+    return nil if suffix.nil?
+
+    basename = basename.delete_suffix( suffix )
+
+    return basename if dir == '.'
+
+    return File.join( dir, basename )
+  end
+
   def form_partial_interface_header_filename(_module)
-    return PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
+    return form_partial_filename( _module, PARTIAL_SUFFIX_INTERFACE, EXTENSION_CORE_HEADER )
   end
 
   # A module's typedefs and aggregate (struct/enum/union) definitions are generated into this
   # standalone header, shared by both the implementation and interface headers below, so a
   # module tested and mocked in the same file never has its types defined more than once.
   def form_partial_types_header_filename(_module)
-    return PARTIAL_FILENAME_PREFIX + _module + '_types' + EXTENSION_CORE_HEADER
+    return form_partial_filename( _module, PARTIAL_SUFFIX_TYPES, EXTENSION_CORE_HEADER )
   end
 
   def form_mock_partial_interface_header_filename(_module)
-    return @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX + _module + '_interface' + EXTENSION_CORE_HEADER
+    return form_partial_filename( _module, PARTIAL_SUFFIX_INTERFACE, EXTENSION_CORE_HEADER, prefix: @configurator.cmock_mock_prefix )
   end
 
   def form_partial_implementation_header_filename(_module)
-    return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_HEADER
+    return form_partial_filename( _module, PARTIAL_SUFFIX_IMPL, EXTENSION_CORE_HEADER )
   end
 
   def form_partial_implementation_source_filename(_module)
-    return PARTIAL_FILENAME_PREFIX + _module + '_impl' + EXTENSION_CORE_SOURCE
+    return form_partial_filename( _module, PARTIAL_SUFFIX_IMPL, EXTENSION_CORE_SOURCE )
   end
 
   def form_pass_results_filelist(path, files)

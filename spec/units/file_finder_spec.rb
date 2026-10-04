@@ -262,6 +262,8 @@ describe FileFinder do
       allow(@configurator).to receive(:project_test_build_output_path).and_return('build/test/out')
       allow(@configurator).to receive(:project_release_build_output_path).and_return('build/release/out')
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      # No configured include root contains these queries, so each keeps its own path.
+      allow(@configurator).to receive(:paths_include).and_return( ['include'] )
     end
 
     it 'never raises, rather than silently missing a build, when two release sources share a basename -- resolves to the first by project path order' do
@@ -375,6 +377,9 @@ describe FileFinder do
 
     it 'resolves a mock scoped to its own test via an explicitly-given test identity, even when the object path itself is flat (e.g. a GCOV or Bullseye build with no per-test mirroring of its own)' do
       allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+      # This build mirrors nothing per test, so the object sits below neither the mock
+      # root nor a per-test out path and the mock resolves by name alone.
+      allow(@file_path_utils).to receive(:form_test_build_path).and_return('build/gcov/out')
 
       all_mocks = {
         'build/test/mocks/TestAdcModel' => ['build/test/mocks/TestAdcModel/MockTemperatureFilter.c'],
