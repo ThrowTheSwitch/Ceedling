@@ -43,7 +43,7 @@ ceedling_system_tests do
   # a comment or whitespace-only edit. Works whether setUp()'s existing body is
   # empty (standard Ceedling/Unity boilerplate) or not.
   def probe_test_file!(relative_path)
-    content = File.read(relative_path)
+    content = read_spec_file(relative_path)
     replaced = content.sub!(/(void setUp\(void\)\s*\{\n)/) { "#{Regexp.last_match(1)}  volatile int __ceedling_delta_probe = 1;\n" }
     raise "probe_test_file!: could not find setUp() in #{relative_path}" if replaced.nil?
     File.write(relative_path, content)
@@ -54,7 +54,7 @@ ceedling_system_tests do
   # file that #includes it) without needing a corresponding definition. Matches
   # both a trailing `// GUARD` and `/* GUARD */` comment on the #endif line.
   def probe_header!(relative_path)
-    content = File.read(relative_path)
+    content = read_spec_file(relative_path)
     content.sub!(/#endif\s*(\/\/[^\n]*|\/\*.*?\*\/)?\s*\z/) { "void __ceedling_delta_probe(void);\n\n#{Regexp.last_match(0)}" }
     File.write(relative_path, content)
   end
@@ -64,7 +64,7 @@ ceedling_system_tests do
   # edit as probe_test_file!, but targeting an arbitrary function rather than
   # the fixed setUp() convention.
   def probe_source_file!(relative_path, function_name)
-    content = File.read(relative_path)
+    content = read_spec_file(relative_path)
     replaced = content.sub!(/(#{Regexp.escape(function_name)}\([^)]*\)\s*\{\n)/) { "#{Regexp.last_match(1)}  volatile int __ceedling_delta_probe = 1;\n" }
     raise "probe_source_file!: could not find #{function_name}(...) in #{relative_path}" if replaced.nil?
     File.write(relative_path, content)
@@ -499,8 +499,8 @@ ceedling_system_tests do
       @c.with_context do
         Dir.chdir "wondrous_forest" do
           baseline = @c.ceedling_build_exec("test:all")
-          expect(baseline).to match(/TESTED:\s+68/)
-          expect(baseline).to match(/PASSED:\s+68/)
+          expect(baseline).to match(/TESTED:\s+71/)
+          expect(baseline).to match(/PASSED:\s+71/)
 
           rebuild = @c.ceedling_build_exec("test:all")
           expect(rebuild).to_not match(/^Compiling /)
@@ -511,8 +511,8 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/Generating Partial implementation for/)
           expect(rebuild).to_not match(/Generating Partial mockable interface for/)
 
-          expect(rebuild).to match(/TESTED:\s+68/)
-          expect(rebuild).to match(/PASSED:\s+68/)
+          expect(rebuild).to match(/TESTED:\s+71/)
+          expect(rebuild).to match(/PASSED:\s+71/)
         end
       end
     end
@@ -537,8 +537,8 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Linking TestEventQueue/)
           expect(rebuild).to_not match(/^Linking TestForestMonitor/)
 
-          expect(rebuild).to match(/TESTED:\s+68/)
-          expect(rebuild).to match(/PASSED:\s+68/)
+          expect(rebuild).to match(/TESTED:\s+71/)
+          expect(rebuild).to match(/PASSED:\s+71/)
         end
       end
     end
@@ -568,8 +568,8 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Linking TestSoilMoisture/)
           expect(rebuild).to_not match(/^Linking TestTemperatureSensor/)
 
-          expect(rebuild).to match(/TESTED:\s+68/)
-          expect(rebuild).to match(/PASSED:\s+68/)
+          expect(rebuild).to match(/TESTED:\s+71/)
+          expect(rebuild).to match(/PASSED:\s+71/)
         end
       end
     end
@@ -609,8 +609,8 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Linking /)
           expect(rebuild).to_not match(/^Running /)
 
-          expect(rebuild).to match(/TESTED:\s+68/)
-          expect(rebuild).to match(/PASSED:\s+68/)
+          expect(rebuild).to match(/TESTED:\s+71/)
+          expect(rebuild).to match(/PASSED:\s+71/)
         end
       end
     end
@@ -635,8 +635,8 @@ ceedling_system_tests do
           expect(rebuild).to match(/Generating Partial implementation for TestForestMonitor/)
           expect(rebuild).to match(/Generating Partial mockable interface for TestForestMonitor/)
 
-          expect(rebuild).to match(/TESTED:\s+68/)
-          expect(rebuild).to match(/PASSED:\s+68/)
+          expect(rebuild).to match(/TESTED:\s+71/)
+          expect(rebuild).to match(/PASSED:\s+71/)
         end
       end
     end

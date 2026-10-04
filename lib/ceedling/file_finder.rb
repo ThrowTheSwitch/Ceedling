@@ -121,26 +121,48 @@ class FileFinder
     # identically named mock (expected, routine repetition) is never mistaken for ambiguity
     elsif (!release) and
           (source_file.start_with?( @configurator.cmock_mock_prefix ))
+      # A mock mirrors the directory of whatever it mocks, so two same-named headers
+      # mocked in one test -- two modules mocked as Partials by directory, say -- are
+      # told apart only by that subdirectory. Measured the same way a generated
+      # Partial's is, below.
+      mocks_root = File.join(@configurator.cmock_mock_path, test_context)
+      subdir     = generated_file_subdir( filepath, mocks_root, test: test, context: context )
+
       _source_file = source_file + EXTENSION_CORE_SOURCE
+      _source_file = File.join( subdir, _source_file ) unless subdir.empty?
+
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
           @file_wrapper.directory_listing(
-            File.join(@configurator.cmock_mock_path, test_context, ('**/*' + EXTENSION_CORE_SOURCE))
+            File.join(mocks_root, ('**/*' + EXTENSION_CORE_SOURCE))
           ),
           complain)
 
     # Generated partials -- same per-test scoping rationale as mocks, above
     elsif (!release) and
           (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
+      # A generated Partial sits in the subdirectory mirroring its own module, so that
+      # subdirectory is what distinguishes two modules sharing a basename. Derived the
+      # same way a mock's is, above.
+      partials_root = File.join(@configurator.project_test_partials_path, test_context)
+      subdir        = generated_file_subdir( filepath, partials_root, test: test, context: context )
+
       _source_file = source_file + EXTENSION_CORE_SOURCE
+      _source_file = File.join( subdir, _source_file ) unless subdir.empty?
+
+      collection =
+        @file_wrapper.directory_listing(
+          File.join(partials_root, ('**/*' + EXTENSION_CORE_SOURCE))
+        )
+
+      # Ambiguity is detected here rather than rescued from the matching below. One
+      # matching implementation stays in force, and the message is composed from the
+      # module names the test author wrote instead of reworded by exception.
+      raise_ambiguous_partial!( _source_file, collection, partials_root )
+
       found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @file_wrapper.directory_listing(
-            File.join(@configurator.project_test_partials_path, test_context, ('**/*' + EXTENSION_CORE_SOURCE))
-          ),
-          complain)
+        @file_finder_helper.find_file_in_collection( _source_file, collection, complain )
 
     # Vendor framework sources (unity.c, cmock.c, cexception.c, etc.)
     # Note: Taking a small chance by mixing test and release frameworks without smart checks on test/release build
@@ -237,6 +259,40 @@ class FileFinder
 
   private
 
+  # Translates a generated-Partial ambiguity into the test author's own terms. The query
+  # here is a generated filename under a build directory, neither of which the author
+  # typed, so reporting them offers nothing to act on. Candidates render as extensionless
+  # module paths -- exactly what a directive macro takes -- so one can be pasted straight
+  # into the macro the message names.
+  def raise_ambiguous_partial!(query, collection, root)
+    candidates = PathMatcher.candidates( query, collection )
+
+    return if candidates.length < 2
+
+    _module = @file_path_utils.module_from_partial_filename( query )
+
+    # Candidates arrive as paths below the generated Partials root for this test. The root
+    # is Ceedling's own, so only the module's mirrored subdirectory below it means anything
+    # to the author.
+    modules = candidates.map do |candidate|
+      @file_path_utils.module_from_partial_filename( candidate.delete_prefix( root + '/' ) )
+    end.compact.uniq.sort
+
+    message = "Ambiguous Partial module reference '#{_module}' found.\n" \
+              "  Include more trailing path to distinguish among:\n" \
+              "    #{modules.join(",\n    ")}"
+
+    # The hint only helps when a candidate actually has a directory to name.
+    hint = modules.find { |candidate| File.dirname( candidate ) != '.' }
+
+    unless hint.nil?
+      message += "\n  Name one with a directory, " \
+                 "e.g. TEST_PARTIAL_ALL_MODULE_AT(#{File.dirname( hint )}, #{File.basename( hint )})"
+    end
+
+    raise CeedlingException.new( message )
+  end
+
   # A test object's build directory identity mirrors the configured test root a source
   # file lives under (e.g. `unit/test_foo` for `test/unit/test_foo.c`, plain `test_foo` for
   # a flat file). Recovering that identity from a build artifact's own path lets a lookup
@@ -271,10 +327,11 @@ class FileFinder
   # mirrored subdirectory and combining it with the bare basename recreates a query that
   # identifies the same one source PathMirror originally mirrored it from.
   #
-  # A filepath that isn't under the project's build root at all is already a source-tree-
-  # relative query in its own right -- straight from an #include or a TEST_SOURCE_FILE()
-  # directive, say -- so whatever path it already carries is preserved rather than
-  # collapsed to a bare basename that would throw away real disambiguating information.
+  # A filepath that isn't under the project's build root at all is a source-tree-relative
+  # query in its own right -- straight from an #include or a TEST_SOURCE_FILE() directive,
+  # say. Such a path keeps whatever disambiguating path it carries rather than being
+  # collapsed to a bare basename, reduced to its own namespace below a configured include
+  # root when one contains it (see header_root_relative_query below).
   #
   # A filepath that IS somewhere under the build root, but either belongs to a build
   # context this method doesn't specifically know how to mirror (a plugin's own object
@@ -286,7 +343,10 @@ class FileFinder
     dir = File.dirname(filepath)
     build_root = @configurator.project_build_root
 
-    return filepath.ext('') unless dir == build_root || dir.start_with?(build_root + '/')
+    unless dir == build_root || dir.start_with?(build_root + '/')
+      query = header_root_relative_query( filepath )
+      return query.nil? ? filepath.ext('') : query
+    end
 
     basename = File.basename(filepath).ext('')
 
@@ -301,6 +361,61 @@ class FileFinder
 
     subdir = PathMirror.relative_subdir(filepath, [root])
     return subdir.empty? ? basename : File.join(subdir, basename)
+  end
+
+  # The subdirectory a generated file's query carries, mirroring the module it belongs to.
+  #
+  # Which root it sits below depends on who is asking. The generated #include carries the
+  # root the file itself was written under; an object for that same file mirrors the
+  # subdirectory below the test's own out root instead. Measuring against only one of the
+  # two yields nothing for queries of the other kind, degrading them to a bare basename
+  # that matches every same-named module in the test.
+  #
+  # Below neither root, the query is a synthesized name rather than a real file's path --
+  # fallback preprocessing builds a generated #include from a module name instead of
+  # resolving the file. Whatever directory such a name carries is the module's own.
+  def generated_file_subdir(filepath, root, test:, context:)
+    out_root = test.nil? ? nil : @file_path_utils.form_test_build_path(test, context: context)
+
+    subdir = PathMirror.relative_subdir( filepath, [root, out_root].compact )
+
+    return subdir unless subdir.empty?
+
+    return synthesized_relative_dir( filepath )
+  end
+
+  # The directory a synthesized generated-file name carries, or '' when it carries none.
+  # Such a name is relative to nothing on disk, so its own dirname is all the module
+  # context there is.
+  def synthesized_relative_dir(filepath)
+    dir  = File.dirname( filepath )
+    root = @configurator.project_build_root
+
+    return '' if dir == '.'
+
+    # Matched at a path boundary. A directory merely beginning with the build root's own
+    # name is an ordinary relative directory and still names its module.
+    return '' if dir == root || dir.start_with?( root + '/' )
+
+    return dir
+  end
+
+  # A header's own path below its configured include root, or nil when no include root
+  # contains it. Ceedling's convention correlates an #include'd header with the source
+  # beside it, and the two trees routinely sit below different roots -- headers below
+  # `include`, sources below `src`. The namespace they share below those roots is what
+  # correlates them, so comparing the roots themselves only ever fails the match.
+  #
+  # Only the root is dropped. The namespace is preserved, since that is what keeps two
+  # same-basename modules apart.
+  def header_root_relative_query(filepath)
+    subdir = PathMirror.relative_subdir_if_rooted( filepath, @configurator.paths_include )
+
+    return nil if subdir.nil?
+
+    basename = File.basename( filepath ).ext('')
+
+    return subdir.empty? ? basename : File.join( subdir, basename )
   end
 
   # A file type may be named by any one of several configured extensions, so a basename

@@ -23,7 +23,7 @@ module GcovPartialsTestCases
     expect(@c.last_exit_status).to eq(0)
 
     cobertura_path = File.join('build', 'artifacts', 'gcov', 'gcovr', 'GcovCoverageCobertura.xml')
-    doc = REXML::Document.new(File.read(cobertura_path))
+    doc = REXML::Document.new(read_spec_file(cobertura_path))
 
     doc.elements.to_a("//class[@filename='#{source_relpath}']/lines/line").each_with_object({}) do |el, h|
       h[el.attributes['number'].to_i] = el.attributes['hits'].to_i
@@ -110,6 +110,52 @@ module GcovPartialsTestCases
         expect(hits[7]).to be > 0
         expect(hits[4]).to be_nil
         expect(hits[6]).to be_nil
+      end
+    end
+  end
+
+  # Coverage reporting has to tell two same-basename modules apart. A Partial replaces one
+  # module, so the other keeps reporting its own coverage. Matching on basename alone drops
+  # both, and the module nobody Partialized disappears from the report.
+  def gcov_partials_coverage_same_named_modules
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+
+        asset_base = test_asset_path("same_named_modules")
+        ['uart', 'spi'].each do |driver|
+          FileUtils.mkdir_p "include/drivers/#{driver}"
+          FileUtils.mkdir_p "src/drivers/#{driver}"
+          FileUtils.cp "#{asset_base}/include/drivers/#{driver}/config.h", "include/drivers/#{driver}/"
+          FileUtils.cp "#{asset_base}/src/drivers/#{driver}/config.c",     "src/drivers/#{driver}/"
+        end
+        FileUtils.cp "#{asset_base}/test/test_uart_config_partial_only.c", 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_partials => true },
+          :paths   => { :include => ['include/**'] }
+        })
+
+        # The console summary is what remapping feeds. Only the uart module is Partialized,
+        # so the spi module keeps reporting against its own source. Both must appear.
+        output = @c.ceedling_build_exec("gcov:all")
+        expect(@c.last_exit_status).to eq(0)
+
+        # Two same-named modules carry enough trailing path in the summary to tell them
+        # apart -- one directory here, which is all it takes.
+        #
+        # The figures identify each module. The spi module runs through its own public
+        # function, which reaches all three of its lines. The uart module is reached only
+        # through its Partial, which carries that module's two private functions, and the
+        # test calls one of them.
+        #
+        # Deduplicated: some gcov versions repeat a file's own statistic line after its
+        # per-file block.
+        reported = output.to_s.scan(%r{^(\S*config\.c) \| Lines executed:([\d.]+)% of (\d+)}).uniq
+
+        expect( reported ).to include(['spi/config.c', '100.00', '3'])
+        expect( reported ).to include(['uart/config.c', '50.00', '2'])
+        expect( reported.length ).to eq(2)
       end
     end
   end

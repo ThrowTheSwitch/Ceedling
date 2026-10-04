@@ -77,6 +77,9 @@ ceedling_system_tests do
       # proving the stress condition has teeth, not just that the encoding name matches.
       # This is the same failure mode (`invalid byte sequence`) that encoding-safety
       # guards elsewhere in Ceedling's source-scanning code exist to prevent.
+      # Deliberately a bare read, unlike every other read in the system specs, which go
+      # through read_spec_file's explicit UTF-8. The point here is that the naive read
+      # still raises, so this one must not be "fixed" to read explicitly.
       non_ascii_fixture = File.expand_path('../../../examples/temp_sensor/test/TestMain.c', __FILE__)
       expect {
         File.read(non_ascii_fixture).match(/test/)
@@ -131,8 +134,8 @@ ceedling_system_tests do
           @c.merge_project_yml_for_test({ :test_build => { :preprocess_force_fallback => false } })
           output = @c.ceedling_build_exec("test:all")
           expect(@c.last_exit_status).to eq(0)
-          expect(output).to match(/TESTED:\s+68/)
-          expect(output).to match(/PASSED:\s+68/)
+          expect(output).to match(/TESTED:\s+71/)
+          expect(output).to match(/PASSED:\s+71/)
         end
       end
     end
@@ -144,8 +147,8 @@ ceedling_system_tests do
           @c.merge_project_yml_for_test({ :test_build => { :preprocess_force_fallback => true } })
           output = @c.ceedling_build_exec("test:all")
           expect(@c.last_exit_status).to eq(0)
-          expect(output).to match(/TESTED:\s+68/)
-          expect(output).to match(/PASSED:\s+68/)
+          expect(output).to match(/TESTED:\s+71/)
+          expect(output).to match(/PASSED:\s+71/)
         end
       end
     end

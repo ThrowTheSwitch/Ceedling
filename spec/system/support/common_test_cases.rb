@@ -84,7 +84,7 @@ module CommonSystemTestCases
       FileUtils.rm_rf("#{@proj_name}/test/support")
 
       updated_prj_yml = []
-      File.read("#{@proj_name}/project.yml").split("\n").each do |line|
+      read_spec_file("#{@proj_name}/project.yml").split("\n").each do |line|
         updated_prj_yml.append(line) unless /support/.match?(line)
       end
       File.write("#{@proj_name}/project.yml", updated_prj_yml.join("\n"), mode: 'w')
@@ -868,7 +868,7 @@ module CommonSystemTestCases
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures/)
         expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
-        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        output_rd = read_spec_file('./build/test/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
       end
     end
@@ -891,7 +891,7 @@ module CommonSystemTestCases
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
         expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
-        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        output_rd = read_spec_file('./build/test/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+2/)
@@ -900,7 +900,7 @@ module CommonSystemTestCases
         expect(output).to match(/IGNORED:\s+0/)
         log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
-        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
       end
     end
@@ -922,7 +922,7 @@ module CommonSystemTestCases
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
         expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
-        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        output_rd = read_spec_file('./build/test/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
@@ -931,7 +931,7 @@ module CommonSystemTestCases
         expect(output).to match(/IGNORED:\s+0/)
         log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
-        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
       end
     end
@@ -953,7 +953,7 @@ module CommonSystemTestCases
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
         expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
-        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        output_rd = read_spec_file('./build/test/results/test_example_file_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
@@ -962,7 +962,7 @@ module CommonSystemTestCases
         expect(output).to match(/IGNORED:\s+0/)
         log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
-        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
       end
     end
@@ -1000,7 +1000,7 @@ module CommonSystemTestCases
         # only "assert" is that header -- matching a bare substring and passing this
         # assertion despite gdb reporting nothing real. Requiring "fail" near "Assertion"
         # anchors the match to an actual assertion-failure report instead.
-        expect(File.read(log_path)).to match(/SIGABRT|Aborted|Assertion.{0,100}fail/i)
+        expect(read_spec_file(log_path)).to match(/SIGABRT|Aborted|Assertion.{0,100}fail/i)
         expect(output).to match(/test_add_numbers_triggers_assert\.gdb\.log/)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
@@ -1142,7 +1142,7 @@ module CommonSystemTestCases
 
         log_path = './build/logs/test/test_example_file_crash_sigsegv_with_param/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
-        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
       end
     end
   end
@@ -1281,7 +1281,7 @@ module CommonSystemTestCases
 
         add_line = false
         updated_test_file = []
-        File.read(File.join('test','test_example_file_success.c')).split("\n").each do |line|
+        read_spec_file(File.join('test','test_example_file_success.c')).split("\n").each do |line|
           if /#include "unity.h"/.match?(line)
             add_line = true
             updated_test_file.append(line)

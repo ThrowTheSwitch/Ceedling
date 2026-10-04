@@ -156,6 +156,26 @@ def test_asset_path(asset_file_name)
   File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', 'fixtures', asset_file_name)
 end
 
+# Reads a file a spec is inspecting -- a project source, a generated runner, a report --
+# as UTF-8 rather than at the platform default.
+#
+# Ruby resolves `Encoding.default_external` once at startup from the ambient locale, and
+# a developer machine exporting no locale resolves it to US-ASCII. A bare read of content
+# carrying any non-ASCII byte then raises `invalid byte sequence`, which reads like a
+# defect in whatever feature is under test rather than in the spec's own file handling.
+# CI hides it by exporting a UTF-8 locale.
+#
+# Reading explicitly rather than forcing the process default is deliberate: the
+# encoding-stress spec asserts that default is *not* UTF-8 and that a naive read of a
+# non-ASCII fixture still raises, which is the condition it exists to stress.
+def read_spec_file(path)
+  File.read( path, encoding: 'UTF-8' )
+end
+
+def readlines_spec_file(path)
+  File.readlines( path, encoding: 'UTF-8' )
+end
+
 # Collapses the `@c.with_context { Dir.chdir(@proj_name) { ... } }` triple-nesting
 # repeated at nearly every before-hook and example body across the path/name
 # disambiguation specs (spec/system/*_disambiguation*, *_path*, etc.) into one call.
@@ -188,6 +208,40 @@ def copy_duplicate_dup_pairs
     copy_fixture("implicit_source_header_correspondence/beta/dup.h", 'src/beta')
     copy_fixture("implicit_source_header_correspondence/beta/dup.c", 'src/beta')
   end
+end
+
+# Lays down the same-named module fixture, mirroring issue #1311's own project shape
+# -- one include root, namespaced headers, and a source tree that mirrors it.
+# `drivers` names which of the two same-basename modules to copy, so a caller can
+# stage one module for an unambiguous build or both for an ambiguous one.
+#
+# The include root is added because a `ceedling new` project has none. It is recursive
+# so the namespaced headers below it are actually collected. A non-recursive entry
+# collects none of them and no module resolves.
+#
+# `partials` and `preprocess` are the two settings that change how same-named modules
+# are handled, so each caller states what it is exercising.
+def copy_same_named_modules(*drivers, partials: false, preprocess: nil)
+  in_project do
+    drivers.each do |driver|
+      copy_fixture("same_named_modules/include/drivers/#{driver}/config.h", "include/drivers/#{driver}")
+      copy_fixture("same_named_modules/src/drivers/#{driver}/config.c", "src/drivers/#{driver}")
+    end
+
+    project = { :use_partials => partials }
+    project[:use_test_preprocessor] = preprocess unless preprocess.nil?
+
+    @c.merge_project_yml_for_test(
+      :project => project,
+      :paths   => { :include => ['include/**'] }
+    )
+  end
+end
+
+# Partials enable preprocessing of their own accord, so callers exercising Partials
+# need name only the modules.
+def copy_same_named_partial_modules(*drivers)
+  copy_same_named_modules( *drivers, partials: true )
 end
 
 def feature_asset_path(asset_file_name)

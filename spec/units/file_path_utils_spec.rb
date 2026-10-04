@@ -537,6 +537,149 @@ describe FilePathUtils do
     end
   end
 
+  # Every preprocessed artifact for a test lands below that test's own subdirectory.
+  # That alone kept artifacts apart while a test had at most one source of any given
+  # basename. Two same-basename sources in one test overwrite each other, so the
+  # source's own namespace below its configured root is mirrored as well.
+  # A mock's generated files sit below its test's mock root, in the subdirectory mirroring
+  # whatever it mocks. Two places need that directory -- the stage that compiles the mock
+  # and the stage that generates it -- and they must agree, or a mock is compiled from a
+  # path nothing ever wrote.
+  describe '#form_mock_output_path' do
+    before(:each) do
+      @fpu = described_class.new({
+        :configurator => double('configurator'),
+        :file_wrapper => double('file_wrapper')
+      })
+    end
+
+    it 'joins a mock root and the subdirectory its content mirrors' do
+      expect( @fpu.form_mock_output_path('build/test/mocks/a_test', 'drivers/uart') )
+        .to eq('build/test/mocks/a_test/drivers/uart')
+    end
+
+    it 'returns the root alone for a mock mirroring no subdirectory' do
+      expect( @fpu.form_mock_output_path('build/test/mocks/a_test', '') )
+        .to eq('build/test/mocks/a_test')
+    end
+
+    it 'treats a nil subdirectory as none' do
+      expect( @fpu.form_mock_output_path('build/test/mocks/a_test', nil) )
+        .to eq('build/test/mocks/a_test')
+    end
+  end
+
+  describe 'preprocessed file paths' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_test_preprocess_files_path).and_return('build/test/preprocess/files')
+      allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
+      allow(@configurator).to receive(:paths_source).and_return( ['src/**'] )
+      allow(@configurator).to receive(:paths_include).and_return( ['include/**'] )
+      allow(@configurator).to receive(:paths_support).and_return( [] )
+      allow(@configurator).to receive(:paths_test).and_return( ['test/**'] )
+      allow(@configurator).to receive(:project_use_partials).and_return( true )
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+    end
+
+    # A file sitting directly in a configured root has no namespace of its own, so its
+    # artifact stays flat -- the layout every project has always seen.
+    it 'keeps a file directly in a configured root flat' do
+      expect( @fpu.form_preprocessed_file_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/files/test_foo/foo.c')
+      expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/files/test_foo/full_expansion/foo.c')
+      expect( @fpu.form_preprocessed_file_raw_directives_only_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/files/test_foo/directives_only/raw/foo.c')
+      expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/files/test_foo/directives_only/foo.c')
+      expect( @fpu.form_preprocessed_includes_list_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/includes/test_foo/foo.c.yml')
+    end
+
+    it 'mirrors a nested source below the test subdirectory' do
+      expect( @fpu.form_preprocessed_file_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/full_expansion/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/directives_only/raw/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/directives_only/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/includes/test_both/drivers/uart/config.c.yml')
+    end
+
+    # The defect itself: two sources sharing a basename in one test.
+    it 'gives two same-named sources in one test distinct artifacts' do
+      uart = @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both')
+      spi  = @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/spi/config.c', 'test_both')
+
+      expect( uart ).to_not eq(spi)
+    end
+
+    # Composing a path leaves nothing behind. Callers that merely restate one -- a rake
+    # target declaration, a staleness check -- must not create directories as a side
+    # effect; whoever writes the file creates its directory.
+    it 'creates no directory, composing a path only' do
+      expect(@file_wrapper).to_not receive(:mkdir)
+
+      @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both')
+      @fpu.form_preprocessed_file_full_expansion_filepath('src/drivers/uart/config.c', 'test_both')
+      @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both')
+    end
+
+    it 'mirrors a nested header below its own include root' do
+      expect( @fpu.form_preprocessed_file_filepath('include/drivers/uart/config.h', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/drivers/uart/config.h')
+    end
+
+    # A generated Partial or mock sits below its own test's generated root rather than a
+    # configured source root. Two same-named modules each produce one, so those roots have
+    # to mirror too or both share a single preprocessed artifact.
+    it 'mirrors a generated Partial header below its own test root' do
+      expect(
+        @fpu.form_preprocessed_file_raw_directives_only_filepath(
+          'build/test/partials/test_both/drivers/uart/ceedling_partial_config_interface.h', 'test_both'
+        )
+      ).to eq('build/test/preprocess/files/test_both/directives_only/raw/drivers/uart/ceedling_partial_config_interface.h')
+    end
+
+    it 'gives two same-named generated Partial headers distinct artifacts' do
+      uart = @fpu.form_preprocessed_file_raw_directives_only_filepath(
+        'build/test/partials/test_both/drivers/uart/ceedling_partial_config_interface.h', 'test_both'
+      )
+      spi = @fpu.form_preprocessed_file_raw_directives_only_filepath(
+        'build/test/partials/test_both/drivers/spi/ceedling_partial_config_interface.h', 'test_both'
+      )
+
+      expect( uart ).to_not eq(spi)
+    end
+
+    it 'mirrors a generated mock below its own test root' do
+      expect(
+        @fpu.form_preprocessed_file_filepath(
+          'build/test/mocks/test_both/drivers/spi/mock_config.h', 'test_both'
+        )
+      ).to eq('build/test/preprocess/files/test_both/drivers/spi/mock_config.h')
+    end
+
+    # A generated file sits below no configured root, so nothing mirrors it and its
+    # artifact stays where it has always been.
+    it 'keeps a generated file flat' do
+      expect( @fpu.form_preprocessed_file_filepath('build/test/mocks/test_both/Mockconfig.h', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/Mockconfig.h')
+    end
+  end
+
   describe '#form_test_build_objects_filelist' do
     before(:each) do
       @configurator = double('configurator')
@@ -571,6 +714,34 @@ describe FilePathUtils do
         'build/test/out/TestFoo/MockBar.o',
         'build/test/out/TestFoo/qux.o'
       ])
+    end
+
+    # Generated Partial sources sit below their own build root, not a configured source
+    # root, so nothing in the standard roots mirrors them. Two modules sharing a basename
+    # then collapse onto one object filename.
+    it 'mirrors a generated Partial source beneath an extra root' do
+      objects = @fpu.form_test_build_objects_filelist(
+        'build/test/out/TestFoo',
+        [
+          'build/test/partials/TestFoo/drivers/uart/ceedling_partial_config_impl.c',
+          'build/test/partials/TestFoo/drivers/spi/ceedling_partial_config_impl.c'
+        ],
+        extra_roots: ['build/test/partials/TestFoo']
+      )
+
+      expect( objects ).to eq([
+        'build/test/out/TestFoo/drivers/uart/ceedling_partial_config_impl.o',
+        'build/test/out/TestFoo/drivers/spi/ceedling_partial_config_impl.o'
+      ])
+    end
+
+    it 'leaves inputs flat when no extra root is supplied' do
+      objects = @fpu.form_test_build_objects_filelist(
+        'build/test/out/TestFoo',
+        ['build/test/partials/TestFoo/drivers/uart/ceedling_partial_config_impl.c']
+      )
+
+      expect( objects ).to eq(['build/test/out/TestFoo/ceedling_partial_config_impl.o'])
     end
   end
 
@@ -615,6 +786,13 @@ describe FilePathUtils do
       })
 
       allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
+      # The test file sits directly in its root, so nothing is mirrored here.
+      allow(@configurator).to receive(:project_use_partials).and_return( false )
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+      allow(@configurator).to receive(:paths_source).and_return( [] )
+      allow(@configurator).to receive(:paths_support).and_return( [] )
+      allow(@configurator).to receive(:paths_include).and_return( [] )
+      allow(@configurator).to receive(:paths_test).and_return( ['test'] )
     end
 
     it 'uses the fixed internal .yml extension regardless of a project-configured :extension ↳ :yaml setting' do
@@ -638,6 +816,163 @@ describe FilePathUtils do
       # distinct from those two generated headers so all three can coexist.
       expect( @fpu.form_partial_types_header_filename('LightSensor') )
         .to eq('ceedling_partial_LightSensor_types.h')
+    end
+  end
+
+  # The four remaining generated Partial filenames. Each is the name a test file's
+  # own Partial directive macro expands to, so the name a macro emits and the name
+  # formed here must agree exactly or the compiler finds nothing.
+  describe 'the remaining generated Partial filenames' do
+    before(:each) do
+      @configurator = double('configurator')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => double('file_wrapper')
+      })
+    end
+
+    it 'forms an interface header filename with the partial prefix and an _interface suffix' do
+      expect( @fpu.form_partial_interface_header_filename('LightSensor') )
+        .to eq('ceedling_partial_LightSensor_interface.h')
+    end
+
+    it 'forms an implementation header filename with the partial prefix and an _impl suffix' do
+      expect( @fpu.form_partial_implementation_header_filename('LightSensor') )
+        .to eq('ceedling_partial_LightSensor_impl.h')
+    end
+
+    it 'forms an implementation source filename sharing the header name but a source extension' do
+      expect( @fpu.form_partial_implementation_source_filename('LightSensor') )
+        .to eq('ceedling_partial_LightSensor_impl.c')
+    end
+
+    # Two prefixes stack here, mock outermost. CMock generates its mock from the
+    # generated interface header, so the result carries both names.
+    it 'forms a mock interface header filename carrying the mock prefix ahead of the partial prefix' do
+      expect(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
+
+      expect( @fpu.form_mock_partial_interface_header_filename('LightSensor') )
+        .to eq('Mockceedling_partial_LightSensor_interface.h')
+    end
+
+    it 'honors a project-configured mock prefix' do
+      expect(@configurator).to receive(:cmock_mock_prefix).and_return('fake_')
+
+      expect( @fpu.form_mock_partial_interface_header_filename('LightSensor') )
+        .to eq('fake_ceedling_partial_LightSensor_interface.h')
+    end
+  end
+
+  # A module named by directory keeps that directory, and the prefixes attach to the
+  # basename rather than to the first path segment. These results are exactly the
+  # strings a directory-qualified directive macro expands to, which is what lets the
+  # compiler resolve the generated #include.
+  describe 'generated Partial filenames for a module named by directory' do
+    before(:each) do
+      @configurator = double('configurator')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => double('file_wrapper')
+      })
+    end
+
+    it 'prefixes the basename and keeps the directory for an implementation header' do
+      expect( @fpu.form_partial_implementation_header_filename('drivers/uart/config') )
+        .to eq('drivers/uart/ceedling_partial_config_impl.h')
+    end
+
+    it 'prefixes the basename and keeps the directory for an implementation source' do
+      expect( @fpu.form_partial_implementation_source_filename('drivers/uart/config') )
+        .to eq('drivers/uart/ceedling_partial_config_impl.c')
+    end
+
+    it 'prefixes the basename and keeps the directory for an interface header' do
+      expect( @fpu.form_partial_interface_header_filename('drivers/uart/config') )
+        .to eq('drivers/uart/ceedling_partial_config_interface.h')
+    end
+
+    it 'prefixes the basename and keeps the directory for a types header' do
+      expect( @fpu.form_partial_types_header_filename('drivers/uart/config') )
+        .to eq('drivers/uart/ceedling_partial_config_types.h')
+    end
+
+    it 'stacks both prefixes on the basename for a mock interface header' do
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
+
+      expect( @fpu.form_mock_partial_interface_header_filename('drivers/uart/config') )
+        .to eq('drivers/uart/Mockceedling_partial_config_interface.h')
+    end
+
+    it 'keeps a single directory segment' do
+      expect( @fpu.form_partial_implementation_header_filename('uart/config') )
+        .to eq('uart/ceedling_partial_config_impl.h')
+    end
+  end
+
+  # The inverse of the builders above. A generated Partial filename is Ceedling's own
+  # invention, so a message naming one tells a test author nothing. Recovering the
+  # module lets a message name what the author actually wrote.
+  describe '#module_from_partial_filename' do
+    before(:each) do
+      @configurator = double('configurator')
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => double('file_wrapper')
+      })
+    end
+
+    it 'recovers a module named without a directory' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_config_impl.c') )
+        .to eq('config')
+    end
+
+    it 'recovers a module named by directory, keeping the directory' do
+      expect( @fpu.module_from_partial_filename('drivers/uart/ceedling_partial_config_impl.h') )
+        .to eq('drivers/uart/config')
+    end
+
+    # Three suffixes exist, one per generated file kind.
+    it 'strips an implementation suffix' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_config_impl.h') ).to eq('config')
+    end
+
+    it 'strips an interface suffix' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_config_interface.h') ).to eq('config')
+    end
+
+    it 'strips a types suffix' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_config_types.h') ).to eq('config')
+    end
+
+    # Two prefixes stack on a mocked interface header, mock outermost.
+    it 'strips a mock prefix ahead of the partial prefix' do
+      expect( @fpu.module_from_partial_filename('drivers/uart/Mockceedling_partial_config_interface.h') )
+        .to eq('drivers/uart/config')
+    end
+
+    it 'leaves a module whose own name ends in a suffix word intact' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_impl_impl.c') ).to eq('impl')
+    end
+
+    it 'returns nil for a filename that is not a generated Partial' do
+      expect( @fpu.module_from_partial_filename('config.h') ).to be_nil
+    end
+
+    # Round trip, so the inverse stays tied to the builder it mirrors.
+    it 'round trips every builder' do
+      %w[config drivers/uart/config].each do |_module|
+        [
+          @fpu.form_partial_implementation_header_filename( _module ),
+          @fpu.form_partial_implementation_source_filename( _module ),
+          @fpu.form_partial_interface_header_filename( _module ),
+          @fpu.form_partial_types_header_filename( _module ),
+          @fpu.form_mock_partial_interface_header_filename( _module )
+        ].each do |generated|
+          expect( @fpu.module_from_partial_filename( generated ) )
+            .to( eq(_module), "#{generated} did not reverse to #{_module}" )
+        end
+      end
     end
   end
 

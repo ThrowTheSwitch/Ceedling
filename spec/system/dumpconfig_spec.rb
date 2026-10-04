@@ -63,7 +63,7 @@ ceedling_system_tests do
         end
       end
 
-      raw = File.read(dump_file)
+      raw = read_spec_file(dump_file)
       expect(raw).not_to include('!ruby/object')
 
       config = YAML.safe_load(raw, permitted_classes: [Symbol])
@@ -119,7 +119,7 @@ ceedling_system_tests do
       # own template) survives untouched, but :source's absence is a second,
       # independent signal that app manipulation was truly skipped, not just
       # that the notice printed.
-      config = YAML.safe_load(File.read(dump_file), permitted_classes: [Symbol])
+      config = YAML.safe_load(read_spec_file(dump_file), permitted_classes: [Symbol])
       expect(config.dig(:extension, :source)).to be_nil
     end
 

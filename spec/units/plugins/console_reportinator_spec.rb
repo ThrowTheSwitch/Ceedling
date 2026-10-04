@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/path_mirror'
+require 'ceedling/file_path_utils'
 
 PROJECT_BUILD_ROOT           = 'build'     unless defined?(PROJECT_BUILD_ROOT)
 PROJECT_BUILD_ARTIFACTS_ROOT = 'artifacts' unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
@@ -28,7 +29,12 @@ describe ConsoleReportinator do
   let(:test_invoker)        { double('test_invoker') }
   let(:tool_executor)       { double('tool_executor') }
   let(:configurator) do
-    double('configurator', paths_source: ['src'], paths_support: ['support'])
+    double('configurator', paths_source: ['src'], paths_support: ['support'], cmock_mock_prefix: 'mock_')
+  end
+  # Real, so reversing a generated Partial filename here exercises the same code that
+  # builds those filenames rather than a restatement of it. Touches no filesystem.
+  let(:file_path_utils) do
+    FilePathUtils.new({ configurator: configurator, file_wrapper: double('file_wrapper') })
   end
   let(:system_objects) do
     {
@@ -37,6 +43,7 @@ describe ConsoleReportinator do
       plugin_reportinator:  plugin_reportinator,
       test_invoker:         test_invoker,
       tool_executor:        tool_executor,
+      file_path_utils:      file_path_utils,
     }
   end
 
@@ -58,6 +65,38 @@ describe ConsoleReportinator do
       sources = ['src/foo.c', 'src/bar.c', 'src/ceedling_partial_foo_impl.c']
       result = reportinator.send(:remap_partial_sources, sources)
       expect(result).to eq(['src/bar.c', 'src/ceedling_partial_foo_impl.c'])
+    end
+
+    # A Partial replaces one module, identified by its path. Matching on basename alone
+    # drops every same-named module, so a module nobody Partialized loses its coverage
+    # report entirely.
+    it 'keeps a same-named module that no Partial replaces' do
+      sources = [
+        'src/drivers/uart/config.c',
+        'src/drivers/spi/config.c',
+        'build/test/partials/t/drivers/uart/ceedling_partial_config_impl.c'
+      ]
+
+      result = reportinator.send(:remap_partial_sources, sources)
+
+      expect(result).to eq([
+        'src/drivers/spi/config.c',
+        'build/test/partials/t/drivers/uart/ceedling_partial_config_impl.c'
+      ])
+    end
+
+    it 'drops each same-named module when a Partial replaces both' do
+      sources = [
+        'src/drivers/uart/config.c',
+        'src/drivers/spi/config.c',
+        'build/test/partials/t/drivers/uart/ceedling_partial_config_impl.c',
+        'build/test/partials/t/drivers/spi/ceedling_partial_config_impl.c'
+      ]
+
+      result = reportinator.send(:remap_partial_sources, sources)
+
+      expect( result.select { |s| s.start_with?('src/') } ).to be_empty
+      expect( result.length ).to eq(2)
     end
 
     it 'handles multiple Partials, each dropping only its own original' do
@@ -104,6 +143,14 @@ describe ConsoleReportinator do
       expect(loginator).to receive(:log).with("foo.c | Lines executed:80.00% of 5\n")
       reportinator.send(
         :log_coverage_report, 'test_foo', 'src/ceedling_partial_foo_impl.c', results, File.expand_path('src/foo.c')
+      )
+    end
+
+    it 'labels the report line with a supplied disambiguating label' do
+      expect(loginator).to receive(:log).with("drivers/uart/foo.c | Lines executed:80.00% of 5\n")
+      reportinator.send(
+        :log_coverage_report, 'test_foo', 'src/foo.c', results, File.expand_path('src/foo.c'),
+        label: 'drivers/uart/foo.c'
       )
     end
 
@@ -164,6 +211,46 @@ describe ConsoleReportinator do
       reportinator.send(:run_gcov_summary, 'test_foo', 'src/foo.c', {})
     end
 
+    # A generated Partial sits below its own test's Partials build root, not a configured
+    # source root, so measuring against the source roots yields no subdirectory at all and
+    # gcov is pointed at the flat root while the coverage data sits one level down.
+    it 'searches a generated Partial\'s own mirrored subdirectory' do
+      allow(configurator).to receive(:paths_source).and_return(['src'])
+      allow(configurator).to receive(:paths_support).and_return([])
+      allow(configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      stub_exec(exit_code: 0, output: 'coverage text')
+
+      expect(tool_executor).to receive(:build_command_line)
+        .with(TOOLS_GCOV_SUMMARY, [], 'ceedling_partial_config_impl.c',
+              File.join('build/gcov/out/test_foo', 'drivers/uart'))
+        .and_return({ options: {} })
+
+      reportinator.send(
+        :run_gcov_summary,
+        'test_foo',
+        'build/test/partials/test_foo/drivers/uart/ceedling_partial_config_impl.c',
+        {}
+      )
+    end
+
+    it 'searches the flat root for a Partial of a module named without a directory' do
+      allow(configurator).to receive(:paths_source).and_return(['src'])
+      allow(configurator).to receive(:paths_support).and_return([])
+      allow(configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      stub_exec(exit_code: 0, output: 'coverage text')
+
+      expect(tool_executor).to receive(:build_command_line)
+        .with(TOOLS_GCOV_SUMMARY, [], 'ceedling_partial_config_impl.c', 'build/gcov/out/test_foo')
+        .and_return({ options: {} })
+
+      reportinator.send(
+        :run_gcov_summary,
+        'test_foo',
+        'build/test/partials/test_foo/ceedling_partial_config_impl.c',
+        {}
+      )
+    end
+
     it 'returns nil and logs when gcov exits non-zero' do
       stub_exec(exit_code: 1, output: 'gcov: error')
       expect(loginator).to receive(:lazy).with(Verbosity::DEBUG, LogLabels::ERROR)
@@ -197,6 +284,59 @@ describe ConsoleReportinator do
       expect(loginator).to receive(:log).with('z.c | No tests executed: 0% coverage').ordered
       # 'zzz/a.c' sorts after 'aaa/z.c' by full path, but must log a.c first by basename.
       reportinator.send(:log_untested_sources_section, ['aaa/z.c', 'zzz/a.c'])
+    end
+  end
+
+  # Every reported file is labeled by basename, so two same-named modules in one test are
+  # indistinguishable in the summary. Only a label that carries enough trailing path tells
+  # the reader which module a line belongs to.
+  describe '#disambiguated_labels' do
+    it 'labels a unique basename by basename alone' do
+      labels = reportinator.send(:disambiguated_labels, ['src/foo.c', 'src/bar.c'])
+
+      expect( labels ).to eq({ 'src/foo.c' => 'foo.c', 'src/bar.c' => 'bar.c' })
+    end
+
+    it 'extends a duplicated basename by one directory' do
+      paths = ['src/drivers/uart/config.c', 'src/drivers/spi/config.c']
+
+      expect( reportinator.send(:disambiguated_labels, paths) ).to eq({
+        'src/drivers/uart/config.c' => 'uart/config.c',
+        'src/drivers/spi/config.c'  => 'spi/config.c'
+      })
+    end
+
+    # Only as much trailing path as it takes, so a label never carries noise.
+    it 'extends only as far as it takes to distinguish' do
+      paths = ['a/shared/net/config.c', 'b/shared/net/config.c']
+
+      expect( reportinator.send(:disambiguated_labels, paths) ).to eq({
+        'a/shared/net/config.c' => 'a/shared/net/config.c',
+        'b/shared/net/config.c' => 'b/shared/net/config.c'
+      })
+    end
+
+    it 'leaves an unrelated unique basename alone while extending a duplicated one' do
+      paths = ['src/drivers/uart/config.c', 'src/drivers/spi/config.c', 'src/main.c']
+
+      labels = reportinator.send(:disambiguated_labels, paths)
+
+      expect( labels['src/main.c'] ).to eq('main.c')
+      expect( labels['src/drivers/uart/config.c'] ).to eq('uart/config.c')
+    end
+
+    it 'preserves case, these being read by a person' do
+      paths = ['src/Drivers/UART/Config.c', 'src/drivers/spi/Config.c']
+
+      labels = reportinator.send(:disambiguated_labels, paths)
+
+      expect( labels['src/Drivers/UART/Config.c'] ).to eq('UART/Config.c')
+    end
+
+    it 'handles a repeated path appearing twice' do
+      labels = reportinator.send(:disambiguated_labels, ['src/foo.c', 'src/foo.c'])
+
+      expect( labels ).to eq({ 'src/foo.c' => 'foo.c' })
     end
   end
 

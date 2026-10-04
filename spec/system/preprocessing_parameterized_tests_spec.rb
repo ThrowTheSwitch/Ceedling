@@ -166,7 +166,7 @@ ceedling_system_tests do
 
             runner_path = 'build/test/runners/test_ptc_runner.c'
             expect(File.exist?(runner_path)).to eq(true)
-            runner_contents = File.read(runner_path)
+            runner_contents = read_spec_file(runner_path)
 
             test_name = 'test_should_handle_divisible_by_5_for_parameterized_test_case'
             [25, 125, 5].each do |value|

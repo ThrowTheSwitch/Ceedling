@@ -141,6 +141,8 @@ class Includes
     # same entry and collapsed down to one.
     includes.uniq!( &:filepath )
 
+    self.drop_shadowed!( includes )
+
     # Apply custom rejection with access to full list if block provided
     if block_given?
       includes.reject! { |include| yield(include, includes) }
@@ -151,6 +153,31 @@ class Includes
 
     return includes
   end
+
+  # Drops any include that carries no path of its own while another entry resolves to a
+  # real file of the same basename.
+  #
+  # An unresolved include holds only the text as written, so its filepath has no
+  # directory. Beside a resolved sibling of the same basename it can only reach a file by
+  # search-path accident, and which file that is depends on search order rather than on
+  # anything the test author wrote. Dropping it leaves the entries that name real files.
+  #
+  # A header genuinely sitting at an include root is not affected. It renders bare, but
+  # its filepath is resolved and carries that root, so it is a path-bearing entry here.
+  def self.drop_shadowed!(includes)
+    resolved_basenames = includes
+      .reject { |include| File.dirname( include.filepath ) == '.' }
+      .map { |include| File.basename( include.filepath ) }
+      .to_set
+
+    includes.reject! do |include|
+      File.dirname( include.filepath ) == '.' &&
+        resolved_basenames.include?( File.basename( include.filepath ) )
+    end
+
+    return includes
+  end
+  private_class_method :drop_shadowed!
 
   # Class method to reconcile bare, user, and system includes returning a list of
   # reconciled user and system includes.

@@ -222,17 +222,17 @@ class SystemContext
   end
 
   def append_project_yml_for_test(new_args)
-    fake_prj_yml= "#{File.read('project.yml')}\n#{new_args}"
+    fake_prj_yml= "#{read_spec_file('project.yml')}\n#{new_args}"
     File.write('project.yml', fake_prj_yml, mode: 'w')
   end
 
   def uncomment_project_yml_option_for_test(option)
-    fake_prj_yml= File.read('project.yml').gsub(/\##{option}/,option)
+    fake_prj_yml= read_spec_file('project.yml').gsub(/\##{option}/,option)
     File.write('project.yml', fake_prj_yml, mode: 'w')
   end
 
   def comment_project_yml_option_for_test(option)
-    fake_prj_yml= File.read('project.yml').gsub(/#{option}/,"##{option}")
+    fake_prj_yml= read_spec_file('project.yml').gsub(/#{option}/,"##{option}")
     File.write('project.yml', fake_prj_yml, mode: 'w')
   end
 

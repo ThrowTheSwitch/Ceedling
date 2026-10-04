@@ -72,6 +72,7 @@ describe 'Preprocessing transient I/O retry (integration)' do
       preprocessinator_file_assembler:   IntegrationSpecHelpers::NULL,
       preprocessinator_reconstructor:    reconstructor,
       file_path_utils: fpu,
+      file_wrapper:    file_wrapper,
       tool_executor:   tool_exec,
       plugin_manager:  IntegrationSpecHelpers::NULL,
       configurator:    cfg,

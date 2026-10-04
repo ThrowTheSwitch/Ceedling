@@ -58,7 +58,7 @@ ceedling_system_tests do
         runner_path = Dir.glob('build/test/runners/*_runner.c').first
         expect(runner_path).not_to be_nil
 
-        runner_contents = File.read(runner_path)
+        runner_contents = read_spec_file(runner_path)
         expect(runner_contents).to include('#include <sys/stat.h>')
         expect(runner_contents).not_to include('#include "stat.h"')
       end

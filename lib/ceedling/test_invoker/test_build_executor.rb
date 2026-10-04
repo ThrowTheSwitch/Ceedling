@@ -153,7 +153,7 @@ class TestBuildExecutor
       details  = mock.details
       testable = mock.testable
 
-      output_path = File.join( testable.paths[:mocks], details.path )
+      output_path = @file_path_utils.form_mock_output_path( testable.paths[:mocks], details.path )
       @file_wrapper.mkdir( output_path )
 
       # `details.input` -- not the stage 9 preprocessed target -- is the

@@ -169,6 +169,7 @@ module IntegrationSpecHelpers
         preprocessinator_file_assembler:   NULL,
         preprocessinator_reconstructor:    NULL,
         file_path_utils:                   @fpu,
+        file_wrapper:                      @file_wrapper,
         tool_executor:                     @tool_exec,
         plugin_manager:                    NULL,
         configurator:                      @cfg,
