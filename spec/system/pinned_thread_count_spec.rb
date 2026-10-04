@@ -56,8 +56,8 @@ ceedling_system_tests do
           output = @c.ceedling_build_exec("test:all")
 
           expect(@c.last_exit_status).to eq(0)
-          expect(output).to match(/TESTED:\s+68/)
-          expect(output).to match(/PASSED:\s+68/)
+          expect(output).to match(/TESTED:\s+71/)
+          expect(output).to match(/PASSED:\s+71/)
           expect(output).to match(/FAILED:\s+0/)
         end
       end
@@ -73,8 +73,8 @@ ceedling_system_tests do
           output = @c.ceedling_build_exec("test:all")
 
           expect(@c.last_exit_status).to eq(0)
-          expect(output).to match(/TESTED:\s+68/)
-          expect(output).to match(/PASSED:\s+68/)
+          expect(output).to match(/TESTED:\s+71/)
+          expect(output).to match(/PASSED:\s+71/)
           expect(output).to match(/FAILED:\s+0/)
         end
       end
