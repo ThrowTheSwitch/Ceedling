@@ -366,9 +366,12 @@ class FilePathUtils
   # Two same-basename sources in one test overwrite each other, so the file's own namespace
   # below its configured root is carried forward too.
   #
-  # A file below no configured root -- anything Ceedling generates -- mirrors nothing and
-  # keeps the flat name it has always had. Every caller derives this from the same filepath,
-  # so all of them agree on where the artifact lands without coordinating.
+  # A file below none of those roots mirrors nothing and keeps the flat name it has always
+  # had. Ceedling's own generated files are the exception: `test` names which test's
+  # generated roots to measure against as well, since a mock or a Partial sits below one
+  # of those rather than anything the project configured. Every caller derives this from
+  # the same filepath, so all of them agree on where the artifact lands without
+  # coordinating.
   def preprocessed_file_subpath(filepath, test = nil)
     roots = @configurator.paths_source +
             @configurator.paths_support +
@@ -447,6 +450,15 @@ class FilePathUtils
       ext:   @configurator.extension_object.primary,
       roots: @configurator.paths_source + @configurator.paths_support + extra_roots
     )
+  end
+
+  # Where one mock's generated files sit: its test's mock root, plus the subdirectory
+  # mirroring whatever it mocks. Shared by the stage that compiles a mock and the stage
+  # that generates it, so the two cannot disagree about where a mock lives.
+  def form_mock_output_path(root, subdir)
+    return root if subdir.nil? || subdir.empty?
+
+    return File.join( root, subdir )
   end
 
   def form_mock_header_filepath(subdir, filename)

@@ -541,6 +541,34 @@ describe FilePathUtils do
   # That alone kept artifacts apart while a test had at most one source of any given
   # basename. Two same-basename sources in one test overwrite each other, so the
   # source's own namespace below its configured root is mirrored as well.
+  # A mock's generated files sit below its test's mock root, in the subdirectory mirroring
+  # whatever it mocks. Two places need that directory -- the stage that compiles the mock
+  # and the stage that generates it -- and they must agree, or a mock is compiled from a
+  # path nothing ever wrote.
+  describe '#form_mock_output_path' do
+    before(:each) do
+      @fpu = described_class.new({
+        :configurator => double('configurator'),
+        :file_wrapper => double('file_wrapper')
+      })
+    end
+
+    it 'joins a mock root and the subdirectory its content mirrors' do
+      expect( @fpu.form_mock_output_path('build/test/mocks/a_test', 'drivers/uart') )
+        .to eq('build/test/mocks/a_test/drivers/uart')
+    end
+
+    it 'returns the root alone for a mock mirroring no subdirectory' do
+      expect( @fpu.form_mock_output_path('build/test/mocks/a_test', '') )
+        .to eq('build/test/mocks/a_test')
+    end
+
+    it 'treats a nil subdirectory as none' do
+      expect( @fpu.form_mock_output_path('build/test/mocks/a_test', nil) )
+        .to eq('build/test/mocks/a_test')
+    end
+  end
+
   describe 'preprocessed file paths' do
     before(:each) do
       @configurator = double('configurator')

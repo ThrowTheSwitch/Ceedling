@@ -307,6 +307,19 @@ describe 'Partial module resolution (integration)' do
         .to eq(GENERATED_PARTIAL_SOURCES.first)
     end
 
+    # The build root is matched at a path boundary, not as a bare prefix. A directory
+    # merely beginning with the build root's name is an ordinary relative directory, and
+    # a synthesized name below it still carries its module.
+    it 'keeps the directory of a name below a directory merely prefixed like the build root' do
+      @listing = [
+        "#{PARTIALS_BUILD_PATH}/buildings/uart/ceedling_partial_config_impl.c",
+        "#{PARTIALS_BUILD_PATH}/buildings/spi/ceedling_partial_config_impl.c"
+      ]
+
+      expect( find_synthesized('buildings/uart/ceedling_partial_config_impl.h') )
+        .to eq("#{PARTIALS_BUILD_PATH}/buildings/uart/ceedling_partial_config_impl.c")
+    end
+
     it 'still reports ambiguity for a synthesized name carrying no directory' do
       expect { find_synthesized('ceedling_partial_config_impl.h') }
         .to raise_error( CeedlingException, /Ambiguous Partial module reference/ )

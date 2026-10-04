@@ -143,12 +143,8 @@ class FileFinder
     elsif (!release) and
           (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
       # A generated Partial sits in the subdirectory mirroring its own module, so that
-      # subdirectory is what distinguishes two modules sharing a basename. Which root it
-      # sits below depends on who is asking. A generated #include carries the Partials
-      # root searched below; an object for the same module mirrors that subdirectory
-      # below the test's own out root instead. Measuring against only one of the two
-      # yields nothing for queries of the other kind, degrading them to a bare basename
-      # that matches every same-named module in the test.
+      # subdirectory is what distinguishes two modules sharing a basename. Derived the
+      # same way a mock's is, above.
       partials_root = File.join(@configurator.project_test_partials_path, test_context)
       subdir        = generated_file_subdir( filepath, partials_root, test: test, context: context )
 
@@ -392,9 +388,14 @@ class FileFinder
   # Such a name is relative to nothing on disk, so its own dirname is all the module
   # context there is.
   def synthesized_relative_dir(filepath)
-    dir = File.dirname( filepath )
+    dir  = File.dirname( filepath )
+    root = @configurator.project_build_root
 
-    return '' if dir == '.' || dir.start_with?( @configurator.project_build_root )
+    return '' if dir == '.'
+
+    # Matched at a path boundary. A directory merely beginning with the build root's own
+    # name is an ordinary relative directory and still names its module.
+    return '' if dir == root || dir.start_with?( root + '/' )
 
     return dir
   end

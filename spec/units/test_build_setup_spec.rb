@@ -642,6 +642,11 @@ describe TestBuildSetup do
       allow(@configurator).to receive(:collection_paths_libraries).and_return( [] )
       allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
       allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
+      # The same composition mock generation uses, so a search path cannot point somewhere
+      # a mock is not written.
+      allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
+        subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
+      end
     end
 
     it "collects each non-Partial mocked header's own mirrored directory, deduplicated" do

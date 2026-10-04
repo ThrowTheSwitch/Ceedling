@@ -529,7 +529,9 @@ class TestBuildSetup
     @context_extractor.lookup_mock_header_includes_list( testable.filepath ).each do |include|
       next if mock_partial?( include )
       _source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection )
-      dirs << (subdir.empty? ? testable.paths[:mocks] : File.join( testable.paths[:mocks], subdir ))
+      # The same composition mock generation itself uses, so a search path cannot point
+      # somewhere a mock is not written.
+      dirs << @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir )
     end
     return dirs.uniq
   end

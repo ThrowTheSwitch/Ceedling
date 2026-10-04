@@ -390,6 +390,10 @@ describe TestBuildPlanner do
       allow(@file_path_utils).to receive(:form_test_build_objects_filelist) do |_build_path, files|
         files.map { |f| f.ext( '.o' ) }
       end
+      # One shared composition for where a mock's files sit.
+      allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
+        subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
+      end
       allow(@file_path_utils).to receive(:form_test_executable_filepath).and_return( 'build/test/out/a_test/TestFoo.exe' )
       allow(@file_path_utils).to receive(:form_pass_results_filepath).and_return( 'build/test/results/a_test/TestFoo.pass' )
     end

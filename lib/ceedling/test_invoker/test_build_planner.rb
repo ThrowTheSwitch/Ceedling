@@ -64,16 +64,17 @@ class TestBuildPlanner
           input             = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
         end
 
-        # Mirrors the resolved header's own subdirectory below whichever configured root
-        # contains it -- the same directory this test's own search paths already carry
-        # (collect_mock_search_paths, stage 2, ahead of stage 3), so the mock stays findable
-        # by the compiler regardless of how much path the #include itself happened to spell
-        # out. A Partial mock has no real header to resolve against, so it stays flat -- the
-        # empty default `subdir` already reflects that.
-        # Keyed by the mock's own directory alongside its name. Two modules sharing a
-        # basename are two modules, each needing its own mock, and a key of the name
-        # alone lets the second displace the first. `name` stays bare: it is the
-        # filename the mock is written under, joined with `path` at generation.
+        # `path` mirrors the subdirectory the mock's own content sits in -- for a real
+        # header, its directory below whichever configured root contains it; for a Partial
+        # mock, the directory its generated #include names. Either way it is the same
+        # directory this test's own search paths already carry (collect_mock_search_paths,
+        # stage 2, ahead of stage 3), so the mock stays findable by the compiler regardless
+        # of how much path the #include itself happened to spell out.
+        #
+        # Keyed by that directory alongside the name. Two modules sharing a basename are
+        # two modules, each needing its own mock, and a key of the name alone lets the
+        # second displace the first. `name` stays bare: it is the filename the mock is
+        # written under, joined with `path` at generation.
         mocks[mock_key( name, subdir )] = MockDetails.new(
           name:     name,
           filepath: source,
@@ -343,7 +344,10 @@ class TestBuildPlanner
     return [] if root.nil?
 
     testable.mocks.each_value.map do |details|
-      File.join( *[root, details.path, details.name + EXTENSION_CORE_SOURCE].reject { |part| part.nil? || part.empty? } )
+      File.join(
+        @file_path_utils.form_mock_output_path( root, details.path ),
+        details.name + EXTENSION_CORE_SOURCE
+      )
     end
   end
 
