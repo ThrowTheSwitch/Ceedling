@@ -36,7 +36,6 @@ ceedling_system_tests do
       test_case :project_with_gcov_enabled_test_all_does_not_require_gcovr
       test_case :project_with_gcov_success
       test_case :project_with_gcov_fail
-      test_case :project_with_gcov_fail_under_decision
       test_case :gcov_console_report_with_system_header
       test_case :gcov_console_report_with_partial
       # TODO: Restore these tests when the :abort_on_uncovered option is restored in the Gcov plugin
@@ -50,9 +49,57 @@ ceedling_system_tests do
       test_case :project_with_gcov_untested_sources_standalone_task
       test_case :help_tasks_include_gcov
       test_case :create_html_report
-      test_case :create_html_report_with_gcovr_config_file_overrides_default
       test_case :create_html_report_with_gcovr_custom_args
       test_case :create_html_report_100_coverage_excluding_crashing_test_case
+    end
+
+    # Version-gated gcov features, each in its own group so one unavailable tool version
+    # skips only the cases that actually need it.
+    describe "Decision coverage thresholds" do
+      # :fail_under_decision passes --fail-under-decision to gcovr, which rejects it
+      # outright before 7.0. The plugin gates the option and breaks the build by design on
+      # an older gcovr, so this asserts a successful build only where the option exists.
+      include_context "requires gcovr", [7, 0]
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :project_with_gcov_fail_under_decision
+    end
+
+    describe "Function merge mode" do
+      # Ceedling injects --merge-mode-functions, which gcovr gained in 6.0. Below that the
+      # plugin omits the flag silently rather than breaking the build, so these cases would
+      # pass on an older gcovr while proving nothing about the behavior they name.
+      include_context "requires gcovr", [6, 0]
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :create_html_report_with_gcovr_config_file_overrides_default
+      test_case :gcovr_merge_mode_functions_reaches_the_command_line
+    end
+
+    describe "Modified condition/decision coverage" do
+      # Gated on both tools, each raising on its own account: gcovr reports MC/DC from 8.0,
+      # GCC emits it from 14.0. Most toolchains satisfy neither, which is why this skips far
+      # more often than it runs.
+      include_context "requires gcovr", [8, 0]
+      include_context "requires gcc", [14, 0]
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :project_with_gcov_mcdc_coverage
     end
 
     describe "Coverage reporting with Partials" do

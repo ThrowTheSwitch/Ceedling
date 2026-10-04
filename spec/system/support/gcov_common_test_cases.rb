@@ -256,6 +256,55 @@ module GcovCommonTestCases
     end
   end
 
+  # Modified condition/decision coverage is gated twice, and both gates raise: gcovr must
+  # support reporting it and GCC must support emitting it. That is why no system test
+  # covered it before -- it cannot run on most toolchains, and ungated it would simply fail
+  # there. The group including this case requires both versions, so reaching a successful
+  # build is itself the assertion that both halves agreed.
+  def project_with_gcov_mcdc_coverage
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        @c.merge_project_yml_for_test( { :gcov => { :mcdc => true } } )
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = @c.ceedling_build_exec("gcov:all --verbosity=obnoxious")
+
+        expect(@c.last_exit_status).to eq(0)
+
+        # GCC emits the condition data; a build without this flag never produced any.
+        expect(output).to match(/-fcondition-coverage/)
+      end
+    end
+  end
+
+  # Guards the quiet half of the plugin's version handling. A `:min_version` arg-table
+  # entry is dropped silently below its minimum, so a build still succeeds with the feature
+  # simply absent. Asserting the flag on the command line is what distinguishes "the
+  # feature ran" from "the build did not complain" -- the group including this case
+  # requires the gcovr version that supports it, so an absent flag is a real defect here
+  # rather than an older toolchain.
+  def gcovr_merge_mode_functions_reaches_the_command_line
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = @c.ceedling_build_exec("gcov:all --verbosity=obnoxious")
+
+        expect(@c.last_exit_status).to eq(0)
+
+        if @gcov_reports.include? :gcovr
+          expect(output).to match(/--merge-mode-functions/)
+        end
+      end
+    end
+  end
+
   def create_html_report_with_gcovr_config_file_overrides_default
     @c.with_context do
       Dir.chdir @proj_name do
