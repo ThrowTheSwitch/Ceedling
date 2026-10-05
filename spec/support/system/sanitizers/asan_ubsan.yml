@@ -8,6 +8,10 @@
 # Sanitizer flavor: AddressSanitizer + UndefinedBehaviorSanitizer, leak
 # detection off.
 #
+# CI runs asan_ubsan_leaks, not this flavor. This one exists for triage: running
+# it alongside separates a leak from a memory error or UB without changing
+# anything else about the build.
+#
 # A Ceedling mixin the system test harness merges into every ephemeral project
 # it builds, so that Ceedling's own generated C -- Unity runners, CMock mocks,
 # Partials -- is exercised under dynamic analysis. Selected by
@@ -70,8 +74,9 @@
 # the harness hard-coding them -- it is the only difference between this flavor
 # and asan_ubsan_leaks.
 #
-# detect_leaks=0: Unity and CMock's memory pool are not expected to free at
-# exit, which would flag nearly every executable and bury real findings. Leaks
-# are a separate flavor, evaluated on its own.
+# detect_leaks=0 is what makes this the triage flavor rather than the default.
+# Leaks were measured clean across the whole suite -- see asan_ubsan_leaks.yml --
+# so switching them off here buys only the ability to ask "is this finding a
+# leak?" by elimination.
 :sanitizer_runtime:
   :ASAN_OPTIONS: detect_leaks=0

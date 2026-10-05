@@ -115,16 +115,18 @@ end
 #
 # Fixtures that fault on purpose are excluded by name -- see
 # spec/support/system/sanitizers/asan_ubsan.yml.
-desc "Run all system specs with ASan+UBSan instrumentation"
+#
+# This flavor leaves leak detection off; specs:system:sanitize:leaks below is what
+# CI runs. Reach for this one to tell a leak from a memory error or UB.
+desc "Run all system specs with ASan+UBSan, leak detection off (triage)"
 task 'specs:system:sanitize' do
   ENV['CEEDLING_TEST_SANITIZERS'] = 'asan_ubsan'
   Rake::Task['specs:system:debug'].invoke
 end
 
-# Not run by CI. Unity and CMock's memory pool are not expected to free at exit,
-# which would flag nearly every executable and bury real findings -- whether they
-# actually do is what this task exists to measure.
-desc "Run all system specs with ASan+UBSan and leak detection (experimental, not run by CI)"
+# What CI runs. Leak detection was measured clean across the whole suite before
+# being enabled -- see spec/support/system/sanitizers/asan_ubsan_leaks.yml.
+desc "Run all system specs with ASan+UBSan and leak detection (what CI runs)"
 task 'specs:system:sanitize:leaks' do
   ENV['CEEDLING_TEST_SANITIZERS'] = 'asan_ubsan_leaks'
   Rake::Task['specs:system:debug'].invoke
@@ -275,10 +277,12 @@ end
 #
 # Undescribed one by one for the same reason as the debug family above -- the
 # wildcard task below documents the whole family.
+# Matches the flavor CI runs, so a finding reproduces here rather than changing
+# shape. Switch to specs:system:sanitize above to ask whether it was a leak.
 Dir['spec/system/**/*_spec.rb'].each do |p|
   base = File.basename(p,'.*').gsub('_spec','')
   task "spec:system:sanitize:#{base}" do
-    ENV['CEEDLING_TEST_SANITIZERS'] = 'asan_ubsan'
+    ENV['CEEDLING_TEST_SANITIZERS'] = 'asan_ubsan_leaks'
     ENV['CEEDLING_SYSTEM_TEST_KEEP'] = 'all'
     Rake::Task["spec:system:#{base}"].invoke
   end

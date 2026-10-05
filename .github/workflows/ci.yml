@@ -246,15 +246,17 @@ jobs:
       # fixtures are excluded by name (see spec/support/system/sanitizers/), and a
       # finding fails the job through Ceedling's existing crash detection.
       #
-      # Leak detection is a second flavor, not wired up here -- see
-      # spec/support/system/sanitizers/asan_ubsan_leaks.yml for what has to be
-      # established first.
+      # The flavor includes leak detection, which was measured clean across the
+      # whole suite before being enabled rather than assumed safe -- see
+      # spec/support/system/sanitizers/asan_ubsan_leaks.yml. The asan_ubsan
+      # flavor beside it leaves leaks off, for telling a leak from a memory
+      # error or UB when something does fire.
       - name: Run System Tests
         uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
           coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
-          sanitizers: ${{ matrix.ruby == '3.5' && 'asan_ubsan' || '' }}
+          sanitizers: ${{ matrix.ruby == '3.5' && 'asan_ubsan_leaks' || '' }}
 
       # Common plugin test steps. Runs before Generate Combined Coverage Report below --
       # each plugin's own coverage/raw/system-*/ resultsets (see run-plugin-tests'

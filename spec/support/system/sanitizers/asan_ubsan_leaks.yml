@@ -13,14 +13,21 @@
 # matcher is a negative lookahead, why \A is load-bearing, and why
 # -fno-sanitize-recover=all is used instead of an UBSAN_OPTIONS wrapper.
 #
-# This flavor is NOT wired into CI. It exists as a runnable experiment
-# (`rake specs:system:sanitize:leaks`) rather than a design intention, because
-# the question it answers cannot be answered by reading code: whether Unity and
-# CMock's memory pool leave allocations outstanding at exit. If they do, every
-# executable flags and real findings are buried, which is why asan_ubsan
-# switches leaks off. Enabling this in CI is a one-word change to the
-# `sanitizers:` expression in .github/workflows/ci.yml once a local run in
-# throwtheswitch/madsciencelab-plugins says it can be.
+# This is the flavor CI runs.
+#
+# It was not assumed safe. The concern that justified switching leaks off at
+# first was that Unity and CMock's memory pool might leave allocations
+# outstanding at exit, flagging nearly every executable and burying real
+# findings. Measured in throwtheswitch/madsciencelab-plugins (GCC 14.2) rather
+# than reasoned about: the whole system suite passes with leak detection on, 313
+# examples, zero leak reports -- CMock's memory pool is a static array by
+# default, not heap allocation. A deliberately leaked buffer in the same
+# environment does fail the build, so that clean result is a measurement and not
+# an inactive sanitizer.
+#
+# asan_ubsan (leaks off) is kept as a triage flavor: when a finding appears,
+# running it separates a leak from a memory error or UB without changing
+# anything else.
 
 :flags:
   :test:
