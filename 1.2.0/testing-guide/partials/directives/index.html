@@ -1558,6 +1558,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#naming-a-module-by-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Naming a module by directory
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Naming a module by directory">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-much-path-to-supply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How much path to supply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rules-for-the-directory-argument" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rules for the directory argument
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#partials-function-selection-by-macro" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4035,6 +4074,8 @@
       
         
       
+        
+      
     
     
     
@@ -4123,6 +4164,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../development/releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branching & Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -4149,7 +4218,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4171,14 +4240,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_10_3" id="__nav_10_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_4" id="__nav_10_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4334,6 +4403,45 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#naming-a-module-by-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Naming a module by directory
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Naming a module by directory">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-much-path-to-supply" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How much path to supply
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rules-for-the-directory-argument" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rules for the directory argument
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4587,6 +4695,103 @@ generated header file. This means you use them as the argument to <code>#include
 and none — tell Ceedling how to initialize internal function lists (that 
 can be optionally modified) towards injecting the collected functions into 
 each Partial. </p>
+<h2 id="naming-a-module-by-directory">Naming a module by directory</h2>
+<p>Every <code>_MODULE</code> and <code>_CONFIG</code> macro has an <code>_AT</code> variant that takes the module’s
+directory as a separate first argument. Use it when a module name alone is
+ambiguous — that is, when your project holds two modules of the same name in
+different directories.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ceedling.h&quot;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="cp">#include TEST_PARTIAL_PRIVATE_MODULE_AT(sensors/soil, Calibration)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1">// ↑ Expands to: #include &quot;sensors/soil/ceedling_partial_Calibration_impl.h&quot;</span>
+</code></pre></div>
+<p>The generated filename keeps the directory and takes its prefix on the basename
+(mirroring your source tree inside the build directory). Two same-named modules
+therefore generate two distinct files rather than overwriting one another.</p>
+<table>
+<thead>
+<tr>
+<th>Macro family</th>
+<th>Bare form</th>
+<th>Directory-qualified form</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Test module</td>
+<td><code>TEST_PARTIAL_*_MODULE(module)</code></td>
+<td><code>TEST_PARTIAL_*_MODULE_AT(dir, module)</code></td>
+</tr>
+<tr>
+<td>Mock module</td>
+<td><code>MOCK_PARTIAL_*_MODULE(module)</code></td>
+<td><code>MOCK_PARTIAL_*_MODULE_AT(dir, module)</code></td>
+</tr>
+<tr>
+<td>Test function list</td>
+<td><code>TEST_PARTIAL_CONFIG(module, ...)</code></td>
+<td><code>TEST_PARTIAL_CONFIG_AT(dir, module, ...)</code></td>
+</tr>
+<tr>
+<td>Mock function list</td>
+<td><code>MOCK_PARTIAL_CONFIG(module, ...)</code></td>
+<td><code>MOCK_PARTIAL_CONFIG_AT(dir, module, ...)</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Two same-named modules cannot both be mocked in one test file</p>
+<p><code>TEST_PARTIAL_*_MODULE_AT()</code> works for two modules sharing a basename where each
+is tested through its own Partial. <code>MOCK_PARTIAL_*_MODULE_AT()</code> does not because
+of a temporary limitation of CMock that causes duplicate symbols and missing
+definitions.</p>
+<p>Mocking either module on its own works, and so does Partials testing both 
+together. To mock both Partials, split them across separate test files.
+See <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md">Known Issues</a>.</p>
+</div>
+<p>A <code>_CONFIG_AT</code> macro must name the same directory as the <code>_MODULE_AT</code> macro it
+refines. The directory and module together identify which Partial a function
+list belongs to.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="cp">#include TEST_PARTIAL_MODULE_AT(sensors/soil, Calibration)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">TEST_PARTIAL_CONFIG_AT</span><span class="p">(</span><span class="n">sensors</span><span class="o">/</span><span class="n">soil</span><span class="p">,</span><span class="w"> </span><span class="n">Calibration</span><span class="p">,</span><span class="w"> </span><span class="n">Soil__Clamp</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="how-much-path-to-supply">How much path to supply</h3>
+<p>The directory is matched against the trailing end of a real file’s path. So,
+supply only as much as it takes to distinguish the module you mean. Given
+<code>src/sensors/soil/Calibration.c</code>, both of the following could reach it.
+The amount of path information to provide changes depending on the depth of
+duplicated subdirectories in path names.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="cp">#include TEST_PARTIAL_PRIVATE_MODULE_AT(sensors/soil, Calibration)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="cp">#include TEST_PARTIAL_PRIVATE_MODULE_AT(soil, Calibration)</span>
+</code></pre></div>
+<p>A Partials path that matches no file triggers a breaking test build early in
+the build rather than a missing-include failure later in the build.</p>
+<h3 id="rules-for-the-directory-argument">Rules for the directory argument</h3>
+<ul>
+<li>Written as bare text, like the module name. No quotation marks.</li>
+<li>Relative, never absolute. A Partial is generated relative to the project root.</li>
+<li>Optional. A bare module name using non<code>_AT</code> macros is entirely acceptable for
+  modules without duplicated names elsewhere in your project.</li>
+<li>Supplied as the macro’s own first argument, never inside the module argument.</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">A path belongs in the directory argument, not the module argument</p>
+<p>The directory must be the macro’s first argument. A path written inside the
+module argument of a bare macro does not work:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Wrong</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="cp">#include TEST_PARTIAL_PRIVATE_MODULE(sensors/soil/Calibration)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1">// Right</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="cp">#include TEST_PARTIAL_PRIVATE_MODULE_AT(sensors/soil, Calibration)</span>
+</code></pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">A bare module name resolves like the compiler’s own search</p>
+<p>Without a directory, Ceedling selects the first match among your ordered
+<code>:paths</code> search paths, the same way a compiler resolves a header. That is
+unambiguous in most projects and only needs an <code>_AT</code> macro when two modules
+share a name.</p>
+</div>
 <h2 id="partials-function-selection-by-macro">Partials function-selection by macro</h2>
 <p>Each test or mock Partial is independently configured by exactly
 one <code>_MODULE</code> macro call. The macro determines the <em>base set</em> of
@@ -4603,6 +4808,9 @@ listing each function individually.</p>
 <li><code>[TEST/MOCK]_PARTIAL_PRIVATE_MODULE()</code></li>
 <li><code>[TEST/MOCK]_PARTIAL_MODULE()</code></li>
 </ul>
+<p>Each has an <code>_AT</code> variant taking the module’s directory, documented in
+<a href="#naming-a-module-by-directory">Naming a module by directory</a>. The filter and
+the function-list rules below apply identically to both forms.</p>
 <table>
 <thead>
 <tr>
@@ -4688,15 +4896,16 @@ listing each function individually.</p>
 <li><code>*_PARTIAL_ALL_MODULE</code> with no subtractions adds every module function to
   base set of functions.</li>
 <li>Each module can appear in <strong>at most one</strong> <code>TEST_PARTIAL_*_MODULE</code> and 
-  <code>MOCK_PARTIAL_*_MODULE</code> macro within a given test file.</li>
+  <code>MOCK_PARTIAL_*_MODULE</code> macro within a given test file. Two same-named modules
+  in different directories are two modules, and each may have its own pair.</li>
 </ul>
 <h3 id="partials-function-list-configuration-macros">Partials function list configuration macros</h3>
 <p><code>TEST_PARTIAL_CONFIG</code> and <code>MOCK_PARTIAL_CONFIG</code> refine the base set of functions
 filtered by the corresponding <code>_MODULE</code> macro. Both <code>_CONFIG</code> macros require at 
 least one function name argument beyond the module name.</p>
 <p>Note that no quotation marks are needed.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w"> </span><span class="n">func1</span><span class="p">,</span><span class="w"> </span><span class="n">func2</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">MOCK_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w"> </span><span class="n">func1</span><span class="p">,</span><span class="w"> </span><span class="n">func2</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w"> </span><span class="n">func1</span><span class="p">,</span><span class="w"> </span><span class="n">func2</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">MOCK_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w"> </span><span class="n">func1</span><span class="p">,</span><span class="w"> </span><span class="n">func2</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span>
 </code></pre></div>
 <p>Similar to the convenion in Ceedling‘s <code>paths:</code> and <code>files:</code> YAML configuration 
 sections, each function name argument is treated as an <strong>addition</strong> or a 
@@ -4719,8 +4928,8 @@ sections, each function name argument is treated as an <strong>addition</strong>
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w"> </span><span class="o">+</span><span class="n">func1</span><span class="p">,</span><span class="w"> </span><span class="o">+</span><span class="n">func2</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="n">func3</span><span class="p">)</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">MOCK_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w">  </span><span class="n">func1</span><span class="p">,</span><span class="w">  </span><span class="n">func2</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="n">func3</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w"> </span><span class="o">+</span><span class="n">func1</span><span class="p">,</span><span class="w"> </span><span class="o">+</span><span class="n">func2</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="n">func3</span><span class="p">)</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">MOCK_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w">  </span><span class="n">func1</span><span class="p">,</span><span class="w">  </span><span class="n">func2</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="n">func3</span><span class="p">)</span>
 </code></pre></div>
 <h4 id="addition-subtraction-rules-by-mode">Addition &amp; subtraction rules by mode</h4>
 <table>
@@ -4765,42 +4974,42 @@ sections, each function name argument is treated as an <strong>addition</strong>
 This prevents the same function from accidentally appearing both in a Partial 
 implementation and Partial mock, which would produce a duplicate symbol linker 
 error.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// `_InternalHelper()` added to the test side</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// while automatically removed from the mock side.</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="cp">#include TEST_PARTIAL_PRIVATE_MODULE(mymodule)</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">mymodule</span><span class="p">,</span><span class="w"> </span><span class="n">_InternalHelper</span><span class="p">)</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1">// `_InternalHelper()` will NOT appear in the mock.</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="cp">#include MOCK_PARTIAL_PUBLIC_MODULE(mymodule)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// `_InternalHelper()` added to the test side</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1">// while automatically removed from the mock side.</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="cp">#include TEST_PARTIAL_PRIVATE_MODULE(mymodule)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">mymodule</span><span class="p">,</span><span class="w"> </span><span class="n">_InternalHelper</span><span class="p">)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1">// `_InternalHelper()` will NOT appear in the mock.</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="cp">#include MOCK_PARTIAL_PUBLIC_MODULE(mymodule)</span>
 </code></pre></div>
 <h2 id="partials-configuration-examples">Partials configuration examples</h2>
 <h3 id="test-a-specific-private-function-mock-everything-else">Test a specific private function; Mock everything else</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ceedling.h&quot;</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="cp">#include TEST_PARTIAL_MODULE(sensor)     </span><span class="c1">// Starts empty</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span><span class="w"> </span><span class="n">_ConvertRaw</span><span class="p">)</span><span class="w"> </span><span class="c1">// Add exactly this one function</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="cp">#include MOCK_PARTIAL_ALL_MODULE(sensor) </span><span class="c1">// Starts with all functions</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1">// `_ConvertRaw()` is automatically excluded from the Partial mock</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ceedling.h&quot;</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="cp">#include TEST_PARTIAL_MODULE(sensor)     </span><span class="c1">// Starts empty</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span><span class="w"> </span><span class="n">_ConvertRaw</span><span class="p">)</span><span class="w"> </span><span class="c1">// Add exactly this one function</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="cp">#include MOCK_PARTIAL_ALL_MODULE(sensor) </span><span class="c1">// Starts with all functions</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1">// `_ConvertRaw()` is automatically excluded from the Partial mock</span>
 </code></pre></div>
 <h3 id="test-all-functions-except-one-mock-nothing">Test all functions except one; Mock nothing</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ceedling.h&quot;</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="cp">#include TEST_PARTIAL_ALL_MODULE(sensor)  </span><span class="c1">// All functions</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="n">Sensor_Init</span><span class="p">)</span><span class="w"> </span><span class="c1">// Subtract one</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ceedling.h&quot;</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="cp">#include TEST_PARTIAL_ALL_MODULE(sensor)  </span><span class="c1">// All functions</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="n">Sensor_Init</span><span class="p">)</span><span class="w"> </span><span class="c1">// Subtract one</span>
 </code></pre></div>
 <h3 id="test-public-functions-plus-one-private-helper-mock-selected-private-functions">Test public functions plus one private helper; Mock selected private functions</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ceedling.h&quot;</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1">// Test: Start with all public functions</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1">//       and add one private function</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="cp">#include TEST_PARTIAL_PUBLIC_MODULE(sensor)</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span><span class="w"> </span><span class="n">_ConvertRaw</span><span class="p">)</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1">// Mock: Start with no functions</span>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1">//       and add a private function</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="cp">#include MOCK_PARTIAL_MODULE(sensor)</span>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="n">MOCK_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span><span class="w"> </span><span class="n">_ReadIOValue</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ceedling.h&quot;</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1">// Test: Start with all public functions</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1">//       and add one private function</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="cp">#include TEST_PARTIAL_PUBLIC_MODULE(sensor)</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="n">TEST_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span><span class="w"> </span><span class="n">_ConvertRaw</span><span class="p">)</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="c1">// Mock: Start with no functions</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="c1">//       and add a private function</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="cp">#include MOCK_PARTIAL_MODULE(sensor)</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="n">MOCK_PARTIAL_CONFIG</span><span class="p">(</span><span class="n">sensor</span><span class="p">,</span><span class="w"> </span><span class="n">_ReadIOValue</span><span class="p">)</span>
 </code></pre></div>
 <p><br/><br/></p>
 

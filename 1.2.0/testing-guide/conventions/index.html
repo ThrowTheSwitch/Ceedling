@@ -4227,6 +4227,8 @@
       
         
       
+        
+      
     
     
     
@@ -4315,6 +4317,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../development/releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branching & Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -4341,7 +4371,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4363,14 +4393,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_10_3" id="__nav_10_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_4" id="__nav_10_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4933,6 +4963,13 @@ meant.</p>
   to provide a path to distinguish source files of the same name to be 
   compiled and linked with a test executable.</li>
 </ul>
+<div class="admonition warning">
+<p class="admonition-title">One test file cannot mock two same-named headers</p>
+<p>Path information distinguishes which header a mock is generated <em>from</em>, but a
+single test file cannot presently mock two headers that share a filename 
+because of a (temporary) CMock limitation. See
+<a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md">Known Issues</a>.</p>
+</div>
 <p><code>TEST_SOURCE_FILE()</code> also takes precedence over the header/source correspondence
 convention above. If a test both <code>#include</code>s a header and separately names a
 same-named source via <code>TEST_SOURCE_FILE()</code>, the directive's own path wins outright
@@ -5078,6 +5115,11 @@ test file and optional test directive macros.</p>
    compile &amp; link that generated code into into the test executable 
    as well.</li>
 </ol>
+<p>A mock is generated into the directory mirroring the header it came from, so two
+same-named headers in different directories produce two mocks in different
+directories. Even so, a single test file cannot mock both because of a temporary
+CMock limitation that will cause duplicated symbol names and missing defintions.
+Mock either header alone, or split the two across separate test files.</p>
 <p>Sometimes the source file you need to add to your test executable has
 no corresponding header file — e.g. <code>file_abc.h</code> contains symbols 
 present in <code>file_xyz.c</code>. In these cases, you can use the test 

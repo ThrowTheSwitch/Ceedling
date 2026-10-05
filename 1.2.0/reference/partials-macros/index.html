@@ -3969,6 +3969,8 @@
       
         
       
+        
+      
     
     
     
@@ -4057,6 +4059,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../development/releases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branching & Releases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -4083,7 +4113,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10_4" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -4105,14 +4135,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_10_3" id="__nav_10_3_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_10_4" id="__nav_10_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_3_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_10_3">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_4">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4396,17 +4426,25 @@ file to be used with <code>#include</code>. <code>#include "ceedling.h"</code> m
 their use.</p>
 <ul>
 <li><strong><code>TEST_PARTIAL_ALL_MODULE(module)</code></strong><br/>Select all functions in the module to be testable by Partial.</li>
+<li><strong><code>TEST_PARTIAL_ALL_MODULE_AT(dir, module)</code></strong><br/>Select all functions in the module at <code>dir</code> to be testable by Partial.</li>
 <li><strong><code>TEST_PARTIAL_PUBLIC_MODULE(module)</code></strong><br/>Select all public (non-<code>static</code>, non-<code>inline</code>) functions in the module to be testable by Partial.</li>
+<li><strong><code>TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module)</code></strong><br/>Select all public (non-<code>static</code>, non-<code>inline</code>) functions in the module at <code>dir</code> to be testable by Partial.</li>
 <li><strong><code>TEST_PARTIAL_PRIVATE_MODULE(module)</code></strong><br/>Select all private (<code>static</code> and <code>inline</code>) functions in the module to be testable by Partial.</li>
+<li><strong><code>TEST_PARTIAL_PRIVATE_MODULE_AT(dir, module)</code></strong><br/>Select all private (<code>static</code> and <code>inline</code>) functions in the module at <code>dir</code> to be testable by Partial.</li>
 <li><strong><code>TEST_PARTIAL_MODULE(module)</code></strong><br/>Begin with an empty function set to be testable by Partial; functions must be added explicitly via <code>TEST_PARTIAL_CONFIG</code>.</li>
+<li><strong><code>TEST_PARTIAL_MODULE_AT(dir, module)</code></strong><br/>Begin with an empty function set to be testable by Partial for the module at <code>dir</code>; functions must be added explicitly via <code>TEST_PARTIAL_CONFIG_AT</code>.</li>
 </ul>
 <p><code>TEST_PARTIAL_*</code> macros expand to an implementation header filename.</p>
 <h4 id="mock-partials-macros">Mock Partials macros</h4>
 <ul>
 <li><strong><code>MOCK_PARTIAL_ALL_MODULE(module)</code></strong><br/>Select all functions in the module to be mockable by Partial.</li>
+<li><strong><code>MOCK_PARTIAL_ALL_MODULE_AT(dir, module)</code></strong><br/>Select all functions in the module at <code>dir</code> to be mockable by Partial.</li>
 <li><strong><code>MOCK_PARTIAL_PUBLIC_MODULE(module)</code></strong><br/>Select all public (non-<code>static</code>, non-<code>inline</code>) functions in the module to be mockable by Partial.</li>
+<li><strong><code>MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module)</code></strong><br/>Select all public (non-<code>static</code>, non-<code>inline</code>) functions in the module at <code>dir</code> to be mockable by Partial.</li>
 <li><strong><code>MOCK_PARTIAL_PRIVATE_MODULE(module)</code></strong><br/>Select all private (<code>static</code> and <code>inline</code>) functions in the module to be mockable by Partial.</li>
+<li><strong><code>MOCK_PARTIAL_PRIVATE_MODULE_AT(dir, module)</code></strong><br/>Select all private (<code>static</code> and <code>inline</code>) functions in the module at <code>dir</code> to be mockable by Partial.</li>
 <li><strong><code>MOCK_PARTIAL_MODULE(module)</code></strong><br/>Begin with an empty function set to be mockable by Partial; functions must be added explicitly via <code>MOCK_PARTIAL_CONFIG</code>.</li>
+<li><strong><code>MOCK_PARTIAL_MODULE_AT(dir, module)</code></strong><br/>Begin with an empty function set to be mockable by Partial for the module at <code>dir</code>; functions must be added explicitly via <code>MOCK_PARTIAL_CONFIG_AT</code>.</li>
 </ul>
 <p><code>MOCK_PARTIAL_*</code> macros expand to a mockable interface header filename.</p>
 <h3 id="function-list-configuration-macros">Function list configuration macros</h3>
@@ -4415,7 +4453,9 @@ that refine the set of functions selected by the use of any module selection
 macro above.</p>
 <ul>
 <li><strong><code>TEST_PARTIAL_CONFIG(module, func...)</code></strong><br/>Add or subtract functions from the test Partial’s function set.</li>
+<li><strong><code>TEST_PARTIAL_CONFIG_AT(dir, module, func...)</code></strong><br/>Add or subtract functions from the test Partial’s function set for the module at <code>dir</code>.</li>
 <li><strong><code>MOCK_PARTIAL_CONFIG(module, func...)</code></strong><br/>Add or subtract functions from the mock Partial’s function set.</li>
+<li><strong><code>MOCK_PARTIAL_CONFIG_AT(dir, module, func...)</code></strong><br/>Add or subtract functions from the mock Partial’s function set for the module at <code>dir</code>.</li>
 </ul>
 <h3 id="function-list-addition-and-subtraction">Function list addition and subtraction</h3>
 <div class="admonition tip">
