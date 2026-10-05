@@ -5,6 +5,14 @@
     SPDX-License-Identifier: MIT
 ========================================================================= */
 
+/* The `nosanitize` filename segment is read by a build-time matcher, not
+   decoration: spec/support/system/sanitizers/*.yml excludes it from ASan+UBSan
+   instrumentation. This file provokes a fault on purpose, so instrumenting it
+   would turn the very behavior it asserts into a sanitizer failure. Renaming it
+   without that segment silently re-instruments it --
+   spec/integration/sanitizer_exclusions_spec.rb breaks the build if that
+   happens. */
+
 #include <signal.h>
 #include "unity.h"
 #include "example_file.h"

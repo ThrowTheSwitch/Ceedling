@@ -99,7 +99,7 @@ GDB_WINDOWS_ASSERT_BRIEF_OUTPUT = <<~'GDB'.freeze
   [New Thread 4168.0xa14]
   [Thread 4168.0xa14 exited with code 3]
   [Inferior 1 (process 4168) exited with code 03]
-  Assertion failed: 0, file test/test_example_file_crash_assert.c, line 24
+  Assertion failed: 0, file test/test_nosanitize_crash_assert.c, line 24
 GDB
 
 # Windows assert(0) — signal ?, DLL abort frames, assertion text at end of output
@@ -110,13 +110,13 @@ GDB_WINDOWS_ASSERT_OUTPUT = <<~'GDB'.freeze
   #0  0x00007ff938364aee in ucrtbase!abort () from C:\Windows\System32\ucrtbase.dll
   #1  0x00007ff938320fb9 in ucrtbase!_isctype_l () from C:\Windows\System32\ucrtbase.dll
   #2  0x00007ff938382b01 in ucrtbase!_assert () from C:\Windows\System32\ucrtbase.dll
-  #3  0x00007ff691745367 in _assert (message=0x7ff691747026 "0", file=0x7ff691747000 "test/test_example_file_crash_assert.c", line=24)
-  #4  0x00007ff691741523 in test_add_numbers_triggers_assert () at test/test_example_file_crash_assert.c:24
-  #5  0x00007ff691741675 in run_test (func=0x7ff6917414ff <test_add_numbers_triggers_assert>, name=0x7ff6917470d8 "test_add_numbers_triggers_assert", line_num=20) at build/test/runners/test_example_file_crash_assert_runner.c:77
-  #6  0x00007ff6917418ce in main (argc=3, argv=0x8000e0) at build/test/runners/test_example_file_crash_assert_runner.c:123
+  #3  0x00007ff691745367 in _assert (message=0x7ff691747026 "0", file=0x7ff691747000 "test/test_nosanitize_crash_assert.c", line=24)
+  #4  0x00007ff691741523 in test_add_numbers_triggers_assert () at test/test_nosanitize_crash_assert.c:24
+  #5  0x00007ff691741675 in run_test (func=0x7ff6917414ff <test_add_numbers_triggers_assert>, name=0x7ff6917470d8 "test_add_numbers_triggers_assert", line_num=20) at build/test/runners/test_nosanitize_crash_assert_runner.c:77
+  #6  0x00007ff6917418ce in main (argc=3, argv=0x8000e0) at build/test/runners/test_nosanitize_crash_assert_runner.c:123
   Kill the program being debugged? (y or n) [answered Y; input not from terminal]
   [Inferior 1 (process 8364) killed]
-  Assertion failed: 0, file test/test_example_file_crash_assert.c, line 24
+  Assertion failed: 0, file test/test_nosanitize_crash_assert.c, line 24
   gdb: unknown target exception 0xc0000409 at 0x7ff938364aee
 GDB
 
@@ -818,7 +818,7 @@ describe GeneratorTestResultsBacktrace do
     end
 
     it 'returns nil for brief Windows assert-only output' do
-      result = @backtrace.send(:extract_source_line, GDB_WINDOWS_ASSERT_BRIEF_OUTPUT, 'test_add_numbers_triggers_assert', 'test_example_file_crash_assert.c')
+      result = @backtrace.send(:extract_source_line, GDB_WINDOWS_ASSERT_BRIEF_OUTPUT, 'test_add_numbers_triggers_assert', 'test_nosanitize_crash_assert.c')
       expect(result).to be_nil
     end
   end
@@ -826,9 +826,9 @@ describe GeneratorTestResultsBacktrace do
   # ── private #format_signal_label (Windows brief form) → #do_gdb ──────────
 
   describe '#do_gdb with brief Windows assert (no crash frame)' do
-    let(:filename_assert)   { 'test_example_file_crash_assert.c' }
+    let(:filename_assert)   { 'test_nosanitize_crash_assert.c' }
     let(:test_cases_assert) { [{ test: 'test_add_numbers_triggers_assert', symbol: 'test_add_numbers_triggers_assert', line_number: 20 }] }
-    let(:executable)        { 'build/test/out/test_example_file_crash_assert/test_example_file_crash_assert.out' }
+    let(:executable)        { 'build/test/out/test_nosanitize_crash_assert/test_nosanitize_crash_assert.out' }
     let(:shell_result)      { { exit_code: 1, output: '', time: 0.0 } }
 
     before(:each) do

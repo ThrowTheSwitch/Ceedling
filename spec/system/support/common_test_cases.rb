@@ -650,7 +650,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_boom.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_boom.c"), 'test/'
 
         output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Since a test explodes, we return error here
@@ -838,7 +838,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :none }})
 
@@ -859,7 +859,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :none }})
 
@@ -867,9 +867,9 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
-        output_rd = read_spec_file('./build/test/results/test_example_file_crash_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
+        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_nosanitize_crash_sigsegv.c\:\d+/ )
       end
     end
   end
@@ -882,7 +882,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -890,15 +890,15 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
-        output_rd = read_spec_file('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
-        log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
@@ -913,7 +913,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -921,15 +921,15 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
-        output_rd = read_spec_file('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
-        log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
@@ -944,7 +944,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -952,15 +952,15 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail')).to be(true)
-        output_rd = read_spec_file('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
-        log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
@@ -977,7 +977,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_assert.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_assert.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -987,7 +987,7 @@ module CommonSystemTestCases
         expect(output).to match(/Unit test failures/)
         expect(output).to match(/SIGABRT/i)
         expect(output).to match(/Assertion/i)
-        log_path = './build/logs/test/test_example_file_crash_assert/test_add_numbers_triggers_assert.gdb.log'
+        log_path = './build/logs/test/test_nosanitize_crash_assert/test_add_numbers_triggers_assert.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         # Windwos gdb output for an assertion failure can be quite different from Linux.
         # Windows gdb reports do not seem to cite the signal "SIGABRT" and may be quite brief,
@@ -1017,7 +1017,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :simple }})
 
@@ -1040,7 +1040,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_assert.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_assert.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :simple }})
 
@@ -1066,7 +1066,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv_with_param.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv_with_param.c"), 'test/'
 
         @c.merge_project_yml_for_test({
           :project => { :use_backtrace => :simple },
@@ -1082,7 +1082,7 @@ module CommonSystemTestCases
         expect(output).to match(/FAILED:\s+1/)
         expect(output).to match(/IGNORED:\s+0/)
 
-        result_file = './build/test/results/test_example_file_crash_sigsegv_with_param.fail'
+        result_file = './build/test/results/test_nosanitize_crash_sigsegv_with_param.fail'
         expect(File.exist?(result_file)).to be(true)
         results = yaml_wrapper_for_test.load(result_file)
 
@@ -1109,7 +1109,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv_with_param.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv_with_param.c"), 'test/'
 
         @c.merge_project_yml_for_test({
           :project => { :use_backtrace => :gdb },
@@ -1124,7 +1124,7 @@ module CommonSystemTestCases
         expect(output).to match(/FAILED:\s+1/)
         expect(output).to match(/IGNORED:\s+0/)
 
-        result_file = './build/test/results/test_example_file_crash_sigsegv_with_param.fail'
+        result_file = './build/test/results/test_nosanitize_crash_sigsegv_with_param.fail'
         expect(File.exist?(result_file)).to be(true)
         results = yaml_wrapper_for_test.load(result_file)
 
@@ -1140,7 +1140,7 @@ module CommonSystemTestCases
           'test_difference_between_numbers_is_correct(0, 0, 0)'
         )
 
-        log_path = './build/logs/test/test_example_file_crash_sigsegv_with_param/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test_nosanitize_crash_sigsegv_with_param/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
       end
@@ -1158,7 +1158,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -1228,7 +1228,7 @@ module CommonSystemTestCases
   def crash_simple_ubsan_diagnostic_retry_disagrees_with_main_fixture
     @c.with_context do
       Dir.chdir @proj_name do
-        FileUtils.cp test_asset_path("test_example_file_ub_shift_overflow.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_ub_shift_overflow.c"), 'test/'
         FileUtils.cp test_asset_path("run_with_ubsan.rb"), 'test/'
 
         @c.merge_project_yml_for_test({
