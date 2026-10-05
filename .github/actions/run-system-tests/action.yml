@@ -25,6 +25,10 @@ inputs:
     description: "Set to 'system' to instrument each system-test child process with coverage (see spec/support/system/simplecov_boot.rb) -- the literal value matters, not just truthiness, so this same run's own outer rspec process doesn't also claim the unit suite's SimpleCov resultset entry"
     required: false
     default: 'false'
+  sanitizers:
+    description: "Name of a sanitizer flavor in spec/support/system/sanitizers/ (e.g. 'asan_ubsan') to build and run every system test's generated C under, or empty for none. A name with no matching flavor file fails the job rather than quietly running uninstrumented"
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -49,6 +53,10 @@ runs:
       env:
         CI_RSPEC_PROGRESS_FORMAT: true
         CEEDLING_TEST_COVERAGE: ${{ inputs.coverage }}
+        # Empty on every leg but one. The flavor name, rather than a boolean,
+        # is what lets a second kind of instrumentation (leak detection) become
+        # another value here instead of another input.
+        CEEDLING_TEST_SANITIZERS: ${{ inputs.sanitizers }}
       run: rake specs:system:debug
 
     # Upload system test failure logs and temp project directories on test job failure.
