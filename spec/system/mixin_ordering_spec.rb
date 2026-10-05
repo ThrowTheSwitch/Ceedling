@@ -47,6 +47,12 @@ ORDERING_MIXIN_CONFIG = <<~YAML
 YAML
 
 ceedling_system_tests do
+  # These examples assert mixin merge logging precisely, by position and by
+  # text. The sanitizer wiring is itself a mixin merged through
+  # CEEDLING_MIXIN_9, so instrumenting them would inject an extra merge into
+  # the very output under test.
+  include_context "cannot be sanitized"
+
   before :all do
     @c = SystemContext.new
     @c.deploy_gem

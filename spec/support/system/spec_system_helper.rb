@@ -530,3 +530,23 @@ RSpec.shared_context "requires gcc with UBSan" do
     skip "gcc UBSan support not available (Linux + gcc -fsanitize=undefined required)" unless @ubsan_available
   end
 end
+
+# Disables ASan+UBSan instrumentation for the examples that include it, rather
+# than skipping them -- which is why this is deliberately not named "requires
+# ...", unlike every shared context above. The examples still run; they just run
+# uninstrumented on the instrumented CI leg.
+#
+# Opting out is mandatory for correctness, not tidiness. The sanitizer mixins
+# configure :flags ↳ :test, and lib/ceedling/test_invoker/test_build_setup.rb
+# falls back to the :test context for any plugin context that defines no flags of
+# its own -- so a :gcov, :bullseye, or :valgrind build inherits them whether or
+# not that was intended.
+#
+# Toggled per example, so an opted-out spec file leaves the rest of the suite
+# instrumented. The flag lives on SystemContext itself (class level) because
+# specs construct their SystemContext in before(:all) while this pair runs in
+# before/after(:each); see SystemContext.sanitizers_disabled=.
+RSpec.shared_context "cannot be sanitized" do
+  before { SystemContext.sanitizers_disabled = true }
+  after  { SystemContext.sanitizers_disabled = false }
+end

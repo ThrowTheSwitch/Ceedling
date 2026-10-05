@@ -34,6 +34,11 @@ ceedling_system_tests do
 
   before { @proj_name = unique_proj_name("plugin_delta") }
 
+  # Every example here builds in a plugin context -- gcov below, valgrind
+  # further down -- which is exactly where the :test flags fallback described
+  # in the shared context would land sanitizer flags unasked.
+  include_context "cannot be sanitized"
+
   def deploy_gcov_project!
     @c.ceedling_appcmd_exec("new --local #{@proj_name}")
 

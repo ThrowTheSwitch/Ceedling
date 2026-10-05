@@ -19,6 +19,9 @@ ceedling_system_tests do
     include BullseyeCommonTestCases
     include_context "requires bullseye"
 
+    # As with Gcov: coverage instrumentation plus exact-figure assertions.
+    include_context "cannot be sanitized"
+
     before :all do
       @c = SystemContext.new
       @c.deploy_gem

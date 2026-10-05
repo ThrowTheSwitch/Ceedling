@@ -14,6 +14,11 @@ ceedling_system_tests do
     include CommonSystemTestCases
     include GcovCommonTestCases
     include GcovPartialsTestCases
+
+    # Coverage instrumentation alongside exact line- and branch-count
+    # assertions. See the shared context for why opting out is mandatory --
+    # :test flags reach the :gcov context whether or not that was intended.
+    include_context "cannot be sanitized"
     before :all do
       determine_reports_to_test
       @c = SystemContext.new
