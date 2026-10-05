@@ -357,4 +357,47 @@ describe 'Mixin loading and merging (integration)' do
 
   end
 
+  # =========================================================================
+  describe "this repo's own sanitizer flavor mixins" do
+  # =========================================================================
+  # The system test harness merges spec/support/system/sanitizers/<flavor>.yml
+  # into every ephemeral project it builds, via CEEDLING_MIXIN_9. Those files
+  # are not fixtures -- they are the real configuration CI runs, and their
+  # exclusion matcher key is a regex written as a bare YAML key carrying
+  # backslashes. The failure mode if YAML mangles it is silent: a key that no
+  # longer reads as a regex is demoted to substring matching, matches no
+  # filepath, and instruments nothing while every test still passes.
+  #
+  # So these examples resolve the real files through the real object graph by
+  # the real mechanism, rather than restating their contents in a fixture.
+
+    def flavor_path(flavor)
+      File.join(File.expand_path('../..', __dir__), 'spec', 'support', 'system', 'sanitizers', "#{flavor}.yml")
+    end
+
+    ['asan_ubsan', 'asan_ubsan_leaks'].each do |flavor|
+      context flavor do
+        it 'merges through CEEDLING_MIXIN_9 with its regex matcher key intact' do
+          with_project_tree do |dir|
+            config = resolve(dir: dir, env: { 'CEEDLING_MIXIN_9' => flavor_path(flavor) })
+
+            [config.dig(:flags, :test, :compile), config.dig(:flags, :test, :link),
+             config.dig(:defines, :test)].each do |matcher|
+              expect(matcher).to be_a(Hash)
+              expect(matcher.keys).to eq([:'/\A(?!.*nosanitize).*\z/'])
+            end
+          end
+        end
+
+        it 'carries ASAN_OPTIONS for the harness to export' do
+          with_project_tree do |dir|
+            config = resolve(dir: dir, env: { 'CEEDLING_MIXIN_9' => flavor_path(flavor) })
+            expect(config.dig(:sanitizer_runtime, :ASAN_OPTIONS)).to be_a(String)
+          end
+        end
+      end
+    end
+
+  end
+
 end

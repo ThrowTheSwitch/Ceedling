@@ -1,0 +1,50 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# Sanitizer flavor: AddressSanitizer + UndefinedBehaviorSanitizer, leak
+# detection ON.
+#
+# Identical to asan_ubsan.yml in every flag -- LeakSanitizer ships inside ASan
+# and is a runtime option, not a compile option. See that file for why the
+# matcher is a negative lookahead, why \A is load-bearing, and why
+# -fno-sanitize-recover=all is used instead of an UBSAN_OPTIONS wrapper.
+#
+# This flavor is NOT wired into CI. It exists as a runnable experiment
+# (`rake specs:system:sanitize:leaks`) rather than a design intention, because
+# the question it answers cannot be answered by reading code: whether Unity and
+# CMock's memory pool leave allocations outstanding at exit. If they do, every
+# executable flags and real findings are buried, which is why asan_ubsan
+# switches leaks off. Enabling this in CI is a one-word change to the
+# `sanitizers:` expression in .github/workflows/ci.yml once a local run in
+# throwtheswitch/madsciencelab-plugins says it can be.
+
+:flags:
+  :test:
+    :compile:
+      :/\A(?!.*nosanitize).*\z/:
+        - -fsanitize=address,undefined
+        - -fno-sanitize-recover=all
+        - -fno-omit-frame-pointer
+        - -g
+    :link:
+      :/\A(?!.*nosanitize).*\z/:
+        - -fsanitize=address,undefined
+
+:defines:
+  :test:
+    :/\A(?!.*nosanitize).*\z/:
+      - CEEDLING_SANITIZERS_ACTIVE
+
+# The one line that distinguishes this flavor from asan_ubsan.
+#
+# exitcode is pinned explicitly because LeakSanitizer's default nonzero exit is
+# what Ceedling reads as a crashed test executable (GeneratorHelper#test_crash?
+# treats "zero failures reported, nonzero unsignaled exit" as a crash). Leaving
+# it implicit would make this flavor's pass/fail behavior depend on the
+# toolchain's default.
+:sanitizer_runtime:
+  :ASAN_OPTIONS: detect_leaks=1:exitcode=1

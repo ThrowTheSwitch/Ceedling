@@ -1,0 +1,77 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# Sanitizer flavor: AddressSanitizer + UndefinedBehaviorSanitizer, leak
+# detection off.
+#
+# A Ceedling mixin the system test harness merges into every ephemeral project
+# it builds, so that Ceedling's own generated C -- Unity runners, CMock mocks,
+# Partials -- is exercised under dynamic analysis. Selected by
+# CEEDLING_TEST_SANITIZERS=asan_ubsan; see SystemContext#with_context and
+# `rake specs:system:sanitize`. A flavor is a file in this directory: adding
+# one requires no harness change.
+#
+# Three things here are deliberate and not obvious:
+#
+#   1. The matcher is a negative lookahead because Ceedling's :flags/:defines
+#      matchers only ever *add* values (ConfigMatchinator#matches? accumulates
+#      with `+=`). There is no exclusion mechanism, so "everything except the
+#      deliberately-crashing fixtures" can only be said as a regex that fails
+#      to match them. Those fixtures carry a `nosanitize` filename segment for
+#      exactly this purpose -- it is read here, at build time, and is not
+#      decorative. spec/integration/sanitizer_exclusions_spec.rb breaks the
+#      build if one is renamed or loses its marker.
+#
+#   2. The \A anchor is load-bearing. Regexp#match scans forward for any
+#      position where the pattern can succeed; past the marker the lookahead is
+#      satisfied, so an unanchored pattern instruments the very files it means
+#      to skip -- silently, with no error anywhere.
+#      spec/units/config_matchinator_spec.rb pins both halves of this.
+#
+#   3. -fno-sanitize-recover=all is used instead of UBSAN_OPTIONS=halt_on_error
+#      (as assets/fixtures/run_with_ubsan.rb does for its own regression test).
+#      It is a compile flag, so it needs nothing to reach the test executable's
+#      environment, and it turns UB into a hard stop rather than a printed
+#      warning that still exits zero. The existing wrapper stays where it is,
+#      serving only that one test.
+#
+# Nothing is needed to make a finding fail the build: GeneratorHelper#test_crash?
+# already treats both shapes a sanitizer produces -- SIGABRT, and "zero failures
+# reported but a nonzero unsignaled exit" -- as a crashed test executable.
+
+:flags:
+  :test:
+    :compile:
+      :/\A(?!.*nosanitize).*\z/:
+        - -fsanitize=address,undefined
+        - -fno-sanitize-recover=all
+        # Frame pointers and symbols: without them a report is bare addresses,
+        # which is useless in CI logs where there is no binary to symbolize after
+        - -fno-omit-frame-pointer
+        - -g
+    :link:
+      # ASan must be on the link line as well as every compile line
+      :/\A(?!.*nosanitize).*\z/:
+        - -fsanitize=address,undefined
+
+:defines:
+  :test:
+    # Not consumed by any C code. Present so `ceedling dumpconfig` on a failing
+    # CI leg shows plainly whether that build was instrumented
+    :/\A(?!.*nosanitize).*\z/:
+      - CEEDLING_SANITIZERS_ACTIVE
+
+# Runtime options for the sanitizer, exported by the harness into the
+# environment the test executable inherits. The flavor owns these rather than
+# the harness hard-coding them -- it is the only difference between this flavor
+# and asan_ubsan_leaks.
+#
+# detect_leaks=0: Unity and CMock's memory pool are not expected to free at
+# exit, which would flag nearly every executable and bury real findings. Leaks
+# are a separate flavor, evaluated on its own.
+:sanitizer_runtime:
+  :ASAN_OPTIONS: detect_leaks=0
