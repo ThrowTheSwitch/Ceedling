@@ -28,6 +28,13 @@ Added support for properly [distinguishing all C files by filepath](https://docs
 
 In Ceedling’s early history simplicity won out with the assumption that every C file would be uniquely named. But, for example, this meant _dir1/foo.h_ and _dir2/foo.h_ were indistiguishable and Ceedling “guessed” to disambiguate using the ordering of filepath collections. This worked, but there was no ability to use partial paths to explicitly select a specific file. Now Ceedling fully utilizes filepaths to distinguish all elements of a test build. Relative paths are supported in `#include` directives. `test:` build tasks at the command line can optionally include a filepath to distinguish test files of the same name. The previous convention still works where the ordering of paths is identical among compiler search paths and those used to find files for test builds, but now additional path information can be provided to target specific files in your source collection.
 
+### Partials filepaths & duplicate module name disambiguation
+[#1311](https://github.com/ThrowTheSwitch/Ceedling/issues/1311) Added [directory-qualified Partial directive macros](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/partials/directives/#naming-a-module-by-directory) so Partials share the filepath handling the rest of a test build gained in this release (see previous section).
+
+Previously, Partial directive macros took only a bare module name with no means to provide path information to distinguish modules of the same name. Every Partials `_MODULE` and `_CONFIG` macro now has an `_AT` variant taking that module’s directory as a separate first argument (e.g. `TEST_PARTIAL_PRIVATE_MODULE_AT(sensors/soil, Calibration)`). As with `#include` directives elsewhere, the directory is matched against the trailing end of a real file’s path. Supply only as much of it as it takes to name the module you mean. A bare module name in the original macros continues to work unchanged.
+
+A test file can now **test** two same-named modules together. It cannot **mock** both of them because of a CMock limitation not yet resolved.Mocking either module on its own continues to work unaffected. See [Known Issues](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md).
+
 ### Multiple file extensions per file type
 Added support for multiple [file extensions](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).
 
@@ -89,9 +96,11 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - Fixed a Unity `TEST_IGNORE_MESSAGE()` test case being misreported as crash evidence during crash-diagnosis retries when it shares a test file with a genuine crash.
 - [#104](https://github.com/ThrowTheSwitch/Ceedling/issues/104) Fixed a literal `[` or `]` in a path being silently misread as a glob or regular expression syntax. This could drop files from a build with no error, cause issues with a `:build_root` entry, or cause a passing test run to be reported as "no tests executed."
 - [#1267](https://github.com/ThrowTheSwitch/Ceedling/issues/1267) Fixed a conditional `#include` whose target is a macro invocation (e.g. `#include DEVICE_HEADER(x)`) being silently dropped from includes extraction whenever its own guard condition depended on a symbol defined in another header.
-- [#1292](https://github.com/ThrowTheSwitch/Ceedling/issues/1292) Fixed an intermittent `Errno::ENOTDIR`/`EISDIR` crash when automatically vendoring Unity, CMock, and CException into a project's build directory, caused by a transient file-system race (e.g. an antivirus/EDR lock, a cloud-sync filter driver, or a second concurrent Ceedling invocation). The copy step now retries transient races and self-heals a stale, wrong-typed leftover from a previous failed copy.
-- Fixed a rare, Ruby-version- and platform-dependent misordering of include lists and mixin environment variable resolution caused by relying on `sort`/`sort_by`'s ordering among tied elements, which Ruby does not guarantee to be stable.
-- Fixed a release gem build packaging leftover build output from the machine that built it, including compiled object files and executables. Fixed the same packaging omitting the configuration file that the test suites bundled with the gem need in order to run at all. Since the release gem is produced in a clean CI environment, this fix only affects a local developer running a Ceedling gem build.
+- [#1292](https://github.com/ThrowTheSwitch/Ceedling/issues/1292) Fixed an intermittent `Errno::ENOTDIR`/`EISDIR` crash when automatically vendoring Unity, CMock, and CException into a project’s build directory, caused by a transient file-system race (e.g. an antivirus/EDR lock, a cloud-sync filter driver, or a second concurrent Ceedling invocation). The copy step now retries transient races and self-heals a stale, wrong-typed leftover from a previous failed copy.
+- Fixed a rare, Ruby-version- and platform-dependent misordering of include lists and mixin environment variable resolution caused by relying on `sort`/`sort_by`’s ordering among tied elements, which Ruby does not guarantee to be stable.
+- Fixed two source files of the same name in one test executable sharing a single preprocessed intermediate file, so whichever was preprocessed second overwrote the first. Preprocessed files now mirror their source’s own directory, matching the convention compiled objects already follow.
+- Fixed a generated header’s fallback `#include` guard being built from a filename alone, so two same-named headers in one test shared one guard and whichever the compiler read second was emptied of its declarations.
+- Fixed a local release gem build packaging leftover build output from the machine that built it, including compiled object files and executables. Fixed the same packaging omitting the configuration file that the test suites bundled with the gem need in order to run at all. Since the release gem is produced in a clean CI environment the underlying issue never affected gems published through GitHub and RubyGems.org.
 
 ### Backtrace / `gdb` handling
 
@@ -101,6 +110,8 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 ### Partials
 
 - Fixed a bare, top-level macro invocation that expands to a full function definition (a common x-macro boilerplate idiom) silently corrupting or losing whatever construct followed it during Partials extraction.
+- Fixed a Partial resolving its module’s header and its module’s source independently, which could pair one module’s header with a same-named other module’s source.
+- Fixed a Partialized module’s own real header being reachable by its bare filename from inside the generated Partial, so a Partial could be compiled against a same-named other module’s header.
 
 ### Mixins
 
@@ -121,7 +132,7 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 
 ### Valgrind & Cppcheck plugins
 
-- Fixed enabling either plugin making its analysis tool a hard dependency of *every* Ceedling command, including plain `test:all`. Each tool is now required only by its own plugin's tasks. `ceedling files:cppcheck` no longer needs Cppcheck installed either.
+- Fixed enabling either plugin making its analysis tool a hard dependency of *every* Ceedling command, including plain `test:all`. Each tool is now required only by its own plugin’s tasks. `ceedling files:cppcheck` no longer needs Cppcheck installed either.
 
 ### Valgrind plugin
 
@@ -134,7 +145,7 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 ### Cppcheck plugin
 
 - Fixed `:cppcheck` ↳ `:xml_report_version` defaulting to a version older Cppcheck releases reject outright, breaking the XML report on common installations. The default is now the version every release accepts.
-- Fixed requesting an `html` report making `cppcheck-htmlreport` mandatory, contradicting that tool's own optional status.
+- Fixed requesting an `html` report making `cppcheck-htmlreport` mandatory, contradicting that tool’s own optional status.
 - Fixed `cppcheck:all` analyzing nothing and saying nothing when no report is configured, which read like a successful run. The plugin now explains what to configure.
 - Fixed a configuration list containing a single non-string entry silently disabling `#{...}` expansion for every other entry in that same list.
 - Fixed a misspelled path under `:paths` ↳ `:cppcheck` silently collecting no suppression files, indistinguishable from a directory holding none.
@@ -168,6 +179,9 @@ Historically, Ceedling automatically compiles and links into a test executable a
 ### Internal verbosity level mapping for Ceedling to CMock
 Ceedling and CMock are interdependent but distinct tools. They each perform their own logging and have different verbosity level conventions. The internal mapping has been adjusted to configure CMock for verbosity levels that match the spirit of the selected top-level Ceedling logging verbosity level.
 
+### Gcov console coverage summary names a module by path when needed
+The Gcov plugin’s console summary labeled every file by filename alone, so a test covering two same-named modules produced two sets of figures with nothing to say which module either belonged to. Each label now carries as much trailing path as it takes to tell it apart from the other files in that same test’s summary. A filename that is already unique is labeled exactly as before.
+
 ### More strict regex matching to exclude test artifacts from Gcov plugin coverage reports
 Gcovr and ReportGenerator support within the GCov plugin now make use of more sophisticated and explicit regular expressions to filter out test files and test-build-generated files from coverage reporting. This helps prevent mistaken exclusions of source filenames with substrings (e.g. "_runner") that might otherwise match test filenames or generated files.
 
@@ -175,11 +189,11 @@ Gcovr and ReportGenerator support within the GCov plugin now make use of more so
 The templates behind the `$stdout` test results reporting plugins have been renamed for what they produce. `report_tests_pretty_stdout` and `report_tests_gtestlike_stdout` now use `assets/test_results.template`, and the Bullseye plugin uses `assets/coverage.template`. The former `assets/template.erb` name is still honored, so a user-created custom plugin shipping that filename continues to work without changes.
 
 ### Status line coloring for `ceedling new`, `ceedling example`, and `ceedling upgrade`
-The `create`, `exist`, `identical`, and `force` status lines these commands print are now colored according to Ceedling's own decoration settings rather than a separate scheme. Coloring also requires a terminal, so redirecting output to a file produces plain text. Set `CEEDLING_DECORATORS` to `0` to disable the coloring entirely.
+The `create`, `exist`, `identical`, and `force` status lines these commands print are now colored according to Ceedling’s own decoration settings rather than a separate scheme. Coloring also requires a terminal, so redirecting output to a file produces plain text. Set `CEEDLING_DECORATORS` to `0` to disable the coloring entirely.
 
 ## 👋 Removed
 
-- The `erb` gem dependency. Ceedling renders some of its plugin reports with a small template compiler of its own in place of `erb`. This reduces Ceedling's external dependencies, simplifies installations where more recent versions of `erb` pull in further dependencies, and resolves security scanning findings against `erb` (CVE-2026-41316). Ceedling never used the feature that security advisory concerns, but carrying the dependency at all was enough to be flagged. Custom plugin templates are unaffected unless they use ERB syntax Ceedling itself never used — see [plugin development documentation](https://docs.throwtheswitch.org/Ceedling/1.2.0/development/plugins/plugin-subclass/) for the supported template syntax.
+- The `erb` gem dependency has been removed. Ceedling renders some of its plugin reports with a small template compiler of its own in place of `erb`. This reduces Ceedling’s external dependencies, simplifies installations where more recent versions of `erb` pull in further dependencies, and resolves security scanning findings against `erb` (CVE-2026-41316). Ceedling never used the feature that security advisory concerns, but carrying the dependency at all was enough to be flagged. Custom plugin templates are unaffected unless they use ERB syntax Ceedling itself never used — see [plugin development documentation](https://docs.throwtheswitch.org/Ceedling/1.2.0/development/plugins/plugin-subclass/) for the supported template syntax.
 
 ---
 
@@ -193,7 +207,7 @@ The `create`, `exist`, `identical`, and `force` status lines these commands prin
 
 ### Preprocessing
 
-- Fixed whitespace occasionally inserted by the underlying compiler's preprocessor around a `#` or `##` operator (e.g. `x ##y` becoming `x ## y`) being carried through verbatim into Partials-generated and reconstructed macro definitions. Extracted macro text is now normalized so preprocessing stringize and token-paste operators always sit directly against their operands, regardless of what a given toolchain's preprocessor happens to emit.
+- Fixed whitespace occasionally inserted by the underlying compiler’s preprocessor around a `#` or `##` operator (e.g. `x ##y` becoming `x ## y`) being carried through verbatim into Partials-generated and reconstructed macro definitions. Extracted macro text is now normalized so preprocessing stringize and token-paste operators always sit directly against their operands, regardless of what a given toolchain’s preprocessor happens to emit.
 
 ---
 
@@ -202,7 +216,7 @@ The `create`, `exist`, `identical`, and `force` status lines these commands prin
 ## 💪 Fixed
 
 - Fixed a crashed test case in a parameterized group occasionally being misattributed to a different, shorter-named test case in the same group whose name happened to be a substring of the one actually named in the crash backtrace.
-- Fixed a test case's line number occasionally being misattributed to an unrelated helper function whose name merely contained the test's name as a substring, cascading incorrect line numbers to every test case after it in the same file.
+- Fixed a test case’s line number occasionally being misattributed to an unrelated helper function whose name merely contained the test’s name as a substring, cascading incorrect line numbers to every test case after it in the same file.
 
 ### Partials
 
@@ -210,8 +224,8 @@ The `create`, `exist`, `identical`, and `force` status lines these commands prin
 
 ### Preprocessing
 
-- [#1266](https://github.com/ThrowTheSwitch/Ceedling/issues/1266) Fixed a reconstructed header silently dropping any macro whose name or value merely contained the header's own include guard as a substring (e.g. guard `RTC_H` matching inside `RTC_HOUR_SECONDS`), causing undeclared-identifier compile errors.
-- [#1268](https://github.com/ThrowTheSwitch/Ceedling/issues/1268) Fixed a mockable header's `#include` losing the enums, structs, and function prototypes of a conditionally-included file when that `#include` directive was indented inside its `#ifdef` block, causing undeclared-identifier compile errors.
+- [#1266](https://github.com/ThrowTheSwitch/Ceedling/issues/1266) Fixed a reconstructed header silently dropping any macro whose name or value merely contained the header’s own include guard as a substring (e.g. guard `RTC_H` matching inside `RTC_HOUR_SECONDS`), causing undeclared-identifier compile errors.
+- [#1268](https://github.com/ThrowTheSwitch/Ceedling/issues/1268) Fixed a mockable header’s `#include` losing the enums, structs, and function prototypes of a conditionally-included file when that `#include` directive was indented inside its `#ifdef` block, causing undeclared-identifier compile errors.
 
 ### Gcov plugin
 

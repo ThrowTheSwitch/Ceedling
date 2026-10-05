@@ -16,14 +16,55 @@ When both a source file and a header file share a name, Ceedling treats them
 as a single unit. Both files are read when generating a Partial. When only 
 one file is present, only that file is read.
 
-All Partial directive macros take a module name — a bare filename stem with
-no extension, no path, and no quotation marks:
+All Partial directive macros take a module name — a bare filename stem with no
+extension and no quotation marks:
 
 ```c
 // Module name: 'sensor'
-// Not "sensor.c" (no quotation marks) or "path/to/sensor"
+// Not "sensor.c" (no quotation marks) and not "path/to/sensor" (see below)
 #include TEST_PARTIAL_PRIVATE_MODULE(sensor)
 ```
+
+### Distinguishing a module by directory
+
+A module name without path information, can ambiguously names multiple files 
+whenever a project holds multiple modules of the same name in different 
+directories. The `_AT` variant of every `_MODULE` macro takes that module's 
+directory as a separate first argument:
+
+```c
+// Two sensors, each with its own Calibration module
+#include TEST_PARTIAL_PRIVATE_MODULE_AT(sensors/soil, Calibration)
+#include TEST_PARTIAL_PRIVATE_MODULE_AT(sensors/light, Calibration)
+```
+
+The directory is matched against the trailing end of a real file's path, so you
+supply only as much of it as it takes to distinguish the module you mean.
+`sensors/soil` and `soil` both reach `src/sensors/soil/Calibration.c` as long as
+no other module's path also ends that way.
+
+The directory is written as bare text, like the module name — no quotation marks
+— and it is relative, never absolute. A Partial is generated relative to the
+project root.
+
+The directory must be the macro's own first argument. Writing a path inside the
+module argument of a bare macro instead does not work, for reasons covered in
+[Rules for the directory argument](directives.md#rules-for-the-directory-argument).
+
+Naming a directory is optional. A bare module name using a non-`_AT` macros is
+sufficient when no duplicate modules exist. And, when multiple modules are 
+present, it continues to resolve the way a compiler's own header search does — 
+the first match among the ordered search paths wins.
+
+Naming two same-named modules by directory lets one test file **test** both. It
+cannot **mock** both — a limitation of how CMock names a mock's contents, covered
+under [Naming a module by
+directory](directives.md#naming-a-module-by-directory).
+
+!!! tip "When Ceedling cannot tell two modules apart"
+    A bare module name matching more than one module is reported with the
+    candidates Ceedling found and the `_AT` macro that resolves it. The message
+    names the modules as you would write them, not the generated files.
 
 ## Public / Private Functions
 

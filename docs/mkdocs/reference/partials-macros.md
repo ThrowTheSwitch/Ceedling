@@ -19,18 +19,26 @@ file to be used with `#include`. `#include "ceedling.h"` must precede
 their use.
 
 * **`TEST_PARTIAL_ALL_MODULE(module)`**<br/>Select all functions in the module to be testable by Partial.
+* **`TEST_PARTIAL_ALL_MODULE_AT(dir, module)`**<br/>Select all functions in the module at `dir` to be testable by Partial.
 * **`TEST_PARTIAL_PUBLIC_MODULE(module)`**<br/>Select all public (non-`static`, non-`inline`) functions in the module to be testable by Partial.
+* **`TEST_PARTIAL_PUBLIC_MODULE_AT(dir, module)`**<br/>Select all public (non-`static`, non-`inline`) functions in the module at `dir` to be testable by Partial.
 * **`TEST_PARTIAL_PRIVATE_MODULE(module)`**<br/>Select all private (`static` and `inline`) functions in the module to be testable by Partial.
+* **`TEST_PARTIAL_PRIVATE_MODULE_AT(dir, module)`**<br/>Select all private (`static` and `inline`) functions in the module at `dir` to be testable by Partial.
 * **`TEST_PARTIAL_MODULE(module)`**<br/>Begin with an empty function set to be testable by Partial; functions must be added explicitly via `TEST_PARTIAL_CONFIG`.
+* **`TEST_PARTIAL_MODULE_AT(dir, module)`**<br/>Begin with an empty function set to be testable by Partial for the module at `dir`; functions must be added explicitly via `TEST_PARTIAL_CONFIG_AT`.
 
 `TEST_PARTIAL_*` macros expand to an implementation header filename.
 
 #### Mock Partials macros
 
 * **`MOCK_PARTIAL_ALL_MODULE(module)`**<br/>Select all functions in the module to be mockable by Partial.
+* **`MOCK_PARTIAL_ALL_MODULE_AT(dir, module)`**<br/>Select all functions in the module at `dir` to be mockable by Partial.
 * **`MOCK_PARTIAL_PUBLIC_MODULE(module)`**<br/>Select all public (non-`static`, non-`inline`) functions in the module to be mockable by Partial.
+* **`MOCK_PARTIAL_PUBLIC_MODULE_AT(dir, module)`**<br/>Select all public (non-`static`, non-`inline`) functions in the module at `dir` to be mockable by Partial.
 * **`MOCK_PARTIAL_PRIVATE_MODULE(module)`**<br/>Select all private (`static` and `inline`) functions in the module to be mockable by Partial.
+* **`MOCK_PARTIAL_PRIVATE_MODULE_AT(dir, module)`**<br/>Select all private (`static` and `inline`) functions in the module at `dir` to be mockable by Partial.
 * **`MOCK_PARTIAL_MODULE(module)`**<br/>Begin with an empty function set to be mockable by Partial; functions must be added explicitly via `MOCK_PARTIAL_CONFIG`.
+* **`MOCK_PARTIAL_MODULE_AT(dir, module)`**<br/>Begin with an empty function set to be mockable by Partial for the module at `dir`; functions must be added explicitly via `MOCK_PARTIAL_CONFIG_AT`.
 
 `MOCK_PARTIAL_*` macros expand to a mockable interface header filename.
 
@@ -41,7 +49,9 @@ that refine the set of functions selected by the use of any module selection
 macro above.
 
 * **`TEST_PARTIAL_CONFIG(module, func...)`**<br/>Add or subtract functions from the test Partial’s function set.
+* **`TEST_PARTIAL_CONFIG_AT(dir, module, func...)`**<br/>Add or subtract functions from the test Partial’s function set for the module at `dir`.
 * **`MOCK_PARTIAL_CONFIG(module, func...)`**<br/>Add or subtract functions from the mock Partial’s function set.
+* **`MOCK_PARTIAL_CONFIG_AT(dir, module, func...)`**<br/>Add or subtract functions from the mock Partial’s function set for the module at `dir`.
 
 ### Function list addition and subtraction
 

@@ -49,6 +49,12 @@ meant.
   to provide a path to distinguish source files of the same name to be 
   compiled and linked with a test executable.
 
+!!! warning "One test file cannot mock two same-named headers"
+    Path information distinguishes which header a mock is generated _from_, but a
+    single test file cannot presently mock two headers that share a filename 
+    because of a (temporary) CMock limitation. See
+    [Known Issues](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md).
+
 `TEST_SOURCE_FILE()` also takes precedence over the header/source correspondence
 convention above. If a test both `#include`s a header and separately names a
 same-named source via `TEST_SOURCE_FILE()`, the directive's own path wins outright
@@ -215,6 +221,12 @@ The `#include` list directs Ceedling in two ways:
    source header file (e.g. `foo.h`), generate a mock from it, and
    compile & link that generated code into into the test executable 
    as well.
+
+A mock is generated into the directory mirroring the header it came from, so two
+same-named headers in different directories produce two mocks in different
+directories. Even so, a single test file cannot mock both because of a temporary
+CMock limitation that will cause duplicated symbol names and missing defintions.
+Mock either header alone, or split the two across separate test files.
 
 Sometimes the source file you need to add to your test executable has
 no corresponding header file — e.g. `file_abc.h` contains symbols 
