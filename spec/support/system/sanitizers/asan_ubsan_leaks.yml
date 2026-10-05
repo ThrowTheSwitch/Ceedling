@@ -1,0 +1,57 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# Sanitizer flavor: AddressSanitizer + UndefinedBehaviorSanitizer, leak
+# detection ON.
+#
+# Identical to asan_ubsan.yml in every flag -- LeakSanitizer ships inside ASan
+# and is a runtime option, not a compile option. See that file for why the
+# matcher is a negative lookahead, why \A is load-bearing, and why
+# -fno-sanitize-recover=all is used instead of an UBSAN_OPTIONS wrapper.
+#
+# This is the flavor CI runs.
+#
+# It was not assumed safe. The concern that justified switching leaks off at
+# first was that Unity and CMock's memory pool might leave allocations
+# outstanding at exit, flagging nearly every executable and burying real
+# findings. Measured in throwtheswitch/madsciencelab-plugins (GCC 14.2) rather
+# than reasoned about: the whole system suite passes with leak detection on, 313
+# examples, zero leak reports -- CMock's memory pool is a static array by
+# default, not heap allocation. A deliberately leaked buffer in the same
+# environment does fail the build, so that clean result is a measurement and not
+# an inactive sanitizer.
+#
+# asan_ubsan (leaks off) is kept as a triage flavor: when a finding appears,
+# running it separates a leak from a memory error or UB without changing
+# anything else.
+
+:flags:
+  :test:
+    :compile:
+      :/\A(?!.*nosanitize).*\z/:
+        - -fsanitize=address,undefined
+        - -fno-sanitize-recover=all
+        - -fno-omit-frame-pointer
+        - -g
+    :link:
+      :/\A(?!.*nosanitize).*\z/:
+        - -fsanitize=address,undefined
+
+:defines:
+  :test:
+    :/\A(?!.*nosanitize).*\z/:
+      - CEEDLING_SANITIZERS_ACTIVE
+
+# The one line that distinguishes this flavor from asan_ubsan.
+#
+# exitcode is pinned explicitly because LeakSanitizer's default nonzero exit is
+# what Ceedling reads as a crashed test executable (GeneratorHelper#test_crash?
+# treats "zero failures reported, nonzero unsignaled exit" as a crash). Leaving
+# it implicit would make this flavor's pass/fail behavior depend on the
+# toolchain's default.
+:sanitizer_runtime:
+  :ASAN_OPTIONS: detect_leaks=1:exitcode=1

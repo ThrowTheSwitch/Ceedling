@@ -172,7 +172,7 @@ module GcovCommonTestCases
         prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_boom.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_boom.c"), 'test/'
 
         output = @c.ceedling_build_exec("gcov:all")
         expect(@c.last_exit_status).to eq(1) # Since a test explodes, Ceedling exits with error
@@ -394,7 +394,7 @@ module GcovCommonTestCases
         prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -402,9 +402,9 @@ module GcovCommonTestCases
         expect(@c.last_exit_status).to eq(1) # Ceedling should exit with error because of failed test due to crash
         expect(output).to match(/crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/gcov/results/test_example_file_crash_sigsegv.fail'))
-        output_rd = read_spec_file('./build/gcov/results/test_example_file_crash_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
+        expect(File.exist?('./build/gcov/results/test_nosanitize_crash_sigsegv.fail'))
+        output_rd = read_spec_file('./build/gcov/results/test_nosanitize_crash_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_nosanitize_crash_sigsegv.c\:\d+/ )
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
@@ -428,7 +428,7 @@ module GcovCommonTestCases
         prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -436,9 +436,9 @@ module GcovCommonTestCases
         expect(@c.last_exit_status).to eq(1) # Ceedling should exit with error because of failed test due to crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/gcov/results/test_example_file_crash_sigsegv.fail'))
-        output_rd = read_spec_file('./build/gcov/results/test_example_file_crash_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
+        expect(File.exist?('./build/gcov/results/test_nosanitize_crash_sigsegv.fail'))
+        output_rd = read_spec_file('./build/gcov/results/test_nosanitize_crash_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_nosanitize_crash_sigsegv.c\:\d+/ )
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+0/)
         expect(output).to match(/FAILED:\s+1/)
@@ -463,20 +463,20 @@ module GcovCommonTestCases
         prep_project_yml_for_coverage
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         add_test_case = "\nvoid test_difference_between_two_numbers(void)\n"\
                         "{\n" \
                         "  TEST_ASSERT_EQUAL_INT(0, difference_between_numbers(1,1));\n" \
                         "}\n"
 
-        updated_test_file = read_spec_file('test/test_example_file_crash_sigsegv.c').split("\n")
+        updated_test_file = read_spec_file('test/test_nosanitize_crash_sigsegv.c').split("\n")
         updated_test_file.insert(updated_test_file.length(), add_test_case)
-        File.write('test/test_example_file_crash_sigsegv.c', updated_test_file.join("\n"), mode: 'w')
+        File.write('test/test_nosanitize_crash_sigsegv.c', updated_test_file.join("\n"), mode: 'w')
 
         output = @c.ceedling_build_exec("gcov:all --exclude_test_case=test_add_numbers_will_fail")
         expect(@c.last_exit_status).to eq(0)
-        expect(File.exist?('./build/gcov/results/test_example_file_crash_sigsegv.pass'))
+        expect(File.exist?('./build/gcov/results/test_nosanitize_crash_sigsegv.pass'))
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+2/)
         expect(output).to match(/FAILED:\s+0/)

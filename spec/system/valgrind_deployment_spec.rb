@@ -12,6 +12,11 @@ ceedling_system_tests do
   describe "Valgrind" do
     include ValgrindCommonTestCases
 
+    # ASan-instrumented binaries are not supported under Valgrind, and these
+    # examples assert Valgrind's own error counts on a fixture that faults by
+    # design. See the shared context for why opting out is mandatory.
+    include_context "cannot be sanitized"
+
     before :all do
       @c = SystemContext.new
       @c.deploy_gem

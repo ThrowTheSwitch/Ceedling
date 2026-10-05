@@ -101,6 +101,37 @@ task 'specs:system:debug' do
   Rake::Task['specs:system'].invoke
 end
 
+# Dynamic analysis of the C Ceedling itself generates -- test runners, mocks,
+# Partials -- plus the example projects. Each task selects a sanitizer flavor,
+# which is a file in spec/support/system/sanitizers/; the harness turns that into
+# a Ceedling mixin and the sanitizer's runtime options (see SystemContext).
+#
+# Set the variable and invoke the existing task, exactly as specs:system:debug
+# above does, so a developer here and CI run identical wiring rather than two
+# arrangements that can drift. CI instruments one matrix leg only (Linux, Ruby
+# 3.5): instrumentation roughly doubles build time, and a sanitizer finding in
+# generated code appears on every leg equally, so paying for it more than once
+# buys nothing.
+#
+# Fixtures that fault on purpose are excluded by name -- see
+# spec/support/system/sanitizers/asan_ubsan.yml.
+#
+# This flavor leaves leak detection off; specs:system:sanitize:leaks below is what
+# CI runs. Reach for this one to tell a leak from a memory error or UB.
+desc "Run all system specs with ASan+UBSan, leak detection off (triage)"
+task 'specs:system:sanitize' do
+  ENV['CEEDLING_TEST_SANITIZERS'] = 'asan_ubsan'
+  Rake::Task['specs:system:debug'].invoke
+end
+
+# What CI runs. Leak detection was measured clean across the whole suite before
+# being enabled -- see spec/support/system/sanitizers/asan_ubsan_leaks.yml.
+desc "Run all system specs with ASan+UBSan and leak detection (what CI runs)"
+task 'specs:system:sanitize:leaks' do
+  ENV['CEEDLING_TEST_SANITIZERS'] = 'asan_ubsan_leaks'
+  Rake::Task['specs:system:debug'].invoke
+end
+
 # Formats four HTML reports -- units alone, integration alone, system alone, and all
 # combined -- from the raw coverage data that CEEDLING_TEST_COVERAGE test runs
 # accumulate (see .simplecov and spec/support/system/simplecov_boot.rb). Run after
@@ -236,6 +267,35 @@ task 'spec:system:debug:*' do
             "Example: `rake spec:system:debug:cli_surface`\n" \
             "Run `rake -AT spec:system:debug` to list every available name.\n" \
             "Artifact locations are printed when the suite starts."
+
+  $stderr.puts message
+end
+
+# Individual system specs under ASan+UBSan. Triage, not routine: when CI's
+# instrumented leg reports a finding, chasing it in the one spec that produced it
+# beats re-running the whole suite at roughly double build time.
+#
+# Undescribed one by one for the same reason as the debug family above -- the
+# wildcard task below documents the whole family.
+# Matches the flavor CI runs, so a finding reproduces here rather than changing
+# shape. Switch to specs:system:sanitize above to ask whether it was a leak.
+Dir['spec/system/**/*_spec.rb'].each do |p|
+  base = File.basename(p,'.*').gsub('_spec','')
+  task "spec:system:sanitize:#{base}" do
+    ENV['CEEDLING_TEST_SANITIZERS'] = 'asan_ubsan_leaks'
+    ENV['CEEDLING_SYSTEM_TEST_KEEP'] = 'all'
+    Rake::Task["spec:system:#{base}"].invoke
+  end
+end
+
+desc "Run a system spec with ASan+UBSan instrumentation (replace [*] with spec name)."
+task 'spec:system:sanitize:*' do
+  message = "Oops! 'spec:system:sanitize:*' isn't a real task. " \
+            "Use a real system spec name in place of the wildcard.\n" \
+            "Example: `rake spec:system:sanitize:cli_surface`\n" \
+            "Run `rake -AT spec:system:sanitize` to list every available name.\n" \
+            "Requires a real GCC with ASan+UBSan support -- on macOS, run inside " \
+            "throwtheswitch/madsciencelab-plugins."
 
   $stderr.puts message
 end

@@ -66,22 +66,22 @@ module ValgrindCommonTestCases
         prep_project_yml_for_valgrind
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         output = @c.ceedling_build_exec("valgrind:all")
 
         expect(@c.last_exit_status).to eq(1) # Crash + Valgrind build failure
         # Ceedling crash detection
-        expect(output).to match(/test_example_file_crash_sigsegv.+crashed/i)
+        expect(output).to match(/test_nosanitize_crash_sigsegv.+crashed/i)
         # Per-test Valgrind memory error log (always fires when errors found)
         expect(output).to match(/Valgrind detected.*memory error/i)
         # Aggregate build failure registered by Valgrind plugin
         expect(output).to match(/Valgrind detected.*memory error.*across/i)
         expect(output).to match(/Wrote 1 Valgrind report/i)
-        expect(File.exist?('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to eq(true)
-        expect(File.size('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to be > 0
+        expect(File.exist?('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to be > 0
         # Expected memory error(s) detected by Valgrind
-        expect(read_spec_file('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
+        expect(read_spec_file('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
       end
     end
   end
@@ -97,22 +97,22 @@ module ValgrindCommonTestCases
         @c.merge_project_yml_for_test({ :valgrind => { :fail_build => false } })
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         output = @c.ceedling_build_exec("valgrind:all")
 
         expect(@c.last_exit_status).to eq(1) # Crash causes failure even without Valgrind build failure
         # Ceedling crash detection
-        expect(output).to match(/test_example_file_crash_sigsegv.+crashed/i)
+        expect(output).to match(/test_nosanitize_crash_sigsegv.+crashed/i)
         # Per-test Valgrind error log still fires (independent of :fail_build)
         expect(output).to match(/Valgrind detected.*memory error/i)
         # No aggregate Valgrind build failure registered
         expect(output).not_to match(/Valgrind detected.*memory error.*across/i)
         expect(output).to match(/Wrote 1 Valgrind report/i)
-        expect(File.exist?('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to eq(true)
-        expect(File.size('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to be > 0
+        expect(File.exist?('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to be > 0
         # Expected memory error(s) detected by Valgrind
-        expect(read_spec_file('build/artifacts/valgrind/test_example_file_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
+        expect(read_spec_file('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
       end
     end
   end

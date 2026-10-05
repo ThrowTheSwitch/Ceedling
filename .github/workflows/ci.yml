@@ -237,11 +237,26 @@ jobs:
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
       # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
+      #
+      # ASan+UBSan instrumentation runs on one leg of this matrix only -- Ruby 3.5
+      # -- on the same reasoning as the Ruby-3.3 coverage gate above: it reuses the
+      # tool installs this job already pays for, and instrumentation roughly
+      # doubles build time. A finding in generated C appears identically on every
+      # leg, so paying for it more than once buys nothing. Deliberately-faulty
+      # fixtures are excluded by name (see spec/support/system/sanitizers/), and a
+      # finding fails the job through Ceedling's existing crash detection.
+      #
+      # The flavor includes leak detection, which was measured clean across the
+      # whole suite before being enabled rather than assumed safe -- see
+      # spec/support/system/sanitizers/asan_ubsan_leaks.yml. The asan_ubsan
+      # flavor beside it leaves leaks off, for telling a leak from a memory
+      # error or UB when something does fire.
       - name: Run System Tests
         uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
           coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
+          sanitizers: ${{ matrix.ruby == '3.5' && 'asan_ubsan_leaks' || '' }}
 
       # Common plugin test steps. Runs before Generate Combined Coverage Report below --
       # each plugin's own coverage/raw/system-*/ resultsets (see run-plugin-tests'

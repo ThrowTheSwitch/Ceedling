@@ -20,6 +20,40 @@ class SystemContext
 
   SYSTEM_TEST_KEEP_ENV = 'CEEDLING_SYSTEM_TEST_KEEP'
 
+  # Dynamic analysis of Ceedling's own generated C -- runners, mocks, Partials.
+  #
+  # Names a sanitizer flavor, which is a file in SANITIZERS_DIR, so adding a
+  # flavor needs no change here. Follows CEEDLING_TEST_COVERAGE's convention of a
+  # named value rather than a boolean, so a second kind of instrumentation (leak
+  # detection) is another value rather than another variable.
+  SANITIZERS_ENV = 'CEEDLING_TEST_SANITIZERS'
+
+  # Slot 9, not 1: spec/system/mixin_ordering_spec.rb sets CEEDLING_MIXIN_1
+  # itself and asserts the resulting merge, so sharing that slot would collide
+  # with a spec. Higher also means merging last among env mixins.
+  SANITIZERS_MIXIN_ENV = 'CEEDLING_MIXIN_9'
+
+  REPO_ROOT = File.expand_path( File.join( File.dirname(__FILE__), '..', '..', '..' ) )
+
+  SANITIZERS_DIR = File.join( REPO_ROOT, 'spec', 'support', 'system', 'sanitizers' )
+
+  # Set per example by the "cannot be sanitized" shared context (see
+  # spec_system_helper.rb). Class-level rather than instance state because specs
+  # build their own SystemContext in before(:all) while this toggles in
+  # before/after(:each) -- a class-level flag makes the two order-independent.
+  @@sanitizers_disabled = false
+
+  # Flavor file path => its :sanitizer_runtime hash. See #sanitizer_runtime.
+  @@sanitizer_runtime = {}
+
+  def self.sanitizers_disabled=(disabled)
+    @@sanitizers_disabled = disabled
+  end
+
+  def self.sanitizers_disabled?
+    @@sanitizers_disabled
+  end
+
   # Root for retained system test artifacts, relative to the working directory.
   # Named once here because the log writer in spec_system_helper.rb, the gemspec,
   # .rubocop.yml, .gitignore, and CI all reach this path by name.
@@ -157,6 +191,13 @@ class SystemContext
   end
 
   def with_context
+    # Resolved out here, before with_constrained_env: Bundler.with_unbundled_env
+    # restores ENV from the snapshot it took when Bundler was first loaded, so
+    # CEEDLING_TEST_SANITIZERS is not readable inside that block unless it
+    # happened to be set before this process started. Resolving first makes this
+    # work whoever sets the variable, and whenever.
+    sanitizers = sanitizer_environment
+
     Dir.chdir @dir do |_current_dir|
       with_constrained_env do
         # Point bundle exec to the shared Gemfile so it works from any project directory.
@@ -182,6 +223,8 @@ class SystemContext
         ENV['LANGUAGE'] = 'en_US.UTF-8'
         ENV['LC_ALL'] = 'en_US.UTF-8'
 
+        sanitizers.each { |name, value| ENV[name] = value }
+
         yield
       end
     end
@@ -189,6 +232,55 @@ class SystemContext
 
   ############################################################
   # Functions for manipulating environment settings during tests:
+
+  # Translates CEEDLING_TEST_SANITIZERS into the environment variables Ceedling
+  # and the sanitizer runtime actually consume, as a hash for with_context to
+  # export. Empty when no flavor is selected or the current spec has opted out,
+  # which is what leaves every other matrix leg untouched.
+  #
+  # Nothing is needed downstream to make a finding fail a build:
+  # GeneratorHelper#test_crash? already reads both shapes a sanitizer produces --
+  # SIGABRT, and "zero failures reported but a nonzero unsignaled exit" -- as a
+  # crashed test executable.
+  def sanitizer_environment
+    return {} if self.class.sanitizers_disabled?
+
+    flavor = ENV[SANITIZERS_ENV].to_s.strip
+    return {} if flavor.empty?
+
+    path = File.join( SANITIZERS_DIR, "#{flavor}.yml" )
+    unless File.exist?( path )
+      available = Dir[File.join( SANITIZERS_DIR, '*.yml' )].map { |f| File.basename( f, '.yml' ) }.sort
+      raise VerificationFailed,
+        "#{SANITIZERS_ENV} names no sanitizer flavor: '#{flavor}'. " \
+        "Available flavors: #{available.join(', ')}. " \
+        "Failing here rather than running uninstrumented -- a silent fallback would report " \
+        "success while testing none of what it claims to."
+    end
+
+    # The mixin path is absolute because each spec chdir's into its own ephemeral
+    # project directory and Ceedling resolves a mixin path against that CWD.
+    #
+    # Each flavor owns its runtime options -- they are the only difference
+    # between asan_ubsan and asan_ubsan_leaks -- and they reach the test
+    # executable because it inherits this environment through Ceedling.
+    environment = { SANITIZERS_MIXIN_ENV => path }
+    sanitizer_runtime( path ).each { |name, value| environment[name.to_s] = value.to_s }
+    environment
+  end
+
+  # Memoized per flavor file: with_context runs on every build in the suite, and
+  # re-reading the same YAML thousands of times buys nothing.
+  def sanitizer_runtime(path)
+    @@sanitizer_runtime[path] ||= begin
+      file_wrapper = FileWrapper.new({
+        :loginator    => NullLoginator.new,
+        :verbosinator => Verbosinator.new
+      })
+      hash = YamlWrapper.new({ file_wrapper: file_wrapper }).load( path )
+      hash[:sanitizer_runtime] || {}
+    end
+  end
 
   # Runs the block against the pre-`bundle exec` environment (see the matching
   # comment on Bundler.with_unbundled_env in setup_shared_gem! above) so a
