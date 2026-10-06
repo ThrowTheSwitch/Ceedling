@@ -5140,13 +5140,11 @@ instead of through a Rake task, prefix it with <code>bundle exec</code>:</p>
 <a href="../../project/sbom/">Software Bill of Materials</a> carries a license for every gem a user
 installs, and that comes from a curated list in <code>tools/sbom/gem_licenses.rb</code>
 rather than from <code>Gemfile.lock</code>.</p>
-<p>The list is curated because nothing else is accurate. <code>Gemfile.lock</code> records no
-license at all. A gem’s own gemspec is unreliable, and two of Ceedling’s
-dependencies show why. <code>constructor</code> declares nothing in its gemspec while
-stating MIT plainly in its README. <code>benchmark</code> is offered under either of two
-licenses, which no single identifier expresses.</p>
-<p>Each entry records three things. The license is an SPDX identifier or
-expression. <code>verified_for</code> is the version the license was read against.
+<p>The list is curated because nothing else is accurate. <code>Gemfile.lock</code> records 
+no license at all. A gem’s own gemspec is unreliable, and project license 
+statements and conventions are often messy.</p>
+<p>Each curated entry records three things. The license is an SPDX identifier 
+or expression. <code>verified_for</code> is the version the license was read against.
 <code>source</code> names where it was read.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="s1">&#39;rake&#39;</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="ss">license</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;MIT&#39;</span><span class="p">,</span>
@@ -5164,9 +5162,9 @@ disagree. It reports three kinds of disagreement and names the remedy for each.<
 </ul>
 <p>That third check is why <code>verified_for</code> exists. A license cannot be re-read
 without reaching the network, so a version change stands in for “worth reading
-again”. Because <code>Gemfile.lock</code> is curated by hand here, a version change is
-already a deliberate act, and this failure lands while you are editing
-dependencies.</p>
+again”. Because <code>Gemfile.lock</code> is generally curated by hand in this project,
+a version change is already a deliberate act, and this failure lands while 
+you are editing dependencies.</p>
 <p>One kind of drift escapes all three checks. A gem may change its license
 without changing version. <code>rake sbom:licenses:audit</code> compares the list against
 gems installed locally and reports anything that disagrees. It reads your
