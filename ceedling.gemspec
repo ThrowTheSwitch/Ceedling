@@ -36,7 +36,20 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
     "documentation_uri" => "https://docs.throwtheswitch.org/Ceedling/",
     "mailing_list_uri"  => "https://throwtheswitch.discourse.group",
     "source_code_uri"   => "https://github.com/ThrowTheSwitch/Ceedling",
-    "funding_uri"       => "https://github.com/sponsors/ThrowTheSwitch"
+    "funding_uri"       => "https://github.com/sponsors/ThrowTheSwitch",
+    "changelog_uri"     => "https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md",
+    # Machine-discoverable pointer to this gem's own Software Bill of Materials, which is
+    # published as a release asset rather than carried inside the gem.
+    #
+    # Pinned to this version's release rather than `releases/latest/download`. The
+    # filename carries a version, so a `latest` URL would stop resolving the moment a
+    # newer release existed, and it never resolves to a pre-release at all.
+    #
+    # The tag is reconstructed by inverting what stamp_gem_version.sh does: it turns the
+    # tag's first hyphen into a dot, so the dot preceding a pre-release word becomes a
+    # hyphen again. v1.2.0-pre.7 ⏩️ 1.2.0.pre.7 ⏩️ v1.2.0-pre.7
+    "sbom_uri"          => "https://github.com/ThrowTheSwitch/Ceedling/releases/download/" \
+                           "v#{s.version.to_s.sub( /\.(?=[a-z])/, '-' )}/ceedling-#{s.version}.cdx.json"
   }
   
   s.required_ruby_version = ">= 3.0.0"
