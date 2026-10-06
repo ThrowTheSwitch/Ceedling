@@ -395,7 +395,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../release-history/" class="md-tabs__link">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -3703,6 +3703,10 @@
     
       
         
+          
+        
+      
+        
       
         
       
@@ -3727,8 +3731,9 @@
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
-            
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
@@ -3742,8 +3747,14 @@
   
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_8" id="__nav_8_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_8">
@@ -3755,6 +3766,8 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
             
               
                 
@@ -4501,7 +4514,7 @@
     
     
       <li class="md-path__item">
-        <a href="../release-history/" class="md-path__link">
+        <a href="../" class="md-path__link">
           
   <span class="md-ellipsis">
     Releases
@@ -4541,16 +4554,17 @@ and mocks, and your compiler toolchain are all outside their scope.</p>
 </div>
 <hr />
 <h2 id="scope">Scope</h2>
-<p>The documents describe one artifact. That artifact is the published Ceedling gem.
-Everything else is out of scope, including two things worth naming directly.</p>
+<p>The documents describe one artifact, the published Ceedling gem. All else is out of 
+scope:</p>
 <p><strong>Your build output is not described.</strong> Ceedling generates C for your project.
 Test runners, mocks, and Partials are all produced from your source at build time.
-None of that is part of Ceedling’s own distribution, so none of it appears here.</p>
+None of that is part of Ceedling’s own distribution, so none of it appears in the 
+SBOM.</p>
 <p><strong>Plugin tool requirements are not described.</strong> An enabled plugin may need external
-tools that Ceedling never ships. The Gcov, Valgrind, Bullseye, and Cppcheck plugins
-all work this way. Which tools an installation actually needs depends on which
-plugins it enables, so a project-level document cannot state it. Each plugin
-documents its own requirements under <a href="../../plugins/">Plugins</a>.</p>
+tools that Ceedling never ships. For example, the Gcov, Valgrind, Bullseye, and 
+Cppcheck plugins all work this way. Which tools an installation actually needs 
+depends on which plugins it enables, so a project-level document cannot state it.
+Each plugin documents its own requirements under <a href="../../plugins/">Plugins</a>.</p>
 <hr />
 <h2 id="where-to-find-them">Where to find them</h2>
 <p>The documents are attached to each release on GitHub. Look for two assets beside
@@ -4562,33 +4576,29 @@ the <code>.gem</code> file.</p>
 document for that exact version.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w"> </span>&gt;<span class="w"> </span>gem<span class="w"> </span>specification<span class="w"> </span>ceedling<span class="w"> </span>metadata
 </code></pre></div>
-<p>The documents are release assets and are never committed to the repository. Two
-reasons decide this. A committed copy would carry no attestation, which would make
-the more discoverable of two sources the less trustworthy one. And the release
-version is stamped during the release build, so a document committed at the tagged
-commit would name a development version rather than the released one.</p>
+<p>The documents are release assets and are never committed to the repository.</p>
 <div class="admonition warning">
 <p class="admonition-title">A version-specific link is the reliable one</p>
 <p><code>releases/latest/download/</code> resolves only to the most recent full release, and
 never to a pre-release. Because each filename carries a version, such a link
-stops working as soon as a newer release exists. Link to a version’s own release
-page instead.</p>
+stops working as soon as a newer release exists. Link to a version’s individual
+release page instead.</p>
 </div>
 <hr />
 <h2 id="what-the-documents-include">What the documents include</h2>
-<p>Three kinds of component appear. Each is identified by a <a href="https://github.com/package-url/purl-spec">Package URL</a>.</p>
+<p>Three kinds of component appear. Each is identified by a <a href="https://github.com/package-url/purl-spec">Package URL</a> (PURL).</p>
 <h3 id="ruby-dependencies">Ruby dependencies</h3>
 <p>The gem’s declared runtime dependencies appear with the version the release build
-resolved. The declared constraint is recorded alongside, as a component property.
+resolved. The declared constraint is recorded alongside as a component property.
 Ceedling bounds its dependencies rather than pinning them, and recording only a
 resolved version would imply otherwise.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pkg:gem/rake@13.2.1          declared  &gt;= 12, &lt; 14
 </code></pre></div>
-<p>Licenses for these come from a curated list rather than from the lockfile. A
-lockfile records no license at all, and a gem’s own metadata is not reliable. One
-of Ceedling’s dependencies declares no license in its gemspec while stating MIT
-plainly in its README. Another is dual-licensed, which no single identifier
-expresses.</p>
+<p>Licenses for these come from a curated list rather than from the Gem lockfile. A
+lockfile records no license at all, and a gem’s own metadata is not reliable. 
+Depenencies can have messy licensing and records. The curated list of licenses
+that feeds SBOM generation solves this problem. Tooling helps ensure the curated
+list is reviewed upon changed to dependencies.</p>
 <h3 id="vendored-c-components">Vendored C components</h3>
 <p>Unity, CMock, and CException ship inside the gem. Each is identified by the commit
 it is pinned at, not by a version string. A header version appears as well, for
@@ -4597,18 +4607,11 @@ readers.</p>
 </code></pre></div>
 <p>A commit is the identifier because a version string cannot always tell two copies
 apart. CMock vendors its own Unity, so a Ceedling gem carries two Unity source
-trees. Both report header version 2.7.2 and they sit at different commits. Only the
-commit distinguishes them.</p>
-<p>The same choice resolves a second case. CException’s header reports a version ahead
-of its latest release tag, because the pinned commit is later than that tag. The
-commit says exactly what ships.</p>
-<div class="admonition note">
-<p class="admonition-title">Two components may share one identifier</p>
+trees that may report the same version as different commits.</p>
 <p>CException also ships twice, and both copies sit at the same commit. They
 therefore share a Package URL. Each occurrence still appears separately, with
 its own reference and its own path. A Package URL names a package. It does not
 name a location.</p>
-</div>
 <h3 id="the-fff-plugin">The fff plugin</h3>
 <p>The fff plugin is a modified descendant of an earlier project, and the documents say
 so. Its lineage appears as CycloneDX pedigree and as an SPDX <code>VARIANT_OF</code>
@@ -4616,8 +4619,14 @@ relationship.</p>
 <p>The plugin layer carries no Package URL of its own. Having been modified, it is no
 longer the package it descends from. Pointing an identifier at that package would
 invite a scanner to match advisories against code that differs.</p>
-<p>The framework itself is a separate component nested inside the plugin. It carries no
-version, because upstream publishes no version marker of any kind.</p>
+<p>The FFF framework itself is a separate component vendored inside the Ceedling plugin
+built around it. It began as a snapshot of upstream FFF <a href="https://github.com/meekrosoft/fff/releases/tag/v1.1">v1.1</a>.</p>
+<p>That origin is recorded here rather than in the SBOM. Nothing in the vendored source 
+records a version. There is no version macro and no version file. And the vendored 
+<code>fff.h</code> is not byte-identical to any upstream release, being a generated file that 
+was regenerated rather than copied. Naming a release in the document would therefore 
+assert more than the source supports, so the component is identified without a 
+version.</p>
 <hr />
 <h2 id="what-the-documents-exclude">What the documents exclude</h2>
 <p>Development and test dependencies are excluded. RSpec, RuboCop, SimpleCov and the
@@ -4644,7 +4653,7 @@ Use <code>https://cyclonedx.org/bom</code> for CycloneDX and
 <hr />
 <h2 id="githubs-own-export">GitHub’s own export</h2>
 <p>GitHub generates an SPDX document from its dependency graph, reachable under
-Insights. It is a reasonable fallback and it is not equivalent to these documents.</p>
+Insights. It is a reasonable fallback, but it is not equivalent to these documents.</p>
 <p>That export sees Ceedling’s Ruby manifests and nothing else. Unity, CMock,
 CException, DIY, and fff are all absent from it, because none of them arrives as a
 Ruby dependency. Those are the components most likely to matter to a C project.</p>
