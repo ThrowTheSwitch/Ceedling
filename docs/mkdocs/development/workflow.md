@@ -200,6 +200,66 @@ instead of through a Rake task, prefix it with `bundle exec`:
  > bundle exec rspec spec/some_spec.rb
 ```
 
+### Recording a dependency’s license
+
+Changing a runtime dependency means recording its license. The generated
+[Software Bill of Materials][sbom] carries a license for every gem a user
+installs, and that comes from a curated list in `tools/sbom/gem_licenses.rb`
+rather than from `Gemfile.lock`.
+
+The list is curated because nothing else is accurate. `Gemfile.lock` records 
+no license at all. A gem’s own gemspec is unreliable, and project license 
+statements and conventions are often messy.
+
+Each curated entry records three things. The license is an SPDX identifier 
+or expression. `verified_for` is the version the license was read against.
+`source` names where it was read.
+
+```ruby
+'rake' => {
+  license: 'MIT',
+  verified_for: '13.2.1',
+  source: "the gem's own gemspec"
+},
+```
+
+`rake sbom:build` refuses to run when the list and the resolved dependencies
+disagree. It reports three kinds of disagreement and names the remedy for each.
+
+- A dependency arrived with no entry. Read its license and add one.
+- An entry outlived its dependency. Remove it.
+- A version moved away from the one its entry was verified against. Read the
+  license again, then update `license` and `verified_for` together.
+
+That third check is why `verified_for` exists. A license cannot be re-read
+without reaching the network, so a version change stands in for “worth reading
+again”. Because `Gemfile.lock` is generally curated by hand in this project,
+a version change is already a deliberate act, and this failure lands while 
+you are editing dependencies.
+
+One kind of drift escapes all three checks. A gem may change its license
+without changing version. `rake sbom:licenses:audit` compares the list against
+gems installed locally and reports anything that disagrees. It reads your
+machine rather than the repository, so it is advisory and deliberately outside
+`sbom:build`.
+
+```shell
+ > rake sbom:licenses:audit
+```
+
+### Updating a vendored component
+
+Updating Unity, CMock, or CException needs no bookkeeping beyond the submodule
+itself. Each is identified in the SBOM by the commit it is pinned at, read from
+`git submodule status --recursive` at generation time.
+
+Vendored DIY and vendored fff are different, being plain directories rather than
+submodules. DIY’s version is read from its source. fff has no version of any
+kind upstream, and its lineage is recorded as constants in
+`tools/sbom/inventory.rb`. Changing either means updating those.
+
+[sbom]: ../project/sbom.md
+
 ## Running self-tests
 
 Ceedling uses [RSpec] for its tests.
@@ -462,6 +522,23 @@ would be packaged inside the next one.
     A local build omits the offline documentation bundle unless `site-local/`
     already exists. CI builds that bundle first. Run `rake docs:build:local` to
     match it.
+
+### Generating the Bill of Materials
+
+`rake sbom:build` writes both [Software Bill of Materials][sbom] documents into
+the repository root. A release generates them the same way.
+
+```shell
+ > rake sbom:build
+ > rake sbom:specs
+```
+
+The documents are never committed, and two mechanisms keep them out. `.gitignore`
+covers them, and the gemspec rejects them so a local build cannot package one
+into the gem it describes.
+
+A local document names a development version, for the same reason a locally built
+gem does. The release version is stamped during the release build.
 
 Unpack the result to inspect it.
 
