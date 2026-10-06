@@ -49,9 +49,9 @@ describe Sbom::Purl do
   end
 
   describe 'an absent version' do
-    # The vendored fff carries no version marker of any kind, so its identifier has
-    # nothing to put after the separator. Emitting a bare trailing '@' would be
-    # malformed rather than merely empty.
+    # Nothing in the vendored fff source records which release it came from, so its
+    # identifier has nothing to put after the separator. Emitting a bare trailing '@'
+    # would be malformed rather than merely empty.
     it 'omits the separator entirely rather than trailing it' do
       expect( Sbom::Purl.github( 'meekrosoft', 'fff' ) ).to eq('pkg:github/meekrosoft/fff')
     end

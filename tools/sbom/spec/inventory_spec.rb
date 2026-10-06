@@ -131,7 +131,7 @@ describe Sbom::Inventory do
       expect( ancestor.license ).to eq('MIT')
     end
 
-    it 'nests the framework itself, which carries no version marker' do
+    it 'nests the framework itself, the source recording no version' do
       fff = build.all_components.find { |c| c.path == 'plugins/fff' }
       inner = fff.children.first
 

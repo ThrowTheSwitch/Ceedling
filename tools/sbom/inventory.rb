@@ -22,7 +22,6 @@ module Sbom
 
     class Error < RuntimeError; end
 
-    # Submodule directory basename to the GitHub coordinates its source came from.
     # Submodule directory basename to everything derived from it: the GitHub coordinates
     # its source came from, and the key its header version arrives under. CException is
     # the one whose repository name differs from its directory, and both of its copies
@@ -33,9 +32,10 @@ module Sbom
       'c_exception' => { namespace: 'throwtheswitch', repository: 'cexception', version_key: :cexception }
     }.freeze
 
-    # fff reached Ceedling as a submodule of a plugin packaging of the framework, became
-    # a snapshot of 0.1.1 in January 2024, and has been modified since. Constants rather
-    # than lookups: nothing in the tree records any of it.
+    # fff reached Ceedling as a submodule of a plugin packaging of the framework and
+    # became a snapshot of it in January 2024. The pinned commit is the one upstream
+    # tagged v0.1.2. Constants rather than lookups, nothing in the tree recording any
+    # of it.
     FFF_ANCESTOR_COMMIT = 'd3914ef0'
     FFF_PATH = 'plugins/fff'
     FFF_VENDOR_PATH = 'plugins/fff/vendor/fff'
@@ -151,18 +151,19 @@ module Sbom
               path: 'ancestor/electronvector-fake_function_framework'
             )
           ],
-          notes: 'Descends from a snapshot of 0.1.1, modified since it stopped being a submodule in 2024.'
+          notes: 'Descends from upstream v0.1.2, modified since it stopped being a submodule in 2024.'
         ),
         children: [
           Component.new(
             name: 'fff',
             kind: 'bundled',
             path: FFF_VENDOR_PATH,
-            # No version of any kind. The vendored framework carries no version macro
-            # and no version file, so a PURL without one is the honest identifier.
+            # Upstream tags releases, but nothing in the vendored tree records which one
+            # this came from. No version macro, no version file. Asserting a release the
+            # source does not evidence would be a guess, so the identifier carries none.
             purl: Purl.github( 'meekrosoft', 'fff' ),
             license: @licenses[FFF_VENDOR_PATH],
-            notes: 'Upstream carries no version marker.'
+            notes: 'Vendored snapshot. The source records no version, so none is asserted.'
           )
         ]
       )
