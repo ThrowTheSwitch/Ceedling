@@ -44,3 +44,8 @@ ceedling.sublime-workspace
 .ruby-version
 ceedling-*.gem
 Gemfile.lock
+
+# Generated SBOMs -- attached to releases, never committed. The gemspec also rejects
+# these so a local `rake sbom:build` cannot leak one into a gem built afterward.
+ceedling-*.cdx.json
+ceedling-*.spdx.json

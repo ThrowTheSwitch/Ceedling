@@ -87,7 +87,8 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
     f == 'tools' || f.start_with?('tools/') ||            # Dev tooling the Rakefile above shells out to
     f == 'docs/mkdocs' || f.start_with?('docs/mkdocs/') ||  # Raw docs source -- site-local/ is the built artifact the gem actually serves
     f == 'specout' || f.start_with?('specout/') ||        # Retained system test artifacts and run logs
-    f == 'build' || f.start_with?('build/') || f.include?('/build/')  # Local build output
+    f == 'build' || f.start_with?('build/') || f.include?('/build/') ||  # Local build output
+    f.match?(/\.(cdx|spdx)\.json\z/)                      # Generated SBOMs -- release assets, not gem contents
   end
 
   # Dir['**/*'] cannot see dotfiles, and a few are required for the spec suites that

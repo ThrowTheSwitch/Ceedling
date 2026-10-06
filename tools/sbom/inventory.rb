@@ -174,7 +174,11 @@ module Sbom
           "#{@excluded_gems.sort.join( ', ' )}.",
         'ceedling:dependency-versions' =>
           'Gem versions are those the release build resolved, not the only versions ' \
-          'the declared constraints permit.'
+          'the declared constraints permit.',
+        'ceedling:gem-licenses' =>
+          'Licenses are asserted only for source shipped inside the gem, where the ' \
+          'license file was read directly. A fetched gem carries no license here ' \
+          'because Gemfile.lock records none. Resolve those from its PURL.'
       }
     end
 
