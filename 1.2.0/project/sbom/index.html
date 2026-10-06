@@ -10,31 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://docs.throwtheswitch.org/Ceedling/latest/configuration/reference/test-runner/">
+        <link rel="canonical" href="https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/">
       
       
-        <link rel="prev" href="../cmock/">
+        <link rel="prev" href="../release-history/">
       
       
-        <link rel="next" href="../cexception/">
+        <link rel="next" href="../upgrade/">
       
       
         
       
       
-      <link rel="icon" href="../../../assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Test Runner - Ceedling</title>
+        <title>Software Bill of Materials - Ceedling</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -53,11 +53,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/styling.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/styling.css">
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/admonitions.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/admonitions.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#test_runner" class="md-skip">
+        <a href="#software-bill-of-materials" class="md-skip">
           Skip to content
         </a>
       
@@ -111,7 +111,7 @@
   
 
             </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
           </aside>
         
       </div>
@@ -121,7 +121,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="Ceedling" class="md-header__button md-logo" aria-label="Ceedling" data-md-component="logo">
+    <a href="../.." title="Ceedling" class="md-header__button md-logo" aria-label="Ceedling" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -141,7 +141,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Test Runner
+              Software Bill of Materials
             
           </span>
         </div>
@@ -240,7 +240,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../.." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
@@ -261,7 +261,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../overview/" class="md-tabs__link">
+        <a href="../../overview/" class="md-tabs__link">
           
   
   
@@ -283,7 +283,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../getting-started/" class="md-tabs__link">
+        <a href="../../getting-started/" class="md-tabs__link">
           
   
   
@@ -305,7 +305,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../testing-guide/" class="md-tabs__link">
+        <a href="../../testing-guide/" class="md-tabs__link">
           
   
   
@@ -323,13 +323,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../configuration/" class="md-tabs__link">
           
   
   
@@ -351,7 +349,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../plugins/" class="md-tabs__link">
+        <a href="../../plugins/" class="md-tabs__link">
           
   
   
@@ -373,7 +371,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../reference/" class="md-tabs__link">
+        <a href="../../reference/" class="md-tabs__link">
           
   
   
@@ -391,11 +389,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../../project/release-history/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../release-history/" class="md-tabs__link">
           
   
   
@@ -415,7 +415,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../help/" class="md-tabs__link">
+      <a href="../../help/" class="md-tabs__link">
         
   
   
@@ -436,7 +436,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../development/" class="md-tabs__link">
+        <a href="../../development/" class="md-tabs__link">
           
   
   
@@ -472,7 +472,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="Ceedling" class="md-nav__button md-logo" aria-label="Ceedling" data-md-component="logo">
+    <a href="../.." title="Ceedling" class="md-nav__button md-logo" aria-label="Ceedling" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -502,7 +502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -558,7 +558,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../overview/" class="md-nav__link ">
+            <a href="../../overview/" class="md-nav__link ">
               
   
   
@@ -602,7 +602,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../overview/build-system/" class="md-nav__link">
+      <a href="../../overview/build-system/" class="md-nav__link">
         
   
   
@@ -630,7 +630,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../overview/tools-and-frameworks/" class="md-nav__link">
+      <a href="../../overview/tools-and-frameworks/" class="md-nav__link">
         
   
   
@@ -658,7 +658,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../overview/test-environments/" class="md-nav__link">
+      <a href="../../overview/test-environments/" class="md-nav__link">
         
   
   
@@ -726,7 +726,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../getting-started/" class="md-nav__link ">
+            <a href="../../getting-started/" class="md-nav__link ">
               
   
   
@@ -770,7 +770,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/quick-start/" class="md-nav__link">
+      <a href="../../getting-started/quick-start/" class="md-nav__link">
         
   
   
@@ -798,7 +798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/installation/" class="md-nav__link">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -826,7 +826,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/command-line/" class="md-nav__link">
+      <a href="../../getting-started/command-line/" class="md-nav__link">
         
   
   
@@ -854,7 +854,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/builds/" class="md-nav__link">
+      <a href="../../getting-started/builds/" class="md-nav__link">
         
   
   
@@ -911,7 +911,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../getting-started/example-projects/" class="md-nav__link ">
+            <a href="../../getting-started/example-projects/" class="md-nav__link ">
               
   
   
@@ -955,7 +955,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/example-projects/temp-sensor/" class="md-nav__link">
+      <a href="../../getting-started/example-projects/temp-sensor/" class="md-nav__link">
         
   
   
@@ -983,7 +983,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/example-projects/wondrous-forest/" class="md-nav__link">
+      <a href="../../getting-started/example-projects/wondrous-forest/" class="md-nav__link">
         
   
   
@@ -1011,7 +1011,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/example-projects/cipher-quest/" class="md-nav__link">
+      <a href="../../getting-started/example-projects/cipher-quest/" class="md-nav__link">
         
   
   
@@ -1091,7 +1091,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../testing-guide/" class="md-nav__link ">
+            <a href="../../testing-guide/" class="md-nav__link ">
               
   
   
@@ -1135,7 +1135,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/test-cases/" class="md-nav__link">
+      <a href="../../testing-guide/test-cases/" class="md-nav__link">
         
   
   
@@ -1163,7 +1163,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/test-sample/" class="md-nav__link">
+      <a href="../../testing-guide/test-sample/" class="md-nav__link">
         
   
   
@@ -1191,7 +1191,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/test-suite-anatomy/" class="md-nav__link">
+      <a href="../../testing-guide/test-suite-anatomy/" class="md-nav__link">
         
   
   
@@ -1219,7 +1219,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/conventions/" class="md-nav__link">
+      <a href="../../testing-guide/conventions/" class="md-nav__link">
         
   
   
@@ -1247,7 +1247,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/frameworks/" class="md-nav__link">
+      <a href="../../testing-guide/frameworks/" class="md-nav__link">
         
   
   
@@ -1310,7 +1310,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../testing-guide/partials/" class="md-nav__link ">
+            <a href="../../testing-guide/partials/" class="md-nav__link ">
               
   
   
@@ -1354,7 +1354,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/partials/overview/" class="md-nav__link">
+      <a href="../../testing-guide/partials/overview/" class="md-nav__link">
         
   
   
@@ -1382,7 +1382,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/partials/configuration/" class="md-nav__link">
+      <a href="../../testing-guide/partials/configuration/" class="md-nav__link">
         
   
   
@@ -1410,7 +1410,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/partials/example/" class="md-nav__link">
+      <a href="../../testing-guide/partials/example/" class="md-nav__link">
         
   
   
@@ -1438,7 +1438,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/partials/conventions/" class="md-nav__link">
+      <a href="../../testing-guide/partials/conventions/" class="md-nav__link">
         
   
   
@@ -1466,7 +1466,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/partials/directives/" class="md-nav__link">
+      <a href="../../testing-guide/partials/directives/" class="md-nav__link">
         
   
   
@@ -1494,7 +1494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/partials/variables/" class="md-nav__link">
+      <a href="../../testing-guide/partials/variables/" class="md-nav__link">
         
   
   
@@ -1530,7 +1530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../testing-guide/build-directives/" class="md-nav__link">
+      <a href="../../testing-guide/build-directives/" class="md-nav__link">
         
   
   
@@ -1562,8 +1562,6 @@
       
   
   
-    
-  
   
   
     
@@ -1593,23 +1591,20 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../" class="md-nav__link ">
+            <a href="../../configuration/" class="md-nav__link ">
               
   
   
@@ -1627,13 +1622,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1653,7 +1648,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../loading/" class="md-nav__link">
+      <a href="../../configuration/loading/" class="md-nav__link">
         
   
   
@@ -1681,7 +1676,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mixins/" class="md-nav__link">
+      <a href="../../configuration/mixins/" class="md-nav__link">
         
   
   
@@ -1709,7 +1704,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../project-file/" class="md-nav__link">
+      <a href="../../configuration/project-file/" class="md-nav__link">
         
   
   
@@ -1737,7 +1732,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../parallel-builds/" class="md-nav__link">
+      <a href="../../configuration/parallel-builds/" class="md-nav__link">
         
   
   
@@ -1765,7 +1760,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../environment-vars/" class="md-nav__link">
+      <a href="../../configuration/environment-vars/" class="md-nav__link">
         
   
   
@@ -1793,7 +1788,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../which-ceedling/" class="md-nav__link">
+      <a href="../../configuration/which-ceedling/" class="md-nav__link">
         
   
   
@@ -1821,7 +1816,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../global-collections/" class="md-nav__link">
+      <a href="../../configuration/global-collections/" class="md-nav__link">
         
   
   
@@ -1846,8 +1841,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1899,21 +1892,18 @@
       
       
         
-          
-          
-        
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_9" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_9" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../configuration/reference/" class="md-nav__link ">
               
   
   
@@ -1931,13 +1921,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5_9" id="__nav_5_9_label" tabindex="">
+              <label class="md-nav__link " for="__nav_5_9" id="__nav_5_9_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_9_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_9_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5_9">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1957,7 +1947,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../project/" class="md-nav__link">
+      <a href="../../configuration/reference/project/" class="md-nav__link">
         
   
   
@@ -1985,7 +1975,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mixins/" class="md-nav__link">
+      <a href="../../configuration/reference/mixins/" class="md-nav__link">
         
   
   
@@ -2013,7 +2003,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-build/" class="md-nav__link">
+      <a href="../../configuration/reference/test-build/" class="md-nav__link">
         
   
   
@@ -2041,7 +2031,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../partials/" class="md-nav__link">
+      <a href="../../configuration/reference/partials/" class="md-nav__link">
         
   
   
@@ -2069,7 +2059,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../release-build/" class="md-nav__link">
+      <a href="../../configuration/reference/release-build/" class="md-nav__link">
         
   
   
@@ -2097,7 +2087,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../paths/" class="md-nav__link">
+      <a href="../../configuration/reference/paths/" class="md-nav__link">
         
   
   
@@ -2125,7 +2115,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../files/" class="md-nav__link">
+      <a href="../../configuration/reference/files/" class="md-nav__link">
         
   
   
@@ -2153,7 +2143,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../environment/" class="md-nav__link">
+      <a href="../../configuration/reference/environment/" class="md-nav__link">
         
   
   
@@ -2181,7 +2171,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../extension/" class="md-nav__link">
+      <a href="../../configuration/reference/extension/" class="md-nav__link">
         
   
   
@@ -2209,7 +2199,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../defines/" class="md-nav__link">
+      <a href="../../configuration/reference/defines/" class="md-nav__link">
         
   
   
@@ -2237,7 +2227,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../flags/" class="md-nav__link">
+      <a href="../../configuration/reference/flags/" class="md-nav__link">
         
   
   
@@ -2265,7 +2255,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../libraries/" class="md-nav__link">
+      <a href="../../configuration/reference/libraries/" class="md-nav__link">
         
   
   
@@ -2293,7 +2283,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../unity/" class="md-nav__link">
+      <a href="../../configuration/reference/unity/" class="md-nav__link">
         
   
   
@@ -2321,7 +2311,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cmock/" class="md-nav__link">
+      <a href="../../configuration/reference/cmock/" class="md-nav__link">
         
   
   
@@ -2346,37 +2336,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Test Runner
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../configuration/reference/test-runner/" class="md-nav__link">
         
   
   
@@ -2392,81 +2355,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#test-runner-overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Test runner overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#unity-test-runners" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unity &amp; test runners
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#test_runner-cmdline_args" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        :test_runner ↳ :cmdline_args
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#test_runner-rng_seed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        :test_runner ↳ :rng_seed
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-test_runner-yaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example :test_runner YAML
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2479,7 +2367,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cexception/" class="md-nav__link">
+      <a href="../../configuration/reference/cexception/" class="md-nav__link">
         
   
   
@@ -2507,7 +2395,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../plugins/" class="md-nav__link">
+      <a href="../../configuration/reference/plugins/" class="md-nav__link">
         
   
   
@@ -2535,7 +2423,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tools/" class="md-nav__link">
+      <a href="../../configuration/reference/tools/" class="md-nav__link">
         
   
   
@@ -2635,7 +2523,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../plugins/" class="md-nav__link ">
+            <a href="../../plugins/" class="md-nav__link ">
               
   
   
@@ -2679,7 +2567,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/report-tests-pretty-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-pretty-stdout/" class="md-nav__link">
         
   
   
@@ -2707,7 +2595,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/report-tests-ide-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-ide-stdout/" class="md-nav__link">
         
   
   
@@ -2735,7 +2623,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/report-tests-gtestlike-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-gtestlike-stdout/" class="md-nav__link">
         
   
   
@@ -2763,7 +2651,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/report-tests-teamcity-stdout/" class="md-nav__link">
+      <a href="../../plugins/report-tests-teamcity-stdout/" class="md-nav__link">
         
   
   
@@ -2791,7 +2679,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/report-tests-log-factory/" class="md-nav__link">
+      <a href="../../plugins/report-tests-log-factory/" class="md-nav__link">
         
   
   
@@ -2819,7 +2707,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/report-tests-raw-output-log/" class="md-nav__link">
+      <a href="../../plugins/report-tests-raw-output-log/" class="md-nav__link">
         
   
   
@@ -2847,7 +2735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/report-build-warnings-log/" class="md-nav__link">
+      <a href="../../plugins/report-build-warnings-log/" class="md-nav__link">
         
   
   
@@ -2914,7 +2802,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../plugins/gcov/" class="md-nav__link ">
+            <a href="../../plugins/gcov/" class="md-nav__link ">
               
   
   
@@ -2958,7 +2846,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/gcov/overview/" class="md-nav__link">
+      <a href="../../plugins/gcov/overview/" class="md-nav__link">
         
   
   
@@ -2986,7 +2874,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/gcov/tool-versions/" class="md-nav__link">
+      <a href="../../plugins/gcov/tool-versions/" class="md-nav__link">
         
   
   
@@ -3014,7 +2902,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/gcov/setup/" class="md-nav__link">
+      <a href="../../plugins/gcov/setup/" class="md-nav__link">
         
   
   
@@ -3042,7 +2930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/gcov/examples/" class="md-nav__link">
+      <a href="../../plugins/gcov/examples/" class="md-nav__link">
         
   
   
@@ -3070,7 +2958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/gcov/reporting/" class="md-nav__link">
+      <a href="../../plugins/gcov/reporting/" class="md-nav__link">
         
   
   
@@ -3098,7 +2986,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/gcov/gcovr/" class="md-nav__link">
+      <a href="../../plugins/gcov/gcovr/" class="md-nav__link">
         
   
   
@@ -3126,7 +3014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/gcov/reportgenerator/" class="md-nav__link">
+      <a href="../../plugins/gcov/reportgenerator/" class="md-nav__link">
         
   
   
@@ -3154,7 +3042,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/gcov/troubleshooting/" class="md-nav__link">
+      <a href="../../plugins/gcov/troubleshooting/" class="md-nav__link">
         
   
   
@@ -3190,7 +3078,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/cppcheck/" class="md-nav__link">
+      <a href="../../plugins/cppcheck/" class="md-nav__link">
         
   
   
@@ -3218,7 +3106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/valgrind/" class="md-nav__link">
+      <a href="../../plugins/valgrind/" class="md-nav__link">
         
   
   
@@ -3271,7 +3159,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../plugins/bullseye/" class="md-nav__link ">
+            <a href="../../plugins/bullseye/" class="md-nav__link ">
               
   
   
@@ -3315,7 +3203,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/bullseye/licensing/" class="md-nav__link">
+      <a href="../../plugins/bullseye/licensing/" class="md-nav__link">
         
   
   
@@ -3351,7 +3239,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/fff/" class="md-nav__link">
+      <a href="../../plugins/fff/" class="md-nav__link">
         
   
   
@@ -3379,7 +3267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/command-hooks/" class="md-nav__link">
+      <a href="../../plugins/command-hooks/" class="md-nav__link">
         
   
   
@@ -3407,7 +3295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/compile-commands-json-db/" class="md-nav__link">
+      <a href="../../plugins/compile-commands-json-db/" class="md-nav__link">
         
   
   
@@ -3435,7 +3323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/beep/" class="md-nav__link">
+      <a href="../../plugins/beep/" class="md-nav__link">
         
   
   
@@ -3463,7 +3351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/module-generator/" class="md-nav__link">
+      <a href="../../plugins/module-generator/" class="md-nav__link">
         
   
   
@@ -3491,7 +3379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../plugins/dependencies/" class="md-nav__link">
+      <a href="../../plugins/dependencies/" class="md-nav__link">
         
   
   
@@ -3563,7 +3451,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../reference/" class="md-nav__link ">
+            <a href="../../reference/" class="md-nav__link ">
               
   
   
@@ -3607,7 +3495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/command-line/" class="md-nav__link">
+      <a href="../../reference/command-line/" class="md-nav__link">
         
   
   
@@ -3635,7 +3523,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/project-configuration/" class="md-nav__link">
+      <a href="../../reference/project-configuration/" class="md-nav__link">
         
   
   
@@ -3663,7 +3551,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/build-directives/" class="md-nav__link">
+      <a href="../../reference/build-directives/" class="md-nav__link">
         
   
   
@@ -3691,7 +3579,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/partials-macros/" class="md-nav__link">
+      <a href="../../reference/partials-macros/" class="md-nav__link">
         
   
   
@@ -3719,7 +3607,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/environment-vars/" class="md-nav__link">
+      <a href="../../reference/environment-vars/" class="md-nav__link">
         
   
   
@@ -3747,7 +3635,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/gcov-plugin/" class="md-nav__link">
+      <a href="../../reference/gcov-plugin/" class="md-nav__link">
         
   
   
@@ -3775,7 +3663,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/global-collections/" class="md-nav__link">
+      <a href="../../reference/global-collections/" class="md-nav__link">
         
   
   
@@ -3807,8 +3695,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -3822,19 +3712,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
-          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
             
   
   
@@ -3852,7 +3745,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3870,7 +3763,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../project/release-history/" class="md-nav__link">
+      <a href="../release-history/" class="md-nav__link">
         
   
   
@@ -3895,10 +3788,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../project/sbom/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Software Bill of Materials
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3914,6 +3834,131 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-find-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where to find them
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-documents-include" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the documents include
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What the documents include">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ruby-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ruby dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vendored-c-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vendored C components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-fff-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The fff plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-documents-exclude" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the documents exclude
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verifying-an-attestation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verifying an attestation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#githubs-own-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GitHub’s own export
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3926,7 +3971,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../project/upgrade/" class="md-nav__link">
+      <a href="../upgrade/" class="md-nav__link">
         
   
   
@@ -3961,7 +4006,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../help/" class="md-nav__link">
+      <a href="../../help/" class="md-nav__link">
         
   
   
@@ -4017,7 +4062,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../development/" class="md-nav__link ">
+            <a href="../../development/" class="md-nav__link ">
               
   
   
@@ -4061,7 +4106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../development/workflow/" class="md-nav__link">
+      <a href="../../development/workflow/" class="md-nav__link">
         
   
   
@@ -4089,7 +4134,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../development/releases/" class="md-nav__link">
+      <a href="../../development/releases/" class="md-nav__link">
         
   
   
@@ -4146,7 +4191,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../development/plugins/" class="md-nav__link ">
+            <a href="../../development/plugins/" class="md-nav__link ">
               
   
   
@@ -4190,7 +4235,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../development/plugins/configuration/" class="md-nav__link">
+      <a href="../../development/plugins/configuration/" class="md-nav__link">
         
   
   
@@ -4218,7 +4263,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../development/plugins/plugin-subclass/" class="md-nav__link">
+      <a href="../../development/plugins/plugin-subclass/" class="md-nav__link">
         
   
   
@@ -4246,7 +4291,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../development/plugins/rake-tasks/" class="md-nav__link">
+      <a href="../../development/plugins/rake-tasks/" class="md-nav__link">
         
   
   
@@ -4309,10 +4354,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#test-runner-overview" class="md-nav__link">
+  <a href="#scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Test runner overview
+        Scope
       
     </span>
   </a>
@@ -4320,10 +4365,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#unity-test-runners" class="md-nav__link">
+  <a href="#where-to-find-them" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Unity &amp; test runners
+        Where to find them
       
     </span>
   </a>
@@ -4331,10 +4376,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#test_runner-cmdline_args" class="md-nav__link">
+  <a href="#what-the-documents-include" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :test_runner ↳ :cmdline_args
+        What the documents include
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What the documents include">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ruby-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ruby dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vendored-c-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vendored C components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-fff-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The fff plugin
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-documents-exclude" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the documents exclude
       
     </span>
   </a>
@@ -4342,10 +4437,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#test_runner-rng_seed" class="md-nav__link">
+  <a href="#verifying-an-attestation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        :test_runner ↳ :rng_seed
+        Verifying an attestation
       
     </span>
   </a>
@@ -4353,10 +4448,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-test_runner-yaml" class="md-nav__link">
+  <a href="#githubs-own-export" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example :test_runner YAML
+        GitHub’s own export
       
     </span>
   </a>
@@ -4388,7 +4483,7 @@
   
   
     <li class="md-path__item">
-      <a href="../../.." class="md-path__link">
+      <a href="../.." class="md-path__link">
         
   <span class="md-ellipsis">
     Home
@@ -4406,28 +4501,10 @@
     
     
       <li class="md-path__item">
-        <a href="../../" class="md-path__link">
+        <a href="../release-history/" class="md-path__link">
           
   <span class="md-ellipsis">
-    Configuration
-  </span>
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-    
-    
-      <li class="md-path__item">
-        <a href="../" class="md-path__link">
-          
-  <span class="md-ellipsis">
-    Configuration Reference
+    Releases
   </span>
 
         </a>
@@ -4449,59 +4526,128 @@
   
 
 
-<h1 id="test_runner"><code>:test_runner</code></h1>
-<p><strong>Configure test runner generation</strong></p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Unless you have advanced or unique needs, Unity test runner generation
-configuration in Ceedling is generally not needed.</p>
-</div>
-<h2 id="test-runner-overview">Test runner overview</h2>
-<p>The format of Ceedling test files — the C files that contain unit test cases —
-is intentionally simple. It’s pure code and all legit C with <code>#include</code>
-statements, simple functions for test cases, and optional <code>setUp()</code> and 
-<code>tearDown()</code> functions.</p>
-<p>To create test executables, we need a <code>main()</code> and a variety of calls to the
-Unity framework to “hook up” all your test cases into a test suite. You can do
-this by hand, of course, but it’s tedious and needed updates as code evolves 
-are easily forgotten.</p>
-<h2 id="unity-test-runners">Unity &amp; test runners</h2>
-<p>Unity provides a script able to generate a test runner in C for you. It
-relies on <a href="../../../testing-guide/conventions/">Ceedling conventions</a> used in your test files. 
-Ceedling takes this a step further by calling this script for you with all the 
-needed parameters.</p>
-<p>Test runner generation is configurable. The <code>:test_runner</code> section of your
-Ceedling project file allows you to pass options to Unity’s runner generation
-script. Based on other Ceedling options, Ceedling also sets certain test runner 
-generation configuration values for you.</p>
-<p><strong><a href="https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityHelperScriptsGuide.md#options-accepted-by-generate_test_runnerrb">Test runner configuration options are documented in the Unity project</a>.</strong></p>
-<h2 id="test_runner-cmdline_args"><code>:test_runner</code> ↳ <code>:cmdline_args</code></h2>
-<p>Before Ceedling 1.0.0, the test runner option <code>:cmdline_args</code> was needed 
-for certain advanced test suite features. This option is still needed, 
-but Ceedling now automatically sets it for you in the scenarios requiring it.</p>
+<h1 id="software-bill-of-materials">Software Bill of Materials</h1>
+<p>Every Ceedling release publishes a Software Bill of Materials. The documents list
+what a Ceedling gem contains and what it depends on. They exist so you can assess
+your own exposure without reading Ceedling’s packaging by hand.</p>
+<p>Two documents accompany each release. One is <a href="https://cyclonedx.org">CycloneDX</a> and one is
+<a href="https://spdx.dev">SPDX</a>. Both are generated from a single description of the gem, so neither
+can state a fact the other contradicts.</p>
 <div class="admonition note">
-<p class="admonition-title">Environment limitations</p>
-<p>Be aware that <code>:cmdline_args</code> works well in desktop, native testing but 
-is generally unsupported by emulators running test executables.</p>
-<p>The idea of command line arguments passed to an executable is generally 
-only possible with desktop command line terminals.</p>
+<p class="admonition-title">What these documents cover</p>
+<p>The documents describe <strong>the Ceedling gem as distributed</strong>. They do not describe
+the C code Ceedling builds for you. Your own source, your generated test runners
+and mocks, and your compiler toolchain are all outside their scope.</p>
 </div>
-<h2 id="test_runner-rng_seed"><code>:test_runner</code> ↳ <code>:rng_seed</code></h2>
-<p>Seeds the randomization used by <a href="../unity/#shuffle_tests"><code>:unity</code> ↳ <code>:shuffle_tests</code></a>
-to shuffle the Unity runner test case execution order. <code>:rng_seed</code> has no 
-effect unless <code>:shuffle_tests</code> is enabled.</p>
-<p>Left at its default of <code>0</code>, Unity seeds the shuffle from the current time 
-causing a different execution order every time a test runner executes. Set 
-a fixed, nonzero value for a reproducible shuffled order (e.g. to debug 
-an order-dependent failure without test case order moving around run to run).</p>
-<p><strong>Default</strong>: 0</p>
-<h2 id="example-test_runner-yaml">Example <code>:test_runner</code> YAML</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:test_runner</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="c1"># Insert additional #include statements in a generated runner</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">:includes</span><span class="p">:</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Foo.h</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Bar.h</span>
+<hr />
+<h2 id="scope">Scope</h2>
+<p>The documents describe one artifact. That artifact is the published Ceedling gem.
+Everything else is out of scope, including two things worth naming directly.</p>
+<p><strong>Your build output is not described.</strong> Ceedling generates C for your project.
+Test runners, mocks, and Partials are all produced from your source at build time.
+None of that is part of Ceedling’s own distribution, so none of it appears here.</p>
+<p><strong>Plugin tool requirements are not described.</strong> An enabled plugin may need external
+tools that Ceedling never ships. The Gcov, Valgrind, Bullseye, and Cppcheck plugins
+all work this way. Which tools an installation actually needs depends on which
+plugins it enables, so a project-level document cannot state it. Each plugin
+documents its own requirements under <a href="../../plugins/">Plugins</a>.</p>
+<hr />
+<h2 id="where-to-find-them">Where to find them</h2>
+<p>The documents are attached to each release on GitHub. Look for two assets beside
+the <code>.gem</code> file.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ceedling-&lt;version&gt;.cdx.json     CycloneDX
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>ceedling-&lt;version&gt;.spdx.json    SPDX
 </code></pre></div>
+<p>A gem’s own metadata also carries a pointer. The <code>sbom_uri</code> key names the CycloneDX
+document for that exact version.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w"> </span>&gt;<span class="w"> </span>gem<span class="w"> </span>specification<span class="w"> </span>ceedling<span class="w"> </span>metadata
+</code></pre></div>
+<p>The documents are release assets and are never committed to the repository. Two
+reasons decide this. A committed copy would carry no attestation, which would make
+the more discoverable of two sources the less trustworthy one. And the release
+version is stamped during the release build, so a document committed at the tagged
+commit would name a development version rather than the released one.</p>
+<div class="admonition warning">
+<p class="admonition-title">A version-specific link is the reliable one</p>
+<p><code>releases/latest/download/</code> resolves only to the most recent full release, and
+never to a pre-release. Because each filename carries a version, such a link
+stops working as soon as a newer release exists. Link to a version’s own release
+page instead.</p>
+</div>
+<hr />
+<h2 id="what-the-documents-include">What the documents include</h2>
+<p>Three kinds of component appear. Each is identified by a <a href="https://github.com/package-url/purl-spec">Package URL</a>.</p>
+<h3 id="ruby-dependencies">Ruby dependencies</h3>
+<p>The gem’s declared runtime dependencies appear with the version the release build
+resolved. The declared constraint is recorded alongside, as a component property.
+Ceedling bounds its dependencies rather than pinning them, and recording only a
+resolved version would imply otherwise.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pkg:gem/rake@13.2.1          declared  &gt;= 12, &lt; 14
+</code></pre></div>
+<p>Licenses for these come from a curated list rather than from the lockfile. A
+lockfile records no license at all, and a gem’s own metadata is not reliable. One
+of Ceedling’s dependencies declares no license in its gemspec while stating MIT
+plainly in its README. Another is dual-licensed, which no single identifier
+expresses.</p>
+<h3 id="vendored-c-components">Vendored C components</h3>
+<p>Unity, CMock, and CException ship inside the gem. Each is identified by the commit
+it is pinned at, not by a version string. A header version appears as well, for
+readers.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pkg:github/throwtheswitch/unity@2b80d1a357271b20f15c9f2573ddab164a626132
+</code></pre></div>
+<p>A commit is the identifier because a version string cannot always tell two copies
+apart. CMock vendors its own Unity, so a Ceedling gem carries two Unity source
+trees. Both report header version 2.7.2 and they sit at different commits. Only the
+commit distinguishes them.</p>
+<p>The same choice resolves a second case. CException’s header reports a version ahead
+of its latest release tag, because the pinned commit is later than that tag. The
+commit says exactly what ships.</p>
+<div class="admonition note">
+<p class="admonition-title">Two components may share one identifier</p>
+<p>CException also ships twice, and both copies sit at the same commit. They
+therefore share a Package URL. Each occurrence still appears separately, with
+its own reference and its own path. A Package URL names a package. It does not
+name a location.</p>
+</div>
+<h3 id="the-fff-plugin">The fff plugin</h3>
+<p>The fff plugin is a modified descendant of an earlier project, and the documents say
+so. Its lineage appears as CycloneDX pedigree and as an SPDX <code>VARIANT_OF</code>
+relationship.</p>
+<p>The plugin layer carries no Package URL of its own. Having been modified, it is no
+longer the package it descends from. Pointing an identifier at that package would
+invite a scanner to match advisories against code that differs.</p>
+<p>The framework itself is a separate component nested inside the plugin. It carries no
+version, because upstream publishes no version marker of any kind.</p>
+<hr />
+<h2 id="what-the-documents-exclude">What the documents exclude</h2>
+<p>Development and test dependencies are excluded. RSpec, RuboCop, SimpleCov and the
+rest never reach a published gem, so describing them would misstate what a user
+installs. The documents name the exclusion rather than leaving it to be inferred.</p>
+<p>Upstream fff’s own test apparatus is excluded, because the gem no longer carries it.
+That tree included Google Test, which is BSD-3-Clause. Leaving it out keeps every
+file in the gem MIT.</p>
+<hr />
+<h2 id="verifying-an-attestation">Verifying an attestation</h2>
+<p>Each document is signed against the gem it describes. Verification establishes that
+Ceedling’s own release workflow produced that document for that artifact.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w"> </span>&gt;<span class="w"> </span>gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span>ceedling-&lt;version&gt;.gem<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">     </span>--repo<span class="w"> </span>ThrowTheSwitch/Ceedling<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">     </span>--predicate-type<span class="w"> </span>https://cyclonedx.org/bom
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Name the predicate type</p>
+<p><code>gh attestation verify</code> looks for SLSA provenance unless told otherwise, and
+reports a 404 when it finds none. Pass <code>--predicate-type</code> to verify an SBOM.
+Use <code>https://cyclonedx.org/bom</code> for CycloneDX and
+<code>https://spdx.dev/Document/v2.3</code> for SPDX.</p>
+</div>
+<hr />
+<h2 id="githubs-own-export">GitHub’s own export</h2>
+<p>GitHub generates an SPDX document from its dependency graph, reachable under
+Insights. It is a reasonable fallback and it is not equivalent to these documents.</p>
+<p>That export sees Ceedling’s Ruby manifests and nothing else. Unity, CMock,
+CException, DIY, and fff are all absent from it, because none of them arrives as a
+Ruby dependency. Those are the components most likely to matter to a C project.</p>
 <p><br/><br/></p>
 
 
@@ -4570,10 +4716,10 @@ an order-dependent failure without test case order moving around run to run).</p
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "navigation.path", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "navigation.path", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
