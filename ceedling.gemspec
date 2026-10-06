@@ -44,7 +44,6 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
   # Used for both development and runtime
   s.add_dependency "rake", ">= 12", "< 14"
 
-  s.add_dependency "diy", "~> 1.1"
   s.add_dependency "constructor", "~> 2"
   s.add_dependency "thor", "~> 1.3"
   s.add_dependency "deep_merge", "~> 1.2"
@@ -117,5 +116,9 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
   s.test_files = Dir['test/**/*', 'spec/**/*', 'features/**/*']
   s.executables = ['ceedling'] # bin/ceedling
 
-  s.require_paths = ["lib", "vendor/cmock/lib"]
+  # CMock and DIY ship inside the gem rather than arriving as gem dependencies, so
+  # their lib directories belong on the load path. DIY's upstream gem has been
+  # unmaintained since 2009. bin/ceedling also unshifts the vendored DIY path before
+  # requiring it, which is what makes the vendored copy win wherever both exist.
+  s.require_paths = ["lib", "vendor/cmock/lib", "vendor/diy/lib"]
 end
