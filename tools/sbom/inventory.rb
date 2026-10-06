@@ -41,8 +41,11 @@ module Sbom
     FFF_PATH = 'plugins/fff'
     FFF_VENDOR_PATH = 'plugins/fff/vendor/fff'
 
+    # `licenses` keys on a path, for source shipped inside the gem whose license file was
+    # read. `gem_licenses` keys on a gem name, those arriving from the curated list --
+    # Gemfile.lock records no license, so they cannot be read from anything here.
     def initialize(ceedling_version:, declared:, closure:, submodules:, header_versions:,
-                   diy_version:, licenses:, excluded_gems:)
+                   diy_version:, licenses:, excluded_gems:, gem_licenses: {})
       @ceedling_version = ceedling_version
       @declared = declared
       @closure = closure
@@ -51,6 +54,7 @@ module Sbom
       @diy_version = diy_version
       @licenses = licenses
       @excluded_gems = excluded_gems
+      @gem_licenses = gem_licenses
     end
 
     def document
@@ -76,6 +80,7 @@ module Sbom
           kind: 'gem',
           version: version,
           purl: Purl.gem( name, version ),
+          license: @gem_licenses[name],
           declared: @declared[name]
         )
       end
@@ -176,9 +181,10 @@ module Sbom
           'Gem versions are those the release build resolved, not the only versions ' \
           'the declared constraints permit.',
         'ceedling:gem-licenses' =>
-          'Licenses are asserted only for source shipped inside the gem, where the ' \
-          'license file was read directly. A fetched gem carries no license here ' \
-          'because Gemfile.lock records none. Resolve those from its PURL.'
+          'Licenses for source shipped inside the gem were read from the license file ' \
+          'beside it. Licenses for fetched gems come from a curated list, Gemfile.lock ' \
+          'recording none and a gemspec being unreliable, and each was verified against ' \
+          'the resolved version.'
       }
     end
 

@@ -9,6 +9,7 @@ require 'securerandom'
 require 'time'
 
 require_relative 'sources'
+require_relative 'gem_licenses'
 require_relative 'lockfile'
 require_relative 'submodules'
 require_relative 'inventory'
@@ -56,15 +57,23 @@ module Sbom
       submodules = Submodules.parse( @sources.submodule_status )
       roots = spec.runtime_dependencies.map( &:name )
 
+      closure = lockfile.closure( roots )
+
+      # Refuses to build a document whose gem licenses are stale. Raising here rather
+      # than warning is what keeps an out-of-date list from reaching a release, and the
+      # message names every disagreement at once.
+      GemLicenses.verify!( closure )
+
       Inventory.new(
         ceedling_version: spec.version.to_s,
         declared: spec.runtime_dependencies.to_h { |d| [d.name, d.requirement.as_list.join( ', ' )] },
-        closure: lockfile.closure( roots ),
+        closure: closure,
         submodules: submodules,
         header_versions: @sources.header_versions,
         diy_version: @sources.diy_version,
         licenses: licenses( submodules ),
-        excluded_gems: lockfile.excluded( roots )
+        excluded_gems: lockfile.excluded( roots ),
+        gem_licenses: GemLicenses.licenses_for( closure )
       ).document
     end
 
