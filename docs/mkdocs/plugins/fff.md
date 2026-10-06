@@ -4,7 +4,7 @@ This plugin causes Ceedling to use the [Fake Function Framework](https://github.
 
 Using _FFF_ provides less strict mocking than CMock and affords more loosely-coupled tests.
 
-This Ceedling 1.x plugin incorporates a snapshot of _FFF_ version 0.1.1 and supersedes a separately available [FFF Ceedling plugin project](https://github.com/ElectronVector/fake_function_framework). The built-in _FFF_ plugin that now comes with Ceedling was derived from the ElectronVector project and is now maintained along with Ceedling and tracks its updates.
+This Ceedling 1.x plugin incorporates a snapshot of _FFF_ version 1.1 and supersedes a separately available [FFF Ceedling plugin project](https://github.com/ElectronVector/fake_function_framework). The built-in _FFF_ plugin that now comes with Ceedling was derived from the ElectronVector project and is now maintained along with Ceedling and tracks its updates.
 
 !!! note "Special thanks to Matt Chernosky"
     [Matt Chernosky](http://www.electronvector.com) originally developed this plugin 

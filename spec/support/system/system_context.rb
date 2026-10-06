@@ -76,7 +76,8 @@ class SystemContext
       %Q{source "http://rubygems.org/"},
       %Q{gem "rake"},
       %Q{gem "constructor"},
-      %Q{gem "diy"},
+      # `diy` is absent deliberately, mirroring ceedling.gemspec. Its source is
+      # vendored and reaches the child process through the gem's own require_paths.
       %Q{gem "thor"},
       %Q{gem "deep_merge"},
       %Q{gem "unicode-display_width"},

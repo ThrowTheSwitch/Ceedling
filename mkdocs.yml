@@ -194,7 +194,9 @@ nav:
     - Coverage Reporting: reference/gcov-plugin.md
     - Global Collections: reference/global-collections.md
   - Releases:
+    - project/index.md
     - History Documents: project/release-history.md
+    - Software Bill of Materials: project/sbom.md
     - Upgrading: project/upgrade.md
   - Help: help.md
   - Development:

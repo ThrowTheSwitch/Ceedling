@@ -94,7 +94,10 @@ gem "rubocop-performance", "~> 1.27.0", require: false, install_if: -> { ENV['CE
 # Ceedling runtime code path requires it.
 
 # Ceedling dependencies
-gem "diy", "~> 1.1"
+#
+# `diy` is absent deliberately. Its source is vendored at vendor/diy, and
+# bin/ceedling puts that directory on the load path before requiring it, so the
+# vendored copy is what loads. Upstream has been unmaintained since 2009.
 gem "constructor", "~> 2"
 gem "thor", "~> 1.3"
 gem "deep_merge", "~> 1.2"

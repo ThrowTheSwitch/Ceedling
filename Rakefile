@@ -393,6 +393,84 @@ task 'gem:build' => 'gem:clean' do
 end
 
 ##
+## SBOM tasks
+##
+## Software Bill of Materials describing the Ceedling gem as installed: what ships
+## inside it, plus the transitive closure of its declared runtime dependencies.
+## CycloneDX and SPDX are rendered from one component model, so the two cannot
+## disagree about facts. Every component is identified by a PURL, and the vendored
+## C components by the commit they are pinned at -- the only identity that separates
+## the two Unity source trees a Ceedling gem carries, both of which report header
+## version 2.7.2.
+##
+## Generation lives in tools/, which the gemspec excludes from the gem, so none of
+## this reaches an installed Ceedling. Specs live beside it for the same reason:
+## spec/ ships for certification self-tests and would otherwise carry specs for
+## code the gem does not contain.
+##
+## The documents describe the gem as distributed. They do not describe the C code
+## Ceedling builds, nor the external tools an enabled plugin needs.
+
+desc "Generate CycloneDX and SPDX SBOMs into the repository root"
+task 'sbom:build' do
+  repo_only!( 'sbom:build' )
+
+  require_relative 'tools/sbom/generator'
+
+  written = Sbom::Generator.new( __dir__ ).build
+
+  puts "\nGenerated:"
+  written.each { |path| puts "  #{File.basename( path )}" }
+end
+
+# Advisory, and deliberately not part of sbom:build. It reads gems installed on this
+# machine, so its result depends on the environment in a way a generated document must
+# not. What it catches is the one drift the structural checks cannot: a gem relicensing
+# without changing version, where the recorded version still matches.
+desc "Compare the curated gem license list against locally installed gems"
+task 'sbom:licenses:audit' do
+  repo_only!( 'sbom:licenses:audit' )
+
+  require_relative 'tools/sbom/gem_licenses'
+
+  findings = []
+
+  Sbom::GemLicenses::GEMS.each do |name, entry|
+    installed = Gem::Specification.find_all_by_name( name ).max_by( &:version )
+
+    if installed.nil?
+      puts format( "  %-24s %-22s not installed, cannot compare", name, entry[:license] )
+      next
+    end
+
+    declared = installed.licenses
+    agrees = declared.empty? || declared.any? { |l| entry[:license].to_s.include?( l ) }
+    status = declared.empty? ? 'gemspec declares none' : declared.join( ', ' )
+
+    findings << "#{name}: list says #{entry[:license]}, installed #{installed.version} says #{status}" unless agrees
+
+    puts format( "  %-24s %-22s %s %s", name, entry[:license], agrees ? '✓' : '✗', status )
+  end
+
+  if findings.empty?
+    puts "\nNothing disagrees with the curated list."
+  else
+    puts "\nWorth re-reading:"
+    findings.each { |f| puts "  - #{f}" }
+    puts "\nA gemspec declaring none is not a disagreement -- see each entry's source."
+  end
+end
+
+desc "Run the SBOM generator's own specs"
+task 'sbom:specs' do
+  repo_only!( 'sbom:specs' )
+
+  # Not folded into specs:units or specs:integration. Those suites ship in the gem
+  # and run against an installed Ceedling, where tools/ does not exist.
+  sh 'bundle exec rspec tools/sbom/spec --format documentation'
+end
+
+##
 ## Profiling tasks
 ##
 ## On-demand stackprof-based profiling of a real Ceedling build/test run,

@@ -26,10 +26,16 @@
 #     v1.1.0-pre.1  →  1.1.0.pre.1  (hyphen becomes dot: RubyGems pre-release notation)
 #     v1.1.0        →  1.1.0         (no suffix; substitution is a no-op)
 #
+# Software Bill of Materials:
+#   CycloneDX and SPDX documents are generated after the gem is built, validated
+#   against their published schemas, attested against the gem, and attached to the
+#   release. Generation runs after version stamping so the documents carry the release
+#   version rather than the `.dev` value the tagged commit holds.
+#
 # RubyGems.org publishing:
-#   The "Push to RubyGems.org" step below is stubbed and commented out.
-#   To enable automated publishing: uncomment the step and add a
-#   RUBYGEMS_API_KEY secret to the repository settings.
+#   Stubbed at the end of this file, not enabled. Trusted publishing is the intended
+#   route rather than a stored API key; the OIDC permission it needs is already granted
+#   below for attestation. The remaining steps are listed beside the stub.
 # -----------------------------------------------------------------------
 
 ---
@@ -43,9 +49,16 @@ on:
         required: true
         description: 'true = GitHub pre-release, false = full release'
 
-# contents: write is required to create and upload GitHub releases
+# contents: write is required to create and upload GitHub releases.
+#
+# id-token: write and attestations: write let actions/attest sign each SBOM
+# against the gem it describes, so a consumer can verify the document came from this
+# workflow and not from somewhere else. id-token: write is also what RubyGems trusted
+# publishing will need, so enabling it here covers both.
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build-and-publish:
@@ -137,6 +150,62 @@ jobs:
         run: |
           gem build ceedling.gemspec
 
+      # After the gem build and after version stamping, both deliberately. The SBOM's
+      # root component carries the stamped release version rather than the .dev value
+      # lib/version.rb holds at the tagged commit, and the gem has to exist before it can
+      # be an attestation subject.
+      #
+      # sbom:build also enforces the curated gem license list, so a release stops here if
+      # a dependency arrived, departed, or moved version without its license being
+      # re-read.
+      #
+      # Filenames are captured rather than reconstructed from the tag. Attestation takes
+      # one file per step and will not expand a glob, and the generator already knows how
+      # it spelled the version.
+      - name: Generate SBOMs
+        run: |
+          rake sbom:build
+          echo "cdx_sbom=$(ls ceedling-*.cdx.json)" >> "$GITHUB_ENV"
+          echo "spdx_sbom=$(ls ceedling-*.spdx.json)" >> "$GITHUB_ENV"
+
+      # Pinned to the specification versions the serializers target. A document that
+      # fails its schema must not reach a release, where consumers' tooling would be the
+      # thing to discover it.
+      - name: Validate SBOMs Against Published Schemas
+        run: |
+          pip install --quiet check-jsonschema
+          check-jsonschema \
+            --schemafile https://raw.githubusercontent.com/CycloneDX/specification/1.6/schema/bom-1.6.schema.json \
+            ceedling-*.cdx.json
+          check-jsonschema \
+            --schemafile https://raw.githubusercontent.com/spdx/spdx-spec/v2.3/schemas/spdx-schema.json \
+            ceedling-*.spdx.json
+
+      # Binds each document to the gem it describes. Without this a published SBOM is
+      # just a file alongside a release; with it, `gh attestation verify` can establish
+      # that this workflow produced it for this artifact.
+      #
+      # One step per format, sbom-path taking a single file. Both are published, so both
+      # are attested -- an attested CycloneDX beside an unattested SPDX would leave
+      # whichever a consumer happens to read the less trustworthy of the two.
+      #
+      # actions/attest rather than actions/attest-sbom, which is deprecated. Passing
+      # sbom-path produces an SBOM attestation, and the action reads the format from the
+      # document, so the predicate type still comes out as cyclonedx.org/bom or
+      # spdx.dev/Document. Verification needs that type named explicitly, since
+      # `gh attestation verify` looks for SLSA provenance unless told otherwise.
+      - name: Attest CycloneDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: ceedling-*.gem
+          sbom-path: ${{ env.cdx_sbom }}
+
+      - name: Attest SPDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: ceedling-*.gem
+          sbom-path: ${{ env.spdx_sbom }}
+
       # softprops/action-gh-release replaces the archived actions/create-release@v1
       # and actions/upload-release-asset@v1.
       # Pinned to @v3 (not v2) for Node 24 runner support -- GitHub Actions runners
@@ -154,7 +223,10 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           prerelease: ${{ inputs.prerelease }}
-          files: ceedling-*.gem
+          files: |
+            ceedling-*.gem
+            ceedling-*.cdx.json
+            ceedling-*.spdx.json
           body: ${{ steps.changelog.outputs.body }}
 
       # Fall back to GitHub's auto-generated release notes (from last commit)
@@ -168,10 +240,26 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           prerelease: ${{ inputs.prerelease }}
-          files: ceedling-*.gem
+          files: |
+            ceedling-*.gem
+            ceedling-*.cdx.json
+            ceedling-*.spdx.json
 
-      # Uncomment and add RUBYGEMS_API_KEY secret to automate RubyGems.org publishing
+      # RubyGems.org publishing, stubbed rather than enabled.
+      #
+      # Trusted publishing is the intended route, not a long-lived API key. It exchanges
+      # this workflow's OIDC token for a short-lived credential, so nothing secret is
+      # stored in the repository. The id-token: write permission it needs is already
+      # granted above, for attestation.
+      #
+      # What remains before uncommenting:
+      #   1. Register a trusted publisher on RubyGems.org for ThrowTheSwitch/Ceedling,
+      #      naming this workflow file.
+      #   2. Decide whether to scope this job to a GitHub `environment`, which lets the
+      #      publisher be restricted further and adds an approval gate if wanted.
+      #
+      # - name: Configure RubyGems Credentials
+      #   uses: rubygems/configure-rubygems-credentials@main
+      #
       # - name: Push to RubyGems.org
       #   run: gem push ceedling-*.gem
-      #   env:
-      #     GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}

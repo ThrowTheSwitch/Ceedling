@@ -152,6 +152,13 @@ Prereleases are ephemeral and will be pulled as development continues or bugs ar
 
 Prereleases are not officially supported, but feedback through submitting issues is very much welcome. As much help as is practical will be offered to support those exercising prereleases.
 
+## Software Bill of Materials
+Every release publishes a Software Bill of Materials in both CycloneDX and SPDX formats. Each document is attached to its release alongside the .gem file and is signed against it.
+
+The documents describe the Ceedling gem as distributed. They list what ships inside it — Unity, CMock, CException, and more — plus the Ruby dependencies a user installs. They do not describe the C code Ceedling builds for you, and they cannot describe the external tools an enabled plugin needs.
+
+See [Software Bill of Materials](https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/) for what is included, how to verify a signature, and why a version-specific download link is the reliable one.
+
 <br/>
 
 # 🙋‍♀️ Need Help? Want to Help?

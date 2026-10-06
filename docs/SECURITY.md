@@ -3,9 +3,35 @@
 This document outlines security procedures and general policies for all `ThrowTheSwitch.org`
 projects, including `Unity`, `CMock`, and `Ceedling`.
 
+  * [Software Bill of Materials](#software-bill-of-materials)
   * [Reporting a Bug](#reporting-a-bug)
   * [Disclosure Policy](#disclosure-policy)
   * [Comments on this Policy](#comments-on-this-policy)
+
+## Software Bill of Materials
+
+Ceedling publishes a [Software Bill of Materials with every release](https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/).
+Use it to determine whether a given release is affected by a vulnerability in 
+something Ceedling ships or depends on.
+
+Each release carries two documents, one CycloneDX and one SPDX, attached beside
+the `.gem` file. Every component is identified by a Package URL (PURL). The 
+vendored C components are identified by the commit they are pinned at, which is 
+what distinguishes two copies of the same component at different commits.
+
+The documents describe the Ceedling gem as distributed. They do not describe the
+C code Ceedling builds, nor the external tools an enabled plugin requires. Those
+tools vary by installation and each plugin documents its own.
+
+Each document is signed against the gem it describes. Verification needs the
+predicate type named, because `gh attestation verify` looks for SLSA provenance
+by default.
+
+```
+gh attestation verify ceedling-<version>.gem \
+  --repo ThrowTheSwitch/Ceedling \
+  --predicate-type https://cyclonedx.org/bom
+```
 
 ## Automated Security Scanner False Positives
 

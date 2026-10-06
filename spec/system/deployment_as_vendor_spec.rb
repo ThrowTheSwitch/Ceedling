@@ -50,6 +50,7 @@ ceedling_system_tests do
     describe "Project creation" do
       test_case :can_create_projects
       test_case :contains_a_vendor_directory
+      test_case :contains_vendored_licenses
       test_case :contains_documentation
     end
 

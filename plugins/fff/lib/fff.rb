@@ -3,6 +3,11 @@
 #   ThrowTheSwitch.org
 #   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
+#
+#   Derived from the Fake Function Framework Ceedling plugin, absorbed as a
+#   modified snapshot in 2024 after seven years as a submodule.
+#   Copyright (c) 2018 ElectronVector -- MIT
+#   ⏩️ https://github.com/ElectronVector/fake_function_framework
 # =========================================================================
 
 require 'ceedling/plugins/plugin'

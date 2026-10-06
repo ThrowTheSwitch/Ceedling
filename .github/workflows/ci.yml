@@ -169,6 +169,13 @@ jobs:
           CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'integration' || 'false' }}
         run: rake specs:integration
 
+      # The SBOM generator's own specs, which specs:units and specs:integration do not
+      # reach -- those suites ship in the gem and run against an installed Ceedling,
+      # where tools/ does not exist. Run across every Ruby in the matrix, the generator
+      # being expected to work wherever Ceedling does.
+      - name: Run SBOM Generator Specs
+        run: rake sbom:specs
+
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
         run: |
@@ -720,6 +727,46 @@ jobs:
       - name: Build Ceedling Gem
         run: |
           gem build ceedling.gemspec
+
+      # Exercises the generator against the real repository, which is also what enforces
+      # the curated gem license list -- sbom:build refuses to run when a dependency has
+      # arrived, departed, or moved version away from the entry recording its license.
+      # Failing here means failing a pull request rather than a release.
+      - name: Generate SBOMs
+        run: rake sbom:build
+
+      # Schema validation against the published specifications, as a gate. Hand-written
+      # expectations proved insufficient: they caught neither a dual license placed in
+      # `license.id`, where only a single SPDX identifier is valid, nor a pedigree
+      # ancestor missing the type and name the schema requires.
+      #
+      # check-jsonschema covers both formats with one tool, and Python is already
+      # provisioned here for the documentation build. Schema URLs are pinned to the
+      # specification versions the serializers target.
+      - name: Validate SBOMs Against Published Schemas
+        run: |
+          pip install --quiet check-jsonschema
+          check-jsonschema \
+            --schemafile https://raw.githubusercontent.com/CycloneDX/specification/1.6/schema/bom-1.6.schema.json \
+            ceedling-*.cdx.json
+          check-jsonschema \
+            --schemafile https://raw.githubusercontent.com/spdx/spdx-spec/v2.3/schemas/spdx-schema.json \
+            ceedling-*.spdx.json
+
+      # The gemspec rejects generated SBOMs, since they are release assets rather than
+      # gem contents. Generating before this check is what makes the check meaningful.
+      # Reads the built artifact's own manifest rather than re-evaluating the gemspec, and
+      # rather than listing the archive -- a .gem is a tar of data.tar.gz, so inner
+      # filenames never appear at the top level.
+      - name: Confirm SBOMs Stayed Out of the Gem
+        run: |
+          for gem in ceedling-*.gem; do
+            if gem spec "$gem" files | grep -E 'cdx\.json|spdx\.json'; then
+              echo "A generated SBOM reached $gem; the gemspec reject is not working."
+              exit 1
+            fi
+          done
+          echo "No SBOM in the gem."
 
       # Upload the built gem as a workflow artifact (downloadable from the Actions UI)
       - name: Upload Built Gem Artifact

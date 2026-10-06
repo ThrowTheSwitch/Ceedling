@@ -36,7 +36,20 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
     "documentation_uri" => "https://docs.throwtheswitch.org/Ceedling/",
     "mailing_list_uri"  => "https://throwtheswitch.discourse.group",
     "source_code_uri"   => "https://github.com/ThrowTheSwitch/Ceedling",
-    "funding_uri"       => "https://github.com/sponsors/ThrowTheSwitch"
+    "funding_uri"       => "https://github.com/sponsors/ThrowTheSwitch",
+    "changelog_uri"     => "https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md",
+    # Machine-discoverable pointer to this gem's own Software Bill of Materials, which is
+    # published as a release asset rather than carried inside the gem.
+    #
+    # Pinned to this version's release rather than `releases/latest/download`. The
+    # filename carries a version, so a `latest` URL would stop resolving the moment a
+    # newer release existed, and it never resolves to a pre-release at all.
+    #
+    # The tag is reconstructed by inverting what stamp_gem_version.sh does: it turns the
+    # tag's first hyphen into a dot, so the dot preceding a pre-release word becomes a
+    # hyphen again. v1.2.0-pre.7 ⏩️ 1.2.0.pre.7 ⏩️ v1.2.0-pre.7
+    "sbom_uri"          => "https://github.com/ThrowTheSwitch/Ceedling/releases/download/" \
+                           "v#{s.version.to_s.sub( /\.(?=[a-z])/, '-' )}/ceedling-#{s.version}.cdx.json"
   }
   
   s.required_ruby_version = ">= 3.0.0"
@@ -44,7 +57,6 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
   # Used for both development and runtime
   s.add_dependency "rake", ">= 12", "< 14"
 
-  s.add_dependency "diy", "~> 1.1"
   s.add_dependency "constructor", "~> 2"
   s.add_dependency "thor", "~> 1.3"
   s.add_dependency "deep_merge", "~> 1.2"
@@ -88,7 +100,22 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
     f == 'tools' || f.start_with?('tools/') ||            # Dev tooling the Rakefile above shells out to
     f == 'docs/mkdocs' || f.start_with?('docs/mkdocs/') ||  # Raw docs source -- site-local/ is the built artifact the gem actually serves
     f == 'specout' || f.start_with?('specout/') ||        # Retained system test artifacts and run logs
-    f == 'build' || f.start_with?('build/') || f.include?('/build/')  # Local build output
+    f == 'build' || f.start_with?('build/') || f.include?('/build/') ||  # Local build output
+    f.match?(/\.(cdx|spdx)\.json\z/) ||                   # Generated SBOMs -- release assets, not gem contents
+    # Upstream fff's own test apparatus. Ceedling needs fff.h from this tree and
+    # nothing else, and these three directories are 1.2 MB that no Ceedling code path
+    # references. gtest/ additionally holds BSD-3-Clause Google Test source, so leaving
+    # it out keeps the gem MIT throughout. All three stay in the repository, where
+    # plugins/fff/Rakefile can still reach them.
+    # Both halves per directory: the prefix catches the contents, the equality catches
+    # the directory entry itself, which the file sweep lists separately
+    f == 'plugins/fff/vendor/fff/gtest' || f.start_with?('plugins/fff/vendor/fff/gtest/') ||
+    f == 'plugins/fff/vendor/fff/test' || f.start_with?('plugins/fff/vendor/fff/test/') ||
+    f == 'plugins/fff/vendor/fff/examples' || f.start_with?('plugins/fff/vendor/fff/examples/') ||
+    # Upstream's drivers for those same tests, which build nothing once the
+    # directories above are gone
+    f == 'plugins/fff/vendor/fff/Makefile' ||
+    f == 'plugins/fff/vendor/fff/buildandtest'
   end
 
   # Dir['**/*'] cannot see dotfiles, and a few are required for the spec suites that
@@ -117,5 +144,9 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
   s.test_files = Dir['test/**/*', 'spec/**/*', 'features/**/*']
   s.executables = ['ceedling'] # bin/ceedling
 
-  s.require_paths = ["lib", "vendor/cmock/lib"]
+  # CMock and DIY ship inside the gem rather than arriving as gem dependencies, so
+  # their lib directories belong on the load path. DIY's upstream gem has been
+  # unmaintained since 2009. bin/ceedling also unshifts the vendored DIY path before
+  # requiring it, which is what makes the vendored copy win wherever both exist.
+  s.require_paths = ["lib", "vendor/cmock/lib", "vendor/diy/lib"]
 end
