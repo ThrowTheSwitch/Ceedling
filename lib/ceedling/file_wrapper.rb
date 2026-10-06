@@ -81,8 +81,21 @@ class FileWrapper
 
   def directory_listing(glob)
     # Note: `sort()` to ensure platform-independent directory listings (Github Issue #860)
-    # FNM_PATHNAME => Case insensitive globs
+    # FNM_PATHNAME keeps a wildcard from matching across path separators. Globs here are
+    # case sensitive wherever the filesystem is, which rules this out for matching a name
+    # whose capitalization varies -- see `directory_entries()`.
     return Dir.glob(glob, File::FNM_PATHNAME).sort()
+  end
+
+  # Entry names within a single directory, `.` and `..` excluded.
+  #
+  # Complements `directory_listing()` for the case a glob cannot serve: matching a
+  # filename whose capitalization is unknown. A caller can apply a case insensitive
+  # pattern to these names, which a glob cannot do portably. `File::FNM_CASEFOLD` has
+  # no effect in `Dir.glob`.
+  def directory_entries(path)
+    # Note: `sort()` for the same platform-independence reason as above
+    return Dir.children(path).sort()
   end
 
   def rm_f(filepath, options={})

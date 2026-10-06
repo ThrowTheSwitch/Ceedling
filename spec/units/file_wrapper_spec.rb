@@ -376,4 +376,29 @@ describe FileWrapper do
         .to eq("__#{CEEDLING_GENERATED}_ABC_XYZ_V2_H__")
     end
   end
+
+  # Complements #directory_listing for the one case a glob cannot serve: matching a
+  # filename whose capitalization is unknown. Callers apply their own case insensitive
+  # pattern to these names, since File::FNM_CASEFOLD has no effect in Dir.glob and a
+  # lowercase glob pattern therefore matches LICENSE.txt only where the filesystem
+  # itself happens to be case insensitive.
+  describe '#directory_entries' do
+    it 'returns the names within a directory, sorted' do
+      allow(Dir).to receive(:children).with('/some/dir').and_return(['b.txt', 'a.txt'])
+
+      expect( @file_wrapper.directory_entries('/some/dir') ).to eq(['a.txt', 'b.txt'])
+    end
+
+    it 'returns bare entry names rather than paths, so a pattern can anchor on them' do
+      allow(Dir).to receive(:children).with('/some/dir').and_return(['LICENSE'])
+
+      expect( @file_wrapper.directory_entries('/some/dir') ).to eq(['LICENSE'])
+    end
+
+    it 'returns an empty list for an empty directory' do
+      allow(Dir).to receive(:children).with('/empty').and_return([])
+
+      expect( @file_wrapper.directory_entries('/empty') ).to eq([])
+    end
+  end
 end

@@ -115,6 +115,29 @@ module CommonSystemTestCases
     end
   end
 
+  # A vendored project carries third-party source, so it must carry that source's
+  # licenses. Each is asserted by exact filename because capitalization is what breaks
+  # this: a glob for `license.txt` finds `LICENSE.txt` only where the filesystem is
+  # case insensitive, so Unity's, CMock's, and DIY's licenses reached macOS projects and
+  # not Linux ones. fff's arrives by a different route, the whole plugins/ tree being
+  # copied rather than selected subdirectories of it.
+  def contains_vendored_licenses
+    @c.with_context do
+      Dir.chdir @proj_name do
+        [
+          'vendor/ceedling/license.txt',
+          'vendor/ceedling/vendor/unity/LICENSE.txt',
+          'vendor/ceedling/vendor/cmock/LICENSE.txt',
+          'vendor/ceedling/vendor/c_exception/license.txt',
+          'vendor/ceedling/vendor/diy/LICENSE.txt',
+          'vendor/ceedling/plugins/fff/vendor/fff/LICENSE'
+        ].each do |license|
+          expect(File.exist?(license)).to eq(true), "expected vendored license #{license}"
+        end
+      end
+    end
+  end
+
   def does_not_contain_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do

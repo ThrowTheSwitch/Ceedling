@@ -502,7 +502,7 @@ class CliHelper
       # Form glob to collect all markdown files
       glob = File.join( ceedling_root, src, '*.md' )
       # Look up markdown files
-      listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
+      listing = @file_wrapper.directory_listing( glob )
       # For each markdown filepath, add to hash
       listing.each do |filepath|
         # Reassign destination
@@ -518,12 +518,9 @@ class CliHelper
       'cmock'       => 'vendor/cmock',
       'c_exception' => 'vendor/c_exception',
     }.each do |dest, src|
-      glob = File.join( ceedling_root, src, 'license.txt' )
-      # Look up licenses (use glob as capitalization can be inconsistent)
-      listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
-      # Safety check on nil references since we explicitly reference first element
-      next if listing.empty?
-      filepath = listing.first
+      filepath = license_filepath( File.join( ceedling_root, src ) )
+      next if filepath.nil?
+
       # Reassign dest
       dest = File.join( dest, File.basename( filepath ) )
       doc_files[ dest ] = filepath
@@ -593,6 +590,9 @@ class CliHelper
 
     # Add licenses from Ceedling and supporting projects
     license_files = {}
+    # Only the vendor/ subcomponents, which arrive here as selected subdirectories and
+    # so would otherwise come without their licenses. plugins/, lib/, and bin/ are
+    # copied whole above, which already carries fff's license along with its source.
     [ # Source paths
       '.', # Ceedling
       'vendor/unity',
@@ -600,15 +600,10 @@ class CliHelper
       'vendor/c_exception',
       'vendor/diy'
     ].each do |src|
-      # Look up licenses using a Glob as capitalization can be inconsistent
-      glob = File.join( ceedling_root, src, 'license.txt' )
-      listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
-      
-      # Safety check on nil references since we explicitly reference first element
-      next if listing.empty?
-      
-      # Add license copying to hash      
-      license = listing.first
+      license = license_filepath( File.join( ceedling_root, src ) )
+      next if license.nil?
+
+      # Add license copying to hash
       filepath = File.join( vendor_path, src, File.basename( license ) )
       license_files[ filepath ] = license
     end
@@ -649,6 +644,26 @@ class CliHelper
 
 
   private
+
+  # Matches a license filename whatever its capitalization and extension. The vendored
+  # projects disagree on all three: `license.txt`, `LICENSE.txt`, and fff's
+  # extensionless `LICENSE` all appear.
+  LICENSE_FILENAME = /\Alicen[sc]e/i
+
+  # Absolute path to a directory's license file, or nil when it holds none.
+  #
+  # Entry matching rather than a glob, because a glob cannot do this portably. A
+  # lowercase pattern finds `LICENSE.txt` only where the filesystem happens to be case
+  # insensitive, so globbing succeeded on macOS and dropped the Unity, CMock, and DIY
+  # licenses on Linux.
+  def license_filepath(directory)
+    return nil unless @file_wrapper.directory?( directory )
+
+    name = @file_wrapper.directory_entries( directory ).grep( LICENSE_FILENAME ).first
+    return nil if name.nil?
+
+    File.join( directory, name )
+  end
 
   def project_name_banner(config)
     name, _ = @config_walkinator.fetch_value( :project, :name, hash:config )
