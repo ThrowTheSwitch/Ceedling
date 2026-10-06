@@ -91,10 +91,6 @@ module Sbom
       File.read( File.join( directory, name ), encoding: 'UTF-8' )
     end
 
-    def exist?(relative_path)
-      File.exist?( path( relative_path ) )
-    end
-
     private
 
     def path(relative)

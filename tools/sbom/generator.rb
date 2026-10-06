@@ -29,10 +29,12 @@ module Sbom
       'spdx.json' => SPDX
     }.freeze
 
-    def initialize(root, output_dir: nil)
+    # `sources` is injectable so the wiring can be specified without a filesystem. It is
+    # the only collaborator here that reads anything.
+    def initialize(root, output_dir: nil, sources: nil)
       @root = root
       @output_dir = output_dir || root
-      @sources = Sources.new( root )
+      @sources = sources || Sources.new( root )
     end
 
     # Returns the paths written. A timestamp and serial number are generated here, once,

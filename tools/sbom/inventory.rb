@@ -23,16 +23,15 @@ module Sbom
     class Error < RuntimeError; end
 
     # Submodule directory basename to the GitHub coordinates its source came from.
-    # CException is the one whose repository name differs from its directory.
-    REPOSITORIES = {
-      'unity'       => %w[throwtheswitch unity],
-      'cmock'       => %w[throwtheswitch cmock],
-      'c_exception' => %w[throwtheswitch cexception]
+    # Submodule directory basename to everything derived from it: the GitHub coordinates
+    # its source came from, and the key its header version arrives under. CException is
+    # the one whose repository name differs from its directory, and both of its copies
+    # report one header version, which is why the version key is not the path.
+    VENDORED = {
+      'unity'       => { namespace: 'throwtheswitch', repository: 'unity',      version_key: :unity },
+      'cmock'       => { namespace: 'throwtheswitch', repository: 'cmock',      version_key: :cmock },
+      'c_exception' => { namespace: 'throwtheswitch', repository: 'cexception', version_key: :cexception }
     }.freeze
-
-    # Header macro versions arrive keyed by component rather than by path, since both
-    # copies of a component report the same one.
-    HEADER_KEYS = { 'unity' => :unity, 'cmock' => :cmock, 'c_exception' => :cexception }.freeze
 
     # fff reached Ceedling as a submodule of a plugin packaging of the framework, became
     # a snapshot of 0.1.1 in January 2024, and has been modified since. Constants rather
@@ -99,17 +98,16 @@ module Sbom
           raise Error, "submodule #{entry.path} is not initialized -- cannot describe it"
         end
 
-        key = File.basename( entry.path )
-        namespace, repository = REPOSITORIES.fetch( key ) do
+        known = VENDORED.fetch( File.basename( entry.path ) ) do
           raise Error, "no repository known for submodule #{entry.path}"
         end
 
         Component.new(
-          name: repository,
+          name: known[:repository],
           kind: 'bundled',
           path: entry.path,
-          version: @header_versions[HEADER_KEYS[key]],
-          purl: Purl.github( namespace, repository, entry.commit ),
+          version: @header_versions[known[:version_key]],
+          purl: Purl.github( known[:namespace], known[:repository], entry.commit ),
           license: @licenses[entry.path]
         )
       end

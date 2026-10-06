@@ -52,6 +52,7 @@ AllCops:
     - 'plugins/**/*.rb'
     - 'plugins/**/*.rake'
     - 'spec/**/*.rb'
+    - 'tools/**/*.rb'             # release tooling, excluded from the gem but run by CI
     - 'Rakefile'
     - '*.gemspec'
 
@@ -100,10 +101,23 @@ Metrics:
   Enabled: true
   Exclude:
     - 'spec/**/*'
+    - 'tools/**/spec/**/*'       # same reasoning; the SBOM generator's specs live here
     - '**/*.rake'
     - 'Rakefile'
     - '*.gemspec'
     - 'lib/ceedling/defaults.rb'
+    # The SBOM generator, for the same reason as defaults.rb above. Nearly every method
+    # there builds a literal document or component hash from the model, so Metrics fires
+    # on the shape of the data rather than on anything about the code. Measured once
+    # across the whole directory, every offense was of that kind and none identified a
+    # defect. Lint, Security, and Performance still apply.
+    - 'tools/sbom/**/*'
+
+# Keyword arguments are not what this cop is protecting against. Its concern is a call
+# site reading as a row of unlabeled positions, which cannot happen when every argument
+# is named -- and the SBOM component model takes ten of them precisely so each is named.
+Metrics/ParameterLists:
+  CountKeywordArgs: false
 
 # The Rakefile carries a `#!/usr/bin/env rake` shebang but is invoked as `rake`
 # rather than executed directly, so it neither needs nor wants the execute bit the
@@ -137,6 +151,7 @@ Lint/InterpolationCheck:
 Lint/ConstantDefinitionInBlock:
   Exclude:
     - 'spec/**/*'
+    - 'tools/**/spec/**/*'
 
 # Ceedling's dynamic configuration and plugin systems are built on `eval`. The
 # configurator generates an accessor per flattened config key, the plugin manager

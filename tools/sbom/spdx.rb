@@ -44,45 +44,57 @@ module Sbom
         'dataLicense' => DATA_LICENSE,
         'SPDXID' => 'SPDXRef-DOCUMENT',
         'name' => "ceedling-#{@document.root.version}",
-        # Derived from the caller's serial number so the namespace is as reproducible as
-        # the rest of the document. SPDX requires it to be unique per document. The
-        # `urn:uuid:` prefix is stripped, a URN being awkward inside a URL path.
-        'documentNamespace' =>
-          "https://throwtheswitch.org/spdx/ceedling-#{@document.root.version}-" \
-          "#{@serial_number.sub( /\Aurn:uuid:/, '' )}",
+        'documentNamespace' => document_namespace,
         'creationInfo' => {
           'created' => @timestamp,
           'creators' => ['Tool: ceedling-sbom', 'Organization: ThrowTheSwitch.org']
         },
         'comment' => @document.properties.map { |name, value| "#{name}: #{value}" }.join( "\n" ),
         'packages' => packages + ancestors,
-        'relationships' => relationships( ancestors )
+        'relationships' => relationships
       }
     end
 
+    # Derived from the caller's serial number so the namespace is as reproducible as the
+    # rest of the document. SPDX requires it to be unique per document. The `urn:uuid:`
+    # prefix comes off, a URN being awkward inside a URL path.
+    def document_namespace
+      "https://throwtheswitch.org/spdx/ceedling-#{@document.root.version}-" \
+        "#{@serial_number.delete_prefix( 'urn:uuid:' )}"
+    end
+
+    # The root carries a fixed identifier rather than a derived one, being the single
+    # package every DESCRIBES relationship points at.
     def spdx_id(entry)
+      return 'SPDXRef-Package-ceedling' if entry.kind == 'root'
+
       "SPDXRef-Package-#{entry.ref}"
     end
 
+    # NOASSERTION rather than an omission or a guess. SPDX distinguishes "no claim made"
+    # from "no license", and only the first is true where nothing was read. Download
+    # location and copyright are unasserted throughout: the gem is the download, and
+    # copyright lives in each component's own license file.
+    UNASSERTED = {
+      'downloadLocation' => 'NOASSERTION',
+      'filesAnalyzed' => false,
+      'licenseConcluded' => 'NOASSERTION',
+      'copyrightText' => 'NOASSERTION'
+    }.freeze
+
     def package(entry)
-      result = {
-        'SPDXID' => entry.kind == 'root' ? 'SPDXRef-Package-ceedling' : spdx_id( entry ),
-        'name' => entry.name,
-        'downloadLocation' => 'NOASSERTION',
-        'filesAnalyzed' => false,
-        # NOASSERTION rather than an omission or a guess. SPDX distinguishes "no claim
-        # made" from "no license", and only the first is true where no file was found.
-        'licenseConcluded' => 'NOASSERTION',
-        'licenseDeclared' => entry.license || 'NOASSERTION',
-        'copyrightText' => 'NOASSERTION'
+      optional = {
+        'versionInfo' => entry.version,
+        'sourceInfo' => entry.path.nil? ? nil : "Vendored at #{entry.path}",
+        'comment' => entry.notes,
+        'externalRefs' => entry.purl.nil? ? nil : [external_ref( entry.purl )]
       }
 
-      result['versionInfo'] = entry.version unless entry.version.nil?
-      result['sourceInfo'] = "Vendored at #{entry.path}" unless entry.path.nil?
-      result['comment'] = entry.notes unless entry.notes.nil?
-      result['externalRefs'] = [external_ref( entry.purl )] unless entry.purl.nil?
-
-      result
+      {
+        'SPDXID' => spdx_id( entry ),
+        'name' => entry.name,
+        'licenseDeclared' => entry.license || 'NOASSERTION'
+      }.merge( UNASSERTED ).merge( optional.compact )
     end
 
     def external_ref(purl)
@@ -116,17 +128,39 @@ module Sbom
       "SPDXRef-Package-#{entry.ref}-ancestor-#{index + 1}"
     end
 
-    def relationships(ancestors)
-      describes = ([@document.root] + @document.all_components).map do |entry|
+    # Three kinds, each its own method. SPDX states as a relationship what CycloneDX
+    # states structurally, so this is where the two formats diverge most.
+    def relationships
+      describes + contains + variants
+    end
+
+    def describes
+      ([@document.root] + @document.all_components).map do |entry|
         {
           'spdxElementId' => 'SPDXRef-DOCUMENT',
           'relationshipType' => 'DESCRIBES',
-          'relatedSpdxElement' => entry.kind == 'root' ? 'SPDXRef-Package-ceedling' : spdx_id( entry )
+          'relatedSpdxElement' => spdx_id( entry )
         }
       end
+    end
 
-      variants = lineages.flat_map do |entry, lineage|
-        lineage.ancestors.each_with_index.map do |_ancestor, index|
+    # SPDX has no nesting, so containment is a relationship. CycloneDX nests the same
+    # fact inside the parent's own components array.
+    def contains
+      @document.all_components.flat_map do |entry|
+        entry.children.map do |child|
+          {
+            'spdxElementId' => spdx_id( entry ),
+            'relationshipType' => 'CONTAINS',
+            'relatedSpdxElement' => spdx_id( child )
+          }
+        end
+      end
+    end
+
+    def variants
+      lineages.flat_map do |entry, lineage|
+        lineage.ancestors.each_index.map do |index|
           {
             'spdxElementId' => spdx_id( entry ),
             'relationshipType' => 'VARIANT_OF',
@@ -134,8 +168,6 @@ module Sbom
           }
         end
       end
-
-      describes + variants
     end
 
   end

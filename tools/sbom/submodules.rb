@@ -33,20 +33,24 @@ module Sbom
     LINE = /\A(?<status>[ +\-U]?)(?<commit>[0-9a-f]{7,40})\s+(?<path>\S+)(?:\s+\((?<describe>[^)]*)\))?\s*\z/
 
     def self.parse(text)
-      text.to_s.lines.filter_map do |line|
-        next if line.strip.empty?
-
-        match = LINE.match( line.chomp )
-        next if match.nil?
-
-        Entry.new(
-          path: match[:path],
-          commit: match[:commit],
-          describe: match[:describe],
-          status: match[:status].to_s.strip.empty? ? ' ' : match[:status]
-        )
-      end
+      text.to_s.lines.filter_map { |line| entry( line.chomp ) }
     end
+
+    # Nil for anything that is not a gitlink line, blank lines included.
+    def self.entry(line)
+      match = LINE.match( line )
+      return nil if match.nil?
+
+      Entry.new(
+        path: match[:path],
+        commit: match[:commit],
+        describe: match[:describe],
+        # An in-sync submodule's status column is a space, which the pattern captures as
+        # empty when the line has no leading character at all.
+        status: match[:status].to_s.strip.empty? ? ' ' : match[:status]
+      )
+    end
+    private_class_method :entry
 
   end
 end

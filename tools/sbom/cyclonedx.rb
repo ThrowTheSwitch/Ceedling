@@ -45,7 +45,7 @@ module Sbom
           'component' => component( @document.root ),
           'properties' => properties
         },
-        'components' => @document.all_components.map { |c| component( c ) }
+        'components' => @document.components.map { |c| component( c ) }
       }
     end
 
@@ -53,9 +53,10 @@ module Sbom
       @document.properties.map { |name, value| { 'name' => name, 'value' => value } }
     end
 
-    # `components` is flattened rather than nested, so every component is addressable at
-    # the top level. Nesting is expressed through the model's own parent/child
-    # relationship, which pedigree and bom-ref already capture.
+    # A component holding others nests them in its own `components` array, which is how
+    # CycloneDX says one thing contains another. The vendored framework inside the fff
+    # plugin is the case here. Without the nesting, containment would survive only as a
+    # path string in a property, readable by a person and by nothing else.
     def component(entry)
       # Every component here is a library, whether it arrives as a gem or as vendored
       # source. The distinction between the two is carried by ceedling:path below.
@@ -72,6 +73,8 @@ module Sbom
 
       extra = component_properties( entry )
       result['properties'] = extra unless extra.empty?
+
+      result['components'] = entry.children.map { |child| component( child ) } unless entry.children.empty?
 
       result
     end

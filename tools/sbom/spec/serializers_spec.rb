@@ -153,21 +153,28 @@ describe 'SBOM serializers' do
     let(:cyclonedx) { render( Sbom::CycloneDX ) }
     let(:spdx) { render( Sbom::SPDX ) }
 
+    # CycloneDX nests a contained component inside its parent, so reading only the
+    # top-level array would miss whatever sits inside something else.
+    def flatten_components(entries)
+      entries.flat_map { |c| [c] + flatten_components( c['components'] || [] ) }
+    end
+
     def ancestor_purls(bom)
-      bom['components'].flat_map { |c| c.dig( 'pedigree', 'ancestors' )&.map { |a| a['purl'] } || [] }
+      flatten_components( bom['components'] )
+        .flat_map { |c| c.dig( 'pedigree', 'ancestors' )&.map { |a| a['purl'] } || [] }
     end
 
     it 'describes the same components, SPDX adding one package per ancestor' do
-      components = cyclonedx['components'].size
+      components = flatten_components( cyclonedx['components'] ).size
       ancestors = ancestor_purls( cyclonedx ).size
-      packages = spdx['packages'].reject { |p| p['SPDXID'] == 'SPDXRef-Package-ceedling' }.size
+      packages = spdx['packages'].count { |p| p['SPDXID'] != 'SPDXRef-Package-ceedling' }
 
       expect( packages ).to eq(components + ancestors)
     end
 
     it 'carries an identical set of PURLs, lineage included' do
       from_cyclonedx = ([cyclonedx.dig( 'metadata', 'component', 'purl' )] +
-        cyclonedx['components'].map { |c| c['purl'] } +
+        flatten_components( cyclonedx['components'] ).map { |c| c['purl'] } +
         ancestor_purls( cyclonedx )).compact.sort
 
       from_spdx = spdx['packages']
@@ -175,6 +182,17 @@ describe 'SBOM serializers' do
         .sort
 
       expect( from_spdx ).to eq(from_cyclonedx)
+    end
+
+    # Containment is the fact each format states its own way. Losing it in one would
+    # leave that document saying less than the other about the same gem.
+    it 'states containment in both, nested in one and related in the other' do
+      parent = cyclonedx['components'].find { |c| c['name'] == 'fake_function_framework' }
+      expect( parent['components'].map { |c| c['name'] } ).to eq(['fff'])
+
+      contains = spdx['relationships'].select { |r| r['relationshipType'] == 'CONTAINS' }
+      expect( contains.size ).to eq(1)
+      expect( contains.first['spdxElementId'] ).to include('plugins-fff')
     end
 
     it 'does not lose the ancestor in either format' do

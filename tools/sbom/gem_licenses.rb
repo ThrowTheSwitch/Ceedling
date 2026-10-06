@@ -84,30 +84,35 @@ module Sbom
       end
     end
 
-    # Every way the list and the closure can disagree, as readable sentences.
+    # Every way the list and the closure can disagree, as sentences naming the remedy.
     def audit(closure)
-      problems = []
+      arrived( closure ) + departed( closure ) + drifted( closure )
+    end
 
-      (closure.keys - GEMS.keys).sort.each do |name|
-        problems << "#{name} #{closure[name]} is a new dependency with no license entry. " \
-                    'Read its license and add one.'
+    def arrived(closure)
+      (closure.keys - GEMS.keys).sort.map do |name|
+        "#{name} #{closure[name]} is a new dependency with no license entry. " \
+          'Read its license and add one.'
       end
+    end
 
-      (GEMS.keys - closure.keys).sort.each do |name|
-        problems << "#{name} has a license entry but is no longer a dependency. Remove it."
+    def departed(closure)
+      (GEMS.keys - closure.keys).sort.map do |name|
+        "#{name} has a license entry but is no longer a dependency. Remove it."
       end
+    end
 
-      closure.each do |name, version|
+    # The check the other two cannot make. A recorded license describes one version of a
+    # gem, so a version that moved is a license worth reading again.
+    def drifted(closure)
+      closure.filter_map do |name, version|
         entry = GEMS[name]
-        next if entry.nil?
-        next if entry[:verified_for] == version
+        next if entry.nil? || entry[:verified_for] == version
 
-        problems << "#{name} resolved to #{version} but its license was verified " \
-                    "against #{entry[:verified_for]}. Re-read #{entry[:source]}, then " \
-                    'update license and verified_for together.'
+        "#{name} resolved to #{version} but its license was verified against " \
+          "#{entry[:verified_for]}. Re-read #{entry[:source]}, then update license and " \
+          'verified_for together.'
       end
-
-      problems
     end
 
     # Raises on any disagreement, rather than warning. Gemfile.lock is curated by hand
