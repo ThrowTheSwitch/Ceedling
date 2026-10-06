@@ -12,8 +12,7 @@
 #
 # Purpose:
 #   Stamp the gem version from the calling workflow's Git tag, build the
-#   Ceedling gem, and publish a GitHub release or pre-release using
-#   softprops/action-gh-release@v2.
+#   Ceedling gem, and publish a GitHub release or pre-release.
 #
 # Version stamping:
 #   lib/version.rb reports a `.dev` version everywhere except here. It holds the
@@ -33,9 +32,14 @@
 #   version rather than the `.dev` value the tagged commit holds.
 #
 # RubyGems.org publishing:
-#   Stubbed at the end of this file, not enabled. Trusted publishing is the intended
-#   route rather than a stored API key; the OIDC permission it needs is already granted
-#   below for attestation. The remaining steps are listed beside the stub.
+#   A separate job, scoped to the `rubygems` environment, so that environment's
+#   protection rules gate the push and not the GitHub release. Authentication is
+#   trusted publishing, which exchanges the job's OIDC token for a short-lived
+#   credential, so no API key is stored in this repository.
+#
+#   Full releases are pushed. Pre-releases are not, matching the policy README.md
+#   states. A pre-release still runs the credential exchange, which makes it a
+#   rehearsal of the release path that publishes nothing.
 # -----------------------------------------------------------------------
 
 ---
@@ -51,10 +55,10 @@ on:
 
 # contents: write is required to create and upload GitHub releases.
 #
-# id-token: write and attestations: write let actions/attest sign each SBOM
-# against the gem it describes, so a consumer can verify the document came from this
-# workflow and not from somewhere else. id-token: write is also what RubyGems trusted
-# publishing will need, so enabling it here covers both.
+# id-token: write and attestations: write let actions/attest sign each SBOM against the
+# gem it describes, so a consumer can verify a document came from this workflow rather
+# than from somewhere else. The RubyGems job below grants its own id-token separately,
+# scoped to itself.
 permissions:
   contents: write
   id-token: write
@@ -245,21 +249,75 @@ jobs:
             ceedling-*.cdx.json
             ceedling-*.spdx.json
 
-      # RubyGems.org publishing, stubbed rather than enabled.
+      # Hand the built gem to the RubyGems job below. That job pushes this exact file,
+      # the one attested and attached to the release, rather than rebuilding it.
+      - name: Upload Gem for RubyGems Publishing
+        uses: actions/upload-artifact@v7
+        with:
+          name: ceedling-gem-release
+          path: ceedling-*.gem
+          if-no-files-found: error
+
+  # RubyGems.org publishing, separated from the job above so this environment's
+  # protection rules gate only this step and not the GitHub release.
+  #
+  # Trusted publishing rather than a stored API key. The job's OIDC token is exchanged
+  # for a short-lived RubyGems credential, and the `rubygems` environment is part of
+  # what RubyGems.org matches that token against.
+  #
+  # This job runs last because a push to RubyGems cannot be undone. `gem yank` hides a
+  # version while permanently reserving its number, where a GitHub release can simply be
+  # deleted. Everything reversible therefore happens first.
+  publish-rubygems:
+    name: "Publish Gem to RubyGems.org"
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    environment: rubygems
+
+    permissions:
+      id-token: write   # Exchanged for the RubyGems credential
+      contents: read
+
+    steps:
+      - name: Download Built Gem
+        uses: actions/download-artifact@v8
+        with:
+          name: ceedling-gem-release
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      # Runs for pre-releases as well as releases, and its success is the verification.
+      # The action exchanges this job's OIDC token with RubyGems.org, so it cannot write
+      # a credential RubyGems declined to issue. A mismatched repository, workflow, or
+      # environment name fails here, before anything is published.
       #
-      # Trusted publishing is the intended route, not a long-lived API key. It exchanges
-      # this workflow's OIDC token for a short-lived credential, so nothing secret is
-      # stored in the repository. The id-token: write permission it needs is already
-      # granted above, for attestation.
-      #
-      # What remains before uncommenting:
-      #   1. Register a trusted publisher on RubyGems.org for ThrowTheSwitch/Ceedling,
-      #      naming this workflow file.
-      #   2. Decide whether to scope this job to a GitHub `environment`, which lets the
-      #      publisher be restricted further and adds an approval gate if wanted.
-      #
-      # - name: Configure RubyGems Credentials
-      #   uses: rubygems/configure-rubygems-credentials@main
-      #
-      # - name: Push to RubyGems.org
-      #   run: gem push ceedling-*.gem
+      # Pinned to an exact version because this action publishes no moving major tag.
+      - name: Configure RubyGems Credentials
+        uses: rubygems/configure-rubygems-credentials@v2.1.0
+
+      # Checks locally that a credential landed, without calling RubyGems. A trusted
+      # publishing credential is scoped to pushing this gem, so a read-only endpoint can
+      # refuse it even where a push would succeed, failing a release for no reason.
+      - name: Confirm a Credential Was Issued
+        run: |
+          if [ -s "${HOME}/.gem/credentials" ] || [ -n "${GEM_HOST_API_KEY}" ]; then
+            echo "Credential in place for this job."
+          else
+            echo "No credential was written despite the exchange reporting success."
+            exit 1
+          fi
+
+      # Full releases only. Pre-releases are published as release assets rather than to
+      # RubyGems, which is the policy README.md states and the registry reflects.
+      - name: Push to RubyGems.org
+        if: ${{ !inputs.prerelease }}
+        run: gem push ceedling-*.gem
+
+      - name: Log Skipped Publication
+        if: ${{ inputs.prerelease }}
+        run: |
+          echo "Pre-release, so nothing was pushed to RubyGems.org."
+          echo "The credential exchange above was still exercised end to end."
