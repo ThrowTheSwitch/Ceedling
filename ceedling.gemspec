@@ -94,9 +94,15 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
     # references. gtest/ additionally holds BSD-3-Clause Google Test source, so leaving
     # it out keeps the gem MIT throughout. All three stay in the repository, where
     # plugins/fff/Rakefile can still reach them.
-    f.start_with?('plugins/fff/vendor/fff/gtest/') ||
-    f.start_with?('plugins/fff/vendor/fff/test/') ||
-    f.start_with?('plugins/fff/vendor/fff/examples/')
+    # Both halves per directory: the prefix catches the contents, the equality catches
+    # the directory entry itself, which the file sweep lists separately
+    f == 'plugins/fff/vendor/fff/gtest' || f.start_with?('plugins/fff/vendor/fff/gtest/') ||
+    f == 'plugins/fff/vendor/fff/test' || f.start_with?('plugins/fff/vendor/fff/test/') ||
+    f == 'plugins/fff/vendor/fff/examples' || f.start_with?('plugins/fff/vendor/fff/examples/') ||
+    # Upstream's drivers for those same tests, which build nothing once the
+    # directories above are gone
+    f == 'plugins/fff/vendor/fff/Makefile' ||
+    f == 'plugins/fff/vendor/fff/buildandtest'
   end
 
   # Dir['**/*'] cannot see dotfiles, and a few are required for the spec suites that
