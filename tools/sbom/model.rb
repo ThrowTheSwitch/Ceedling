@@ -20,6 +20,9 @@ module Sbom
   # Upstream lineage for a component that has diverged from its source. Vendored fff
   # is the case in hand: a modified descendant of a Ceedling plugin packaging of the
   # framework, which stopped being a submodule in 2024.
+  # Ancestors are Components, not bare identifiers. CycloneDX requires a type and a name
+  # on each pedigree ancestor rather than only a PURL, and SPDX needs a whole package to
+  # point a relationship at. Both serializers already know how to render a Component.
   class Pedigree
     attr_reader :ancestors, :notes
 

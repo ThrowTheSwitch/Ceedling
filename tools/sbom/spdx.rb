@@ -97,18 +97,10 @@ module Sbom
     # modified component points at. Without this the lineage would simply be absent.
     def ancestor_packages
       lineages.flat_map do |entry, lineage|
-        lineage.ancestors.map do |purl|
-          {
-            'SPDXID' => ancestor_id( entry, purl ),
-            'name' => "#{entry.name}-ancestor",
-            'downloadLocation' => 'NOASSERTION',
-            'filesAnalyzed' => false,
-            'licenseConcluded' => 'NOASSERTION',
-            'licenseDeclared' => 'NOASSERTION',
-            'copyrightText' => 'NOASSERTION',
-            'comment' => lineage.notes,
-            'externalRefs' => [external_ref( purl )]
-          }.compact
+        lineage.ancestors.each_with_index.map do |ancestor, index|
+          package( ancestor )
+            .merge( 'SPDXID' => ancestor_id( entry, index ) )
+            .merge( lineage.notes.nil? ? {} : { 'comment' => lineage.notes } )
         end
       end
     end
@@ -120,8 +112,7 @@ module Sbom
     # Indexed by position rather than derived from the identifier. `String#hash` is
     # seeded per process, so hashing the PURL would give the same ancestor a different
     # SPDXID on every run and make two builds of one commit differ.
-    def ancestor_id(entry, purl)
-      index = entry.pedigree.ancestors.index( purl )
+    def ancestor_id(entry, index)
       "SPDXRef-Package-#{entry.ref}-ancestor-#{index + 1}"
     end
 
@@ -135,11 +126,11 @@ module Sbom
       end
 
       variants = lineages.flat_map do |entry, lineage|
-        lineage.ancestors.map do |purl|
+        lineage.ancestors.each_with_index.map do |_ancestor, index|
           {
             'spdxElementId' => spdx_id( entry ),
             'relationshipType' => 'VARIANT_OF',
-            'relatedSpdxElement' => ancestor_id( entry, purl )
+            'relatedSpdxElement' => ancestor_id( entry, index )
           }
         end
       end

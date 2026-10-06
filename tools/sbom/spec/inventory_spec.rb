@@ -115,10 +115,20 @@ describe Sbom::Inventory do
   describe 'the fff plugin' do
     it 'records the upstream it descends from, and that it has diverged' do
       fff = build.all_components.find { |c| c.path == 'plugins/fff' }
+      ancestor = fff.pedigree.ancestors.first
 
-      expect( fff.pedigree.ancestors )
-        .to eq(['pkg:github/electronvector/fake_function_framework@d3914ef0'])
+      expect( ancestor.purl ).to eq('pkg:github/electronvector/fake_function_framework@d3914ef0')
       expect( fff.pedigree.notes ).to match(/modified/i)
+    end
+
+    # An ancestor is a Component rather than a bare identifier because both formats need
+    # more than one: CycloneDX requires a type and a name on each pedigree ancestor, and
+    # SPDX needs a whole package to point a VARIANT_OF relationship at.
+    it 'carries the ancestor as a component, with a name and a license of its own' do
+      ancestor = build.all_components.find { |c| c.path == 'plugins/fff' }.pedigree.ancestors.first
+
+      expect( ancestor.name ).to eq('fake_function_framework')
+      expect( ancestor.license ).to eq('MIT')
     end
 
     it 'nests the framework itself, which carries no version marker' do

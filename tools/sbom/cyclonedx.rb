@@ -67,7 +67,7 @@ module Sbom
 
       result['version'] = entry.version unless entry.version.nil?
       result['purl'] = entry.purl unless entry.purl.nil?
-      result['licenses'] = [{ 'license' => { 'id' => entry.license } }] unless entry.license.nil?
+      result['licenses'] = licenses( entry.license ) unless entry.license.nil?
       result['pedigree'] = pedigree( entry.pedigree ) unless entry.pedigree.nil?
 
       extra = component_properties( entry )
@@ -76,9 +76,22 @@ module Sbom
       result
     end
 
+    # A single SPDX identifier goes in `license.id`, which the schema validates against
+    # the SPDX list. A compound license is not an identifier and belongs in `expression`
+    # instead -- benchmark, offered under either Ruby or BSD-2-Clause, is the case here.
+    def licenses(license)
+      if license.match?(/\s(?:OR|AND|WITH)\s/)
+        [{ 'expression' => license }]
+      else
+        [{ 'license' => { 'id' => license } }]
+      end
+    end
+
+    # Each ancestor renders as a full component. The schema requires a type and a name on
+    # it, not merely an identifier.
     def pedigree(lineage)
       {
-        'ancestors' => lineage.ancestors.map { |purl| { 'purl' => purl } },
+        'ancestors' => lineage.ancestors.map { |ancestor| component( ancestor ) },
         'notes' => lineage.notes
       }.compact
     end

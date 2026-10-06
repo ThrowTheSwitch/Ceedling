@@ -144,7 +144,15 @@ module Sbom
         license: @licenses[FFF_PATH],
         notes: 'Modified descendant, so no upstream package identifier applies. See pedigree.',
         pedigree: Pedigree.new(
-          ancestors: [Purl.github( 'electronvector', 'fake_function_framework', FFF_ANCESTOR_COMMIT )],
+          ancestors: [
+            Component.new(
+              name: 'fake_function_framework',
+              kind: 'ancestor',
+              purl: Purl.github( 'electronvector', 'fake_function_framework', FFF_ANCESTOR_COMMIT ),
+              license: 'MIT',
+              path: 'ancestor/electronvector-fake_function_framework'
+            )
+          ],
           notes: 'Descends from a snapshot of 0.1.1, modified since it stopped being a submodule in 2024.'
         ),
         children: [
