@@ -88,7 +88,15 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
     f == 'docs/mkdocs' || f.start_with?('docs/mkdocs/') ||  # Raw docs source -- site-local/ is the built artifact the gem actually serves
     f == 'specout' || f.start_with?('specout/') ||        # Retained system test artifacts and run logs
     f == 'build' || f.start_with?('build/') || f.include?('/build/') ||  # Local build output
-    f.match?(/\.(cdx|spdx)\.json\z/)                      # Generated SBOMs -- release assets, not gem contents
+    f.match?(/\.(cdx|spdx)\.json\z/) ||                   # Generated SBOMs -- release assets, not gem contents
+    # Upstream fff's own test apparatus. Ceedling needs fff.h from this tree and
+    # nothing else, and these three directories are 1.2 MB that no Ceedling code path
+    # references. gtest/ additionally holds BSD-3-Clause Google Test source, so leaving
+    # it out keeps the gem MIT throughout. All three stay in the repository, where
+    # plugins/fff/Rakefile can still reach them.
+    f.start_with?('plugins/fff/vendor/fff/gtest/') ||
+    f.start_with?('plugins/fff/vendor/fff/test/') ||
+    f.start_with?('plugins/fff/vendor/fff/examples/')
   end
 
   # Dir['**/*'] cannot see dotfiles, and a few are required for the spec suites that
