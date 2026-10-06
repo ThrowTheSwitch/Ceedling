@@ -12,8 +12,7 @@
 #
 # Purpose:
 #   Stamp the gem version from the calling workflow's Git tag, build the
-#   Ceedling gem, and publish a GitHub release or pre-release using
-#   softprops/action-gh-release@v2.
+#   Ceedling gem, and publish a GitHub release or pre-release.
 #
 # Version stamping:
 #   lib/version.rb reports a `.dev` version everywhere except here. It holds the
@@ -56,10 +55,10 @@ on:
 
 # contents: write is required to create and upload GitHub releases.
 #
-# id-token: write and attestations: write let actions/attest sign each SBOM
-# against the gem it describes, so a consumer can verify the document came from this
-# workflow and not from somewhere else. id-token: write is also what RubyGems trusted
-# publishing will need, so enabling it here covers both.
+# id-token: write and attestations: write let actions/attest sign each SBOM against the
+# gem it describes, so a consumer can verify a document came from this workflow rather
+# than from somewhere else. The RubyGems job below grants its own id-token separately,
+# scoped to itself.
 permissions:
   contents: write
   id-token: write
@@ -266,9 +265,9 @@ jobs:
   # for a short-lived RubyGems credential, and the `rubygems` environment is part of
   # what RubyGems.org matches that token against.
   #
-  # Last, deliberately. A push to RubyGems cannot be undone -- `gem yank` hides a
-  # version but permanently reserves its number -- while a GitHub release can simply be
-  # deleted. Everything reversible therefore happens before anything that is not.
+  # This job runs last because a push to RubyGems cannot be undone. `gem yank` hides a
+  # version while permanently reserving its number, where a GitHub release can simply be
+  # deleted. Everything reversible therefore happens first.
   publish-rubygems:
     name: "Publish Gem to RubyGems.org"
     needs: build-and-publish
@@ -295,14 +294,13 @@ jobs:
       # a credential RubyGems declined to issue. A mismatched repository, workflow, or
       # environment name fails here, before anything is published.
       #
-      # Pinned to an exact version. This action publishes no moving major tag, so `@v2`
-      # would not resolve.
+      # Pinned to an exact version because this action publishes no moving major tag.
       - name: Configure RubyGems Credentials
         uses: rubygems/configure-rubygems-credentials@v2.1.0
 
-      # Deliberately not an API probe. A trusted publishing credential is scoped to
-      # pushing this gem, so a read-only endpoint may refuse it even when a push would
-      # succeed, which would fail a release for no reason.
+      # Checks locally that a credential landed, without calling RubyGems. A trusted
+      # publishing credential is scoped to pushing this gem, so a read-only endpoint can
+      # refuse it even where a push would succeed, failing a release for no reason.
       - name: Confirm a Credential Was Issued
         run: |
           if [ -s "${HOME}/.gem/credentials" ] || [ -n "${GEM_HOST_API_KEY}" ]; then
