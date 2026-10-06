@@ -54,9 +54,13 @@ on:
       - '!v*.*.*-*'   # Exclude pre-release tags (e.g. v1.0.0-pre.1, v1.0.0-beta.1)
 
 
-# contents: write is required to create and upload GitHub releases
+# A called workflow cannot grant itself more than its caller holds, so these are
+# declared here as well as in _publish-gem.yml. contents: write creates the release;
+# id-token: write and attestations: write let it attest each SBOM against the gem.
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 
 jobs:
