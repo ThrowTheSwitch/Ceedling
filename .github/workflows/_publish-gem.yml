@@ -51,7 +51,7 @@ on:
 
 # contents: write is required to create and upload GitHub releases.
 #
-# id-token: write and attestations: write let actions/attest-sbom sign each SBOM
+# id-token: write and attestations: write let actions/attest sign each SBOM
 # against the gem it describes, so a consumer can verify the document came from this
 # workflow and not from somewhere else. id-token: write is also what RubyGems trusted
 # publishing will need, so enabling it here covers both.
@@ -188,14 +188,20 @@ jobs:
       # One step per format, sbom-path taking a single file. Both are published, so both
       # are attested -- an attested CycloneDX beside an unattested SPDX would leave
       # whichever a consumer happens to read the less trustworthy of the two.
+      #
+      # actions/attest rather than actions/attest-sbom, which is deprecated. Passing
+      # sbom-path produces an SBOM attestation, and the action reads the format from the
+      # document, so the predicate type still comes out as cyclonedx.org/bom or
+      # spdx.dev/Document. Verification needs that type named explicitly, since
+      # `gh attestation verify` looks for SLSA provenance unless told otherwise.
       - name: Attest CycloneDX SBOM
-        uses: actions/attest-sbom@v4
+        uses: actions/attest@v4
         with:
           subject-path: ceedling-*.gem
           sbom-path: ${{ env.cdx_sbom }}
 
       - name: Attest SPDX SBOM
-        uses: actions/attest-sbom@v4
+        uses: actions/attest@v4
         with:
           subject-path: ceedling-*.gem
           sbom-path: ${{ env.spdx_sbom }}
