@@ -222,7 +222,8 @@ module PartialsGenerationHelpers
       partials: {},
       defines: [],
       mode: :accurate,
-      expose: PartializerConfig::DEDUCT,
+      tests_expose: PartializerConfig::DEDUCT,
+      mocks_expose: PartializerConfig::DEDUCT,
       dir: nil
     )
     # A caller supplies `dir` to generate two modules into one working directory, which is
@@ -269,16 +270,23 @@ module PartialsGenerationHelpers
     # concatenates the two before remapping.
     raw_includes = partial_include_objects( source_includes + header_includes )
 
-    # DEDUCT with no subtractions is what TEST_PARTIAL_ALL_MODULE resolves to -- every
-    # function exposed. Visibility filtering has its own thorough unit coverage, so a case
-    # here states the exposure it wants rather than re-proving the filter.
+    # DEDUCT with no subtractions is what TEST_PARTIAL_ALL_MODULE resolves to -- every function
+    # exposed. The two sides are separate because a module is routinely tested at one visibility
+    # and mocked at another, which splits its own content across two generated files. Visibility
+    # filtering has its own thorough unit coverage, so a case states the exposure it wants rather
+    # than re-proving the filter.
     config = PartializerConfig::Config.new(
       module: module_name,
-      tests: PartializerConfig::PartialFunctions.new( type: expose ),
-      mocks: PartializerConfig::PartialFunctions.new( type: expose ),
+      tests: PartializerConfig::PartialFunctions.new( type: tests_expose ),
+      mocks: PartializerConfig::PartialFunctions.new( type: mocks_expose ),
       header: Partials::ConfigFileInfo.new( filepath: File.join( dir, "#{module_name}.h" ) ),
       source: Partials::ConfigFileInfo.new( filepath: File.join( dir, "#{module_name}.c" ) )
     )
+
+    # Production hands the remaps the whole test file's partials hash, which includes the module
+    # being generated. That entry is what tells the source remap to carry this module's own
+    # interface header, so omitting it hides a real behavior.
+    all_partials = partials.merge( module_name => config )
 
     # Partials refuses a module whose shape fallback preprocessing cannot resolve, rather than
     # generating from a guess and leaving a compiler to report something arcane later. Routed
@@ -303,7 +311,7 @@ module PartialsGenerationHelpers
     # The types header carries its own dependencies and its own guard-spoof, so both are
     # computed here the way partials_manager does and handed to the generator.
     types_includes = partializer.remap_types_header_includes(
-      name: module_name, includes: raw_includes, partials: partials
+      name: module_name, includes: raw_includes, partials: all_partials
     )
     include_guard = partializer.extract_module_include_guard( config.header.filepath )
 
@@ -313,16 +321,16 @@ module PartialsGenerationHelpers
     )
 
     header_list = partializer.remap_implementation_header_includes(
-      name: module_name, includes: raw_includes, partials: partials,
+      name: module_name, includes: raw_includes, partials: all_partials,
       types_header: types_h_name
     )
 
     source_list = partializer.remap_implementation_source_includes(
-      name: module_name, includes: raw_includes, partials: partials
+      name: module_name, includes: raw_includes, partials: all_partials
     )
 
     interface_list = partializer.remap_interface_header_includes(
-      name: module_name, includes: raw_includes, partials: partials,
+      name: module_name, includes: raw_includes, partials: all_partials,
       types_header: types_h_name
     )
 

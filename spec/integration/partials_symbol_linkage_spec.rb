@@ -205,6 +205,132 @@ describe 'Partial symbol linkage' do
   end
 
   # ---------------------------------------------------------------------------
+  context 'a module tested at one visibility and mocked at another' do
+  # ---------------------------------------------------------------------------
+
+    # The common real-world pairing: TEST_PARTIAL_PUBLIC_MODULE beside
+    # MOCK_PARTIAL_PRIVATE_MODULE, which tests a module's public surface while mocking the
+    # private helpers that surface calls. It splits one module's own content across two
+    # generated files, and that split is the shape a single-visibility case cannot reach.
+    #
+    # wondrous_forest's ForestMonitor is exactly this, and a refactor that dropped the module's
+    # own interface header from its generated source left a private function undeclared at
+    # compile time with nothing below the system tier to catch it.
+
+    # A module's own config is part of the partials hash the remaps receive, which is what tells
+    # the source remap to carry this module's interface header alongside its implementation.
+    it 'carries its own interface header in its generated source' do
+      @result = generate_partial( **split_visibility_module )
+      @dir = @result.dir
+
+      expect( @result.source_include_list.join( "\n" ) )
+        .to include('ceedling_partial_gauge_impl.h')
+      expect( @result.source_include_list.join( "\n" ) )
+        .to include('ceedling_partial_gauge_interface.h')
+    end
+
+    # The interface header includes the types header, so carrying the interface back into the
+    # types header would fold its declarations into that file instead.
+    it 'never carries its own interface header into the types header' do
+      @result = generate_partial( **split_visibility_module )
+      @dir = @result.dir
+
+      expect( @result.types_h_includes.join( "\n" ) )
+        .not_to include('ceedling_partial_gauge_interface.h')
+    end
+
+    it 'declares the public functions in the implementation header and the private ones in the interface' do
+      @result = generate_partial( **split_visibility_module )
+      @dir = @result.dir
+
+      expect( @result.impl_h ).to include('int gauge_read(void);')
+      expect( @result.impl_h ).not_to include('gauge_scale')
+
+      expect( @result.interface_h ).to include('int gauge_scale(int raw);')
+      expect( @result.interface_h ).not_to include('gauge_read')
+    end
+
+    # The failure mode the regression produced: a public body calls a private helper declared
+    # only in the interface header, so the generated source compiles only if it reaches both.
+    it 'compiles a public body that calls a private helper' do
+      @result = generate_partial( **split_visibility_module )
+      @dir = @result.dir
+
+      compile = compile_objects( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+      expect( compile.stderr ).not_to match(/implicit declaration/)
+    end
+
+    it 'links the public surface, with the private helper left for a mock to satisfy' do
+      @result = generate_partial( **split_visibility_module )
+      @dir = @result.dir
+
+      # gauge_scale is deliberately absent: a mocked private function is satisfied by CMock's
+      # generated definition in a real build, so the Partial must not also define it.
+      expect( @result.impl_c ).not_to include('int gauge_scale(int raw)')
+
+      link = link_partials( [@result], references: ['gauge_read'] )
+      expect( link.ok ).to be(false)
+      expect( link.stderr ).to match(/undefined reference to .gauge_scale./)
+    end
+
+    # The whole chain at once: split visibility, a carried type dependency, and exposed
+    # file-scope data.
+    it 'resolves a carried type dependency across the split' do
+      @result = generate_partial(
+        tests_expose: Partials::PUBLIC,
+        mocks_expose: Partials::PRIVATE,
+        module_name: 'gauge',
+        header: <<~C,
+          #ifndef GAUGE_H
+          #define GAUGE_H
+          #include "units.h"
+          typedef struct { Celsius limit; } gauge_cfg_t;
+          int gauge_read(void);
+          #endif
+        C
+        source: <<~C,
+          #include "gauge.h"
+          static gauge_cfg_t config = { 0 };
+          static int gauge_scale(int raw) { return raw; }
+          int gauge_read(void) { return gauge_scale(config.limit); }
+        C
+        header_includes: ['units.h'],
+        source_includes: ['gauge.h'],
+        extra: { 'units.h' => "#ifndef UNITS_H\n#define UNITS_H\ntypedef signed short Celsius;\n#endif\n" }
+      )
+      @dir = @result.dir
+
+      expect( @result.type_names( :types_h ) ).to include('gauge_cfg_t')
+      expect( @result.types_h_includes.join( "\n" ) ).to include('units.h')
+      expect( @result.impl_h ).to include('extern gauge_cfg_t config;')
+
+      standalone = compile_types_header_alone( @result )
+      expect( standalone.ok ).to be(true), "expected the types header to stand alone, got: #{standalone.first_error}"
+
+      compile = compile_objects( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+  end
+
+  # A module whose public function calls a private helper, tested publicly and mocked privately.
+  def split_visibility_module
+    {
+      tests_expose: Partials::PUBLIC,
+      mocks_expose: Partials::PRIVATE,
+      module_name: 'gauge',
+      header: "#ifndef GAUGE_H\n#define GAUGE_H\nint gauge_read(void);\n#endif\n",
+      source: <<~C,
+        #include "gauge.h"
+        static int reading = 7;
+        static int gauge_scale(int raw) { return raw * 2; }
+        int gauge_read(void) { return gauge_scale(reading); }
+      C
+      source_includes: ['gauge.h']
+    }
+  end
+
+  # ---------------------------------------------------------------------------
   context 'two partialized modules sharing a file-scope name' do
   # ---------------------------------------------------------------------------
 
