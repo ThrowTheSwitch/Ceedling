@@ -72,19 +72,108 @@ module PartialsGeneration
     :pp_header, :pp_source,
     keyword_init: true
   ) do
-    # Include directives in emitted order, as a plain Array of String.
-    def impl_h_includes
-      impl_h.to_s.lines.grep(/^\s*#include/).map( &:strip )
+    # Generated file contents by role, so the accessors below read one way for any of them.
+    # A case naming a file Partials did not generate gets nil rather than a confusing empty
+    # result -- that distinction is itself worth asserting.
+    def content(file)
+      case file
+      when :types_h     then types_h
+      when :impl_h      then impl_h
+      when :impl_c      then impl_c
+      when :interface_h then interface_h
+      else raise ArgumentError, "unknown generated file '#{file}'"
+      end
     end
 
-    def types_h_includes
-      types_h.to_s.lines.grep(/^\s*#include/).map( &:strip )
+    # Include directives in emitted order, as a plain Array of String. Absence assertions
+    # need the same shape presence assertions use, so every accessor here returns a flat
+    # Array a case can match with `include` / `not_to include`.
+    def includes(file)
+      content( file ).to_s.lines.grep(/^\s*#include/).map( &:strip )
     end
 
-    # Position of an include within the implementation header, or nil when absent.
-    def impl_h_index(fragment)
-      impl_h_includes.index { |line| line.include?( fragment ) }
+    # Macro names defined in a generated file, without their values. A case asserting a
+    # guard-spoof cares that the name is defined, not what it expands to.
+    def defines(file)
+      content( file ).to_s.lines.filter_map do |line|
+        match = line.match(/^\s*#\s*define\s+([A-Za-z_]\w*)/)
+        match && match[1]
+      end
     end
+
+    # Names a generated file establishes as types -- typedef names and aggregate tags.
+    # Catches a type emitted twice or emitted into the wrong file, neither of which an
+    # include-list assertion sees.
+    def type_names(file)
+      text = content( file ).to_s
+      typedef_names( text ) + text.scan(/\b(?:struct|union|enum)\s+([A-Za-z_]\w*)\s*\{/).flatten
+    end
+
+    # Declarator name of every typedef in the text. A fixture-grade extractor, not a C
+    # parser: it tracks brace depth so an aggregate body's own semicolons cannot end the
+    # statement early, then reads the name off the declarator.
+    def typedef_names(text)
+      text.to_enum( :scan, /\btypedef\b/ ).map do
+        statement = typedef_statement( text, Regexp.last_match.end( 0 ) )
+        declarator_name( statement )
+      end.compact
+    end
+
+    # Text between `typedef` and its terminating semicolon at brace depth zero.
+    def typedef_statement(text, from)
+      depth = 0
+      index = from
+
+      while index < text.length
+        case text[index]
+        when '{' then depth += 1
+        when '}' then depth -= 1
+        when ';' then break if depth.zero?
+        end
+        index += 1
+      end
+
+      text[from...index].to_s
+    end
+
+    # A function-pointer typedef carries its name inside `(* … )`, so that shape is read
+    # first. Otherwise the name is the last identifier once array dimensions are removed.
+    def declarator_name(statement)
+      pointer = statement.match(/\(\s*\*+\s*([A-Za-z_]\w*)\s*\)/)
+      return pointer[1] if pointer
+
+      statement.gsub(/\[[^\]]*\]/, ' ').scan(/[A-Za-z_]\w*/).last
+    end
+
+    # Position of an include within a generated file, or nil when absent. Ordering is only
+    # meaningful against another position, so cases compare two of these rather than
+    # asserting an absolute index.
+    def include_index(file, fragment)
+      includes( file ).index { |line| line.include?( fragment ) }
+    end
+
+    # Position of a #define among the emitted lines of a generated file. Measured in source
+    # lines rather than among the defines alone, so it is directly comparable with
+    # line_index below and therefore with an include's own line.
+    def define_index(file, macro)
+      line_index( file, /^\s*#\s*define\s+#{Regexp.escape( macro )}\b/ )
+    end
+
+    # Position of the first line matching a pattern, or nil. The common currency for every
+    # ordering assertion that spans two kinds of content -- a #define against an #include,
+    # say, which cannot be compared within either one's own list.
+    def line_index(file, pattern)
+      content( file ).to_s.lines.index { |line| line.match?( pattern ) }
+    end
+
+    # Named conveniences for the three files cases reach for most.
+    def impl_h_includes      = includes( :impl_h )
+    def types_h_includes     = includes( :types_h )
+    def interface_h_includes = includes( :interface_h )
+
+    def impl_h_index(fragment)      = include_index( :impl_h, fragment )
+    def types_h_index(fragment)     = include_index( :types_h, fragment )
+    def interface_h_index(fragment) = include_index( :interface_h, fragment )
   end
 
   # A compile or link attempt. `ok` is the only thing most cases assert; `stderr` explains a
@@ -128,9 +217,12 @@ module PartialsGenerationHelpers
       extra: {},
       partials: {},
       defines: [],
-      mode: :accurate
+      mode: :accurate,
+      dir: nil
     )
-    dir = Dir.mktmpdir( 'partials-generation-' )
+    # A caller supplies `dir` to generate two modules into one working directory, which is
+    # what a link across two partialized modules needs.
+    dir ||= Dir.mktmpdir( 'partials-generation-' )
 
     File.write( File.join( dir, "#{module_name}.h" ), header )
     File.write( File.join( dir, "#{module_name}.c" ), source )
@@ -291,8 +383,22 @@ module PartialsGenerationHelpers
   # generated test runner would. Syntax-only: this probes declarations and ordering, not code
   # generation.
   def compile_partial(result, prelude: '')
-    probe = File.join( result.dir, 'probe_impl.c' )
+    probe = File.join( result.dir, "probe_#{result.module_name}_impl.c" )
     File.write( probe, "#{prelude}#include \"ceedling_partial_#{result.module_name}_impl.h\"\nint main(void) { return 0; }\n" )
+
+    syntax_only( result, probe )
+  end
+
+  # Compiles a translation unit including both generated headers at once, which is the shape
+  # a module tested and mocked in the same test file produces. The implementation header
+  # arrives directly; the interface header arrives the way CMock's generated mock brings it.
+  def compile_both_headers(result)
+    probe = File.join( result.dir, "probe_#{result.module_name}_both.c" )
+    File.write( probe, <<~C )
+      #include "ceedling_partial_#{result.module_name}_impl.h"
+      #include "ceedling_partial_#{result.module_name}_interface.h"
+      int main(void) { return 0; }
+    C
 
     syntax_only( result, probe )
   end
@@ -320,6 +426,69 @@ module PartialsGenerationHelpers
     _out, stderr, status = Open3.capture3( command )
 
     PartialsGeneration::Compilation.new( ok: status.success?, stderr: stderr, command: command )
+  end
+
+  # ---- linking -----------------------------------------------------------------
+  #
+  # A syntax-only check reaches missing declarations and conflicting types. It cannot reach
+  # the two failure modes that matter most to a feature built on copying and mutating
+  # symbols: a definition that went missing, and two definitions colliding. Only a real
+  # object file and a real link surface `undefined reference to` and `multiple definition
+  # of`, so stripping `static` from a file-scope variable -- which turns a module-private
+  # name into one that participates in link-time resolution -- is testable only here.
+
+  # Compiles one result's generated implementation source to a real object file.
+  def compile_objects(result)
+    object = File.join( result.dir, "ceedling_partial_#{result.module_name}_impl.o" )
+    source = File.join( result.dir, "ceedling_partial_#{result.module_name}_impl.c" )
+
+    command = "#{partials_compiler} -c -I#{result.dir} #{source} -o #{object}"
+    _out, stderr, status = Open3.capture3( command )
+
+    PartialsGeneration::Compilation.new( ok: status.success?, stderr: stderr, command: command )
+  end
+
+  # Links one or more results' generated implementations against a stand-in test translation
+  # unit. The stand-in takes the address of each named symbol so the linker has to resolve
+  # it; a symbol that merely compiles is not proof the definition survived.
+  def link_partials(results, references: [])
+    results = Array( results )
+    dir     = results.first.dir
+
+    headers = results.map { |r| "#include \"ceedling_partial_#{r.module_name}_impl.h\"" }
+    body =
+      if references.empty?
+        '  return 0;'
+      else
+        refs = references.map { |symbol| "(const void*)&#{symbol}" }.join( ", " )
+        "  const void* refs[] = { #{refs} };\n  return refs[0] == 0;"
+      end
+
+    probe = File.join( dir, "probe_link_#{results.map( &:module_name ).join( '_' )}.c" )
+    File.write( probe, "#{headers.join( "\n" )}\nint main(void) {\n#{body}\n}\n" )
+
+    sources = results.map { |r| File.join( r.dir, "ceedling_partial_#{r.module_name}_impl.c" ) }
+    includes = results.map( &:dir ).uniq.map { |d| "-I#{d}" }.join( ' ' )
+    output = File.join( dir, "probe_link_#{results.map( &:module_name ).join( '_' )}" )
+
+    command = "#{partials_compiler} #{includes} #{probe} #{sources.join( ' ' )} -o #{output}"
+    _out, stderr, status = Open3.capture3( command )
+
+    PartialsGeneration::Compilation.new( ok: status.success?, stderr: stderr, command: command )
+  end
+
+  def link_partial(result, references: [])
+    link_partials( [result], references: references )
+  end
+
+  # A working directory shared by two generated modules, for cases where a collision between
+  # them is the subject. Cleaned up by the caller through cleanup_dir.
+  def shared_partials_dir
+    Dir.mktmpdir( 'partials-generation-shared-' )
+  end
+
+  def cleanup_dir(dir)
+    FileUtils.rm_rf( dir ) if dir
   end
 
   def cleanup_partial(result)
