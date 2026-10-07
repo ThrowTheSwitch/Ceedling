@@ -517,6 +517,21 @@ module PartialsGenerationHelpers
     link_partials( [result], references: references )
   end
 
+  # A `partials:` entry for some *other* partialized module in the same test file. The remap
+  # methods read `mocks.type` to decide between dropping that module's include and redirecting
+  # it to the module's generated interface header, so a case has to say which it is.
+  def other_partial(module_name, mocked: false)
+    {
+      module_name => PartializerConfig::Config.new(
+        module: module_name,
+        tests: PartializerConfig::PartialFunctions.new( type: PartializerConfig::DEDUCT ),
+        mocks: PartializerConfig::PartialFunctions.new(
+          type: mocked ? PartializerConfig::DEDUCT : nil
+        )
+      )
+    }
+  end
+
   # A working directory shared by two generated modules, for cases where a collision between
   # them is the subject. Cleaned up by the caller through cleanup_dir.
   def shared_partials_dir

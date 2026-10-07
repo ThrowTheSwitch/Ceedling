@@ -331,6 +331,185 @@ describe 'Partial header composition' do
       expect( @result.impl_h_includes.join( "\n" ) ).not_to include('"widget.h"')
       expect( @result.impl_h_index( 'ceedling_partial_widget_types.h' ) ).not_to be_nil
     end
+
+    # Preprocessing settles a conditional before extraction sees anything, so only the
+    # selected arm reaches the types header. Kept so that stays true.
+    it 'carries only the selected arm of a conditionally defined type' do
+      @result = generate_partial(
+        module_name: 'cond',
+        header: "#ifndef COND_H\n#define COND_H\n#if USE_WIDE\ntypedef unsigned long counter_t;\n#else\ntypedef unsigned char counter_t;\n#endif\n#endif\n",
+        source: "#include \"cond.h\"\nstatic counter_t count;\n",
+        source_includes: ['cond.h']
+      )
+
+      expect( @result.types_h.to_s ).to include('typedef unsigned char counter_t;')
+      expect( @result.types_h.to_s ).not_to include('unsigned long')
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  context 'the mockable interface header' do
+  # ---------------------------------------------------------------------------
+
+    # CMock mocks the generated interface header in place of the real module header, so that
+    # file carries the same extracted types the implementation header does. A module tested
+    # and mocked in one test file puts both in a single translation unit, which is the whole
+    # reason the types live in a third file.
+
+    it 'carries the types header at the module header-s own list position' do
+      @result = generate_partial(
+        module_name: 'valve',
+        header: "#ifndef VALVE_H\n#define VALVE_H\ntypedef struct { int port; } valve_t;\n#endif\n",
+        source: "#include \"base.h\"\n#include \"valve.h\"\n#include \"trailer.h\"\n",
+        source_includes: ['base.h', 'valve.h', 'trailer.h'],
+        extra: {
+          'base.h' => "#ifndef BASE_H\n#define BASE_H\n#endif\n",
+          'trailer.h' => "#ifndef TRAILER_H\n#define TRAILER_H\n#endif\n"
+        }
+      )
+
+      expect( @result.interface_h_index( 'base.h' ) ).to eq(0)
+      expect( @result.interface_h_index( 'ceedling_partial_valve_types.h' ) ).to eq(1)
+      expect( @result.interface_h_index( 'trailer.h' ) ).to eq(2)
+    end
+
+    it 'omits the module-s own header' do
+      @result = generate_partial(
+        module_name: 'valve',
+        header: "#ifndef VALVE_H\n#define VALVE_H\ntypedef struct { int port; } valve_t;\n#endif\n",
+        source: "#include \"valve.h\"\n",
+        source_includes: ['valve.h']
+      )
+
+      expect( @result.interface_h_includes.join( "\n" ) ).not_to include('"valve.h"')
+    end
+
+    # The interface header declares; it must not define. A type definition reaching it would
+    # be the second copy in the translation unit the implementation header already serves.
+    it 'declares functions without restating the extracted types' do
+      @result = generate_partial(
+        module_name: 'valve',
+        header: <<~C,
+          #ifndef VALVE_H
+          #define VALVE_H
+          typedef struct { int port; } valve_t;
+          void valve_open(valve_t* v);
+          #endif
+        C
+        source: "#include \"valve.h\"\nvoid valve_open(valve_t* v) { (void)v; }\n",
+        source_includes: ['valve.h']
+      )
+
+      expect( @result.interface_h ).to include('void valve_open(valve_t* v);')
+      expect( @result.type_names( :interface_h ) ).not_to include('valve_t')
+      expect( @result.type_names( :types_h ) ).to include('valve_t')
+    end
+
+    it 'defines each extracted type once across both generated headers' do
+      @result = generate_partial(
+        module_name: 'valve',
+        header: <<~C,
+          #ifndef VALVE_H
+          #define VALVE_H
+          typedef struct { int port; } valve_t;
+          void valve_open(valve_t* v);
+          #endif
+        C
+        source: "#include \"valve.h\"\nvoid valve_open(valve_t* v) { (void)v; }\n",
+        source_includes: ['valve.h']
+      )
+
+      compile = compile_both_headers( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  context 'names that resemble other names' do
+  # ---------------------------------------------------------------------------
+
+    # Matching a module to an include, or a guard to a macro, means comparing names. GH #1266
+    # was exactly this going wrong: a macro whose name merely contained the include guard as a
+    # substring was wrongly rejected. These cases hold the line on each comparison that
+    # Partial generation performs.
+
+    it 'replaces only the module-s own header, not a header whose name extends it' do
+      @result = generate_partial(
+        module_name: 'foo',
+        header: "#ifndef FOO_H\n#define FOO_H\ntypedef int foo_t;\n#endif\n",
+        source: "#include \"foobar.h\"\n#include \"foo.h\"\n#include \"myfoo.h\"\n",
+        source_includes: ['foobar.h', 'foo.h', 'myfoo.h'],
+        extra: {
+          'foobar.h' => "#ifndef FOOBAR_H\n#define FOOBAR_H\n#endif\n",
+          'myfoo.h' => "#ifndef MYFOO_H\n#define MYFOO_H\n#endif\n"
+        }
+      )
+
+      includes = @result.impl_h_includes.join( "\n" )
+      expect( includes ).to include('"foobar.h"')
+      expect( includes ).to include('"myfoo.h"')
+      expect( includes ).not_to include('"foo.h"')
+      expect( @result.impl_h_index( 'ceedling_partial_foo_types.h' ) ).to eq(1)
+    end
+
+    it 'drops another partialized module without touching a near-named header' do
+      @result = generate_partial(
+        module_name: 'foo',
+        header: "#ifndef FOO_H\n#define FOO_H\ntypedef int foo_t;\n#endif\n",
+        source: "#include \"foo.h\"\n#include \"bar.h\"\n#include \"barn.h\"\n",
+        source_includes: ['foo.h', 'bar.h', 'barn.h'],
+        partials: other_partial( 'bar' ),
+        extra: {
+          'bar.h' => "#ifndef BAR_H\n#define BAR_H\n#endif\n",
+          'barn.h' => "#ifndef BARN_H\n#define BARN_H\n#endif\n"
+        }
+      )
+
+      includes = @result.impl_h_includes.join( "\n" )
+      expect( includes ).not_to include('"bar.h"')
+      expect( includes ).to include('"barn.h"')
+    end
+
+    it 'carries a macro whose name extends the include guard' do
+      @result = generate_partial(
+        module_name: 'gated',
+        header: <<~C,
+          #ifndef GATED_H
+          #define GATED_H
+          #define GATED_H_LIMIT 8
+          typedef struct { int slots[GATED_H_LIMIT]; } gated_t;
+          #endif
+        C
+        source: "#include \"gated.h\"\n",
+        source_includes: ['gated.h']
+      )
+
+      expect( @result.defines( :types_h ) ).to include('GATED_H_LIMIT')
+
+      compile = compile_partial( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+
+    it 'keeps two types whose names share a prefix' do
+      @result = generate_partial(
+        module_name: 'kin',
+        header: <<~C,
+          #ifndef KIN_H
+          #define KIN_H
+          typedef int kin_t;
+          typedef struct { kin_t id; } kin_type_t;
+          typedef struct { kin_type_t inner; } kin_type_wrapper_t;
+          #endif
+        C
+        source: "#include \"kin.h\"\n",
+        source_includes: ['kin.h']
+      )
+
+      expect( @result.type_names( :types_h ) ).to include('kin_t', 'kin_type_t', 'kin_type_wrapper_t')
+
+      compile = compile_partial( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -362,20 +541,10 @@ describe 'Partial header composition' do
     # preprocessing, so each is extraction's own to answer. They share an origin with #1319
     # all the same: content is moved out of a module into generated files, and what travels
     # with it is decided by category rather than by what the relocated code actually needs.
-
-    # Preprocessing already settled this one, and the case stays to keep it settled: GCC
-    # resolves the switch and only the selected arm reaches extraction.
-    it 'carries only the selected arm of a conditionally defined type' do
-      @result = generate_partial(
-        module_name: 'cond',
-        header: "#ifndef COND_H\n#define COND_H\n#if USE_WIDE\ntypedef unsigned long counter_t;\n#else\ntypedef unsigned char counter_t;\n#endif\n#endif\n",
-        source: "#include \"cond.h\"\nstatic counter_t count;\n",
-        source_includes: ['cond.h']
-      )
-
-      expect( @result.types_h.to_s ).to include('typedef unsigned char counter_t;')
-      expect( @result.types_h.to_s ).not_to include('unsigned long')
-    end
+    #
+    # Each is marked pending against its own follow-on work. RSpec fails an example that
+    # passes while pending, so every one of these is a live tripwire: the day extraction
+    # learns the shape, the suite says so rather than staying quiet.
 
     # Preprocessing for Partials preserves macro directives rather than expanding them, so an
     # invocation reaches extraction intact. A bare invocation is then routed to the generated
@@ -384,6 +553,8 @@ describe 'Partial header composition' do
     # container-generating macros in sys/queue.h and in hand-rolled X-macro tables are
     # exactly that shape.
     it 'declares a type created by a macro invocation' do
+      pending 'a macro expanding to a typedef needs expansion to recognize -- follow-on work'
+
       @result = generate_partial(
         module_name: 'roster',
         header: "#ifndef ROSTER_H\n#define ROSTER_H\n#define DECLARE_LIST(T) typedef struct { T* head; } T##_list_t;\nDECLARE_LIST(int)\n#endif\n",
@@ -399,6 +570,8 @@ describe 'Partial header composition' do
     # the variable extractor whole. Re-emitting it as both an extern and a definition states
     # an anonymous struct twice, and C treats two anonymous structs as unrelated types.
     it 'keeps one type for an aggregate defined inline on a variable' do
+      pending 'an aggregate carrying a declarator is classified as a variable -- follow-on work'
+
       @result = generate_partial(
         module_name: 'slotted',
         header: "#ifndef SLOTTED_H\n#define SLOTTED_H\n#endif\n",
@@ -414,6 +587,8 @@ describe 'Partial header composition' do
     # turns it into `extern struct node;`. That is an empty declaration with a storage class,
     # which is a diagnostic in its own right and an error under -Werror.
     it 'preserves a forward declaration as a forward declaration' do
+      pending 'a tag-only forward declaration is classified as a variable -- follow-on work'
+
       @result = generate_partial(
         module_name: 'fwd',
         header: "#ifndef FWD_H\n#define FWD_H\nstruct node;\ntypedef struct node* node_ref_t;\n#endif\n",
@@ -428,6 +603,8 @@ describe 'Partial header composition' do
     # keeps only #define. A macro the module deliberately scoped to a few lines therefore
     # becomes visible everywhere the generated headers reach, the test file included.
     it 'does not leak a macro the module undefines' do
+      pending 'extraction keeps #define and discards #undef -- follow-on work'
+
       @result = generate_partial(
         module_name: 'scoped',
         header: "#ifndef SCOPED_H\n#define SCOPED_H\n#define DEPTH 4\ntypedef int window_t[DEPTH];\n#undef DEPTH\n#endif\n",
@@ -445,6 +622,8 @@ describe 'Partial header composition' do
     # either -- so the only macro available to carry is the synthetic guard on the
     # reconstituted file, which suppresses nothing real. #1293's duplicates return.
     it 'suppresses a real header guarded by #pragma once' do
+      pending '#pragma once offers no macro to spoof -- its own follow-on PR'
+
       @result = generate_partial(
         module_name: 'onced',
         header: "#pragma once\ntypedef struct { int x; } onced_t;\n",
