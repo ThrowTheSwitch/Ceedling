@@ -332,7 +332,8 @@ module PartialsGenerationHelpers
       source_includes: source_list,
       header_includes: header_list,
       c_module: c_module,
-      output_path: dir
+      output_path: dir,
+      include_guard: include_guard
     )
 
     # The mockable interface header is what CMock mocks in place of the real module header,
@@ -344,7 +345,8 @@ module PartialsGenerationHelpers
       function_declarations: interface || [],
       includes: interface_list,
       c_module: c_module,
-      output_path: dir
+      output_path: dir,
+      include_guard: include_guard
     )
 
     PartialsGeneration::Result.new(

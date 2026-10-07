@@ -99,6 +99,19 @@ class PartialsManager
       # file to find, leaving config.source.filepath legitimately nil -- compact it out
       # before it reaches path normalization, which expects real paths only.
       antecedent_files = [config.header.filepath, config.source.filepath].compact
+
+      # The real header's guard is spoofed deliberately in every generated file, and the types
+      # header carries the dependencies its extracted types name. Both are inputs to generation,
+      # so both ride in the staleness meta below -- a changed guard or a changed include list
+      # has to invalidate what was generated from the previous ones.
+      module_include_guard = @partializer.extract_module_include_guard( config.header.filepath )
+      types_header_includes = @partializer.remap_types_header_includes(
+        name:     config.module,
+        includes: (config.source.includes + config.header.includes),
+        partials: testable.partials.configs,
+        test:     name
+      )
+
       antecedent_meta  = {
         flags:        testable.preprocess_flags,
         defines:      testable.preprocess_defines,
@@ -106,7 +119,9 @@ class PartialsManager
         # No shell tool runs in this stage -- Partial generation is pure Ruby (below) --
         # so there's nothing to add here beyond the whole :partials config.
         tools:        [],
-        partials:     @configurator.get_partials_config
+        partials:     @configurator.get_partials_config,
+        include_guard: module_include_guard,
+        types_includes: types_header_includes.map( &:to_s )
       }
 
       # Generated once and shared by the implementation and interface headers below (via
@@ -125,10 +140,12 @@ class PartialsManager
 
         if @dependinator.stale?( target )
           @generator.generate_partial_types(
-            name:        name,
-            partial:     config.module,
-            c_module:    module_contents,
-            output_path: testable.paths[:partials]
+            name:          name,
+            partial:       config.module,
+            c_module:      module_contents,
+            output_path:   testable.paths[:partials],
+            includes:      types_header_includes,
+            include_guard: module_include_guard
           )
           @dependinator.mark_fresh( target )
         else
@@ -183,7 +200,8 @@ class PartialsManager
                                 test:     name
                               ),
         input_filepath:       config.source.filepath,
-        output_path:          testable.paths[:partials]
+        output_path:          testable.paths[:partials],
+        include_guard:        module_include_guard
       }
 
       unless implementation.nil?
@@ -224,7 +242,8 @@ class PartialsManager
                                ),
         c_module:              module_contents,
         input_filepath:        config.header.filepath,
-        output_path:           testable.paths[:partials]
+        output_path:           testable.paths[:partials],
+        include_guard:         module_include_guard
       }
 
       unless interface.nil?

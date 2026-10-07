@@ -302,6 +302,8 @@ describe PartialsManager do
       allow(@partializer).to receive(:remap_implementation_header_includes).and_return( [] )
       allow(@partializer).to receive(:remap_implementation_source_includes).and_return( [] )
       allow(@partializer).to receive(:remap_interface_header_includes).and_return( [] )
+      allow(@partializer).to receive(:remap_types_header_includes).and_return( [] )
+      allow(@partializer).to receive(:extract_module_include_guard).and_return( 'FOO_H' )
       allow(@generator).to receive(:generate_partial_types)
       allow(@generator).to receive(:generate_partial_implementation)
       allow(@generator).to receive(:generate_partial_interface)

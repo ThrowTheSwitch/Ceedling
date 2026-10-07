@@ -15,8 +15,14 @@ require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/constants'
 require 'ceedling/path_mirror'
+require 'ceedling/encodinator'
+require 'ceedling/exceptions'
 
 class Partializer
+
+  # Enough of a header to reach its include guard. The guard pair sits at the top of a header by
+  # construction, so a bounded read beats loading a large file to find it.
+  GUARD_SCAN_BYTES = 2048
 
   include Partials
 
@@ -146,130 +152,89 @@ class Partializer
     )
   end
 
+  # Includes for the generated implementation header. This module's own header is replaced by
+  # the shared types header at its original list position; every other partialized module's
+  # include is dropped.
+  #
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
   def remap_implementation_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
-    _includes = includes.clone()
-
-    # This module's own header include is spliced out in favor of the shared types
-    # header at its exact original list position -- see #splice_in_replacement.
-    _includes = splice_in_replacement(includes: _includes, name: name, replacement: types_header)
-
-    # Remove includes for every other partialized module (this module's own name was
-    # already handled above)
-    _includes = remove_matching_includes(
-      includes: _includes,
-      modules: (partials.keys - [name])
+    _remap_includes(
+      name:        name,
+      includes:    includes,
+      partials:    partials,
+      replacement: types_header,
+      others:      :drop,
+      noun:        'Header includes to inject for testable Partial',
+      test:        test
     )
-
-    # Remove any duplicates
-    Includes.sanitize!(_includes)
-
-    @loginator.log_list(
-      _includes,
-      "Header includes to inject for testable Partial #{test}::#{name}:",
-      Verbosity::OBNOXIOUS
-    ) if test
-
-    return _includes
   end
 
-  # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def remap_implementation_source_includes(name:, includes:, partials:, test: nil)
-    _includes = includes.clone()
-
-    # Splice the implementation header in at this module's own header's original list
-    # position, same rationale as #splice_in_replacement -- the generated
-    # implementation header carries the shared types header in correctly-ordered
-    # position internally, but that alone doesn't help if THIS file's own separate
-    # include list still reaches an unrelated header that transitively re-includes the
-    # real module header before the implementation header (and everything it carries)
-    # is ever reached. Appending it at the very end (after this file's own copy of every
-    # other real include) would put it after exactly that kind of transitive
-    # re-inclusion instead of before it.
-    _includes = splice_in_replacement(
-      includes: _includes,
-      name: name,
-      replacement: @file_path_utils.form_partial_implementation_header_filename(name)
-    )
-
-    mockable_modules = []
-
-    partials.each do |_module, config|
-      # Remap mockable interface headers that will be injected into generated partial implementation
-      #
-      # Any real (non-nil) mock mode means this module has a generated mock interface header
-      # to redirect to -- PUBLIC/PRIVATE alone once covered every mode that existed, but DEDUCT
-      # (MOCK_PARTIAL_ALL_MODULE) and ACCUMULATE (MOCK_PARTIAL_MODULE) were added later without
-      # updating this check, so a module mocked via either of those was silently never
-      # redirected: its real header (and any static inline/static function bodies in it) stayed
-      # #include'd verbatim, compiling straight past the mock instead of being replaced by it.
-      if includes.any? { |include| include.filename.ext().downcase() == _module.downcase() }
-        if !config.mocks.type.nil?
-          # Insert mockable interface header from remapping of module name
-          _includes << UserInclude.new(
-            @file_path_utils.form_partial_interface_header_filename(_module)
-          )
-          # Remember the module for later removal of original header
-          mockable_modules << _module
-        end
-      end
-    end
-
-    # Remove the original headers of any OTHER modules now remapped to mockable
-    # interfaces above -- this module's own original header was already handled by
-    # the splice above.
-    _includes = remove_matching_includes(
-      includes: _includes,
-      modules: mockable_modules
-    )
-
-    # Remove any duplicates
-    Includes.sanitize!(_includes)
-
-    @loginator.log_list(
-      _includes,
-      "Source includes to inject for testable Partial #{test}::#{name}:",
-      Verbosity::OBNOXIOUS
-    ) if test
-
-    return _includes
-  end
-
+  # Includes for the generated mockable interface header. Same treatment as the implementation
+  # header: both files carry the shared types header, which is how a module tested and mocked
+  # in one test file still gets exactly one definition of each of its types.
+  #
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
   def remap_interface_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
-    _includes = includes.clone()
-
-    # This module's own header include is spliced out in favor of the shared types
-    # header at its exact original list position -- see #splice_in_replacement.
-    _includes = splice_in_replacement(includes: _includes, name: name, replacement: types_header)
-
-    # Remove includes for every other partialized module (this module's own name was
-    # already handled above)
-    _includes = remove_matching_includes(
-      includes: _includes,
-      modules: (partials.keys - [name])
+    _remap_includes(
+      name:        name,
+      includes:    includes,
+      partials:    partials,
+      replacement: types_header,
+      others:      :drop,
+      noun:        'Header includes to inject for mockable Partial',
+      test:        test
     )
-
-    # Remove any duplicates
-    Includes.sanitize!(_includes)
-
-    @loginator.log_list(
-      _includes,
-      "Header includes to inject for mockable Partial #{test}::#{name}:",
-      Verbosity::OBNOXIOUS
-    ) if test
-
-    return _includes
   end
 
-  # STUB -- returns nil until the implementation lands.
-  def extract_module_include_guard(filepath)
-    nil
+  # Includes for the generated implementation source. This module's own header is replaced by
+  # the generated implementation header, which carries the types header internally. Another
+  # partialized module that is mocked is redirected to its generated interface header; one that
+  # is not mocked keeps its real header, which the generated code still needs.
+  #
+  # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
+  def remap_implementation_source_includes(name:, includes:, partials:, test: nil)
+    _remap_includes(
+      name:        name,
+      includes:    includes,
+      partials:    partials,
+      replacement: @file_path_utils.form_partial_implementation_header_filename(name),
+      others:      :mock_or_keep,
+      noun:        'Source includes to inject for testable Partial',
+      test:        test
+    )
   end
 
-  # STUB -- returns an empty list until the implementation lands.
+  # Includes the shared types header carries so the extracted types resolve wherever that file
+  # lands. Nothing replaces this module's own header here -- the types header cannot include
+  # itself -- so it is simply dropped. Another partialized module is redirected to its generated
+  # interface header when mocked and dropped otherwise: its real header would reintroduce the
+  # very content that module's own Partial replaced.
+  #
+  # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
   def remap_types_header_includes(name:, includes:, partials:, test: nil)
-    []
+    _remap_includes(
+      name:        name,
+      includes:    includes,
+      partials:    partials,
+      replacement: nil,
+      others:      :mock_or_drop,
+      noun:        'Dependency includes to carry into the shared types header for Partial',
+      test:        test
+    )
+  end
+
+  # The include guard macro the module's real header defines, or nil when it has none.
+  #
+  # Read from the original header rather than from the reconstituted copy or from extracted
+  # macros. The reconstituted copy carries a synthetic guard that #sanitize strips, and the
+  # fallback preprocessing path deliberately excludes a guard from the macros it recovers, so
+  # neither is a dependable source. A nil return means the header guards itself some other way
+  # -- `#pragma once` -- and offers no macro for a generated file to spoof.
+  def extract_module_include_guard(filepath)
+    return nil if filepath.nil?
+
+    text = @file_wrapper.read( filepath, GUARD_SCAN_BYTES ).clean_encoding
+    @preprocessinator_reconstructor.extract_include_guard( text )
   end
 
   # Extracts and combines C code contents from a Partial config's header and source files
@@ -530,6 +495,77 @@ class Partializer
       "Mockable functions for Partial #{test}::#{partial}:",
       Verbosity::OBNOXIOUS
     )
+  end
+
+  # One body behind all four public remaps. Each differs only in what replaces this module's
+  # own header, what becomes of other partialized modules, and the noun it logs under -- the
+  # splice, the sanitize, and the logging are identical in every case.
+  #
+  # `others` selects the treatment of every OTHER partialized module in the same test file:
+  #   :drop         -- remove its include outright, with no substitute
+  #   :mock_or_keep -- redirect to its interface header when mocked, else leave its real header
+  #   :mock_or_drop -- redirect to its interface header when mocked, else drop it
+  def _remap_includes(name:, includes:, partials:, replacement:, others:, noun:, test: nil)
+    _includes = includes.clone()
+
+    # A nil replacement strips this module's own header and substitutes nothing.
+    _includes = splice_in_replacement( includes: _includes, name: name, replacement: replacement )
+
+    _includes =
+      case others
+      when :drop
+        remove_matching_includes( includes: _includes, modules: (partials.keys - [name]) )
+      when :mock_or_keep, :mock_or_drop
+        _redirect_mocked_partials(
+          includes: _includes,
+          original: includes,
+          name: name,
+          partials: partials,
+          drop_unmocked: (others == :mock_or_drop)
+        )
+      else
+        raise CeedlingException.new( "Unknown partialized module treatment '#{others}'" )
+      end
+
+    # Remove any duplicates
+    Includes.sanitize!(_includes)
+
+    @loginator.log_list(
+      _includes,
+      "#{noun} #{test}::#{name}:",
+      Verbosity::OBNOXIOUS
+    ) if test
+
+    return _includes
+  end
+
+  # Appends the generated interface header for every other partialized module the original list
+  # named and that is mocked, then removes the real headers those replaced.
+  #
+  # Any real (non-nil) mock mode counts. PUBLIC/PRIVATE alone once covered every mode that
+  # existed, but DEDUCT (MOCK_PARTIAL_ALL_MODULE) and ACCUMULATE (MOCK_PARTIAL_MODULE) were
+  # added later without updating the check, so a module mocked via either was silently never
+  # redirected: its real header, and any static inline or static function bodies in it, stayed
+  # #include'd verbatim and compiled straight past the mock.
+  def _redirect_mocked_partials(includes:, original:, name:, partials:, drop_unmocked:)
+    _includes = includes
+    retired = []
+
+    partials.each do |_module, config|
+      next if _module == name
+      next unless original.any? { |include| include.filename.ext().downcase() == _module.downcase() }
+
+      if config.mocks.type.nil?
+        retired << _module if drop_unmocked
+      else
+        _includes << UserInclude.new(
+          @file_path_utils.form_partial_interface_header_filename(_module)
+        )
+        retired << _module
+      end
+    end
+
+    remove_matching_includes( includes: _includes, modules: retired )
   end
 
   # Swaps `name`'s own header include for `replacement` at that same list position,

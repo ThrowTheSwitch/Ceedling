@@ -200,7 +200,8 @@ describe GeneratorPartials do
         header_includes,
         defns,
         c_module,
-        true
+        true,
+        nil
       )
 
       # Verify generate_source was called with correct parameters
@@ -277,7 +278,8 @@ describe GeneratorPartials do
         includes,
         decls,
         c_module,
-        false
+        false,
+        nil
       )
 
       # Verify file path utilities were called

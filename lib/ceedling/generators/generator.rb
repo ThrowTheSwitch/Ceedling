@@ -60,7 +60,7 @@ class Generator
     return @generator_partials.generate_types( **arg_hash )
   end
 
-  def generate_partial_interface(test:, partial:, function_declarations:, includes:, c_module:, input_filepath:, output_path:)
+  def generate_partial_interface(test:, partial:, function_declarations:, includes:, c_module:, input_filepath:, output_path:, include_guard: nil)
     msg = @reportinator.generate_module_progress(
       operation: "Generating Partial mockable interface for",
       module_name: test,
@@ -74,7 +74,8 @@ class Generator
       :function_declarations => function_declarations,
       :includes => includes,
       :c_module => c_module,
-      :output_path => output_path
+      :output_path => output_path,
+      :include_guard => include_guard
     }
 
     return @generator_partials.generate_interface( **arg_hash )
@@ -88,7 +89,8 @@ class Generator
       header_includes:,
       c_module:,
       input_filepath:,
-      output_path:
+      output_path:,
+      include_guard: nil
     )
 
     msg = @reportinator.generate_module_progress(
@@ -105,7 +107,8 @@ class Generator
       :source_includes => source_includes,
       :header_includes => header_includes,
       :c_module => c_module,
-      :output_path => output_path
+      :output_path => output_path,
+      :include_guard => include_guard
     }
 
     return @generator_partials.generate_implementation( **arg_hash )

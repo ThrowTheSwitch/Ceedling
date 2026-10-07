@@ -28,7 +28,8 @@ class GeneratorPartials
       source_includes:,
       header_includes:,
       c_module:,
-      output_path:
+      output_path:,
+      include_guard: nil
     )
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
@@ -41,7 +42,7 @@ class GeneratorPartials
     # write, which would alter any line ending already present in that
     # content instead of passing it through unchanged.
     @file_wrapper.open(header_filepath, 'wb') do |file|
-      generate_header(file, header, header_includes, function_definitions, c_module, true)
+      generate_header(file, header, header_includes, function_definitions, c_module, true, include_guard)
     end
 
     @file_wrapper.open(source_filepath, 'wb') do |file|
@@ -51,13 +52,13 @@ class GeneratorPartials
     return source_filepath
   end
 
-  def generate_interface(test:, name:, function_declarations:, includes:, c_module:, output_path:)
+  def generate_interface(test:, name:, function_declarations:, includes:, c_module:, output_path:, include_guard: nil)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = _prepare( File.join(output_path, header) )
 
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
-      generate_header(file, header, includes, function_declarations, c_module, false)
+      generate_header(file, header, includes, function_declarations, c_module, false, include_guard)
     end
 
     return filepath
@@ -88,6 +89,22 @@ class GeneratorPartials
       file << "#ifndef #{guard}\n"
       file << "#define #{guard}\n\n"
 
+      # The real module header's guard, spoofed on purpose. Ordering here is the whole point:
+      # it must precede the includes below, since a carried header can transitively reach the
+      # real module header, and the guard has to already be satisfied when that happens.
+      if include_guard
+        file << "#define #{include_guard}\n\n"
+      end
+
+      # The types extracted below name things this file does not define, so it carries the
+      # includes that do. Without them the file compiles only where something earlier in the
+      # translation unit happened to supply those names, which is what made its placement a
+      # conflict between two correct requirements rather than a choice.
+      unless includes.empty?
+        includes.each { |include| file << "#{include}\n" }
+        file << "\n"
+      end
+
       anything_emitted = false
       pending_macros = []
 
@@ -95,7 +112,10 @@ class GeneratorPartials
         next unless item.is_a?(CExtractorTypes::CStatement)
 
         if c_module.macro_definitions.include?(item)
-          pending_macros << item
+          # The guard emitted above also arrives among the extracted macros, since the real
+          # header's own `#define` survives preprocessing. Carrying it a second time is legal
+          # but puts a pointless duplicate in every generated types header.
+          pending_macros << item unless guard_macro?(item, include_guard)
           next
         end
 
@@ -122,6 +142,15 @@ class GeneratorPartials
   end
 
   private
+
+  # Whether a macro statement is nothing but the definition of `include_guard`. Anchored so a
+  # macro whose name merely begins with the guard's name is never mistaken for it, and so a
+  # guard-named macro carrying an actual value is left alone.
+  def guard_macro?(item, include_guard)
+    return false if include_guard.nil?
+
+    item.text.match?(/\A\s*#\s*define\s+#{Regexp.escape( include_guard )}\s*\z/)
+  end
 
   # A typedef or a non-typedef struct/enum/union tag definition establishes a type; C treats
   # a second definition of the same type in one translation unit as a redefinition error even
@@ -166,11 +195,19 @@ class GeneratorPartials
   # @param function_list   [Array]  Pre-filtered Partials function objects (respond to :name and :signature)
   # @param c_module        [CExtractorTypes::CModule] Merged module with element_sequence
   # @param include_variables [Boolean] True for implementation header (emits extern vars); false for interface
-  def generate_header(io, name, includes, function_list, c_module, include_variables)
+  def generate_header(io, name, includes, function_list, c_module, include_variables, include_guard = nil)
     guard = FileWrapper.generate_include_guard( name )
 
     io << "#ifndef #{guard}\n"
     io << "#define #{guard}\n\n"
+
+    # The real module header's guard, defined on purpose rather than left to arrive among the
+    # carried macros. It must precede the includes below, because one of them can transitively
+    # reach the real header -- the guard has to be satisfied before that happens, not after.
+    # A module whose header has no guard supplies nothing to emit.
+    if include_guard
+      io << "#define #{include_guard}\n\n"
+    end
 
     includes.each do |include|
       io << "#{include}\n"
@@ -211,6 +248,9 @@ class GeneratorPartials
         # for where it actually belongs -- the one file that compiles to the one object
         # the real definition can safely live in.
         next if c_module.macro_invocations.include?(item)
+        # The spoof above already states this one deliberately; carrying it again would put a
+        # pointless duplicate in the file.
+        next if guard_macro?(item, include_guard)
         io << item.text << "\n"
         last_was_func = false
         anything_emitted = true
