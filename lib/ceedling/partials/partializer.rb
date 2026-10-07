@@ -545,7 +545,7 @@ class Partializer
           drop_unmocked: (others == :mock_or_drop)
         )
       else
-        raise CeedlingException.new( "Unknown partialized module treatment '#{others}'" )
+        raise CeedlingException.new( "Unknown partialized module treatment ':#{others}'" )
       end
 
     # Remove any duplicates

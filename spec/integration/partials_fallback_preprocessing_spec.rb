@@ -179,7 +179,7 @@ describe 'Partial fallback preprocessing' do
     it 'refuses a module whose header computes an include' do
       expect {
         @result = generate_partial( mode: :fallback, **computed_include_module )
-      }.to raise_error( CeedlingException, /computed .*include/i )
+      }.to raise_error( CeedlingException, /computes an #include target/ )
     end
 
     it 'refuses before writing any generated file' do
@@ -200,7 +200,7 @@ describe 'Partial fallback preprocessing' do
     it 'refuses a module whose type sits behind a condition it cannot evaluate' do
       expect {
         @result = generate_partial( mode: :fallback, **unevaluable_type_module )
-      }.to raise_error( CeedlingException, /cannot be evaluated|unevaluated/i )
+      }.to raise_error( CeedlingException, /fallback preprocessing cannot evaluate/ )
     end
 
     # The accurate path resolves both shapes, so neither is an error there. A check that fired

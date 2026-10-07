@@ -192,7 +192,7 @@ class PartializerHelper
       next if line.match?( PATTERNS::SYSTEM_INCLUDE_DIRECTIVE_FILENAME )
 
       raise CeedlingException.new(
-        "Partial #{name}::#{module_name} \u23e9\ufe0f #{filepath}:#{end_line_num} computes an " \
+        "Partial #{name}::#{module_name} ⏩️ #{filepath}:#{end_line_num} computes an " \
         "#include target that fallback preprocessing cannot resolve. Partials for this module " \
         "require directives-only preprocessing."
       )
@@ -215,8 +215,8 @@ class PartializerHelper
       next unless line.match?( RELOCATED_CONTENT ) || line.match?( ANY_INCLUDE_DIRECTIVE )
 
       raise CeedlingException.new(
-        "Partial #{name}::#{module_name} \u23e9\ufe0f #{filepath}:#{end_line_num} sits behind a " \
-        "conditional expression that fallback preprocessing cannot be evaluated against. " \
+        "Partial #{name}::#{module_name} ⏩️ #{filepath}:#{end_line_num} sits behind a " \
+        "conditional expression that fallback preprocessing cannot evaluate. " \
         "Partials for this module require directives-only preprocessing."
       )
     end

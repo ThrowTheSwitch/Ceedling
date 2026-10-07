@@ -64,6 +64,21 @@ describe GeneratorPartials do
     CExtractorTypes::CModule.new()
   end
 
+  # A StringIO standing in for the generated types header, with the filename lookup stubbed.
+  # Several examples differ only in what they hand generate_types, not in this plumbing.
+  def types_buffer(name, header_filename)
+    allow(@file_path_utils).to receive(:form_partial_types_header_filename)
+      .with(name)
+      .and_return(header_filename)
+
+    buf = StringIO.new()
+    allow(@file_wrapper).to receive(:open)
+      .with(File.join('/path/to/output', header_filename), 'wb')
+      .and_yield(buf)
+
+    buf
+  end
+
   context "#generate_implementation" do
     # A bare module name implies no directory of its own, so the directory created is
     # just the output path it was handed.
@@ -386,6 +401,105 @@ describe GeneratorPartials do
       expect( buf.string.strip() ).to eq file_contents.strip()
       expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'wb')
       expect(result).to eq(header_filename)
+    end
+
+    # The spoof and the carried includes are what make this header compile wherever it lands.
+    # Order between them is load-bearing: a carried header can transitively reach the real
+    # module header, so the guard has to be satisfied before any include is processed.
+    it "states the module's own guard before the includes it carries, then the types" do
+      file_contents = <<~CONTENTS
+      #ifndef __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+      #define __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+
+      #define MY_MODULE_H
+
+      #include "foundation.h"
+      #include <stdint.h>
+
+      typedef uint8_t Byte;
+
+      #endif // __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+
+      CONTENTS
+
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions: [typedef_stmt],
+          element_sequence: [typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        includes: [UserInclude.new('foundation.h'), SystemInclude.new('stdint.h')],
+        include_guard: 'MY_MODULE_H'
+      )
+
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "states no guard when the module's header has none to spoof" do
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions: [typedef_stmt],
+          element_sequence: [typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        includes: [UserInclude.new('foundation.h')],
+        include_guard: nil
+      )
+
+      expect( buf.string ).to include('#include "foundation.h"')
+      expect( buf.string.scan(/^#define /).length ).to eq(1) # the generated guard alone
+    end
+
+    # The real header's own guard also arrives among the extracted macros, since it survives
+    # preprocessing. Stating it deliberately and carrying it too would duplicate it.
+    it "drops the carried copy of the guard it states itself" do
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      guard_macro  = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H", line_num: 1)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 2)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions:  [typedef_stmt],
+          macro_definitions: [guard_macro],
+          element_sequence:  [guard_macro, typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        include_guard: 'MY_MODULE_H'
+      )
+
+      expect( buf.string.scan(/^#define MY_MODULE_H$/).length ).to eq(1)
+    end
+
+    # GH #1266's shape, one level over: a macro whose name merely begins with the guard's, and
+    # a guard-named macro that actually carries a value. Neither is the guard statement.
+    it "keeps a macro whose name only resembles the guard" do
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      near_macro   = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H_LIMIT 8", line_num: 1)
+      valued_macro = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H 2", line_num: 2)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 3)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions:  [typedef_stmt],
+          macro_definitions: [near_macro, valued_macro],
+          element_sequence:  [near_macro, valued_macro, typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        include_guard: 'MY_MODULE_H'
+      )
+
+      expect( buf.string ).to include('#define MY_MODULE_H_LIMIT 8')
+      expect( buf.string ).to include('#define MY_MODULE_H 2')
     end
 
     it "carries a macro forward directly before the single typedef it immediately precedes" do

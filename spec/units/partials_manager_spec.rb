@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/test_invoker/partials_manager'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
+require 'ceedling/includes/includes'
 
 describe PartialsManager do
   before(:each) do
@@ -392,6 +393,75 @@ describe PartialsManager do
         expect( meta[:tools] ).to eq( [] )
         expect( meta[:partials] ).to eq( @partials_config )
       end
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # The guard and the carried include list are inputs to generation, so a change to either has
+    # to invalidate what was generated from the previous ones. Omitting them would leave an
+    # incremental build serving a stale types header.
+    it "registers the guard and the carried include list as meta" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@partializer).to receive(:remap_types_header_includes)
+        .and_return( [UserInclude.new('foundation.h')] )
+
+      expect(@dependinator).to receive(:register).at_least(:once) do |_target, files:, meta:|
+        expect( meta[:include_guard] ).to eq( 'FOO_H' )
+        expect( meta[:types_includes] ).to eq( ['#include "foundation.h"'] )
+      end
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "hands the guard and the carried include list to types generation" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      carried = [UserInclude.new('foundation.h')]
+      allow(@partializer).to receive(:remap_types_header_includes).and_return( carried )
+
+      expect(@generator).to receive(:generate_partial_types).with(
+        hash_including( includes: carried, include_guard: 'FOO_H' )
+      )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # A module with no types gets no types header, so the implementation and interface headers
+    # have to state the guard themselves or nothing suppresses the real header.
+    it "hands the guard to implementation and interface generation too" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@generator).to receive(:generate_partial_implementation).with(
+        hash_including( include_guard: 'FOO_H' )
+      )
+      expect(@generator).to receive(:generate_partial_interface).with(
+        hash_including( include_guard: 'FOO_H' )
+      )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "reads the guard from the module's own header" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [] )
+
+      expect(@partializer).to receive(:extract_module_include_guard).with( 'src/Foo.h' )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Fallback resolves strictly less than the accurate pass, and validate_config refuses the
+    # shapes it cannot handle. The stage has to tell it which path ran.
+    it "tells config validation whether preprocessing fell back" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [] )
+
+      expect(@partializer).to receive(:validate_config).with( hash_including( fallback: true ) )
 
       @manager.stage_generate_partials( @state )
     end
