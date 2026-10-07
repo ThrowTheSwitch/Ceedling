@@ -271,7 +271,9 @@ describe 'Partial symbol linkage' do
 
       link = link_partials( [@result], references: ['gauge_read'] )
       expect( link.ok ).to be(false)
-      expect( link.stderr ).to match(/undefined reference to .gauge_scale./)
+      # Linkers disagree on the wording -- GNU ld reports an undefined reference, Apple's
+      # reports undefined symbols for an architecture -- but both name the symbol.
+      expect( link.stderr ).to include('gauge_scale')
     end
 
     # The whole chain at once: split visibility, a carried type dependency, and exposed
@@ -336,29 +338,36 @@ describe 'Partial symbol linkage' do
 
     # Characterization, not a requirement. Exposing file-scope data is the point of Partials,
     # and the consequence is that a name chosen to be module-private now participates in
-    # link-time resolution. Two modules that each keep a `static int shared_count` therefore
-    # collide once both are partialized. This case pins that behavior so a future change to
-    # it is deliberate rather than silent.
+    # link-time resolution. Two modules that each keep a `shared_count` therefore collide once
+    # both are partialized. This case pins that behavior so a future change to it is deliberate
+    # rather than silent.
+    #
+    # Both definitions are initialized on purpose. An uninitialized file-scope variable is a
+    # tentative definition, which some toolchains still merge as a common symbol rather than
+    # rejecting -- the collision would then appear on one platform and not another. An
+    # initialized definition is a strong symbol everywhere, so the collision is the fixture's
+    # property rather than the linker's.
     it 'collides at link time, which is the behavior today' do
       @dir = shared_partials_dir
 
       alpha = generate_partial(
         module_name: 'alpha', dir: @dir,
         header: "#ifndef ALPHA_H\n#define ALPHA_H\n#endif\n",
-        source: "#include \"alpha.h\"\nstatic int shared_count;\n",
+        source: "#include \"alpha.h\"\nstatic int shared_count = 1;\n",
         source_includes: ['alpha.h']
       )
       beta = generate_partial(
         module_name: 'beta', dir: @dir,
         header: "#ifndef BETA_H\n#define BETA_H\n#endif\n",
-        source: "#include \"beta.h\"\nstatic int shared_count;\n",
+        source: "#include \"beta.h\"\nstatic int shared_count = 2;\n",
         source_includes: ['beta.h']
       )
 
       link = link_partials( [alpha, beta], references: ['shared_count'] )
 
       expect( link.ok ).to be(false)
-      expect( link.stderr ).to match(/multiple definition/)
+      # GNU ld reports a multiple definition, Apple's a duplicate symbol. Both name it.
+      expect( link.stderr ).to include('shared_count')
     end
   end
 

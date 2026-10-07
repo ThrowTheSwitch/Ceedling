@@ -86,24 +86,7 @@ class GeneratorPartials
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
       guard = FileWrapper.generate_include_guard( header )
-      file << "#ifndef #{guard}\n"
-      file << "#define #{guard}\n\n"
-
-      # The real module header's guard, spoofed on purpose. Ordering here is the whole point:
-      # it must precede the includes below, since a carried header can transitively reach the
-      # real module header, and the guard has to already be satisfied when that happens.
-      if include_guard
-        file << "#define #{include_guard}\n\n"
-      end
-
-      # The types extracted below name things this file does not define, so it carries the
-      # includes that do. Without them the file compiles only where something earlier in the
-      # translation unit happened to supply those names, which is what made its placement a
-      # conflict between two correct requirements rather than a choice.
-      unless includes.empty?
-        includes.each { |include| file << "#{include}\n" }
-        file << "\n"
-      end
+      emit_types_preamble( file, guard, include_guard, includes )
 
       anything_emitted = false
       pending_macros = []
@@ -142,6 +125,28 @@ class GeneratorPartials
   end
 
   private
+
+  # Everything above a types header's own type definitions: the generated file's guard, the
+  # spoof of the real module header's guard, and the dependencies those types name.
+  #
+  # The order of the last two is the whole point. A carried header can transitively reach the
+  # real module header, so the spoof has to be satisfied before any include is processed rather
+  # than after. And the types carried below name things this file does not define, so without
+  # the includes it compiles only where something earlier in the translation unit happened to
+  # supply those names -- which is what made its placement a conflict between two correct
+  # requirements rather than a choice.
+  def emit_types_preamble(file, guard, include_guard, includes)
+    file << "#ifndef #{guard}\n"
+    file << "#define #{guard}\n\n"
+
+    # A module header with no guard of its own supplies nothing to spoof.
+    file << "#define #{include_guard}\n\n" if include_guard
+
+    return if includes.empty?
+
+    includes.each { |include| file << "#{include}\n" }
+    file << "\n"
+  end
 
   # Whether a macro statement is nothing but the definition of `include_guard`. Anchored so a
   # macro whose name merely begins with the guard's name is never mistaken for it, and so a
