@@ -435,6 +435,102 @@ ceedling_system_tests do
       end
     end
 
+    # =========================================================================
+    describe "a Partial's extracted types depending on another header (issue #1319)" do
+    # =========================================================================
+
+      # A module's own header declares a type in terms of one another header supplies. Partials
+      # lifts that type into a shared types header, which lands in the test's include list where
+      # the module's own header used to sit -- ahead of nothing that supplies the name it needs.
+      # The generated file therefore has to carry the dependency itself.
+      before do
+        in_project do
+          File.write('src/units.h', <<~C)
+            #ifndef UNITS_H
+            #define UNITS_H
+
+            typedef signed short Celsius;
+
+            #endif // UNITS_H
+          C
+          File.write('src/sensor.h', <<~C)
+            #ifndef SENSOR_H
+            #define SENSOR_H
+
+            #include "units.h"
+
+            typedef struct
+            {
+                Celsius limit;
+            } SensorConfig;
+
+            int sensor_over_limit(Celsius reading);
+
+            #endif // SENSOR_H
+          C
+          File.write('src/sensor.c', <<~C)
+            #include "sensor.h"
+
+            static SensorConfig config = { .limit = 30 };
+
+            static Celsius sensor_limit(void)
+            {
+                return config.limit;
+            }
+
+            int sensor_over_limit(Celsius reading)
+            {
+                return reading > sensor_limit();
+            }
+          C
+          File.write('test/test_sensor.c', <<~C)
+            #ifdef TEST
+
+            #include "unity.h"
+            #include "ceedling.h"
+
+            #include TEST_PARTIAL_ALL_MODULE(sensor)
+
+            void setUp(void) {}
+            void tearDown(void) {}
+
+            void test_sensor_reads_its_own_file_scope_config(void)
+            {
+                TEST_ASSERT_EQUAL_INT(30, sensor_limit());
+            }
+
+            void test_sensor_over_limit_uses_the_exposed_limit(void)
+            {
+                config.limit = 10;
+                TEST_ASSERT_TRUE(sensor_over_limit(11));
+                TEST_ASSERT_FALSE(sensor_over_limit(9));
+            }
+
+            #endif // TEST
+          C
+
+          @c.merge_project_yml_for_test(
+            :project => { :use_partials => true },
+            :paths   => { :include => ['src/**'] }
+          )
+        end
+      end
+
+      # Exercises the whole chain at once: the carried dependency makes the types header
+      # compile, the stripped `static` on a file-scope variable makes it reachable from the
+      # test, and the stripped `static` on a function makes it callable.
+      it "builds and passes, reaching the module's exposed statics" do
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0), "build failed:\n#{output}"
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/PASSED:\s+2/)
+          expect(output).to match(/FAILED:\s+0/)
+        end
+      end
+    end
+
   end
 
 end
