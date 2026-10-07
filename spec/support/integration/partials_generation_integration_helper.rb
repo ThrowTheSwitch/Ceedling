@@ -281,9 +281,10 @@ module PartialsGenerationHelpers
     )
 
     # Partials refuses a module whose shape fallback preprocessing cannot resolve, rather than
-    # generating from a guess and leaving a compiler to report something arcane later. The
-    # check runs where validate_config runs in production: before generation, not after.
-    partials_helper.validate_fallback_sufficiency(
+    # generating from a guess and leaving a compiler to report something arcane later. Routed
+    # through validate_config so the refusal happens exactly where production puts it: before
+    # generation, not after.
+    partializer.validate_config(
       c_module: c_module, config: config, name: 'PartialsGenerationTest',
       fallback: mode == :fallback
     )
@@ -657,6 +658,7 @@ module PartialsGenerationHelpers
                                     { c_extractor_code_text: CExtractorCodeText.new }
                                   ).tap( &:setup ),
         file_path_utils:          partials_file_path_utils,
+        parsing_parcels:          ParsingParcels.new,
         loginator:                partials_null_loginator
       }
     ).tap( &:setup )

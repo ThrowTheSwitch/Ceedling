@@ -34,12 +34,23 @@ class Partializer
     @helper = @partializer_helper
   end
 
-  def validate_config(c_module:, config:, name:)
+  def validate_config(c_module:, config:, name:, fallback: false)
     msg = @reportinator.generate_progress("Validating Partial config for '#{name}'")
     @loginator.log(msg, Verbosity::DEBUG)
     @helper.validate_function_names_exist(c_module, config, name)
     @helper.validate_no_additions_subtractions_overlap(config, name)
     @helper.validate_additions_subtractions_visibility(c_module, config, name)
+
+    # Fallback preprocessing resolves strictly less than the accurate pass, and two module
+    # shapes are knowably beyond it. Reading the original text happens here, at the I/O edge,
+    # so the check itself stays pure.
+    return unless fallback
+
+    @helper.validate_fallback_sufficiency(
+      name: name,
+      module_name: config.module,
+      files: _module_file_texts(config)
+    )
   end
 
   def sanitize(c_module)
@@ -495,6 +506,16 @@ class Partializer
       "Mockable functions for Partial #{test}::#{partial}:",
       Verbosity::OBNOXIOUS
     )
+  end
+
+  # The module's own header and source text, keyed by filepath. A declaration-only Partial has
+  # no paired source, which leaves that filepath legitimately nil.
+  def _module_file_texts(config)
+    [config.header, config.source].filter_map do |file_info|
+      next if file_info.nil? || file_info.filepath.nil?
+
+      [file_info.filepath, @file_wrapper.read( file_info.filepath ).clean_encoding]
+    end.to_h
   end
 
   # One body behind all four public remaps. Each differs only in what replaces this module's

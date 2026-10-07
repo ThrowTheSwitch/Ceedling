@@ -88,7 +88,9 @@ class PartialsManager
         fallback: !directives_only
       )
 
-      @partializer.validate_config( c_module: module_contents, config: config, name: name )
+      @partializer.validate_config(
+        c_module: module_contents, config: config, name: name, fallback: !directives_only
+      )
 
       @partializer.sanitize( module_contents )
 

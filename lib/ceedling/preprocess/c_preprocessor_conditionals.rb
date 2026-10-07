@@ -79,7 +79,7 @@ class CPreprocessorConditionals
 
     when /^#\s*if\b/
       # Complex or unrecognized #if expression — treat as active (conservative)
-      push( true )
+      push( true, unevaluated: true )
 
     when /^#\s*elif\s+!\s*defined\s*\(\s*(\w+)\s*\)\s*$/
       handle_elif( !macro_defined?($1) )
@@ -95,7 +95,7 @@ class CPreprocessorConditionals
 
     when /^#\s*elif\b/
       # Complex or unrecognized #elif expression — treat as active (conservative)
-      handle_elif( true )
+      handle_elif( true, unevaluated: true )
 
     when /^#\s*else\b/
       handle_else
@@ -112,6 +112,16 @@ class CPreprocessorConditionals
     # Otherwise, the innermost frame must be active.
     return true if @stack.empty?
     @stack.last[:active]
+  end
+
+  # True when the current position sits inside a block this tracker kept without evaluating
+  # its condition -- a compound or otherwise unrecognized expression.
+  #
+  # `active?` cannot distinguish a decision from a guess, and the difference matters to a
+  # caller that must not relocate code chosen by one. A guess is the right default for
+  # skipping text; it is the wrong basis for copying a type definition out of a module.
+  def unevaluated?
+    @stack.any? { |frame| frame[:unevaluated] }
   end
 
   # Reset state for reuse (e.g. across multiple files)
@@ -139,10 +149,10 @@ class CPreprocessorConditionals
   # When pushing a new frame, "outer" is the frame we're currently inside
   # (the last frame before the push). If the stack is empty we are at the
   # top level, which is always active.
-  def push(condition)
+  def push(condition, unevaluated: false)
     enclosing_active = @stack.empty? ? true : @stack.last[:active]
     active = enclosing_active && condition
-    @stack.push( {active: active, seen_true_branch: active} )
+    @stack.push( {active: active, seen_true_branch: active, unevaluated: unevaluated} )
   end
 
   # For #elif/#else, "outer" is the frame ENCLOSING the current block —
@@ -152,9 +162,10 @@ class CPreprocessorConditionals
     @stack.size <= 1 ? true : @stack[-2][:active]
   end
 
-  def handle_elif(condition)
+  def handle_elif(condition, unevaluated: false)
     return if @stack.empty?
     frame = @stack.last
+    frame[:unevaluated] = true if unevaluated
     # An elif branch activates only if: no prior true branch was seen, the
     # enclosing block is active, and this branch's condition is true.
     if !frame[:seen_true_branch] && enclosing_active? && condition

@@ -21,6 +21,7 @@ describe PartializerHelper do
     @c_extractor              = double("CExtractor")
     @c_extractor_declarations = double("CExtractorDeclarations")
     @file_path_utils          = double("FilePathUtils")
+    @parsing_parcels          = ParsingParcels.new
     @loginator                = double("Loginator").as_null_object
 
     @helper = described_class.new(
@@ -29,6 +30,7 @@ describe PartializerHelper do
         :c_extractor              => @c_extractor,
         :c_extractor_declarations => @c_extractor_declarations,
         :file_path_utils          => @file_path_utils,
+        :parsing_parcels          => @parsing_parcels,
         :loginator                => @loginator
       }
     )
@@ -543,6 +545,7 @@ describe PartializerHelper do
             :c_extractor              => double("CExtractor").as_null_object,
             :c_extractor_declarations => CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new() }).tap(&:setup),
             :file_path_utils          => double("FilePathUtils"),
+            :parsing_parcels          => ParsingParcels.new,
             :loginator                => double("Loginator").as_null_object
           }
         )

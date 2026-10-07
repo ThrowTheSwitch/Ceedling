@@ -12,6 +12,9 @@ require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_declarations'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'strscan'
+require 'ceedling/constants'
+require 'ceedling/parsing_parcels'
+require 'ceedling/preprocess/c_preprocessor_conditionals'
 
 class PartializerHelper
 
@@ -22,6 +25,7 @@ class PartializerHelper
     :c_extractor,
     :c_extractor_declarations,
     :file_path_utils,
+    :parsing_parcels,
     :loginator
   )
 
@@ -162,10 +166,72 @@ class PartializerHelper
   #
   # @return [Array<CVariableDeclaration>] All function-scoped static variable declarations
   #   found across all supplied functions, suitable for emission at module scope.
-  # STUB -- raises nothing until the implementation lands.
-  def validate_fallback_sufficiency(c_module:, config:, name:, fallback:)
-    nil
+  # Refuses a module whose shape fallback preprocessing cannot resolve.
+  #
+  # Fallback never runs a compiler. It scans text and tracks a handful of conditional shapes
+  # against a defines list, so two things are knowably beyond it, and generating from either
+  # leaves a compiler or a linker to report something arcane several stages later. Refusing
+  # here -- before anything is written -- trades a confusing failure for a specific one.
+  #
+  # `files` maps a filepath to that file's text, so this method reads nothing itself and a
+  # spec can exercise every branch without a filesystem.
+  def validate_fallback_sufficiency(name:, module_name:, files:)
+    files.each do |filepath, text|
+      _reject_computed_includes( name, module_name, filepath, text )
+      _reject_unevaluated_relocations( name, module_name, filepath, text )
+    end
   end
+
+  # An #include whose target is a macro needs real expansion to resolve. Fallback has none, so
+  # the include is lost outright and whatever it declared is missing from every list built from
+  # it -- including the dependencies the shared types header carries.
+  def _reject_computed_includes(name, module_name, filepath, text)
+    @parsing_parcels.code_lines_with_num( text ) do |line, _line_num, end_line_num|
+      next unless line.match?( ANY_INCLUDE_DIRECTIVE )
+      next if line.match?( PATTERNS::USER_INCLUDE_DIRECTIVE_FILENAME )
+      next if line.match?( PATTERNS::SYSTEM_INCLUDE_DIRECTIVE_FILENAME )
+
+      raise CeedlingException.new(
+        "Partial #{name}::#{module_name} \u23e9\ufe0f #{filepath}:#{end_line_num} computes an " \
+        "#include target that fallback preprocessing cannot resolve. Partials for this module " \
+        "require directives-only preprocessing."
+      )
+    end
+  end
+
+  # A type definition or an #include chosen by a condition the tracker kept without evaluating
+  # it. Keeping such a block is the safe default for text the Partial ignores and the wrong
+  # answer for content it relocates: the generated types header would carry a type the build
+  # should not have, and no later stage can tell that it was a guess.
+  #
+  # Scoped to conditionals actually enclosing relocated content, so an ordinary compound
+  # condition elsewhere in the module is not a reason to refuse.
+  def _reject_unevaluated_relocations(name, module_name, filepath, text)
+    tracker = CPreprocessorConditionals.new( [] )
+
+    @parsing_parcels.code_lines_with_num( text ) do |line, _line_num, end_line_num|
+      tracker.process_directive( line )
+      next unless tracker.active? && tracker.unevaluated?
+      next unless line.match?( RELOCATED_CONTENT ) || line.match?( ANY_INCLUDE_DIRECTIVE )
+
+      raise CeedlingException.new(
+        "Partial #{name}::#{module_name} \u23e9\ufe0f #{filepath}:#{end_line_num} sits behind a " \
+        "conditional expression that fallback preprocessing cannot be evaluated against. " \
+        "Partials for this module require directives-only preprocessing."
+      )
+    end
+  end
+
+  # Content Partials copies out of a module, so a conditional deciding whether it exists has to
+  # be decided rather than assumed. Matches a leading declaration keyword only, which is what a
+  # file-scope type definition opens with.
+  RELOCATED_CONTENT = /^\s*(?:typedef|struct|union|enum)\b/ unless const_defined?(:RELOCATED_CONTENT, false)
+
+  # Any #include, however its target is spelled. Paired with the two PATTERNS filename forms,
+  # it isolates the computed case: a directive whose target matches neither a quoted nor an
+  # angled filename is naming a macro. PreprocessinatorIncludesHandler draws the same
+  # distinction for the same reason, against its own copy of this pattern.
+  ANY_INCLUDE_DIRECTIVE = /^\s*#\s*include\s+\S/ unless const_defined?(:ANY_INCLUDE_DIRECTIVE, false)
 
   def extract_function_scope_static_vars(funcs, name:, module_name:, file_type:)
     decls = []
