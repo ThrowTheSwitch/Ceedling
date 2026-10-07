@@ -42,7 +42,8 @@ class GeneratorPartials
     # write, which would alter any line ending already present in that
     # content instead of passing it through unchanged.
     @file_wrapper.open(header_filepath, 'wb') do |file|
-      generate_header(file, header, header_includes, function_definitions, c_module, true, include_guard)
+      generate_header(file, header, header_includes, function_definitions, c_module,
+                      include_variables: true, include_guard: include_guard)
     end
 
     @file_wrapper.open(source_filepath, 'wb') do |file|
@@ -58,7 +59,8 @@ class GeneratorPartials
 
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
-      generate_header(file, header, includes, function_declarations, c_module, false, include_guard)
+      generate_header(file, header, includes, function_declarations, c_module,
+                      include_variables: false, include_guard: include_guard)
     end
 
     return filepath
@@ -86,7 +88,7 @@ class GeneratorPartials
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
       guard = FileWrapper.generate_include_guard( header )
-      emit_types_preamble( file, guard, include_guard, includes )
+      emit_preamble( file, guard, include_guard, includes )
 
       anything_emitted = false
       pending_macros = []
@@ -126,26 +128,27 @@ class GeneratorPartials
 
   private
 
-  # Everything above a types header's own type definitions: the generated file's guard, the
-  # spoof of the real module header's guard, and the dependencies those types name.
+  # Everything above a generated header's own content: the file's include guard, the spoof of the
+  # real module header's guard, and the includes that header carries. Shared by all three
+  # generated headers, which open identically.
   #
   # The order of the last two is the whole point. A carried header can transitively reach the
   # real module header, so the spoof has to be satisfied before any include is processed rather
-  # than after. And the types carried below name things this file does not define, so without
+  # than after. And relocated content names things a generated file does not define, so without
   # the includes it compiles only where something earlier in the translation unit happened to
-  # supply those names -- which is what made its placement a conflict between two correct
-  # requirements rather than a choice.
-  def emit_types_preamble(file, guard, include_guard, includes)
-    file << "#ifndef #{guard}\n"
-    file << "#define #{guard}\n\n"
+  # supply those names -- which is what made the types header's placement a conflict between two
+  # correct requirements rather than a choice.
+  def emit_preamble(io, guard, include_guard, includes)
+    io << "#ifndef #{guard}\n"
+    io << "#define #{guard}\n\n"
 
     # A module header with no guard of its own supplies nothing to spoof.
-    file << "#define #{include_guard}\n\n" if include_guard
+    io << "#define #{include_guard}\n\n" if include_guard
 
     return if includes.empty?
 
-    includes.each { |include| file << "#{include}\n" }
-    file << "\n"
+    includes.each { |include| io << "#{include}\n" }
+    io << "\n"
   end
 
   # Whether a macro statement is nothing but the definition of `include_guard`. Anchored so a
@@ -200,25 +203,11 @@ class GeneratorPartials
   # @param function_list   [Array]  Pre-filtered Partials function objects (respond to :name and :signature)
   # @param c_module        [CExtractorTypes::CModule] Merged module with element_sequence
   # @param include_variables [Boolean] True for implementation header (emits extern vars); false for interface
-  def generate_header(io, name, includes, function_list, c_module, include_variables, include_guard = nil)
+  # @param include_guard [String, nil] The real module header's own guard, spoofed so a transitive
+  #   reach at that header finds it already satisfied. nil when the header has no guard.
+  def generate_header(io, name, includes, function_list, c_module, include_variables:, include_guard: nil)
     guard = FileWrapper.generate_include_guard( name )
-
-    io << "#ifndef #{guard}\n"
-    io << "#define #{guard}\n\n"
-
-    # The real module header's guard, defined on purpose rather than left to arrive among the
-    # carried macros. It must precede the includes below, because one of them can transitively
-    # reach the real header -- the guard has to be satisfied before that happens, not after.
-    # A module whose header has no guard supplies nothing to emit.
-    if include_guard
-      io << "#define #{include_guard}\n\n"
-    end
-
-    includes.each do |include|
-      io << "#{include}\n"
-    end
-
-    io << "\n" if !includes.empty?
+    emit_preamble( io, guard, include_guard, includes )
 
     func_by_name = function_list.to_h { |f| [f.name, f] }
     emitted_funcs = {}

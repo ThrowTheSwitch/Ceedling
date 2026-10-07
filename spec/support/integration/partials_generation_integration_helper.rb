@@ -72,7 +72,6 @@ module PartialsGeneration
   Result = Struct.new(
     :dir, :module_name, :mode,
     :types_h, :impl_h, :impl_c, :interface_h,
-    :header_include_list, :source_include_list, :interface_include_list,
     :pp_header, :pp_source,
     keyword_init: true
   ) do
@@ -176,7 +175,6 @@ module PartialsGeneration
     def interface_h_includes = includes( :interface_h )
 
     def impl_h_index(fragment)      = include_index( :impl_h, fragment )
-    def types_h_index(fragment)     = include_index( :types_h, fragment )
     def interface_h_index(fragment) = include_index( :interface_h, fragment )
   end
 
@@ -366,9 +364,6 @@ module PartialsGenerationHelpers
       impl_h: read_generated( dir, "ceedling_partial_#{module_name}_impl.h" ),
       impl_c: read_generated( dir, "ceedling_partial_#{module_name}_impl.c" ),
       interface_h: read_generated( dir, "ceedling_partial_#{module_name}_interface.h" ),
-      header_include_list: header_list.map( &:to_s ),
-      source_include_list: source_list.map( &:to_s ),
-      interface_include_list: interface_list.map( &:to_s ),
       pp_header: pp_header,
       pp_source: pp_source
     )
@@ -387,7 +382,7 @@ module PartialsGenerationHelpers
 
     contents, extras =
       case mode
-      when :accurate then reconstitute_accurate( dir: dir, path: path )
+      when :accurate then reconstitute_accurate( dir: dir, path: path, defines: defines )
       when :fallback then reconstitute_fallback( path: path, defines: defines )
       else raise ArgumentError, "unknown preprocessing mode '#{mode}'"
       end
@@ -413,10 +408,14 @@ module PartialsGenerationHelpers
   # Only lines belonging to this file survive the reconstructor; a type arriving from an
   # included header is discarded here, which is why an extracted type can reference
   # something no generated file declares.
-  def reconstitute_accurate(dir:, path:)
+  def reconstitute_accurate(dir:, path:, defines: [])
     raw = "#{path}.directives_only"
 
-    command = "#{partials_compiler} -E -fdirectives-only -I#{dir} -x c #{path} -o #{raw}"
+    # Defines reach both passes, as they do in production. Without this a case pairing
+    # `defines:` with accurate mode would silently measure the undefined configuration instead.
+    flags = defines.map { |name| "-D#{name}" }.join( ' ' )
+
+    command = "#{partials_compiler} -E -fdirectives-only #{flags} -I#{dir} -x c #{path} -o #{raw}".squeeze( ' ' )
     _out, stderr, status = Open3.capture3( command )
     raise PartialsGeneration::PreprocessFailure, "#{command}\n#{stderr}" unless status.success?
 
@@ -474,15 +473,6 @@ module PartialsGenerationHelpers
   def compile_types_header_alone(result)
     probe = File.join( result.dir, 'probe_types_alone.c' )
     File.write( probe, "#include \"ceedling_partial_#{result.module_name}_types.h\"\nint main(void) { return 0; }\n" )
-
-    syntax_only( result, probe )
-  end
-
-  # The mockable interface header standing alone, the same question asked of the file CMock
-  # consumes.
-  def compile_interface_header_alone(result)
-    probe = File.join( result.dir, 'probe_interface_alone.c' )
-    File.write( probe, "#include \"ceedling_partial_#{result.module_name}_interface.h\"\nint main(void) { return 0; }\n" )
 
     syntax_only( result, probe )
   end

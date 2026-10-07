@@ -405,23 +405,6 @@ describe 'Partial header composition' do
       expect( @result.type_names( :types_h ) ).to include('valve_t')
     end
 
-    it 'defines each extracted type once across both generated headers' do
-      @result = generate_partial(
-        module_name: 'valve',
-        header: <<~C,
-          #ifndef VALVE_H
-          #define VALVE_H
-          typedef struct { int port; } valve_t;
-          void valve_open(valve_t* v);
-          #endif
-        C
-        source: "#include \"valve.h\"\nvoid valve_open(valve_t* v) { (void)v; }\n",
-        source_includes: ['valve.h']
-      )
-
-      compile = compile_both_headers( @result )
-      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
-    end
   end
 
   # ---------------------------------------------------------------------------
@@ -530,6 +513,33 @@ describe 'Partial header composition' do
 
       compile = compile_partial( @result )
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  context 'what reconstitution leaves for extraction to read' do
+  # ---------------------------------------------------------------------------
+
+    # The reason an extracted type can name something no generated file declares. Preprocessing
+    # follows every include, then keeps only the lines belonging to the module's own file, so a
+    # type arriving from a dependency is discarded while a type *referring* to one survives. Every
+    # other case in this file is a consequence of that, and nothing else asserts it directly.
+    it 'keeps the module-s own lines and discards what its headers declared' do
+      @result = generate_partial(
+        module_name: 'lm75b',
+        header: "#ifndef LM75B_H\n#define LM75B_H\n#include \"foundation.h\"\ntypedef struct { S16 temp; } lm75b_t;\n#endif\n",
+        source: "#include \"lm75b.h\"\n",
+        header_includes: ['foundation.h'],
+        source_includes: ['lm75b.h'],
+        extra: { 'foundation.h' => FOUNDATION_H }
+      )
+
+      # The module's own type survives, naming a type it no longer carries the definition of.
+      expect( @result.pp_header ).to include('typedef struct { S16 temp; } lm75b_t;')
+      expect( @result.pp_header ).not_to include('typedef signed short S16;')
+
+      # The source file holds nothing of the header it included.
+      expect( @result.pp_source ).not_to include('lm75b_t')
     end
   end
 

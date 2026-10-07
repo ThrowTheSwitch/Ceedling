@@ -930,6 +930,20 @@ describe PartializerHelper do
 
     # Keeping an unevaluable block is the safe default for text the Partial ignores. Only
     # content it relocates makes the guess consequential, so the check is scoped to that.
+    # Fallback drops an inactive block along with everything in it, exactly as a real
+    # preprocessor would. Refusing over content neither one keeps would fail a build that works.
+    it "accepts a computed include inside an inactive block" do
+      expect {
+        guard( "#if 0\n#include DEVICE\n#endif\ntypedef int foo_t;\n" )
+      }.not_to raise_error
+    end
+
+    it "accepts an unevaluable condition nested inside an inactive block" do
+      expect {
+        guard( "#ifdef NEVER_DEFINED\n#if defined(A) && defined(B)\ntypedef long foo_t;\n#endif\n#endif\n" )
+      }.not_to raise_error
+    end
+
     it "accepts an unevaluable condition enclosing nothing it relocates" do
       expect {
         guard( "int run(void) {\n#if defined(A) && defined(B)\n  return 1;\n#else\n  return 0;\n#endif\n}\n" )

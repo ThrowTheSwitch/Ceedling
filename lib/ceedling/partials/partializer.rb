@@ -16,7 +16,6 @@ require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/constants'
 require 'ceedling/path_mirror'
 require 'ceedling/encodinator'
-require 'ceedling/exceptions'
 
 class Partializer
 
@@ -34,7 +33,7 @@ class Partializer
     @helper = @partializer_helper
   end
 
-  def validate_config(c_module:, config:, name:, fallback: false)
+  def validate_config(c_module:, config:, name:, fallback:)
     msg = @reportinator.generate_progress("Validating Partial config for '#{name}'")
     @loginator.log(msg, Verbosity::DEBUG)
     @helper.validate_function_names_exist(c_module, config, name)
@@ -537,21 +536,29 @@ class Partializer
       when :drop
         remove_matching_includes( includes: _includes, modules: (partials.keys - [name]) )
       when :mock_or_keep, :mock_or_drop
+        # The types header differs from the generated source in two ways at once, which is why
+        # both flags below read from one condition.
+        #
+        # It skips this module: the interface header includes the types header, so carrying the
+        # interface back in would fold that file's declarations into this one. The generated
+        # source needs the opposite -- a module tested and mocked in one test file keeps its
+        # public bodies in the implementation and the private declarations they call in the
+        # interface, so it needs both.
+        #
+        # And it drops an unmocked partialized dependency rather than keeping its real header,
+        # which would reintroduce content that module's own Partial replaced.
+        shared_types_header = ( others == :mock_or_drop )
+
         _redirect_mocked_partials(
           includes: _includes,
           original: includes,
           name: name,
           partials: partials,
-          drop_unmocked: (others == :mock_or_drop),
-          # A module tested and mocked in one test file needs its own interface header in its
-          # generated source: the implementation carries the public bodies, and the private
-          # declarations they call live only in the interface. The types header is the opposite
-          # case -- the interface header includes it, so carrying the interface back in would
-          # fold that file's declarations into this one.
-          skip_self: (others == :mock_or_drop)
+          drop_unmocked: shared_types_header,
+          skip_self: shared_types_header
         )
       else
-        raise CeedlingException.new( "Unknown partialized module treatment ':#{others}'" )
+        PartializerRuntime.raise_on_option( others )
       end
 
     # Remove any duplicates
@@ -566,8 +573,12 @@ class Partializer
     return _includes
   end
 
-  # Appends the generated interface header for every other partialized module the original list
-  # named and that is mocked, then removes the real headers those replaced.
+  # Appends the generated interface header for each mocked partialized module the original list
+  # named, then removes the real headers those replaced. `skip_self` decides whether the module
+  # being generated counts as one of them, which it does everywhere except the types header --
+  # see the call site.
+  #
+  # Mutates `includes`, which always arrives fresh from splice_in_replacement.
   #
   # Any real (non-nil) mock mode counts. PUBLIC/PRIVATE alone once covered every mode that
   # existed, but DEDUCT (MOCK_PARTIAL_ALL_MODULE) and ACCUMULATE (MOCK_PARTIAL_MODULE) were
@@ -575,7 +586,6 @@ class Partializer
   # redirected: its real header, and any static inline or static function bodies in it, stayed
   # #include'd verbatim and compiled straight past the mock.
   def _redirect_mocked_partials(includes:, original:, name:, partials:, drop_unmocked:, skip_self:)
-    _includes = includes
     retired = []
 
     partials.each do |_module, config|
@@ -585,14 +595,14 @@ class Partializer
       if config.mocks.type.nil?
         retired << _module if drop_unmocked
       else
-        _includes << UserInclude.new(
+        includes << UserInclude.new(
           @file_path_utils.form_partial_interface_header_filename(_module)
         )
         retired << _module
       end
     end
 
-    remove_matching_includes( includes: _includes, modules: retired )
+    remove_matching_includes( includes: includes, modules: retired )
   end
 
   # Swaps `name`'s own header include for `replacement` at that same list position,

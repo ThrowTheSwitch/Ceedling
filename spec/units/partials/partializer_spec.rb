@@ -285,7 +285,7 @@ describe Partializer do
       expect(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
         .with(c_module, config, name).ordered
 
-      @partializer.validate_config(c_module: c_module, config: config, name: name)
+      @partializer.validate_config(c_module: c_module, config: config, name: name, fallback: false)
     end
 
     # The fourth check only applies where preprocessing resolved less than it could, so the

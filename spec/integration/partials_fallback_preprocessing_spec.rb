@@ -163,6 +163,20 @@ describe 'Partial fallback preprocessing' do
       compile = compile_partial( @result )
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
     end
+
+    # The same module under accurate preprocessing, so the two paths are shown to agree on a
+    # conditional both can decide. A define silently ignored by one pass would make every
+    # comparison between them meaningless.
+    it 'reaches the same arm as accurate preprocessing does' do
+      fallback = generate_partial( mode: :fallback, defines: ['USE_WIDE'], **conditional_module )
+      accurate = generate_partial( defines: ['USE_WIDE'], **conditional_module )
+
+      expect( fallback.types_h ).to include('typedef long feat_t;')
+      expect( accurate.types_h ).to include('typedef long feat_t;')
+
+      cleanup_partial( fallback )
+      cleanup_partial( accurate )
+    end
   end
 
   # ---------------------------------------------------------------------------

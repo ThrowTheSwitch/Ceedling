@@ -192,12 +192,10 @@ describe 'Partial symbol linkage' do
       )
       @dir = result.dir
 
+      # Which file each type lands in is partials_header_composition_spec's claim. What only a
+      # link can show is that one definition of each exposed symbol reaches the linker.
       compile = compile_both_headers( result )
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
-
-      expect( result.type_names( :types_h ) ).to include('relay_cfg_t')
-      expect( result.type_names( :impl_h ) ).not_to include('relay_cfg_t')
-      expect( result.type_names( :interface_h ) ).not_to include('relay_cfg_t')
 
       link = link_partial( result, references: ['relay_open', 'relay_state'] )
       expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_diagnostic}"
@@ -223,10 +221,9 @@ describe 'Partial symbol linkage' do
       @result = generate_partial( **split_visibility_module )
       @dir = @result.dir
 
-      expect( @result.source_include_list.join( "\n" ) )
-        .to include('ceedling_partial_gauge_impl.h')
-      expect( @result.source_include_list.join( "\n" ) )
-        .to include('ceedling_partial_gauge_interface.h')
+      carried = @result.includes( :impl_c ).join( "\n" )
+      expect( carried ).to include('ceedling_partial_gauge_impl.h')
+      expect( carried ).to include('ceedling_partial_gauge_interface.h')
     end
 
     # The interface header includes the types header, so carrying the interface back into the
