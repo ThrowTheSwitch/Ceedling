@@ -20,7 +20,8 @@ class Partializer
 
   include Partials
 
-  constructor :configurator, :partializer_helper, :file_finder, :c_extractor, :file_path_utils, :reportinator, :loginator
+  constructor :configurator, :partializer_helper, :file_finder, :c_extractor, :file_path_utils,
+              :preprocessinator_reconstructor, :file_wrapper, :reportinator, :loginator
 
   def setup()
     # Alias
@@ -259,6 +260,16 @@ class Partializer
     ) if test
 
     return _includes
+  end
+
+  # STUB -- returns nil until the implementation lands.
+  def extract_module_include_guard(filepath)
+    nil
+  end
+
+  # STUB -- returns an empty list until the implementation lands.
+  def remap_types_header_includes(name:, includes:, partials:, test: nil)
+    []
   end
 
   # Extracts and combines C code contents from a Partial config's header and source files

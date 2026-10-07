@@ -23,6 +23,10 @@ describe Partializer do
     @reportinator       = Reportinator.new
     @loginator          = double("Loginator").as_null_object
 
+    # Guard extraction reads the module's own header text through these two.
+    @preprocessinator_reconstructor = double("PreprocessinatorReconstructor")
+    @file_wrapper                   = double("FileWrapper")
+
     @configurator = double( "Configurator" )
     allow(@configurator).to receive(:paths_test).and_return( ['test'] )
     allow(@configurator).to receive(:paths_support).and_return( [] )
@@ -35,6 +39,8 @@ describe Partializer do
         :file_finder        => @file_finder,
         :c_extractor        => @c_extractor,
         :file_path_utils    => @file_path_utils,
+        :preprocessinator_reconstructor => @preprocessinator_reconstructor,
+        :file_wrapper       => @file_wrapper,
         :reportinator       => @reportinator,
         :loginator          => @loginator
       }

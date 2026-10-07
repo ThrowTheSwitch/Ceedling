@@ -162,6 +162,11 @@ class PartializerHelper
   #
   # @return [Array<CVariableDeclaration>] All function-scoped static variable declarations
   #   found across all supplied functions, suitable for emission at module scope.
+  # STUB -- raises nothing until the implementation lands.
+  def validate_fallback_sufficiency(c_module:, config:, name:, fallback:)
+    nil
+  end
+
   def extract_function_scope_static_vars(funcs, name:, module_name:, file_type:)
     decls = []
 

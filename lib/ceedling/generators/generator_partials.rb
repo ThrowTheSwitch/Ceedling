@@ -76,7 +76,7 @@ class GeneratorPartials
   # @param c_module [CExtractorTypes::CModule] Merged module with type_definitions/aggregate_definitions
   # @param output_path [String] Directory shared with the implementation and interface headers
   # @return [String, nil] The bare filename (for use as a sibling #include), or nil if nothing was generated
-  def generate_types(name:, c_module:, output_path:)
+  def generate_types(name:, c_module:, output_path:, includes: [], include_guard: nil)
     return nil if c_module.type_definitions.empty? && c_module.aggregate_definitions.empty?
 
     header = @file_path_utils.form_partial_types_header_filename(name)

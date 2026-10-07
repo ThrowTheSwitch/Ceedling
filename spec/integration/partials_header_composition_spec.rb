@@ -534,6 +534,231 @@ describe 'Partial header composition' do
   end
 
   # ---------------------------------------------------------------------------
+  context 'the deliberate guard-spoof' do
+  # ---------------------------------------------------------------------------
+
+    # Today the spoof is an accident: the real header's own #define happens to precede the
+    # first type definition and is carried along with the other macros. Nothing guarantees it
+    # appears, and nothing guarantees it lands before a carried include. Both have to be
+    # deliberate once the types header carries includes of its own, because a carried header
+    # can transitively reach the real module header -- #1293, one level down.
+
+    it 'emits the real header-s guard on purpose' do
+      @result = generate_partial( **spoofed_module )
+
+      expect( @result.defines( :types_h ) ).to include('SPOOFED_H')
+    end
+
+    it 'emits the spoof ahead of every carried include' do
+      @result = generate_partial( **spoofed_module )
+
+      spoof = @result.define_index( :types_h, 'SPOOFED_H' )
+      first_include = @result.line_index( :types_h, /^\s*#include/ )
+
+      expect( spoof ).not_to be_nil
+      expect( first_include ).not_to be_nil
+      expect( spoof ).to be < first_include
+    end
+
+    # A module defining no types gets no types header, so the spoof has nowhere to ride. The
+    # implementation and interface headers have to carry it themselves, or suppression depends
+    # on a module happening to declare a type.
+    it 'emits the spoof even when the module defines no types' do
+      @result = generate_partial(
+        module_name: 'plainly',
+        header: "#ifndef PLAINLY_H\n#define PLAINLY_H\nvoid plainly_go(void);\n#endif\n",
+        source: "#include \"plainly.h\"\nvoid plainly_go(void) {}\n",
+        source_includes: ['plainly.h']
+      )
+
+      expect( @result.types_h ).to be_nil
+      expect( @result.defines( :impl_h ) ).to include('PLAINLY_H')
+      expect( @result.defines( :interface_h ) ).to include('PLAINLY_H')
+    end
+
+    # Fallback preprocessing deliberately excludes the include guard from the macros it
+    # recovers, so the carried spoof is absent there entirely. Reading the guard from the
+    # original header rather than from a carried macro is what closes that gap.
+    it 'emits the spoof under fallback preprocessing too' do
+      @result = generate_partial( mode: :fallback, **spoofed_module )
+
+      expect( @result.defines( :types_h ) ).to include('SPOOFED_H')
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  context 'a types header carrying its own dependencies' do
+  # ---------------------------------------------------------------------------
+
+    it 'carries a dependency the module header reaches' do
+      @result = generate_partial(
+        module_name: 'ring',
+        header: "#ifndef RING_H\n#define RING_H\n#include \"limits_cfg.h\"\ntypedef struct { int slot[RING_DEPTH]; } ring_t;\n#endif\n",
+        source: "#include \"ring.h\"\n",
+        header_includes: ['limits_cfg.h'],
+        source_includes: ['ring.h'],
+        extra: { 'limits_cfg.h' => "#ifndef LIMITS_CFG_H\n#define LIMITS_CFG_H\n#define RING_DEPTH 8\n#endif\n" }
+      )
+
+      expect( @result.types_h_includes.join( "\n" ) ).to include('limits_cfg.h')
+    end
+
+    # The types header replaces the module's own header, so carrying that header back in would
+    # defeat the spoof the same file emits.
+    it 'never carries the module-s own header' do
+      @result = generate_partial( **spoofed_module )
+
+      expect( @result.types_h_includes.join( "\n" ) ).not_to include('"spoofed.h"')
+    end
+
+    # A dependency that is itself partialized and mocked must arrive as that module's generated
+    # interface header, which carries its types. Pulling in the real header instead would put
+    # the very content the other Partial replaced back into the translation unit.
+    it 'redirects a mocked partialized dependency to its interface header' do
+      @result = generate_partial(
+        module_name: 'host',
+        header: "#ifndef HOST_H\n#define HOST_H\n#include \"guest.h\"\ntypedef struct { guest_handle_t h; } host_t;\n#endif\n",
+        source: "#include \"host.h\"\n",
+        header_includes: ['guest.h'],
+        source_includes: ['host.h'],
+        partials: other_partial( 'guest', mocked: true ),
+        extra: { 'guest.h' => "#ifndef GUEST_H\n#define GUEST_H\ntypedef int guest_handle_t;\n#endif\n" }
+      )
+
+      carried = @result.types_h_includes.join( "\n" )
+      expect( carried ).to include('ceedling_partial_guest_interface.h')
+      expect( carried ).not_to include('"guest.h"')
+    end
+
+    it 'drops a partialized dependency that is not mocked' do
+      @result = generate_partial(
+        module_name: 'host',
+        header: "#ifndef HOST_H\n#define HOST_H\n#include \"guest.h\"\ntypedef struct { int n; } host_t;\n#endif\n",
+        source: "#include \"host.h\"\n",
+        header_includes: ['guest.h'],
+        source_includes: ['host.h'],
+        partials: other_partial( 'guest' ),
+        extra: { 'guest.h' => "#ifndef GUEST_H\n#define GUEST_H\n#endif\n" }
+      )
+
+      carried = @result.types_h_includes.join( "\n" )
+      expect( carried ).not_to include('"guest.h"')
+      expect( carried ).not_to include('ceedling_partial_guest_interface.h')
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  context 'compositions of several mechanisms at once' do
+  # ---------------------------------------------------------------------------
+
+    # The minimal cases isolate one mechanism each. These prove the mechanisms compose, which
+    # is the shape a real embedded project actually presents.
+
+    it 'resolves several interdependent types spread across header and source' do
+      @result = generate_partial(
+        module_name: 'telemetry',
+        header: <<~C,
+          #ifndef TELEMETRY_H
+          #define TELEMETRY_H
+          #include "units.h"
+          #include "clock.h"
+          #define FRAME_SLOTS 6
+          typedef struct { celsius_t reading; tick_t at; } sample_t;
+          typedef struct { sample_t slots[FRAME_SLOTS]; } frame_t;
+          #endif
+        C
+        source: <<~C,
+          #include "telemetry.h"
+          #include "status.h"
+          typedef struct { frame_t frame; status_t status; } report_t;
+          static report_t latest;
+        C
+        header_includes: ['units.h', 'clock.h'],
+        source_includes: ['telemetry.h', 'status.h'],
+        extra: {
+          'units.h'  => "#ifndef UNITS_H\n#define UNITS_H\ntypedef short celsius_t;\n#endif\n",
+          'clock.h'  => "#ifndef CLOCK_H\n#define CLOCK_H\ntypedef unsigned long tick_t;\n#endif\n",
+          'status.h' => "#ifndef STATUS_H\n#define STATUS_H\ntypedef enum { OK, BAD } status_t;\n#endif\n"
+        }
+      )
+
+      expect( @result.type_names( :types_h ) ).to include('sample_t', 'frame_t', 'report_t')
+
+      compile = compile_partial( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+
+      standalone = compile_types_header_alone( @result )
+      expect( standalone.ok ).to be(true), "expected the types header to stand alone, got: #{standalone.first_error}"
+    end
+
+    # A dependency three levels down still has to be reachable, because the carried include is
+    # the one the module names rather than the one that ultimately declares the type.
+    it 'resolves a type declared three headers deep' do
+      @result = generate_partial(
+        module_name: 'deep',
+        header: "#ifndef DEEP_H\n#define DEEP_H\n#include \"level1.h\"\ntypedef struct { leaf_t leaf; } deep_t;\n#endif\n",
+        source: "#include \"deep.h\"\n",
+        header_includes: ['level1.h'],
+        source_includes: ['deep.h'],
+        extra: {
+          'level1.h' => "#ifndef LEVEL1_H\n#define LEVEL1_H\n#include \"level2.h\"\n#endif\n",
+          'level2.h' => "#ifndef LEVEL2_H\n#define LEVEL2_H\n#include \"level3.h\"\n#endif\n",
+          'level3.h' => "#ifndef LEVEL3_H\n#define LEVEL3_H\ntypedef int leaf_t;\n#endif\n"
+        }
+      )
+
+      standalone = compile_types_header_alone( @result )
+      expect( standalone.ok ).to be(true), "expected the types header to stand alone, got: #{standalone.first_error}"
+    end
+
+    # Self-containment and the #1293 defence at once: the types header must carry a dependency
+    # and still suppress the real module header a facade reaches transitively.
+    it 'is self-contained while still suppressing a transitive re-inclusion' do
+      @result = generate_partial(
+        module_name: 'alertmanager',
+        header: <<~C,
+          #ifndef ALERTMANAGER_H
+          #define ALERTMANAGER_H
+          #include "foundation.h"
+          typedef struct { S16 severity; } AlertEntry_t;
+          #endif
+        C
+        source: "#include \"alertmanager.h\"\n#include \"facade.h\"\n",
+        header_includes: ['foundation.h'],
+        source_includes: ['alertmanager.h', 'facade.h'],
+        extra: {
+          'foundation.h' => FOUNDATION_H,
+          'facade.h' => "#ifndef FACADE_H\n#define FACADE_H\n#include \"alertmanager.h\"\n#endif\n"
+        }
+      )
+
+      compile = compile_partial( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+
+      standalone = compile_types_header_alone( @result )
+      expect( standalone.ok ).to be(true), "expected the types header to stand alone, got: #{standalone.first_error}"
+    end
+  end
+
+  # A guarded module with one dependency, used by the spoof cases that vary only by mode.
+  def spoofed_module
+    {
+      module_name: 'spoofed',
+      header: <<~C,
+        #ifndef SPOOFED_H
+        #define SPOOFED_H
+        #include "foundation.h"
+        typedef struct { S16 level; } spoofed_t;
+        #endif
+      C
+      source: "#include \"spoofed.h\"\n",
+      header_includes: ['foundation.h'],
+      source_includes: ['spoofed.h'],
+      extra: { 'foundation.h' => FOUNDATION_H }
+    }
+  end
+
+  # ---------------------------------------------------------------------------
   context 'C shapes the extraction model does not yet carry' do
   # ---------------------------------------------------------------------------
 

@@ -40,7 +40,7 @@ class Generator
   # rather than duplicated by generate_partial_implementation and generate_partial_interface.
   # Returns the bare generated filename (for the caller to add to each header's own includes
   # list) or nil when the module has no typedefs or aggregate definitions to share.
-  def generate_partial_types(name:, partial:, c_module:, output_path:)
+  def generate_partial_types(name:, partial:, c_module:, output_path:, includes: [], include_guard: nil)
     msg = @reportinator.generate_module_progress(
       operation: "Generating shared Partial types for",
       module_name: name,
@@ -52,7 +52,9 @@ class Generator
       :name => partial, # Module name, not test name -- two modules Partialed in the same
                         # test file must not collide on one shared types header filename
       :c_module => c_module,
-      :output_path => output_path
+      :output_path => output_path,
+      :includes => includes,
+      :include_guard => include_guard
     }
 
     return @generator_partials.generate_types( **arg_hash )

@@ -382,6 +382,8 @@ partializer:
     - file_finder
     - c_extractor
     - file_path_utils
+    - preprocessinator_reconstructor
+    - file_wrapper
     - reportinator
     - loginator
 

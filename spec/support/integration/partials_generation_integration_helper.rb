@@ -50,6 +50,7 @@ require 'ceedling/partials/partializer'
 require 'ceedling/partials/partializer_helper'
 require 'ceedling/partials/partializer_utils'
 require 'ceedling/partials/partializer_config'
+require 'ceedling/partials/partials'
 require 'ceedling/preprocess/preprocessinator_reconstructor'
 require 'ceedling/preprocess/preprocessinator_comment_stripper'
 require 'ceedling/preprocess/c_comment_scanner'
@@ -274,7 +275,17 @@ module PartialsGenerationHelpers
     config = PartializerConfig::Config.new(
       module: module_name,
       tests: PartializerConfig::PartialFunctions.new( type: expose ),
-      mocks: PartializerConfig::PartialFunctions.new( type: expose )
+      mocks: PartializerConfig::PartialFunctions.new( type: expose ),
+      header: Partials::ConfigFileInfo.new( filepath: File.join( dir, "#{module_name}.h" ) ),
+      source: Partials::ConfigFileInfo.new( filepath: File.join( dir, "#{module_name}.c" ) )
+    )
+
+    # Partials refuses a module whose shape fallback preprocessing cannot resolve, rather than
+    # generating from a guess and leaving a compiler to report something arcane later. The
+    # check runs where validate_config runs in production: before generation, not after.
+    partials_helper.validate_fallback_sufficiency(
+      c_module: c_module, config: config, name: 'PartialsGenerationTest',
+      fallback: mode == :fallback
     )
 
     implementation = partializer.extract_implementation_functions(
@@ -288,8 +299,16 @@ module PartialsGenerationHelpers
       declarations: c_module.function_declarations, config: config
     )
 
+    # The types header carries its own dependencies and its own guard-spoof, so both are
+    # computed here the way partials_manager does and handed to the generator.
+    types_includes = partializer.remap_types_header_includes(
+      name: module_name, includes: raw_includes, partials: partials
+    )
+    include_guard = partializer.extract_module_include_guard( config.header.filepath )
+
     types_h_name = generator.generate_types(
-      name: module_name, c_module: c_module, output_path: dir
+      name: module_name, c_module: c_module, output_path: dir,
+      includes: types_includes, include_guard: include_guard
     )
 
     header_list = partializer.remap_implementation_header_includes(
@@ -611,6 +630,8 @@ module PartialsGenerationHelpers
         file_finder:        RSpec::Mocks::Double.new( 'FileFinder' ).as_null_object,
         c_extractor:        RSpec::Mocks::Double.new( 'CExtractor' ).as_null_object,
         file_path_utils:    partials_file_path_utils,
+        preprocessinator_reconstructor: partials_reconstructor,
+        file_wrapper:       partials_file_wrapper,
         reportinator:       RSpec::Mocks::Double.new( 'Reportinator' ).as_null_object,
         loginator:          partials_null_loginator
       }
