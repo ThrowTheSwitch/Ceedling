@@ -47,6 +47,9 @@ require 'ceedling/c_extractor/c_extractor_preprocessing'
 require 'ceedling/c_extractor/c_extractor_definitions'
 require 'ceedling/generators/generator_partials'
 require 'ceedling/partials/partializer'
+require 'ceedling/partials/partializer_helper'
+require 'ceedling/partials/partializer_utils'
+require 'ceedling/partials/partializer_config'
 require 'ceedling/preprocess/preprocessinator_reconstructor'
 require 'ceedling/preprocess/preprocessinator_comment_stripper'
 require 'ceedling/preprocess/c_comment_scanner'
@@ -218,6 +221,7 @@ module PartialsGenerationHelpers
       partials: {},
       defines: [],
       mode: :accurate,
+      expose: PartializerConfig::DEDUCT,
       dir: nil
     )
     # A caller supplies `dir` to generate two modules into one working directory, which is
@@ -242,6 +246,18 @@ module PartialsGenerationHelpers
     generator   = build_partials_generator
     partializer = build_partializer
 
+    # Function-scoped statics are promoted to module scope before generation, the way
+    # Partializer#extract_module_contents does it. Promotion is what puts a name that was
+    # private to one function into link-time resolution, so a linkage case cannot see its
+    # own subject without this step. Line-number association is deliberately skipped: it
+    # only sets `#line` attribution, which no assertion here depends on.
+    promoted = partials_helper.extract_function_scope_static_vars(
+      c_module.function_definitions,
+      name: 'PartialsGenerationTest', module_name: module_name, file_type: 'source'
+    )
+    c_module.variable_declarations.concat( promoted )
+    c_module.element_sequence.concat( promoted ) unless promoted.empty?
+
     # Generated-file boilerplate carried in from the reconstituted files is stripped before
     # generation, exactly as PartialsManager#stage_generate_partials does. Skipping this
     # leaves synthetic include guards in the extracted macros and misreports what a real
@@ -251,6 +267,26 @@ module PartialsGenerationHelpers
     # Header list first, then source list -- the order partials_manager uses when it
     # concatenates the two before remapping.
     raw_includes = partial_include_objects( source_includes + header_includes )
+
+    # DEDUCT with no subtractions is what TEST_PARTIAL_ALL_MODULE resolves to -- every
+    # function exposed. Visibility filtering has its own thorough unit coverage, so a case
+    # here states the exposure it wants rather than re-proving the filter.
+    config = PartializerConfig::Config.new(
+      module: module_name,
+      tests: PartializerConfig::PartialFunctions.new( type: expose ),
+      mocks: PartializerConfig::PartialFunctions.new( type: expose )
+    )
+
+    implementation = partializer.extract_implementation_functions(
+      test: 'PartialsGenerationTest', partial: module_name,
+      definitions: c_module.function_definitions, config: config
+    )
+
+    interface = partializer.extract_interface_functions(
+      test: 'PartialsGenerationTest', partial: module_name,
+      definitions: c_module.function_definitions,
+      declarations: c_module.function_declarations, config: config
+    )
 
     types_h_name = generator.generate_types(
       name: module_name, c_module: c_module, output_path: dir
@@ -273,7 +309,7 @@ module PartialsGenerationHelpers
     generator.generate_implementation(
       test: 'PartialsGenerationTest',
       name: module_name,
-      function_definitions: [],
+      function_definitions: implementation || [],
       source_includes: source_list,
       header_includes: header_list,
       c_module: c_module,
@@ -286,7 +322,7 @@ module PartialsGenerationHelpers
     generator.generate_interface(
       test: 'PartialsGenerationTest',
       name: module_name,
-      function_declarations: [],
+      function_declarations: interface || [],
       includes: interface_list,
       c_module: c_module,
       output_path: dir
@@ -550,13 +586,13 @@ module PartialsGenerationHelpers
     )
   end
 
-  # Only the include-remapping methods and #sanitize are exercised, so every collaborator
-  # except file_path_utils and loginator is a null double.
+  # Include remapping, #sanitize, and function extraction all run for real, so the helper is
+  # real too. File discovery and configuration are the only doubled collaborators.
   def build_partializer
     Partializer.new(
       {
         configurator:       RSpec::Mocks::Double.new( 'Configurator' ).as_null_object,
-        partializer_helper: RSpec::Mocks::Double.new( 'Helper' ).as_null_object,
+        partializer_helper: partials_helper,
         file_finder:        RSpec::Mocks::Double.new( 'FileFinder' ).as_null_object,
         c_extractor:        RSpec::Mocks::Double.new( 'CExtractor' ).as_null_object,
         file_path_utils:    partials_file_path_utils,
@@ -564,6 +600,28 @@ module PartialsGenerationHelpers
         loginator:          partials_null_loginator
       }
     )
+  end
+
+  # One instance per case, memoized so the promotion pass and the extraction passes share
+  # state. The code finder stays doubled: it serves only line-number association, which this
+  # harness skips. Wiring mirrors partializer_helper_spec.rb's own end-to-end context.
+  def partials_helper
+    @partials_helper ||= PartializerHelper.new(
+      {
+        partializer_utils:        PartializerUtils.new(
+                                    {
+                                      preprocessinator_code_finder: RSpec::Mocks::Double.new( 'CodeFinder' ).as_null_object,
+                                      loginator: partials_null_loginator
+                                    }
+                                  ),
+        c_extractor:              RSpec::Mocks::Double.new( 'CExtractor' ).as_null_object,
+        c_extractor_declarations: CExtractorDeclarations.new(
+                                    { c_extractor_code_text: CExtractorCodeText.new }
+                                  ).tap( &:setup ),
+        file_path_utils:          partials_file_path_utils,
+        loginator:                partials_null_loginator
+      }
+    ).tap( &:setup )
   end
 
   def partials_reconstructor
