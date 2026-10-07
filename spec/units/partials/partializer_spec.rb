@@ -1080,6 +1080,42 @@ describe Partializer do
   ###
 
   context "#remap_implementation_source_includes" do
+    # A module tested and mocked in one test file splits its own content across two generated
+    # headers: the implementation carries the public bodies and the interface declares the
+    # private functions those bodies call. The generated source needs both, so this module's own
+    # interface header belongs in its own include list. wondrous_forest's ForestMonitor is
+    # exactly this shape, and dropping the entry leaves its private transition function
+    # undeclared at compile time.
+    it "carries this module's own interface header when it is also mocked" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('module').and_return('ceedling_partial_module_interface.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public, mocks_type: :private) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(
+        ['ceedling_partial_module_impl.h', 'ceedling_partial_module_interface.h']
+      )
+    end
+
+    it "carries no interface header for a module that is tested but not mocked" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['ceedling_partial_module_impl.h'])
+    end
+
     it "returns implementation header when input is empty and no partials" do
       includes = []
       partials = {}
@@ -1545,6 +1581,22 @@ describe Partializer do
       )
 
       expect( result.map( &:filename ) ).to eq(['other_extra.h'])
+    end
+
+    # The interface header includes the types header, so carrying it back into the types header
+    # would fold that file's function declarations into this one. wondrous_forest's
+    # ForestMonitor is tested and mocked at once, which is the shape that makes this matter.
+    it "never carries this module's own interface header, even when it is also mocked" do
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .and_return('ceedling_partial_module_interface.h')
+
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('foundation.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public, mocks_type: :private) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['foundation.h'])
     end
 
     it "logs the carried list under its own noun when a test is named" do

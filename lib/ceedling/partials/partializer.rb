@@ -542,7 +542,13 @@ class Partializer
           original: includes,
           name: name,
           partials: partials,
-          drop_unmocked: (others == :mock_or_drop)
+          drop_unmocked: (others == :mock_or_drop),
+          # A module tested and mocked in one test file needs its own interface header in its
+          # generated source: the implementation carries the public bodies, and the private
+          # declarations they call live only in the interface. The types header is the opposite
+          # case -- the interface header includes it, so carrying the interface back in would
+          # fold that file's declarations into this one.
+          skip_self: (others == :mock_or_drop)
         )
       else
         raise CeedlingException.new( "Unknown partialized module treatment ':#{others}'" )
@@ -568,12 +574,12 @@ class Partializer
   # added later without updating the check, so a module mocked via either was silently never
   # redirected: its real header, and any static inline or static function bodies in it, stayed
   # #include'd verbatim and compiled straight past the mock.
-  def _redirect_mocked_partials(includes:, original:, name:, partials:, drop_unmocked:)
+  def _redirect_mocked_partials(includes:, original:, name:, partials:, drop_unmocked:, skip_self:)
     _includes = includes
     retired = []
 
     partials.each do |_module, config|
-      next if _module == name
+      next if skip_self && _module == name
       next unless original.any? { |include| include.filename.ext().downcase() == _module.downcase() }
 
       if config.mocks.type.nil?
