@@ -21,7 +21,8 @@ class GeneratorPartials
       source_includes:,
       header_includes:,
       c_module:,
-      output_path:
+      output_path:,
+      include_guard: nil
     )
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
@@ -34,7 +35,10 @@ class GeneratorPartials
     # write, which would alter any line ending already present in that
     # content instead of passing it through unchanged.
     @file_wrapper.open(header_filepath, 'wb') do |file|
-      generate_header(file, header, header_includes, function_definitions, c_module, true)
+      generate_header(
+        file, header, header_includes, function_definitions, c_module,
+        include_variables: true, include_guard: include_guard
+      )
     end
 
     @file_wrapper.open(source_filepath, 'wb') do |file|
@@ -44,13 +48,16 @@ class GeneratorPartials
     return source_filepath
   end
 
-  def generate_interface(test:, name:, function_declarations:, includes:, c_module:, output_path:)
+  def generate_interface(test:, name:, function_declarations:, includes:, c_module:, output_path:, include_guard: nil)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = File.join(output_path, header)
 
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
-      generate_header(file, header, includes, function_declarations, c_module, false)
+      generate_header(
+        file, header, includes, function_declarations, c_module,
+        include_variables: false, include_guard: include_guard
+      )
     end
 
     return filepath
@@ -69,7 +76,7 @@ class GeneratorPartials
   # @param c_module [CExtractorTypes::CModule] Merged module with type_definitions/aggregate_definitions
   # @param output_path [String] Directory shared with the implementation and interface headers
   # @return [String, nil] The bare filename (for use as a sibling #include), or nil if nothing was generated
-  def generate_types(name:, c_module:, output_path:)
+  def generate_types(name:, c_module:, output_path:, includes: [], include_guard: nil)
     return nil if c_module.type_definitions.empty? && c_module.aggregate_definitions.empty?
 
     header = @file_path_utils.form_partial_types_header_filename(name)
@@ -78,8 +85,7 @@ class GeneratorPartials
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
       guard = FileWrapper.generate_include_guard(header)
-      file << "#ifndef #{guard}\n"
-      file << "#define #{guard}\n\n"
+      emit_preamble( file, guard, include_guard, includes )
 
       anything_emitted = false
       pending_macros = []
@@ -88,7 +94,10 @@ class GeneratorPartials
         next unless item.is_a?(CExtractorTypes::CStatement)
 
         if c_module.macro_definitions.include?(item)
-          pending_macros << item
+          # The guard emitted above also arrives among the extracted macros, since the real
+          # header's own `#define` survives preprocessing. Carrying it a second time is legal
+          # but puts a pointless duplicate in every generated types header.
+          pending_macros << item unless guard_macro?(item, include_guard)
           next
         end
 
@@ -115,6 +124,38 @@ class GeneratorPartials
   end
 
   private
+
+  # Everything above a generated header's own content: the file's include guard, the spoof of the
+  # real module header's guard, and the includes that header carries. Shared by all three
+  # generated headers, which open identically.
+  #
+  # The order of the last two is the whole point. A carried header can transitively reach the
+  # real module header, so the spoof has to be satisfied before any include is processed rather
+  # than after. And relocated content names things a generated file does not define, so without
+  # the includes it compiles only where something earlier in the translation unit happened to
+  # supply those names -- which is what made the types header's placement a conflict between two
+  # correct requirements rather than a choice.
+  def emit_preamble(io, guard, include_guard, includes)
+    io << "#ifndef #{guard}\n"
+    io << "#define #{guard}\n\n"
+
+    # A module header with no guard of its own supplies nothing to spoof.
+    io << "#define #{include_guard}\n\n" if include_guard
+
+    return if includes.empty?
+
+    includes.each { |include| io << "#{include}\n" }
+    io << "\n"
+  end
+
+  # Whether a macro statement is nothing but the definition of `include_guard`. Anchored so a
+  # macro whose name merely begins with the guard's name is never mistaken for it, and so a
+  # guard-named macro carrying an actual value is left alone.
+  def guard_macro?(item, include_guard)
+    return false if include_guard.nil?
+
+    item.text.match?(/\A\s*#\s*define\s+#{Regexp.escape( include_guard )}\s*\z/)
+  end
 
   # A typedef or a non-typedef struct/enum/union tag definition establishes a type; C treats
   # a second definition of the same type in one translation unit as a redefinition error even
@@ -159,17 +200,9 @@ class GeneratorPartials
   # @param function_list   [Array]  Pre-filtered Partials function objects (respond to :name and :signature)
   # @param c_module        [CExtractorTypes::CModule] Merged module with element_sequence
   # @param include_variables [Boolean] True for implementation header (emits extern vars); false for interface
-  def generate_header(io, name, includes, function_list, c_module, include_variables)
+  def generate_header(io, name, includes, function_list, c_module, include_variables:, include_guard: nil)
     guard = FileWrapper.generate_include_guard( name )
-
-    io << "#ifndef #{guard}\n"
-    io << "#define #{guard}\n\n"
-
-    includes.each do |include|
-      io << "#{include}\n"
-    end
-
-    io << "\n" if !includes.empty?
+    emit_preamble( io, guard, include_guard, includes )
 
     func_by_name = function_list.to_h { |f| [f.name, f] }
     emitted_funcs = {}
@@ -192,6 +225,9 @@ class GeneratorPartials
         # generate_types instead of here, so that content defines a type exactly once no
         # matter how many of a module's generated headers end up in the same test file.
         next if type_defining?(item, c_module)
+        # The spoof above already states this one deliberately; carrying it again would put a
+        # pointless duplicate in the file.
+        next if guard_macro?(item, include_guard)
         io << item.text << "\n"
         last_was_func = false
         anything_emitted = true
