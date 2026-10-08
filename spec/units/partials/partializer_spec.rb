@@ -23,12 +23,18 @@ describe Partializer do
     @reportinator       = Reportinator.new
     @loginator          = double("Loginator").as_null_object
 
+    # Guard extraction reads the module's own header text through these two.
+    @preprocessinator_reconstructor = double("PreprocessinatorReconstructor")
+    @file_wrapper                   = double("FileWrapper")
+
     @partializer = described_class.new(
       {
         :partializer_helper => @partializer_helper,
         :file_finder        => @file_finder,
         :c_extractor        => @c_extractor,
         :file_path_utils    => @file_path_utils,
+        :preprocessinator_reconstructor => @preprocessinator_reconstructor,
+        :file_wrapper       => @file_wrapper,
         :reportinator       => @reportinator,
         :loginator          => @loginator
       }
@@ -809,6 +815,40 @@ describe Partializer do
   end
 
   context "#remap_implementation_source_includes" do
+    # A module tested and mocked in one test file splits its own content across two generated
+    # headers: the implementation carries the public bodies and the interface declares the
+    # private functions those bodies call. The generated source needs both, so this module's own
+    # interface header belongs in its own include list.
+    it "carries this module's own interface header when it is also mocked" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('module').and_return('ceedling_partial_module_interface.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public, mocks_type: :private) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(
+        ['ceedling_partial_module_impl.h', 'ceedling_partial_module_interface.h']
+      )
+    end
+
+    it "carries no interface header for a module that is tested but not mocked" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['ceedling_partial_module_impl.h'])
+    end
+
     it "returns implementation header when input is empty and no partials" do
       includes = []
       partials = {}
@@ -1213,6 +1253,129 @@ describe Partializer do
   ###
   ### extract_module_contents()
   ###
+
+  context "#extract_module_include_guard" do
+    # Read from the original header, not the reconstituted copy: that copy carries a synthetic
+    # guard which #sanitize then strips, so it is not a dependable source for the name to spoof.
+    it "reads a bounded prefix of the module's own header and returns the guard found" do
+      expect(@file_wrapper).to receive(:read)
+        .with('src/Foo.h', Partializer::GUARD_SCAN_BYTES)
+        .and_return("#ifndef FOO_H\n#define FOO_H\n")
+      allow(@preprocessinator_reconstructor).to receive(:extract_include_guard)
+        .with("#ifndef FOO_H\n#define FOO_H\n")
+        .and_return('FOO_H')
+
+      expect( @partializer.extract_module_include_guard('src/Foo.h') ).to eq('FOO_H')
+    end
+
+    # A `#pragma once` header offers no macro any generated file could define, which is what a
+    # nil return means to every caller.
+    it "returns nil when the header carries no guard macro" do
+      allow(@file_wrapper).to receive(:read).and_return("#pragma once\n")
+      allow(@preprocessinator_reconstructor).to receive(:extract_include_guard).and_return(nil)
+
+      expect( @partializer.extract_module_include_guard('src/Foo.h') ).to be_nil
+    end
+
+    it "returns nil for an absent filepath without reading anything" do
+      expect(@file_wrapper).not_to receive(:read)
+
+      expect( @partializer.extract_module_include_guard(nil) ).to be_nil
+    end
+  end
+
+  context "#remap_types_header_includes" do
+    # Nothing replaces this module's own header here. The types header cannot include itself, so
+    # its own entry is simply dropped.
+    it "drops the module's own header without substituting anything" do
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('foundation.h')],
+        partials: {}
+      )
+
+      expect( result ).to eq([UserInclude.new('foundation.h')])
+    end
+
+    it "keeps every other include in its original relative order" do
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('first.h'), UserInclude.new('module.h'), UserInclude.new('last.h')],
+        partials: {}
+      )
+
+      expect( result.map( &:filename ) ).to eq(['first.h', 'last.h'])
+    end
+
+    # Another partialized module's real header would reintroduce exactly the content that
+    # module's own Partial replaced, so a mocked one is redirected to its generated interface
+    # header and an unmocked one is dropped.
+    it "redirects a mocked partialized dependency to its interface header" do
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('other')
+        .and_return('ceedling_partial_other_interface.h')
+
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('other.h')],
+        partials: { 'other' => make_partial_config(mocks_type: :public) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['ceedling_partial_other_interface.h'])
+    end
+
+    it "drops a partialized dependency that is not mocked" do
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('other.h')],
+        partials: { 'other' => make_partial_config(tests_type: :public) }
+      )
+
+      expect( result ).to be_empty
+    end
+
+    # Comparing a module name to an include means comparing names. A header whose basename
+    # merely extends the module's is a different file.
+    it "leaves a header whose name only extends a partialized module's name" do
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('other_extra.h'), UserInclude.new('other.h')],
+        partials: { 'other' => make_partial_config(tests_type: :public) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['other_extra.h'])
+    end
+
+    # The interface header includes the types header, so carrying it back into the types header
+    # would fold that file's function declarations into this one.
+    it "never carries this module's own interface header, even when it is also mocked" do
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .and_return('ceedling_partial_module_interface.h')
+
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('foundation.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public, mocks_type: :private) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['foundation.h'])
+    end
+
+    it "logs the carried list under its own noun when a test is named" do
+      expect(@loginator).to receive(:log_list).with(
+        anything,
+        'Dependency includes to carry into the shared types header for Partial a_test::module:',
+        Verbosity::OBNOXIOUS
+      )
+
+      @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('foundation.h')],
+        partials: {},
+        test: 'a_test'
+      )
+    end
+  end
 
   context "#extract_module_contents" do
     before(:each) do

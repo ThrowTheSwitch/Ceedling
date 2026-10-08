@@ -10,6 +10,16 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.1.10] — 2026-10-07
+
+## 💪 Fixed
+
+### Partials
+
+- [#1319](https://github.com/ThrowTheSwitch/Ceedling/issues/1319) Fixed a Partials-generated types header leaving out the `#include` directives its extracted types need, causing an `unknown type name` or `undeclared here` compilation error. The generated header now carries its needed headers itself and no longer depends on the incidental order of includes before it.
+
+---
+
 # [1.1.9] — 2026-09-20
 
 ## 💪 Fixed

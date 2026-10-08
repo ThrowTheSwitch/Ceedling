@@ -183,15 +183,27 @@ class TestBuildExecutor
 
       @partializer.sanitize( module_contents )
 
+      # The real header's guard is spoofed deliberately in every generated file, and the types
+      # header carries the dependencies its extracted types name.
+      module_include_guard = @partializer.extract_module_include_guard( config.header.filepath )
+      types_header_includes = @partializer.remap_types_header_includes(
+        name:     config.module,
+        includes: (config.source.includes + config.header.includes),
+        partials: testable.partials.configs,
+        test:     name
+      )
+
       # Generated once and shared by the implementation and interface headers below (via
       # their own includes lists), so a module tested and mocked in the same test file gets
       # exactly one C definition of each of its typedefs and aggregate types.
       types_header = @generator.generate_partial_types(
-        name:        config.module, # Module name, not test name -- two modules Partialed
-                                     # in the same test file must not collide on one
-                                     # shared types header filename
-        c_module:    module_contents,
-        output_path: testable.paths[:partials]
+        name:          config.module, # Module name, not test name -- two modules Partialed
+                                      # in the same test file must not collide on one
+                                      # shared types header filename
+        c_module:      module_contents,
+        output_path:   testable.paths[:partials],
+        includes:      types_header_includes,
+        include_guard: module_include_guard
       )
 
       implementation = @partializer.extract_implementation_functions(
@@ -235,7 +247,8 @@ class TestBuildExecutor
                                 test:     name
                               ),
         input_filepath:       config.source.filepath,
-        output_path:          testable.paths[:partials]
+        output_path:          testable.paths[:partials],
+        include_guard:        module_include_guard
       }
 
       unless implementation.nil?
@@ -256,7 +269,8 @@ class TestBuildExecutor
                                ),
         c_module:              module_contents,
         input_filepath:        config.header.filepath,
-        output_path:           testable.paths[:partials]
+        output_path:           testable.paths[:partials],
+        include_guard:         module_include_guard
       }
 
       unless interface.nil?

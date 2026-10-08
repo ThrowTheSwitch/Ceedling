@@ -61,6 +61,21 @@ describe GeneratorPartials do
     CExtractorTypes::CModule.new()
   end
 
+  # A StringIO standing in for the generated types header, with the filename lookup stubbed.
+  # Several examples differ only in what they hand generate_types, not in this plumbing.
+  def types_buffer(name, header_filename)
+    allow(@file_path_utils).to receive(:form_partial_types_header_filename)
+      .with(name)
+      .and_return(header_filename)
+
+    buf = StringIO.new()
+    allow(@file_wrapper).to receive(:open)
+      .with(File.join('/path/to/output', header_filename), 'wb')
+      .and_yield(buf)
+
+    buf
+  end
+
   context "#generate_implementation" do
     it "should call generate_header() and generate_source() with correct parameters" do
       # Setup
@@ -131,7 +146,7 @@ describe GeneratorPartials do
         header_includes,
         defns,
         c_module,
-        true
+        include_variables: true, include_guard: nil
       )
 
       # Verify generate_source was called with correct parameters
@@ -208,7 +223,7 @@ describe GeneratorPartials do
         includes,
         decls,
         c_module,
-        false
+        include_variables: false, include_guard: nil
       )
 
       # Verify file path utilities were called
@@ -447,6 +462,104 @@ describe GeneratorPartials do
 
       expect( buf.string ).to include( "struct Point { int x; int y; };\nstruct Color { int r; int g; int b; };\n" )
     end
+    # The spoof and the carried includes are what make this header compile wherever it lands.
+    # Order between them is load-bearing: a carried header can transitively reach the real
+    # module header, so the guard has to be satisfied before any include is processed.
+    it "states the module's own guard before the includes it carries, then the types" do
+      file_contents = <<~CONTENTS
+      #ifndef __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+      #define __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+
+      #define MY_MODULE_H
+
+      #include "foundation.h"
+      #include <stdint.h>
+
+      typedef uint8_t Byte;
+
+      #endif // __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+
+      CONTENTS
+
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions: [typedef_stmt],
+          element_sequence: [typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        includes: [UserInclude.new('foundation.h'), SystemInclude.new('stdint.h')],
+        include_guard: 'MY_MODULE_H'
+      )
+
+      expect( buf.string.strip() ).to eq file_contents.strip()
+    end
+
+    it "states no guard when the module's header has none to spoof" do
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions: [typedef_stmt],
+          element_sequence: [typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        includes: [UserInclude.new('foundation.h')],
+        include_guard: nil
+      )
+
+      expect( buf.string ).to include('#include "foundation.h"')
+      expect( buf.string.scan(/^#define /).length ).to eq(1) # the generated guard alone
+    end
+
+    # The real header's guard also arrives among the extracted macros, since it survives
+    # preprocessing. Stating it deliberately and carrying it too would duplicate it.
+    it "drops the carried copy of the guard it states itself" do
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      guard_macro  = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H", line_num: 1)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 2)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions:  [typedef_stmt],
+          macro_definitions: [guard_macro],
+          element_sequence:  [guard_macro, typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        include_guard: 'MY_MODULE_H'
+      )
+
+      expect( buf.string.scan(/^#define MY_MODULE_H$/).length ).to eq(1)
+    end
+
+    # A macro whose name merely begins with the guard's, and a guard-named macro that actually
+    # carries a value. Neither is the guard statement.
+    it "keeps a macro whose name only resembles the guard" do
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      near_macro   = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H_LIMIT 8", line_num: 1)
+      valued_macro = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H 2", line_num: 2)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 3)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions:  [typedef_stmt],
+          macro_definitions: [near_macro, valued_macro],
+          element_sequence:  [near_macro, valued_macro, typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        include_guard: 'MY_MODULE_H'
+      )
+
+      expect( buf.string ).to include('#define MY_MODULE_H_LIMIT 8')
+      expect( buf.string ).to include('#define MY_MODULE_H 2')
+    end
   end
 
   context "#generate_header (private method)" do
@@ -462,7 +575,7 @@ describe GeneratorPartials do
 
       CONTENTS
 
-      @generator.send(:generate_header, buf, 'foo_bar', [], [], empty_module, false)
+      @generator.send(:generate_header, buf, 'foo_bar', [], [], empty_module, include_variables: false)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -483,7 +596,7 @@ describe GeneratorPartials do
         buf,
         'Apples-and-Bananas',
         [UserInclude.new('foo.h'), UserInclude.new('bar.h')],
-        [], empty_module, false
+        [], empty_module, include_variables: false
       )
 
       expect( buf.string.strip() ).to eq file_contents.strip()
@@ -505,7 +618,7 @@ describe GeneratorPartials do
         make_var(name: 'slices_of_bread', type: 'unsigned int', text: 'unsigned int slices_of_bread = 10;'),
         make_var(name: 'crumbs', type: 'char', text: 'char crumbs[10];')
       )
-      @generator.send(:generate_header, buf, 'pb-and-j', [], [], c_module, true)
+      @generator.send(:generate_header, buf, 'pb-and-j', [], [], c_module, include_variables: true)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -513,7 +626,7 @@ describe GeneratorPartials do
       c_module = make_module(
         make_var(name: 'cmd', type: 'cmd_t', text: 'cmd_t cmd = { 0 };', decorators: ['static', 'volatile'])
       )
-      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, true)
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
 
       expect(buf.string).to include('extern volatile cmd_t cmd;')
     end
@@ -522,7 +635,7 @@ describe GeneratorPartials do
       c_module = make_module(
         make_var(name: 'lookup_table', type: 'uint8_t* const', text: 'uint8_t* const lookup_table;', decorators: ['static', 'const'])
       )
-      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, true)
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
 
       expect(buf.string).to include('extern const uint8_t* const lookup_table;')
     end
@@ -576,7 +689,7 @@ describe GeneratorPartials do
         [UserInclude.new('Eeny.h'), UserInclude.new('Meeny.h')],
         decls,
         c_module,
-        true
+        include_variables: true
       )
 
       expect( buf.string.strip() ).to eq file_contents.strip()
@@ -601,7 +714,7 @@ describe GeneratorPartials do
         make_stmt(text: "struct Point { int x; int y; };")
       )
 
-      @generator.send(:generate_header, buf, 'defs', [], [], c_module, false)
+      @generator.send(:generate_header, buf, 'defs', [], [], c_module, include_variables: false)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -629,7 +742,7 @@ describe GeneratorPartials do
         make_stmt(text: "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)", line_num: 3)
       )
 
-      @generator.send(:generate_header, buf, 'regs', [], [], c_module, false)
+      @generator.send(:generate_header, buf, 'regs', [], [], c_module, include_variables: false)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -644,7 +757,7 @@ describe GeneratorPartials do
         make_stmt(text: "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)", line_num: 3)
       )
 
-      @generator.send(:generate_header, buf, 'regs', [], [], c_module, false)
+      @generator.send(:generate_header, buf, 'regs', [], [], c_module, include_variables: false)
 
       expect( buf.string ).to include(
         "#define START_ADDRESS 0x00 // don't change this\n" +
@@ -694,7 +807,7 @@ describe GeneratorPartials do
         element_sequence:      [macro_stmt, typedef_stmt, var_decl, aggregate_stmt]
       )
 
-      @generator.send(:generate_header, buf, 'all_statements', [], [], c_module, true)
+      @generator.send(:generate_header, buf, 'all_statements', [], [], c_module, include_variables: true)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -718,7 +831,7 @@ describe GeneratorPartials do
         make_stmt(text: "typedef uint8_t Byte;", line_num: 3)
       )
 
-      @generator.send(:generate_header, buf, 'mixed', [], [], c_module, true)
+      @generator.send(:generate_header, buf, 'mixed', [], [], c_module, include_variables: true)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -738,7 +851,7 @@ describe GeneratorPartials do
         make_var( name: 'counter', type: 'int', text: 'int counter;', line_num: 2)
       )
 
-      @generator.send(:generate_header, buf, 'interface', [], [], c_module, false)
+      @generator.send(:generate_header, buf, 'interface', [], [], c_module, include_variables: false)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -780,7 +893,7 @@ describe GeneratorPartials do
         element_sequence:      [typedef_stmt, foo_raw, var_decl, bar_raw]
       )
 
-      @generator.send(:generate_header, buf, 'interleaved', [], [foo_decl, bar_decl], c_module, true)
+      @generator.send(:generate_header, buf, 'interleaved', [], [foo_decl, bar_decl], c_module, include_variables: true)
       expect( buf.string.strip() ).to eq file_contents.strip()
     end
 
@@ -792,7 +905,7 @@ describe GeneratorPartials do
       raw = CExtractorTypes::CFunctionDeclaration.new(name: 'exported_func')
       c_module = make_module(raw)
 
-      @generator.send(:generate_header, buf, 'mymod', [], [decl], c_module, false)
+      @generator.send(:generate_header, buf, 'mymod', [], [decl], c_module, include_variables: false)
 
       expect(buf.string).to include('__declspec(dllexport) void exported_func(void);')
     end
@@ -802,7 +915,7 @@ describe GeneratorPartials do
         make_var(name: 'counter', type: 'int', text: 'int counter __attribute__((aligned(16)));')
       )
 
-      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, true)
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
 
       expect(buf.string).to include('extern int counter;')
       expect(buf.string).not_to include('__attribute__')
