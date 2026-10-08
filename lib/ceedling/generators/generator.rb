@@ -40,7 +40,7 @@ class Generator
   # rather than duplicated by generate_partial_implementation and generate_partial_interface.
   # Returns the bare generated filename (for the caller to add to each header's own includes
   # list) or nil when the module has no typedefs or aggregate definitions to share.
-  def generate_partial_types(name:, partial:, c_module:, output_path:)
+  def generate_partial_types(name:, partial:, c_module:, output_path:, includes: [], include_guard: nil)
     msg = @reportinator.generate_module_progress(
       operation: "Generating shared Partial types for",
       module_name: name,
@@ -52,13 +52,15 @@ class Generator
       :name => partial, # Module name, not test name -- two modules Partialed in the same
                         # test file must not collide on one shared types header filename
       :c_module => c_module,
-      :output_path => output_path
+      :output_path => output_path,
+      :includes => includes,
+      :include_guard => include_guard
     }
 
     return @generator_partials.generate_types( **arg_hash )
   end
 
-  def generate_partial_interface(test:, partial:, function_declarations:, includes:, c_module:, input_filepath:, output_path:)
+  def generate_partial_interface(test:, partial:, function_declarations:, includes:, c_module:, input_filepath:, output_path:, include_guard: nil)
     msg = @reportinator.generate_module_progress(
       operation: "Generating Partial mockable interface for",
       module_name: test,
@@ -72,7 +74,8 @@ class Generator
       :function_declarations => function_declarations,
       :includes => includes,
       :c_module => c_module,
-      :output_path => output_path
+      :output_path => output_path,
+      :include_guard => include_guard
     }
 
     return @generator_partials.generate_interface( **arg_hash )
@@ -86,7 +89,8 @@ class Generator
       header_includes:,
       c_module:,
       input_filepath:,
-      output_path:
+      output_path:,
+      include_guard: nil
     )
 
     msg = @reportinator.generate_module_progress(
@@ -103,7 +107,8 @@ class Generator
       :source_includes => source_includes,
       :header_includes => header_includes,
       :c_module => c_module,
-      :output_path => output_path
+      :output_path => output_path,
+      :include_guard => include_guard
     }
 
     return @generator_partials.generate_implementation( **arg_hash )

@@ -173,6 +173,9 @@ Historically, Ceedling automatically compiles and links into a test executable a
 ### Guidance for a Partial colliding with its own module’s real header
 [#1247](https://github.com/ThrowTheSwitch/Ceedling/issues/1247) Ceedling now recognizes when test compilation fails because a Partial’s generated content and its source module’s own real, un-Partialized header somehow both reached the compilation of the test fixture translation unit. Logging explains the likely cause and suggested solutions directly alongside the raw compiler error instead of leaving a confusing, bare `redeclaration`/`conflicting types` error.
 
+### Partials generation dependending on fallback preprocessing inadequaices
+Partials generation now stops with an error if text-only fallback preprocessing cannot resolve a code element — an `#include` naming a macro or a type behind a conditional expression. The message names the file and line instead of the test build failing later with a confusing compiler or linker error.
+
 ### `report_build_warnings_log` plugin warning lines
 `report_build_warnings_log`’s log files now contain only the actual warning line(s) from a build step’s output, not that step’s entire lengthy console output whenever it happened to contain the word "warning."
 
@@ -194,6 +197,16 @@ The `create`, `exist`, `identical`, and `force` status lines these commands prin
 ## 👋 Removed
 
 - The `erb` gem dependency has been removed. Ceedling renders some of its plugin reports with a small template compiler of its own in place of `erb`. This reduces Ceedling’s external dependencies, simplifies installations where more recent versions of `erb` pull in further dependencies, and resolves security scanning findings against `erb` (CVE-2026-41316). Ceedling never used the feature that security advisory concerns, but carrying the dependency at all was enough to be flagged. Custom plugin templates are unaffected unless they use ERB syntax Ceedling itself never used — see [plugin development documentation](https://docs.throwtheswitch.org/Ceedling/1.2.0/development/plugins/plugin-subclass/) for the supported template syntax.
+
+---
+
+# [1.1.10] — 2026-10-07
+
+## 💪 Fixed
+
+### Partials
+
+- [#1319](https://github.com/ThrowTheSwitch/Ceedling/issues/1319) Fixed a Partials-generated types header leaving out the `#include` directives its extracted types need, causing an `unknown type name` or `undeclared here` compilation error. The generated header now carries its needed headers itself and no longer depends on the incidental order of includes before it.
 
 ---
 

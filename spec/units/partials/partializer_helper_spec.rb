@@ -21,6 +21,7 @@ describe PartializerHelper do
     @c_extractor              = double("CExtractor")
     @c_extractor_declarations = double("CExtractorDeclarations")
     @file_path_utils          = double("FilePathUtils")
+    @parsing_parcels          = ParsingParcels.new
     @loginator                = double("Loginator").as_null_object
 
     @helper = described_class.new(
@@ -29,6 +30,7 @@ describe PartializerHelper do
         :c_extractor              => @c_extractor,
         :c_extractor_declarations => @c_extractor_declarations,
         :file_path_utils          => @file_path_utils,
+        :parsing_parcels          => @parsing_parcels,
         :loginator                => @loginator
       }
     )
@@ -543,6 +545,7 @@ describe PartializerHelper do
             :c_extractor              => double("CExtractor").as_null_object,
             :c_extractor_declarations => CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new() }).tap(&:setup),
             :file_path_utils          => double("FilePathUtils"),
+            :parsing_parcels          => ParsingParcels.new,
             :loginator                => double("Loginator").as_null_object
           }
         )
@@ -875,6 +878,110 @@ describe PartializerHelper do
   ###
   ### update_signatures_from_full_expansion()
   ###
+
+  context "#validate_fallback_sufficiency" do
+    # Fallback never runs a compiler, so two module shapes are knowably beyond it. Refusing here
+    # trades a confusing failure several stages later for a specific one now. Text comes in as a
+    # hash so no filesystem is involved.
+
+    def guard(text, name: 'a_test', module_name: 'Foo', filepath: 'src/Foo.h')
+      @helper.validate_fallback_sufficiency(
+        name: name, module_name: module_name, files: { filepath => text }
+      )
+    end
+
+    it "accepts a module with no conditionals and ordinary includes" do
+      expect {
+        guard( "#include \"other.h\"\n#include <stdint.h>\ntypedef int foo_t;\n" )
+      }.not_to raise_error
+    end
+
+    it "refuses an #include whose target is a macro" do
+      expect {
+        guard( "#define DEVICE \"dev.h\"\n#include DEVICE\ntypedef int foo_t;\n" )
+      }.to raise_error( CeedlingException, /computes an #include target/ )
+    end
+
+    it "names the file and the directive's line" do
+      expect {
+        guard( "typedef int foo_t;\n#define DEVICE \"dev.h\"\n#include DEVICE\n" )
+      }.to raise_error( CeedlingException, %r{src/Foo\.h:3} )
+    end
+
+    # A directive split across a continuation is attributed to its ending physical line, which
+    # is the line the accurate path's own correlation walk would name.
+    it "names the ending line of a continued directive" do
+      expect {
+        guard( "#include \\\n  DEVICE\n" )
+      }.to raise_error( CeedlingException, %r{src/Foo\.h:2} )
+    end
+
+    it "refuses a type definition behind a condition it cannot evaluate" do
+      expect {
+        guard( "#if defined(A) && defined(B)\ntypedef long foo_t;\n#else\ntypedef char foo_t;\n#endif\n" )
+      }.to raise_error( CeedlingException, /fallback preprocessing cannot evaluate/ )
+    end
+
+    it "refuses an include behind a condition it cannot evaluate" do
+      expect {
+        guard( "#if A > 2\n#include \"wide.h\"\n#endif\n" )
+      }.to raise_error( CeedlingException, /fallback preprocessing cannot evaluate/ )
+    end
+
+    # Keeping an unevaluable block is the safe default for text the Partial ignores. Only
+    # content it relocates makes the guess consequential, so the check is scoped to that.
+    # Fallback drops an inactive block along with everything in it, exactly as a real
+    # preprocessor would. Refusing over content neither one keeps would fail a build that works.
+    it "accepts a computed include inside an inactive block" do
+      expect {
+        guard( "#if 0\n#include DEVICE\n#endif\ntypedef int foo_t;\n" )
+      }.not_to raise_error
+    end
+
+    it "accepts an unevaluable condition nested inside an inactive block" do
+      expect {
+        guard( "#ifdef NEVER_DEFINED\n#if defined(A) && defined(B)\ntypedef long foo_t;\n#endif\n#endif\n" )
+      }.not_to raise_error
+    end
+
+    it "accepts an unevaluable condition enclosing nothing it relocates" do
+      expect {
+        guard( "int run(void) {\n#if defined(A) && defined(B)\n  return 1;\n#else\n  return 0;\n#endif\n}\n" )
+      }.not_to raise_error
+    end
+
+    # These are the shapes the tracker genuinely decides, so a type behind one is not a guess.
+    it "accepts a type behind a condition it can evaluate" do
+      [
+        "#ifdef USE_WIDE\ntypedef long foo_t;\n#else\ntypedef char foo_t;\n#endif\n",
+        "#ifndef USE_WIDE\ntypedef char foo_t;\n#endif\n",
+        "#if 0\ntypedef long dead_t;\n#endif\ntypedef char foo_t;\n",
+        "#if defined(USE_WIDE)\ntypedef long foo_t;\n#endif\n"
+      ].each do |text|
+        expect { guard( text ) }.not_to raise_error, "unexpectedly refused: #{text.inspect}"
+      end
+    end
+
+    # Once the unevaluable block closes, later content is decided again and must not inherit the
+    # refusal.
+    it "accepts a type after an unevaluable block has closed" do
+      expect {
+        guard( "#if defined(A) && defined(B)\n  int x;\n#endif\ntypedef char foo_t;\n" )
+      }.not_to raise_error
+    end
+
+    it "checks every file it is handed" do
+      expect {
+        @helper.validate_fallback_sufficiency(
+          name: 'a_test', module_name: 'Foo',
+          files: {
+            'src/Foo.h' => "typedef int foo_t;\n",
+            'src/Foo.c' => "#define DEVICE \"dev.h\"\n#include DEVICE\n"
+          }
+        )
+      }.to raise_error( CeedlingException, %r{src/Foo\.c} )
+    end
+  end
 
   context "#update_signatures_from_full_expansion" do
     require 'ceedling/c_extractor/c_extractor_types'

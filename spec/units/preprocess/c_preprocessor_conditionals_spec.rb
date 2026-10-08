@@ -194,6 +194,78 @@ RSpec.describe CPreprocessorConditionals do
 
 
   # ===========================================================================
+  describe '#unevaluated?' do
+  # ===========================================================================
+
+    # `active?` cannot distinguish a condition this tracker decided from one it kept without
+    # evaluating. A guess is the right default for skipping text and the wrong basis for
+    # relocating a type definition, so a caller that relocates content needs to tell them apart.
+
+    it 'is false at the top level' do
+      expect(CPreprocessorConditionals.new([]).unevaluated?).to be false
+    end
+
+    it 'is false inside a condition it decided' do
+      t = CPreprocessorConditionals.new(['A'])
+      ['#ifdef A', '#ifndef B', '#if 0', '#if 1', '#if defined(A)', '#if !defined(B)'].each do |directive|
+        t.reset
+        t.process_directive(directive)
+        expect(t.unevaluated?).to be(false), "#{directive} should be decided, not guessed"
+      end
+    end
+
+    it 'is true inside a complex #if it kept without evaluating' do
+      t = CPreprocessorConditionals.new([])
+      t.process_directive('#if defined(A) && defined(B)')
+      expect(t.unevaluated?).to be true
+    end
+
+    it 'is true inside a complex #elif it kept without evaluating' do
+      t = CPreprocessorConditionals.new([])
+      t.process_directive('#ifdef A')
+      t.process_directive('#elif VERSION >= 3')
+      expect(t.unevaluated?).to be true
+    end
+
+    # The flag belongs to the frame, so it goes away with it rather than contaminating whatever
+    # follows the block.
+    it 'is false again once the block closes' do
+      t = CPreprocessorConditionals.new([])
+      t.process_directive('#if VERSION >= 3')
+      t.process_directive('#endif')
+      expect(t.unevaluated?).to be false
+    end
+
+    # An #else arm of an unevaluable conditional is no more decided than the #if arm was: which
+    # arm is live was never established.
+    it 'stays true across the #else of an unevaluable conditional' do
+      t = CPreprocessorConditionals.new([])
+      t.process_directive('#if defined(A) && defined(B)')
+      t.process_directive('#else')
+      expect(t.unevaluated?).to be true
+    end
+
+    it 'is true for a decided outer block holding an unevaluable inner one' do
+      t = CPreprocessorConditionals.new(['A'])
+      t.process_directive('#ifdef A')
+      t.process_directive('#if VERSION >= 3')
+      expect(t.unevaluated?).to be true
+
+      t.process_directive('#endif')
+      expect(t.unevaluated?).to be false
+    end
+
+    it 'is cleared by #reset' do
+      t = CPreprocessorConditionals.new([])
+      t.process_directive('#if VERSION >= 3')
+      t.reset
+      expect(t.unevaluated?).to be false
+    end
+
+  end
+
+
+  # ===========================================================================
   describe '#else' do
   # ===========================================================================
 
