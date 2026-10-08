@@ -74,7 +74,7 @@ class Preprocessinator
     results = @tool_executor.exec( command )
 
     # Preprocessor did not succeed
-    if results[:exit_code] != 0
+    if @tool_executor.failed?( results )
       msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::ERROR )
       return nil
@@ -534,7 +534,7 @@ class Preprocessinator
       defines:       defines
     )
 
-    if result[:exit_code] != 0
+    if @tool_executor.failed?( result )
       msg = "Failed to generate full expansion for Partial signature extraction (directives-only signatures will be used) for #{filepath}"
       @loginator.log( msg, Verbosity::COMPLAIN )
       return nil

@@ -127,14 +127,14 @@ class Configurator
     }
 
     command = tool_executor.build_command_line( probe_tool, [], probe_filepath )
-    # Exception if something goes wrong; we want to detect errors here
+    # A failed probe means no support, so it must not raise
     command[:options][:boom] = false
     results = tool_executor.exec( command )
 
     # Clang and some older GCC emit a warning (not an error) when -fdirectives-only is unsupported
     warning_detected = results[:output].match?( /warning[^\n]+-fdirectives-only/ )
 
-    if warning_detected || results[:exit_code] != 0
+    if warning_detected || tool_executor.failed?( results )
       @loginator.log(
         "Preprocessor lacks -fdirectives-only support ➡️ Ceedling will use text-based fallback for preprocessing.",
         Verbosity::COMPLAIN,

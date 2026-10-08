@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/tool_executor'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/file_path_utils'
@@ -292,7 +293,10 @@ describe ReportGeneratorReportinator do
   describe '#run_gcov' do
     def stub_exec(exit_code:, output:)
       allow(tool_executor).to receive(:build_command_line).and_return({ options: {} })
-      allow(tool_executor).to receive(:exec).and_return({ exit_code: exit_code, output: output })
+      # A failed run under :boom false reports a zero exit code with a failed process status
+      status = instance_double(Process::Status, success?: exit_code == 0, exitstatus: exit_code)
+      allow(tool_executor).to receive(:exec).and_return({ exit_code: 0, output: output, status: status })
+      allow(tool_executor).to receive(:failed?) { |result| ToolExecutor.allocate.failed?( result ) }
     end
 
     it 'renames the file gcov reports creating, extracted from "Creating \'file.gcov\'" output' do

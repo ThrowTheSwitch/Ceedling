@@ -209,9 +209,9 @@ class ConsoleReportinator < GcovReportinator
     results       = shell_results[:output].strip
 
     # Handle errors instead of raising a shell exception
-    if shell_results[:exit_code] != 0
+    if @tool_executor.failed?( shell_results )
       @loginator.lazy( Verbosity::DEBUG, LogLabels::ERROR ) do
-        "gcov error (#{shell_results[:exit_code]}) while processing #{filename}... #{results}"
+        "gcov error (#{shell_results[:status]&.exitstatus}) while processing #{filename}... #{results}"
       end
       @loginator.lazy( Verbosity::COMPLAIN ) do
         "gcov was unable to process coverage for #{filename}"
