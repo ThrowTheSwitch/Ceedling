@@ -23,6 +23,9 @@ require 'spec_system_helper'
 ## intermediate file, and that is where two same-basename sources in one test can
 ## collide, so each setting gets its own example.
 ##
+## Mocking both modules in one test is the second subject. Each mock must be
+## named by the directory its #include names or the two mocks collide.
+##
 ## Assets: assets/fixtures/same_named_modules/
 ##
 
@@ -79,6 +82,34 @@ ceedling_system_tests do
           expect(objects.length).to eq(2)
           expect(objects.any? { |path| path.include?('drivers/uart') }).to be true
           expect(objects.any? { |path| path.include?('drivers/spi') }).to be true
+        end
+      end
+    end
+
+    # Mocking is the other half of naming two same-named modules in one test. Each
+    # needs its own mock, held apart by the directory its #include names.
+    context "with both same-named modules mocked in one test" do
+      before do
+        copy_same_named_modules('uart', 'spi')
+        in_project do
+          copy_fixture("same_named_modules/test/test_both_configs_mocked_traditional.c", 'test')
+        end
+      end
+
+      it "generates a mock per module and keeps their expectations separate" do
+        # CMock derives a mock's #include guard and its own _Init/_Verify/_Destroy names
+        # from the mock's filename alone, and Unity's runner calls them by that same name.
+        # Two same-named mocks therefore share a guard and lifecycle symbols. Closing this
+        # needs folder-qualified mock naming in both CMock and Unity.
+        pending 'CMock names a mock by filename alone, so two same-named mocks collide'
+
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
+          expect(output).to match(/FAILED:\s+0/)
         end
       end
     end
