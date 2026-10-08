@@ -23,6 +23,7 @@ class PreprocessinatorIncludesHandler
     :file_path_utils,
     :yaml_wrapper,
     :parsing_parcels,
+    :quote_include_isolator,
     :loginator,
     :reportinator
   )
@@ -63,10 +64,11 @@ class PreprocessinatorIncludesHandler
     # no dedicated subdirectory or filename-based naming, to keep the resulting path as short as
     # possible for platforms with tight path length limits.
     isolation_parent = @file_path_utils.form_test_preprocess_files_path( test )
-    isolation_dir = @file_wrapper.stage_isolated_copies( parent: isolation_parent, files: [filepath] )
-    isolated_filepath = File.join( isolation_dir, filename )
+    shell_result = nil
 
-    begin
+    @quote_include_isolator.within( parent: isolation_parent, files: [filepath] ) do |isolation|
+      isolated_filepath = isolation.copy_of( filepath )
+
       msg = @reportinator.generate_module_progress(
         operation: "Isolating a sibling-free copy for bare-includes extraction at",
         module_name: test,
@@ -90,8 +92,6 @@ class PreprocessinatorIncludesHandler
       # Full code compilation will catch any breaking code errors
       command[:options][:boom] = false
       shell_result = @tool_executor.exec( command )
-    ensure
-      @file_wrapper.remove_isolated_copies( isolation_dir )
     end
 
     make_rules = shell_result[:output]

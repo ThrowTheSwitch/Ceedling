@@ -32,6 +32,7 @@ require 'ceedling/includes/includes'
 require 'ceedling/includes/include_factory'
 require 'ceedling/preprocess/preprocessinator'
 require 'ceedling/tool_executor'
+require 'ceedling/quote_include_isolator'
 require 'ceedling/preprocess/preprocessinator_includes_handler'
 require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
 require 'ceedling/preprocess/preprocessinator_line_marker_includes_extractor'
@@ -166,6 +167,7 @@ module IntegrationSpecHelpers
         file_path_utils:                                 @fpu,
         yaml_wrapper:                                    NULL,
         parsing_parcels:                                 ParsingParcels.new,
+        quote_include_isolator:                          QuoteIncludeIsolator.new(file_wrapper: @file_wrapper, loginator: NULL),
         loginator:                                       NULL,
         reportinator:                                    NULL
       )

@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/quote_include_isolator'
 require 'stringio'
 require 'ceedling/preprocess/preprocessinator_includes_handler'
 require 'ceedling/preprocess/preprocessinator_line_marker_includes_extractor'
@@ -25,6 +26,7 @@ RSpec.describe PreprocessinatorIncludesHandler do
     @file_path_utils  = double('file_path_utils')
     @tool_executor    = double('tool_executor')
     @yaml_wrapper     = double('yaml_wrapper')
+    @isolator         = double('quote_include_isolator')
     @loginator        = double('loginator')
     @reportinator     = double('reportinator')
     @preprocessinator_line_marker_includes_extractor =
@@ -59,6 +61,7 @@ RSpec.describe PreprocessinatorIncludesHandler do
         file_path_utils:        @file_path_utils,
         yaml_wrapper:           @yaml_wrapper,
         parsing_parcels:        real_parsing_parcels,
+        quote_include_isolator: @isolator,
         loginator:              @loginator,
         reportinator:           @reportinator
       }
@@ -91,9 +94,8 @@ RSpec.describe PreprocessinatorIncludesHandler do
     before :each do
       allow(@file_path_utils).to receive(:form_test_preprocess_files_path)
         .with(test_name).and_return(isolation_parent)
-      allow(@file_wrapper).to receive(:stage_isolated_copies)
-        .with(parent: isolation_parent, files: [filepath]).and_return(isolation_dir)
-      allow(@file_wrapper).to receive(:remove_isolated_copies).with(isolation_dir)
+      isolation = QuoteIncludeIsolator::Isolation.new(isolation_dir, { filepath => isolated_filepath })
+      allow(@isolator).to receive(:within).with(parent: isolation_parent, files: [filepath]).and_yield(isolation)
 
       allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return(:bare_tool)
 
@@ -110,10 +112,19 @@ RSpec.describe PreprocessinatorIncludesHandler do
       )
     end
 
-    it 'stages a copy of the file into an isolated, sibling-free directory before extraction' do
+    # The isolator releases the copy when its block ends, raised or not, so extraction
+    # running inside that block is what keeps cleanup guaranteed.
+    it 'runs extraction inside an isolation of the file, sibling-free' do
+      ran_within = false
+      allow(@isolator).to receive(:within).with(parent: isolation_parent, files: [filepath]) do |**_, &block|
+        ran_within = true
+        block.call(QuoteIncludeIsolator::Isolation.new(isolation_dir, { filepath => isolated_filepath }))
+      end
+
       call_it()
 
-      expect(@file_wrapper).to have_received(:stage_isolated_copies).with(parent: isolation_parent, files: [filepath])
+      expect(ran_within).to be true
+      expect(@tool_executor).to have_received(:exec)
     end
 
     it 'builds the bare-includes command against the isolated staged path, not the original' do
@@ -126,19 +137,6 @@ RSpec.describe PreprocessinatorIncludesHandler do
     it 'returns the includes parsed from the staged file make-rule output' do
       result = call_it()
       expect(result.map(&:filename)).to contain_exactly('unity.h', 'mock_foo_func.h', 'other.h')
-    end
-
-    it 'cleans up the isolation directory after a successful run' do
-      call_it()
-      expect(@file_wrapper).to have_received(:remove_isolated_copies).with(isolation_dir)
-    end
-
-    it 'cleans up the isolation directory even when the tool executor raises' do
-      allow(@tool_executor).to receive(:exec).and_raise(StandardError.new('boom'))
-
-      expect { call_it() }.to raise_error(StandardError, 'boom')
-
-      expect(@file_wrapper).to have_received(:remove_isolated_copies).with(isolation_dir)
     end
 
     it 'still cleans self-reference against the original filepath identity, not the staged copy' do

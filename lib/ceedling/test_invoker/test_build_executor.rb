@@ -30,6 +30,7 @@ class TestBuildExecutor
     :dependinator,
     :test_source_file_directive_resolver,
     :gcc_dependency_parser,
+    :quote_include_isolator,
     :generator_helper
   )
 
@@ -460,7 +461,7 @@ class TestBuildExecutor
     # this point still needs it to exist.
     state.testables.each_value do |testable|
       next if testable.isolated_headers_path.nil?
-      @file_wrapper.remove_isolated_copies( testable.isolated_headers_path )
+      @quote_include_isolator.release( testable.isolated_headers_path )
     end
 
     log_skip_summary( task: "compilation", count: skipped, noun: "objects" )
@@ -997,7 +998,7 @@ class TestBuildExecutor
       # A same-directory file is only a genuine risk if it actually #includes the
       # real header by name -- most real projects keep every header in one shared
       # directory, so "shares a directory" alone would flag nearly everything.
-      siblings = siblings.select { |sibling| sibling_includes_real_header?( sibling, basename ) }
+      siblings = siblings.select { |sibling| @quote_include_isolator.includes_by_name?( sibling, basename ) }
       next if siblings.empty?
 
       siblings.each do |sibling|
@@ -1033,26 +1034,9 @@ class TestBuildExecutor
 
     return nil if isolated.empty?
 
-    isolation_dir = @file_wrapper.stage_isolated_copies( parent: testable.paths[:build], files: isolated.uniq )
+    isolation = @quote_include_isolator.isolate( parent: testable.paths[:build], files: isolated.uniq )
 
-    { search_paths: [isolation_dir] + testable.search_paths, isolation_dir: isolation_dir }
-  end
-
-  # Whether `sibling` itself quote-includes a header named `basename` -- the actual
-  # mechanism that would let it reach the real header directly, bypassing a
-  # mock/Partial substitution via its own same-directory-first resolution. A path
-  # prefix ahead of the bare name is tolerated (`#include "sub/basename"` still
-  # matches), but the check is otherwise a plain, literal text scan -- no macro
-  # expansion, no conditional (#if/#ifdef) evaluation -- so it can occasionally miss
-  # a macro-computed #include target or over-match one guarded by a condition that's
-  # never actually true. Either kind of miss only changes whether a genuine, rare
-  # edge case gets isolated -- it can never manufacture a mock/Partial substitution
-  # risk where none exists, which is what actually matters here.
-  def sibling_includes_real_header?(sibling, basename)
-    return false unless @file_wrapper.exist?( sibling )
-
-    content = @file_wrapper.read( sibling )
-    content.match?( /#include\s*"(?:[^"]*\/)?#{Regexp.escape(basename)}"/ )
+    { search_paths: [isolation.dir] + testable.search_paths, isolation_dir: isolation.dir }
   end
 
   # `{ basename => real path }` for every real header this test substitutes -- CMock

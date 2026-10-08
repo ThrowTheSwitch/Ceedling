@@ -12,6 +12,7 @@ require 'ceedling/test_invoker/test_build_executor'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
 require 'ceedling/test_context_extractor'
+require 'ceedling/quote_include_isolator'
 
 PROJECT_BUILD_VENDOR_UNITY_PATH = 'build/vendor/unity' unless defined?(PROJECT_BUILD_VENDOR_UNITY_PATH)
 UNITY_C_FILE = 'unity.c' unless defined?(UNITY_C_FILE)
@@ -32,6 +33,7 @@ describe TestBuildExecutor do
     @dependinator                                          = double( "Dependinator" )
     @test_source_file_directive_resolver                      = double( "TestSourceFileDirectiveResolver" )
     @gcc_dependency_parser                                        = double( "GccDependencyParser" )
+    @quote_include_isolator                                       = double( "QuoteIncludeIsolator" )
     @generator_helper                                                = double( "GeneratorHelper" )
 
     @tools_test_compiler                     = { name: 'fake compiler' }
@@ -70,7 +72,10 @@ describe TestBuildExecutor do
     allow(@file_path_utils).to receive(:form_preprocessed_source_files_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/TestFoo.c_source_files.yml' )
 
     allow(@file_wrapper).to receive(:mkdir)
-    allow(@file_wrapper).to receive(:remove_isolated_copies)
+    allow(@quote_include_isolator).to receive(:release)
+    # The real literal scan over the doubled file layer, so each example's read stubs decide it
+    real_isolator = QuoteIncludeIsolator.new( { :file_wrapper => @file_wrapper, :loginator => @loginator } )
+    allow(@quote_include_isolator).to receive(:includes_by_name?) { |file, name| real_isolator.includes_by_name?( file, name ) }
     allow(@generator_helper).to receive(:explain_possible_mock_partial_collision).and_return( nil )
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
@@ -116,6 +121,7 @@ describe TestBuildExecutor do
         :dependinator            => @dependinator,
         :test_source_file_directive_resolver => @test_source_file_directive_resolver,
         :gcc_dependency_parser   => @gcc_dependency_parser,
+        :quote_include_isolator  => @quote_include_isolator,
         :generator_helper        => @generator_helper
       }
     )
@@ -133,6 +139,11 @@ describe TestBuildExecutor do
   # `@batchinator.exec` is a real collaborator only in production; here it's
   # stubbed to synchronously yield every `things` entry to the given block,
   # matching its real per-item iteration contract without pulling in Parallel.
+  # An isolation staged into `dir`, as QuoteIncludeIsolator#isolate returns one
+  def isolation_in(dir)
+    QuoteIncludeIsolator::Isolation.new( dir, {} )
+  end
+
   def stub_batchinator_exec
     allow(@batchinator).to receive(:exec) do |workload:, things:, &block|
       things.each { |k, v| block.call(k, v) }
@@ -338,9 +349,9 @@ describe TestBuildExecutor do
       end
 
       it "retries the compile with corrected search paths when a sibling risk is found, and clears an initial failure" do
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
         call_count = 0
@@ -362,7 +373,7 @@ describe TestBuildExecutor do
       end
 
       it "retries against a separate, throwaway dependencies path, and registers only the original .d file" do
-        allow(@file_wrapper).to receive(:stage_isolated_copies).and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
         allow(@generator).to receive(:generate_object_file_c)
 
         expect(@generator).to receive(:generate_object_file_c).with( hash_including( dependencies: 'build/deps' ) ).ordered
@@ -378,7 +389,7 @@ describe TestBuildExecutor do
       end
 
       it "still raises when the retry itself also fails" do
-        allow(@file_wrapper).to receive(:stage_isolated_copies).and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
         allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
@@ -451,9 +462,9 @@ describe TestBuildExecutor do
       # though nothing about the project actually changed.
       it "applies whatever isolation the existing .d file already reveals even when this object is not stale" do
         allow(@dependinator).to receive(:stale?).with( 'build/foo.o' ).and_return( false )
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         expect(@generator).to_not receive(:generate_object_file_c)
 
@@ -507,7 +518,7 @@ describe TestBuildExecutor do
       end
 
       it "logs the guidance after a retry that also fails" do
-        allow(@file_wrapper).to receive(:stage_isolated_copies).and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
         allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
@@ -605,7 +616,7 @@ describe TestBuildExecutor do
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/unrelated_neighbor.h'] }
         )
 
-        expect(@file_wrapper).to_not receive(:stage_isolated_copies)
+        expect(@quote_include_isolator).to_not receive(:isolate)
         expect( call_it() ).to be_nil
       end
 
@@ -613,9 +624,9 @@ describe TestBuildExecutor do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
         )
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         result = call_it()
 
@@ -629,7 +640,7 @@ describe TestBuildExecutor do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
         )
-        allow(@file_wrapper).to receive(:stage_isolated_copies).and_return( 'isolated/dir' )
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'isolated/dir' ) )
 
         expect(@loginator).to receive(:log).with(
           a_string_including( '/project/library/driverlib.h' ).and( a_string_including( '/project/library/gpio.h' ) ),
@@ -646,7 +657,7 @@ describe TestBuildExecutor do
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
         )
 
-        expect(@file_wrapper).to_not receive(:stage_isolated_copies)
+        expect(@quote_include_isolator).to_not receive(:isolate)
         expect( call_it() ).to be_nil
       end
 
@@ -659,9 +670,9 @@ describe TestBuildExecutor do
             ]
           }
         )
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'isolated/dir' )
+          .and_return( isolation_in( 'isolated/dir' ) )
 
         expect(@loginator).to receive(:log).with(
           a_string_including( '/project/other/x.h' ).and( a_string_including( '/project/other/y.h' ) ),
@@ -743,9 +754,9 @@ describe TestBuildExecutor do
         )
         allow(@file_wrapper).to receive(:exist?).with( '/project/library/driverlib.h' ).and_return( true )
         allow(@file_wrapper).to receive(:read).with( '/project/library/driverlib.h' ).and_return( "#include \"moduleA.h\"\n" )
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'isolated/dir' )
+          .and_return( isolation_in( 'isolated/dir' ) )
 
         expect( call_it() ).to_not be_nil
       end
@@ -821,7 +832,7 @@ describe TestBuildExecutor do
       @testable.isolated_headers_path = 'build/test/out/a_test/isolated_headers/xyz'
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@file_wrapper).to receive(:remove_isolated_copies).with( 'build/test/out/a_test/isolated_headers/xyz' ).once
+      expect(@quote_include_isolator).to receive(:release).with( 'build/test/out/a_test/isolated_headers/xyz' ).once
 
       @executor.stage_build_objects( @state )
     end
@@ -829,7 +840,7 @@ describe TestBuildExecutor do
     it "attempts no cleanup for a testable that never isolated anything" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@file_wrapper).to_not receive(:remove_isolated_copies)
+      expect(@quote_include_isolator).to_not receive(:release)
 
       @executor.stage_build_objects( @state )
     end
