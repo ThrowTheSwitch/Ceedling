@@ -1323,6 +1323,7 @@ describe TestBuildExecutor do
 
       allow(@configurator).to receive(:project_config_hash).and_return( {} )
       allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock' } )
+      allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
       allow(@file_wrapper).to receive(:mkdir)
       # Where a mock's files sit is composed in one shared place, so the stage that
       # compiles a mock and the stage that generates it cannot disagree.
@@ -1427,6 +1428,59 @@ describe TestBuildExecutor do
       expect(@generator).to receive(:generate_mock).with( hash_including( overrides: { treat_inlines: :exclude } ) )
 
       @executor.stage_generate_mocks( @state )
+    end
+
+    # CMock and the runner both name a mock by the folder its #include names. CMock writes
+    # below its own root at that folder, so the folder must also end the mock's directory.
+    context "naming a mock by its #include's folder" do
+      before(:each) do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@dependinator).to receive(:mark_fresh)
+      end
+
+      def include_as(path)
+        @state.mocks_list.first.details.include_path = path
+      end
+
+      it "passes no folder for a bare #include and keeps the mirrored location" do
+        include_as( 'MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/sub', folder: nil ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      it "passes the folder and keeps the mirrored location when the folder ends it" do
+        include_as( 'sub/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/sub', folder: 'sub' ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # The mirror cannot hold a folder longer than itself, so the mock moves to the
+      # written path below the per-test root, and its tracked target moves with it.
+      it "places the mock at its written path when the #include spells more than the mirror" do
+        include_as( 'more/sub/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/more/sub', folder: 'more/sub' ) )
+        expect(@dependinator).to receive(:mark_fresh).with( 'build/test/mocks/more/sub/MockFoo.c' )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      it "passes no folder when :mock_name_include_folder is disabled" do
+        allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( false )
+        include_as( 'sub/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/sub', folder: nil ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
     end
   end
 

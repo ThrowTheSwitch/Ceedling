@@ -23,6 +23,9 @@ require 'spec_system_helper'
 ## intermediate file, and that is where two same-basename sources in one test can
 ## collide, so each setting gets its own example.
 ##
+## Mocking both modules in one test is the second subject. Each mock must be
+## named by the directory its #include names or the two mocks collide.
+##
 ## Assets: assets/fixtures/same_named_modules/
 ##
 
@@ -79,6 +82,31 @@ ceedling_system_tests do
           expect(objects.length).to eq(2)
           expect(objects.any? { |path| path.include?('drivers/uart') }).to be true
           expect(objects.any? { |path| path.include?('drivers/spi') }).to be true
+        end
+      end
+    end
+
+    # Mocking is the other half of naming two same-named modules in one test. Each
+    # needs its own mock, held apart by the directory its #include names.
+    context "with both same-named modules mocked in one test" do
+      before do
+        copy_same_named_modules('uart', 'spi')
+        in_project do
+          copy_fixture("same_named_modules/test/test_both_configs_mocked_traditional.c", 'test')
+        end
+      end
+
+      # Both mocks share a filename, so only the directory each #include names tells them
+      # apart. CMock and the runner fold that directory into each mock's guard and
+      # lifecycle function names.
+      it "generates a mock per module and keeps their expectations separate" do
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
+          expect(output).to match(/FAILED:\s+0/)
         end
       end
     end
