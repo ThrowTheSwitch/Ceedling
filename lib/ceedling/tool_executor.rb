@@ -103,6 +103,20 @@ class ToolExecutor
     return shell_result
   end
 
+  # Reports whether an executed command failed, whatever its `:boom` setting.
+  #
+  # A command run with `:boom` false always reports an `:exit_code` of 0 (see
+  # SystemWrapper#shell_capture3). Callers handling a failure themselves need the process
+  # status instead. A process killed by a signal has no exit status and counts as failed.
+  # A result without a status, such as a test double, falls back to its `:exit_code`.
+  def failed?(shell_result)
+    status = shell_result[:status]
+
+    return !status.success? unless status.nil?
+
+    return shell_result[:exit_code] != 0
+  end
+
   private #############################
 
 

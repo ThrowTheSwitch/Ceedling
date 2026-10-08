@@ -31,6 +31,7 @@ require 'ceedling/parsing_parcels'
 require 'ceedling/includes/includes'
 require 'ceedling/includes/include_factory'
 require 'ceedling/preprocess/preprocessinator'
+require 'ceedling/tool_executor'
 require 'ceedling/preprocess/preprocessinator_includes_handler'
 require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
 require 'ceedling/preprocess/preprocessinator_line_marker_includes_extractor'
@@ -77,7 +78,9 @@ module IntegrationSpecHelpers
   # A ToolExecutor that assembles the command from the tool definition the same way the
   # real one's `${n}` slot substitution does (an Array slot fans its argument out into
   # one repeated flag per element), then runs it for real. Return shape matches what
-  # PreprocessinatorIncludesHandler and Preprocessinator read: `:output`, `:exit_code`.
+  # PreprocessinatorIncludesHandler and Preprocessinator read: `:output`, `:exit_code`,
+  # `:status`. Like SystemWrapper#shell_capture3, a command run with `:boom` false reports
+  # an exit code of 0 whatever happened, so failure handling meets the real contract.
   class ShellingToolExecutor
     def build_command_line(tool, extra_params, *args)
       slots = {}
@@ -98,7 +101,12 @@ module IntegrationSpecHelpers
 
     def exec(command, _args = [])
       stdout, stderr, status = Open3.capture3(command[:line])
-      { output: stdout + stderr, exit_code: status.exitstatus }
+      exit_code = command[:options][:boom] ? status.exitstatus : 0
+      { output: stdout + stderr, exit_code: exit_code, status: status }
+    end
+
+    def failed?(shell_result)
+      ToolExecutor.allocate.failed?(shell_result)
     end
   end
 

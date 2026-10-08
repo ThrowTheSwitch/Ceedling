@@ -73,9 +73,22 @@ describe 'ToolExecutor (integration)' do
 
       # Pins SystemWrapper's own real contract: :exit_code only ever reflects the real
       # process's actual exit status when boom:true was passed through to it -- with
-      # boom:false it stays 0 regardless of what really happened. Easy to misread as a
-      # bug; isn't one.
+      # boom:false it stays 0 regardless of what really happened. A caller handling its
+      # own failure asks #failed? instead, which the next example pins.
       expect(result[:exit_code]).to eq(0)
+    end
+  end
+
+  it 'reports a real non-zero exit as failed when boom is false' do
+    with_source_tree({ 'fail.rb' => 'exit 3', 'pass.rb' => 'exit 0' }) do |dir|
+      results = ['fail.rb', 'pass.rb'].map do |script|
+        command = executor.build_command_line(ruby_tool_config(arguments: [File.join(dir, script)]), [])
+        command[:options] = { :boom => false }
+        executor.exec(command)
+      end
+
+      expect(executor.failed?(results[0])).to be true
+      expect(executor.failed?(results[1])).to be false
     end
   end
 

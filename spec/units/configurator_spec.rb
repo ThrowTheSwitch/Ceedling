@@ -10,6 +10,7 @@ require 'ceedling/config/configurator'
 require 'ceedling/ruby_expandinator'
 require 'ceedling/exceptions'
 require 'ceedling/constants'
+require 'ceedling/tool_executor'
 
 describe Configurator do
 
@@ -40,6 +41,44 @@ describe Configurator do
       files:        {},
       tools:        {},
     }
+  end
+
+  # The probe runs with :boom false, so a failed run reports a zero exit code. Its verdict
+  # must come from the process status, or a preprocessor that rejects the flag passes.
+  describe "#resolve_directives_only_preprocessing" do
+    def probe_config
+      {
+        project:    { use_test_preprocessor: :all },
+        test_build: { preprocess_force_fallback: false },
+        tools:      { test_file_directives_only_preprocessor: { executable: 'gcc' } },
+      }
+    end
+
+    def probe_with(result)
+      tool_executor = double('tool_executor')
+      allow(tool_executor).to receive(:build_command_line).and_return({ options: {} })
+      allow(tool_executor).to receive(:exec).and_return(result)
+      allow(tool_executor).to receive(:failed?) { |r| ToolExecutor.allocate.failed?( r ) }
+
+      config = probe_config
+      @configurator.resolve_directives_only_preprocessing( config, tool_executor )
+      config[:test_build][:preprocess_directives_only_available]
+    end
+
+    def status(success) = instance_double(Process::Status, success?: success)
+
+    it "marks directives-only preprocessing available when the probe succeeds" do
+      expect( probe_with({ exit_code: 0, output: '', status: status(true) }) ).to be true
+    end
+
+    it "marks it unavailable when the probe fails despite a zero exit code" do
+      expect( probe_with({ exit_code: 0, output: '', status: status(false) }) ).to be false
+    end
+
+    it "marks it unavailable when the preprocessor warns that it ignores the flag" do
+      warning = "clang: warning: argument unused during compilation: '-fdirectives-only'"
+      expect( probe_with({ exit_code: 0, output: warning, status: status(true) }) ).to be false
+    end
   end
 
   describe "#standardize_paths" do

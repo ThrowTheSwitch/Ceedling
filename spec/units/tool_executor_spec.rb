@@ -83,6 +83,32 @@ describe ToolExecutor do
     end
   end
 
+  # A command run with :boom false always reports an :exit_code of 0, so a caller handling
+  # its own failures has to read the process status. These pin that rule.
+  describe '#failed?' do
+    def status(success)
+      instance_double(Process::Status, success?: success)
+    end
+
+    it 'reports failure from a failed process status despite a zero exit code' do
+      expect(@tool_executor.failed?({ exit_code: 0, status: status(false) })).to be true
+    end
+
+    it 'reports success from a successful process status' do
+      expect(@tool_executor.failed?({ exit_code: 0, status: status(true) })).to be false
+    end
+
+    # Process::Status#success? is nil for a process a signal killed.
+    it 'reports failure for a process killed by a signal' do
+      expect(@tool_executor.failed?({ exit_code: nil, status: status(nil) })).to be true
+    end
+
+    it 'falls back to the exit code when no status is present' do
+      expect(@tool_executor.failed?({ exit_code: 2 })).to be true
+      expect(@tool_executor.failed?({ exit_code: 0 })).to be false
+    end
+  end
+
   describe '.default_name!' do
     it 'sets tool[:name] to the default when tool[:name] is nil' do
       tool = { :name => nil }

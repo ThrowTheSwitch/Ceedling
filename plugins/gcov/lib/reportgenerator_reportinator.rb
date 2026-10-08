@@ -398,9 +398,9 @@ class ReportGeneratorReportinator < GcovReportinator
 
       shell_result = @tool_executor.exec( command )
 
-      if shell_result[:exit_code] != 0
+      if @tool_executor.failed?( shell_result )
         @loginator.log(
-          "gcov could not process #{gcno_filepath} (exit #{shell_result[:exit_code]})",
+          "gcov could not process #{gcno_filepath} (exit #{shell_result[:status]&.exitstatus})",
           Verbosity::COMPLAIN
         )
       end

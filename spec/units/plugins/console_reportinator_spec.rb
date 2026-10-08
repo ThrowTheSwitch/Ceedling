@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/tool_executor'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/path_mirror'
@@ -176,7 +177,10 @@ describe ConsoleReportinator do
     # mutates command[:options][:boom], so the stub must include an empty :options hash.
     def stub_exec(exit_code:, output:)
       allow(tool_executor).to receive(:build_command_line).and_return({ options: {} })
-      allow(tool_executor).to receive(:exec).and_return({ exit_code: exit_code, output: output })
+      # A failed run under :boom false reports a zero exit code with a failed process status
+      status = instance_double(Process::Status, success?: exit_code == 0, exitstatus: exit_code)
+      allow(tool_executor).to receive(:exec).and_return({ exit_code: 0, output: output, status: status })
+      allow(tool_executor).to receive(:failed?) { |result| ToolExecutor.allocate.failed?( result ) }
     end
 
     it 'passes -g only when :gcov_mcdc is configured' do
@@ -271,8 +275,8 @@ describe ConsoleReportinator do
 
     it 'never raises on a non-zero exit (boom disabled for the summary tool)' do
       command_capture = nil
+      stub_exec(exit_code: 1, output: 'error')
       allow(tool_executor).to receive(:build_command_line) { |*| command_capture = { options: {} }; command_capture }
-      allow(tool_executor).to receive(:exec).and_return({ exit_code: 1, output: 'error' })
       reportinator.send(:run_gcov_summary, 'test_foo', 'src/foo.c', {})
       expect(command_capture[:options]).to eq({ boom: false })
     end

@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/preprocess/preprocessinator'
 require 'ceedling/includes/includes'
+require 'ceedling/tool_executor'
 
 RSpec.describe Preprocessinator do
 
@@ -31,6 +32,14 @@ RSpec.describe Preprocessinator do
     # Whoever writes a preprocessed file creates its directory, since the path may mirror
     # a source's own namespace below the test's flat preprocess directories.
     allow(@file_wrapper).to receive(:mkdir)
+    # The real rule, so a stubbed result reads exactly as it would from a real run
+    allow(@tool_executor).to receive(:failed?) { |result| ToolExecutor.allocate.failed?( result ) }
+  end
+
+  # What a failed command run with :boom false really returns: a zero exit code with a
+  # failed process status. A bare nonzero :exit_code cannot occur under :boom false.
+  def failed_run
+    { exit_code: 0, status: instance_double(Process::Status, success?: false) }
   end
 
   subject do
@@ -186,10 +195,9 @@ RSpec.describe Preprocessinator do
       allow(@tool_executor).to receive(:build_command_line).and_return({ options: {} })
     end
 
-    # This is the actual bug: without boom: false, the real ToolExecutor#exec
-    # (not this double) raises ShellException on a nonzero exit code before
-    # the "if result[:exit_code] != 0 ... return nil" fallback below it ever
-    # runs, crashing the build instead of gracefully degrading as documented.
+    # Without boom: false, the real ToolExecutor#exec (not this double) raises
+    # ShellException on a nonzero exit code before the fallback below it ever runs,
+    # crashing the build instead of gracefully degrading as documented.
     it "sets boom: false on the command before invoking the full preprocessor" do
       captured_command = nil
       allow(@tool_executor).to receive(:exec) do |command|
@@ -205,7 +213,7 @@ RSpec.describe Preprocessinator do
     end
 
     it "returns nil without raising when the full preprocessor invocation fails" do
-      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 1 })
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
       result = nil
       expect { result = call_it() }.to_not raise_error
@@ -213,7 +221,7 @@ RSpec.describe Preprocessinator do
     end
 
     it "returns nil without raising via preprocess_partial_source_expand_macros too" do
-      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 1 })
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
       result = nil
       expect { result = call_it(method: :preprocess_partial_source_expand_macros) }.to_not raise_error
@@ -311,7 +319,7 @@ RSpec.describe Preprocessinator do
     end
 
     it "returns nil without stripping or compacting when the preprocessor fails" do
-      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 1 })
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
       result = call_it()
 
