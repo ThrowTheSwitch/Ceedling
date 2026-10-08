@@ -96,13 +96,10 @@ ceedling_system_tests do
         end
       end
 
+      # Both mocks share a filename, so only the directory each #include names tells them
+      # apart. CMock and the runner fold that directory into each mock's guard and
+      # lifecycle function names.
       it "generates a mock per module and keeps their expectations separate" do
-        # CMock derives a mock's #include guard and its own _Init/_Verify/_Destroy names
-        # from the mock's filename alone, and Unity's runner calls them by that same name.
-        # Two same-named mocks therefore share a guard and lifecycle symbols. Closing this
-        # needs folder-qualified mock naming in both CMock and Unity.
-        pending 'CMock names a mock by filename alone, so two same-named mocks collide'
-
         in_project do
           output = @c.ceedling_build_exec("test:all")
 

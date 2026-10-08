@@ -112,17 +112,10 @@ ceedling_system_tests do
         end
       end
 
+      # Both mocks share a filename, so only the directory each #include names tells them
+      # apart. CMock and the runner fold that directory into each mock's guard and
+      # lifecycle function names.
       it "generates a mock per module and keeps their expectations separate" do
-        # CMock derives a mock's #include guard and its own _Init/_Verify/_Destroy names
-        # from the mock's filename alone. Two modules sharing a basename produce two mocks
-        # of the same filename in different directories, so the second is emptied by the
-        # first's guard and the two would define the same lifecycle symbols anyway. The
-        # directive macro fixes that filename -- the C preprocessor cannot fold a
-        # directory into it -- so closing this needs folder-qualified naming in CMock or a
-        # forwarding scheme here. Generation, placement, objects, and resolution are all
-        # correct up to that point.
-        pending 'CMock names a mock by filename alone, so two same-named mocks collide'
-
         in_project do
           output = @c.ceedling_build_exec("test:all")
 
