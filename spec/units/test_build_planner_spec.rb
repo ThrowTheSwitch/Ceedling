@@ -184,7 +184,8 @@ describe TestBuildPlanner do
             path:     'drivers',
             source:   'src/drivers/foo.h',
             input:    'src/drivers/foo.h',
-            partial:  false
+            partial:  false,
+            include_path: 'MockFoo.h'
           )
         )
       end
@@ -223,7 +224,8 @@ describe TestBuildPlanner do
             path:     '',
             source:   'build/test/partials/a_test/ceedling_partial_foo_interface.h',
             input:    'build/test/partials/a_test/ceedling_partial_foo_interface.h',
-            partial:  true
+            partial:  true,
+            include_path: 'Mockceedling_partial_foo_interface.h'
           )
         )
       end

@@ -191,7 +191,7 @@ describe Configurator do
     def runner_config
       {
         project:     { use_backtrace: :none },
-        cmock:       { mock_prefix: 'Mock', mock_suffix: '_x', enforce_strict_ordering: true },
+        cmock:       { mock_prefix: 'Mock', mock_suffix: '_x', mock_name_include_folder: true, enforce_strict_ordering: true },
         unity:       { defines: ['UNITY_DEFINE'], use_param_tests: false, shuffle_tests: false },
         test_runner: { cmdline_args: false, defines: ['RUNNER_DEFINE'] },
       }
@@ -204,6 +204,7 @@ describe Configurator do
 
       expect( config[:test_runner][:mock_prefix] ).to eq( 'Mock' )
       expect( config[:test_runner][:mock_suffix] ).to eq( '_x' )
+      expect( config[:test_runner][:mock_name_include_folder] ).to eq( true )
       expect( config[:test_runner][:enforce_strict_ordering] ).to eq( true )
     end
 

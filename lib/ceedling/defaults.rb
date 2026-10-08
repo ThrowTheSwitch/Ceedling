@@ -375,6 +375,8 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     #  (B) Test runner generator uses these same configuration values
     :mock_prefix => 'Mock',
     :mock_suffix => '',
+    # Names each mock by the folder its #include names so same-named headers stay distinct
+    :mock_name_include_folder => true,
     # CMock's default duplicated here.
     # We need a value present so preprocessing logic can safely reference it.
     :treat_inlines => :exclude,

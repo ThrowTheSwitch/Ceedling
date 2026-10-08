@@ -386,6 +386,7 @@ class Configurator
     # Copy CMock options used by test runner generation
     config[:test_runner][:mock_prefix] = config[:cmock][:mock_prefix]
     config[:test_runner][:mock_suffix] = config[:cmock][:mock_suffix]
+    config[:test_runner][:mock_name_include_folder] = config[:cmock][:mock_name_include_folder]
     config[:test_runner][:enforce_strict_ordering] = config[:cmock][:enforce_strict_ordering]
 
     # Merge Unity options used by test runner generation

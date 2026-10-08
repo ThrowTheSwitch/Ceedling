@@ -154,6 +154,7 @@ class TestBuildExecutor
       testable = mock.testable
 
       output_path = @file_path_utils.form_mock_output_path( testable.paths[:mocks], details.path )
+      folder, output_path = mock_folder_and_path( testable.paths[:mocks], output_path, details.include_path )
       @file_wrapper.mkdir( output_path )
 
       # `details.input` -- not the stage 9 preprocessed target -- is the
@@ -198,6 +199,7 @@ class TestBuildExecutor
         test:           testable.name,
         input_filepath: details.input,
         output_path:    output_path,
+        folder:         folder,
         overrides:      overrides
       }
 
@@ -727,6 +729,26 @@ class TestBuildExecutor
   end
 
   private
+
+  # Finds the folder a mock's #include names and the directory the mock is written to.
+  #
+  # CMock names a mock's guard and lifecycle functions by that folder, and the runner names
+  # its calls by the same #include. Two same-named mocks stay distinct only if the folder
+  # reaches CMock. CMock writes below its own root at that folder, so the folder must end the
+  # mock's directory. A folder trailing the mirrored location keeps that location. An #include
+  # spelling more path than the mirror holds moves its mock below the per-test root at the
+  # written path, which the root search path still reaches. A bare #include has no folder.
+  # Without :mock_name_include_folder no folder is passed and CMock behaves as it always has.
+  def mock_folder_and_path(mocks_root, output_path, include_path)
+    return [nil, output_path] unless @configurator.cmock_mock_name_include_folder
+
+    folder = File.dirname( include_path.to_s ).sub( %r{\A(?:\./)+}, '' )
+
+    return [nil, output_path] if folder.empty? || folder == '.'
+    return [folder, output_path] if output_path.end_with?( File.join( '', folder ) )
+
+    return [folder, File.join( mocks_root, folder )]
+  end
 
   # Compile a single C or assembly source file into an object file. Returns
   # whether a real compile actually happened, so the caller can report how
