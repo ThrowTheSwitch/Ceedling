@@ -739,6 +739,9 @@ class TestBuildExecutor
   # it finds one. A failure that's still standing afterward -- nothing to isolate,
   # or an isolated retry that failed too -- gets one last look from generator_helper
   # before it's raised, in case it's explainable as this same class of collision.
+  #
+  # Any other source sharing a directory with a header mocked under inline shadowing
+  # compiles from an isolated copy instead (compile_isolated_source).
   def compile_test_component(context:, test:, source:, object:, state:)
     testable     = state.testables[test.to_sym]
     defines      = testable.compile_defines
@@ -790,11 +793,16 @@ class TestBuildExecutor
       }
 
       compile_failure = nil
+      shadowed_header = inline_mocked_sibling_header( testable, source )
 
-      begin
-        @generator.generate_object_file_c( **arg_hash )
-      rescue ShellException => ex
-        compile_failure = ex
+      if shadowed_header
+        compile_failure = compile_isolated_source( arg_hash: arg_hash, testable: testable, header: shadowed_header )
+      else
+        begin
+          @generator.generate_object_file_c( **arg_hash )
+        rescue ShellException => ex
+          compile_failure = ex
+        end
       end
 
       # gcc's dependency output is a side effect of preprocessing -- already written to
@@ -881,6 +889,62 @@ class TestBuildExecutor
     @dependinator.mark_fresh( object )
 
     true
+  end
+
+  # The mocked header `source` would reach directly in place of its mock, or nil.
+  #
+  # With :treat_inlines set to :include, CMock writes an inline-stripped copy of a mocked
+  # header into the mocks directory, first on the search path. A source sharing a directory
+  # with the real header and quote-including it finds the real one first. Its inline bodies
+  # then run in place of the mock. A Partial mock writes no such copy, and a test file
+  # reaches its mocks by their own names.
+  def inline_mocked_sibling_header(testable, source)
+    return nil unless @configurator.project_use_mocks
+    return nil unless @configurator.cmock_treat_inlines == :include
+    return nil if source == testable.filepath
+
+    directory = File.expand_path( File.dirname( source ) )
+
+    (testable.mocks || {}).each_value do |details|
+      next if details.partial || details.source.nil?
+      next unless File.expand_path( File.dirname( details.source ) ) == directory
+
+      header = File.basename( details.source )
+      return details.source if @quote_include_isolator.includes_by_name?( source, header )
+    end
+
+    return nil
+  end
+
+  # Compiles a source from a copy staged alone, returning any compile failure.
+  #
+  # With no real header beside the copy, its quoted #include of `header` reaches CMock's
+  # inline-stripped copy on the search path. A #line directive keeps every report naming
+  # the original. The original's directory follows all other search paths so its other
+  # includes still resolve. The dependency file is restored before the copy is released,
+  # so tracking never names a file that no longer exists.
+  def compile_isolated_source(arg_hash:, testable:, header:)
+    source = arg_hash[:source]
+
+    msg = "Compiling an isolated copy of '#{source}' for this test because it shares a directory with " \
+          "mocked header '#{header}', whose inline functions it would otherwise call instead of the mock."
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+
+    @quote_include_isolator.within( parent: testable.paths[:build], files: [source], preserve_location: true ) do |isolation|
+      begin
+        @generator.generate_object_file_c(
+          **arg_hash.merge(
+            compile_source: isolation.copy_of( source ),
+            search_paths:   arg_hash[:search_paths] + [File.dirname( source )]
+          )
+        )
+        nil
+      rescue ShellException => ex
+        ex
+      ensure
+        @quote_include_isolator.restore_dependencies( isolation, arg_hash[:dependencies] )
+      end
+    end
   end
 
   def log_compile_skip(test:, source:)

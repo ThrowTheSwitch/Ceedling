@@ -20,6 +20,20 @@ The isolated directory this produces is a *throwaway*: it's always freshly, full
 
 `extract_bare_includes` (`preprocess/preprocessinator_includes_handler.rb`) stages an isolated copy for an unrelated reason -- limiting a preprocessor scan to a file's own top-level `#include`s -- using the same `QuoteIncludeIsolator` this mechanism does; see its own comment there for that story.
 
+## Sources under test: `compile_isolated_source`
+
+A source under test can sit beside a header its test mocks and quote-include it directly. Under `:cmock` ↳ `:treat_inlines: :include` that source finds the real header first, so the real inline bodies run in place of the mock. Sibling-header isolation never sees this case: the source is not a header, and it never appears in the test file's `.d` file.
+
+`TestBuildExecutor#inline_mocked_sibling_header` decides it up front, before any compile. A source qualifies when mocks are enabled, inline handling is `:include`, the mock is not a Partial mock, the source is not the test file, the source shares the real header's directory, and `QuoteIncludeIsolator#includes_by_name?` finds the header named in a quoted `#include`. Only then does CMock's same-basename shadow exist on the search path for the source to reach.
+
+`compile_isolated_source` compiles a qualifying source from a copy staged alone by `QuoteIncludeIsolator#within`. Three details keep the copy invisible to everything except header lookup:
+
+- The copy opens with `#line 1 "<original path>"`, so diagnostics, `__FILE__`, debug info and coverage data name the original at its original line numbers.
+- The original's directory is appended after every other search path. The copy's other quoted includes, relative paths among them, still resolve, while the mocks directory keeps precedence.
+- `QuoteIncludeIsolator#restore_dependencies` rewrites the compile's `.d` file to name the original before it is registered, so dependency tracking never records a file that is removed when the compile ends.
+
+`Generator#generate_object_file_c` receives the copy as `compile_source:`. Plugins and logs keep receiving the original as `:source`. Each staging lives for one compile and writes nothing to the testable, so it never interacts with the two-pass barrier in `stage_build_objects`. Like header isolation it acts one level deep. A source reaching the real header only through a private header of its own is not redirected.
+
 ## What isolation can't fix: Partials, and the reactive fallback
 
 CMock's own mock generation, when `:treat_inlines: :include` is configured, produces a same-basename shadow of the real header -- a safe replacement sharing the real header's own filename and include guard, which is exactly what gives an isolated sibling's own `#include` something to fall through to on `-I`. Partials generates *distinctly-named* files instead; there's never a same-basename replacement waiting on a search path for an isolated sibling to find. When a Partial's own generated content and its module's real, un-Partialized header both reach one compile, isolation has structurally nothing to redirect -- the collision is a straightforward `redeclaration`/`conflicting types`/`previous definition` compile error, and it stays one no matter how the search paths are arranged.

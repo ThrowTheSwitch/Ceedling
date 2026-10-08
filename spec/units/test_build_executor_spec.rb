@@ -136,14 +136,14 @@ describe TestBuildExecutor do
     @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => testable }, :lock => Mutex.new )
   end
 
-  # `@batchinator.exec` is a real collaborator only in production; here it's
-  # stubbed to synchronously yield every `things` entry to the given block,
-  # matching its real per-item iteration contract without pulling in Parallel.
   # An isolation staged into `dir`, as QuoteIncludeIsolator#isolate returns one
   def isolation_in(dir)
     QuoteIncludeIsolator::Isolation.new( dir, {} )
   end
 
+  # `@batchinator.exec` is a real collaborator only in production; here it's
+  # stubbed to synchronously yield every `things` entry to the given block,
+  # matching its real per-item iteration contract without pulling in Parallel.
   def stub_batchinator_exec
     allow(@batchinator).to receive(:exec) do |workload:, things:, &block|
       things.each { |k, v| block.call(k, v) }
@@ -321,6 +321,137 @@ describe TestBuildExecutor do
     # content slip past the substitution entirely; isolating the sibling and retrying
     # with corrected search paths closes that gap without ever touching the original
     # compile's own registered dependencies.
+    # A source beside a header mocked under :treat_inlines :include would find the real
+    # header first and run its inline bodies. It compiles from an isolated copy instead.
+    context "a source sharing a directory with a header mocked with inline shadowing" do
+      let(:isolation) do
+        QuoteIncludeIsolator::Isolation.new( 'build/test/out/a_test/tmp1', { 'src/gpio.c' => 'build/test/out/a_test/tmp1/gpio.c' } )
+      end
+
+      before(:each) do
+        allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
+        allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
+
+        @testable              = @state.testables[:a_test]
+        @testable.filepath     = 'test/test_gpio.c'
+        @testable.paths        = { :build => 'build/test/out/a_test' }
+        @testable.search_paths = ['build/test/mocks/a_test', 'src']
+        @testable.mocks        = {
+          :mock_board => TestInvokerTypes::MockDetails.new( name: 'mock_board', source: 'src/board.h', partial: false )
+        }
+
+        allow(@file_wrapper).to receive(:exist?).with( 'src/gpio.c' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( 'src/gpio.c' ).and_return( %(#include "board.h"\n) )
+
+        # A real scoped isolation hands back whatever its block returns
+        allow(@quote_include_isolator).to receive(:within) { |**_, &block| block.call( isolation ) }
+        allow(@quote_include_isolator).to receive(:restore_dependencies)
+        allow(@generator).to receive(:generate_object_file_c)
+      end
+
+      def compile(source: 'src/gpio.c')
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => source, :object => 'build/gpio.o', :state => @state
+        )
+      end
+
+      it "compiles a location-preserving copy, with the original's directory searched last" do
+        compile()
+
+        expect(@quote_include_isolator).to have_received(:within)
+          .with( parent: 'build/test/out/a_test', files: ['src/gpio.c'], preserve_location: true )
+        expect(@generator).to have_received(:generate_object_file_c).with( hash_including(
+          source:         'src/gpio.c',
+          compile_source: 'build/test/out/a_test/tmp1/gpio.c',
+          search_paths:   ['build/test/mocks/a_test', 'src', 'src']
+        ) )
+      end
+
+      it "restores the dependency file before registering it" do
+        allow(@file_wrapper).to receive(:exist_with_retry?).with( 'build/deps' ).and_return( false, true )
+
+        expect(@quote_include_isolator).to receive(:restore_dependencies).with( isolation, 'build/deps' ).ordered
+        expect(@dependinator).to receive(:register_gcc_deps_file).with( 'build/deps' ).ordered
+
+        compile()
+      end
+
+      it "restores the dependency file and raises when the compile fails" do
+        ex = ShellException.new( shell_result: { output: 'error' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+
+        expect { compile() }.to raise_error( ShellException )
+        expect(@quote_include_isolator).to have_received(:restore_dependencies).with( isolation, 'build/deps' )
+      end
+
+      it "logs the isolation at NORMAL verbosity, decorated as a notice" do
+        compile()
+
+        expect(@loginator).to have_received(:log).with( a_string_including( 'src/gpio.c', 'src/board.h' ), Verbosity::NORMAL, LogLabels::NOTICE )
+      end
+
+      # Isolation is an implementation detail of how a source compiles. Its staleness must
+      # read the same either way, or toggling isolation would force a rebuild.
+      it "registers the same staleness meta as an ordinary compile" do
+        metas = []
+        allow(@dependinator).to receive(:register) { |_, **kwargs| metas << kwargs[:meta] }
+
+        compile()
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude )
+        compile()
+
+        expect( metas.uniq.length ).to eq( 1 )
+      end
+
+      shared_examples "an ordinary compile" do
+        it "compiles the original in place" do
+          compile( source: source )
+
+          expect(@quote_include_isolator).to_not have_received(:within)
+          expect(@generator).to have_received(:generate_object_file_c).with( hash_excluding( :compile_source ) )
+        end
+      end
+
+      context "when inline functions are excluded from mocking" do
+        before(:each) { allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude ) }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when mocks are disabled" do
+        before(:each) { allow(@configurator).to receive(:project_use_mocks).and_return( false ) }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the mock is a Partial mock" do
+        before(:each) { @testable.mocks[:mock_board].partial = true }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the mocked header lives in another directory" do
+        before(:each) { @testable.mocks[:mock_board].source = 'inc/board.h' }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the source does not include the mocked header" do
+        before(:each) { allow(@file_wrapper).to receive(:read).with( 'src/gpio.c' ).and_return( %(#include "gpio.h"\n) ) }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the source is the test file itself" do
+        before(:each) { @testable.filepath = 'src/gpio.c' }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+    end
+
     context "sibling-header isolation retry" do
       before(:each) do
         allow(@file_wrapper).to receive(:extname).with( 'test/a_test.c' ).and_return( '.c' )
