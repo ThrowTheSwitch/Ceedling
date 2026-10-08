@@ -82,7 +82,8 @@ class TestBuildPlanner
           path:     subdir,
           source:   source,
           input:    input,
-          partial:  partial
+          partial:  partial,
+          include_path: include.filepath
         )
       end
 

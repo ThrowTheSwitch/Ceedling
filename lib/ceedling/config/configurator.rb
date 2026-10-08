@@ -31,7 +31,7 @@ class Configurator
   ].freeze
 
   # CMock and Unity options that test runner generation also reads
-  RUNNER_CMOCK_OPTIONS = [:mock_prefix, :mock_suffix, :enforce_strict_ordering].freeze
+  RUNNER_CMOCK_OPTIONS = [:mock_prefix, :mock_suffix, :mock_name_include_folder, :enforce_strict_ordering].freeze
   RUNNER_UNITY_OPTIONS = [:use_param_tests, :shuffle_tests].freeze
 
   # A minimal subset of the directives-only preprocessor tool: no defines, no include paths,
