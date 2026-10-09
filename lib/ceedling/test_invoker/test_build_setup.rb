@@ -304,8 +304,8 @@ class TestBuildSetup
       # The raw output path is deterministic (form_preprocessed_file_raw_directives_only_filepath),
       # so it can be registered and checked before deciding whether to actually
       # (re)run the preprocessor. `generate_directives_only_output` also writes a
-      # second, compacted file derived atomically from the same run -- covered
-      # by this same staleness check since both come from the same inputs.
+      # second, compacted file from the same run, which the raw target vouches for
+      # as an output.
       target = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, name )
 
       @dependinator.register(
@@ -352,7 +352,10 @@ class TestBuildSetup
       # A nil result means the preprocessor failed (see generate_directives_only_output) --
       # nothing was actually written, so there's nothing to mark fresh; the next
       # run will correctly see this target as still missing and retry.
-      @dependinator.mark_fresh( target ) unless testable.preprocess[:directives_only][:filepath].nil?
+      unless testable.preprocess[:directives_only][:filepath].nil?
+        @dependinator.register( target, outputs: [@file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, name )] )
+        @dependinator.mark_fresh( target )
+      end
     end
 
     log_skip_summary( task: "directives-only preprocessing", count: skipped_directives_only, noun: "test files" ) if directives_only

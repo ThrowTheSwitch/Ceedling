@@ -207,13 +207,12 @@ class PartialsManager
       }
 
       unless implementation.nil?
-        # The header this same call writes alongside the source isn't itself an
-        # antecedent -- tracking it too catches an externally modified/deleted header
-        # even when the source's own antecedents look unchanged.
+        # The same call writes a header alongside the source, so the source vouches for it
+        # as an output. A modified or deleted header then regenerates both.
         target        = File.join( testable.paths[:partials], @file_path_utils.form_partial_implementation_source_filename( config.module ) )
         header_target = File.join( testable.paths[:partials], @file_path_utils.form_partial_implementation_header_filename( config.module ) )
 
-        @dependinator.register( target, files: antecedent_files + [header_target], meta: antecedent_meta )
+        @dependinator.register( target, files: antecedent_files, meta: antecedent_meta, outputs: [header_target] )
 
         if @dependinator.stale?( target )
           @generator.generate_partial_implementation( **arg_hash )
@@ -411,6 +410,15 @@ class PartialsManager
 
       config.full_expansion_filepath = @preprocessinator.public_send( expand_macros_method, **arg_hash )
 
+      # A skipped run recalls the includes list and full expansion this run wrote, so the
+      # preprocessed target vouches for both
+      @dependinator.register(
+        details.preprocessed_target,
+        outputs: [
+          @file_path_utils.form_preprocessed_includes_list_filepath( config.filepath, name ),
+          @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+        ]
+      )
       @dependinator.mark_fresh( details.preprocessed_target )
     end
   end

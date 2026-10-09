@@ -166,15 +166,12 @@ class TestBuildExecutor
       target      = File.join( output_path, details.name + EXTENSION_CORE_SOURCE )
       mock_header = File.join( output_path, details.name + EXTENSION_CORE_HEADER )
 
-      # `mock_header` is tracked here too, alongside `target` -- not
-      # semantically an antecedent, but a file CMock writes atomically in the
-      # same call below. Tracking it is what lets a stale header be detected
-      # and regenerated on the next run: stage_collect_preprocessor_context's
-      # includes stand-in generation (test_build_setup.rb) writes a blank
-      # placeholder to this exact path whenever the *test* file's own
-      # bare-includes cache misses, entirely independent of whether this
-      # mock's own antecedents changed.
-      @dependinator.register( target, files: [details.input, mock_header], meta: { cmock: cmock_meta } )
+      # CMock writes `mock_header` in the same call as `target`, so the mock vouches for
+      # it as an output. Includes stand-in generation (test_build_setup.rb) writes a blank
+      # placeholder to this exact path whenever the test file's own bare-includes cache
+      # misses, independent of this mock's antecedents. The recorded hash catches that
+      # placeholder and regenerates the mock.
+      @dependinator.register( target, files: [details.input], meta: { cmock: cmock_meta }, outputs: [mock_header] )
 
       unless @dependinator.stale?( target )
         msg = @reportinator.generate_module_progress(
@@ -216,7 +213,8 @@ class TestBuildExecutor
   # flags, defines, and search paths already tracked for the preprocessing step
   # itself, so the same staleness answer covers both: when the preprocessed
   # output is already current, its build directive macros are recalled from a
-  # small cache instead of being scanned again.
+  # small cache instead of being scanned again. That cache is an output of the
+  # preprocessed target, so a damaged cache makes the target stale.
   def stage_preprocess_test_files(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
     skipped = 0
@@ -255,8 +253,6 @@ class TestBuildExecutor
         }
 
         _filepath = @preprocessinator.preprocess_test_file( **arg_hash )
-
-        @dependinator.mark_fresh( target )
       else
         msg = @reportinator.generate_module_progress(
           operation:   'Skipping test file preprocessing for',
@@ -289,6 +285,11 @@ class TestBuildExecutor
           TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
         )
         @context_extractor.store_build_directives_cache( filepath: filepath, cache_filepath: source_files_cache )
+
+        # The cache is recalled whenever `target` is fresh, so `target` vouches for it.
+        # Marking fresh only now leaves `target` stale if directive parsing raises.
+        @dependinator.register( target, outputs: [source_files_cache] )
+        @dependinator.mark_fresh( target )
       else
         msg = @reportinator.generate_progress( "Recalling cached source directive macros for #{filename}" )
         @loginator.log( msg, Verbosity::OBNOXIOUS )
@@ -629,6 +630,13 @@ class TestBuildExecutor
 
         if run_now
           @file_wrapper.touch( fixture_target )
+
+          # A later skipped run reuses the result this run wrote, so the fixture target
+          # vouches for it. Only whichever of the two exists is recorded.
+          @dependinator.register(
+            fixture_target,
+            outputs: [testable.results_pass, testable.results_pass.ext( @configurator.extension_testfail.primary )]
+          )
           @dependinator.mark_fresh( fixture_target )
         end
 

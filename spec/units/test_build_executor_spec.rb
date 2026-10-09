@@ -46,6 +46,7 @@ describe TestBuildExecutor do
     @tools_test_fixture_simple_backtrace     = { name: 'fake simple backtrace' }
 
     allow(@configurator).to receive(:extension_assembly).and_return( FilenameExtension.new('.asm') )
+    allow(@configurator).to receive(:extension_testfail).and_return( FilenameExtension.new('.fail') )
     allow(@configurator).to receive(:tools_test_compiler).and_return( @tools_test_compiler )
     allow(@configurator).to receive(:tools_test_assembler).and_return( @tools_test_assembler )
     allow(@configurator).to receive(:tools_test_linker).and_return( @tools_test_linker )
@@ -1169,6 +1170,28 @@ describe TestBuildExecutor do
       @executor.stage_execute( @state )
     end
 
+    # A skipped run reuses the result file, so the fixture target vouches for it. Damage
+    # to that file then reads as stale and the test reruns instead of reusing it.
+    it "registers the result files as outputs of the fixture target before marking it fresh after a real run" do
+      @testable.executable_rebuilt = true
+      allow(@file_wrapper).to receive(:rm_f)
+      allow(@generator).to receive(:generate_test_results)
+
+      expect(@dependinator).to receive(:register).with( @fixture_target, outputs: ['build/a_test.pass', 'build/a_test.fail'] ).ordered
+      expect(@dependinator).to receive(:mark_fresh).with( @fixture_target ).ordered
+
+      @executor.stage_execute( @state )
+    end
+
+    it "registers no outputs on a skipped run" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+
+      expect(@dependinator).to_not receive(:register).with( @fixture_target, hash_including( :outputs ) )
+
+      @executor.stage_execute( @state )
+    end
+
     it "reports the cached result instead of running the test fixture when stage 16 found the executable unchanged, and does not touch the cached result file" do
       @testable.executable_rebuilt = false
       expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: true ) )
@@ -1511,22 +1534,20 @@ describe TestBuildExecutor do
       @executor.stage_generate_mocks( @state )
     end
 
-    it "tracks the mock's own generated header, not just its source input, as a dependency" do
-      # stage_collect_preprocessor_context's includes stand-in generation
-      # (test_build_setup.rb) can overwrite a mock's generated header with a
-      # blank placeholder on a run where only the *test* file's own
-      # bare-includes cache misses -- unrelated to whether this mock's own
-      # antecedents changed. Tracking the header file itself, not just the
-      # source input, is what lets that overwrite be detected and the mock
-      # regenerated on the next run.
+    it "tracks the mock's own generated header as an output of the mock" do
+      # Includes stand-in generation (test_build_setup.rb) can overwrite a mock's
+      # generated header with a blank placeholder on a run where only the test file's
+      # own bare-includes cache misses. The header's recorded hash is what lets that
+      # overwrite be detected and the mock regenerated on the next run.
       allow(@dependinator).to receive(:stale?).and_return( true )
       allow(@generator).to receive(:generate_mock)
       allow(@dependinator).to receive(:mark_fresh)
 
       expect(@dependinator).to receive(:register).with(
         'build/test/mocks/sub/MockFoo.c',
-        files: ['build/preprocess/MockFoo.h', 'build/test/mocks/sub/MockFoo.h'],
-        meta:  anything
+        files:   ['build/preprocess/MockFoo.h'],
+        meta:    anything,
+        outputs: ['build/test/mocks/sub/MockFoo.h']
       )
 
       @executor.stage_generate_mocks( @state )
@@ -1545,8 +1566,9 @@ describe TestBuildExecutor do
 
       expect(@dependinator).to receive(:register).with(
         'build/test/mocks/sub/MockFoo.c',
-        files: anything,
-        meta:  { cmock: { mock_prefix: 'Custom' } }
+        files:   anything,
+        meta:    { cmock: { mock_prefix: 'Custom' } },
+        outputs: anything
       )
 
       @executor.stage_generate_mocks( @state )
@@ -1759,6 +1781,29 @@ describe TestBuildExecutor do
       expect(@test_context_extractor).to_not receive(:load_build_directives_cache)
 
       @executor.stage_preprocess_test_files( @state )
+    end
+
+    # The cache is recalled whenever the preprocessed file is fresh, so that file vouches
+    # for it. Recording it as an output before marking fresh is what makes damage visible.
+    it "stores the directive cache, then registers it as an output, before marking the test file fresh" do
+      cache = 'build/preprocess/build_directives/a_test/TestFoo.c_source_files.yml'
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:preprocess_test_file).and_return( 'build/preprocess/files/TestFoo.c' )
+
+      expect(@test_context_extractor).to receive(:store_build_directives_cache).ordered
+      expect(@dependinator).to receive(:register).with( 'build/preprocess/files/TestFoo.c', outputs: [cache] ).ordered
+      expect(@dependinator).to receive(:mark_fresh).with( 'build/preprocess/files/TestFoo.c' ).ordered
+
+      @executor.stage_preprocess_test_files( @state )
+    end
+
+    it "leaves the test file unmarked when scanning its directive macros fails" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:preprocess_test_file).and_return( 'build/preprocess/files/TestFoo.c' )
+      allow(@test_context_extractor).to receive(:collect_simple_context_from_file).and_raise( CeedlingException.new( 'scan failed' ) )
+
+      expect(@dependinator).to_not receive(:mark_fresh)
+      expect { @executor.stage_preprocess_test_files( @state ) }.to raise_error( CeedlingException )
     end
 
     it "recalls cached source directive macros instead of scanning when the dependency tracker reports it unchanged" do
