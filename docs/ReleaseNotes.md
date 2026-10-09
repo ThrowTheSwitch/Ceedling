@@ -12,15 +12,83 @@ These release notes are complemented by three other documents:
 
 ## 👀 Highlights
 
-...
+1.2.0 restores delta builds, adds full handling of paths and same-named files, is faster than 1.1.0, and incorporates a large number of fixes and other improvements. See [Changelog](Changelog.md) for a full list of new features, bug fixes, and improvements.
+
+The incomplete list of goodies:
+
+* **Delta builds** are back. A build only regenerates, compiles, links, or reruns what changed files require. Delta builds are automatic and complement parallel builds for build time speedups.
+* Full support for **relative paths and same-named files**. `#include` directives, `TEST_SOURCE_FILE()`, test task names (e.g. `ceedling test:foo/file` vs. `ceedling test:bar/file`), and [Partials][partials-directory-docs-1.2.0] can all distinguish files and modules of the same name by path.
+* **Multiple file extensions per file type**, so `.c` and `.cc` sources, for instance, can be collected into one build.
+* **Shuffled test order** through Unity’s randomized test case ordering. When test shuffling is enabled, delta builds always rerun test executables so each run is shuffled.
+* `TEST_SOURCE_FILE()` can now **remove** a source file from a test executable, overriding Ceedling’s source file conventions where a project’s structure differs from the convention’s assumptions.
+* Plugins:
+   * The [Gcov plugin][gcov-plugin-1.2.0] adds raw `gcovr` arguments and `ReportGenerator` coverage thresholds.
+   * The [Valgrind][valgrind-plugin-1.2.0] and [Cppcheck][cppcheck-plugin-1.2.0] plugins have expanded features including failing a build on analysis findings.
+   * The [Bullseye code coverage plugin][bullseye-plugin-1.2.0] is re-enabled and modernized (disabled since 1.0.0), adding branch coverage detail, XML reports, and a coverage threshold.
+* Performance improvements yield a 5–10% faster build even before delta builds speed up successive runs.
+* `ceedling.yml` is accepted as an alternate default project filename alongside `project.yml`.
+* `ceedling dumpconfig --stdout` writes the fully resolved project configuration to the console (useful for scripting and agentic tools).
+* Some 40 fixes and refinements for robustness across test preprocessing, Partials, mocking, backtraces, mixins, filepath handling, and plugin reports.
+
+[partials-directory-docs-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/partials/directives/#naming-a-module-by-directory
+[bullseye-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/
+[gcov-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/gcov/
+[valgrind-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/valgrind/
+[cppcheck-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/cppcheck/
 
 ## 🔢 Ruby version support
 
 Ceedling 1.2.0 is known to work well across all versions of Ruby 3.0 – 3.4 on Linux, Windows, and macOS. Ruby 2.x support was removed with 1.0.0.
 
-Ceedling 1.2.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world. Ceedling 1.2.0 has had no Ruby 4.0 compatibility work.
+Ceedling 1.2.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world.
 
-## 📣 Shout-outs and Special Thank-You's
+Ceedling 1.2.0 has had no Ruby 4.0 compatibility work, but users have reported success running Ceedling with Ruby 4.0.
+
+## 📖 Configuration Cheatsheet for 1.2.0 Changes
+
+The following is not a complete project configuration. But, for those already familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling through the lens of a project configuration. To be clear, more has changed than what is referenced in this YAML blurb (see the Changelog).
+
+```yaml
+:plugins:
+  :enabled:
+    # (See config blurbs below)
+    - gcov
+    - valgrind
+    - cppcheck
+
+:gcov:
+  :gcovr:
+    # Optional list of raw command line arguments passed to gcovr as-is (e.g. limiting
+    # its search paths). These are passed even when :config_file is set.
+    :custom_args: []
+
+:valgrind:
+  # When TRUE, writes a machine-readable XML report per test binary alongside the text log.
+  # With XML enabled, memory errors that are reported by the plugin or optionally cause
+  # a test build to break are counted from the XML rather than the text log (more reliable).
+  :xml_report: FALSE
+
+  # Valgrind suppression files, each passed as one --suppressions= argument ahead of
+  # any entries in :arguments.
+  :suppressions: []
+
+:cppcheck:
+  # When TRUE, findings matching :fail_build_severities fail the build.
+  # Enabling this implies the XML report, since findings are counted from its output.
+  :fail_build: FALSE
+
+  # Finding severities that fail the build when :fail_build is enabled.
+  # Valid values: error, warning, style, performance, portability, information.
+  :fail_build_severities:
+    - error
+
+  # The default XML report schema version is now 2, which every Cppcheck release accepts.
+  # Older Cppcheck releases reject version 3 and fail the build.
+  :xml_report_version: 2
+
+```
+
+## 📣 Shout-outs and Special Thank-You’s
 
 ### Sponsors
 
@@ -194,9 +262,9 @@ We'd like to make some quick shout-outs to some especially helpful contributions
 ### Sponsors of Ceedling 1.0.0
 
  - [ThingamaByte, LLC](https://thingamabyte.com) - For continuing to nurture these projects and community with so much of their time.
- - [Kamstrup, A/S](https://kamstrup.com) - For sponsoring and testing Ceedling's new parallel build/test support
- - [Fraunhofer Institute for Integrated Systems and Device Technology IISB](https://iisb.fraunhofer.de) - For also sponsoring and testing Ceedling's new parallel build/test support
- - [Peter Membrey](https://github.com/pmembrey) - For sponsoring, helping to plan, and validating Ceedling's new dependencies plugin
+ - [Kamstrup, A/S](https://kamstrup.com) - For sponsoring and testing Ceedling’s new parallel build/test support
+ - [Fraunhofer Institute for Integrated Systems and Device Technology IISB](https://iisb.fraunhofer.de) - For also sponsoring and testing Ceedling’s new parallel build/test support
+ - [Peter Membrey](https://github.com/pmembrey) - For sponsoring, helping to plan, and validating Ceedling’s new dependencies plugin
 
 ### Major Code/Doc Contributors 
 

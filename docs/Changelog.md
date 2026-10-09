@@ -153,7 +153,7 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 ## ⚠️ Changed
 
 ### Performance improvements
-Optimizations and fixes have yielded a 5–10% speed increase for most builds _before_ the second-run speedup of new delta builds.
+Optimizations and fixes have yielded a 5–10% speed increase for most builds _before_ the second-run speedup of the new delta build abilities.
 
 ### `#include` relative paths & duplicate filename disambiguation in test builds
 Because of the support added for handling paths and distinguishing duplicated filenames, the functional interface for testing has changed.
@@ -181,6 +181,9 @@ Partials generation now stops with an error if text-only fallback preprocessing 
 
 ### Internal verbosity level mapping for Ceedling to CMock
 Ceedling and CMock are interdependent but distinct tools. They each perform their own logging and have different verbosity level conventions. The internal mapping has been adjusted to configure CMock for verbosity levels that match the spirit of the selected top-level Ceedling logging verbosity level.
+
+### Smarter `:flags` and `:defines` matching for preprocessing overrides
+Preprocessing flags and defines matchers now pass through to test compilation flags and defines for any matchers that are not defined. Previously, any preprocessing flags and defines matchers entirely overrode the test compilation flags and defines matchers. Now, you can selectively override them. Note that preprocessing flags and defines matchers are fairly specialized features used in rare cases.
 
 ### Gcov console coverage summary names a module by path when needed
 The Gcov plugin’s console summary labeled every file by filename alone, so a test covering two same-named modules produced two sets of figures with nothing to say which module either belonged to. Each label now carries as much trailing path as it takes to tell it apart from the other files in that same test’s summary. A filename that is already unique is labeled exactly as before.
