@@ -198,6 +198,20 @@ describe DependencyCacheStore do
       expect( @store.load('cache.json')['entries'] ).to be_empty
     end
 
+    it 'keeps an entry with well-formed outputs' do
+      entry = valid_entry.merge( 'outputs' => { 'test.pass' => VALID_DEP_HASH } )
+      stub_file( 'cache.json', valid_payload( 'foo.o' => entry ) )
+
+      expect( @store.load('cache.json')['entries'] ).to eq( 'foo.o' => entry )
+    end
+
+    it 'drops an entry with a malformed output hash' do
+      bad = valid_entry.merge( 'outputs' => { 'test.pass' => 'not-a-digest' } )
+      stub_file( 'cache.json', valid_payload( 'bad.o' => bad ) )
+
+      expect( @store.load('cache.json')['entries'] ).to be_empty
+    end
+
     it 'drops an entry that is not an object at all' do
       stub_file( 'cache.json', valid_payload( 'bad.o' => 'not an object' ) )
 

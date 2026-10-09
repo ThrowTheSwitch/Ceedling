@@ -315,4 +315,82 @@ describe 'DependencyTracker cache hardening (integration)' do
     end
   end
 
+  # ── Damaged artifacts across runs ─────────────────────────────────────
+  #
+  # A fresh target vouches for the outputs recorded with it, and a directory is never a
+  # dependency. Each case marks a target fresh in one run and judges it in the next, the
+  # way a build sees an artifact damaged between invocations.
+
+  context 'damaged artifacts across runs' do
+    def fresh_with_output(dir)
+      store_path = File.join(dir, '.dep_cache.json')
+      target = write_fixture( File.join(dir, 'test.fixture_run'), '' )
+      output = write_fixture( File.join(dir, 'test.pass'), ":counts:\n  :total: 2\n" )
+
+      tracker = build_dependency_tracker( store_path: store_path )
+      tracker.register( target, outputs: [output] )
+      tracker.mark_fresh( target )
+      tracker.flush
+
+      [store_path, target, output]
+    end
+
+    def stale_next_run?(store_path, target)
+      tracker = build_dependency_tracker( store_path: store_path )
+      tracker.register( target )
+      tracker.stale?( target )
+    end
+
+    it 'keeps a target fresh across runs while its recorded output is intact' do
+      in_temp_dir do |dir|
+        store_path, target, _ = fresh_with_output( dir )
+        expect( stale_next_run?( store_path, target ) ).to be(false)
+      end
+    end
+
+    it 'makes a target stale when its recorded output is truncated' do
+      in_temp_dir do |dir|
+        store_path, target, output = fresh_with_output( dir )
+        File.truncate( output, File.size( output ) / 2 )
+        expect( stale_next_run?( store_path, target ) ).to be(true)
+      end
+    end
+
+    it 'makes a target stale when its recorded output is emptied' do
+      in_temp_dir do |dir|
+        store_path, target, output = fresh_with_output( dir )
+        File.truncate( output, 0 )
+        expect( stale_next_run?( store_path, target ) ).to be(true)
+      end
+    end
+
+    it 'makes a target stale when its recorded output is deleted' do
+      in_temp_dir do |dir|
+        store_path, target, output = fresh_with_output( dir )
+        File.delete( output )
+        expect( stale_next_run?( store_path, target ) ).to be(true)
+      end
+    end
+
+    # A truncated .d file can end in a directory path, as `unity/src/` here
+    it 'registers a .d file naming a directory without raising, and reads its target stale' do
+      in_temp_dir do |dir|
+        store_path = File.join(dir, '.dep_cache.json')
+        source = write_fixture( File.join(dir, 'foo.c'), 'int x;' )
+        target = write_fixture( File.join(dir, 'foo.o'), 'object bytes' )
+        directory = File.join(dir, 'unity', 'src')
+        FileUtils.mkdir_p( directory )
+
+        tracker = build_dependency_tracker( store_path: store_path )
+        tracker.register_gcc_deps_string( "#{target}: #{source} #{directory}/\n" )
+
+        expect { tracker.mark_fresh( target ) }.not_to raise_error
+        expect { tracker.flush }.not_to raise_error
+
+        next_run = build_dependency_tracker( store_path: store_path )
+        next_run.register_gcc_deps_string( "#{target}: #{source} #{directory}/\n" )
+        expect( next_run.stale?( target ) ).to be(true)
+      end
+    end
+  end
 end

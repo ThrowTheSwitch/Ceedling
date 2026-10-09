@@ -21,6 +21,7 @@ require 'ceedling/exceptions'
 #   tracker.register(target, files: [...], meta: {...})   # may be called more than once; additive
 #   if tracker.stale?(target)
 #     ... run the real build step ...
+#     tracker.register(target, outputs: [...])             # optional; files the step produced
 #     tracker.mark_fresh(target)
 #   end
 #   tracker.flush   # once, after all targets for this invocation are processed
@@ -32,6 +33,11 @@ require 'ceedling/exceptions'
 # is stale if any of: it was never registered, it doesn't exist on disk, its
 # own content hash changed, its meta hash changed, any dependency's content
 # hash changed, or any dependency no longer exists.
+#
+# `outputs` are files a step produces beside its target and later trusts, such as
+# cached results. A fresh target vouches for the outputs recorded with it, so a
+# recorded output that is missing or altered makes the target stale too. Only a
+# regular file counts as present, for a target, a dependency or an output alike.
 #
 # Every filesystem touch goes through the injected FileWrapper (and ENV access
 # through SystemWrapper), so every code path here is exercisable in specs
@@ -101,17 +107,22 @@ class DependencyTracker
   # `register_gcc_deps_file`/`register_gcc_deps_string` for its discovered
   # header dependencies) without each caller needing to know and resupply
   # everything a previous caller already established.
-  def register(target, files: [], meta: {})
+  #
+  # `outputs` accumulate the same way. A step registers them once it has produced
+  # them, before `mark_fresh` records their hashes.
+  def register(target, files: [], meta: {}, outputs: [])
     ensure_open!
 
     key = @dependency_path_normalizer.normalize( target )
     file_keys = Array( files ).map { |file| @dependency_path_normalizer.normalize( file ) }
+    output_keys = Array( outputs ).map { |output| @dependency_path_normalizer.normalize( output ) }
 
     @mutex.synchronize do
-      existing = @relationships[key] || { files: [], meta: {} }
+      existing = @relationships[key] || empty_relationship()
       @relationships[key] = {
-        files: (existing[:files] + file_keys).uniq,
-        meta:  existing[:meta].merge( meta )
+        files:   (existing[:files] + file_keys).uniq,
+        meta:    existing[:meta].merge( meta ),
+        outputs: (existing[:outputs] + output_keys).uniq
       }
     end
   end
@@ -137,38 +148,39 @@ class DependencyTracker
 
   # Pure query -- never mutates the cache. `target` is stale if:
   # - it was never registered this run,
-  # - it does not exist on disk,
+  # - it does not exist on disk as a regular file,
   # - there is no prior cache entry for it,
   # - its own content hash no longer matches the cache entry,
-  # - its meta hash no longer matches the cache entry, or
+  # - its meta hash no longer matches the cache entry,
   # - any registered dependency no longer exists, or its content hash no
-  #   longer matches the cache entry.
+  #   longer matches the cache entry, or
+  # - any output recorded in the cache entry no longer exists, or its content
+  #   hash no longer matches.
+  #
+  # Outputs come from the cache entry rather than this run's registrations, so a
+  # step need not know its outputs before asking.
   def stale?(target)
     ensure_open!
 
     key = @dependency_path_normalizer.normalize( target )
     rel = @mutex.synchronize { @relationships[key] }
     return true if rel.nil?
-    return true unless @file_wrapper.exist?( key )
+    return true unless regular_file?( key )
 
     entry = @mutex.synchronize { @cache['entries'][key] }
     return true if entry.nil?
     return true if entry['self_hash'] != @dependency_hasher.hash_of_file( key )
     return true if entry['meta_hash'] != @dependency_hasher.hash_of_meta( rel[:meta] )
+    return true unless rel[:files].all? { |dep| matches?( dep, entry.dig( 'deps', dep ) ) }
 
-    rel[:files].each do |dep|
-      return true unless @file_wrapper.exist?( dep )
-      return true if entry.dig( 'deps', dep ) != @dependency_hasher.hash_of_file( dep )
-    end
-
-    false
+    !( entry['outputs'] || {} ).all? { |output, digest| matches?( output, digest ) }
   end
 
-  # Records `target` (and its currently-registered dependencies and meta) as
-  # fresh -- called by a build step after it successfully (re)builds `target`.
-  # A dependency that doesn't currently exist is simply omitted from the
-  # recorded `deps` hashes (rather than raising); the next `stale?` call
-  # already treats a missing dependency as stale on its own.
+  # Records `target` (and its currently-registered dependencies, meta, and outputs)
+  # as fresh -- called by a build step after it successfully (re)builds `target`.
+  # A dependency or output that isn't currently a regular file is simply omitted
+  # from the recorded hashes (rather than raising); the next `stale?` call already
+  # treats a missing dependency as stale on its own.
   #
   # When a debug tier is active, this also writes a DependencyDebugTree
   # snapshot for `target` (tier :meta+: canonicalized meta; tier :full:
@@ -180,20 +192,22 @@ class DependencyTracker
     ensure_open!
 
     key = @dependency_path_normalizer.normalize( target )
-    rel = @mutex.synchronize { @relationships[key] } || { files: [], meta: {} }
+    rel = @mutex.synchronize { @relationships[key] } || empty_relationship()
 
     # A target isn't guaranteed to exist -- e.g. a caller conditionally writes one of two
-    # mutually exclusive outcome files -- so this mirrors `stale?`'s own existence check
-    # before ever hashing the target, and the `deps` loop three lines below, which already
-    # extends the same tolerance to each individual dependency.
-    self_hash = @file_wrapper.exist?( key ) ? @dependency_hasher.hash_of_file( key ) : nil
+    # mutually exclusive outcome files -- so this mirrors `stale?`'s own presence check
+    # before ever hashing the target. `hashes_of` extends the same tolerance to each
+    # dependency and output.
+    self_hash = regular_file?( key ) ? @dependency_hasher.hash_of_file( key ) : nil
     entry = {
       'self_hash' => self_hash,
       'meta_hash' => @dependency_hasher.hash_of_meta( rel[:meta] ),
-      'deps'      => rel[:files].each_with_object( {} ) do |dep, hashes|
-        hashes[dep] = @dependency_hasher.hash_of_file( dep ) if @file_wrapper.exist?( dep )
-      end
+      'deps'      => hashes_of( rel[:files] )
     }
+
+    # Only a target with outputs carries the key, so every other entry is unchanged
+    outputs = hashes_of( rel[:outputs] )
+    entry['outputs'] = outputs unless outputs.empty?
 
     capture_debug_snapshots( key, self_hash, rel ) if @debug_tier > DEBUG_TIERS[:none]
 
@@ -261,7 +275,7 @@ class DependencyTracker
 
     if rel.nil?
       diagnosis['reason'] = 'never registered this run'
-    elsif !@file_wrapper.exist?( key )
+    elsif !regular_file?( key )
       diagnosis['reason'] = 'target does not exist on disk'
     elsif entry.nil?
       diagnosis['reason'] = 'no prior cache entry (never marked fresh)'
@@ -269,6 +283,7 @@ class DependencyTracker
       diagnosis['self'] = diagnose_self( key, entry )
       diagnosis['meta'] = diagnose_meta( key, rel, entry )
       diagnosis['antecedents'] = rel[:files].map { |dep| diagnose_dependency( dep, entry ) }
+      diagnosis['outputs'] = ( entry['outputs'] || {} ).map { |output, digest| diagnose_output( output, digest ) }
     end
 
     @dependency_debug_tree.write_diagnosis( @debug_root, key, diagnosis )
@@ -311,7 +326,7 @@ class DependencyTracker
     return unless @debug_tier >= DEBUG_TIERS[:full]
 
     rel[:files].each do |dep|
-      next unless @file_wrapper.exist?( dep )
+      next unless regular_file?( dep )
       @dependency_debug_tree.write_snapshot( @debug_root, dep, hash: @dependency_hasher.hash_of_file( dep ), **captured_content( dep ) )
     end
   end
@@ -332,7 +347,7 @@ class DependencyTracker
     return result unless changed
 
     snapshot = @dependency_debug_tree.read_snapshot( @debug_root, key )
-    current_content = @file_wrapper.exist?( key ) ? @file_wrapper.read( key ) : nil
+    current_content = regular_file?( key ) ? @file_wrapper.read( key ) : nil
     result.merge( @dependency_differ.diff_content( snapshot, current_content ) )
   end
 
@@ -349,7 +364,7 @@ class DependencyTracker
   end
 
   def diagnose_dependency(dep, entry)
-    return { 'path' => dep, 'missing' => true } unless @file_wrapper.exist?( dep )
+    return { 'path' => dep, 'missing' => true } unless regular_file?( dep )
 
     current_hash = @dependency_hasher.hash_of_file( dep )
     changed = entry.dig( 'deps', dep ) != current_hash
@@ -358,6 +373,33 @@ class DependencyTracker
 
     snapshot = @dependency_debug_tree.read_snapshot( @debug_root, dep )
     result.merge( @dependency_differ.diff_content( snapshot, @file_wrapper.read( dep ) ) )
+  end
+
+  # Outputs keep no debug snapshot, so a diagnosis reports only that one changed
+  def diagnose_output(output, digest)
+    return { 'path' => output, 'missing' => true } unless regular_file?( output )
+
+    { 'path' => output, 'changed' => digest != @dependency_hasher.hash_of_file( output ) }
+  end
+
+  def empty_relationship()
+    { files: [], meta: {}, outputs: [] }
+  end
+
+  # A directory is never a dependency or output, however a `.d` file came to name one
+  def regular_file?(path)
+    @file_wrapper.exist?( path ) && !@file_wrapper.directory?( path )
+  end
+
+  # Whether `path` is still a regular file with the content hashed as `digest`
+  def matches?(path, digest)
+    regular_file?( path ) && digest == @dependency_hasher.hash_of_file( path )
+  end
+
+  def hashes_of(paths)
+    paths.each_with_object( {} ) do |path, hashes|
+      hashes[path] = @dependency_hasher.hash_of_file( path ) if regular_file?( path )
+    end
   end
 
 end
