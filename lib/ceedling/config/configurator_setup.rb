@@ -521,6 +521,8 @@ class ConfiguratorSetup
     contexts_supporting_matchers << :gcov if (_config && _config[:plugins] && _config[:plugins][:enabled] && _config[:plugins][:enabled].include?('gcov'))
 
     flags.each_pair do |context, operations|
+      next if operations.nil?
+
       operations.each_pair do |operation, config|
         walk = @reportinator.generate_config_walk( [:flags, context, operation] )
 
@@ -564,6 +566,8 @@ class ConfiguratorSetup
     #       - --flag
 
     flags.each_pair do |context, operations|
+      next if operations.nil?
+
       operations.each_pair do |operation, flags|
 
         # Only validate lists of flags in this block (look for matchers in next block)
@@ -856,11 +860,10 @@ class ConfiguratorSetup
     return valid
   end
 
+  # Discovery records a path beneath :plugins for each enabled plugin it found, whatever
+  # kind of plugin it is
   def validate_plugins(config)
-    missing_plugins =
-      Set.new( config[:plugins][:enabled] ) -
-      Set.new( @configurator_plugins.rake_plugins ) -
-      Set.new( @configurator_plugins.programmatic_plugins.map {|p| p[:plugin]} )
+    missing_plugins = config[:plugins][:enabled].reject { |plugin| config[:plugins].key?( :"#{plugin}_path" ) }
 
     missing_plugins.each do |plugin|
       message = "Plugin '#{plugin}' not found in built-in or project Ruby load paths. Check load paths and plugin naming and path conventions."

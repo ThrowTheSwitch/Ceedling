@@ -595,7 +595,7 @@ class Configurator
       if (_config.include?( :paths ))
         _config[:paths].update( _config[:paths] ) do |_k,v| 
           plugin_path = hash[:path].match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
-          v.map {|vv| File.expand_path( vv.gsub!( /\$PLUGIN_PATH/, plugin_path) ) }
+          v.map {|vv| File.expand_path( vv.gsub( /\$PLUGIN_PATH/, plugin_path) ) }
         end
       end
 
@@ -897,8 +897,9 @@ class Configurator
       return
     end
 
+    # An unset path setting has nothing to expand
     paths.each do |path|
-      path.replace( @ruby_expandinator.expand( path, source: source ) )
+      path.replace( @ruby_expandinator.expand( path, source: source ) ) if path.is_a?( String )
     end
   end
 

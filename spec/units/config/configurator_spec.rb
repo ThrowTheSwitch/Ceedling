@@ -690,6 +690,16 @@ describe Configurator do
       expect( config ).to eq( zap: { level: 2 }, paths: { support: ['test/support', File.expand_path( 'plugins/zap/support' )] } )
     end
 
+    it "merges a plugin's :paths entries that do not use $PLUGIN_PATH" do
+      allow(@configurator_plugins).to receive(:config_plugins).and_return( [ { plugin: 'zap', path: 'plugins/zap/config/zap.yml' } ] )
+      allow(@yaml_wrapper).to receive(:load).and_return( config_from_yaml( ":paths:\n  :support: [vendor/support]\n" ) )
+      config = { paths: { support: [] } }
+
+      @configurator.merge_config_plugins( config )
+
+      expect( config[:paths][:support] ).to eq( [ File.expand_path( 'vendor/support' ) ] )
+    end
+
     it "names the plugin whose configuration fails to load" do
       allow(@configurator_plugins).to receive(:config_plugins).and_return( [ { plugin: 'zap', path: 'plugins/zap/config/zap.yml' } ] )
       allow(@yaml_wrapper).to receive(:load).and_raise( YamlLoadException.new( reason: :syntax, source: 'x', original_error: nil, message: 'bad' ) )
@@ -740,6 +750,15 @@ describe Configurator do
       expect( config[:files][:source] ).to eq( ['src/a.c'] )
       expect( config[:cmock][:mock_path] ).to eq( 'mocks' )
       expect( config[:release_build][:artifacts] ).to eq( ['art'] )
+    end
+  end
+
+  describe "#eval_paths with an unset _path setting" do
+    it "leaves the unset setting alone" do
+      config = base_config.merge( unity: { helper_path: nil }, cmock: { include_paths: ['inc', nil] } )
+
+      expect { @configurator.eval_paths( config ) }.to_not raise_error
+      expect( config[:cmock][:include_paths] ).to eq( ['inc', nil] )
     end
   end
 

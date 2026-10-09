@@ -54,13 +54,16 @@ class ConfiguratorPlugins
         # Ceedling Ruby-based hash defaults plugin (or config for Ceedling programmatic plugin)
         is_config_plugin       = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, 'config', '*.rb' ) ).empty? )
 
+        # Ceedling YAML configuration plugin
+        is_config_yaml_plugin  = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, 'config', '*.yml' ) ).empty? )
+
         # Ceedling programmatic plugin
         is_programmatic_plugin = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, 'lib', '*.rb' ) ).empty? )
 
         # Ceedling Rake plugin
         is_rake_plugin         = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, '*.rake' ) ).empty? )
 
-        if (is_config_plugin or is_programmatic_plugin or is_rake_plugin)
+        if (is_config_plugin or is_config_yaml_plugin or is_programmatic_plugin or is_rake_plugin)
           plugin_paths[(plugin + '_path').to_sym] = path
 
           # Add paths to Ruby load paths that contain *.rb files

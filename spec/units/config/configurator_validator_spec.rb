@@ -213,6 +213,10 @@ describe ConfiguratorValidator do
       expect { @validator.validate_matcher( 'test/Test_Foo-1 *.c' ) }.to_not raise_error
     end
 
+    it 'treats a path with inner slashes as a substring, not a regular expression' do
+      expect { @validator.validate_matcher( 'test/Foo+Bar/' ) }.to raise_error(RuntimeError, /'\+'/)
+    end
+
     it 'names each distinct invalid character once' do
       expect { @validator.validate_matcher( 'Foo$Bar$#' ) }.to raise_error(RuntimeError, /'\$', '#'\z/)
     end

@@ -71,6 +71,13 @@ describe ConfiguratorPlugins do
       expect(@system_wrapper).to have_received(:add_load_path).with('first/alpha/config')
     end
 
+    it 'finds a configuration plugin by its config/ YAML files' do
+      listing('first/beta/config/*.yml', 'first/beta/config/beta.yml')
+
+      expect(@plugins.process_aux_load_paths( config )).to eq( { beta_path: 'first/beta' } )
+      expect(@system_wrapper).to_not have_received(:add_load_path).with('first/beta/config')
+    end
+
     it 'finds a plugin by its Rakefile' do
       listing('first/beta/*.rake', 'first/beta/beta.rake')
 

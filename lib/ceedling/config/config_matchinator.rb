@@ -228,6 +228,12 @@ class ConfigMatchinator
     end
   end
 
+  # A matcher bounded by slashes is a regular expression. Any other matcher is a substring
+  # or wildcard. Assumes expr is a string and has been stripped.
+  def self.regex_form?(expr)
+    return expr.start_with?('/') && expr.end_with?('/')
+  end
+
   ### Private ###
 
   private
@@ -252,13 +258,7 @@ class ConfigMatchinator
   def regex?(expr)
     valid = true
 
-    if !expr.start_with?('/')
-      return false
-    end
-
-    if !expr.end_with?('/')
-      return false
-    end
+    return false if !ConfigMatchinator.regex_form?( expr )
 
     begin
       Regexp.new(expr[1..-2])

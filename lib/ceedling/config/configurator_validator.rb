@@ -9,6 +9,7 @@ require 'rubygems'
 require 'rake' # for ext()
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'  # for glob handling class methods
+require 'ceedling/config/config_matchinator'
 
 
 class ConfiguratorValidator
@@ -179,9 +180,9 @@ class ConfiguratorValidator
 
   def validate_matcher(matcher)
     case matcher
-    
+
     # Handle regex-based matcher
-    when /\/.+\//
+    when ConfigMatchinator.method( :regex_form? )
       # Ensure regex is well-formed by trying to compile it
       begin
         Regexp.compile( matcher[1..-2] )

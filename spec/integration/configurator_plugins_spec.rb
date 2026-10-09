@@ -65,6 +65,30 @@ describe 'Configurator plugins (integration)' do
     end
   end
 
+  it 'finds a plugin that is only a Rakefile' do
+    files = minimal_project_files.merge( plugin_files( 'cfg_spec_rake', 'cfg_spec_rake.rake' => "\n" ) )
+
+    in_temp_project( files ) do
+      configurator = configure( with_plugins( 'cfg_spec_rake' ) )[:configurator]
+
+      expect(configurator.rake_plugins).to eq( [ { plugin: 'cfg_spec_rake', path: 'support/plugins/cfg_spec_rake/cfg_spec_rake.rake' } ] )
+      expect(configurator.project_rakefile_component_files).to include( 'support/plugins/cfg_spec_rake/cfg_spec_rake.rake' )
+    end
+  end
+
+  it 'finds a plugin that is only YAML configuration and merges it' do
+    files = minimal_project_files
+      .merge( plugin_files( 'cfg_spec_yaml', 'config/cfg_spec_yaml.yml' => ":cfg_spec_yaml:\n  :volume: 11\n:paths:\n  :support: [test/support]\n" ) )
+      .merge( 'test/support/.keep' => '' )
+
+    in_temp_project( files ) do
+      configurator = configure( with_plugins( 'cfg_spec_yaml' ) )[:configurator]
+
+      expect(configurator.cfg_spec_yaml_volume).to eq(11)
+      expect(configurator.paths_support).to eq( [ File.join( File.realpath( Dir.pwd ), 'test/support' ) ] )
+    end
+  end
+
   it 'takes a plugin from the first load path that holds it' do
     files = minimal_project_files
       .merge( 'first/cfg_spec_twice/lib/cfg_spec_twice.rb' => "\n", 'second/cfg_spec_twice/lib/cfg_spec_twice.rb' => "\n" )

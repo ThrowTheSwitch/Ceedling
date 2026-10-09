@@ -470,6 +470,11 @@ describe ConfiguratorSetup do
         logged(/:flags ↳ :test context must contain :<operation> key \/ value pairs, not array/)
       end
 
+      it "rejects a context with nothing beneath it" do
+        expect(validate( ":flags:\n  :test:\n  :release:\n    :compile: [-O2]\n" )).to be false
+        logged(/:flags ↳ :test operations key \/ value pairs are missing/)
+      end
+
       it "rejects an operation with nothing beneath it" do
         expect(validate( ":flags:\n  :test:\n    :compile:\n" )).to be false
         logged(/:flags ↳ :test ↳ :compile is missing a list or matcher hash/)
@@ -613,17 +618,18 @@ describe ConfiguratorSetup do
       end
     end
 
+    # A plugin is found when discovery found its directory, whatever kind of plugin it is
     context "#validate_plugins" do
-      it "accepts enabled plugins that were found" do
-        allow(@configurator_plugins).to receive_messages( rake_plugins: [], programmatic_plugins: [ { plugin: 'beep', root_path: 'p/beep' } ] )
+      it "accepts enabled plugins whose directories were found" do
+        config = { plugins: { enabled: ['beep', 'rk', 'zap'], beep_path: 'p/beep', rk_path: 'p/rk', zap_path: 'p/zap' } }
 
-        expect(@setup.validate_plugins( { plugins: { enabled: ['beep'] } } )).to be true
+        expect(@setup.validate_plugins( config )).to be true
       end
 
       it "names each enabled plugin that was not found" do
-        allow(@configurator_plugins).to receive_messages( rake_plugins: [], programmatic_plugins: [] )
+        config = { plugins: { enabled: ['beep', 'rk'], rk_path: 'p/rk' } }
 
-        expect(@setup.validate_plugins( { plugins: { enabled: ['beep'] } } )).to be false
+        expect(@setup.validate_plugins( config )).to be false
         logged(/Plugin 'beep' not found/)
       end
     end
