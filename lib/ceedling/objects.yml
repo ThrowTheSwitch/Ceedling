@@ -69,7 +69,6 @@ tool_validator:
     - file_wrapper
     - loginator
     - system_wrapper
-    - reportinator
     - ruby_expandinator
 
 configurator:
