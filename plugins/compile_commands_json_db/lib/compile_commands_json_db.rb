@@ -22,6 +22,7 @@ class CompileCommandsJsonDb < Plugin
     @file_wrapper = @ceedling[:file_wrapper]
     @loginator    = @ceedling[:loginator]
     @fullpath     = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, 'compile_commands.json' )
+    # Hash: source filepath => entry, in the order sources were first compiled
     @database     = load_database()
     @changed      = false
     @mutex        = Mutex.new
@@ -32,8 +33,7 @@ class CompileCommandsJsonDb < Plugin
     entry = CompileCommandsJsonDb.entry_from( arg_hash )
 
     @mutex.synchronize do
-      index = @database.index { |existing| existing['file'] == entry['file'] }
-      index ? (@database[index] = entry) : (@database << entry)
+      @database[entry['file']] = entry
       @changed = true
     end
   end
@@ -65,22 +65,22 @@ class CompileCommandsJsonDb < Plugin
 
   private
 
-  # A damaged database would otherwise fail every later build, so anything other than a
-  # list of entries is discarded and the database starts fresh
+  # A damaged database would otherwise fail every later build. Anything other than a list
+  # is discarded and the database starts fresh. A list keeps only its entry objects.
   def load_database()
-    return [] unless @file_wrapper.exist?( @fullpath )
+    return {} unless @file_wrapper.exist?( @fullpath )
 
     database = JSON.parse( @file_wrapper.read( @fullpath ) )
-    return database if database.is_a?( Array )
+    return discard_database( 'is not a list of compile entries' ) unless database.is_a?( Array )
 
-    discard_database( 'is not a list of compile entries' )
+    return database.grep( Hash ).to_h { |entry| [entry['file'], entry] }
   rescue JSON::ParserError
     discard_database( 'is not valid JSON' )
   end
 
   def discard_database(reason)
     @loginator.log( "#{@fullpath} #{reason} ➡️ Starting a new compile_commands.json.", Verbosity::COMPLAIN, LogLabels::NOTICE )
-    return []
+    return {}
   end
 
   # Nothing is written when nothing compiled, which leaves an earlier build's file as it was
@@ -88,7 +88,7 @@ class CompileCommandsJsonDb < Plugin
     @mutex.synchronize do
       return unless @changed
 
-      @file_wrapper.write( @fullpath, JSON.pretty_generate( @database ) )
+      @file_wrapper.write( @fullpath, JSON.pretty_generate( @database.values ) )
       @changed = false
     end
   end

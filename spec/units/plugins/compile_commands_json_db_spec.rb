@@ -129,6 +129,13 @@ describe CompileCommandsJsonDb do
       expect(written.map { |entry| entry['file'] }).to eq(['src/adder.c'])
     end
 
+    it 'keeps the entries of a list that also holds other values' do
+      existing( JSON.generate([ 42, { 'file' => 'src/old.c', 'command' => 'gcc -c src/old.c' }, 'stray' ]) )
+      compile('src/adder.c')
+
+      expect(written.map { |entry| entry['file'] }).to eq(['src/old.c', 'src/adder.c'])
+    end
+
     it 'logs that it is starting fresh' do
       existing('not json')
       expect(@loginator).to receive(:log).with(/compile_commands\.json/, Verbosity::COMPLAIN, LogLabels::NOTICE)

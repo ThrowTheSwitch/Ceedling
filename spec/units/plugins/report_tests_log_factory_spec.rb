@@ -42,6 +42,12 @@ describe ReportTestsLogFactory do
       expect(reporters.map(&:class)).to eq([JsonTestsReporter, JunitTestsReporter])
     end
 
+    it 'loads a report named more than once only once' do
+      set_up(['json', 'JSON'])
+
+      expect(@plugin.instance_variable_get(:@reporters).length).to eq(1)
+    end
+
     it 'reports nothing at all when no reports are configured' do
       set_up([])
 

@@ -115,7 +115,7 @@ class JunitTestsReporter < TestsReporter
   def outcome_element(test)
     case test[:result]
     when :failed
-      return '<failure />' if test[:message].empty?
+      return '<failure />' if test[:message].to_s.empty?
       return '<failure message="%s" />' % xml_escape( test[:message] )
     when :ignored
       return '<skipped />'

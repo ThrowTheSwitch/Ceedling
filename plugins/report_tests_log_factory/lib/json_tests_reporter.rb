@@ -18,10 +18,10 @@ class JsonTestsReporter < TestsReporter
     hash = {
       "Name"          => name,
       "BuildDuration" => duration_s,
-      "FailedTests"   => write_failures( results[:failures] ),
-      "PassedTests"   => write_tests( results[:successes] ),
-      "IgnoredTests"  => write_tests( results[:ignores] ),
-      "Summary"       => write_statistics( results[:counts] )
+      "FailedTests"   => failure_entries( results[:failures] ),
+      "PassedTests"   => test_entries( results[:successes] ),
+      "IgnoredTests"  => test_entries( results[:ignores] ),
+      "Summary"       => statistics( results[:counts] )
     }
 
     stream << JSON.pretty_generate(hash)
@@ -31,16 +31,16 @@ class JsonTestsReporter < TestsReporter
 
   private
 
-  # Array of hashes relating a source file, test, and test failure
-  def write_failures(results)
-    failures = tests_in( results ).map do |file, item|
+  # Each failure relates a source file, test, line, and message
+  def failure_entries(results)
+    entries = tests_in( results ).map do |file, item|
       { "file" => file, "test" => item[:test], "line" => item[:line], "message" => item[:message] }
     end
-    return failures.uniq
+    return entries.uniq
   end
 
-  # Array of hashes relating a source file and test
-  def write_tests(results)
+  # Each entry relates a source file and test
+  def test_entries(results)
     return tests_in( results ).map { |file, item| { "file" => file, "test" => item[:test] } }
   end
 
@@ -49,13 +49,12 @@ class JsonTestsReporter < TestsReporter
     return results.flat_map { |result| result[:collection].map { |item| [ result[:source][:file], item ] } }
   end
 
-  def write_statistics(counts)
-    # Hash of keys:values for statistics
+  def statistics(counts)
     return {
       "total_tests" => counts[:total],
-      "passed" => counts[:passed],
-      "ignored" => counts[:ignored],
-      "failures" => counts[:failed]
+      "passed"      => counts[:passed],
+      "ignored"     => counts[:ignored],
+      "failures"    => counts[:failed]
     }
   end
 

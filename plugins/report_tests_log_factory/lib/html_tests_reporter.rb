@@ -202,15 +202,15 @@ module HtmlRingChart
     drawn   = 0.0
     circles = [ passed, failed, ignored ].zip( COLORS ).reject { |count, _| count == 0 }.map do |count, color|
       length = (count.to_f / total) * CIRCUMFERENCE
-      circle = self.circle( length, (CIRCUMFERENCE / 4.0) - drawn, color )
+      arc = circle( length, (CIRCUMFERENCE / 4.0) - drawn, color )
       drawn += length
-      circle
+      arc
     end
 
     return %(<svg viewBox="0 0 100 100" width="90" height="90" xmlns="http://www.w3.org/2000/svg">\n#{circles.join}</svg>)
   end
 
-  def self.circle(length, offset, color)
+  private_class_method def self.circle(length, offset, color)
     return %(<circle cx="50" cy="50" r="#{RADIUS}" fill="none" stroke="#{color}" stroke-width="20" ) +
            %(stroke-dasharray="#{length.round(3)} #{(CIRCUMFERENCE - length).round(3)}" ) +
            %(stroke-dashoffset="#{offset.round(3)}"/>\n)
@@ -219,6 +219,17 @@ module HtmlRingChart
 end
 
 class HtmlTestsReporter < TestsReporter
+
+  # Each results table, in report order: its CSS class, its title, and whether its rows
+  # carry a line number and a message. Passing results carry neither.
+  TABLES = {
+    failures:  { css: 'failed',  title: 'Failing test cases', line: true,  message: true  },
+    ignores:   { css: 'ignored', title: 'Ignored test cases', line: false, message: true  },
+    successes: { css: 'success', title: 'Passing test cases', line: false, message: false }
+  }.freeze
+
+  # A message longer than this many characters is collapsed behind a disclosure widget
+  MESSAGE_DISCLOSURE_LENGTH = 150
 
   def setup()
     super( default_filename: 'tests_report.html' )
@@ -239,14 +250,6 @@ class HtmlTestsReporter < TestsReporter
       </html>
     HTML
   end
-
-  # Each results table, in report order: its CSS class, its title, and whether its rows
-  # carry a line number and a message. Passing results carry neither.
-  TABLES = {
-    failures:  { css: 'failed',  title: 'Failing test cases', line: true,  message: true  },
-    ignores:   { css: 'ignored', title: 'Ignored test cases', line: false, message: true  },
-    successes: { css: 'success', title: 'Passing test cases', line: false, message: false }
-  }.freeze
 
   ### Private
 
@@ -324,22 +327,15 @@ class HtmlTestsReporter < TestsReporter
     return cells
   end
 
-  # Returns a <td> HTML string for an assertion message.
-  # Empty messages render an em-dash placeholder. Messages over 150 characters
-  # are hidden behind a <details> disclosure widget to avoid overwhelming the
-  # table layout.
+  # An empty message shows a placeholder. A long one is collapsed so it cannot swamp the
+  # table. Its length counts the message's own characters, before escaping lengthens it.
   def message_cell(message)
-    msg = message.to_s
-    return '<td class="col-message">—</td>' if msg.empty?
-    # Truncation threshold is checked against the raw message length, before
-    # escaping -- escaping can only lengthen the string, never shorten it,
-    # so checking pre-escaping keeps the threshold meaning "this many actual
-    # characters of message text" rather than "this many characters once
-    # some fraction of them have been expanded into HTML entities."
-    truncate = msg.length > 150
-    msg = html_escape(msg)
-    return "<td class=\"col-message\"><details><summary>Message hidden due to long length.</summary>#{msg}</details></td>" if truncate
-    "<td class=\"col-message\">#{msg}</td>"
+    message = message.to_s
+    return '<td class="col-message">—</td>' if message.empty?
+
+    escaped = html_escape( message )
+    return %(<td class="col-message">#{escaped}</td>) if message.length <= MESSAGE_DISCLOSURE_LENGTH
+    return %(<td class="col-message"><details><summary>Message hidden due to long length.</summary>#{escaped}</details></td>)
   end
 
 end

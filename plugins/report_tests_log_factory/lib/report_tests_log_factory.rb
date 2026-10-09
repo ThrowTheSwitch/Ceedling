@@ -16,19 +16,12 @@ class ReportTestsLogFactory < Plugin
   def setup
     # Hash: Context symbol => TestBuild struct
     @build_results = {}
-    
-    # Get our test suite reports' configuration
-    config = @ceedling[:setupinator].config_hash
-    @config = config[:report_tests_log_factory]
-    
-    # Get list of enabled reports
-    reports = @config[:reports]
 
-    # Array of Reporter subclass objects
-    @reporters = load_reporters( reports, @config )
+    config     = @ceedling[:setupinator].config_hash[:report_tests_log_factory]
+    @reporters = load_reporters( config[:reports], config )
 
-    # Disable this plugin if no reports configured
-    @enabled = !(reports.empty?)
+    # With no reports configured, every hook does nothing
+    @enabled = !@reporters.empty?
 
     @mutex = Mutex.new()
 
@@ -52,8 +45,8 @@ class ReportTestsLogFactory < Plugin
     context = arg_hash[:context]
 
     @mutex.synchronize do
-      # Create a TestBuild entry if pre_test_build did not fire for this context.
-      # `ceedling summary` will not fire pre_test_build.
+      # Fixtures run inside a test build, so pre_test_build has normally made this entry.
+      # Without one, the results are still reported, with no duration.
       @build_results[context] ||= TestBuild.new( [], nil, nil )
       @build_results[context].results_filepaths << arg_hash[:result_file]
     end
@@ -73,15 +66,12 @@ class ReportTestsLogFactory < Plugin
     return if not @enabled
     return if @build_results.empty?
 
-    @loginator.log( @reportinator.generate_heading( "Running Test Suite Reports" ) )
-
-    @build_results.each do |context, test_build|
-      results = @ceedling[:plugin_reportinator].assemble_test_results( test_build.results_filepaths )
-      write_reports( context, results, duration_s( test_build ) )
+    reporting do
+      @build_results.each do |context, test_build|
+        results = @ceedling[:plugin_reportinator].assemble_test_results( test_build.results_filepaths )
+        write_reports( context, results, duration_s( test_build ) )
+      end
     end
-
-    # White space at command line after all progress messages
-    @loginator.log( '' )
   end
 
   # `Plugin` summary hook -- report on the test results an earlier build left on disk.
@@ -92,9 +82,7 @@ class ReportTestsLogFactory < Plugin
     result_list = @ceedling[:file_path_utils].form_pass_results_filelist( PROJECT_TEST_RESULTS_PATH, COLLECTION_ALL_TESTS )
     results     = @ceedling[:plugin_reportinator].assemble_test_results( result_list, {:boom => false} )
 
-    @loginator.log( @reportinator.generate_heading( "Running Test Suite Reports" ) )
-    write_reports( TEST_SYM, results, nil )
-    @loginator.log( '' )
+    reporting { write_reports( TEST_SYM, results, nil ) }
   end
 
   # The class a configured report loads by convention, e.g. 'fancy_shmancy' loads
@@ -107,6 +95,13 @@ class ReportTestsLogFactory < Plugin
   ### Private
 
   private
+
+  # Frames report generation's progress messages with a heading and trailing white space
+  def reporting
+    @loginator.log( @reportinator.generate_heading( "Running Test Suite Reports" ) )
+    yield
+    @loginator.log( '' )
+  end
 
   # Writes every configured report for one context under that context's artifacts directory
   def write_reports(context, results, duration_s)
@@ -138,8 +133,9 @@ class ReportTestsLogFactory < Plugin
 
   # Each configured report loads its Reporter subclass by naming convention. The factory
   # injects configuration and utilities, which keeps a custom subclass's own setup small.
+  # A report named twice is written once.
   def load_reporters(reports, config)
-    return reports.map { |report| load_reporter( report.downcase, config ) }
+    return reports.map( &:downcase ).uniq.map { |report| load_reporter( report, config[report.to_sym] ) }
   end
 
   def load_reporter(report, config)
@@ -150,7 +146,7 @@ class ReportTestsLogFactory < Plugin
     # the missing class
     reporter = Object.const_get( ReportTestsLogFactory.reporter_class_name( report ) ).new( handle: report.to_sym )
 
-    reporter.config            = config[report.to_sym]
+    reporter.config            = config
     reporter.config_walkinator = @ceedling[:config_walkinator]
     reporter.file_wrapper      = @ceedling[:file_wrapper]
     reporter.setup()

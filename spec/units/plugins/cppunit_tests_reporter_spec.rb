@@ -27,7 +27,6 @@ describe CppunitTestsReporter do
 
   describe 'full render' do
     reporter_calls = ->(reporter, stream, results) do
-      reporter.instance_variable_set(:@test_counter, 0) # setup's own responsibility, not under test here
       reporter.header(stream: stream, name: 'Ceedling Test Suite', results: results, duration_s: nil)
       reporter.body(stream: stream, name: 'Ceedling Test Suite', results: results, duration_s: nil)
       reporter.footer(stream: stream, name: 'Ceedling Test Suite', results: results, duration_s: nil)
@@ -109,7 +108,6 @@ describe CppunitTestsReporter do
 
     it 'escapes the report name' do
       stream = StringIO.new
-      reporter.instance_variable_set(:@test_counter, 0)
       reporter.header(stream: stream, name: 'Q-36 & <Modulator>', results: results, duration_s: nil)
       reporter.body(stream: stream, name: 'Q-36 & <Modulator>', results: results, duration_s: nil)
       reporter.footer(stream: stream, name: 'Q-36 & <Modulator>', results: results, duration_s: nil)
