@@ -12,6 +12,7 @@ require 'ceedling/test_invoker/test_build_executor'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
 require 'ceedling/test_context_extractor'
+require 'ceedling/quote_include_isolator'
 
 PROJECT_BUILD_VENDOR_UNITY_PATH = 'build/vendor/unity' unless defined?(PROJECT_BUILD_VENDOR_UNITY_PATH)
 UNITY_C_FILE = 'unity.c' unless defined?(UNITY_C_FILE)
@@ -32,6 +33,7 @@ describe TestBuildExecutor do
     @dependinator                                          = double( "Dependinator" )
     @test_source_file_directive_resolver                      = double( "TestSourceFileDirectiveResolver" )
     @gcc_dependency_parser                                        = double( "GccDependencyParser" )
+    @quote_include_isolator                                       = double( "QuoteIncludeIsolator" )
     @generator_helper                                                = double( "GeneratorHelper" )
 
     @tools_test_compiler                     = { name: 'fake compiler' }
@@ -70,7 +72,10 @@ describe TestBuildExecutor do
     allow(@file_path_utils).to receive(:form_preprocessed_source_files_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/TestFoo.c_source_files.yml' )
 
     allow(@file_wrapper).to receive(:mkdir)
-    allow(@file_wrapper).to receive(:remove_isolated_copies)
+    allow(@quote_include_isolator).to receive(:release)
+    # The real literal scan over the doubled file layer, so each example's read stubs decide it
+    real_isolator = QuoteIncludeIsolator.new( { :file_wrapper => @file_wrapper, :loginator => @loginator } )
+    allow(@quote_include_isolator).to receive(:includes_by_name?) { |file, name| real_isolator.includes_by_name?( file, name ) }
     allow(@generator_helper).to receive(:explain_possible_mock_partial_collision).and_return( nil )
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
@@ -116,6 +121,7 @@ describe TestBuildExecutor do
         :dependinator            => @dependinator,
         :test_source_file_directive_resolver => @test_source_file_directive_resolver,
         :gcc_dependency_parser   => @gcc_dependency_parser,
+        :quote_include_isolator  => @quote_include_isolator,
         :generator_helper        => @generator_helper
       }
     )
@@ -128,6 +134,11 @@ describe TestBuildExecutor do
     )
 
     @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => testable }, :lock => Mutex.new )
+  end
+
+  # An isolation staged into `dir`, as QuoteIncludeIsolator#isolate returns one
+  def isolation_in(dir)
+    QuoteIncludeIsolator::Isolation.new( dir, {} )
   end
 
   # `@batchinator.exec` is a real collaborator only in production; here it's
@@ -310,6 +321,137 @@ describe TestBuildExecutor do
     # content slip past the substitution entirely; isolating the sibling and retrying
     # with corrected search paths closes that gap without ever touching the original
     # compile's own registered dependencies.
+    # A source beside a header mocked under :treat_inlines :include would find the real
+    # header first and run its inline bodies. It compiles from an isolated copy instead.
+    context "a source sharing a directory with a header mocked with inline shadowing" do
+      let(:isolation) do
+        QuoteIncludeIsolator::Isolation.new( 'build/test/out/a_test/tmp1', { 'src/gpio.c' => 'build/test/out/a_test/tmp1/gpio.c' } )
+      end
+
+      before(:each) do
+        allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
+        allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
+
+        @testable              = @state.testables[:a_test]
+        @testable.filepath     = 'test/test_gpio.c'
+        @testable.paths        = { :build => 'build/test/out/a_test' }
+        @testable.search_paths = ['build/test/mocks/a_test', 'src']
+        @testable.mocks        = {
+          :mock_board => TestInvokerTypes::MockDetails.new( name: 'mock_board', source: 'src/board.h', partial: false )
+        }
+
+        allow(@file_wrapper).to receive(:exist?).with( 'src/gpio.c' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( 'src/gpio.c' ).and_return( %(#include "board.h"\n) )
+
+        # A real scoped isolation hands back whatever its block returns
+        allow(@quote_include_isolator).to receive(:within) { |**_, &block| block.call( isolation ) }
+        allow(@quote_include_isolator).to receive(:restore_dependencies)
+        allow(@generator).to receive(:generate_object_file_c)
+      end
+
+      def compile(source: 'src/gpio.c')
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => source, :object => 'build/gpio.o', :state => @state
+        )
+      end
+
+      it "compiles a location-preserving copy, with the original's directory searched last" do
+        compile()
+
+        expect(@quote_include_isolator).to have_received(:within)
+          .with( parent: 'build/test/out/a_test', files: ['src/gpio.c'], preserve_location: true )
+        expect(@generator).to have_received(:generate_object_file_c).with( hash_including(
+          source:         'src/gpio.c',
+          compile_source: 'build/test/out/a_test/tmp1/gpio.c',
+          search_paths:   ['build/test/mocks/a_test', 'src', 'src']
+        ) )
+      end
+
+      it "restores the dependency file before registering it" do
+        allow(@file_wrapper).to receive(:exist_with_retry?).with( 'build/deps' ).and_return( false, true )
+
+        expect(@quote_include_isolator).to receive(:restore_dependencies).with( isolation, 'build/deps' ).ordered
+        expect(@dependinator).to receive(:register_gcc_deps_file).with( 'build/deps' ).ordered
+
+        compile()
+      end
+
+      it "restores the dependency file and raises when the compile fails" do
+        ex = ShellException.new( shell_result: { output: 'error' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+
+        expect { compile() }.to raise_error( ShellException )
+        expect(@quote_include_isolator).to have_received(:restore_dependencies).with( isolation, 'build/deps' )
+      end
+
+      it "logs the isolation at NORMAL verbosity, decorated as a notice" do
+        compile()
+
+        expect(@loginator).to have_received(:log).with( a_string_including( 'src/gpio.c', 'src/board.h' ), Verbosity::NORMAL, LogLabels::NOTICE )
+      end
+
+      # Isolation is an implementation detail of how a source compiles. Its staleness must
+      # read the same either way, or toggling isolation would force a rebuild.
+      it "registers the same staleness meta as an ordinary compile" do
+        metas = []
+        allow(@dependinator).to receive(:register) { |_, **kwargs| metas << kwargs[:meta] }
+
+        compile()
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude )
+        compile()
+
+        expect( metas.uniq.length ).to eq( 1 )
+      end
+
+      shared_examples "an ordinary compile" do
+        it "compiles the original in place" do
+          compile( source: source )
+
+          expect(@quote_include_isolator).to_not have_received(:within)
+          expect(@generator).to have_received(:generate_object_file_c).with( hash_excluding( :compile_source ) )
+        end
+      end
+
+      context "when inline functions are excluded from mocking" do
+        before(:each) { allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude ) }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when mocks are disabled" do
+        before(:each) { allow(@configurator).to receive(:project_use_mocks).and_return( false ) }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the mock is a Partial mock" do
+        before(:each) { @testable.mocks[:mock_board].partial = true }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the mocked header lives in another directory" do
+        before(:each) { @testable.mocks[:mock_board].source = 'inc/board.h' }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the source does not include the mocked header" do
+        before(:each) { allow(@file_wrapper).to receive(:read).with( 'src/gpio.c' ).and_return( %(#include "gpio.h"\n) ) }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the source is the test file itself" do
+        before(:each) { @testable.filepath = 'src/gpio.c' }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+    end
+
     context "sibling-header isolation retry" do
       before(:each) do
         allow(@file_wrapper).to receive(:extname).with( 'test/a_test.c' ).and_return( '.c' )
@@ -338,9 +480,9 @@ describe TestBuildExecutor do
       end
 
       it "retries the compile with corrected search paths when a sibling risk is found, and clears an initial failure" do
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
         call_count = 0
@@ -362,7 +504,7 @@ describe TestBuildExecutor do
       end
 
       it "retries against a separate, throwaway dependencies path, and registers only the original .d file" do
-        allow(@file_wrapper).to receive(:stage_isolated_copies).and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
         allow(@generator).to receive(:generate_object_file_c)
 
         expect(@generator).to receive(:generate_object_file_c).with( hash_including( dependencies: 'build/deps' ) ).ordered
@@ -378,7 +520,7 @@ describe TestBuildExecutor do
       end
 
       it "still raises when the retry itself also fails" do
-        allow(@file_wrapper).to receive(:stage_isolated_copies).and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
         allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
@@ -451,9 +593,9 @@ describe TestBuildExecutor do
       # though nothing about the project actually changed.
       it "applies whatever isolation the existing .d file already reveals even when this object is not stale" do
         allow(@dependinator).to receive(:stale?).with( 'build/foo.o' ).and_return( false )
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         expect(@generator).to_not receive(:generate_object_file_c)
 
@@ -507,7 +649,7 @@ describe TestBuildExecutor do
       end
 
       it "logs the guidance after a retry that also fails" do
-        allow(@file_wrapper).to receive(:stage_isolated_copies).and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
         allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
@@ -605,7 +747,7 @@ describe TestBuildExecutor do
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/unrelated_neighbor.h'] }
         )
 
-        expect(@file_wrapper).to_not receive(:stage_isolated_copies)
+        expect(@quote_include_isolator).to_not receive(:isolate)
         expect( call_it() ).to be_nil
       end
 
@@ -613,9 +755,9 @@ describe TestBuildExecutor do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
         )
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'build/test/out/a_test/isolated_headers/xyz' )
+          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         result = call_it()
 
@@ -629,7 +771,7 @@ describe TestBuildExecutor do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
         )
-        allow(@file_wrapper).to receive(:stage_isolated_copies).and_return( 'isolated/dir' )
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'isolated/dir' ) )
 
         expect(@loginator).to receive(:log).with(
           a_string_including( '/project/library/driverlib.h' ).and( a_string_including( '/project/library/gpio.h' ) ),
@@ -646,7 +788,7 @@ describe TestBuildExecutor do
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
         )
 
-        expect(@file_wrapper).to_not receive(:stage_isolated_copies)
+        expect(@quote_include_isolator).to_not receive(:isolate)
         expect( call_it() ).to be_nil
       end
 
@@ -659,9 +801,9 @@ describe TestBuildExecutor do
             ]
           }
         )
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'isolated/dir' )
+          .and_return( isolation_in( 'isolated/dir' ) )
 
         expect(@loginator).to receive(:log).with(
           a_string_including( '/project/other/x.h' ).and( a_string_including( '/project/other/y.h' ) ),
@@ -743,9 +885,9 @@ describe TestBuildExecutor do
         )
         allow(@file_wrapper).to receive(:exist?).with( '/project/library/driverlib.h' ).and_return( true )
         allow(@file_wrapper).to receive(:read).with( '/project/library/driverlib.h' ).and_return( "#include \"moduleA.h\"\n" )
-        allow(@file_wrapper).to receive(:stage_isolated_copies)
+        allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( 'isolated/dir' )
+          .and_return( isolation_in( 'isolated/dir' ) )
 
         expect( call_it() ).to_not be_nil
       end
@@ -821,7 +963,7 @@ describe TestBuildExecutor do
       @testable.isolated_headers_path = 'build/test/out/a_test/isolated_headers/xyz'
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@file_wrapper).to receive(:remove_isolated_copies).with( 'build/test/out/a_test/isolated_headers/xyz' ).once
+      expect(@quote_include_isolator).to receive(:release).with( 'build/test/out/a_test/isolated_headers/xyz' ).once
 
       @executor.stage_build_objects( @state )
     end
@@ -829,7 +971,7 @@ describe TestBuildExecutor do
     it "attempts no cleanup for a testable that never isolated anything" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@file_wrapper).to_not receive(:remove_isolated_copies)
+      expect(@quote_include_isolator).to_not receive(:release)
 
       @executor.stage_build_objects( @state )
     end

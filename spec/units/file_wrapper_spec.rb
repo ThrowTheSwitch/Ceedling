@@ -324,27 +324,6 @@ describe FileWrapper do
     end
   end
 
-  describe '#remove_isolated_copies' do
-    it 'removes the given directory and its content' do
-      isolation_dir = Dir.mktmpdir
-      File.write( File.join( isolation_dir, 'leftover.h' ), 'x' )
-
-      @file_wrapper.remove_isolated_copies( isolation_dir )
-
-      expect( File.directory?( isolation_dir ) ).to be false
-    end
-
-    it 'logs the removal at DEBUG verbosity' do
-      isolation_dir = Dir.mktmpdir
-
-      @file_wrapper.remove_isolated_copies( isolation_dir )
-
-      expect(@loginator).to have_received(:log).with(
-        a_string_including( isolation_dir ), Verbosity::DEBUG
-      )
-    end
-  end
-
   # Guards a reconstructed or generated header against double inclusion. Two headers
   # sharing a basename in one test would otherwise share one guard, and whichever the
   # compiler reads second would be emptied of everything it declares.

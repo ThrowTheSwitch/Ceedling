@@ -112,6 +112,45 @@ TEST_MODULE_A_MOCKS_GPIO_AND_BOARD_C = <<~C
   #endif // TEST
 C
 
+READER_HEADER_C = <<~C
+  #ifndef READER_H
+  #define READER_H
+
+  int reader_read(int pin);
+
+  #endif // READER_H
+C
+
+# Sits beside gpio.h, so its own #include finds the real header before any search path.
+READER_SOURCE_BESIDE_GPIO_C = <<~C
+  #include "reader.h"
+  #include "gpio.h"
+
+  int reader_read(int pin)
+  {
+      return gpio_read(pin);
+  }
+C
+
+TEST_READER_MOCKS_GPIO_C = <<~C
+  #ifdef TEST
+
+  #include "unity.h"
+  #include "reader.h"
+  #include "mock_gpio.h"
+
+  void setUp(void) {}
+  void tearDown(void) {}
+
+  void test_reader_reads_through_the_mock(void)
+  {
+      gpio_read_ExpectAndReturn(4, 1);
+      TEST_ASSERT_EQUAL_INT(1, reader_read(4));
+  }
+
+  #endif // TEST
+C
+
 # The CMock/Ceedling "shadow header" mechanism (:cmock ↳ :treat_inlines: :include)
 # that makes isolation's fix effective relies on generating a same-basename,
 # same-guard replacement for a header with inline functions -- gpio.h's own
@@ -163,6 +202,51 @@ ceedling_system_tests do
           expect(output).to match(/FAILED:\s+0/)
 
           expect(output).to match(/Isolated '.*driverlib\.h'.*shares a directory with '.*gpio\.h'/)
+        end
+      end
+    end
+
+    # =========================================================================
+    describe "a source under test sharing a directory with the header its test mocks" do
+    # =========================================================================
+
+      # The source itself, not a sibling header, quote-includes the real header beside it.
+      # Only compiling it from an isolated copy lets that #include reach the mock's shadow.
+      before do
+        in_project do
+          # The shared settings name these include roots, which must exist
+          FileUtils.mkdir_p('library')
+          FileUtils.mkdir_p('syscfg')
+          File.write('src/gpio.h', GPIO_HEADER_CRASH_ON_REAL_USE)
+          File.write('src/reader.h', READER_HEADER_C)
+          File.write('src/reader.c', READER_SOURCE_BESIDE_GPIO_C)
+          File.write('test/test_reader.c', TEST_READER_MOCKS_GPIO_C)
+
+          @c.merge_project_yml_for_test(sibling_collision_settings)
+        end
+      end
+
+      it "compiles the source from an isolated copy and passes, instead of running the real inline" do
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/PASSED:\s+1/)
+          expect(output).to match(/Compiling an isolated copy of '.*reader\.c'.*mocked header '.*gpio\.h'/)
+        end
+      end
+
+      # The copy is gone after the build, so a dependency record still naming it would
+      # make the object stale on every run. A clean second build compiles nothing again.
+      it "leaves the object fresh for the next build" do
+        in_project do
+          @c.ceedling_build_exec("test:all")
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/PASSED:\s+1/)
+          expect(output).to_not match(/Compiling an isolated copy/)
         end
       end
     end

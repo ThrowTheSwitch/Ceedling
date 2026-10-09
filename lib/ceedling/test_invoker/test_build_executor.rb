@@ -30,6 +30,7 @@ class TestBuildExecutor
     :dependinator,
     :test_source_file_directive_resolver,
     :gcc_dependency_parser,
+    :quote_include_isolator,
     :generator_helper
   )
 
@@ -460,7 +461,7 @@ class TestBuildExecutor
     # this point still needs it to exist.
     state.testables.each_value do |testable|
       next if testable.isolated_headers_path.nil?
-      @file_wrapper.remove_isolated_copies( testable.isolated_headers_path )
+      @quote_include_isolator.release( testable.isolated_headers_path )
     end
 
     log_skip_summary( task: "compilation", count: skipped, noun: "objects" )
@@ -738,6 +739,9 @@ class TestBuildExecutor
   # it finds one. A failure that's still standing afterward -- nothing to isolate,
   # or an isolated retry that failed too -- gets one last look from generator_helper
   # before it's raised, in case it's explainable as this same class of collision.
+  #
+  # Any other source sharing a directory with a header mocked under inline shadowing
+  # compiles from an isolated copy instead (compile_isolated_source).
   def compile_test_component(context:, test:, source:, object:, state:)
     testable     = state.testables[test.to_sym]
     defines      = testable.compile_defines
@@ -789,11 +793,16 @@ class TestBuildExecutor
       }
 
       compile_failure = nil
+      shadowed_header = inline_mocked_sibling_header( testable, source )
 
-      begin
-        @generator.generate_object_file_c( **arg_hash )
-      rescue ShellException => ex
-        compile_failure = ex
+      if shadowed_header
+        compile_failure = compile_isolated_source( arg_hash: arg_hash, testable: testable, header: shadowed_header )
+      else
+        begin
+          @generator.generate_object_file_c( **arg_hash )
+        rescue ShellException => ex
+          compile_failure = ex
+        end
       end
 
       # gcc's dependency output is a side effect of preprocessing -- already written to
@@ -880,6 +889,62 @@ class TestBuildExecutor
     @dependinator.mark_fresh( object )
 
     true
+  end
+
+  # The mocked header `source` would reach directly in place of its mock, or nil.
+  #
+  # With :treat_inlines set to :include, CMock writes an inline-stripped copy of a mocked
+  # header into the mocks directory, first on the search path. A source sharing a directory
+  # with the real header and quote-including it finds the real one first. Its inline bodies
+  # then run in place of the mock. A Partial mock writes no such copy, and a test file
+  # reaches its mocks by their own names.
+  def inline_mocked_sibling_header(testable, source)
+    return nil unless @configurator.project_use_mocks
+    return nil unless @configurator.cmock_treat_inlines == :include
+    return nil if source == testable.filepath
+
+    directory = File.expand_path( File.dirname( source ) )
+
+    (testable.mocks || {}).each_value do |details|
+      next if details.partial || details.source.nil?
+      next unless File.expand_path( File.dirname( details.source ) ) == directory
+
+      header = File.basename( details.source )
+      return details.source if @quote_include_isolator.includes_by_name?( source, header )
+    end
+
+    return nil
+  end
+
+  # Compiles a source from a copy staged alone, returning any compile failure.
+  #
+  # With no real header beside the copy, its quoted #include of `header` reaches CMock's
+  # inline-stripped copy on the search path. A #line directive keeps every report naming
+  # the original. The original's directory follows all other search paths so its other
+  # includes still resolve. The dependency file is restored before the copy is released,
+  # so tracking never names a file that no longer exists.
+  def compile_isolated_source(arg_hash:, testable:, header:)
+    source = arg_hash[:source]
+
+    msg = "Compiling an isolated copy of '#{source}' for this test because it shares a directory with " \
+          "mocked header '#{header}', whose inline functions it would otherwise call instead of the mock."
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+
+    @quote_include_isolator.within( parent: testable.paths[:build], files: [source], preserve_location: true ) do |isolation|
+      begin
+        @generator.generate_object_file_c(
+          **arg_hash.merge(
+            compile_source: isolation.copy_of( source ),
+            search_paths:   arg_hash[:search_paths] + [File.dirname( source )]
+          )
+        )
+        nil
+      rescue ShellException => ex
+        ex
+      ensure
+        @quote_include_isolator.restore_dependencies( isolation, arg_hash[:dependencies] )
+      end
+    end
   end
 
   def log_compile_skip(test:, source:)
@@ -997,7 +1062,7 @@ class TestBuildExecutor
       # A same-directory file is only a genuine risk if it actually #includes the
       # real header by name -- most real projects keep every header in one shared
       # directory, so "shares a directory" alone would flag nearly everything.
-      siblings = siblings.select { |sibling| sibling_includes_real_header?( sibling, basename ) }
+      siblings = siblings.select { |sibling| @quote_include_isolator.includes_by_name?( sibling, basename ) }
       next if siblings.empty?
 
       siblings.each do |sibling|
@@ -1033,26 +1098,9 @@ class TestBuildExecutor
 
     return nil if isolated.empty?
 
-    isolation_dir = @file_wrapper.stage_isolated_copies( parent: testable.paths[:build], files: isolated.uniq )
+    isolation = @quote_include_isolator.isolate( parent: testable.paths[:build], files: isolated.uniq )
 
-    { search_paths: [isolation_dir] + testable.search_paths, isolation_dir: isolation_dir }
-  end
-
-  # Whether `sibling` itself quote-includes a header named `basename` -- the actual
-  # mechanism that would let it reach the real header directly, bypassing a
-  # mock/Partial substitution via its own same-directory-first resolution. A path
-  # prefix ahead of the bare name is tolerated (`#include "sub/basename"` still
-  # matches), but the check is otherwise a plain, literal text scan -- no macro
-  # expansion, no conditional (#if/#ifdef) evaluation -- so it can occasionally miss
-  # a macro-computed #include target or over-match one guarded by a condition that's
-  # never actually true. Either kind of miss only changes whether a genuine, rare
-  # edge case gets isolated -- it can never manufacture a mock/Partial substitution
-  # risk where none exists, which is what actually matters here.
-  def sibling_includes_real_header?(sibling, basename)
-    return false unless @file_wrapper.exist?( sibling )
-
-    content = @file_wrapper.read( sibling )
-    content.match?( /#include\s*"(?:[^"]*\/)?#{Regexp.escape(basename)}"/ )
+    { search_paths: [isolation.dir] + testable.search_paths, isolation_dir: isolation.dir }
   end
 
   # `{ basename => real path }` for every real header this test substitutes -- CMock
