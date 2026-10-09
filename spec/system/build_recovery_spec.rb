@@ -29,7 +29,11 @@ require 'spec_system_helper'
 ## the repaired build must match a clean one.
 ##
 ## The project mocks a header and pulls a source in through TEST_SOURCE_FILE(), so a
-## build directive dropped from a damaged cache shows up as a link failure.
+## build directive dropped from a damaged cache shows up as a link failure. The mocked
+## header carries a real inline and sits beside the source including it, under
+## :treat_inlines :include. That source therefore compiles from an isolated copy, so
+## every case also exercises that compile path, and the real inline crashes the test if
+## it is ever reached instead of the mock.
 ##
 
 RECOVERY_ADDER_H = <<~C
@@ -50,13 +54,23 @@ RECOVERY_ADDER_C = <<~C
 
   int adder_add(int a, int b)
   {
-      return a + b + sensor_bias() + helper_offset();
+      // Separate statements fix the call order that strict mock ordering checks
+      int bias = sensor_bias();
+      int raw  = sensor_raw();
+      return a + b + bias + raw + helper_offset();
   }
 C
 
 RECOVERY_SENSOR_H = <<~C
   #ifndef SENSOR_H
   #define SENSOR_H
+
+  // Crashes if the real inline ever runs in place of the mock
+  static inline int sensor_raw(void)
+  {
+      volatile int *reg = 0;
+      return *reg;
+  }
 
   int sensor_bias(void);
 
@@ -83,12 +97,14 @@ RECOVERY_TEST_ADDER_C = <<~C
   void test_adds_with_bias(void)
   {
       sensor_bias_ExpectAndReturn(1);
+      sensor_raw_ExpectAndReturn(0);
       TEST_ASSERT_EQUAL_INT(6, adder_add(2, 3));
   }
 
   void test_adds_without_bias(void)
   {
       sensor_bias_ExpectAndReturn(0);
+      sensor_raw_ExpectAndReturn(0);
       TEST_ASSERT_EQUAL_INT(5, adder_add(2, 3));
   }
 C
@@ -121,9 +137,11 @@ ceedling_system_tests do
         File.write('src/helper_impl.c', RECOVERY_HELPER_IMPL_C)
         File.write('test/test_adder.c', RECOVERY_TEST_ADDER_C)
 
-        # Issue #1240's own configuration: everything preprocessed, crashes backtraced
+        # Issue #1240's own configuration: everything preprocessed, crashes backtraced,
+        # inline functions mocked
         @c.merge_project_yml_for_test({
-          :project => { :use_mocks => true, :use_test_preprocessor => :all, :use_backtrace => :simple }
+          :project => { :use_mocks => true, :use_test_preprocessor => :all, :use_backtrace => :simple },
+          :cmock   => { :treat_inlines => :include }
         })
       end
     end
@@ -141,6 +159,16 @@ ceedling_system_tests do
       matches = Dir.glob(pattern)
       expect(matches.length).to eq(1), "expected one match for #{pattern}, found #{matches}"
       matches.first
+    end
+
+    # Every case below relies on this project taking the isolated-copy compile path
+    it "compiles the source beside its inline-mocked header from an isolated copy" do
+      in_project do
+        output = @c.ceedling_build_exec("test:all")
+
+        expect(@c.last_exit_status).to eq(0), output.to_s
+        expect(output).to match(/Compiling an isolated copy of '.*adder\.c'/)
+      end
     end
 
     # =========================================================================
