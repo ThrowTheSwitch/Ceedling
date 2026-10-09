@@ -34,8 +34,8 @@ class Dependinator
     @dependency_tracker.open( store_path: self.class.cache_store_path( identifier ) )
   end
 
-  def register(target, files: [], meta: {})
-    @dependency_tracker.register( target, files: files, meta: meta )
+  def register(target, files: [], meta: {}, outputs: [])
+    @dependency_tracker.register( target, files: files, meta: meta, outputs: outputs )
   end
 
   def register_gcc_deps_file(filepath, meta: {})

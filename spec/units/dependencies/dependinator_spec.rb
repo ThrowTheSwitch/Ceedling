@@ -40,13 +40,13 @@ describe Dependinator do
   end
 
   describe '#register' do
-    it 'passes target, files, and meta straight through to the tracker' do
-      expect( @tracker ).to receive(:register).with( 'foo.o', files: ['foo.c'], meta: { opt: 2 } )
-      @dependinator.register( 'foo.o', files: ['foo.c'], meta: { opt: 2 } )
+    it 'passes target, files, meta, and outputs straight through to the tracker' do
+      expect( @tracker ).to receive(:register).with( 'foo.o', files: ['foo.c'], meta: { opt: 2 }, outputs: ['foo.lst'] )
+      @dependinator.register( 'foo.o', files: ['foo.c'], meta: { opt: 2 }, outputs: ['foo.lst'] )
     end
 
-    it 'defaults files and meta to empty when not given, matching the tracker\'s own defaults' do
-      expect( @tracker ).to receive(:register).with( 'foo.o', files: [], meta: {} )
+    it 'defaults files, meta, and outputs to empty when not given, matching the tracker\'s own defaults' do
+      expect( @tracker ).to receive(:register).with( 'foo.o', files: [], meta: {}, outputs: [] )
       @dependinator.register( 'foo.o' )
     end
   end

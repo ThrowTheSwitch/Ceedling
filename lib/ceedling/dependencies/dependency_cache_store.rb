@@ -19,7 +19,8 @@ require 'ceedling/dependencies/dependency_hasher'
 #       "<target path>": {
 #         "self_hash": "<hex digest>",
 #         "meta_hash": "<hex digest>" | null,
-#         "deps": { "<dep path>": "<hex digest>", ... }
+#         "deps": { "<dep path>": "<hex digest>", ... },
+#         "outputs": { "<output path>": "<hex digest>", ... }   # only when present
 #       },
 #       ...
 #     }
@@ -144,8 +145,12 @@ class DependencyCacheStore
     return false unless entry.is_a?( Hash )
     return false unless valid_digest?( entry['self_hash'] )
     return false unless entry['meta_hash'].nil? || valid_digest?( entry['meta_hash'] )
-    return false unless entry['deps'].is_a?( Hash )
-    entry['deps'].all? { |dep, digest| dep.is_a?( String ) && valid_digest?( digest ) }
+    return false unless valid_digest_map?( entry['deps'] )
+    entry['outputs'].nil? || valid_digest_map?( entry['outputs'] )
+  end
+
+  def valid_digest_map?(map)
+    map.is_a?( Hash ) && map.all? { |path, digest| path.is_a?( String ) && valid_digest?( digest ) }
   end
 
   def valid_digest?(value)

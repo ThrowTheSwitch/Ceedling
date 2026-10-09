@@ -43,6 +43,7 @@ describe TestBuildSetup do
     allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( { name: 'fake directives-only preprocessor' } )
     allow(@configurator).to receive(:test_build_preprocess_force_fallback).and_return( false )
     allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath).and_return( 'build/preprocess/raw/Foo.txt' )
+    allow(@file_path_utils).to receive(:form_preprocessed_file_compacted_directives_only_filepath).and_return( 'build/preprocess/compacted/Foo.txt' )
     allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.c.yml' )
     allow(@file_path_utils).to receive(:form_test_build_directives_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/Foo.c.yml' )
 
@@ -348,6 +349,17 @@ describe TestBuildSetup do
       @setup.stage_collect_preprocessor_context( @state )
 
       expect( @testable.preprocess[:directives_only][:filepath] ).to eq('build/preprocess/raw/Foo.txt')
+    end
+
+    # The same run writes a compacted file that later stages read, so the raw target vouches for it
+    it "registers the compacted output before marking the raw output fresh" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.txt' )
+
+      expect(@dependinator).to receive(:register).with( 'build/preprocess/raw/Foo.txt', outputs: ['build/preprocess/compacted/Foo.txt'] ).ordered
+      expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/raw/Foo.txt').ordered
+
+      @setup.stage_collect_preprocessor_context( @state )
     end
 
     it "skips regenerating and reuses the deterministic path when the dependency tracker reports it unchanged" do

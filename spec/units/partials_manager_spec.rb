@@ -73,6 +73,7 @@ describe PartialsManager do
       allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/Foo.h' )
       allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return( 'build/preprocess/full_expansion/Foo.h' )
+      allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.h.yml' )
       allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.h' )
       allow(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros).and_return( ['build/preprocess/raw/Foo.h', []] )
       allow(@preprocessinator).to receive(:preprocess_partial_header_expand_macros).and_return( 'build/preprocess/full_expansion/Foo.h' )
@@ -113,6 +114,21 @@ describe PartialsManager do
       expect(@preprocessinator).to receive(:generate_directives_only_output).ordered
       expect(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros).ordered
       expect(@preprocessinator).to receive(:preprocess_partial_header_expand_macros).ordered
+      expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/Foo.h').ordered
+
+      @manager.stage_preprocess_partial_headers( @state )
+    end
+
+    # A skipped run recalls both, so the preprocessed target vouches for them
+    it "registers the includes list and full expansion as outputs before marking the target fresh" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros)
+      allow(@preprocessinator).to receive(:preprocess_partial_header_expand_macros)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/Foo.h', outputs: ['build/preprocess/includes/Foo.h.yml', 'build/preprocess/full_expansion/Foo.h']
+      ).ordered
       expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/Foo.h').ordered
 
       @manager.stage_preprocess_partial_headers( @state )
@@ -182,6 +198,7 @@ describe PartialsManager do
       allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/Foo.c' )
       allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return( 'build/preprocess/full_expansion/Foo.c' )
+      allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.c.yml' )
       allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.c' )
       allow(@preprocessinator).to receive(:preprocess_partial_source_file_preserve_macros).and_return( ['build/preprocess/raw/Foo.c', []] )
       allow(@preprocessinator).to receive(:preprocess_partial_source_expand_macros).and_return( 'build/preprocess/full_expansion/Foo.c' )
@@ -384,12 +401,26 @@ describe PartialsManager do
       expect( @testable.partials.mocks ).to eq( ['Foo'] )
     end
 
+    # The same call writes the implementation header, so the source vouches for it
+    it "registers the implementation header as an output of the implementation source" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [] )
+
+      @manager.stage_generate_partials( @state )
+
+      expect(@dependinator).to have_received(:register).with(
+        'build/test/partials/a_test/ceedling_partial_Foo_impl.c',
+        hash_including( outputs: ['build/test/partials/a_test/ceedling_partial_Foo_impl.h'] )
+      )
+    end
+
     it "registers the whole :partials config as meta, and an empty tools list since this stage runs no shell tool" do
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
 
-      expect(@dependinator).to receive(:register).at_least(:once) do |_target, files:, meta:|
+      expect(@dependinator).to receive(:register).at_least(:once) do |_target, meta: {}, **|
         expect( meta[:tools] ).to eq( [] )
         expect( meta[:partials] ).to eq( @partials_config )
       end
@@ -407,7 +438,7 @@ describe PartialsManager do
       allow(@partializer).to receive(:remap_types_header_includes)
         .and_return( [UserInclude.new('foundation.h')] )
 
-      expect(@dependinator).to receive(:register).at_least(:once) do |_target, files:, meta:|
+      expect(@dependinator).to receive(:register).at_least(:once) do |_target, meta: {}, **|
         expect( meta[:include_guard] ).to eq( 'FOO_H' )
         expect( meta[:types_includes] ).to eq( ['#include "foundation.h"'] )
       end
@@ -484,7 +515,7 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
 
-      expect(@dependinator).to receive(:register).at_least(:once) do |_target, files:, meta:|
+      expect(@dependinator).to receive(:register).at_least(:once) do |_target, files: [], **|
         expect( files ).to_not include( nil )
       end
 

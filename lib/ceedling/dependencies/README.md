@@ -21,6 +21,8 @@ Every call site in both pipelines, regardless of what expensive thing it's guard
 
 Once a target's inputs are registered, `stale?` is a pure question with no side effects, and `mark_fresh` is the write that happens after a real (re)build succeeds, recording new hashes for the target itself, its meta, and every currently-existing dependency. A dependency that's gone missing is simply left out of what gets recorded -- `stale?` already treats a missing dependency as stale on its own, so there's nothing to gain by recording anything else about it.
 
+Some steps also produce a file beside their target that a later run trusts, such as a test's cached results or a test file's cached build directives. These are a target's `outputs`, registered after the step produces them and before `mark_fresh`, which records their hashes in the target's cache entry. A fresh target vouches for those outputs: `stale?` reads them from the cache entry, not this run's registrations, and treats the target as stale when any one is missing or altered. Damage to a trusted artifact then costs one rerun of the step that wrote it. Throughout, only a regular file counts as present. A directory named as a dependency, as a truncated `.d` file can do, reads as missing rather than being hashed.
+
 ## What makes two things "the same"
 
 Two decisions make this whole scheme trustworthy rather than merely convenient, and both trade a little efficiency for a lot of certainty.

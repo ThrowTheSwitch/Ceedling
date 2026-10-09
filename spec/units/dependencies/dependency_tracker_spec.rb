@@ -48,6 +48,7 @@ describe DependencyTracker do
     allow( @file_wrapper ).to receive(:extname) { |path| File.extname( path ) }
     allow( @file_wrapper ).to receive(:directory_listing).and_return([])
     allow( @file_wrapper ).to receive(:exist?).and_return(false)
+    allow( @file_wrapper ).to receive(:directory?).and_return(false)
     allow( @file_wrapper ).to receive(:mkdir)
     allow( @file_wrapper ).to receive(:write)
     allow( @file_wrapper ).to receive(:mv)
@@ -320,6 +321,91 @@ describe DependencyTracker do
   end
 
   # ── #mark_fresh ──────────────────────────────────────────────────────────
+
+  # A truncated .d file can end in a directory path. A directory is never a dependency,
+  # so it reads as missing, the object recompiles, and gcc writes a fresh .d file.
+  describe 'a directory named as a dependency' do
+    before(:each) do
+      open_tracker
+      stub_file( 'foo.o', 'obj' )
+      allow( @file_wrapper ).to receive(:exist?).with('build/vendor/unity/src').and_return(true)
+      allow( @file_wrapper ).to receive(:directory?).with('build/vendor/unity/src').and_return(true)
+      @tracker.register( 'foo.o', files: ['build/vendor/unity/src'] )
+    end
+
+    it 'leaves it out of the recorded deps instead of hashing it' do
+      expect( @file_wrapper ).to_not receive(:read_binary).with('build/vendor/unity/src')
+      expect { @tracker.mark_fresh('foo.o') }.not_to raise_error
+    end
+
+    it 'makes the target stale instead of raising' do
+      @tracker.mark_fresh( 'foo.o' )
+      expect( @tracker.stale?('foo.o') ).to be(true)
+    end
+  end
+
+  describe 'outputs' do
+    before(:each) do
+      open_tracker
+      stub_file( 'test.fixture_run', '' )
+      stub_file( 'test.pass', 'results' )
+      @tracker.register( 'test.fixture_run', files: [] )
+      @tracker.register( 'test.fixture_run', outputs: ['test.pass', 'test.fail'] )
+      @tracker.mark_fresh( 'test.fixture_run' )
+    end
+
+    it 'leaves the target fresh while each recorded output is intact' do
+      expect( @tracker.stale?('test.fixture_run') ).to be(false)
+    end
+
+    # Only the output that existed is recorded, so its absent sibling never counts against it
+    it 'records only outputs that exist at mark_fresh' do
+      entry = @tracker.instance_variable_get(:@cache)['entries']['test.fixture_run']
+      expect( entry['outputs'].keys ).to eq( ['test.pass'] )
+    end
+
+    it 'makes the target stale when a recorded output changes' do
+      stub_file( 'test.pass', 'res' )
+      expect( @tracker.stale?('test.fixture_run') ).to be(true)
+    end
+
+    it 'makes the target stale when a recorded output disappears' do
+      allow( @file_wrapper ).to receive(:exist?).with('test.pass').and_return(false)
+      expect( @tracker.stale?('test.fixture_run') ).to be(true)
+    end
+
+    it 'makes the target stale when a recorded output becomes a directory' do
+      allow( @file_wrapper ).to receive(:directory?).with('test.pass').and_return(true)
+      expect( @tracker.stale?('test.fixture_run') ).to be(true)
+    end
+
+    # A step learns its outputs only after producing them, so the next run's staleness
+    # check must work from the cache entry, before anything registers outputs again.
+    it 'checks recorded outputs without this run registering them' do
+      @tracker.open( store_path: 'cache.json' ) # resets registrations, keeps nothing on disk
+      @tracker.instance_variable_get(:@cache)['entries']['test.fixture_run'] =
+        { 'self_hash' => DependencyHasher.new( { :file_wrapper => @file_wrapper } ).hash_of_file( 'test.fixture_run' ),
+          'meta_hash' => nil, 'deps' => {}, 'outputs' => { 'test.pass' => 'stale-digest' } }
+      @tracker.register( 'test.fixture_run', files: [] )
+
+      expect( @tracker.stale?('test.fixture_run') ).to be(true)
+    end
+
+    it 'leaves the outputs key off an entry with no outputs' do
+      stub_file( 'foo.o', 'obj' )
+      @tracker.register( 'foo.o', files: [] )
+      @tracker.mark_fresh( 'foo.o' )
+
+      expect( @tracker.instance_variable_get(:@cache)['entries']['foo.o'] ).to_not have_key( 'outputs' )
+    end
+
+    it 'names a damaged output in a diagnosis' do
+      stub_file( 'test.pass', 'res' )
+      diagnosis = @tracker.diagnose( 'test.fixture_run' )
+
+      expect( diagnosis['outputs'] ).to eq( [{ 'path' => 'test.pass', 'changed' => true }] )
+    end
+  end
 
   describe '#mark_fresh' do
     before(:each) { open_tracker }

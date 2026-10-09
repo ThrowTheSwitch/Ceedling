@@ -379,8 +379,9 @@ class Generator
   # run is reported instead of re-running it. Both fixture-execute hooks still
   # fire either way, so plugins that accumulate per-run state from them (e.g.
   # the live test summary) see this target on every run, not only when it's
-  # actually rebuilt. If no cached result exists on disk (e.g. it was deleted
-  # independently of the executable and cache), falls back to a real run.
+  # actually rebuilt. A damaged or missing cached result normally makes the
+  # fixture target stale first, since stage_execute records it as an output. If
+  # none exists here anyway, this falls back to a real run.
   def generate_test_results(tool:, context:, test_name:, test_filepath:, executable:, result:, skipped: false)
     arg_hash = {
       :tool => tool,
