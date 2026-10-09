@@ -10,6 +10,10 @@ require 'stringio'
 
 class TestsReporter
 
+  # The report name when a project names none. A report may title itself differently
+  # for it, so it is shared here.
+  DEFAULT_REPORT_NAME = 'Ceedling Test Suite'
+
   # Dependency injection
   attr_writer :config_walkinator
 

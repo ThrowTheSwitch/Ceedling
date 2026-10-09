@@ -15,22 +15,22 @@ class CppunitTestsReporter < TestsReporter
   end
   
   # CppUnit XML header
-  def header(stream:, name:, results:, duration_s:)
+  def header(stream:, name:, **)
     stream.puts( '<?xml version="1.0" encoding="utf-8" ?>' )
-    stream.puts( "<TestRun name=\"#{name}\">" )
+    stream.puts( "<TestRun name=\"#{xml_escape( name )}\">" )
   end
 
   # CppUnit XML test list contents
-  def body(stream:, name:, results:, duration_s:)
+  def body(stream:, results:, **)
     @test_counter = 1
-    write_failures( results[:failures], stream )
-    write_tests( results[:successes], stream, 'SuccessfulTests' )
-    write_tests( results[:ignores], stream, 'IgnoredTests' )
+    write_category( results[:failures], 'FailedTests', stream ) { |item, filename| write_failure( item, filename, stream ) }
+    write_category( results[:successes], 'SuccessfulTests', stream ) { |item, filename| write_test( item, filename, stream ) }
+    write_category( results[:ignores], 'IgnoredTests', stream ) { |item, filename| write_test( item, filename, stream ) }
     write_statistics( results[:counts], stream )
   end
 
   # CppUnit XML footer
-  def footer(stream:, name:, results:, duration_s:)
+  def footer(stream:, **)
     stream.puts( "</TestRun>" )
   end
 
@@ -38,53 +38,37 @@ class CppunitTestsReporter < TestsReporter
 
   private
 
-  def write_failures(results, stream)
-    if results.size.zero?
-      stream.puts( "  <FailedTests/>" )
-      return
-    end
-
-    stream.puts( "  <FailedTests>" )
-
-    results.each do |result|
-      result[:collection].each do |item|
-        filename = xml_escape( result[:source][:file] )
-
-        stream.puts "    <Test id=\"#{@test_counter}\">"
-        stream.puts "      <Name>#{filename}::#{xml_escape(item[:test])}</Name>"
-        stream.puts "      <FailureType>Assertion</FailureType>"
-        stream.puts "      <Location>"
-        stream.puts "        <File>#{filename}</File>"
-        stream.puts "        <Line>#{item[:line]}</Line>"
-        stream.puts "      </Location>"
-        stream.puts "      <Message>#{xml_escape(item[:message])}</Message>"
-        stream.puts "    </Test>"
-        @test_counter += 1
-      end
-    end
-
-    stream.puts( "  </FailedTests>" )
-  end
-
-  def write_tests(results, stream, tag)
-    if results.size.zero?
-      stream.puts( "  <#{tag}/>" )
-      return
-    end
+  # Yields each test in a category to the block that writes it. An empty category is a
+  # self-closing element. Test ids run on across categories.
+  def write_category(results, tag, stream)
+    return stream.puts( "  <#{tag}/>" ) if results.empty?
 
     stream.puts( "  <#{tag}>" )
-
     results.each do |result|
-      result[:collection].each do |item|
-        filename = xml_escape( result[:source][:file] )
-        stream.puts( "    <Test id=\"#{@test_counter}\">" )
-        stream.puts( "      <Name>#{filename}::#{xml_escape(item[:test])}</Name>" )
-        stream.puts( "    </Test>" )
-        @test_counter += 1
-      end
+      filename = xml_escape( result[:source][:file] )
+      result[:collection].each { |item| yield( item, filename ) }
     end
+    stream.puts( "  </#{tag}>" )
+  end
 
-    stream.puts "  </#{tag}>"
+  def write_failure(item, filename, stream)
+    stream.puts "    <Test id=\"#{@test_counter}\">"
+    stream.puts "      <Name>#{filename}::#{xml_escape( item[:test] )}</Name>"
+    stream.puts "      <FailureType>Assertion</FailureType>"
+    stream.puts "      <Location>"
+    stream.puts "        <File>#{filename}</File>"
+    stream.puts "        <Line>#{item[:line]}</Line>"
+    stream.puts "      </Location>"
+    stream.puts "      <Message>#{xml_escape( item[:message] )}</Message>"
+    stream.puts "    </Test>"
+    @test_counter += 1
+  end
+
+  def write_test(item, filename, stream)
+    stream.puts( "    <Test id=\"#{@test_counter}\">" )
+    stream.puts( "      <Name>#{filename}::#{xml_escape( item[:test] )}</Name>" )
+    stream.puts( "    </Test>" )
+    @test_counter += 1
   end
 
   def write_statistics(counts, stream)

@@ -6,10 +6,9 @@
 # =========================================================================
 
 require 'ceedling/plugins/plugin'
+require 'tests_reporter'
 
 class ReportTestsLogFactory < Plugin
-
-  DEFAULT_REPORT_NAME = "Ceedling Test Suite"
 
   TestBuild = Struct.new( :results_filepaths, :start_time_s, :end_time_s )
 
@@ -74,103 +73,89 @@ class ReportTestsLogFactory < Plugin
     return if not @enabled
     return if @build_results.empty?
 
-    msg = @reportinator.generate_heading( "Running Test Suite Reports" )
-    @loginator.log( msg )
+    @loginator.log( @reportinator.generate_heading( "Running Test Suite Reports" ) )
 
-    # For each configured reporter, generate a test suite report per test context
     @build_results.each do |context, test_build|
-      # Assemble results from all results filepaths collected
-      _results = @ceedling[:plugin_reportinator].assemble_test_results( test_build.results_filepaths )
-
-      # Provide results to each Reporter
-      @reporters.each do |reporter|
-        filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
-        name = generate_report_name( context )
-
-        msg = @reportinator.generate_progress( "Generating artifact #{filepath}" )
-        @loginator.log( msg )
-
-        start_s    = test_build.start_time_s
-        end_s      = test_build.end_time_s
-        duration_s = (start_s && end_s) ? (end_s - start_s) : nil
-        reporter.write(
-          name: name,
-          filepath: filepath,
-          results: _results,
-          duration_s: duration_s
-        )
-      end
+      results = @ceedling[:plugin_reportinator].assemble_test_results( test_build.results_filepaths )
+      write_reports( context, results, duration_s( test_build ) )
     end
 
-  # White space at command line after all progress messages
-  @loginator.log( '' )
+    # White space at command line after all progress messages
+    @loginator.log( '' )
+  end
+
+  # `Plugin` summary hook -- report on the test results an earlier build left on disk.
+  # No build ran, so there is no duration. Only the test context's results are read.
+  def summary
+    return if not @enabled
+
+    result_list = @ceedling[:file_path_utils].form_pass_results_filelist( PROJECT_TEST_RESULTS_PATH, COLLECTION_ALL_TESTS )
+    results     = @ceedling[:plugin_reportinator].assemble_test_results( result_list, {:boom => false} )
+
+    @loginator.log( @reportinator.generate_heading( "Running Test Suite Reports" ) )
+    write_reports( TEST_SYM, results, nil )
+    @loginator.log( '' )
+  end
+
+  # The class a configured report loads by convention, e.g. 'fancy_shmancy' loads
+  # FancyShmancyTestsReporter
+  def self.reporter_class_name(report)
+    camel = report.gsub( /_./ ) { |match| match.upcase.delete( '_' ) }
+    return camel[0].capitalize + camel[1..] + 'TestsReporter'
   end
 
   ### Private
 
   private
 
-  def generate_report_name(context)
-      # Resolve and inject the display name used in report titles/headers.
+  # Writes every configured report for one context under that context's artifacts directory
+  def write_reports(context, results, duration_s)
+    name = generate_report_name( context )
 
-      # Start with project name from configuration
-      _name = @ceedling[:configurator].project_name.to_s.strip
-
-      # Default to a generic name if project name is empty
-      name = _name.empty? ? DEFAULT_REPORT_NAME : _name
-
-      # Prepend name with context if not the default test context (TEST_SYM)
-      if context != TEST_SYM
-        name = "[#{context.to_s.upcase}] #{name}"
-      end
-
-      return name
+    @reporters.each do |reporter|
+      filepath = File.join( PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, reporter.filename )
+      @loginator.log( @reportinator.generate_progress( "Generating artifact #{filepath}" ) )
+      reporter.write( name: name, filepath: filepath, results: results, duration_s: duration_s )
+    end
   end
 
+  # A build's duration, or nil when either end of it went unrecorded
+  def duration_s(test_build)
+    start_s = test_build.start_time_s
+    end_s   = test_build.end_time_s
+    return (start_s && end_s) ? (end_s - start_s) : nil
+  end
+
+  # The display name in report titles and headers. A context other than the default test
+  # context prefixes it.
+  def generate_report_name(context)
+    name = @ceedling[:configurator].project_name.to_s.strip
+    name = TestsReporter::DEFAULT_REPORT_NAME if name.empty?
+
+    return name if context == TEST_SYM
+    return "[#{context.to_s.upcase}] #{name}"
+  end
+
+  # Each configured report loads its Reporter subclass by naming convention. The factory
+  # injects configuration and utilities, which keeps a custom subclass's own setup small.
   def load_reporters(reports, config)
-    reporters = []
+    return reports.map { |report| load_reporter( report.downcase, config ) }
+  end
 
-    # For each report name string in configuration, dynamically load the corresponding 
-    # Reporter subclass by convention
+  def load_reporter(report, config)
+    # A custom subclass's directory must be in :plugins ↳ :load_paths
+    require "#{report}_tests_reporter"
 
-    # The steps below limit the set up complexity that would otherwise be
-    # required of a user's custom Reporter subclass
-    reports.each do |report|
-      # Enforce lowercase convention internally
-      report = report.downcase()
+    # A custom subclass that breaks the naming convention fails with a NameError naming
+    # the missing class
+    reporter = Object.const_get( ReportTestsLogFactory.reporter_class_name( report ) ).new( handle: report.to_sym )
 
-      # Convert report configuration name 'foo_bar' to 'FooBarTestReporter' class name
-      #  1. Convert 'x_Y' (snake case) to camel case ('xY')
-      #  2. Capitalize first character of config name and add rest of class name
-      _reporter = report.gsub(/_./) {|match| match.upcase().delete('_') }
-      _reporter = _reporter[0].capitalize() + _reporter[1..-1] + 'TestsReporter'
+    reporter.config            = config[report.to_sym]
+    reporter.config_walkinator = @ceedling[:config_walkinator]
+    reporter.file_wrapper      = @ceedling[:file_wrapper]
+    reporter.setup()
 
-      # Load each Reporter sublcass Ruby file dynamically by convention
-      # For custom user subclasses, requires directoy in :plugins ↳ :load_paths
-      require "#{report}_tests_reporter"
-
-      # Dynamically instantiate Reporter subclass object. const_get (rather
-      # than eval-ing a constructed string) fails with a direct, ordinary
-      # NameError naming exactly the missing constant when a custom
-      # subclass doesn't follow the naming convention -- no separate eval
-      # context standing between the mistake and its own error message.
-      reporter = Object.const_get( _reporter ).new( handle: report.to_sym )
-
-      # Inject configuration
-      reporter.config = config[report.to_sym]
-
-      # Inject utility objects
-      reporter.config_walkinator = @ceedling[:config_walkinator]
-      reporter.file_wrapper = @ceedling[:file_wrapper]
-
-      # Perform Reporter sublcass set up
-      reporter.setup()
-
-      # Add new object to our internal list
-      reporters << reporter
-    end
-
-    return reporters
+    return reporter
   end
 
 end

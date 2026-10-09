@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'stringio'
+require 'ceedling/config/config_walkinator'
 
 $: << File.expand_path('../../../../plugins/report_tests_log_factory/lib', __FILE__)
 require 'tests_reporter'
@@ -50,9 +51,8 @@ describe TestsReporter do
     end
   end
 
-  # --- Fix below this point: written to fail against pre-fix code ---
-
-  describe '#write (fix: writes via an injected file_wrapper, never a raw File)' do
+  # A report reaches disk only through the injected file layer
+  describe '#write' do
     it 'renders header/body/footer into one buffer and hands the complete contents to file_wrapper.write' do
       reporter_class = Class.new(described_class) do
         def header(stream:, name:, results:, duration_s:) stream << 'H' end
@@ -66,6 +66,24 @@ describe TestsReporter do
       expect(file_wrapper).to receive(:write).with('some/path.txt', 'HBF')
 
       reporter.write(name: 'x', filepath: 'some/path.txt', results: {}, duration_s: nil)
+    end
+  end
+
+  # A custom subclass reads its own configuration beneath its report's name
+  describe '#fetch_config_value (private)' do
+    let(:reporter) do
+      reporter = described_class.new(handle: :fancy)
+      reporter.config_walkinator = ConfigWalkinator.new
+      reporter.config = { standardize: { names: true, filters: ['/^Foo/'] } }
+      reporter
+    end
+
+    it 'returns the value at the end of a key walk' do
+      expect(reporter.send(:fetch_config_value, :standardize, :filters)).to eq(['/^Foo/'])
+    end
+
+    it 'returns nil for keys that do not exist' do
+      expect(reporter.send(:fetch_config_value, :does, :not, :exist)).to be_nil
     end
   end
 end

@@ -66,9 +66,34 @@ describe JunitTestsReporter do
     end
   end
 
-  # --- Fixes below this point: written to fail against pre-fix code ---
+  def render(results, name: 'Ceedling Test Suite')
+    stream = StringIO.new
+    reporter.header(stream: stream, name: name, results: results, duration_s: nil)
+    reporter.body(stream: stream, name: name, results: results, duration_s: nil)
+    reporter.footer(stream: stream, name: name, results: results, duration_s: nil)
+    stream.string
+  end
 
-  describe 'escaping (fix: failure message is escaped, not just the test name)' do
+  describe 'suite details' do
+    it "takes a suite's time from its test file's execution time" do
+      suite = REXML::Document.new(render(results)).root.elements['testsuite']
+      expect(suite.attributes['time']).to eq('0.500')
+    end
+
+    it 'writes an empty failure element for a failure with no message' do
+      results[:failures].first[:collection].first[:message] = ''
+      failure = REXML::Document.new(render(results)).root.elements['testsuite/testcase/failure']
+      expect(failure.attributes['message']).to be_nil
+    end
+
+    it "gathers a test file's output, escaped, into its suite's system-out" do
+      results[:stdout] = [ { source: { file: 'test/TestFoo.c' }, collection: ['printed <one>', 'two'] } ]
+      out = REXML::Document.new(render(results)).root.elements['testsuite/system-out']
+      expect(out.text.split("\n").map(&:strip).reject(&:empty?)).to eq(['printed <one>', 'two'])
+    end
+  end
+
+  describe 'escaping' do
     it 'produces well-formed, parseable XML when a failure message contains XML metacharacters' do
       escaping_results = results.dup
       escaping_results[:failures] = [ { source: { file: 'test/TestFoo.c' },
@@ -87,7 +112,8 @@ describe JunitTestsReporter do
     end
   end
 
-  describe 'non-mutation (fix: escaping must not alter the shared results structure)' do
+  # The same results structure goes to every configured reporter in turn
+  describe 'non-mutation' do
     it 'does not mutate the original test-name string other reporters would also read' do
       mutation_results = results.dup
       test_item = { test: 'test&name', unity_test_time: 0 }
@@ -100,5 +126,26 @@ describe JunitTestsReporter do
 
       expect(test_item[:test]).to eq('test&name')
     end
+
+    it 'leaves nil and empty entries in a shared collection in place' do
+      collection = [ { test: 'test_a', unity_test_time: 0 }, nil, {} ]
+      results[:successes] = [ { source: { file: 'test/TestFoo.c' }, collection: collection } ]
+
+      render(results)
+
+      expect(collection.length).to eq(3)
+    end
+  end
+
+  it 'escapes the report name and a test file path in suite names' do
+    results[:successes] = [ { source: { file: 'test/T&"x".c' }, collection: [ { test: 'test_a', unity_test_time: 0 } ] } ]
+    results[:failures]  = []
+    results[:ignores]   = []
+    results[:times]     = { 'test/T&"x".c' => 0.5 }
+
+    root = REXML::Document.new(render(results, name: 'Q-36 & <Modulator>')).root
+
+    expect(root.attributes['name']).to eq('Q-36 & <Modulator>')
+    expect(root.elements['testsuite'].attributes['name']).to eq('test/T&"x"')
   end
 end

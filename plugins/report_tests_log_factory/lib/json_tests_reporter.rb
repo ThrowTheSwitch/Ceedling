@@ -31,34 +31,22 @@ class JsonTestsReporter < TestsReporter
 
   private
 
+  # Array of hashes relating a source file, test, and test failure
   def write_failures(results)
-    # Array of hashes relating a source file, test, and test failure
-    failures = []
-    results.each do |result|
-      result[:collection].each do |item|
-        failures << {
-          "file" => result[:source][:file],
-          "test" => item[:test],
-          "line" => item[:line],
-          "message" => item[:message]
-        }
-      end
+    failures = tests_in( results ).map do |file, item|
+      { "file" => file, "test" => item[:test], "line" => item[:line], "message" => item[:message] }
     end
     return failures.uniq
   end
 
+  # Array of hashes relating a source file and test
   def write_tests(results)
-    # Array of hashes relating a source file and test
-    successes = []
-    results.each do |result|
-      result[:collection].each do |item|
-        successes << { 
-          "file" => result[:source][:file],
-          "test" => item[:test]
-        }
-      end
-    end
-    return successes
+    return tests_in( results ).map { |file, item| { "file" => file, "test" => item[:test] } }
+  end
+
+  # Every test in a results category, paired with its source file
+  def tests_in(results)
+    return results.flat_map { |result| result[:collection].map { |item| [ result[:source][:file], item ] } }
   end
 
   def write_statistics(counts)

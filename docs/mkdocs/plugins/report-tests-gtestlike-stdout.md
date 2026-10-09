@@ -5,7 +5,7 @@ Prints to the console ($stdout) test suite results in a GTest-like format.
 ## Plugin Overview
 
 This plugin is intended to be used in place of the more commonly used "pretty" 
-test report plugin. Like its sibling, this plugin ollects raw test results from
+test report plugin. Like its sibling, this plugin collects raw test results from
 the individual test executables of your test suite and presents them in a more 
 readable summary form — specifically the GoogleTest format.
 

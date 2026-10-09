@@ -39,9 +39,6 @@ Lint/UnusedMethodArgument:
     - 'plugins/cppcheck/lib/cppcheck_reports.rb'
     - 'plugins/dependencies/lib/dependencies.rb'
     - 'plugins/gcov/lib/gcov_reportinator.rb'
-    - 'plugins/report_tests_log_factory/lib/cppunit_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/html_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/junit_tests_reporter.rb'
     - 'spec/units/plugins/tests_reporter_spec.rb'
 
 # Offense count: 240
@@ -135,10 +132,6 @@ Metrics/AbcSize:
     - 'plugins/gcov/lib/gcovr_reportinator.rb'
     - 'plugins/gcov/lib/reportgenerator_reportinator.rb'
     - 'plugins/module_generator/lib/module_generator.rb'
-    - 'plugins/report_tests_log_factory/lib/cppunit_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/html_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/junit_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/report_tests_log_factory.rb'
     - 'plugins/report_tests_teamcity_stdout/lib/report_tests_teamcity_stdout.rb'
     - 'plugins/valgrind/lib/valgrind.rb'
 
@@ -236,8 +229,6 @@ Metrics/ClassLength:
     - 'plugins/gcov/lib/gcov.rb'
     - 'plugins/gcov/lib/gcovr_reportinator.rb'
     - 'plugins/gcov/lib/reportgenerator_reportinator.rb'
-    - 'plugins/report_tests_log_factory/lib/html_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/junit_tests_reporter.rb'
     - 'plugins/valgrind/lib/valgrind.rb'
 
 # Offense count: 123
@@ -311,7 +302,6 @@ Metrics/CyclomaticComplexity:
     - 'plugins/gcov/lib/gcovr_reportinator.rb'
     - 'plugins/gcov/lib/reportgenerator_reportinator.rb'
     - 'plugins/module_generator/lib/module_generator.rb'
-    - 'plugins/report_tests_log_factory/lib/junit_tests_reporter.rb'
     - 'plugins/report_tests_teamcity_stdout/lib/report_tests_teamcity_stdout.rb'
 
 # Offense count: 371
@@ -411,7 +401,6 @@ Metrics/MethodLength:
     - 'plugins/bullseye/config/defaults_bullseye.rb'
     - 'plugins/bullseye/lib/bullseye.rb'
     - 'plugins/command_hooks/lib/command_hooks.rb'
-    - 'plugins/compile_commands_json_db/lib/compile_commands_json_db.rb'
     - 'plugins/cppcheck/lib/cppcheck.rb'
     - 'plugins/dependencies/Rakefile'
     - 'plugins/dependencies/lib/dependencies.rb'
@@ -426,11 +415,6 @@ Metrics/MethodLength:
     - 'plugins/gcov/lib/reportgenerator_reportinator.rb'
     - 'plugins/module_generator/Rakefile'
     - 'plugins/module_generator/lib/module_generator.rb'
-    - 'plugins/report_tests_log_factory/lib/cppunit_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/html_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/json_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/junit_tests_reporter.rb'
-    - 'plugins/report_tests_log_factory/lib/report_tests_log_factory.rb'
     - 'plugins/report_tests_raw_output_log/lib/report_tests_raw_output_log.rb'
     - 'plugins/report_tests_teamcity_stdout/lib/report_tests_teamcity_stdout.rb'
     - 'plugins/valgrind/lib/valgrind.rb'
@@ -519,4 +503,3 @@ Metrics/PerceivedComplexity:
     - 'plugins/gcov/lib/gcovr_reportinator.rb'
     - 'plugins/gcov/lib/reportgenerator_reportinator.rb'
     - 'plugins/module_generator/lib/module_generator.rb'
-    - 'plugins/report_tests_log_factory/lib/junit_tests_reporter.rb'

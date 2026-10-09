@@ -64,9 +64,7 @@ describe CppunitTestsReporter do
       expect(stream.string).to include('<IgnoredTests/>')
     end
 
-    # --- Fix below this point: written to fail against pre-fix code ---
-
-    it 'escapes XML metacharacters in the test name and message (fix: no escaping at all today)' do
+    it 'escapes XML metacharacters in the test name and message' do
       escaping_results = {
         successes: [], ignores: [],
         failures: [ { source: { file: 'test/TestFoo.c' },
@@ -80,6 +78,43 @@ describe CppunitTestsReporter do
       test = doc.root.elements['FailedTests/Test']
       expect(test.elements['Name'].text).to eq('test/TestFoo.c::test<b>')
       expect(test.elements['Message'].text).to eq('Expected "<a>" & more')
+    end
+
+    it 'locates a failure by file and line' do
+      stream = StringIO.new
+      reporter_calls.call(reporter, stream, results)
+
+      location = REXML::Document.new(stream.string).root.elements['FailedTests/Test/Location']
+      expect(location.elements['File'].text).to eq('test/TestFoo.c')
+      expect(location.elements['Line'].text).to eq('30')
+    end
+
+    it 'numbers every test in one sequence across all sections' do
+      stream = StringIO.new
+      reporter_calls.call(reporter, stream, results)
+
+      ids = REXML::Document.new(stream.string).root.get_elements('//Test').map { |test| test.attributes['id'] }
+      expect(ids).to eq(['1', '2', '3'])
+    end
+
+    it 'reports the statistics from the aggregated counts' do
+      stream = StringIO.new
+      reporter_calls.call(reporter, stream, results)
+
+      stats = REXML::Document.new(stream.string).root.elements['Statistics']
+      expect(stats.elements['Tests'].text).to eq('3')
+      expect(stats.elements['Ignores'].text).to eq('1')
+      expect(stats.elements['FailuresTotal'].text).to eq('1')
+    end
+
+    it 'escapes the report name' do
+      stream = StringIO.new
+      reporter.instance_variable_set(:@test_counter, 0)
+      reporter.header(stream: stream, name: 'Q-36 & <Modulator>', results: results, duration_s: nil)
+      reporter.body(stream: stream, name: 'Q-36 & <Modulator>', results: results, duration_s: nil)
+      reporter.footer(stream: stream, name: 'Q-36 & <Modulator>', results: results, duration_s: nil)
+
+      expect(REXML::Document.new(stream.string).root.attributes['name']).to eq('Q-36 & <Modulator>')
     end
   end
 end
