@@ -338,8 +338,8 @@ module GcovCommonTestCases
 
         output = @c.ceedling_build_exec("gcov:all --verbosity=obnoxious")
         if @gcov_reports.include? :gcovr
-          # Config file honored (fix applied): strict mode exits non-zero on duplicate functions.
-          # Config file overridden by Ceedling CLI (bug): merge-use-line-max exits 0.
+          # The config file's strict mode exits non-zero on duplicate functions. A Ceedling
+          # command line overriding the config file would exit 0 under merge-use-line-max.
           expect(@c.last_exit_status).not_to eq(0)
 
           # No `--exclude` should appear on the gcovr command line when a config file is in use.

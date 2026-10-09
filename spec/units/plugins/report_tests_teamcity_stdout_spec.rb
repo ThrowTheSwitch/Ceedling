@@ -108,9 +108,8 @@ describe ReportTestsTeamcityStdout do
     end
   end
 
-  # --- Fix below this point: written to fail against pre-fix code ---
-
-  describe '#escape (fix: a real embedded newline/carriage-return is escaped, not passed through)' do
+  # A TeamCity service message must stay on one physical line
+  describe '#escape' do
     it 'escapes a real newline as |n, keeping the whole message on one physical output line' do
       expect(@plugin.send(:escape, "line one\nline two")).to eq('line one|nline two')
     end

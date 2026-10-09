@@ -60,9 +60,8 @@ describe ReportBuildWarningsLog do
     end
   end
 
-  # --- Fixes below this point: written to fail against pre-fix code ---
-
-  describe '#process_output (fix: line-filtering, not whole-blob capture)' do
+  # Tool output mixes warnings with progress and context lines
+  describe '#process_output' do
     it 'stores only the line(s) that actually look like a warning, not the entire tool output' do
       hash = {}
       output = "foo.c: In function 'main':\nfoo.c:3:5: warning: unused variable 'x'\nCompiling foo.c...\n"
@@ -73,7 +72,8 @@ describe ReportBuildWarningsLog do
     end
   end
 
-  describe '#post_build (fix: writes via the injected file_wrapper, never a raw File)' do
+  # A log reaches disk only through the injected file layer
+  describe '#post_build' do
     it 'joins the collected warning lines for one context and hands them to file_wrapper.write' do
       @plugin.instance_variable_get(:@warnings)[:test] = {
         collection: ["foo.c:3:5: warning: unused variable 'x'\n", "bar.c:9:1: warning: missing return\n"]
@@ -89,7 +89,7 @@ describe ReportBuildWarningsLog do
     end
   end
 
-  describe '#setup (fix: @warnings has no auto-vivifying default block)' do
+  describe '#setup' do
     it 'builds a plain Hash, so merely reading an absent context can never silently create an entry' do
       configurator = double('configurator')
       allow(configurator).to receive(:report_build_warnings_log_filename).and_return('warnings.log')

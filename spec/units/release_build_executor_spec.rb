@@ -46,8 +46,7 @@ describe ReleaseBuildExecutor do
     # Default: no prior `.d` file on disk, and the tracker reports every target
     # stale -- i.e. every real build in this spec proceeds as an unconditional
     # fresh compile/link unless a test overrides `stale?` to exercise the skip path.
-    # exist_with_retry? backs every presence check here now (Fix 4) -- release_build_executor
-    # has no remaining plain-exist? call site.
+    # Every presence check in release_build_executor goes through exist_with_retry?.
     allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
     allow(@file_wrapper).to receive(:mkdir)
     allow(@dependinator).to receive(:register)
