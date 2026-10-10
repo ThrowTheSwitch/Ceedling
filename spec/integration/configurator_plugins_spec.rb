@@ -87,6 +87,21 @@ describe 'Configurator plugins (integration)' do
     end
   end
 
+# A plugin declares its build context a peer of :test in its defaults, where core
+# validation reads it. Declarations from several plugins combine.
+it "accepts matcher hashes for each context a plugin declares in its defaults" do
+  declaring = ->(name) { plugin_files( name, "lib/#{name}.rb" => "\n", "config/defaults.yml" => ":plugins:\n  :test_build_contexts:\n    - :#{name}\n" ) }
+  files = minimal_project_files.merge( declaring.( "cfg_spec_ctx_a" ) ).merge( declaring.( "cfg_spec_ctx_b" ) )
+  yaml  = with_plugins( "cfg_spec_ctx_a", "cfg_spec_ctx_b" ) +
+          ":defines:\n  :cfg_spec_ctx_a:\n    :Model: [A]\n:flags:\n  :cfg_spec_ctx_b:\n    :compile:\n      :*: [-g]\n"
+
+  in_temp_project( files ) do
+    configurator = configure( yaml )[:configurator]
+
+    expect(configurator.plugins_test_build_contexts).to match_array( [:cfg_spec_ctx_a, :cfg_spec_ctx_b] )
+  end
+end
+
   it 'takes a plugin from the first load path that holds it' do
     files = minimal_project_files
       .merge( 'first/cfg_spec_twice/lib/cfg_spec_twice.rb' => "\n", 'second/cfg_spec_twice/lib/cfg_spec_twice.rb' => "\n" )

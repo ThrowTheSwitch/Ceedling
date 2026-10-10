@@ -335,10 +335,10 @@ class ConfiguratorSetup
     return reason
   end
 
-  # The gcov plugin adds its own context, which also supports matchers
+  # A plugin declares its own build contexts peers of :test in its defaults, so they also
+  # support matchers
   def matcher_contexts(config, contexts)
-    return contexts + [:gcov] if config.dig( :plugins, :enabled )&.include?( 'gcov' )
-    return contexts
+    return contexts + Array( config.dig( :plugins, :test_build_contexts ) ).map( &:to_sym )
   end
 
   # A context's entries are a list of strings, or, in a context supporting matchers, a

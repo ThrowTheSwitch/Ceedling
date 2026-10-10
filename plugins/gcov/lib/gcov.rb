@@ -73,8 +73,7 @@ class Gcov < Plugin
     @loginator = @ceedling[:loginator]
     @reportinator = @ceedling[:reportinator]
     @test_invoker = @ceedling[:test_invoker]
-    @flaginator = @ceedling[:flaginator]
-    @defineinator = @ceedling[:defineinator]
+    @test_build_setup = @ceedling[:test_build_setup]
     @generator = @ceedling[:generator]
     @plugin_reportinator = @ceedling[:plugin_reportinator]
     @file_path_utils = @ceedling[:file_path_utils]
@@ -166,12 +165,13 @@ class Gcov < Plugin
         object       = @file_path_utils.form_test_object_filepath( filepath, context:GCOV_SYM )
         dependencies = @file_path_utils.form_test_dependencies_filepath( filepath, context:GCOV_SYM )
         search_paths = @configurator.collection_paths_include
-        defines      = @defineinator.defines( subkey:GCOV_SYM )
+        # Defines and flags resolve as a tested source's do, against this source's filepath
+        defines      = @test_build_setup.context_defines( context:GCOV_SYM, filepath:filepath )
 
         # Same MC/DC condition pre_test_compile_register applies for ordinary test-context
         # compiles -- this path calls Generator directly, bypassing TestBuildExecutor
         # (and therefore that hook) entirely, so it has to apply the flag itself.
-        flags = @flaginator.flag_down( context:GCOV_SYM, operation:OPERATION_COMPILE_SYM )
+        flags = @test_build_setup.flags( context:GCOV_SYM, operation:OPERATION_COMPILE_SYM, filepath:filepath )
         flags += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
 
         # Same register/stale?/mark_fresh idiom TestBuildExecutor's own object

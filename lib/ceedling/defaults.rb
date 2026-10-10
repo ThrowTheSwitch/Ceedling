@@ -396,6 +396,12 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
   # All tools populated while building up config / defaults structure
   :tools => {},
 
+  :plugins => {
+    # Build contexts plugins declare peers of :test, through their own defaults. A peer
+    # context's :defines and :flags may hold matcher hashes and fall back to :test's.
+    :test_build_contexts => []
+    },
+
   }.freeze
 
 

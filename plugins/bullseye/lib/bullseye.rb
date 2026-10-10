@@ -238,8 +238,9 @@ class Bullseye < Plugin
         object       = @ceedling[:file_path_utils].form_test_object_filepath( filepath, context: BULLSEYE_SYM )
         dependencies = @ceedling[:file_path_utils].form_test_dependencies_filepath( filepath, context: BULLSEYE_SYM )
         search_paths = @configurator.collection_paths_include
-        flags        = @ceedling[:flaginator].flag_down( context: BULLSEYE_SYM, operation: OPERATION_COMPILE_SYM )
-        defines      = @ceedling[:defineinator].defines( subkey: BULLSEYE_SYM )
+        # Defines and flags resolve as a tested source's do, against this source's filepath
+        flags        = @ceedling[:test_build_setup].flags( context: BULLSEYE_SYM, operation: OPERATION_COMPILE_SYM, filepath: filepath )
+        defines      = @ceedling[:test_build_setup].context_defines( context: BULLSEYE_SYM, filepath: filepath )
 
         # Same register/stale?/mark_fresh idiom TestBuildExecutor's own object
         # compilation uses -- this compile happens entirely outside that pipeline

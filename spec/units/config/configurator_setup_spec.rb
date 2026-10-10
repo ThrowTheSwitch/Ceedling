@@ -387,12 +387,17 @@ describe ConfiguratorSetup do
         logged(/matcher hashes are only available for :test & :preprocess \(/)
       end
 
-      it "accepts a matcher hash for :gcov when the gcov plugin is enabled" do
-        expect(validate( ":plugins:\n  :enabled: [gcov]\n:defines:\n  :gcov:\n    :*: [A]\n" )).to be true
+      it "accepts a matcher hash for a test build context a plugin declares" do
+        expect(validate( ":plugins:\n  :test_build_contexts:\n    - :bullseye\n:defines:\n  :bullseye:\n    :*: [A]\n" )).to be true
       end
 
-      it "validates the matchers of :gcov as it does those of :test" do
-        expect(validate( ":plugins:\n  :enabled: [gcov]\n:defines:\n  :gcov:\n    :Model: [7]\n" )).to be false
+      it "rejects a matcher hash for a plugin's context the plugin does not declare" do
+        expect(validate( ":plugins:\n  :enabled: [gcov]\n:defines:\n  :gcov:\n    :*: [A]\n" )).to be false
+        logged(/matcher hashes are only available for :test & :preprocess \(/)
+      end
+
+      it "validates the matchers of a declared context as it does those of :test" do
+        expect(validate( ":plugins:\n  :test_build_contexts:\n    - :gcov\n:defines:\n  :gcov:\n    :Model: [7]\n" )).to be false
         logged(/:defines ↳ :gcov ↳ :Model entry '7' is not a string/)
       end
 
@@ -479,8 +484,13 @@ describe ConfiguratorSetup do
         logged(/matcher hashes are only available for :test \(/)
       end
 
-      it "accepts a matcher hash for :gcov when the gcov plugin is enabled" do
-        expect(validate( ":plugins:\n  :enabled: [gcov]\n:flags:\n  :gcov:\n    :compile:\n      :*: [-g]\n" )).to be true
+      it "accepts a matcher hash for a test build context a plugin declares" do
+        expect(validate( ":plugins:\n  :test_build_contexts:\n    - :gcov\n:flags:\n  :gcov:\n    :compile:\n      :*: [-g]\n" )).to be true
+      end
+
+      it "names the declared contexts when rejecting a matcher hash elsewhere" do
+        expect(validate( ":plugins:\n  :test_build_contexts:\n    - :gcov\n:flags:\n  :release:\n    :compile:\n      :*: [-g]\n" )).to be false
+        logged(/matcher hashes are only available for :test & :gcov \(/)
       end
 
       it "rejects an operation that is neither a list nor a matcher" do

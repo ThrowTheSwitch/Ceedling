@@ -595,10 +595,16 @@ class TestBuildSetup
     return @test_runner_manager.collect_defines()
   end
 
-  def compile_defines(context:, filepath:)
+  # A build context without defines of its own takes those of :test. Matchers resolve
+  # against `filepath`.
+  def context_defines(context:, filepath:)
     context = TEST_SYM unless @defineinator.defines_defined?( context: context )
+    return @defineinator.defines( subkey: context, filepath: filepath )
+  end
+
+  def compile_defines(context:, filepath:)
     defines  = @defineinator.generate_test_definition( filepath: filepath )
-    defines += @defineinator.defines( subkey: context, filepath: filepath )
+    defines += context_defines( context: context, filepath: filepath )
     return defines.uniq
   end
 

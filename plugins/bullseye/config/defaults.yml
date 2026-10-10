@@ -6,6 +6,10 @@
 # =========================================================================
 
 ---
+:plugins:
+  :test_build_contexts:
+    - :bullseye   # Its :defines and :flags work as :test's do, matchers included
+
 
 :bullseye:
   :summaries: TRUE               # Enable covsrc totals banner + per-source covfn dump to console after tests

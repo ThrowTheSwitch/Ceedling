@@ -563,6 +563,26 @@ module GcovCommonTestCases
     end
   end
 
+  # An untested source's defines resolve as a tested source's do, so a :gcov matcher naming
+  # the source supplies what it needs to compile
+  def project_with_gcov_untested_sources_compiled_with_matched_defines
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        add_gcov_option("untested_sources", ":compile")
+        @c.merge_project_yml_for_test( { :defines => { :gcov => { 'needs_define' => ['UNTESTED_SOURCE_REQUIRED'] } } } )
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        File.write( 'src/needs_define.c', "#ifndef UNTESTED_SOURCE_REQUIRED\n#error UNTESTED_SOURCE_REQUIRED is not defined\n#endif\nint needs_define(void) { return 1; }\n" )
+
+        output = @c.ceedling_build_exec("gcov:untested_sources")
+        expect(@c.last_exit_status).to eq(0), output
+        expect(File.exist?('build/gcov/out/needs_define.o')).to eq true
+      end
+    end
+  end
+
   def project_with_gcov_untested_sources_standalone_task
     @c.with_context do
       Dir.chdir @proj_name do

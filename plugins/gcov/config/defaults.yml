@@ -6,6 +6,10 @@
 # =========================================================================
 
 ---
+:plugins:
+  :test_build_contexts:
+    - :gcov   # Its :defines and :flags work as :test's do, matchers included
+
 :gcov:
   :summaries: TRUE                # Enable simple coverage summaries to console after tests
   :report_task: FALSE             # Disabled dedicated report generation task (this enables automatic report generation)

@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'yaml'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/plugins/plugin'
@@ -144,6 +145,13 @@ describe Bullseye do
   ##
   ## Configuration validation
   ##
+
+  # Core validation learns from plugin defaults which contexts are peers of :test
+  it 'declares :bullseye a test build context in its defaults' do
+    defaults = YAML.safe_load( File.read( File.expand_path( '../../../../plugins/bullseye/config/defaults.yml', __FILE__ ) ), permitted_classes: [Symbol] )
+
+    expect(defaults[:plugins][:test_build_contexts]).to eq( [:bullseye] )
+  end
 
   describe '#validate_untested_sources' do
     it 'passes for every recognized :untested_sources mode' do
@@ -804,8 +812,7 @@ describe Bullseye do
   describe '#process_untested_sources' do
     let(:file_path_utils) { double('file_path_utils') }
     let(:configurator)    { double('configurator', collection_paths_include: []) }
-    let(:defineinator)    { double('defineinator', defines: []) }
-    let(:flaginator)      { double('flaginator', flag_down: []) }
+    let(:test_build_setup) { double('test_build_setup', context_defines: [], flags: []) }
     let(:dependinator)    { double('dependinator', register: nil, register_gcc_deps_file: nil, flush: nil, mark_fresh: nil) }
     let(:generator)       { double('generator', generate_object_file_c: nil) }
     let(:test_invoker)    { double('test_invoker') }
@@ -814,8 +821,7 @@ describe Bullseye do
       allow(test_invoker).to receive(:each_test_with_sources)
       services = ceedling.merge(
         :file_path_utils => file_path_utils,
-        :defineinator    => defineinator,
-        :flaginator      => flaginator,
+        :test_build_setup => test_build_setup,
         :dependinator    => dependinator,
         :generator       => generator
       )
@@ -884,6 +890,17 @@ describe Bullseye do
         expect(generator).to_not receive(:generate_object_file_c)
         expect(dependinator).to_not receive(:mark_fresh)
 
+        bullseye.process_untested_sources(sources: ['src/a.c'])
+      end
+
+      # An untested source's defines and flags resolve as a tested source's do, matchers included
+      it "resolves defines and flags for the :bullseye context against the untested source's filepath" do
+        allow(dependinator).to receive(:stale?).and_return(true)
+        allow(test_build_setup).to receive(:context_defines).with( context: BULLSEYE_SYM, filepath: 'src/a.c' ).and_return( ['COVERAGE'] )
+        allow(test_build_setup).to receive(:flags).with( context: BULLSEYE_SYM, operation: OPERATION_COMPILE_SYM, filepath: 'src/a.c' ).and_return( ['-O0'] )
+        bullseye = build_process_bullseye({ bullseye_untested_sources: BULLSEYE_UNTESTED_SOURCES_COMPILE })
+
+        expect(generator).to receive(:generate_object_file_c).with( hash_including( defines: ['COVERAGE'], flags: ['-O0'] ) )
         bullseye.process_untested_sources(sources: ['src/a.c'])
       end
 
