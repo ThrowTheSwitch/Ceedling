@@ -335,8 +335,7 @@ class ConfiguratorSetup
     return reason
   end
 
-  # A plugin declares its own build contexts peers of :test in its defaults, so they also
-  # support matchers
+  # Build contexts that plugins declare peers of :test also support matchers
   def matcher_contexts(config, contexts)
     return contexts + Array( config.dig( :plugins, :test_build_contexts ) ).map( &:to_sym )
   end

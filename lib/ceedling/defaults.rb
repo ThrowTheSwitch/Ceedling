@@ -397,8 +397,8 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
   :tools => {},
 
   :plugins => {
-    # Build contexts plugins declare peers of :test, through their own defaults. A peer
-    # context's :defines and :flags may hold matcher hashes and fall back to :test's.
+    # Plugins declare, in their own defaults, which build contexts are peers of :test. A
+    # peer context's :defines and :flags may hold matcher hashes and fall back to :test's.
     :test_build_contexts => []
     },
 
