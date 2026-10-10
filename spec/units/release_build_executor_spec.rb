@@ -10,6 +10,7 @@ require 'ceedling/filename_extension'
 require 'rake'
 require 'ceedling/release_invoker/release_build_executor'
 require 'ceedling/release_invoker/release_invoker_types'
+require 'ceedling/defaults'
 
 describe ReleaseBuildExecutor do
   before(:each) do
@@ -299,6 +300,18 @@ describe ReleaseBuildExecutor do
 
       expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, _objects, _flags, _target, _map, _lib_args, lib_paths|
         expect(lib_paths).to eq( ['-Lvendor/lib'] )
+      end
+
+      @executor.link( @state )
+    end
+
+    # Quoted like every other default path argument, so a path with a space survives the shell
+    it "quotes each library search path under the default flag template" do
+      stub_const( "PATHS_LIBRARIES", ['vendor/third party/lib'] )
+      stub_const( "LIBRARIES_PATH_FLAG", DEFAULT_CEEDLING_PROJECT_CONFIG[:libraries][:path_flag] )
+
+      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, _objects, _flags, _target, _map, _lib_args, lib_paths|
+        expect(lib_paths).to eq( ['-L "vendor/third party/lib"'] )
       end
 
       @executor.link( @state )

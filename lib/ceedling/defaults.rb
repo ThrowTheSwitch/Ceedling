@@ -339,7 +339,7 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
 
   :libraries => {
     :flag => '-l${1}',
-    :path_flag => '-L ${1}',
+    :path_flag => '-L "${1}"',
     :test => [],
     :release => []
     },
