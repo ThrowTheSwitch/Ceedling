@@ -4745,6 +4745,9 @@ Ceedling Gcov plugin uses a context of <code>:gcov</code>, surprisingly enough. 
 plugins with tools that take advantage of Ceedling’s internal mechanisms, you
 can add to those tools' flags in the same manner as the built-in contexts and
 operations.</p>
+<p>The Gcov and Bullseye plugins' contexts, <code>:gcov</code> and <code>:bullseye</code>, accept
+per-test matchers in their operations as <code>:test</code> does. A plugin’s build uses
+<code>:test</code>’s flags for any operation its context lacks.</p>
 <h2 id="simple-flags-configuration">Simple <code>:flags</code> configuration</h2>
 <p>A simple and common need is enforcing a particular C standard. The following
 example illustrates simple YAML lists for flags.</p>

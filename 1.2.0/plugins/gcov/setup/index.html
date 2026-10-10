@@ -4740,7 +4740,8 @@ and
 matchers can provide these. For GCov tasks, symbols and flags are extracted from
 the <code>:test</code> context beneath the <code>:defines</code> and <code>:flags</code> configuration sections 
 by default. If you need something special for coverage builds, use the <code>:gcov</code> 
-context for these matchers instead.</p>
+context for these matchers instead. For an untested source, matchers match
+against the source file's own path.</p>
 </div>
 <p>Notes:</p>
 <ul>

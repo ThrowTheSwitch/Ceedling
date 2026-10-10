@@ -4489,9 +4489,15 @@ script. Based on other Ceedling options, Ceedling also sets certain test runner
 generation configuration values for you.</p>
 <p><strong><a href="https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityHelperScriptsGuide.md#options-accepted-by-generate_test_runnerrb">Test runner configuration options are documented in the Unity project</a>.</strong></p>
 <h2 id="test_runner-cmdline_args"><code>:test_runner</code> ↳ <code>:cmdline_args</code></h2>
-<p>Before Ceedling 1.0.0, the test runner option <code>:cmdline_args</code> was needed 
-for certain advanced test suite features. This option is still needed, 
-but Ceedling now automatically sets it for you in the scenarios requiring it.</p>
+<p>Enables command line arguments in generated test runners. Two Ceedling 
+features select test cases through these arguments, and Ceedling enables 
+this option automatically, with a notice, whenever either is in use:</p>
+<ul>
+<li><code>:project</code> ↳ <code>:use_backtrace</code> set to anything other than <code>:none</code>. 
+  Backtraces rerun test cases by name.</li>
+<li>The command line test case filters <code>--test-case</code> and <code>--exclude_test_case</code>.</li>
+</ul>
+<p><strong>Default</strong>: FALSE</p>
 <div class="admonition note">
 <p class="admonition-title">Environment limitations</p>
 <p>Be aware that <code>:cmdline_args</code> works well in desktop, native testing but 

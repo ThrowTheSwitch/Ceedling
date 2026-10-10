@@ -2339,6 +2339,50 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :libraries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :yaml
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4464,6 +4508,50 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :libraries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :yaml
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4589,6 +4677,22 @@ a given file type (e.g. source files named with both <code>.c</code> and <code>.
 <h2 id="dependencies"><code>:dependencies</code></h2>
 <p>File containing make-style dependency rules created by the <code>gcc</code> preprocessor</p>
 <p><strong>Default</strong>: .d</p>
+<h2 id="libraries"><code>:libraries</code></h2>
+<p>Library files, recognized among a release build's link inputs</p>
+<p><strong>Default</strong>: [.a, .so]</p>
+<h2 id="map"><code>:map</code></h2>
+<p>Linker map file, named after the test executable or release build it describes</p>
+<p><strong>Default</strong>: .map</p>
+<h2 id="list"><code>:list</code></h2>
+<p>Listing file a compiler tool may write beside each object file</p>
+<p><strong>Default</strong>: .lst</p>
+<h2 id="yaml"><code>:yaml</code></h2>
+<p>Mixin files (see <a href="../../mixins/">Mixins</a>)</p>
+<p>Ceedling uses this setting only to find a mixin given by name, as <em><name></em> plus
+each extension, in each mixin load path. It reads the setting from your project
+file before processing configuration, so it cannot come from a mixin. Ceedling's
+own YAML files always use <em>.yml</em>.</p>
+<p><strong>Default</strong>: .yml</p>
 <p><br/><br/></p>
 
 

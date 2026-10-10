@@ -4417,11 +4417,11 @@ project configuration.</p>
 <a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>. Thus, later 
 entries can reference earlier entries.</p>
 <h2 id="special-case-path-handling">Special case: <code>PATH</code> handling</h2>
-<p>In the specific case of specifying an environment key named <code>:path</code>, an array 
+<p>In the specific case of specifying an environment key named <code>:path</code> (in any case), an array 
 of string values will be concatenated with the appropriate platform-specific 
 path separation character (i.e. <code>:</code> on Unix-variants, <code>;</code> on Windows).</p>
-<p>All other instances of environment keys assigned a value of a YAML array use 
-simple concatenation.</p>
+<p>All other instances of environment keys assigned a value of a YAML array are
+joined with a space between values.</p>
 <h2 id="example-environment-yaml">Example <code>:environment</code> YAML</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:environment</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">:license_server</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gizmo.intranet</span><span class="w">        </span><span class="c1"># LICENSE_SERVER set with value &quot;gizmo.intranet&quot;</span>

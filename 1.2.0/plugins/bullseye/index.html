@@ -4788,7 +4788,8 @@ and
 <a href="../../configuration/reference/flags/"><code>:flags</code></a>
 matchers can provide these. Bullseye tasks extract symbols and flags from
 the <code>:test</code> context by default. Use the <code>:bullseye</code> context in those
-matchers to supply anything specific to coverage builds.</p>
+matchers to supply anything specific to coverage builds. For an untested
+source, matchers match against the source file's own path.</p>
 </div>
 <p><code>:compile</code> also enables a standalone <code>bullseye:untested_sources</code> task.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:untested_sources

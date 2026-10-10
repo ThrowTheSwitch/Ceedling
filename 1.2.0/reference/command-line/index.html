@@ -5239,6 +5239,12 @@ the test cases including the word <em>configure</em>, naturally.
 <p>Exclude matching follows the same sub-string logic as discussed in the
 preceding section.</p>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Test case filters enable test runner command line arguments</p>
+<p>Both filters select test cases through command line arguments to the test
+executable. Ceedling enables <a href="../../configuration/reference/test-runner/#test_runner-cmdline_args"><code>:test_runner</code> ↳ <code>:cmdline_args</code></a>
+for a build using either filter.</p>
+</div>
 <hr />
 <h3 id="ceedling-testpattern"><a href="../../getting-started/command-line/#ceedling-testpattern"><code>ceedling test:pattern[*]</code></a></h3>
 <p>Execute any tests whose name and/or path match the regular expression

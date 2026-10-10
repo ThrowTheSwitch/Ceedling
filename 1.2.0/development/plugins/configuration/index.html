@@ -4606,6 +4606,24 @@ complicated.</p>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">:key</span><span class="p">:</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">:value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;setting&gt;</span>
 </code></pre></div>
+<h4 id="declaring-a-build-context-a-peer-of-test">Declaring a build context a peer of <code>:test</code></h4>
+<p>A plugin that runs test builds under its own context, as the Gcov plugin does
+with <code>:gcov</code>, can declare that context a peer of <code>:test</code> in its defaults. Users
+may then give the context per-test matchers in <code>:defines</code> and <code>:flags</code>, exactly
+as for <code>:test</code>. Without the declaration, configuration validation rejects a
+matcher hash in the context.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:test_build_contexts</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:my_context</span>
+</code></pre></div>
+<p>A test build in any context, declared or not, uses <code>:test</code>'s defines when the
+context has none, and <code>:test</code>'s flags for any operation the context lacks.</p>
+<p><code>:plugins</code> ↳ <code>:test_build_contexts</code> is a hidden setting. It is absent from the
+project configuration documentation, and a project does not set it. A project
+that did would replace every plugin's declaration.</p>
+<p>Declarations from every enabled plugin combine. Ceedling reads them while
+validating configuration, so they belong in a plugin's YAML or Ruby defaults
+rather than its <code>lib/</code> code, which loads later.</p>
 <h3 id="configuration-plugin-flavor-b-programmatic-ruby-defaults">Configuration Plugin Flavor B: Programmatic (Ruby) Defaults</h3>
 <p>Naming and location convention: <code>&lt;plugin_name&gt;/config/defaults_&lt;plugin_name&gt;.rb</code></p>
 <p>Configuration values are defined in a Ruby hash returned by a "naked" function
@@ -4634,9 +4652,9 @@ redefined.</p>
 substitution at configuration load time (see the <a href="../../../configuration/project-file/#inline-ruby-string-expansion">configuration reference</a> for more).
 Programmatic Ruby defaults (next section) are more flexible but more
 complicated.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Any valid YAML is appropriate</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">:key</span><span class="p">:</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">:value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;setting&gt;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Any valid YAML is appropriate</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">:key</span><span class="p">:</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">:value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;setting&gt;</span>
 </code></pre></div>
 <p><br/><br/></p>
 

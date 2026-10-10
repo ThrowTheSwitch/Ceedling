@@ -2072,6 +2072,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#use_exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :use_exceptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#use_partials" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4504,6 +4515,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#use_exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :use_exceptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#use_partials" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4775,6 +4797,10 @@ plugin tasks.</p>
 <p>Configures the build environment to make use of CMock. Note that if you do not
 use mocks, there's no harm in leaving this setting as its default value.</p>
 <p><strong>Default</strong>: TRUE</p>
+<h2 id="use_exceptions"><code>:use_exceptions</code></h2>
+<p>Configures the build environment to make use of CException. Ceedling enables
+this setting automatically when <code>:cmock</code> ↳ <code>:plugins</code> includes <code>:cexception</code>.</p>
+<p><strong>Default</strong>: FALSE</p>
 <h2 id="use_partials"><code>:use_partials</code></h2>
 <p>Enables Ceedling Partials. <a href="../../../testing-guide/partials/">Partials</a> allow you to test and mock
 inaccessible functions and variables in the C code under test without rewriting

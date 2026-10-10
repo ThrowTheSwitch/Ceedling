@@ -4747,13 +4747,16 @@ you want no additional symbols for preprocessing regardless of <code>:test</code
 symbols, specify an empty list <code>[]</code> for the relevant matcher (or for the
 whole <code>:preprocess</code> section, if using the simple list format).</p>
 </div>
-<p><strong>Default</strong>: Identical to that same file's <code>:test</code> context symbols, unless specified</p>
+<p><strong>Default</strong>: Identical to that same file’s <code>:test</code> context symbols, unless specified</p>
 <h2 id="defines-plugin-context"><code>:defines</code> ↳ <code>:&lt;plugin context&gt;</code></h2>
 <p>Some advanced plugins make use of build contexts as well. For instance, the
 Ceedling Gcov plugin uses a context of <code>:gcov</code>, surprisingly enough. For any
 plugins with tools that take advantage of Ceedling’s internal mechanisms, you
 can add to those tools' compilation symbols in the same manner as the built-in
 contexts.</p>
+<p>The Gcov and Bullseye plugins' contexts, <code>:gcov</code> and <code>:bullseye</code>, accept
+per-test matchers as <code>:test</code> does. A plugin’s build uses <code>:test</code>’s symbols when
+its context lists none of its own.</p>
 <h2 id="defines-options"><code>:defines</code> options</h2>
 <ul>
 <li><code>:use_test_definition</code>:</li>
