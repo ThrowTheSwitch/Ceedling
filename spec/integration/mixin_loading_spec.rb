@@ -238,6 +238,17 @@ describe 'Mixin loading and merging (integration)' do
       end
     end
 
+    it 'finds mixins by name under each extension of a configured list' do
+      with_project_tree(
+        'first_mixin.yml'   => ":paths:\n  :include: [first]\n",
+        'second_mixin.yaml' => ":paths:\n  :include: [second]\n",
+        'project.yml'       => ":project:\n  :build_root: build\n:extension:\n  :yaml:\n    - .yml\n    - .yaml\n"
+      ) do |dir|
+        config = resolve(dir: dir, mixins: ['first_mixin', 'second_mixin'])
+        expect(config.dig(:paths, :include)).to include('first', 'second')
+      end
+    end
+
   end
 
   # =========================================================================

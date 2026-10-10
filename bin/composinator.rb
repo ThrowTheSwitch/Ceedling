@@ -22,8 +22,8 @@ class Composinator
     # Extract cfg_enabled_mixins mixins list plus load paths list from config
     cfg_enabled_mixins, cfg_load_paths = @mixin_resolvinator.extract_mixins( config: config )
 
-    # Get our YAML file extension
-    yaml_ext = @projectinator.lookup_yaml_extension( config:config )
+    # Mixin filename extensions, from :extension ↳ :yaml if the project sets it
+    yaml_exts = @projectinator.lookup_yaml_extensions( config:config )
 
     # Remove any silly redundancies
     cfg_enabled_mixins.uniq!
@@ -65,7 +65,7 @@ class Composinator
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
       source: 'Config :mixins ↳ :enabled =>',
-      yaml_extension: yaml_ext
+      yaml_extensions: yaml_exts
     )
       raise 'Project configuration file section :mixins failed validation'
     end
@@ -75,7 +75,7 @@ class Composinator
       mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
       source: 'Mixin',
-      yaml_extension: yaml_ext
+      yaml_extensions: yaml_exts
     )
       raise 'Command line failed validation'
     end
@@ -88,7 +88,7 @@ class Composinator
     config_mixins = @mixin_resolvinator.lookup_mixins(
       mixins: cfg_enabled_mixins,
       load_paths: cfg_load_paths,
-      yaml_extension: yaml_ext
+      yaml_extensions: yaml_exts
     )
 
     # Pre-build config entries as tagged hashes carrying both the resolved path and
@@ -104,7 +104,7 @@ class Composinator
     resolved_file_values = @mixin_resolvinator.lookup_mixins(
       mixins: cmdline_file_values,
       load_paths: cfg_load_paths,
-      yaml_extension: yaml_ext
+      yaml_extensions: yaml_exts
     )
     file_resolution_map = Hash[cmdline_file_values.zip(resolved_file_values)]
 

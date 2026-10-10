@@ -198,13 +198,13 @@ describe MixinResolvinator do
 
   # =========================================================================
   describe '#lookup_mixins' do
-    let(:yaml_extension) { '.yml' }
+    let(:yaml_extensions) { ['.yml'] }
 
     it 'returns empty array for an empty mixin list' do
       result = @mixin_resolvinator.lookup_mixins(
         mixins:         [],
         load_paths:     ['support/mixins'],
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to eq([])
     end
@@ -215,7 +215,7 @@ describe MixinResolvinator do
       result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['path/to/mixin.yml'],
         load_paths:     ['support/mixins'],
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to eq(['path/to/mixin.yml'])
     end
@@ -227,7 +227,7 @@ describe MixinResolvinator do
       result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['my_mixin'],
         load_paths:     ['first/path', 'second/path'],
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to eq(['first/path/my_mixin.yml'])
     end
@@ -240,9 +240,24 @@ describe MixinResolvinator do
       result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['my_mixin'],
         load_paths:     ['first/path', 'second/path'],
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to eq(['second/path/my_mixin.yml'])
+    end
+
+    # A project may name several mixin file extensions. Load path order outranks extension order.
+    it 'resolves a simple name under any configured extension, searching each load path in turn' do
+      allow(@path_validator).to receive(:filepath?).with('my_mixin').and_return(false)
+      allow(@file_wrapper).to receive(:exist?).and_return(false)
+      allow(@file_wrapper).to receive(:exist?).with('first/path/my_mixin.yaml').and_return(true)
+      allow(@file_wrapper).to receive(:exist?).with('second/path/my_mixin.yml').and_return(true)
+
+      result = @mixin_resolvinator.lookup_mixins(
+        mixins:          ['my_mixin'],
+        load_paths:      ['first/path', 'second/path'],
+        yaml_extensions: ['.yml', '.yaml']
+      )
+      expect(result).to eq(['first/path/my_mixin.yaml'])
     end
 
     it 'returns the name unchanged when not found in any load_path' do
@@ -252,7 +267,7 @@ describe MixinResolvinator do
       result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['unresolved_name'],
         load_paths:     ['support/mixins'],
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to eq(['unresolved_name'])
     end
@@ -265,7 +280,7 @@ describe MixinResolvinator do
       result = @mixin_resolvinator.lookup_mixins(
         mixins:         ['explicit.yml', 'named_mixin'],
         load_paths:     ['support'],
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to eq(['explicit.yml', 'support/named_mixin.yml'])
     end
@@ -273,7 +288,7 @@ describe MixinResolvinator do
 
   # =========================================================================
   describe '#validate_mixins' do
-    let(:yaml_extension) { '.yml' }
+    let(:yaml_extensions) { ['.yml'] }
 
     it 'returns true for a mixin filepath that exists' do
       allow(@path_validator).to receive(:filepath?).with('path/to/mixin.yml').and_return(true)
@@ -283,7 +298,7 @@ describe MixinResolvinator do
         mixins:         ['path/to/mixin.yml'],
         load_paths:     [],
         source:         'Test',
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to be true
     end
@@ -301,7 +316,7 @@ describe MixinResolvinator do
         mixins:         ['missing/mixin.yml'],
         load_paths:     [],
         source:         'Test',
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to be false
     end
@@ -314,7 +329,7 @@ describe MixinResolvinator do
         mixins:         ['my_mixin'],
         load_paths:     ['support'],
         source:         'Test',
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to be true
     end
@@ -332,9 +347,37 @@ describe MixinResolvinator do
         mixins:         ['unknown_mixin'],
         load_paths:     ['support'],
         source:         'Test',
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to be false
+    end
+
+    it 'accepts a simple name found under any configured extension' do
+      allow(@path_validator).to receive(:filepath?).with('my_mixin').and_return(false)
+      allow(@file_wrapper).to receive(:exist?).and_return(false)
+      allow(@file_wrapper).to receive(:exist?).with('support/my_mixin.yaml').and_return(true)
+
+      result = @mixin_resolvinator.validate_mixins(
+        mixins:          ['my_mixin'],
+        load_paths:      ['support'],
+        source:          'Test',
+        yaml_extensions: ['.yml', '.yaml']
+      )
+      expect(result).to be true
+    end
+
+    it 'names every filename it searched for when a simple name is not found' do
+      allow(@path_validator).to receive(:filepath?).with('unknown_mixin').and_return(false)
+      allow(@file_wrapper).to receive(:exist?).and_return(false)
+
+      expect(@loginator).to receive(:log).with( /as 'unknown_mixin\.yml' or 'unknown_mixin\.yaml'/, anything )
+
+      @mixin_resolvinator.validate_mixins(
+        mixins:          ['unknown_mixin'],
+        load_paths:      ['support'],
+        source:          'Test',
+        yaml_extensions: ['.yml', '.yaml']
+      )
     end
 
     it 'returns false when any entry in a mixed list fails validation' do
@@ -350,7 +393,7 @@ describe MixinResolvinator do
         mixins:         ['good/mixin.yml', 'bad/mixin.yml'],
         load_paths:     [],
         source:         'Test',
-        yaml_extension: yaml_extension
+        yaml_extensions: yaml_extensions
       )
       expect(result).to be false
     end

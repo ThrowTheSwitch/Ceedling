@@ -101,12 +101,13 @@ class Projectinator
   end
 
 
-  def lookup_yaml_extension(config:)
-    return DEFAULT_YAML_FILE_EXTENSION if config[:extension].nil?
+  # The extensions of mixin files found by name, as a list. A project may set one or
+  # several with :extension ↳ :yaml, which is read here, from the project file, before
+  # configuration processing. Nothing after configuration processing uses the setting.
+  def lookup_yaml_extensions(config:)
+    extensions = config[:extension][:yaml] if config[:extension].is_a?( Hash )
 
-    return DEFAULT_YAML_FILE_EXTENSION if config[:extension][:yaml].nil?
-
-    return config[:extension][:yaml]
+    return Array( extensions || DEFAULT_YAML_FILE_EXTENSION )
   end
 
 

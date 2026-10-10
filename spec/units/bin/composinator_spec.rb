@@ -32,7 +32,7 @@ describe Composinator do
   # a real project file, real mixin files, or real YAML.
   def stub_loadinate_pipeline(config: {})
     allow(@projectinator).to receive(:load).and_return( ['/proj/project.yml', config] )
-    allow(@projectinator).to receive(:lookup_yaml_extension).and_return( '.yml' )
+    allow(@projectinator).to receive(:lookup_yaml_extensions).and_return( ['.yml'] )
     allow(@mixin_resolvinator).to receive(:extract_mixins).and_return( [[], []] )
     allow(@mixin_resolvinator).to receive(:validate_mixin_load_paths)
     allow(@mixin_resolvinator).to receive(:validate_mixins).and_return( true )

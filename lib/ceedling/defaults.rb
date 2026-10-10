@@ -355,8 +355,8 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :list => '.lst',
     :testpass => '.pass',
     :testfail => '.fail',
-    :dependencies => '.d',
-    :yaml => '.yml'
+    :dependencies => '.d'
+    # :yaml, for mixin files, is read only from the project file itself (see bin/projectinator.rb)
     },
 
   :unity => {

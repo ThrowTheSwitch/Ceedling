@@ -199,19 +199,25 @@ describe Projectinator do
   end
 
   # =========================================================================
-  describe '#lookup_yaml_extension' do
+  # Every :extension entry may be a single extension or a list
+  describe '#lookup_yaml_extensions' do
     it 'returns the default extension when no :extension section is present' do
-      expect(@projectinator.lookup_yaml_extension( config: {} )).to eq('.yml')
+      expect(@projectinator.lookup_yaml_extensions( config: {} )).to eq(['.yml'])
     end
 
     it 'returns the default extension when :extension is present but :yaml is not' do
       config = {:extension => {:header => '.h'}}
-      expect(@projectinator.lookup_yaml_extension( config: config )).to eq('.yml')
+      expect(@projectinator.lookup_yaml_extensions( config: config )).to eq(['.yml'])
     end
 
-    it 'returns the configured :extension ↳ :yaml value when present' do
+    it 'returns a configured single :extension ↳ :yaml value as a list' do
       config = {:extension => {:yaml => '.yaml'}}
-      expect(@projectinator.lookup_yaml_extension( config: config )).to eq('.yaml')
+      expect(@projectinator.lookup_yaml_extensions( config: config )).to eq(['.yaml'])
+    end
+
+    it 'returns a configured list of :extension ↳ :yaml values' do
+      config = {:extension => {:yaml => ['.yml', '.yaml']}}
+      expect(@projectinator.lookup_yaml_extensions( config: config )).to eq(['.yml', '.yaml'])
     end
   end
 end
