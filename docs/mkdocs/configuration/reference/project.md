@@ -77,6 +77,13 @@ use mocks, there's no harm in leaving this setting as its default value.
 
 **Default**: TRUE
 
+## `:use_exceptions`
+
+Configures the build environment to make use of CException. Ceedling enables
+this setting automatically when `:cmock` ↳ `:plugins` includes `:cexception`.
+
+**Default**: FALSE
+
 ## `:use_partials`
 
 Enables Ceedling Partials. [Partials][partials] allow you to test and mock

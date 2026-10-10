@@ -260,6 +260,13 @@ For instance, if you have file test_gpio.c with defined 3 tests:
     Exclude matching follows the same sub-string logic as discussed in the
     preceding section.
 
+!!! note "Test case filters enable test runner command line arguments"
+    Both filters select test cases through command line arguments to the test
+    executable. Ceedling enables [`:test_runner` ↳ `:cmdline_args`][cmdline-args]
+    for a build using either filter.
+
+[cmdline-args]: ../configuration/reference/test-runner.md#test_runner-cmdline_args
+
 ---
 
 ### [`ceedling test:pattern[*]`](../getting-started/command-line.md#ceedling-testpattern)

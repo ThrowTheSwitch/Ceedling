@@ -2,7 +2,7 @@
 
 **Configure CException’s features**
 
-## Example `:cmock` YAML
+## Example `:cexception` YAML
 
 ```yaml
 :cexception:
@@ -28,7 +28,8 @@ compilation when a CException C source file is compiled.
 
 Note CException must be enabled for it to be added to a release or test build
 and for these symbols to be added to a build of CException (see link referenced
-earlier for more).
+earlier for more). Enable it with `:project` ↳ `:use_exceptions`. Ceedling also
+enables it automatically when `:cmock` ↳ `:plugins` includes `:cexception`.
 
 **Default**: `[]` (empty)
 

@@ -115,6 +115,31 @@ complicated.
   :value: <setting>
 ```
 
+#### Declaring a build context a peer of `:test`
+
+A plugin that runs test builds under its own context, as the Gcov plugin does
+with `:gcov`, can declare that context a peer of `:test` in its defaults. Users
+may then give the context per-test matchers in `:defines` and `:flags`, exactly
+as for `:test`. Without the declaration, configuration validation rejects a
+matcher hash in the context.
+
+```yaml
+:plugins:
+  :test_build_contexts:
+    - :my_context
+```
+
+A test build in any context, declared or not, uses `:test`'s defines when the
+context has none, and `:test`'s flags for any operation the context lacks.
+
+`:plugins` ↳ `:test_build_contexts` is a hidden setting. It is absent from the
+project configuration documentation, and a project does not set it. A project
+that did would replace every plugin's declaration.
+
+Declarations from every enabled plugin combine. Ceedling reads them while
+validating configuration, so they belong in a plugin's YAML or Ruby defaults
+rather than its `lib/` code, which loads later.
+
 ### Configuration Plugin Flavor B: Programmatic (Ruby) Defaults
 
 Naming and location convention: `<plugin_name>/config/defaults_<plugin_name>.rb`
