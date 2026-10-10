@@ -37,8 +37,7 @@ class Configurator
     # as a single value dependency-tracker meta can hash wholesale for Partials targets.
     @partials_config = {} # Default empty hash, replaced by reference below
 
-    # Note: project_config_hash is an instance variable so constants and accessors created
-    # in eval() statements in build() have something of proper scope and persistence to reference
+    # Accessors built from configuration read this
     @project_config_hash = {}
 
     @programmatic_plugins = []
@@ -57,25 +56,22 @@ class Configurator
 
   def replace_flattened_config(config)
     @project_config_hash.merge!(config)
-    @configurator_setup.build_constants_and_accessors(@project_config_hash, binding())
+    @configurator_setup.build_constants_and_accessors(@project_config_hash, self)
   end
 
 
   # Set up essential flattened config related to verbosity.
   # We do this because early config validation failures may need access to verbosity,
   # but the accessors won't be available until after configuration is validated.
-  def set_verbosity(config)
-    # PROJECT_VERBOSITY and PROJECT_DEBUG set at command line processing before Ceedling is loaded
+  # PROJECT_VERBOSITY and PROJECT_DEBUG are set by command line processing.
+  def set_verbosity()
+    debug = !!defined?(PROJECT_DEBUG) && PROJECT_DEBUG
+    define_singleton_method( :project_debug ) { debug }
 
-    if (!!defined?(PROJECT_DEBUG) and PROJECT_DEBUG)
-      eval("def project_debug() return true end", binding())
-    else
-      eval("def project_debug() return false end", binding())      
-    end
+    return if !defined?(PROJECT_VERBOSITY)
 
-    if !!defined?(PROJECT_VERBOSITY)
-      eval("def project_verbosity() return #{PROJECT_VERBOSITY} end", binding())
-    end
+    verbosity = PROJECT_VERBOSITY
+    define_singleton_method( :project_verbosity ) { verbosity }
   end
 
 
@@ -805,12 +801,12 @@ class Configurator
 
     @project_config_hash = flattened_config.clone
 
-    @configurator_setup.build_constants_and_accessors( flattened_config, binding() )
+    @configurator_setup.build_constants_and_accessors( flattened_config, self )
 
     # Top-level keys disappear when we flatten, so create global constants & accessors to any specified keys
     keys.each do |key|
       hash = { key => config[key] }
-      @configurator_setup.build_constants_and_accessors( hash, binding() )
+      @configurator_setup.build_constants_and_accessors( hash, self )
     end
   end
 
@@ -845,12 +841,12 @@ class Configurator
     @project_config_hash.deep_merge!( config_more_flattened )
 
     # create more constants and accessors
-    @configurator_setup.build_constants_and_accessors(config_more_flattened, binding())
+    @configurator_setup.build_constants_and_accessors(config_more_flattened, self)
 
     # recreate constants & update accessors with new merged, base values
     config_more.keys.each do |key|
       hash = { key => config_base[key] }
-      @configurator_setup.build_constants_and_accessors(hash, binding())
+      @configurator_setup.build_constants_and_accessors(hash, self)
     end
   end
 

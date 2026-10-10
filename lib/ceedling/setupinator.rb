@@ -54,7 +54,7 @@ class Setupinator
     @configurator.force_test_rerun = app_cfg[:force_test_rerun]
 
     # Verbosity handling
-    @configurator.set_verbosity( config_hash )
+    @configurator.set_verbosity()
 
     # Logging configuration
     @loginator.set_logfile( app_cfg[:log_filepath] )

@@ -17,45 +17,40 @@ class ConfiguratorBuilder
 
   constructor :file_path_collection_utils, :loginator, :file_wrapper, :system_wrapper
 
+  # Global configuration constants are defined in this namespace. A build reads them from
+  # Object. A spec supplies a throwaway module instead.
+  attr_writer :constants_namespace
 
-  # `value` is read by the module_eval string below, which RuboCop cannot see into.
-  # The cop reads the argument as unused and offers to rename it `_value`. Accepting
-  # that rename leaves the eval referencing a local that no longer exists, so every
-  # global configuration constant raises NameError. Do not autocorrect this line.
-  def build_global_constant(elem, value) # rubocop:disable Lint/UnusedMethodArgument
-    # Convert key names to Ruby constant names
-    # Some key names can be C file names that can include dashes
-    # Upcase the key names to create consitency and Ruby constants by convention
-    # Replace dashes with underscores to match handling of Ruby accessor method names
-    formatted_key = elem.to_s.tr('-','_').upcase
-
-    # Undefine global constant if it already exists
-    Object.send(:remove_const, formatted_key.to_sym) if @system_wrapper.constants_include?(formatted_key)
-
-    # Create global constant
-    Object.module_eval("#{formatted_key} = value")
+  def setup
+    @constants_namespace = Object
   end
 
 
+  # A constant is its key upcased. A key can be a C file name, whose dashes become underscores.
+  def build_global_constant(elem, value)
+    name = elem.to_s.tr( '-', '_' ).upcase
+
+    @constants_namespace.send( :remove_const, name ) if @constants_namespace.const_defined?( name, false )
+    @constants_namespace.const_set( name, value )
+  end
+
+
+  # Rakefiles reference both assembler tool constants, so a build that does not assemble
+  # gets an empty tool definition
   def build_global_constants(config)
-    config.each_pair do |key, value|
-      build_global_constant(key, value)
-    end
+    config.each_pair { |key, value| build_global_constant( key, value ) }
 
-    # TODO: This wants to go somewhere better
-    Object.module_eval("TOOLS_TEST_ASSEMBLER = {}") if (not config[:test_build_use_assembly]) && !defined?(TOOLS_TEST_ASSEMBLER)
-    Object.module_eval("TOOLS_RELEASE_ASSEMBLER = {}") if (not config[:release_build_use_assembly]) && !defined?(TOOLS_RELEASE_ASSEMBLER)
+    [ [:TOOLS_TEST_ASSEMBLER, :test_build_use_assembly], [:TOOLS_RELEASE_ASSEMBLER, :release_build_use_assembly] ].each do |name, assembly|
+      @constants_namespace.const_set( name, {} ) unless config[assembly] || @constants_namespace.const_defined?( name, false )
+    end
   end
 
 
-  def build_accessor_methods(config, context)
-    # Fill configurator object with accessor methods
-    config.each_pair do |key, _value|
-      # Convert key names to Ruby method names
-      # Some key names can be C file names that can include dashes; dashes are not allowed in Ruby method names
-      # Downcase the key names and replace any illegal dashes with legal underscores
-      # Downcased key names create consistency and ensure no method names become Ruby constants by accident
-      eval("def #{key.to_s.tr('-','_').downcase}() return @project_config_hash[:#{key}] end", context)
+  # Each accessor is the key downcased, defined on `target` alone, and reads the target's
+  # project configuration. A key can be a C file name, whose dashes become underscores.
+  def build_accessor_methods(config, target)
+    config.each_key do |key|
+      target.define_singleton_method( key.to_s.tr( '-', '_' ).downcase ) { @project_config_hash[key] }
     end
   end
 
@@ -232,9 +227,7 @@ class ConfiguratorBuilder
 
 
   def set_build_thread_counts(in_hash)
-    require 'etc'
-
-    auto_thread_count = (Etc.nprocessors + 4)
+    auto_thread_count = (@system_wrapper.processor_count + 4)
 
     compile_threads = in_hash[:project_compile_threads]
     test_threads = in_hash[:project_test_threads]

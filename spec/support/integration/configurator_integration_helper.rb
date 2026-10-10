@@ -14,11 +14,11 @@
 # manager, plugin reportinator and test runner manager) are stand-ins.
 #
 # A project's configuration is given as a YAML string, parsed as Ceedling parses a
-# project file. `Setupinator#do_setup` then processes it exactly as a build would.
+# project file. `Setupinator#do_setup` then processes it exactly as a build would. The
+# global constants a build defines go into a throwaway namespace instead of Object.
 
 require 'tmpdir'
 require 'fileutils'
-require 'set'
 
 require 'ceedling/constants'
 require 'ceedling/defaults'
@@ -99,16 +99,14 @@ module ConfiguratorIntegrationHelpers
     end
   end
 
-  # Processes `yaml` as a build's setup would and returns the object graph. A spec
-  # calls remove_tracked_constants after each example to remove the global constants
-  # the configuration created.
+  # Processes `yaml` as a build's setup would and returns the object graph
   def configure(yaml, include_test_case: '', exclude_test_case: '', plugins_path: File.join( CEEDLING_ROOT_PATH, 'plugins' ))
     objects = configurator_objects( quiet_loginator )
+    objects[:configurator_builder].constants_namespace = constants
 
     # The command line sets verbosity before configuration is processed
     stub_const( 'PROJECT_VERBOSITY', Verbosity::NORMAL )
     stub_const( 'PROJECT_DEBUG', false )
-    track_constants
 
     setupinator = Setupinator.new
     setupinator.setup
@@ -132,15 +130,9 @@ module ConfiguratorIntegrationHelpers
     return objects
   end
 
-  # Remembers the global constants that exist now, so those added later can be removed
-  def track_constants
-    @constants_before ||= Set.new( Object.constants )
-  end
-
-  def remove_tracked_constants
-    return unless @constants_before
-    (Object.constants - @constants_before.to_a).each { |name| Object.send( :remove_const, name ) }
-    @constants_before = nil
+  # The namespace holding the global constants configuration defines
+  def constants
+    @constants ||= Module.new
   end
 
   CEEDLING_ROOT_PATH = File.expand_path( '../../..', __dir__ )

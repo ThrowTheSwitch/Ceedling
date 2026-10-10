@@ -106,7 +106,8 @@ describe ConfiguratorBuilder do
       @file_wrapper     = double('file_wrapper')
       @loginator        = double('loginator', log: nil)
       @builder = ConfiguratorBuilder.new(
-        file_path_collection_utils: @collection_utils, loginator: @loginator, file_wrapper: @file_wrapper, system_wrapper: nil
+        file_path_collection_utils: @collection_utils, loginator: @loginator, file_wrapper: @file_wrapper,
+        system_wrapper: double('system_wrapper', processor_count: 8)
       )
     end
 
@@ -216,8 +217,6 @@ describe ConfiguratorBuilder do
       end
 
       it 'resolves :auto to the processor count plus four' do
-        allow(Etc).to receive(:nprocessors).and_return(8)
-
         expect(@builder.set_build_thread_counts( { project_compile_threads: :auto, project_test_threads: :auto } )).to eq(
           project_compile_threads: 12, project_test_threads: 12
         )
@@ -393,31 +392,58 @@ describe ConfiguratorBuilder do
     end
   end
 
+  # Constants go into an injected namespace, so a spec never touches Object
   describe 'constants and accessors' do
-    let(:builder) { ConfiguratorBuilder.new(file_path_collection_utils: nil, loginator: nil, file_wrapper: nil, system_wrapper: SystemWrapper.new) }
-
-    after(:each) do
-      [:CONFIGURATOR_SPEC_C_FILE, :CONFIGURATOR_SPEC_VALUE].each { |name| Object.send(:remove_const, name) if Object.const_defined?( name ) }
+    let(:namespace) { Module.new }
+    let(:builder) do
+      builder = ConfiguratorBuilder.new(file_path_collection_utils: nil, loginator: nil, file_wrapper: nil, system_wrapper: nil)
+      builder.constants_namespace = namespace
+      builder
     end
 
     it 'names a constant by upcasing its key and replacing dashes' do
       builder.build_global_constant( :'configurator_spec_c-file', 'x.c' )
-      expect(Object.const_get( :CONFIGURATOR_SPEC_C_FILE )).to eq( 'x.c' )
+
+      expect(namespace.const_get( :CONFIGURATOR_SPEC_C_FILE )).to eq( 'x.c' )
+      expect(Object.const_defined?( :CONFIGURATOR_SPEC_C_FILE )).to be false
     end
 
     it 'replaces a constant that already exists' do
       builder.build_global_constant( :configurator_spec_value, 1 )
       builder.build_global_constant( :configurator_spec_value, 2 )
-      expect(Object.const_get( :CONFIGURATOR_SPEC_VALUE )).to eq( 2 )
+
+      expect(namespace.const_get( :CONFIGURATOR_SPEC_VALUE )).to eq( 2 )
     end
 
-    it 'defines an accessor for each key that reads the project configuration' do
+    it 'defines empty assembler tool constants for builds that do not assemble' do
+      builder.build_global_constants( { test_build_use_assembly: false, release_build_use_assembly: true } )
+
+      expect(namespace.const_get( :TOOLS_TEST_ASSEMBLER )).to eq( {} )
+      expect(namespace.const_defined?( :TOOLS_RELEASE_ASSEMBLER, false )).to be false
+    end
+
+    it 'defines in the build namespace by default' do
+      expect(ConfiguratorBuilder.new(file_path_collection_utils: nil, loginator: nil, file_wrapper: nil, system_wrapper: nil)
+        .instance_variable_get( :@constants_namespace )).to equal( Object )
+    end
+
+    it 'defines an accessor on the target alone for each key, reading the project configuration' do
       target = Object.new
       target.instance_variable_set( :@project_config_hash, { configurator_spec_key: 7 } )
 
-      builder.build_accessor_methods( { configurator_spec_key: 7 }, target.instance_eval { binding } )
+      builder.build_accessor_methods( { configurator_spec_key: 7 }, target )
 
       expect(target.configurator_spec_key).to eq( 7 )
+      expect(Object.new).to_not respond_to( :configurator_spec_key )
+    end
+
+    it 'defines a working accessor for a key containing a dash' do
+      target = Object.new
+      target.instance_variable_set( :@project_config_hash, { 'configurator_spec-file': 'x.c' } )
+
+      builder.build_accessor_methods( { 'configurator_spec-file': 'x.c' }, target )
+
+      expect(target.configurator_spec_file).to eq( 'x.c' )
     end
   end
 end

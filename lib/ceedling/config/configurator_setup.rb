@@ -158,9 +158,9 @@ class ConfiguratorSetup
   end
 
 
-  def build_constants_and_accessors(config, context)
+  def build_constants_and_accessors(config, target)
     @configurator_builder.build_global_constants(config)
-    @configurator_builder.build_accessor_methods(config, context)
+    @configurator_builder.build_accessor_methods(config, target)
   end
 
 

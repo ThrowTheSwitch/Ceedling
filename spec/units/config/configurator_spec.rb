@@ -12,6 +12,7 @@ require 'ceedling/exceptions'
 require 'ceedling/constants'
 require 'ceedling/tool_executor'
 require 'ceedling/config/config_walkinator'
+require 'ceedling/config/configurator_builder'
 require 'ceedling/system_utils'
 require 'config_yaml_helper'
 
@@ -380,7 +381,7 @@ describe Configurator do
       stub_const('PROJECT_DEBUG', true)
       stub_const('PROJECT_VERBOSITY', Verbosity::OBNOXIOUS)
 
-      @configurator.set_verbosity( {} )
+      @configurator.set_verbosity()
 
       expect( @configurator.project_debug ).to be true
       expect( @configurator.project_verbosity ).to eq( Verbosity::OBNOXIOUS )
@@ -389,9 +390,31 @@ describe Configurator do
     it "reports no debugging when the command line set none" do
       hide_const('PROJECT_DEBUG')
 
-      @configurator.set_verbosity( {} )
+      @configurator.set_verbosity()
 
       expect( @configurator.project_debug ).to be false
+    end
+
+    it "defines them on this configurator alone" do
+      stub_const('PROJECT_VERBOSITY', Verbosity::NORMAL)
+
+      @configurator.set_verbosity()
+
+      expect( Configurator.method_defined?( :project_verbosity ) ).to be false
+    end
+  end
+
+  # Accessors belong to the configurator that built them, not to every Configurator
+  describe "accessors" do
+    it "are defined on this configurator alone" do
+      builder = ConfiguratorBuilder.new( file_path_collection_utils: nil, loginator: nil, file_wrapper: nil, system_wrapper: nil )
+      builder.constants_namespace = Module.new
+      allow(@configurator_setup).to receive(:build_constants_and_accessors) { |config, target| builder.build_accessor_methods( config, target ) }
+
+      @configurator.replace_flattened_config( { configurator_spec_setting: 3 } )
+
+      expect( @configurator.configurator_spec_setting ).to eq( 3 )
+      expect( Configurator.method_defined?( :configurator_spec_setting ) ).to be false
     end
   end
 
@@ -466,7 +489,7 @@ describe Configurator do
   describe "#populate_cmock_defaults" do
     it "places mocks beneath the build root and passes along the verbosity" do
       stub_const('PROJECT_VERBOSITY', Verbosity::NORMAL)
-      @configurator.set_verbosity( {} )
+      @configurator.set_verbosity()
       defaults = { cmock: {} }
 
       @configurator.populate_cmock_defaults( { project: { build_root: 'build' } }, defaults )

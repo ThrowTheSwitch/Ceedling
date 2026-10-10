@@ -19,8 +19,6 @@ require 'configurator_integration_helper'
 describe 'Configurator pipeline (integration)' do
   include ConfiguratorIntegrationHelpers
 
-  after(:each) { remove_tracked_constants }
-
   it 'builds accessors, constants, directories, vendored Unity, and collections for a minimal project' do
     in_temp_project( minimal_project_files ) do
       configurator = configure( minimal_project_yaml )[:configurator]
@@ -30,7 +28,8 @@ describe 'Configurator pipeline (integration)' do
       expect(configurator.collection_all_tests).to eq(['test/test_adder.c'])
       expect(configurator.collection_all_source).to eq(['src/adder.c'])
       expect(configurator.collection_all_headers).to include('src/adder.h')
-      expect(Object.const_get( :PROJECT_TEST_BUILD_OUTPUT_PATH )).to eq('build/test/out')
+      expect(constants.const_get( :PROJECT_TEST_BUILD_OUTPUT_PATH )).to eq('build/test/out')
+      expect(Object.const_defined?( :PROJECT_TEST_BUILD_OUTPUT_PATH )).to be false
       expect(File.directory?( 'build/test/out' )).to be true
       expect(File.exist?( 'build/vendor/unity/src/unity.c' )).to be true
     end

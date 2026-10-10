@@ -26,8 +26,6 @@ describe 'Configurator plugins (integration)' do
     $LOAD_PATH.replace( load_path )
   end
 
-  after(:each) { remove_tracked_constants }
-
   def with_plugins(*names)
     minimal_project_yaml + ":plugins:\n  :load_paths: [support/plugins]\n  :enabled: [#{names.join( ', ' )}]\n"
   end
