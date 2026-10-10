@@ -750,6 +750,16 @@ describe Configurator do
     end
   end
 
+  describe "#eval_environment_variables naming PATH another way" do
+    it "joins a PATH list with the path separator however the name is written" do
+      config = config_from_yaml( ":environment:\n  - PATH: [a, b]\n  - :Path: [c, d]\n" )
+
+      @configurator.eval_environment_variables( config )
+
+      expect( config[:environment] ).to eq( [ { 'PATH' => "a#{File::PATH_SEPARATOR}b" }, { Path: "c#{File::PATH_SEPARATOR}d" } ] )
+    end
+  end
+
   describe "#eval_paths" do
     it "turns a single :paths or :files string into a list" do
       config = base_config.merge( paths: { test: 'test' }, files: { source: 'src/a.c' } )

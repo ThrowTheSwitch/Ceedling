@@ -46,13 +46,10 @@ class Configurator
     # Runner config reference to provide to runner generation
     @runner_config = {} # Default empty hash, replaced by reference below
 
-    # Unity config reference -- kept alongside the above two since project_config_hash
-    # is flattened (nested sections become individual top-level keys like
-    # :unity_use_param_tests) and no longer holds a :unity section of its own to read back.
+    # Unity config reference. The flattened project_config_hash holds no :unity section to read back.
     @unity_config = {} # Default empty hash, replaced by reference below
 
-    # Partials config reference -- same reason as the Unity config above, and needed
-    # as a single value dependency-tracker meta can hash wholesale for Partials targets.
+    # Partials config reference, for the same reason. Dependency-tracker meta hashes it whole.
     @partials_config = {} # Default empty hash, replaced by reference below
 
     # Accessors built from configuration read this
@@ -208,8 +205,8 @@ class Configurator
 
 
   def populate_partials_config(config)
-    # Save Partials config reference -- no transformation needed, unlike Unity/CMock/the
-    # test runner above, since nothing else derives values from or into this section.
+    # Save Partials config reference. Unlike Unity, CMock, and the test runner, nothing
+    # derives values from or into this section.
     @partials_config = config[:partials]
 
     debug { "Partials configuration >> #{config[:partials]}" }
@@ -409,9 +406,7 @@ class Configurator
 
   # Every validation runs, so every problem is reported, before configuration fails
   def validate_essential(config)
-    valid = ESSENTIAL_VALIDATIONS.map { |validation| @configurator_setup.public_send( validation, config ) }
-
-    raise CeedlingException.new( "Ceedling configuration failed validation" ) unless valid.all?
+    fail_unless_valid( ESSENTIAL_VALIDATIONS.map { |validation| @configurator_setup.public_send( validation, config ) } )
   end
 
 
@@ -425,7 +420,7 @@ class Configurator
       @configurator_setup.public_send( validation, *arguments )
     end
 
-    raise CeedlingException.new( "Ceedling configuration failed validation" ) unless valid.all?
+    fail_unless_valid( valid )
   end
 
 
@@ -449,8 +444,7 @@ class Configurator
 
 
   def redefine_element(elem, value)
-    # Ensure elem is a symbol
-    elem = elem.to_sym if elem.class != Symbol
+    elem = elem.to_sym
 
     # Ensure element already exists
     if not @project_config_hash.include?(elem)
@@ -503,6 +497,10 @@ class Configurator
 
   def debug(&message)
     @loginator.lazy( Verbosity::DEBUG, &message )
+  end
+
+  def fail_unless_valid(results)
+    raise CeedlingException.new( "Ceedling configuration failed validation" ) unless results.all?
   end
 
   def log_notice(message)
@@ -638,13 +636,13 @@ class Configurator
     end
   end
 
-  # The value, a string or list of strings, is expanded and joined into one string. A
-  # :path list joins with the platform path separator, ':' or ';', and any other list with
-  # spaces. The variable is set in the environment by its name upcased.
+  # The value, a string or list of strings, is expanded and joined into one string. A PATH
+  # list, however its name is written, joins with the platform path separator, ':' or ';',
+  # and any other list with spaces. The variable is set in the environment by its name upcased.
   def eval_environment_variable(entry)
     name, value = entry.first
     items = expand_environment_items( name, value.is_a?( Array ) ? value : [value] )
-    entry[name] = items.join( (name == :path) ? File::PATH_SEPARATOR : ' ' )
+    entry[name] = items.join( name.to_s.casecmp?( 'path' ) ? File::PATH_SEPARATOR : ' ' )
 
     @system_wrapper.env_set( name.to_s.upcase, entry[name] )
     debug { " - #{name.to_s.upcase}: \"#{entry[name]}\"" }
@@ -692,7 +690,7 @@ class Configurator
   end
 
   def reform_path_entries_as_lists( container, entry, value )
-    container[entry] = [value]  if value.kind_of?( String )
+    container[entry] = [value] if value.is_a?( String )
   end
 
 

@@ -1,12 +1,9 @@
 # =========================================================================
 #   Ceedling - Test-Centered Build System for C
 #   ThrowTheSwitch.org
-#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
 #   SPDX-License-Identifier: MIT
 # =========================================================================
-
-
-#derived from test_graveyard/unit/busted/configurator_builder_test.rb
 
 require 'spec_helper'
 require 'ceedling/config/configurator_builder'
@@ -32,12 +29,8 @@ describe ConfiguratorBuilder do
       expect(config[:tools][:some_tool][:executable]).to_not equal(default_tool[:executable])
     end
 
-    # This is the actual gap: a project.yml that partially defines a tool already
-    # present as a Hash (e.g. one plugin-config key alongside a plugin-default-only
-    # tool) recurses into that existing sub-hash rather than copying it in wholesale
-    # -- any of its own still-missing String/Array leaf values were, before this fix,
-    # assigned by direct reference to the (often frozen, plugin-literal) default
-    # value, rather than cloned the same way a wholesale-missing tool already was.
+    # A tool a project partially defines is populated key by key. Its missing leaves
+    # must be clones of the often frozen default, as a wholly missing tool is.
     it 'clones a String/Array leaf default even when only recursing into an already-present Hash' do
       default_tool = { :executable => 'gcc'.freeze, :arguments => ['-g'.freeze].freeze }.freeze
       defaults = { :tools => { :some_tool => default_tool } }

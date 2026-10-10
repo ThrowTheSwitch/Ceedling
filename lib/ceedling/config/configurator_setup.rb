@@ -149,15 +149,10 @@ class ConfiguratorSetup
     return valid
   end
 
-  # A gdb that answers `--version` is not proof it can attach to a process. macOS
-  # revokes a Homebrew gdb's debugger entitlement often -- a Homebrew upgrade, a
-  # macOS system update, or a Gatekeeper/taskgated cache reset can each silently
-  # break a previously working gdb. A project configured for `:use_backtrace: :gdb`
-  # on a machine where gdb cannot actually attach gets an automatic, working
-  # fallback here instead of silently unhelpful crash reports build after build.
-  #
-  # This is not a hard validation failure -- it downgrades the project configuration
-  # in place and warns, so the build proceeds under `:simple` backtraces.
+  # A gdb that answers `--version` may still be unable to attach to a process. macOS often
+  # revokes a Homebrew gdb's debugger entitlement, after a Homebrew upgrade, a macOS update,
+  # or a Gatekeeper or taskgated cache reset. A project using `:use_backtrace: :gdb` on such
+  # a machine falls back to `:simple` backtraces with a warning, rather than failing validation.
   def validate_gdb_attach_capability(config)
     return unless config[:project][:use_backtrace] == :gdb
     return unless @system_wrapper.macos?
@@ -174,12 +169,9 @@ class ConfiguratorSetup
     @loginator.log( msg, Verbosity::ERRORS, LogLabels::WARNING )
   end
 
-  # Launches a short-lived real process and attempts the cheapest possible gdb
-  # attach/detach against it. A clean attach proves gdb can do real work here --
-  # `--version` alone cannot. Runs entirely inside one shell command so the success
-  # path stays fast: no sourced script, no test executable, attach then detach
-  # immediately. A failing attach is not held to that bar -- that cost falls only on
-  # a machine whose gdb needs fixing.
+  # Launches a short-lived process, attaches gdb to it, and detaches at once. A clean
+  # attach proves gdb works here, which `--version` cannot. One shell command keeps the
+  # success path fast.
   def probe_gdb_attach()
     command = {
       name: 'gdb_attach_probe',
@@ -284,11 +276,9 @@ class ConfiguratorSetup
     return [:compile_threads, :test_threads].map { |key| validate_thread_count( config, key ) }.all?
   end
 
-  # `:max_extraction_length` is a multiplier of 1000 characters, not a raw character count
-  # (project-file ergonomics -- `5000` reads more clearly than `5000000`). The minimum here
-  # keeps that ceiling comfortably above any ordinary single C declaration or function
-  # signature, catching a value so small it would defeat the setting's own purpose (e.g.
-  # someone setting `1000` expecting "1000 characters" rather than "1000x characters").
+  # `:max_extraction_length` multiplies 1000 characters, so `5000` reads more clearly than
+  # `5000000`. The minimum keeps that ceiling well above any ordinary C declaration or
+  # signature, and catches `1000` written to mean 1000 characters.
   def validate_partials(config)
     max_extraction_length = config[:partials][:max_extraction_length]
     walk = @reportinator.generate_config_walk( [:partials, :max_extraction_length] )

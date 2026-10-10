@@ -11,9 +11,9 @@ require 'ceedling/reportinator'
 require 'ceedling/config/configurator_validator'
 require 'config_yaml_helper'
 
-# Only #validate_partials is covered here. The rest of ConfiguratorSetup has no unit spec
-# at all today (its closest sibling, #validate_threads, is untested too) -- this file scopes
-# itself to the new method rather than backfilling that existing gap.
+# Unit coverage for ConfiguratorSetup's validations and build steps through doubled
+# collaborators. Configuration is written as YAML, as a project file states it. The real
+# pipeline is proven in spec/integration/configurator_pipeline_spec.rb.
 describe ConfiguratorSetup do
   include ConfigYamlHelper
 
