@@ -166,7 +166,7 @@ class Setupinator
 
     log_step( 'Validating final project configuration', heading: false )
 
-    @configurator.validate_final( config_hash, app_cfg )
+    @configurator.validate_final( config_hash )
 
     ##
     ## 7. Flatten configuration + process it into globals and accessors

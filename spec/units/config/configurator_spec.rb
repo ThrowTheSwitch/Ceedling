@@ -307,6 +307,21 @@ describe Configurator do
       expect( config[:test_runner][:cmdline_args] ).to eq( false )
     end
 
+    # Filters select test cases through runner command line arguments
+    it "forces :cmdline_args on and logs a notice when command line test case filters are in use" do
+      [ ['test_a', ''], ['', 'test_b'] ].each do |include_filter, exclude_filter|
+        config = runner_config
+        @configurator.include_test_case = include_filter
+        @configurator.exclude_test_case = exclude_filter
+
+        @configurator.populate_test_runner_generation_config( config )
+
+        expect( config[:test_runner][:cmdline_args] ).to eq( true )
+      end
+
+      expect( @loginator ).to have_received(:log).with( /:cmdline_args because command line test case filters are in use/, Verbosity::COMPLAIN, LogLabels::NOTICE ).twice
+    end
+
   end
 
   describe "#set_partials_derived_config" do
@@ -839,7 +854,7 @@ describe Configurator do
 
   describe "#validate_essential and #validate_final" do
     let(:final_validations) do
-      [ :validate_paths, :validate_tools, :validate_test_runner_generation, :validate_defines, :validate_flags,
+      [ :validate_paths, :validate_tools, :validate_defines, :validate_flags,
         :validate_test_preprocessor, :validate_backtrace, :validate_threads, :validate_partials, :validate_plugins ]
     end
 
@@ -859,20 +874,19 @@ describe Configurator do
       expect( @configurator_setup ).to have_received(:validate_environment_vars)
     end
 
-    it "runs every final validation, handing the test case filters to runner generation" do
+    it "runs every final validation" do
       final_validations.each { |name| allow(@configurator_setup).to receive(name).and_return(true) }
 
-      @configurator.validate_final( {}, { include_test_case: 'a', exclude_test_case: 'b' } )
+      @configurator.validate_final( {} )
 
-      expect( @configurator_setup ).to have_received(:validate_test_runner_generation).with( {}, 'a', 'b' )
-      final_validations.each { |name| expect( @configurator_setup ).to have_received(name) }
+      final_validations.each { |name| expect( @configurator_setup ).to have_received(name).with( {} ) }
     end
 
     it "fails after any final validation fails" do
       final_validations.each { |name| allow(@configurator_setup).to receive(name).and_return(true) }
       allow(@configurator_setup).to receive(:validate_threads).and_return(false)
 
-      expect { @configurator.validate_final( {}, { include_test_case: '', exclude_test_case: '' } ) }.to raise_error( CeedlingException, /failed validation/ )
+      expect { @configurator.validate_final( {} ) }.to raise_error( CeedlingException, /failed validation/ )
     end
   end
 

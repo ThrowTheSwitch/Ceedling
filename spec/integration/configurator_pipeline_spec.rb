@@ -82,6 +82,15 @@ describe 'Configurator pipeline (integration)' do
     end
   end
 
+  it 'enables test runner command line arguments for command line test case filters' do
+    in_temp_project( minimal_project_files ) do
+      yaml = minimal_project_yaml.sub( "  :build_root: build\n", "  :build_root: build\n  :use_backtrace: :none\n" )
+      configurator = configure( yaml, include_test_case: 'test_add' )[:configurator]
+
+      expect(configurator.test_runner_cmdline_args).to be true
+    end
+  end
+
   it 'refuses a configuration missing a required section' do
     in_temp_project( minimal_project_files ) do
       expect { configure( ":project:\n  :build_root: build\n" ) }.to raise_error(CeedlingException, /failed validation/)

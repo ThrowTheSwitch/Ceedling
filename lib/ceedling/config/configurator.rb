@@ -26,7 +26,7 @@ class Configurator
 
   # Validations of the completed configuration
   FINAL_VALIDATIONS = [
-    :validate_paths, :validate_tools, :validate_test_runner_generation, :validate_defines, :validate_flags,
+    :validate_paths, :validate_tools, :validate_defines, :validate_flags,
     :validate_test_preprocessor, :validate_backtrace, :validate_threads, :validate_partials, :validate_plugins
   ].freeze
 
@@ -232,8 +232,10 @@ class Configurator
 
     runner = config[:test_runner]
 
-    # Backtraces rerun test cases by name, which takes runner command line arguments
-    force_cmdline_args( runner ) if config[:project][:use_backtrace] != :none
+    # Backtraces rerun test cases by name, and command line filters select them, both
+    # through runner command line arguments
+    force_cmdline_args( runner, ':project ↳ :use_backtrace is enabled' ) if config[:project][:use_backtrace] != :none
+    force_cmdline_args( runner, 'command line test case filters are in use' ) if test_case_filters?
 
     copy_runner_options( config, runner )
 
@@ -410,17 +412,9 @@ class Configurator
   end
 
 
-  # Every validation runs, so every problem is reported, before configuration fails.
-  # Runner generation also checks the command line's test case filters.
-  def validate_final(config, app_cfg)
-    filters = [ app_cfg[:include_test_case], app_cfg[:exclude_test_case] ]
-
-    valid = FINAL_VALIDATIONS.map do |validation|
-      arguments = (validation == :validate_test_runner_generation) ? [config, *filters] : [config]
-      @configurator_setup.public_send( validation, *arguments )
-    end
-
-    fail_unless_valid( valid )
+  # Every validation runs, so every problem is reported, before configuration fails
+  def validate_final(config)
+    fail_unless_valid( FINAL_VALIDATIONS.map { |validation| @configurator_setup.public_send( validation, config ) } )
   end
 
 
@@ -589,11 +583,15 @@ class Configurator
     runner[:defines] += config[:unity][:defines]
   end
 
-  def force_cmdline_args(runner)
+  def force_cmdline_args(runner, reason)
     return unless runner[:cmdline_args] == false
 
     runner[:cmdline_args] = true
-    log_notice( "Enabled :test_runner ↳ :cmdline_args because :project ↳ :use_backtrace is enabled." )
+    log_notice( "Enabled :test_runner ↳ :cmdline_args because #{reason}." )
+  end
+
+  def test_case_filters?
+    return !(@include_test_case.to_s.empty? && @exclude_test_case.to_s.empty?)
   end
 
   def populate_tool(name, tool)

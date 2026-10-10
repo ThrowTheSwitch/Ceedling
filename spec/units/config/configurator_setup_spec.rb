@@ -347,21 +347,6 @@ describe ConfiguratorSetup do
       end
     end
 
-    context "#validate_test_runner_generation" do
-      it "allows test case filters when the runner takes command line arguments" do
-        expect(@setup.validate_test_runner_generation( { test_runner: { cmdline_args: true } }, 'foo', '' )).to be true
-      end
-
-      it "rejects test case filters when the runner takes no command line arguments" do
-        expect(@setup.validate_test_runner_generation( { test_runner: { cmdline_args: false } }, '', 'bar' )).to be false
-        logged(/Test case filters cannot be used/)
-      end
-
-      it "allows no filters either way" do
-        expect(@setup.validate_test_runner_generation( { test_runner: { cmdline_args: false } }, '', '' )).to be true
-      end
-    end
-
     context "#validate_defines" do
       def validate(yaml)
         @setup.validate_defines( config_from_yaml( yaml ) )
