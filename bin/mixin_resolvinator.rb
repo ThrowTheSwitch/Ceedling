@@ -65,7 +65,7 @@ class MixinResolvinator
 
 
   # Validate mixins list
-  def validate_mixins(mixins:, load_paths:, source:, yaml_extension:)
+  def validate_mixins(mixins:, load_paths:, source:, yaml_extensions:)
     validated = true
 
     mixins.each do |mixin|
@@ -77,20 +77,10 @@ class MixinResolvinator
         end
 
       # Otherwise, validate that mixin name can be found in load paths
-      else
-        found = false
-        load_paths.each do |path|
-          if @file_wrapper.exist?( File.join( path, mixin + yaml_extension ) )
-            found = true
-            break
-          end
-        end
-
-        if !found
-          msg = "#{source} '#{mixin}' cannot be found in mixin load paths as '#{mixin + yaml_extension}'"
-          @loginator.log( msg, Verbosity::ERRORS )
-          validated = false
-        end
+      elsif mixin_filepath( mixin, load_paths, yaml_extensions ).nil?
+        filenames = yaml_extensions.map { |extension| "'#{mixin}#{extension}'" }.join( ' or ' )
+        @loginator.log( "#{source} '#{mixin}' cannot be found in mixin load paths as #{filenames}", Verbosity::ERRORS )
+        validated = false
       end
     end
 
@@ -99,7 +89,7 @@ class MixinResolvinator
 
 
   # Yield ordered list of filepaths
-  def lookup_mixins(mixins:, load_paths:, yaml_extension:)
+  def lookup_mixins(mixins:, load_paths:, yaml_extensions:)
     _mixins = []
 
     # Already validated, so we know any mixin filepath or name is found in load_paths
@@ -112,21 +102,23 @@ class MixinResolvinator
         next # Success, move on in mixin iteration
       end
 
-      # Look for mixin in load paths.
-      # Move on in mixin iteration if mixin is found.
-      next if load_paths.any? do |path|
-        filepath = File.join( path, mixin + yaml_extension )
-        exist = @file_wrapper.exist?( filepath )
-        _mixins << filepath if exist
-        exist
-      end
-
-      # Finally, fall through to simply add the unmodified name to the list.
+      # Look for mixin in load paths. Failing that, add the unmodified name to the list.
       # validate_mixins() should have already confirmed it exists in load_paths.
-      _mixins << mixin
+      _mixins << (mixin_filepath( mixin, load_paths, yaml_extensions ) || mixin)
     end
 
     return _mixins
+  end
+
+  ### Private ###
+
+  private
+
+  # The first existing file named for the mixin, searching each load path in turn for each
+  # extension
+  def mixin_filepath(mixin, load_paths, yaml_extensions)
+    candidates = load_paths.product( yaml_extensions ).map { |path, extension| File.join( path, mixin + extension ) }
+    return candidates.find { |filepath| @file_wrapper.exist?( filepath ) }
   end
 
 end

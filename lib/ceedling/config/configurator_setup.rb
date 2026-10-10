@@ -8,33 +8,40 @@
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 
-# Add sort-ability to symbol so we can order keys array in hash for test-ability
-class Symbol
-  include Comparable
-
-  def <=>(other)
-    self.to_s <=> other.to_s
-  end
-end
-
 
 class ConfiguratorSetup
 
-  constructor :configurator_builder, :configurator_validator, :configurator_plugins, :loginator, :reportinator, :file_wrapper,
+  constructor :configurator_builder, :configurator_validator, :loginator, :reportinator, :file_wrapper,
               :system_wrapper, :tool_executor
+
+  # Path collections, in order, since each builds on those before it
+  PATH_COLLECTIONS = [
+    :expand_all_path_globs,
+    :collect_vendor_paths,
+    :collect_source_and_include_paths,
+    :collect_source_include_vendor_paths,
+    :collect_test_support_source_include_paths,
+    :collect_test_support_source_include_vendor_paths
+  ].freeze
+
+  # File collections gathered after tests, assembly, and sources
+  FILE_COLLECTIONS = [
+    :collect_headers,
+    :collect_release_build_input,
+    :collect_existing_test_build_input,
+    :collect_release_artifact_extra_link_objects,
+    :collect_test_fixture_extra_link_objects,
+    :collect_vendor_framework_sources
+  ].freeze
 
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are gigantic and produce a flood of output.
   def inspect
-    # TODO: When identifying information is added to constructor, insert it into `inspect()` string
     return self.class.name
   end
 
   def build_project_config(ceedling_lib_path, logging_path, flattened_config)
-    # Housekeeping
-    @configurator_builder.cleanup( flattened_config )
-
     # Add to hash values we build up from configuration & file system contents
     flattened_config.merge!( @configurator_builder.set_build_paths( flattened_config, logging_path ) )
     flattened_config.merge!( @configurator_builder.set_rakefile_components( ceedling_lib_path, flattened_config ) )
@@ -58,71 +65,28 @@ class ConfiguratorSetup
     end
   end
 
-  # A vendor destination directory, and the marker file that must live directly inside
-  # it (unity.c, cmock.c, CException.c -- Issue #1292's own reported symptom), must both
-  # be the type they claim: the destination a directory, the marker file a plain file
-  # inside it. If a prior interrupted/corrupted run (or a race against a second
-  # concurrent Ceedling invocation) left either one as the wrong type, cp_r would crash
-  # trying to use it as intended. Clear the whole destination so the copy below can
-  # recreate it clean rather than surfacing that crash on every subsequent build.
+  # A vendor destination must be a directory, and the marker file inside it (unity.c,
+  # cmock.c, CException.c) a plain file. An interrupted run, or a second Ceedling run racing
+  # this one, can leave either as the wrong type, and the copy would then fail on every
+  # later build. The whole destination is cleared, so the copy recreates it.
   def heal_vendor_path(path, marker_file)
-    corrupted =
-      ( @file_wrapper.exist?( path ) && !@file_wrapper.directory?( path ) ) ||
-      ( @file_wrapper.exist?( File.join( path, marker_file ) ) &&
-        @file_wrapper.directory?( File.join( path, marker_file ) ) )
-    return unless corrupted
+    return unless corrupted_vendor_path?( path, marker_file )
 
-    @loginator.log(
-      "Removing corrupted vendor path (unexpected file/directory type): #{path}",
-      Verbosity::COMPLAIN,
-      LogLabels::NOTICE
-    )
+    @loginator.log( "Removing corrupted vendor path (unexpected file/directory type): #{path}", Verbosity::COMPLAIN, LogLabels::NOTICE )
     @file_wrapper.rm_rf( path )
   end
 
+  # Copies the frameworks a build uses into build/vendor, and the support files its
+  # features need. Copies always, every run. An errant edit beneath build/vendor/, by hand,
+  # an IDE, or an automated agent, is overwritten from the canonical source by the next build.
   def vendor_frameworks_and_support_files(ceedling_lib_path, flattened_config)
-    # Copy Unity C files into build/vendor directory structure.
-    # Always copies, every run -- never skipped just because the destination already
-    # looks populated. An errant edit under build/vendor/ (by hand, an IDE, or an
-    # automated agent) must be overwritten from the canonical source on the very next
-    # build, not silently left in place.
-    heal_vendor_path( flattened_config[:project_build_vendor_unity_path], UNITY_C_FILE )
-    @file_wrapper.cp_r_with_retry(
+    vendored_frameworks( flattened_config ).each do |source, destination, marker_file|
+      heal_vendor_path( destination, marker_file )
       # '/.' to cause cp_r to copy directory contents
-      File.join( flattened_config[:unity_vendor_path], UNITY_LIB_PATH, '/.' ),
-      flattened_config[:project_build_vendor_unity_path]
-    )
-
-    # Copy CMock C files into build/vendor directory structure
-    if flattened_config[:project_use_mocks]
-      heal_vendor_path( flattened_config[:project_build_vendor_cmock_path], CMOCK_C_FILE )
-      @file_wrapper.cp_r_with_retry(
-        # '/.' to cause cp_r to copy directory contents
-        File.join( flattened_config[:cmock_vendor_path], CMOCK_LIB_PATH, '/.' ),
-        flattened_config[:project_build_vendor_cmock_path]
-      )
+      @file_wrapper.cp_r_with_retry( File.join( source, '/.' ), destination )
     end
 
-    # Copy CException C files into build/vendor directory structure
-    if flattened_config[:project_use_exceptions]
-      heal_vendor_path( flattened_config[:project_build_vendor_cexception_path], CEXCEPTION_C_FILE )
-      @file_wrapper.cp_r_with_retry(
-        # '/.' to cause cp_r to copy directory contents
-        File.join( flattened_config[:cexception_vendor_path], CEXCEPTION_LIB_PATH, '/.' ),
-        flattened_config[:project_build_vendor_cexception_path]
-      )
-    end
-
-    # Copy backtrace debugging script into build/test directory structure.
-    # Ensure the destination exists first — it may not on a fresh build since
-    # Rake's :directories task runs later than this configuration-time setup.
-    if flattened_config[:project_use_backtrace] == :gdb
-      @file_wrapper.mkdir( flattened_config[:project_build_tests_root] )
-      @file_wrapper.cp_r(
-        File.join( ceedling_lib_path, BACKTRACE_GDB_SCRIPT_FILE ),
-        flattened_config[:project_build_tests_root]
-      )
-    end
+    copy_backtrace_script( ceedling_lib_path, flattened_config ) if flattened_config[:project_use_backtrace] == :gdb
 
     # Copy supporting partials code into build/vendor directory structure
     @file_wrapper.cp_r(
@@ -131,81 +95,44 @@ class ConfiguratorSetup
     ) if flattened_config[:project_use_partials]
   end
 
+  # Tests are collected after path collections, both to merge and to filter out of sources
   def build_project_collections(flattened_config)
-    # Iterate through all entries in paths section and expand any & all globs to actual paths
-    flattened_config.merge!( @configurator_builder.expand_all_path_globs( flattened_config ) )
+    PATH_COLLECTIONS.each { |collection| flattened_config.merge!( @configurator_builder.public_send( collection, flattened_config ) ) }
 
-    flattened_config.merge!( @configurator_builder.collect_vendor_paths( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_source_and_include_paths( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_source_include_vendor_paths( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_test_support_source_include_paths( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_test_support_source_include_vendor_paths( flattened_config ) )
-
-    # Collect tests: (1) To be merged (2) To filter out of sources (preventing accidental mixing of tests and source)
     tests_collection, tests_list = @configurator_builder.collect_tests( flattened_config )
     flattened_config.merge!( tests_collection )
-
     flattened_config.merge!( @configurator_builder.collect_assembly( flattened_config ) )
     flattened_config.merge!( @configurator_builder.collect_source( flattened_config, tests_list ) )
-    flattened_config.merge!( @configurator_builder.collect_headers( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_release_build_input( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_existing_test_build_input( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_release_artifact_extra_link_objects( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_test_fixture_extra_link_objects( flattened_config ) )
-    flattened_config.merge!( @configurator_builder.collect_vendor_framework_sources( flattened_config ) )
+
+    FILE_COLLECTIONS.each { |collection| flattened_config.merge!( @configurator_builder.public_send( collection, flattened_config ) ) }
 
     return flattened_config
   end
 
 
-  def build_constants_and_accessors(config, context)
+  def build_constants_and_accessors(config, target)
     @configurator_builder.build_global_constants(config)
-    @configurator_builder.build_accessor_methods(config, context)
+    @configurator_builder.build_accessor_methods(config, target)
   end
 
 
   def validate_required_sections(config)
-    validation = []
-    validation << @configurator_validator.exists?(config, :project)
-    validation << @configurator_validator.exists?(config, :paths)
-
-    return false if (validation.include?(false))
-    return true
+    return [:project, :paths].map { |section| @configurator_validator.exists?( config, section ) }.all?
   end
 
 
   def validate_required_section_values(config)
-    validation = []
-    validation << @configurator_validator.exists?(config, :project, :build_root)
-    validation << @configurator_validator.exists?(config, :paths, :test)
-    validation << @configurator_validator.exists?(config, :paths, :source)
-
-    return false if (validation.include?(false))
-    return true
+    required = [ [:project, :build_root], [:paths, :test], [:paths, :source] ]
+    return required.map { |keys| @configurator_validator.exists?( config, *keys ) }.all?
   end
 
 
+  # Every check runs, so every problem is reported
   def validate_paths(config)
-    valid = true
-
-    # Ceedling ensures [:unity_helper_path] is an array
-    config[:cmock][:unity_helper_path].each do |path|
-      valid &= @configurator_validator.validate_filepath_simple( path, :cmock, :unity_helper_path ) 
-    end
-
-    config[:plugins][:load_paths].each do |path|
-      valid &= @configurator_validator.validate_filepath_simple( path, :plugins, :load_paths )
-    end
-
-    config[:paths].keys.sort.each do |key|
-      valid &= @configurator_validator.validate_path_list(config, :paths, key)
-      valid &= @configurator_validator.validate_paths_entries(config, key)
-    end
-
-    config[:files].keys.sort.each do |key|
-      valid &= @configurator_validator.validate_path_list(config, :files, key)
-      valid &= @configurator_validator.validate_files_entries(config, key)
-    end
+    valid  = validate_simple_paths( config[:cmock][:unity_helper_path], :cmock, :unity_helper_path )
+    valid &= validate_simple_paths( config[:plugins][:load_paths], :plugins, :load_paths )
+    valid &= validate_path_section( config, :paths, :validate_paths_entries )
+    valid &= validate_path_section( config, :files, :validate_files_entries )
 
     return valid
   end
@@ -222,46 +149,29 @@ class ConfiguratorSetup
     return valid
   end
 
-  # A gdb that answers `--version` is not proof it can attach to a process. macOS
-  # revokes a Homebrew gdb's debugger entitlement often -- a Homebrew upgrade, a
-  # macOS system update, or a Gatekeeper/taskgated cache reset can each silently
-  # break a previously working gdb. A project configured for `:use_backtrace: :gdb`
-  # on a machine where gdb cannot actually attach gets an automatic, working
-  # fallback here instead of silently unhelpful crash reports build after build.
-  #
-  # This is not a hard validation failure -- it downgrades the project configuration
-  # in place and warns, so the build proceeds under `:simple` backtraces.
+  # A gdb that answers `--version` may still be unable to attach to a process. macOS often
+  # revokes a Homebrew gdb's debugger entitlement, after a Homebrew upgrade, a macOS update,
+  # or a Gatekeeper or taskgated cache reset. A project using `:use_backtrace: :gdb` on such
+  # a machine falls back to `:simple` backtraces with a warning, rather than failing validation.
   def validate_gdb_attach_capability(config)
     return unless config[:project][:use_backtrace] == :gdb
     return unless @system_wrapper.macos?
 
+    # The probe runs with :boom false, so its :exit_code is not the real exit code.
+    # Success comes from the process status.
     result = probe_gdb_attach()
-    # `:exit_code` in a ToolExecutor result only reflects the real exit code when
-    # `:boom` is true (see SystemWrapper#shell_capture3) -- this probe runs with
-    # `:boom` false so a failed attach doesn't blow up the build, so the real
-    # process status has to be read directly instead.
     return if result[:status]&.success?
 
     config[:project][:use_backtrace] = :simple
 
-    reason =
-      if result[:output].to_s.match?( /Unable to find Mach task port/ )
-        "`gdb` could not attach to a probe process -- this is a macOS `gdb` codesigning / trust problem"
-      else
-        "`gdb` could not attach to a probe process"
-      end
-
     walk = @reportinator.generate_config_walk( [:project, :use_backtrace] )
-    msg = "#{walk} is ':gdb' but #{reason}. Falling back to ':simple' for this run."
+    msg = "#{walk} is ':gdb' but #{gdb_attach_failure( result )}. Falling back to ':simple' for this run."
     @loginator.log( msg, Verbosity::ERRORS, LogLabels::WARNING )
   end
 
-  # Launches a short-lived real process and attempts the cheapest possible gdb
-  # attach/detach against it. A clean attach proves gdb can do real work here --
-  # `--version` alone cannot. Runs entirely inside one shell command so the success
-  # path stays fast: no sourced script, no test executable, attach then detach
-  # immediately. A failing attach is not held to that bar -- that cost falls only on
-  # a machine whose gdb needs fixing.
+  # Launches a short-lived process, attaches gdb to it, and detaches at once. A clean
+  # attach proves gdb works here, which `--version` cannot. One shell command keeps the
+  # success path fast.
   def probe_gdb_attach()
     command = {
       name: 'gdb_attach_probe',
@@ -272,608 +182,315 @@ class ConfiguratorSetup
     return @tool_executor.exec( command )
   end
 
-  def validate_test_runner_generation(config, include_test_case, exclude_test_case)
-    cmdline_args = config[:test_runner][:cmdline_args]
 
-    # Test case filters in use
-    test_case_filters = !include_test_case.empty? || !exclude_test_case.empty?
-
-    # Test case filters are in use but test runner command line arguments are not enabled
-    if (test_case_filters and !cmdline_args)
-      msg = 'Test case filters cannot be used -- enable :test_runner ↳ :cmdline_args in your project configuration'
-      @loginator.log( msg, Verbosity::ERRORS )
-      return false
-    end
-
-    return true
-  end
-
-
-  def validate_defines(_config)
-    defines = _config[:defines]
+  # Each :defines context holds a list of symbols. :test and :preprocess may instead hold a
+  # matcher hash of test filename matchers, each naming a list of symbols.
+  #
+  # :defines:
+  #   :<context>:
+  #     - FOO
+  #   :test:
+  #     :<matcher>:
+  #       - FOO
+  def validate_defines(config)
+    defines = config[:defines]
 
     return true if defines.nil?
+    return log_invalid( ":defines must contain key / value pairs, not #{defines.class.to_s.downcase} (see docs for examples)" ) unless defines.is_a?( Hash )
 
-    # Ensure config[:defines] is a hash
-    if defines.class != Hash
-      msg = ":defines must contain key / value pairs, not #{defines.class.to_s.downcase} (see docs for examples)"
-      @loginator.log( msg, Verbosity::ERRORS )
-      return false
-    end
+    matcher_contexts = matcher_contexts( config, [:test, :preprocess] )
 
-    valid = true
-
-    # Validate that each context contains only a list of symbols or a matcher hash for :test / :preprocess context
-    #
-    # :defines:
-    #   :<context>:
-    #    - FOO
-    #    - BAR
-    #
-    # or
-    #
-    # :defines:
-    #   :test:
-    #     :<matcher>:
-    #       - FOO
-    #       - BAR
-    #   :preprocess:
-    #     :<matcher>:
-    #       - FOO
-    #       - BAR
-
-    # These contexts support filename matchers optionally. Others can only contain simple lists
-    contexts_supporting_matchers = [:test, :preprocess]
-    contexts_supporting_matchers << :gcov if (_config && _config[:plugins] && _config[:plugins][:enabled] && _config[:plugins][:enabled].include?('gcov'))
-
-    defines.each_pair do |context, config|
-      walk = @reportinator.generate_config_walk( [:defines, context] )
-
-      # Special handling for configuration setting, not a hash context container
-      next if context == :use_test_definition
-
-      # Matcher contexts (only contexts that support matcher hashes)
-      if contexts_supporting_matchers.include? context
-        if config.class != Array and config.class != Hash
-          msg = "#{walk} entry '#{config}' must be a list or matcher, not #{config.class.to_s.downcase} (see docs for examples)"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-        end
-
-      # All other (simple) contexts
-      else
-        # Handle the (probably) common case of trying to use matchers for any context other than :test or :preprocess
-        if config.class == Hash
-          msg = "#{walk} entry '#{config}' must be a list; matcher hashes are only available for :test & :preprocess contexts (see docs for details)"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-        # Catchall for any oddball entries
-        elsif config.class != Array
-          msg = "#{walk} entry '#{config}' must be a list, not #{config.class.to_s.downcase} (see docs for examples)"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-        end
-      end
-    end
-
-    # Validate simple option of lists applied across an entire context of any name
-    # :defines:
-    #   :<context>: # :test, :release, etc.
-    #    - FOO
-    #    - BAR
-
-    defines.each_pair do |context, config|
-      # Only validate lists of compilation symbols in this block (look for matchers in next block)
-      next if config.class != Array
-
-      # Handle any YAML alias referencing causing a nested array
-      config.flatten!()
-
-      # Ensure each item in list is a string
-      config.each do |symbol|
-        if symbol.class != String
-          walk = @reportinator.generate_config_walk( [:defines, context] )
-          msg = "#{walk} list entry #{symbol} must be a string, not #{symbol.class.to_s.downcase} (see docs for examples)"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-        end
-      end
-    end
-
-    # Validate :test / :preprocess context matchers (hash) if they exist
-    # :defines:
-    #   :test:
-    #     :<matcher>: # Can be wildcard, substring, or regular expression in a string or symbol
-    #       - FOO
-    #       - BAR
-    #   :preprocess:
-    #     :<matcher>: # Can be wildcard, substring, or regular expression in a string or symbol
-    #       - FOO
-    #       - BAR
-
-    contexts = [:test, :preprocess]
-
-    contexts.each do |context|
-      matchers = defines[context]
-
-      # Skip processing if context isn't present or is present but is not a matcher hash
-      next if matchers.nil? or matchers.class != Hash
-
-      # Inspect each test matcher
-      matchers.each_pair do |matcher, symbols|
-
-        walk = @reportinator.generate_config_walk( [:defines, context, matcher] )
-    
-        # Ensure container associated with matcher is a list
-        if symbols.class != Array
-          msg = "#{walk} entry '#{symbols}' is not a list of compilation symbols but a #{symbols.class.to_s.downcase}"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-
-          # Skip further validation if matcher value is not a list of symbols
-          next          
-        end
-
-        # Handle any YAML alias nesting in array
-        symbols.flatten!()
-
-        # Ensure matcher itself is a Ruby symbol or string
-        if matcher.class != Symbol and matcher.class != String
-          msg = "#{walk} matcher is not a string or symbol"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-
-          # Skip further validation if matcher key is not a symbol
-          next
-        end
-
-        walk = @reportinator.generate_config_walk( [:defines, context, matcher] )
-
-        # Ensure each item in compilation symbols list for matcher is a string
-        symbols.each do |symbol|
-          if symbol.class != String
-            msg = "#{walk} entry '#{symbol}' is not a string"
-            @loginator.log( msg, Verbosity::ERRORS )
-            valid = false
-          end
-        end
-
-        begin
-          @configurator_validator.validate_matcher( matcher.to_s.strip() )
-        rescue StandardError => ex
-          msg = "Matcher #{walk} contains #{ex.message}"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-        end
-
-      end
-    end
-
-    return valid
+    # :use_test_definition is a setting, not a context
+    return defines.reject { |context, _| context == :use_test_definition }.map do |context, entries|
+      validate_entries( [:defines, context], entries, matcher_contexts, 'compilation symbols' )
+    end.all?
   end
 
 
-  def validate_flags(_config)
-    flags = _config[:flags]
+  # Each :flags context holds operations, each a list of flags. :test operations may instead
+  # hold a matcher hash of test filename matchers, each naming a list of flags.
+  #
+  # :flags:
+  #   :<context>:
+  #     :<operation>:
+  #       - --flag
+  #   :test:
+  #     :<operation>:
+  #       :<matcher>:
+  #         - --flag
+  def validate_flags(config)
+    flags = config[:flags]
 
     return true if flags.nil?
+    return log_invalid( ":flags must contain key / value pairs, not #{flags.class.to_s.downcase} (see docs for examples)" ) unless flags.is_a?( Hash )
 
-    # Ensure config[:flags] is a hash
-    if flags.class != Hash
-      msg = ":flags must contain key / value pairs, not #{flags.class.to_s.downcase} (see docs for examples)"
-      @loginator.log( msg, Verbosity::ERRORS )
-      # Immediately bail out
-      return false
-    end
+    warn_of_release_preprocessing( flags )
 
-    valid = true
+    matcher_contexts = matcher_contexts( config, [:test] )
 
-    # Validate that each context has an operation hash
-    # :flags
-    #   :<context>:     # :test, :release, etc.
-    #     :<operation>: # :compile, :link, etc.
-    #       ...
-
-    flags.each_pair do |context, operations|
-      walk = @reportinator.generate_config_walk( [:flags, context] )
-
-      if operations.nil?
-        msg = "#{walk} operations key / value pairs are missing"
-        @loginator.log( msg, Verbosity::ERRORS )
-
-        valid = false
-        next
-      end
-
-      if operations.class != Hash
-        example = @reportinator.generate_config_walk( [:flags, context, :compile] )
-        msg = "#{walk} context must contain :<operation> key / value pairs, not #{operations.class.to_s.downcase} '#{operations}' (ex. #{example})"
-        @loginator.log( msg, Verbosity::ERRORS )
-
-        # Immediately bail out
-        return false
-      end
-    end
-
-    if !!flags[:release] and !!flags[:release][:preprocess]
-      walk = @reportinator.generate_config_walk( [:flags, :release, :preprocess] )
-      msg = "Preprocessing configured at #{walk} is only supported in the :test context"
-      @loginator.log( msg, Verbosity::ERRORS, LogLabels::WARNING )      
-    end
-
-    # Validate that each <:context> ↳ <:operation> contains only a list of flags or that :test ↳ <:operation> optionally contains a matcher hash
-    #
-    # :flags:
-    #   :<context>:      # :test or :release
-    #     :<operation>:  # :compile, :link, or :assemble (plus :preprocess for :test context)
-    #      - --flag
-    #
-    # or
-    #
-    # :flags:
-    #   :test:
-    #     :<operation>:
-    #       :<matcher>:
-    #         - --flag
-
-    # These contexts support filename matchers optionally. Others can only contain simple lists
-    contexts_supporting_matchers = [:test]
-    contexts_supporting_matchers << :gcov if (_config && _config[:plugins] && _config[:plugins][:enabled] && _config[:plugins][:enabled].include?('gcov'))
-
-    flags.each_pair do |context, operations|
-      operations.each_pair do |operation, config|
-        walk = @reportinator.generate_config_walk( [:flags, context, operation] )
-
-        if config.nil?
-          msg = "#{walk} is missing a list or matcher hash"
-          @loginator.log( msg, Verbosity::ERRORS )
-
-          valid = false
-          next
-        end
-
-        # :test context operations with lists or matchers (hashes)
-        if contexts_supporting_matchers.include? context
-          if config.class != Array and config.class != Hash
-            msg = "#{walk} entry '#{config}' must be a list or matcher hash, not #{config.class.to_s.downcase} (see docs for examples)"
-            @loginator.log( msg, Verbosity::ERRORS )
-            valid = false
-          end
-
-        # Other (simple) contexts
-        else
-          # Handle the (probably) common case of trying to use matchers for operations in any context other than :test
-          if config.class == Hash
-            msg = "#{walk} entry '#{config}' must be a list; matcher hashes are only available for :test context (see docs for details)"
-            @loginator.log( msg, Verbosity::ERRORS )
-            valid = false
-          # Catchall for any oddball entries
-          elsif config.class != Array
-            msg = "#{walk} entry '#{config}' must be a list, not #{config.class.to_s.downcase} (see docs for examples)"
-            @loginator.log( msg, Verbosity::ERRORS )
-            valid = false
-          end
-        end
-      end
-    end
-
-    # Validate simple option of lists of flags (strings) for <:context> ↳ <:operation>
-    # :flags
-    #   :<context>:
-    #     :<operation>:
-    #       - --flag
-
-    flags.each_pair do |context, operations|
-      operations.each_pair do |operation, flags|
-
-        # Only validate lists of flags in this block (look for matchers in next block)
-        next if flags.class != Array
-
-        # Handle any YAML alias referencing causing a nested array
-        flags.flatten!()
-
-        # Ensure each item in list is a string
-        flags.each do |flag|
-          if flag.class != String
-            walk = @reportinator.generate_config_walk( [:flags, context, operation] )
-            msg = "#{walk} simple list entry '#{flag}' must be a string, not #{flag.class.to_s.downcase} (see docs for examples)"
-            @loginator.log( msg, Verbosity::ERRORS )
-            valid = false
-          end
-        end
-      end
-    end
-
-    # Validate :test ↳ <:operation> matchers (hash) if they exist
-    # :flags:
-    #   :test:
-    #     :<operation>: # :preprocess, :compile, :assemble, :link
-    #       :<matcher>: # Can be wildcard, substring, or regular expression as a Ruby string or symbol
-    #         - FOO
-    #         - BAR
-
-    # If there's no test context, we're done    
-    test_context = flags[:test]
-    return valid if test_context.nil?
-
-    matchers_present = false
-    test_context.each_pair do |_operation, matchers|
-      if matchers.class == Hash
-        matchers_present = true
-        break
-      end
-    end
-
-    # If there's no matchers for :test ↳ <:operation>, we're done
-    return valid if !matchers_present
-
-    # Inspect each :test ↳ <:operation> matcher
-    test_context.each_pair do |operation, matchers|
-      # Only validate matchers (skip simple lists of flags)
-      next if matchers.class != Hash
-
-      matchers.each_pair do |matcher, flags|
-        # Ensure matcher itself is a Ruby symbol or string
-        if matcher.class != Symbol and matcher.class != String
-          walk = @reportinator.generate_config_walk( [:flags, :test, operation] )
-          msg = "#{walk} entry '#{matcher}' is not a string or symbol"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-
-          # Skip further validation if matcher key is not a string or symbol
-          next
-        end
-
-        walk = @reportinator.generate_config_walk( [:flags, :test, operation, matcher] )
-
-        # Ensure container associated with matcher is a list
-        if flags.class != Array
-          msg = "#{walk} entry '#{flags}' is not a list of command line flags but a #{flags.class.to_s.downcase}"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-
-          # Skip further validation if matcher value is not a list of flags
-          next          
-        end
-
-        # Handle any YAML alias nesting in array
-        flags.flatten!()
-        
-        # Ensure each item in flags list for matcher is a string
-        flags.each do |flag|
-          if flag.class != String
-            msg = "#{walk} entry '#{flag}' is not a string"
-            @loginator.log( msg, Verbosity::ERRORS )
-            valid = false
-          end
-        end
-
-        begin
-          @configurator_validator.validate_matcher( matcher.to_s.strip() )
-        rescue StandardError => ex
-          msg = "Matcher #{walk} contains #{ex.message}"
-          @loginator.log( msg, Verbosity::ERRORS )
-          valid = false
-        end
-
-      end
-    end
-
-    return valid
+    return flags.map { |context, operations| validate_flags_context( context, operations, matcher_contexts ) }.all?
   end
 
 
   def validate_test_preprocessor(config)
-    valid = true
-
-    options = [:none, :all, :tests, :mocks]
-
-    use_test_preprocessor = config[:project][:use_test_preprocessor]
-
-    if !options.include?( use_test_preprocessor )
-      walk = @reportinator.generate_config_walk( [:project, :use_test_preprocessor] )
-      msg = "#{walk} is ':#{use_test_preprocessor}' but must be one of {#{options.map{|o| ':' + o.to_s()}.join(', ')}}"
-      @loginator.log( msg, Verbosity::ERRORS )
-      valid = false
-    end
-
-    return valid
+    return validate_option( config, :use_test_preprocessor, [:none, :all, :tests, :mocks] )
   end
 
 
+  # :environment is a list of single-pair hashes, each a variable name and a string or list of strings
   def validate_environment_vars(config)
     environment = config[:environment]
 
     return true if environment.nil?
+    return log_invalid( ":environment must contain a list of key / value pairs, not #{environment.class.to_s.downcase} (see docs for examples)" ) unless environment.is_a?( Array )
 
-    # Ensure config[:environment] is an array (of simple hashes--validated below)
-    if environment.class != Array
-      msg = ":environment must contain a list of key / value pairs, not #{environment.class.to_s.downcase} (see docs for examples)"
-      @loginator.log( msg, Verbosity::ERRORS )
-      return false
-    end
+    # Entries are inspected further only once every one is a key / value pair
+    return false unless validate_environment_pairs( environment )
 
-    valid = true
-    keys = []
-
-    # Ensure a hash for each entry
-    environment.each do |entry|
-      if entry.class != Hash
-        msg = ":environment list entry #{entry} is not a key / value pair (ex. :var: value)"
-        @loginator.log( msg, Verbosity::ERRORS )
-        valid = false
-      end
-    end
-
-    # Only end processing if an entry wasn't a hash
-    return valid if !valid
-
-    # Validate each hash entry
-    environment.each do |entry|
-      key_length = entry.keys.length()
-
-      # Ensure entry is a hash with just a single key / value pair
-      if key_length != 1
-        msg = ":environment entry #{entry} does not specify exactly one key (see docs for examples)"
-        @loginator.log( msg, Verbosity::ERRORS )
-        valid = false
-      end
-
-      key   = entry.keys[0] # Get first (should be only) environment variable entry
-      value = entry[key]    # Get associated value
-
-      # Remember key for later duplication check
-      keys << key.to_s.downcase
-
-      # Ensure entry key is a symbol or string
-      if key.class != Symbol and key.class != String
-        msg = ":environment entry '#{key}' must be a symbol or string (:#{key})"
-        @loginator.log( msg, Verbosity::ERRORS )
-        valid = false
-
-        # Skip validation of value if key is not a symbol or string
-        next
-      end
-
-      # Ensure entry value is a string or list
-      if not (value.class == String or value.class == Array)
-        msg = ":environment entry #{key} is associated with #{value.class.to_s.downcase}, not a string or list (see docs for details)"
-        @loginator.log( msg, Verbosity::ERRORS )
-        valid = false
-      end
-
-      # If path is a list, ensure it's all strings
-      if value.class == Array
-        value.each do |item|
-          if item.class != String
-            msg = ":environment entry #{key} contains a list element '#{item}' (#{item.class.to_s.downcase}) that is not a string"
-            @loginator.log( msg, Verbosity::ERRORS )
-            valid = false
-          end
-        end
-      end
-    end
-
-    # Find any duplicate keys
-    dups = keys.uniq.select { |k| keys.count( k ) > 1 }
-    
-    if !dups.empty?
-      msg = "Duplicate :environment entr#{dups.length() == 1 ? 'y' : 'ies'} #{dups.map{|d| ':' + d.to_s}.join( ', ' )} found"
-      @loginator.log( msg, Verbosity::ERRORS )
-      valid = false
-    end
-    
-    return valid
+    valid = environment.map { |entry| validate_environment_entry( entry ) }.all?
+    return valid & validate_unique_environment_names( environment )
   end
 
 
   def validate_backtrace(config)
-    valid = true
-
-    options = [:none, :simple, :gdb]
-
-    use_backtrace = config[:project][:use_backtrace]
-
-    if !options.include?( use_backtrace )
-      walk = @reportinator.generate_config_walk( [:project, :use_backtrace] )
-
-      msg = "#{walk} is ':#{use_backtrace}' but must be one of {#{options.map{|o| ':' + o.to_s()}.join(', ')}}"
-      @loginator.log( msg, Verbosity::ERRORS )
-      valid = false
-    end
-
-    return valid
+    return validate_option( config, :use_backtrace, [:none, :simple, :gdb] )
   end
 
   def validate_threads(config)
-    valid = true
-
-    compile_threads = config[:project][:compile_threads]
-    test_threads = config[:project][:test_threads]
-
-    walk = @reportinator.generate_config_walk( [:project, :compile_threads] )
-
-    case compile_threads
-    when Integer
-      if compile_threads < 1
-        @loginator.log( "#{walk} must be greater than 0", Verbosity::ERRORS )
-        valid = false
-      end
-    when Symbol
-      if compile_threads != :auto
-        @loginator.log( "#{walk} is neither an integer nor :auto", Verbosity::ERRORS ) 
-        valid = false
-      end
-    else
-      @loginator.log( "#{walk} is neither an integer nor :auto", Verbosity::ERRORS ) 
-      valid = false
-    end
-
-    walk = @reportinator.generate_config_walk( [:project, :test_threads] )
-
-    case test_threads
-    when Integer
-      if test_threads < 1
-        @loginator.log( "#{walk} must be greater than 0", Verbosity::ERRORS )
-        valid = false
-      end
-    when Symbol
-      if test_threads != :auto
-        @loginator.log( "#{walk} is neither an integer nor :auto", Verbosity::ERRORS ) 
-        valid = false
-      end
-    else
-      @loginator.log( "#{walk} is neither an integer nor :auto", Verbosity::ERRORS ) 
-      valid = false
-    end
-
-    return valid
+    return [:compile_threads, :test_threads].map { |key| validate_thread_count( config, key ) }.all?
   end
 
-  # `:max_extraction_length` is a multiplier of 1000 characters, not a raw character count
-  # (project-file ergonomics -- `5000` reads more clearly than `5000000`). The minimum here
-  # keeps that ceiling comfortably above any ordinary single C declaration or function
-  # signature, catching a value so small it would defeat the setting's own purpose (e.g.
-  # someone setting `1000` expecting "1000 characters" rather than "1000x characters").
+  # `:max_extraction_length` multiplies 1000 characters, so `5000` reads more clearly than
+  # `5000000`. The minimum keeps that ceiling well above any ordinary C declaration or
+  # signature, and catches `1000` written to mean 1000 characters.
   def validate_partials(config)
-    valid = true
-
     max_extraction_length = config[:partials][:max_extraction_length]
-
     walk = @reportinator.generate_config_walk( [:partials, :max_extraction_length] )
 
-    case max_extraction_length
-    when Integer
-      if max_extraction_length < 10
-        @loginator.log( "#{walk} must be at least 10 (10,000 characters)", Verbosity::ERRORS )
-        valid = false
-      end
-    else
-      @loginator.log( "#{walk} is not an integer", Verbosity::ERRORS )
-      valid = false
-    end
-
-    return valid
+    return log_invalid( "#{walk} is not an integer" ) unless max_extraction_length.is_a?( Integer )
+    return log_invalid( "#{walk} must be at least 10 (10,000 characters)" ) if max_extraction_length < 10
+    return true
   end
 
+  # Discovery records a path beneath :plugins for each enabled plugin it found, whatever
+  # kind of plugin it is
   def validate_plugins(config)
-    missing_plugins =
-      Set.new( config[:plugins][:enabled] ) -
-      Set.new( @configurator_plugins.rake_plugins ) -
-      Set.new( @configurator_plugins.programmatic_plugins.map {|p| p[:plugin]} )
+    missing_plugins = config[:plugins][:enabled].reject { |plugin| config[:plugins].key?( :"#{plugin}_path" ) }
 
     missing_plugins.each do |plugin|
       message = "Plugin '#{plugin}' not found in built-in or project Ruby load paths. Check load paths and plugin naming and path conventions."
       @loginator.log( message, Verbosity::ERRORS )
     end
 
-    return ( (missing_plugins.size > 0) ? false : true )
+    return missing_plugins.empty?
   end
 
-  # Hook for any warnings about configuration combinations that are legal but likely
-  # unintentional or surprising.
-  def warnings_for_problematic_configs(config)
-    # Empty
+  ### Private ###
+
+  private
+
+  def corrupted_vendor_path?(path, marker_file)
+    marker = File.join( path, marker_file )
+
+    return ( @file_wrapper.exist?( path ) && !@file_wrapper.directory?( path ) ) ||
+           ( @file_wrapper.exist?( marker ) && @file_wrapper.directory?( marker ) )
+  end
+
+  # Each framework a build uses, as [vendored source, build destination, marker file]
+  def vendored_frameworks(config)
+    frameworks = [ [File.join( config[:unity_vendor_path], UNITY_LIB_PATH ), config[:project_build_vendor_unity_path], UNITY_C_FILE] ]
+
+    if config[:project_use_mocks]
+      frameworks << [File.join( config[:cmock_vendor_path], CMOCK_LIB_PATH ), config[:project_build_vendor_cmock_path], CMOCK_C_FILE]
+    end
+
+    if config[:project_use_exceptions]
+      frameworks << [File.join( config[:cexception_vendor_path], CEXCEPTION_LIB_PATH ), config[:project_build_vendor_cexception_path], CEXCEPTION_C_FILE]
+    end
+
+    return frameworks
+  end
+
+  # The destination may not exist yet on a fresh build, since Rake creates directories
+  # after configuration
+  def copy_backtrace_script(ceedling_lib_path, flattened_config)
+    @file_wrapper.mkdir( flattened_config[:project_build_tests_root] )
+    @file_wrapper.cp_r( File.join( ceedling_lib_path, BACKTRACE_GDB_SCRIPT_FILE ), flattened_config[:project_build_tests_root] )
+  end
+
+  def validate_simple_paths(paths, *keys)
+    return paths.map { |path| @configurator_validator.validate_filepath_simple( path, *keys ) }.all?
+  end
+
+  # Each entry of :paths or :files must exist and yield what its section expects
+  def validate_path_section(config, section, entries_validation)
+    return config[section].keys.sort.map do |key|
+      @configurator_validator.validate_path_list( config, section, key ) & @configurator_validator.public_send( entries_validation, config, key )
+    end.all?
+  end
+
+  def gdb_attach_failure(result)
+    reason = "`gdb` could not attach to a probe process"
+    return reason + " -- this is a macOS `gdb` codesigning / trust problem" if result[:output].to_s.match?( /Unable to find Mach task port/ )
+    return reason
+  end
+
+  # Build contexts that plugins declare peers of :test also support matchers
+  def matcher_contexts(config, contexts)
+    return contexts + Array( config.dig( :plugins, :test_build_contexts ) ).map( &:to_sym )
+  end
+
+  # A context's entries are a list of strings, or, in a context supporting matchers, a
+  # matcher hash. The context is the second key walked. `noun` names what the strings are.
+  def validate_entries(walk_keys, entries, matcher_contexts, noun)
+    return false unless validate_entries_form( walk_keys, entries, matcher_contexts )
+    return validate_string_list( walk_keys, entries ) if entries.is_a?( Array )
+    return validate_matchers( walk_keys, entries, noun )
+  end
+
+  def validate_entries_form(walk_keys, entries, matcher_contexts)
+    walk     = @reportinator.generate_config_walk( walk_keys )
+    kind     = entries.class.to_s.downcase
+    matchers = matcher_contexts.include?( walk_keys[1] )
+
+    return true if entries.is_a?( Array ) or (matchers and entries.is_a?( Hash ))
+    return log_invalid( "#{walk} entry '#{entries}' must be a list or matcher hash, not #{kind} (see docs for examples)" ) if matchers
+    return log_invalid( "#{walk} entry '#{entries}' must be a list, not #{kind} (see docs for examples)" ) unless entries.is_a?( Hash )
+
+    contexts = matcher_contexts.map { |context| ":#{context}" }.join( ' & ' )
+    return log_invalid( "#{walk} entry '#{entries}' must be a list; matcher hashes are only available for #{contexts} (see docs for details)" )
+  end
+
+  # A YAML alias can nest a list, so the list is flattened in place first
+  def validate_string_list(walk_keys, list)
+    walk = @reportinator.generate_config_walk( walk_keys )
+
+    list.flatten!
+    non_strings = list.reject { |item| item.is_a?( String ) }
+
+    non_strings.each { |item| log_error( "#{walk} list entry '#{item}' must be a string, not #{item.class.to_s.downcase} (see docs for examples)" ) }
+    return non_strings.empty?
+  end
+
+  # Each matcher must be a well-formed string or symbol naming a list of strings
+  def validate_matchers(walk_keys, matchers, noun)
+    return matchers.map { |matcher, list| validate_matcher_entry( walk_keys, matcher, list, noun ) }.all?
+  end
+
+  def validate_matcher_entry(walk_keys, matcher, list, noun)
+    unless matcher.is_a?( Symbol ) or matcher.is_a?( String )
+      return log_invalid( "#{@reportinator.generate_config_walk( walk_keys )} matcher '#{matcher}' is not a string or symbol" )
+    end
+
+    walk = @reportinator.generate_config_walk( walk_keys + [matcher] )
+    return log_invalid( "#{walk} entry '#{list}' is not a list of #{noun} but a #{list.class.to_s.downcase}" ) unless list.is_a?( Array )
+
+    return valid_matcher?( matcher, walk ) & validate_matcher_list( walk, list )
+  end
+
+  # A YAML alias can nest a list, so the list is flattened in place first
+  def validate_matcher_list(walk, list)
+    list.flatten!
+    non_strings = list.reject { |item| item.is_a?( String ) }
+    non_strings.each { |item| log_error( "#{walk} entry '#{item}' is not a string" ) }
+
+    return non_strings.empty?
+  end
+
+  def valid_matcher?(matcher, walk)
+    @configurator_validator.validate_matcher( matcher.to_s.strip )
+    return true
+  rescue StandardError => ex
+    return log_invalid( "Matcher #{walk} contains #{ex.message}" )
+  end
+
+  def validate_flags_context(context, operations, matcher_contexts)
+    walk = @reportinator.generate_config_walk( [:flags, context] )
+
+    return log_invalid( "#{walk} operations key / value pairs are missing" ) if operations.nil?
+
+    unless operations.is_a?( Hash )
+      example = @reportinator.generate_config_walk( [:flags, context, :compile] )
+      return log_invalid( "#{walk} context must contain :<operation> key / value pairs, not #{operations.class.to_s.downcase} '#{operations}' (ex. #{example})" )
+    end
+
+    return operations.map { |operation, entries| validate_flags_operation( [:flags, context, operation], entries, matcher_contexts ) }.all?
+  end
+
+  def validate_flags_operation(walk_keys, entries, matcher_contexts)
+    return log_invalid( "#{@reportinator.generate_config_walk( walk_keys )} is missing a list or matcher hash" ) if entries.nil?
+    return validate_entries( walk_keys, entries, matcher_contexts, 'command line flags' )
+  end
+
+  def warn_of_release_preprocessing(flags)
+    return unless flags[:release].is_a?( Hash ) and flags[:release][:preprocess]
+
+    walk = @reportinator.generate_config_walk( [:flags, :release, :preprocess] )
+    @loginator.log( "Preprocessing configured at #{walk} is only supported in the :test context", Verbosity::ERRORS, LogLabels::WARNING )
+  end
+
+  def validate_option(config, key, options)
+    value = config[:project][key]
+    return true if options.include?( value )
+
+    walk = @reportinator.generate_config_walk( [:project, key] )
+    return log_invalid( "#{walk} is ':#{value}' but must be one of {#{options.map { |option| ":#{option}" }.join( ', ' )}}" )
+  end
+
+  def validate_thread_count(config, key)
+    threads = config[:project][key]
+    walk = @reportinator.generate_config_walk( [:project, key] )
+
+    return true if threads == :auto or (threads.is_a?( Integer ) and threads >= 1)
+    return log_invalid( "#{walk} must be greater than 0" ) if threads.is_a?( Integer )
+    return log_invalid( "#{walk} is neither an integer nor :auto" )
+  end
+
+  def validate_environment_pairs(environment)
+    non_pairs = environment.reject { |entry| entry.is_a?( Hash ) }
+    non_pairs.each { |entry| log_error( ":environment list entry #{entry} is not a key / value pair (ex. :var: value)" ) }
+
+    return non_pairs.empty?
+  end
+
+  def validate_environment_entry(entry)
+    valid = (entry.keys.length == 1) || log_invalid( ":environment entry #{entry} does not specify exactly one key (see docs for examples)" )
+
+    name, value = entry.first
+    return log_invalid( ":environment entry '#{name}' must be a symbol or string (:#{name})" ) unless name.is_a?( Symbol ) or name.is_a?( String )
+
+    return valid & validate_environment_value( name, value )
+  end
+
+  def validate_environment_value(name, value)
+    case value
+    when String then return true
+    when Array
+      non_strings = value.reject { |item| item.is_a?( String ) }
+      non_strings.each { |item| log_error( ":environment entry #{name} contains a list element '#{item}' (#{item.class.to_s.downcase}) that is not a string" ) }
+      return non_strings.empty?
+    end
+
+    return log_invalid( ":environment entry #{name} is associated with #{value.class.to_s.downcase}, not a string or list (see docs for details)" )
+  end
+
+  # Environment variable names are case-insensitive on some platforms
+  def validate_unique_environment_names(environment)
+    names = environment.map { |entry| entry.keys[0].to_s.downcase }
+    dups  = names.select { |name| names.count( name ) > 1 }.uniq
+    return true if dups.empty?
+
+    return log_invalid( "Duplicate :environment entr#{dups.length == 1 ? 'y' : 'ies'} #{dups.map { |dup| ':' + dup }.join( ', ' )} found" )
+  end
+
+  def log_error(message)
+    @loginator.log( message, Verbosity::ERRORS )
+  end
+
+  # Logs an error and answers false, for a validation to return
+  def log_invalid(message)
+    log_error( message )
+    return false
   end
 
 end

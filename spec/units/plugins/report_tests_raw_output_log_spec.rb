@@ -32,10 +32,8 @@ describe ReportTestsRawOutputLog do
     @plugin.instance_variable_set(:@reportinator, @reportinator)
   end
 
-  # extract_output's own line-scan (skip blank lines, skip test-result
-  # lines, stop at the summary footer) is untouched by this pass -- it's
-  # the exact shape the warnings-log fix adapts -- so this pins real,
-  # nontrivial parsing behavior that must survive the shared-base refactor.
+  # Raw output is whatever a test executable printed besides its results. The scan skips
+  # blank lines and test-result lines, and stops at the summary footer.
   describe '#extract_output' do
     it 'keeps stray console output while skipping blank lines, test-result lines, and everything after the footer' do
       raw = <<~OUTPUT
@@ -73,9 +71,8 @@ describe ReportTestsRawOutputLog do
     end
   end
 
-  # --- Fix below this point: written to fail against pre-fix code ---
-
-  describe '#post_build (fix: writes via the injected file_wrapper, never a raw File)' do
+  # A log reaches disk only through the injected file layer
+  describe '#post_build' do
     it 'joins one test executable\'s collected output lines and hands them to file_wrapper.write' do
       @plugin.instance_variable_get(:@raw_output)[:test] = {
         'TestFoo' => ["Debug: entering state X\n", "Debug: leaving state X\n"]

@@ -8,15 +8,18 @@
 require 'spec_helper'
 require 'ceedling/config/configurator_setup'
 require 'ceedling/reportinator'
+require 'ceedling/config/configurator_validator'
+require 'config_yaml_helper'
 
-# Only #validate_partials is covered here. The rest of ConfiguratorSetup has no unit spec
-# at all today (its closest sibling, #validate_threads, is untested too) -- this file scopes
-# itself to the new method rather than backfilling that existing gap.
+# Unit coverage for ConfiguratorSetup's validations and build steps through doubled
+# collaborators. Configuration is written as YAML, as a project file states it. The real
+# pipeline is proven in spec/integration/configurator_pipeline_spec.rb.
 describe ConfiguratorSetup do
+  include ConfigYamlHelper
+
   before(:each) do
     @configurator_builder   = double('ConfiguratorBuilder')
     @configurator_validator = double('ConfiguratorValidator')
-    @configurator_plugins   = double('ConfiguratorPlugins')
     @loginator              = double('Loginator')
     @reportinator           = Reportinator.new
     @file_wrapper           = double('FileWrapper')
@@ -27,7 +30,6 @@ describe ConfiguratorSetup do
       {
         configurator_builder:   @configurator_builder,
         configurator_validator: @configurator_validator,
-        configurator_plugins:   @configurator_plugins,
         loginator:              @loginator,
         reportinator:           @reportinator,
         file_wrapper:           @file_wrapper,
@@ -35,6 +37,10 @@ describe ConfiguratorSetup do
         tool_executor:          @tool_executor
       }
     )
+  end
+
+  it "names only its class when inspected, rather than dumping its collaborators" do
+    expect(@setup.inspect).to eq('ConfiguratorSetup')
   end
 
   context "#validate_partials" do
@@ -205,6 +211,21 @@ describe ConfiguratorSetup do
       allow(@file_wrapper).to receive(:cp_r_with_retry)
     end
 
+    it "copies the gdb backtrace script and the Partials header when those features are in use" do
+      allow(@file_wrapper).to receive(:mkdir)
+      allow(@file_wrapper).to receive(:cp_r)
+      config = flattened_config.merge(
+        project_use_backtrace: :gdb, project_build_tests_root: '/build/test',
+        project_use_partials: true, project_build_vendor_ceedling_path: '/build/vendor/ceedling'
+      )
+
+      @setup.vendor_frameworks_and_support_files('/gem/lib', config)
+
+      expect(@file_wrapper).to have_received(:mkdir).with('/build/test')
+      expect(@file_wrapper).to have_received(:cp_r).with(File.join('/gem/lib', BACKTRACE_GDB_SCRIPT_FILE), '/build/test')
+      expect(@file_wrapper).to have_received(:cp_r).with('/gem/lib/ceedling.h', '/build/vendor/ceedling')
+    end
+
     it "always copies Unity, CMock, and CException, regardless of whether the destination looks already populated" do
       # A prior run's destination "looking populated and uncorrupted" is exactly the
       # state a skip-check would trust -- simulate it directly (dest is a real
@@ -246,6 +267,428 @@ describe ConfiguratorSetup do
       @setup.vendor_frameworks_and_support_files('/gem/lib', flattened_config)
 
       expect(@file_wrapper).to have_received(:rm_rf).with('/build/vendor/unity/src')
+    end
+  end
+
+  # The validations below log each problem they find and report overall validity
+  context "configuration validation" do
+    before(:each) do
+      allow(@loginator).to receive(:log)
+      allow(@configurator_validator).to receive(:validate_matcher) { |matcher| ConfiguratorValidator.allocate.validate_matcher( matcher ) }
+    end
+
+    def logged(pattern)
+      expect(@loginator).to have_received(:log).with(pattern, any_args).at_least(:once)
+    end
+
+    context "#validate_required_sections and #validate_required_section_values" do
+      it "requires :project and :paths" do
+        allow(@configurator_validator).to receive(:exists?).and_return(true)
+        allow(@configurator_validator).to receive(:exists?).with(anything, :paths).and_return(false)
+
+        expect(@setup.validate_required_sections( {} )).to be false
+        expect(@configurator_validator).to have_received(:exists?).with({}, :project)
+      end
+
+      it "requires a build root and test and source paths" do
+        allow(@configurator_validator).to receive(:exists?).and_return(true)
+
+        expect(@setup.validate_required_section_values( {} )).to be true
+        expect(@configurator_validator).to have_received(:exists?).with({}, :project, :build_root)
+        expect(@configurator_validator).to have_received(:exists?).with({}, :paths, :test)
+        expect(@configurator_validator).to have_received(:exists?).with({}, :paths, :source)
+      end
+    end
+
+    context "#validate_paths" do
+      let(:config) do
+        config_from_yaml( <<~YAML )
+          :cmock:
+            :unity_helper_path: [helper.h]
+          :plugins:
+            :load_paths: [plugins]
+          :paths:
+            :test: [test]
+            :source: [src]
+          :files:
+            :support: [support/x.c]
+        YAML
+      end
+
+      it "checks helper paths, plugin load paths, and every :paths and :files entry" do
+        allow(@configurator_validator).to receive_messages(
+          validate_filepath_simple: true, validate_path_list: true, validate_paths_entries: true, validate_files_entries: true
+        )
+
+        expect(@setup.validate_paths( config )).to be true
+        expect(@configurator_validator).to have_received(:validate_filepath_simple).with('helper.h', :cmock, :unity_helper_path)
+        expect(@configurator_validator).to have_received(:validate_filepath_simple).with('plugins', :plugins, :load_paths)
+        expect(@configurator_validator).to have_received(:validate_paths_entries).with(config, :source)
+        expect(@configurator_validator).to have_received(:validate_files_entries).with(config, :support)
+      end
+
+      it "fails when any check fails" do
+        allow(@configurator_validator).to receive_messages(
+          validate_filepath_simple: true, validate_path_list: true, validate_paths_entries: true, validate_files_entries: false
+        )
+
+        expect(@setup.validate_paths( config )).to be false
+      end
+    end
+
+    context "#validate_tools" do
+      it "validates every tool" do
+        config = { project: { use_backtrace: :none }, tools: { b: {}, a: {} } }
+        allow(@configurator_validator).to receive(:validate_tool).and_return(true, false)
+
+        expect(@setup.validate_tools( config )).to be false
+        expect(@configurator_validator).to have_received(:validate_tool).with(config: config, key: :a).ordered
+        expect(@configurator_validator).to have_received(:validate_tool).with(config: config, key: :b).ordered
+      end
+    end
+
+    context "#validate_defines" do
+      def validate(yaml)
+        @setup.validate_defines( config_from_yaml( yaml ) )
+      end
+
+      it "accepts no :defines at all" do
+        expect(@setup.validate_defines( {} )).to be true
+      end
+
+      it "accepts lists of strings for any context and matchers for :test and :preprocess" do
+        expect(validate( <<~YAML )).to be true
+          :defines:
+            :use_test_definition: true
+            :release: [A, B=1]
+            :test:
+              :*: [ALL]
+              /Test(Foo|Bar)/: [REGEX]
+              Model: [SUBSTRING]
+            :preprocess:
+              :Model: [PRE]
+        YAML
+      end
+
+      it "flattens a list nested by a YAML alias" do
+        config = config_from_yaml( ":defines:\n  :common: &common [A]\n  :release: [*common, B]\n" )
+
+        expect(@setup.validate_defines( config )).to be true
+        expect(config[:defines][:release]).to eq( ['A', 'B'] )
+      end
+
+      it "rejects :defines that is not key / value pairs" do
+        expect(validate( ":defines: [A]\n" )).to be false
+        logged(/:defines must contain key \/ value pairs, not array/)
+      end
+
+      it "rejects a matcher hash outside :test and :preprocess" do
+        expect(validate( ":defines:\n  :release:\n    :*: [A]\n" )).to be false
+        logged(/matcher hashes are only available for :test & :preprocess \(/)
+      end
+
+      it "accepts a matcher hash for a test build context a plugin declares" do
+        expect(validate( ":plugins:\n  :test_build_contexts:\n    - :bullseye\n:defines:\n  :bullseye:\n    :*: [A]\n" )).to be true
+      end
+
+      it "rejects a matcher hash for a plugin's context the plugin does not declare" do
+        expect(validate( ":plugins:\n  :enabled: [gcov]\n:defines:\n  :gcov:\n    :*: [A]\n" )).to be false
+        logged(/matcher hashes are only available for :test & :preprocess \(/)
+      end
+
+      it "validates the matchers of a declared context as it does those of :test" do
+        expect(validate( ":plugins:\n  :test_build_contexts:\n    - :gcov\n:defines:\n  :gcov:\n    :Model: [7]\n" )).to be false
+        logged(/:defines ↳ :gcov ↳ :Model entry '7' is not a string/)
+      end
+
+      it "rejects a context that is neither a list nor a matcher" do
+        expect(validate( ":defines:\n  :test: A\n" )).to be false
+        logged(/must be a list or matcher hash, not string/)
+        expect(validate( ":defines:\n  :release: A\n" )).to be false
+        logged(/must be a list, not string/)
+      end
+
+      it "rejects a symbol that is not a string" do
+        expect(validate( ":defines:\n  :release: [A, 7]\n" )).to be false
+        logged(/list entry '7' must be a string, not integer/)
+      end
+
+      it "rejects a matcher whose symbols are not a list of strings" do
+        expect(validate( ":defines:\n  :test:\n    :Model: A\n" )).to be false
+        logged(/is not a list of compilation symbols but a string/)
+        expect(validate( ":defines:\n  :test:\n    :Model: [7]\n" )).to be false
+        logged(/entry '7' is not a string/)
+      end
+
+      it "rejects a matcher key that is not a string or symbol" do
+        expect(validate( ":defines:\n  :test:\n    7: [A]\n" )).to be false
+        logged(/:defines ↳ :test matcher '7' is not a string or symbol/)
+      end
+
+      it "rejects a malformed matcher" do
+        expect(validate( ":defines:\n  :test:\n    /Test(/: [A]\n" )).to be false
+        logged(/Matcher :defines ↳ :test ↳ :\/Test\(\/ contains invalid regular expression/)
+      end
+    end
+
+    context "#validate_flags" do
+      def validate(yaml)
+        @setup.validate_flags( config_from_yaml( yaml ) )
+      end
+
+      it "accepts no :flags at all" do
+        expect(@setup.validate_flags( {} )).to be true
+      end
+
+      it "accepts lists of strings for any operation and matchers for :test operations" do
+        expect(validate( <<~YAML )).to be true
+          :flags:
+            :release:
+              :compile: [-O2]
+            :test:
+              :compile:
+                :*: [-g]
+                /Test(Foo|Bar)/: [-Wall]
+              :link: [-lm]
+        YAML
+      end
+
+      it "rejects :flags that is not key / value pairs" do
+        expect(validate( ":flags: [-g]\n" )).to be false
+        logged(/:flags must contain key \/ value pairs, not array/)
+      end
+
+      it "rejects a context that is not operation key / value pairs, and still checks the others" do
+        expect(validate( ":flags:\n  :test: [-g]\n  :release:\n    :compile: [7]\n" )).to be false
+        logged(/:flags ↳ :test context must contain :<operation> key \/ value pairs, not array/)
+        logged(/:flags ↳ :release ↳ :compile list entry '7' must be a string/)
+      end
+
+      it "rejects a context with nothing beneath it" do
+        expect(validate( ":flags:\n  :test:\n  :release:\n    :compile: [-O2]\n" )).to be false
+        logged(/:flags ↳ :test operations key \/ value pairs are missing/)
+      end
+
+      it "rejects an operation with nothing beneath it" do
+        expect(validate( ":flags:\n  :test:\n    :compile:\n" )).to be false
+        logged(/:flags ↳ :test ↳ :compile is missing a list or matcher hash/)
+      end
+
+      it "warns that release preprocessing flags are unsupported" do
+        expect(validate( ":flags:\n  :release:\n    :preprocess: [-E]\n" )).to be true
+        expect(@loginator).to have_received(:log).with(/only supported in the :test context/, Verbosity::ERRORS, LogLabels::WARNING)
+      end
+
+      it "rejects a matcher hash outside :test" do
+        expect(validate( ":flags:\n  :release:\n    :compile:\n      :*: [-g]\n" )).to be false
+        logged(/matcher hashes are only available for :test \(/)
+      end
+
+      it "accepts a matcher hash for a test build context a plugin declares" do
+        expect(validate( ":plugins:\n  :test_build_contexts:\n    - :gcov\n:flags:\n  :gcov:\n    :compile:\n      :*: [-g]\n" )).to be true
+      end
+
+      it "names the declared contexts when rejecting a matcher hash elsewhere" do
+        expect(validate( ":plugins:\n  :test_build_contexts:\n    - :gcov\n:flags:\n  :release:\n    :compile:\n      :*: [-g]\n" )).to be false
+        logged(/matcher hashes are only available for :test & :gcov \(/)
+      end
+
+      it "rejects an operation that is neither a list nor a matcher" do
+        expect(validate( ":flags:\n  :test:\n    :compile: -g\n" )).to be false
+        logged(/must be a list or matcher hash, not string/)
+        expect(validate( ":flags:\n  :release:\n    :compile: -g\n" )).to be false
+        logged(/must be a list, not string/)
+      end
+
+      it "rejects a flag that is not a string" do
+        expect(validate( ":flags:\n  :release:\n    :compile: [-g, 7]\n" )).to be false
+        logged(/:flags ↳ :release ↳ :compile list entry '7' must be a string/)
+      end
+
+      it "rejects a matcher whose flags are not a list of strings" do
+        expect(validate( ":flags:\n  :test:\n    :compile:\n      :Model: -g\n" )).to be false
+        logged(/is not a list of command line flags but a string/)
+        expect(validate( ":flags:\n  :test:\n    :compile:\n      :Model: [7]\n" )).to be false
+        logged(/entry '7' is not a string/)
+      end
+
+      it "rejects a matcher key that is not a string or symbol" do
+        expect(validate( ":flags:\n  :test:\n    :compile:\n      7: [-g]\n" )).to be false
+        logged(/:flags ↳ :test ↳ :compile matcher '7' is not a string or symbol/)
+      end
+
+      it "rejects a malformed matcher" do
+        expect(validate( ":flags:\n  :test:\n    :compile:\n      Foo$: [-g]\n" )).to be false
+        logged(/contains invalid substring or wildcard characters/)
+      end
+    end
+
+    context "#validate_test_preprocessor and #validate_backtrace" do
+      it "accepts each preprocessing option" do
+        [:none, :all, :tests, :mocks].each do |option|
+          expect(@setup.validate_test_preprocessor( { project: { use_test_preprocessor: option } } )).to be true
+        end
+      end
+
+      it "names the preprocessing options when rejecting another value" do
+        expect(@setup.validate_test_preprocessor( { project: { use_test_preprocessor: :some } } )).to be false
+        logged(/:project ↳ :use_test_preprocessor is ':some' but must be one of \{:none, :all, :tests, :mocks\}/)
+      end
+
+      it "accepts each backtrace option" do
+        [:none, :simple, :gdb].each do |option|
+          expect(@setup.validate_backtrace( { project: { use_backtrace: option } } )).to be true
+        end
+      end
+
+      it "names the backtrace options when rejecting another value" do
+        expect(@setup.validate_backtrace( { project: { use_backtrace: true } } )).to be false
+        logged(/:project ↳ :use_backtrace is ':true' but must be one of \{:none, :simple, :gdb\}/)
+      end
+    end
+
+    context "#validate_environment_vars" do
+      def validate(yaml)
+        @setup.validate_environment_vars( config_from_yaml( yaml ) )
+      end
+
+      it "accepts no :environment at all" do
+        expect(@setup.validate_environment_vars( {} )).to be true
+      end
+
+      it "accepts single-pair entries of strings or lists of strings" do
+        expect(validate( ":environment:\n  - :path: [a, b]\n  - :cc: gcc\n  - CFLAGS: -O2\n" )).to be true
+      end
+
+      it "rejects :environment that is not a list" do
+        expect(validate( ":environment:\n  :cc: gcc\n" )).to be false
+        logged(/:environment must contain a list of key \/ value pairs, not hash/)
+      end
+
+      it "rejects an entry that is not a key / value pair" do
+        expect(validate( ":environment:\n  - gcc\n" )).to be false
+        logged(/list entry gcc is not a key \/ value pair/)
+      end
+
+      it "rejects an entry with more than one key" do
+        expect(validate( ":environment:\n  - :cc: gcc\n    :ld: ld\n" )).to be false
+        logged(/does not specify exactly one key/)
+      end
+
+      it "rejects a key that is not a symbol or string" do
+        expect(validate( ":environment:\n  - 7: gcc\n" )).to be false
+        logged(/entry '7' must be a symbol or string/)
+      end
+
+      it "rejects a value that is not a string or list of strings" do
+        expect(validate( ":environment:\n  - :cc: 7\n" )).to be false
+        logged(/associated with integer, not a string or list/)
+        expect(validate( ":environment:\n  - :path: [a, 7]\n" )).to be false
+        logged(/contains a list element '7' \(integer\) that is not a string/)
+      end
+
+      it "rejects a variable named twice, regardless of case" do
+        expect(validate( ":environment:\n  - :cc: gcc\n  - CC: clang\n" )).to be false
+        logged(/Duplicate :environment entry :cc found/)
+      end
+    end
+
+    context "#validate_threads" do
+      def validate(compile, test)
+        @setup.validate_threads( { project: { compile_threads: compile, test_threads: test } } )
+      end
+
+      it "accepts a positive count or :auto" do
+        expect(validate( 1, :auto )).to be true
+      end
+
+      it "rejects a count below one" do
+        expect(validate( 0, 1 )).to be false
+        logged(/:project ↳ :compile_threads must be greater than 0/)
+        expect(validate( 1, -2 )).to be false
+        logged(/:project ↳ :test_threads must be greater than 0/)
+      end
+
+      it "rejects any other value" do
+        expect(validate( :many, 'auto' )).to be false
+        expect(validate( 'auto', :many )).to be false
+        logged(/:project ↳ :compile_threads is neither an integer nor :auto/)
+        logged(/:project ↳ :test_threads is neither an integer nor :auto/)
+      end
+    end
+
+    # A plugin is found when discovery found its directory, whatever kind of plugin it is
+    context "#validate_plugins" do
+      it "accepts enabled plugins whose directories were found" do
+        config = { plugins: { enabled: ['beep', 'rk', 'zap'], beep_path: 'p/beep', rk_path: 'p/rk', zap_path: 'p/zap' } }
+
+        expect(@setup.validate_plugins( config )).to be true
+      end
+
+      it "names each enabled plugin that was not found" do
+        config = { plugins: { enabled: ['beep', 'rk'], rk_path: 'p/rk' } }
+
+        expect(@setup.validate_plugins( config )).to be false
+        logged(/Plugin 'beep' not found/)
+      end
+    end
+  end
+
+  context "#build_project_config" do
+    it "merges build paths, Rakefiles, release target, thread counts, and preprocessing accessors" do
+      allow(@configurator_builder).to receive(:set_build_paths).with(anything, 'logs').and_return( { a: 1 } )
+      allow(@configurator_builder).to receive(:set_rakefile_components).with('lib', anything).and_return( { b: 2 } )
+      allow(@configurator_builder).to receive_messages( set_release_target: { c: 3 }, set_build_thread_counts: { d: 4 }, set_test_preprocessor_accessors: { e: 5 } )
+
+      expect(@setup.build_project_config( 'lib', 'logs', { z: 0 } )).to eq( { z: 0, a: 1, b: 2, c: 3, d: 4, e: 5 } )
+    end
+  end
+
+  context "#build_directory_structure" do
+    before(:each) { allow(@loginator).to receive(:log_list) }
+
+    it "creates every build path" do
+      allow(@file_wrapper).to receive(:mkdir)
+
+      @setup.build_directory_structure( { project_build_paths: ['build/a', 'build/b'] } )
+
+      expect(@file_wrapper).to have_received(:mkdir).with('build/a')
+      expect(@file_wrapper).to have_received(:mkdir).with('build/b')
+    end
+
+    it "refuses a blank build path" do
+      allow(@file_wrapper).to receive(:mkdir)
+
+      expect { @setup.build_directory_structure( { project_build_paths: ['build/a', ''] } ) }.to raise_error(CeedlingException, /unexpectedly blank/)
+    end
+  end
+
+  context "#build_project_collections" do
+    it "merges every path and file collection" do
+      collections = [
+        :expand_all_path_globs, :collect_vendor_paths, :collect_source_and_include_paths, :collect_source_include_vendor_paths,
+        :collect_test_support_source_include_paths, :collect_test_support_source_include_vendor_paths, :collect_assembly,
+        :collect_headers, :collect_release_build_input, :collect_existing_test_build_input,
+        :collect_release_artifact_extra_link_objects, :collect_test_fixture_extra_link_objects, :collect_vendor_framework_sources
+      ]
+      collections.each { |name| allow(@configurator_builder).to receive(name).and_return( { name => true } ) }
+      allow(@configurator_builder).to receive(:collect_tests).and_return( [ { collect_tests: true }, ['test/test_a.c'] ] )
+      allow(@configurator_builder).to receive(:collect_source).with(anything, ['test/test_a.c']).and_return( { collect_source: true } )
+
+      result = @setup.build_project_collections( {} )
+
+      expect(result.keys).to match_array( collections + [:collect_tests, :collect_source] )
+    end
+  end
+
+  context "#build_constants_and_accessors" do
+    it "builds constants and accessors from the same configuration" do
+      allow(@configurator_builder).to receive_messages( build_global_constants: nil, build_accessor_methods: nil )
+
+      @setup.build_constants_and_accessors( { a: 1 }, :context )
+
+      expect(@configurator_builder).to have_received(:build_global_constants).with( { a: 1 } )
+      expect(@configurator_builder).to have_received(:build_accessor_methods).with( { a: 1 }, :context )
     end
   end
 end

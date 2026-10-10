@@ -145,7 +145,8 @@ are not exercised by any test. It takes one of three values:
     matchers can provide these. For GCov tasks, symbols and flags are extracted from
     the `:test` context beneath the `:defines` and `:flags` configuration sections 
     by default. If you need something special for coverage builds, use the `:gcov` 
-    context for these matchers instead.
+    context for these matchers instead. For an untested source, matchers match
+    against the source file's own path.
 
 Notes:
 

@@ -148,7 +148,8 @@ one of three values.
     [`:flags`](../../configuration/reference/flags.md)
     matchers can provide these. Bullseye tasks extract symbols and flags from
     the `:test` context by default. Use the `:bullseye` context in those
-    matchers to supply anything specific to coverage builds.
+    matchers to supply anything specific to coverage builds. For an untested
+    source, matchers match against the source file's own path.
 
 `:compile` also enables a standalone `bullseye:untested_sources` task.
 

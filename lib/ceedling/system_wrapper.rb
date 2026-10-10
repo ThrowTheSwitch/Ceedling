@@ -60,6 +60,11 @@ class SystemWrapper
     return @argv
   end
 
+  def processor_count
+    require 'etc'
+    return Etc.nprocessors
+  end
+
   def env_set(name, value)
     ENV[name] = value
   end

@@ -36,15 +36,13 @@ describe "report_tests_gtestlike_stdout template" do
     captured
   end
 
-  # --- Baseline: a pass/fail-only fixture must render identically before
-  # and after the ignore-handling fix, since the fix only touches how
-  # ignored tests are handled. ---
+  # A suite with no ignored tests renders every test, so its counts are unambiguous
 
   let(:pass_fail_only) do
     {
       times: { 'test/TestFoo.c' => 0.5 },
       counts: { total: 2, passed: 1, failed: 1, ignored: 0, stdout: 0 },
-      successes: [ { source: { file: 'test/TestFoo.c' }, collection: [ { test: 'test_a', pass: true } ] } ],
+      successes: [ { source: { file: 'test/TestFoo.c' }, collection: [ { test: 'test_a', line: 5, message: '' } ] } ],
       failures:  [ { source: { file: 'test/TestFoo.c' },
                      collection: [ { test: 'test_b', line: 10, message: 'Expected 1 Was 2.' } ] } ],
       ignores: []
@@ -61,14 +59,29 @@ describe "report_tests_gtestlike_stdout template" do
     expect(output).to include('[  FAILED  ] 1 tests, listed below:')
   end
 
-  # --- Fix below this point: written to fail against pre-fix code ---
+  # Every reporting plugin receives the same results, so rendering must not alter them
+  it 'leaves the results it renders unaltered' do
+    results = {
+      times: { 'test/TestFoo.c' => 0.5 },
+      counts: { total: 2, passed: 1, failed: 1, ignored: 0, stdout: 0 },
+      successes: [ { source: { file: 'test/TestFoo.c' }, collection: [ { test: 'test_a', line: 5, message: '' } ] } ],
+      failures:  [ { source: { file: 'test/TestFoo.c' }, collection: [ { test: 'test_b', line: 10, message: 'Expected 1 Was 2.' } ] } ],
+      ignores: []
+    }
+    pristine = Marshal.load( Marshal.dump( results ) )
 
+    render(results)
+
+    expect(results).to eq(pristine)
+  end
+
+  # GTest has no ignored outcome, so an ignored test is left out entirely
   describe 'with an ignored test present' do
     let(:results) do
       {
         times: { 'test/TestFoo.c' => 0.5 },
         counts: { total: 3, passed: 1, failed: 1, ignored: 1, stdout: 0 },
-        successes: [ { source: { file: 'test/TestFoo.c' }, collection: [ { test: 'test_a', pass: true } ] } ],
+        successes: [ { source: { file: 'test/TestFoo.c' }, collection: [ { test: 'test_a', line: 5, message: '' } ] } ],
         failures:  [ { source: { file: 'test/TestFoo.c' },
                        collection: [ { test: 'test_b', line: 10, message: 'Expected 1 Was 2.' } ] } ],
         ignores:   [ { source: { file: 'test/TestFoo.c' },
@@ -105,5 +118,27 @@ describe "report_tests_gtestlike_stdout template" do
 
     expect(output).not_to include('TestOnlyIgnored')
     expect(output).to include('No tests executed.')
+  end
+end
+
+describe 'ReportTestsGtestlikeStdout' do
+  before(:all) do
+    require 'ceedling/plugins/plugin'
+    $: << File.expand_path('../../../../plugins/report_tests_gtestlike_stdout/lib', __FILE__)
+    $: << File.expand_path('../../../../lib/ceedling/plugins', __FILE__)
+    require 'report_tests_gtestlike_stdout'
+  end
+
+  # The plugin's whole difference from its siblings is the template asset it ships
+  it 'reports with the template in its own assets directory' do
+    file_wrapper = double('file_wrapper')
+    allow(file_wrapper).to receive(:exist?).with('/plugin/assets/test_results.template').and_return(true)
+    allow(file_wrapper).to receive(:read).with('/plugin/assets/test_results.template').and_return('gtest template')
+
+    plugin = ReportTestsGtestlikeStdout.allocate
+    plugin.instance_variable_set(:@ceedling, { file_wrapper: file_wrapper })
+    plugin.instance_variable_set(:@plugin_root_path, '/plugin')
+
+    expect(plugin.send(:load_template)).to eq('gtest template')
   end
 end

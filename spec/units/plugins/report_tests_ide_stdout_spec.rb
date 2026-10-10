@@ -50,8 +50,6 @@ describe "report_tests_ide_stdout template" do
     }
   end
 
-  # --- Behavior unaffected by this pass, pinned as a baseline ---
-
   it 'lists stdout output by source file' do
     expect(render(results)).to include("test/TestFoo.c: \"debug line\"")
   end
@@ -61,9 +59,8 @@ describe "report_tests_ide_stdout template" do
     expect(render(empty)).to include('No tests executed.')
   end
 
-  # --- Fixes below this point: written to fail against pre-fix code ---
-
-  it 'reindents a multi-line failure message, re-prefixing every continuation line with file:line:test: (fix)' do
+  # Every line of a multi-line message stays a link an IDE can follow
+  it 'reindents a multi-line failure message, prefixing every continuation line with file:line:test:' do
     output = render(results)
 
     expect(output).to include(
@@ -71,8 +68,23 @@ describe "report_tests_ide_stdout template" do
     )
   end
 
-  it "decorates the summary banner the same way pretty's does (fix: today it never decorates at all)" do
+  it "decorates the summary banner the same way the pretty report does" do
     render(results)
     expect(@loginator).to have_received(:decorate).with('OVERALL TEST SUMMARY', LogLabels::FAIL)
+  end
+end
+
+describe 'ReportTestsIdeStdout' do
+  before(:all) do
+    require 'ceedling/plugins/plugin'
+    $: << File.expand_path('../../../../plugins/report_tests_ide_stdout/lib', __FILE__)
+    $: << File.expand_path('../../../../lib/ceedling/plugins', __FILE__)
+    require 'report_tests_ide_stdout'
+  end
+
+  # The plugin's whole difference from its siblings is the template it reports with
+  it "reports with Ceedling's default test results template" do
+    plugin = ReportTestsIdeStdout.allocate
+    expect(plugin.send(:load_template)).to eq(DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE)
   end
 end

@@ -852,6 +852,23 @@ describe TestBuildSetup do
     end
   end
 
+  # A plugin build context without entries of its own takes those of :test
+  describe "#context_defines" do
+    it "resolves a context's own defines against the filepath" do
+      allow(@defineinator).to receive(:defines_defined?).with( context: :gcov ).and_return( true )
+      expect(@defineinator).to receive(:defines).with( subkey: :gcov, filepath: 'src/a.c' ).and_return( ['COVERAGE'] )
+
+      expect( @setup.context_defines( context: :gcov, filepath: 'src/a.c' ) ).to eq( ['COVERAGE'] )
+    end
+
+    it "falls back to :test defines for a context without its own" do
+      allow(@defineinator).to receive(:defines_defined?).with( context: :gcov ).and_return( false )
+      expect(@defineinator).to receive(:defines).with( subkey: :test, filepath: 'src/a.c' ).and_return( ['TESTING'] )
+
+      expect( @setup.context_defines( context: :gcov, filepath: 'src/a.c' ) ).to eq( ['TESTING'] )
+    end
+  end
+
   describe "#framework_defines" do
     before(:each) do
       allow(@defineinator).to receive(:defines).with( topkey: UNITY_SYM,      subkey: :defines ).and_return( ['UNITY_THING'] )

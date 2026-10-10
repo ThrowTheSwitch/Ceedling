@@ -25,12 +25,12 @@ entries can reference earlier entries.
 
 ## Special case: `PATH` handling
 
-In the specific case of specifying an environment key named `:path`, an array 
+In the specific case of specifying an environment key named `:path` (in any case), an array 
 of string values will be concatenated with the appropriate platform-specific 
 path separation character (i.e. `:` on Unix-variants, `;` on Windows).
 
-All other instances of environment keys assigned a value of a YAML array use 
-simple concatenation.
+All other instances of environment keys assigned a value of a YAML array are
+joined with a space between values.
 
 ## Example `:environment` YAML
 

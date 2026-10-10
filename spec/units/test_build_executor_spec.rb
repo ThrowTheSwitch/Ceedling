@@ -90,8 +90,8 @@ describe TestBuildExecutor do
     # Default: no prior `.d` file on disk, and the tracker reports every target
     # stale -- i.e. every real build in this spec proceeds as an unconditional
     # fresh compile unless a test overrides `stale?` to exercise the skip path.
-    # exist_with_retry? backs every .d-file presence check now (Fix 4); exist?
-    # itself is still called directly for the unrelated sibling-header check.
+    # Every .d-file presence check goes through exist_with_retry?. The sibling-header
+    # check calls exist? directly.
     allow(@file_wrapper).to receive(:exist?).and_return( false )
     allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
     # Default: no plugin implements the new pre-*-register hooks -- each is a

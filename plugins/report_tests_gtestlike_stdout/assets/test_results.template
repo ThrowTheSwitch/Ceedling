@@ -6,19 +6,14 @@
 % # still renders "No tests executed." even though tests technically ran; that
 % # is this deliberate, fully-consistent choice, not a bug to "fix" back.
 % total = hash[:results][:counts][:passed] + failed
-% results = {}
+% # Groups tests by file and marks passes on copies. Every reporting plugin
+% # receives the same results, so they are never altered.
+% results = Hash.new { |files, file| files[file] = [] }
 % hash[:results][:successes].each do |testresult|
-%   results[ testresult[:source][:file] ] = testresult[:collection]
-%   results[ testresult[:source][:file] ].length.times do |i|
-%     results[ testresult[:source][:file] ][i][:pass] = true
-%   end
+%   results[ testresult[:source][:file] ] += testresult[:collection].map { |item| item.merge( pass: true ) }
 % end
 % hash[:results][:failures].each do |testresult|
-%   if (results[ testresult[:source][:file] ].nil?)
-%     results[ testresult[:source][:file] ] = testresult[:collection]
-%   else
-%     results[ testresult[:source][:file] ] += testresult[:collection]
-%   end
+%   results[ testresult[:source][:file] ] += testresult[:collection]
 % end
 
 % if hash[:context] != TEST_SYM

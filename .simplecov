@@ -47,6 +47,11 @@ SimpleCov.configure do
   # anchor expecting a leading slash never matches anything, silently.
   skip %r{\Alib/[^/]+\.rb\z}
 
+  # A plugin's config/defaults_<plugin>.rb is a table of constant tool definitions,
+  # loaded with that plugin's configuration and holding no logic to exercise. Anchored
+  # without a leading "/" for the same reason as above.
+  skip %r{\Aplugins/[^/]+/config/defaults_[^/]+\.rb\z}
+
   # Thin adapters over Ruby stdlib/OS calls (file_wrapper.rb, system_wrapper.rb,
   # yaml_wrapper.rb, bin/actions_wrapper.rb, etc.) -- existing tests stub around
   # these rather than exercise them directly, so they read as permanently

@@ -200,7 +200,8 @@ class Generator
   end
 
   # `compile_source` is the file actually handed to the compiler when it differs from
-  # `source`, such as an isolated copy. Plugins and logs still see `source`.
+  # `source`, such as an isolated copy. Plugins and logs still see `source`, and get
+  # `:compile_source` too so a command naming the copy can be traced to the original.
   def generate_object_file_c(
       tool:,
       module_name:,
@@ -228,6 +229,7 @@ class Generator
                  :defines => defines,
                  :list => list,
                  :dependencies => dependencies,
+                 :compile_source => compile_source,
                  :msg => String(msg)
                }
 

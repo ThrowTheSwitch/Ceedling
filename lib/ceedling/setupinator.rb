@@ -54,7 +54,7 @@ class Setupinator
     @configurator.force_test_rerun = app_cfg[:force_test_rerun]
 
     # Verbosity handling
-    @configurator.set_verbosity( config_hash )
+    @configurator.set_verbosity()
 
     # Logging configuration
     @loginator.set_logfile( app_cfg[:log_filepath] )
@@ -166,7 +166,7 @@ class Setupinator
 
     log_step( 'Validating final project configuration', heading: false )
 
-    @configurator.validate_final( config_hash, app_cfg )
+    @configurator.validate_final( config_hash )
 
     ##
     ## 7. Flatten configuration + process it into globals and accessors

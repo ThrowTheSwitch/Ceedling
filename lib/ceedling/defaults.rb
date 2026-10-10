@@ -339,7 +339,7 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
 
   :libraries => {
     :flag => '-l${1}',
-    :path_flag => '-L ${1}',
+    :path_flag => '-L "${1}"',
     :test => [],
     :release => []
     },
@@ -355,8 +355,8 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :list => '.lst',
     :testpass => '.pass',
     :testfail => '.fail',
-    :dependencies => '.d',
-    :yaml => '.yml'
+    :dependencies => '.d'
+    # :yaml, for mixin files, is read only from the project file itself (see bin/projectinator.rb)
     },
 
   :unity => {
@@ -395,6 +395,14 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
 
   # All tools populated while building up config / defaults structure
   :tools => {},
+
+  :plugins => {
+    # Hidden setting, for plugins alone and absent from project configuration docs.
+    # Plugins declare, in their own defaults, which build contexts are peers of :test,
+    # whose :defines and :flags may then hold matcher hashes. A project setting it
+    # replaces every plugin's declaration.
+    :test_build_contexts => []
+    },
 
   }.freeze
 

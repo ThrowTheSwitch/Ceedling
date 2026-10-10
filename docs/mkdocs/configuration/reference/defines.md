@@ -123,7 +123,7 @@ Both are documented below.
     symbols, specify an empty list `[]` for the relevant matcher (or for the
     whole `:preprocess` section, if using the simple list format).
 
-**Default**: Identical to that same file's `:test` context symbols, unless specified
+**Default**: Identical to that same file’s `:test` context symbols, unless specified
 
 ## `:defines` ↳ `:<plugin context>`
 
@@ -132,6 +132,10 @@ Ceedling Gcov plugin uses a context of `:gcov`, surprisingly enough. For any
 plugins with tools that take advantage of Ceedling’s internal mechanisms, you
 can add to those tools' compilation symbols in the same manner as the built-in
 contexts.
+
+The Gcov and Bullseye plugins' contexts, `:gcov` and `:bullseye`, accept
+per-test matchers as `:test` does. A plugin’s build uses `:test`’s symbols when
+its context lists none of its own.
 
 ## `:defines` options
 

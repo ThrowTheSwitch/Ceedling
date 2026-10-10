@@ -10,6 +10,7 @@ require 'ceedling/filename_extension'
 require 'rake'
 require 'ceedling/release_invoker/release_build_executor'
 require 'ceedling/release_invoker/release_invoker_types'
+require 'ceedling/defaults'
 
 describe ReleaseBuildExecutor do
   before(:each) do
@@ -46,8 +47,7 @@ describe ReleaseBuildExecutor do
     # Default: no prior `.d` file on disk, and the tracker reports every target
     # stale -- i.e. every real build in this spec proceeds as an unconditional
     # fresh compile/link unless a test overrides `stale?` to exercise the skip path.
-    # exist_with_retry? backs every presence check here now (Fix 4) -- release_build_executor
-    # has no remaining plain-exist? call site.
+    # Every presence check in release_build_executor goes through exist_with_retry?.
     allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
     allow(@file_wrapper).to receive(:mkdir)
     allow(@dependinator).to receive(:register)
@@ -300,6 +300,18 @@ describe ReleaseBuildExecutor do
 
       expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, _objects, _flags, _target, _map, _lib_args, lib_paths|
         expect(lib_paths).to eq( ['-Lvendor/lib'] )
+      end
+
+      @executor.link( @state )
+    end
+
+    # Quoted like every other default path argument, so a path with a space survives the shell
+    it "quotes each library search path under the default flag template" do
+      stub_const( "PATHS_LIBRARIES", ['vendor/third party/lib'] )
+      stub_const( "LIBRARIES_PATH_FLAG", DEFAULT_CEEDLING_PROJECT_CONFIG[:libraries][:path_flag] )
+
+      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, _objects, _flags, _target, _map, _lib_args, lib_paths|
+        expect(lib_paths).to eq( ['-L "vendor/third party/lib"'] )
       end
 
       @executor.link( @state )

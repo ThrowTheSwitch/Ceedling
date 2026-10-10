@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'yaml'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/plugins/plugin'
@@ -91,6 +92,13 @@ describe Gcov do
     end
   end
 
+  # Core validation learns from plugin defaults which contexts are peers of :test
+  it 'declares :gcov a test build context in its defaults' do
+    defaults = YAML.safe_load( File.read( File.expand_path( '../../../../plugins/gcov/config/defaults.yml', __FILE__ ) ), permitted_classes: [Symbol] )
+
+    expect(defaults[:plugins][:test_build_contexts]).to eq( [:gcov] )
+  end
+
   describe '#validate_untested_sources' do
     it 'passes for every recognized :untested_sources mode' do
       gcov = build_gcov({})
@@ -165,8 +173,7 @@ describe Gcov do
   describe '#process_untested_sources' do
     let(:file_path_utils) { double('file_path_utils') }
     let(:configurator)    { double('configurator', collection_paths_include: []) }
-    let(:defineinator)    { double('defineinator', defines: []) }
-    let(:flaginator)      { double('flaginator', flag_down: []) }
+    let(:test_build_setup) { double('test_build_setup', context_defines: [], flags: []) }
     let(:dependinator)    { double('dependinator', register: nil, register_gcc_deps_file: nil, flush: nil, mark_fresh: nil) }
     let(:generator)       { double('generator', generate_object_file_c: nil) }
     let(:file_wrapper)    { double('file_wrapper', exist?: false) }
@@ -182,8 +189,8 @@ describe Gcov do
       build_gcov(
         project_config,
         {
-          file_path_utils: file_path_utils, configurator: configurator, defineinator: defineinator,
-          flaginator: flaginator, dependinator: dependinator, generator: generator,
+          file_path_utils: file_path_utils, configurator: configurator,
+          test_build_setup: test_build_setup, dependinator: dependinator, generator: generator,
           file_wrapper: file_wrapper, test_invoker: test_invoker, mcdc_gcc_checked: true,
           gcov_config: {},
         }.merge(ivars)
@@ -250,6 +257,17 @@ describe Gcov do
         expect(generator).to receive(:generate_object_file_c) do |args|
           expect(args[:flags]).to include('-fcondition-coverage')
         end
+        gcov.process_untested_sources(sources: ['src/a.c'])
+      end
+
+      # An untested source's defines and flags resolve as a tested source's do, matchers included
+      it "resolves defines and flags for the :gcov context against the untested source's filepath" do
+        allow(dependinator).to receive(:stale?).and_return(true)
+        allow(test_build_setup).to receive(:context_defines).with( context: GCOV_SYM, filepath: 'src/a.c' ).and_return( ['COVERAGE'] )
+        allow(test_build_setup).to receive(:flags).with( context: GCOV_SYM, operation: OPERATION_COMPILE_SYM, filepath: 'src/a.c' ).and_return( ['-O0'] )
+        gcov = build_process_gcov({ gcov_untested_sources: GCOV_UNTESTED_SOURCES_COMPILE, gcov_mcdc: false })
+
+        expect(generator).to receive(:generate_object_file_c).with( hash_including( defines: ['COVERAGE'], flags: ['-O0'] ) )
         gcov.process_untested_sources(sources: ['src/a.c'])
       end
 

@@ -5,162 +5,71 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'rubygems'
-require 'rake' # for ext()
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'  # for glob handling class methods
+require 'ceedling/config/config_matchinator'
 
 
 class ConfiguratorValidator
-  
-  constructor :config_walkinator, :file_wrapper, :loginator, :system_wrapper, :reportinator, :tool_validator
+
+  constructor :config_walkinator, :file_wrapper, :loginator, :reportinator, :tool_validator
 
   # Walk into config hash verify existence of data at key depth
   def exists?(config, *keys)
-    hash, _  = @config_walkinator.fetch_value( *keys, hash:config )
-    exist = !hash.nil?
+    hash, _ = @config_walkinator.fetch_value( *keys, hash:config )
+    return true unless hash.nil?
 
-    if (not exist)
-      walk = @reportinator.generate_config_walk( keys )
-      @loginator.log( "Required config file entry #{walk} does not exist.", Verbosity::ERRORS )    
-    end
-    
-    return exist
+    log_error( "Required config file entry #{@reportinator.generate_config_walk( keys )} does not exist." )
+    return false
   end
 
   # Walk into config hash. verify existence of path(s) at given key depth.
   # Paths are either full simple paths or a simple portion of a path up to a glob.
   def validate_path_list(config, *keys)
-    exist = true
     list, depth = @config_walkinator.fetch_value( *keys, hash:config )
+    return false if list.nil?
 
-    # Return early if we couldn't walk into hash and find a value
-    return false if (list.nil?)
-    
-    list.each do |path|
-      # Trim add/subtract notation & glob specifiers
-      _path = FilePathUtils::no_decorators( path )
+    # Trimming add/subtract notation and glob specifiers leaves nothing of a path that
+    # begins with a glob, so there is nothing to check
+    paths   = list.map { |path| FilePathUtils::no_decorators( path ) }
+    missing = paths.reject { |path| path.empty? or @file_wrapper.exist?( path ) }
 
-      next if _path.empty? # Path begins with or is entirely a glob, skip it
+    walk = @reportinator.generate_config_walk( keys, depth )
+    missing.each { |path| log_error( "Config path #{walk} => '#{path}' does not exist in the filesystem." ) }
 
-      # If (partial) path does not exist, complain
-      if (not @file_wrapper.exist?( _path ))
-        walk = @reportinator.generate_config_walk( keys, depth )
-        @loginator.log( "Config path #{walk} => '#{_path}' does not exist in the filesystem.", Verbosity::ERRORS ) 
-        exist = false
-      end 
-    end
-    
-    return exist
+    return missing.empty?
   end
 
 
   # Validate :paths entries, exercising each entry as Ceedling directory glob (variation of Ruby glob)
   def validate_paths_entries(config, key)
-    valid = true
-    keys = [:paths, key]
-    walk = @reportinator.generate_config_walk( keys )
+    list, _ = @config_walkinator.fetch_value( :paths, key, hash:config )
+    return false if list.nil?
 
-    list, _ = @config_walkinator.fetch_value( *keys, hash:config )
-
-    # Return early if we couldn't walk into hash and find a value
-    return false if (list.nil?)
-    
-    list.each do |path|
-      dirs = [] # Working list
-
-      # Trim add/subtract notation
-      _path = FilePathUtils::no_aggregation_decorators( path )
-
-      if @file_wrapper.exist?( _path ) and !@file_wrapper.directory?( _path )
-        # Path is a simple filepath (not a directory)
-        warning = "#{walk} => '#{_path}' is a filepath and will be ignored (FYI :paths is directory-oriented while :files is file-oriented)"
-        @loginator.log( warning, Verbosity::COMPLAIN )
-
-        next # Skip to next path
-      end
-
-      # Expand paths using Ruby's Dir.glob()
-      #  - A simple path will yield that path
-      #  - A path glob will expand to one or more paths
-      # #104 -- FilePathUtils.subdirectory_glob escapes a literal `[`/`]` in the
-      # user's own path before reforming the glob suffix, so it's matched literally
-      # rather than misread as glob character-class syntax.
-      _reformed = FilePathUtils.subdirectory_glob( _path )
-      @file_wrapper.directory_listing( _reformed ).each do |entry|
-        # For each result, add it to the working list *if* it's a directory
-        dirs << entry if @file_wrapper.directory?(entry)
-      end
-      
-      # Handle edge case of subdirectories glob but not subdirectories
-      # (Containing parent directory will still exist)
-      next if dirs.empty? and _path =~ /\/\*{1,2}$/
-
-      # Path did not work -- must be malformed glob or glob referencing path that does not exist.
-      # (An earlier step validates all simple directory paths).
-      if dirs.empty?
-        error = "#{walk} => '#{_path}' yielded no directories -- matching glob is malformed or directories do not exist"
-        @loginator.log( error, Verbosity::ERRORS )
-        valid = false
-      end
-    end
-    
-    return valid
+    walk = @reportinator.generate_config_walk( [:paths, key] )
+    return list.map { |path| valid_paths_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
   end
 
 
   # Validate :files entries, exercising each entry as FileList glob
   def validate_files_entries(config, key)
-    valid = true
-    keys = [:files, key]
-    walk = @reportinator.generate_config_walk( keys )
+    list, _ = @config_walkinator.fetch_value( :files, key, hash:config )
+    return false if list.nil?
 
-    list, _ = @config_walkinator.fetch_value( *keys, hash:config )
-
-    # Return early if we couldn't walk into hash and find a value
-    return false if (list.nil?)
-    
-    list.each do |path|
-      # Trim add/subtract notation
-      _path = FilePathUtils::no_aggregation_decorators( path )
-
-      if @file_wrapper.exist?( _path ) and @file_wrapper.directory?( _path )
-        # Path is a simple directory path (and is naturally ignored by FileList without a glob pattern)
-        warning = "#{walk} => '#{_path}' is a directory path and will be ignored (FYI :files is file-oriented while :paths is directory-oriented)"
-        @loginator.log( warning, Verbosity::COMPLAIN )
-
-        next # Skip to next path
-      end      
-
-      # #104 -- escape a literal `[`/`]` in the user's own path so it's matched
-      # literally rather than misread as glob character-class syntax.
-      filelist = @file_wrapper.instantiate_file_list( FilePathUtils.escape_glob_brackets( _path ) )
-
-      # If file list is empty, complain
-      if (filelist.size == 0)
-        error = "#{walk} => '#{_path}' yielded no files -- matching glob is malformed or files do not exist"
-        @loginator.log( error, Verbosity::ERRORS ) 
-        valid = false
-      end 
-    end
-    
-    return valid
+    walk = @reportinator.generate_config_walk( [:files, key] )
+    return list.map { |path| valid_files_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
   end
 
 
   # Simple path verification
   def validate_filepath_simple(path, *keys)
-    validate_path = path
-    
-    if (not @file_wrapper.exist?(validate_path))
-      walk = @reportinator.generate_config_walk( keys, keys.size )
-      @loginator.log("Config path '#{validate_path}' associated with #{walk} does not exist in the filesystem.", Verbosity::ERRORS ) 
-      return false
-    end 
-    
-    return true
+    return true if @file_wrapper.exist?( path )
+
+    walk = @reportinator.generate_config_walk( keys, keys.size )
+    log_error( "Config path '#{path}' associated with #{walk} does not exist in the filesystem." )
+    return false
   end
-   
+
   def validate_tool(config:, key:, respect_optional:true)
     # Get tool
     walk = [:tools, key]
@@ -172,37 +81,72 @@ class ConfiguratorValidator
       extension: config[:extension][:executable],
       respect_optional: respect_optional
     }
-  
+
     return @tool_validator.validate( **arg_hash )
   end
 
 
+  # Raises with the reason a matcher is malformed
   def validate_matcher(matcher)
-    case matcher
-    
-    # Handle regex-based matcher
-    when /\/.+\//
-      # Ensure regex is well-formed by trying to compile it
-      begin
-        Regexp.compile( matcher[1..-2] )
-      rescue StandardError => ex
-        # Re-raise with our own message formatting
-        raise "invalid regular expression:: #{ex.message}"
-      end
-    
-    # Handle wildcard / substring matchers
-    else
-      # Strip out allowed characters
-      invalid = matcher.gsub( /[a-z0-9 \/\.\-_\*]/i, '' )
+    return validate_regex_matcher( matcher ) if ConfigMatchinator.regex_form?( matcher )
 
-      # If there's any characters left, then we found invalid characters
-      if invalid.length() > 0
-        # Format invalid characters into a printable list with no duplicates
-        _invalid = invalid.chars.uniq.map{|c| "'#{c}'"}.join( ', ')
+    # A substring or wildcard matcher allows only these characters
+    invalid = matcher.gsub( /[a-z0-9 \/\.\-_\*]/i, '' ).chars.uniq
+    return if invalid.empty?
 
-        raise "invalid substring or wilcard characters #{_invalid}"
-      end
+    raise "invalid substring or wildcard characters #{invalid.map { |char| "'#{char}'" }.join( ', ' )}"
+  end
+
+  ### Private ###
+
+  private
+
+  # A path naming a file is ignored with a warning. Any other entry must yield directories,
+  # except a subdirectories glob of a directory that has none.
+  def valid_paths_entry?(path, walk)
+    if @file_wrapper.exist?( path ) and !@file_wrapper.directory?( path )
+      log_complaint( "#{walk} => '#{path}' is a filepath and will be ignored (FYI :paths is directory-oriented while :files is file-oriented)" )
+      return true
     end
+
+    return true if globbed_directories?( path ) or path =~ /\/\*{1,2}$/
+
+    log_error( "#{walk} => '#{path}' yielded no directories -- matching glob is malformed or directories do not exist" )
+    return false
+  end
+
+  # #104 -- FilePathUtils.subdirectory_glob escapes literal brackets in the path, so they
+  # are matched rather than read as a glob character class
+  def globbed_directories?(path)
+    return @file_wrapper.directory_listing( FilePathUtils.subdirectory_glob( path ) ).any? { |entry| @file_wrapper.directory?( entry ) }
+  end
+
+  # A path naming a directory is ignored with a warning. Any other entry must yield files.
+  def valid_files_entry?(path, walk)
+    if @file_wrapper.exist?( path ) and @file_wrapper.directory?( path )
+      log_complaint( "#{walk} => '#{path}' is a directory path and will be ignored (FYI :files is file-oriented while :paths is directory-oriented)" )
+      return true
+    end
+
+    # #104 -- literal brackets are escaped so they are matched rather than read as a glob
+    return true unless @file_wrapper.instantiate_file_list( FilePathUtils.escape_glob_brackets( path ) ).size.zero?
+
+    log_error( "#{walk} => '#{path}' yielded no files -- matching glob is malformed or files do not exist" )
+    return false
+  end
+
+  def validate_regex_matcher(matcher)
+    Regexp.compile( matcher[1..-2] )
+  rescue RegexpError => ex
+    raise "invalid regular expression: #{ex.message}"
+  end
+
+  def log_error(message)
+    @loginator.log( message, Verbosity::ERRORS )
+  end
+
+  def log_complaint(message)
+    @loginator.log( message, Verbosity::COMPLAIN )
   end
 
 end

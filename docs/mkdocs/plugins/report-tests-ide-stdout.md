@@ -5,14 +5,14 @@ Prints to the console ($stdout) test suite results with a test failure filepath 
 ## Plugin Overview
 
 This plugin is intended to be used in place of the more commonly used "pretty" 
-test report plugin. Like its sibling, this plugin ollects raw test results from
+test report plugin. Like its sibling, this plugin collects raw test results from
 the individual test executables of your test suite and presents them in a more 
 readable summary form.
 
 The format of test results produced by this plugin is identical to its prettier
 sibling with one key difference — test failures are listed in such a way that 
 filepaths, line numbers, and test case function names can be easily parsed by 
-a typical IDE. The formatting of test failure messages uses a simple, defacto 
+a typical IDE. The formatting of test failure messages uses a simple, de facto 
 standard of a sort recognized almost universally.
 
 The end result is that test failures in your IDE's build window can become 

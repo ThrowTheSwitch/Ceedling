@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'unicode/display_width'
+require 'ceedling/constants'
 
 ##
 # Pretifies reports

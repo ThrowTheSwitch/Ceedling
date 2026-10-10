@@ -73,10 +73,9 @@ ceedling_system_tests do
   describe "Deployed as a gem" do
     before do
       in_project do
-        # The default :paths: ↳ :source/:include is `src/**` -- already recursive,
-        # so a bracket-named subdirectory needs no extra :paths: config to exercise
-        # the bug; it's dropped (or, pre-fix validation, hard-errored) purely by
-        # virtue of Dir.glob never matching '[legacy]' as a literal directory name.
+        # The default :paths ↳ :source is the recursive `src/**`, so a bracket-named
+        # subdirectory needs no extra configuration. Dir.glob reads '[legacy]' as a
+        # character class, never as a literal directory name.
         FileUtils.mkdir_p('src/[legacy]')
         File.write('src/[legacy]/example_file_bracket.h', EXAMPLE_HEADER_BRACKET_PATH)
         File.write('src/[legacy]/example_file_bracket.c', EXAMPLE_SOURCE_BRACKET_PATH)

@@ -338,8 +338,8 @@ module GcovCommonTestCases
 
         output = @c.ceedling_build_exec("gcov:all --verbosity=obnoxious")
         if @gcov_reports.include? :gcovr
-          # Config file honored (fix applied): strict mode exits non-zero on duplicate functions.
-          # Config file overridden by Ceedling CLI (bug): merge-use-line-max exits 0.
+          # The config file's strict mode exits non-zero on duplicate functions. A Ceedling
+          # command line overriding the config file would exit 0 under merge-use-line-max.
           expect(@c.last_exit_status).not_to eq(0)
 
           # No `--exclude` should appear on the gcovr command line when a config file is in use.
@@ -559,6 +559,26 @@ module GcovCommonTestCases
         # Avoid unicode character matching in log matching, since some shells may not support them.
         expect(output).to match(/Switch :gcov.+:untested_sources to :list/)
         expect(output).to match(/Switch :gcov.+:untested_sources to :ignore/)
+      end
+    end
+  end
+
+  # An untested source's defines resolve as a tested source's do, so a :gcov matcher naming
+  # the source supplies what it needs to compile
+  def project_with_gcov_untested_sources_compiled_with_matched_defines
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        add_gcov_option("untested_sources", ":compile")
+        @c.merge_project_yml_for_test( { :defines => { :gcov => { 'needs_define' => ['UNTESTED_SOURCE_REQUIRED'] } } } )
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        File.write( 'src/needs_define.c', "#ifndef UNTESTED_SOURCE_REQUIRED\n#error UNTESTED_SOURCE_REQUIRED is not defined\n#endif\nint needs_define(void) { return 1; }\n" )
+
+        output = @c.ceedling_build_exec("gcov:untested_sources")
+        expect(@c.last_exit_status).to eq(0), output
+        expect(File.exist?('build/gcov/out/needs_define.o')).to eq true
       end
     end
   end

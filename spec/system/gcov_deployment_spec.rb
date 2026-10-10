@@ -52,6 +52,7 @@ ceedling_system_tests do
       test_case :project_with_gcov_untested_sources_list
       test_case :project_with_gcov_untested_sources_compile_failure
       test_case :project_with_gcov_untested_sources_standalone_task
+      test_case :project_with_gcov_untested_sources_compiled_with_matched_defines
       test_case :help_tasks_include_gcov
       test_case :create_html_report
       test_case :create_html_report_with_gcovr_custom_args

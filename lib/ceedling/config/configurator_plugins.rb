@@ -12,160 +12,118 @@ class ConfiguratorPlugins
 
   constructor :file_wrapper, :system_wrapper
 
-  attr_reader :rake_plugins, :programmatic_plugins, :config_plugins, :plugin_yml_defaults, :plugin_hash_defaults
+  attr_reader :rake_plugins, :programmatic_plugins, :config_plugins
+
+  # Content that makes a directory a plugin, as globs beneath that directory
+  PLUGIN_CONTENT = {
+    config_ruby: ['config', '*.rb'],
+    config_yaml: ['config', '*.yml'],
+    lib:         ['lib', '*.rb'],
+    rake:        ['*.rake']
+  }.freeze
 
   def setup
     @rake_plugins = []
     @programmatic_plugins = []
     @config_plugins = []
-    @plugin_yml_defaults = []
-    @plugin_hash_defaults = []
   end
 
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are gigantic and produce a flood of output.
   def inspect
-    # TODO: When identifying information is added to constructor, insert it into `inspect()` string
     return self.class.name
   end
 
 
+  # Adds every load path to Ruby's load path, then finds each enabled plugin in the first
+  # load path holding any plugin content. Returns the found paths, keyed :<plugin>_path.
   def process_aux_load_paths(config)
-    plugin_paths = {}
+    load_paths = config[:plugins][:load_paths]
+    load_paths.each { |path| @system_wrapper.add_load_path( path ) }
 
-    # Add any base load path to Ruby's load path collection
-    config[:plugins][:load_paths].each do |path|
-      @system_wrapper.add_load_path( path )
+    return config[:plugins][:enabled].each_with_object( {} ) do |plugin, plugin_paths|
+      path = find_plugin( plugin, load_paths )
+      plugin_paths[:"#{plugin}_path"] = path if path
     end
-
-    # If a load path contains an actual Ceedling plugin, load its subdirectories by convention
-    config[:plugins][:enabled].each do |plugin|
-      config[:plugins][:load_paths].each do |root|
-        path = File.join(root, plugin)
-
-        # #104 -- `path` is real, unescaped, and used as-is below (add_load_path,
-        # plugin_paths[...]) -- only this glob-pattern-only variant needs a literal
-        # `[`/`]` in the user's own :load_paths: entry escaped, so it doesn't get
-        # misread as glob character-class syntax by Dir.glob (via directory_listing)
-        # and silently fail to match a real, existing plugin directory.
-        # FilePathUtils.glob handles the escaping itself.
-
-        # Ceedling Ruby-based hash defaults plugin (or config for Ceedling programmatic plugin)
-        is_config_plugin       = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, 'config', '*.rb' ) ).empty? )
-
-        # Ceedling programmatic plugin
-        is_programmatic_plugin = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, 'lib', '*.rb' ) ).empty? )
-
-        # Ceedling Rake plugin
-        is_rake_plugin         = ( not @file_wrapper.directory_listing( FilePathUtils.glob( path, '*.rake' ) ).empty? )
-
-        if (is_config_plugin or is_programmatic_plugin or is_rake_plugin)
-          plugin_paths[(plugin + '_path').to_sym] = path
-
-          # Add paths to Ruby load paths that contain *.rb files
-          @system_wrapper.add_load_path( File.join( path, 'config') ) if is_config_plugin   
-          @system_wrapper.add_load_path( File.join( path, 'lib') )    if is_programmatic_plugin
-
-          # We found load_path/ + <plugin>/ path that exists, skip ahead
-          break
-        end
-      end
-    end
-
-    return plugin_paths
   end
 
 
   # Gather up and return .rake filepaths that exist in plugin paths
   def find_rake_plugins(config, plugin_paths)
-    @rake_plugins = []
-
-    config[:plugins][:enabled].each do |plugin|
-      if (path = plugin_paths[(plugin + '_path').to_sym])
-        rake_plugin_path = File.join( path, "#{plugin}.rake" )
-        if @file_wrapper.exist?( rake_plugin_path )
-          @rake_plugins << {:plugin => plugin, :path => rake_plugin_path}
-        end
-      end
-    end
-
-    return @rake_plugins
+    found = plugins_with_file( config, plugin_paths ) { |plugin, path| File.join( path, "#{plugin}.rake" ) }
+    return @rake_plugins = found.map { |plugin, _, file| { plugin: plugin, path: file } }
   end
 
 
   # Gather up names of .rb `Plugin` subclasses and root paths that exist in plugin paths + lib/
   def find_programmatic_plugins(config, plugin_paths)
-    @programmatic_plugins = []
-
-    config[:plugins][:enabled].each do |plugin|
-      if (path = plugin_paths[(plugin + '_path').to_sym])
-        plugin_path = File.join( path, "lib", "#{plugin}.rb" )
-
-        if @file_wrapper.exist?( plugin_path )
-          @programmatic_plugins << {:plugin => plugin, :root_path => path}
-        end
-      end
-    end
-
-    return @programmatic_plugins
+    found = plugins_with_file( config, plugin_paths ) { |plugin, path| File.join( path, 'lib', "#{plugin}.rb" ) }
+    return @programmatic_plugins = found.map { |plugin, path, _| { plugin: plugin, root_path: path } }
   end
 
 
   # Gather up and return config .yml filepaths that exist in plugin paths + config/
   def find_config_plugins(config, plugin_paths)
-    @config_plugins = []
-
-    config[:plugins][:enabled].each do |plugin|
-      if (path = plugin_paths[(plugin + '_path').to_sym])
-        config_plugin_path = File.join(path, "config", "#{plugin}.yml")
-
-        if @file_wrapper.exist?( config_plugin_path )
-          @config_plugins << {:plugin => plugin, :path => config_plugin_path}
-        end
-      end
-    end
-
-    return @config_plugins
+    found = plugins_with_file( config, plugin_paths ) { |plugin, path| File.join( path, 'config', "#{plugin}.yml" ) }
+    return @config_plugins = found.map { |plugin, _, file| { plugin: plugin, path: file } }
   end
 
 
   # Gather up and return default .yml filepaths that exist on-disk
   def find_plugin_yml_defaults(config, plugin_paths)
-    defaults_with_path = {}
-
-    config[:plugins][:enabled].each do |plugin|
-      if (path = plugin_paths[(plugin + '_path').to_sym])
-        default_path = File.join(path, 'config', 'defaults.yml')
-
-        if @file_wrapper.exist?( default_path )
-          defaults_with_path[plugin.to_sym] = default_path
-          @plugin_yml_defaults << plugin
-        end
-      end
-    end
-
-    return defaults_with_path
+    found = plugins_with_file( config, plugin_paths ) { |_, path| File.join( path, 'config', 'defaults.yml' ) }
+    return found.to_h { |plugin, _, file| [plugin.to_sym, file] }
   end
 
-  # Gather up and return defaults generated by Ruby code in plugin paths + config/
+
+  # Gather up and return defaults generated by Ruby code in plugin paths + config/. Each
+  # defaults file defines get_default_config(), which is called as soon as it loads.
   def find_plugin_hash_defaults(config, plugin_paths)
-    defaults_hash = {}
+    found = plugins_with_file( config, plugin_paths ) { |plugin, path| File.join( path, 'config', "defaults_#{plugin}.rb" ) }
 
-    config[:plugins][:enabled].each do |plugin|
-      if (path = plugin_paths[(plugin + '_path').to_sym])
-        default_path = File.join(path, "config", "defaults_#{plugin}.rb")
-        if @file_wrapper.exist?( default_path )
-          @system_wrapper.require_file( "defaults_#{plugin}.rb" )
+    return found.to_h do |plugin, _, _|
+      @system_wrapper.require_file( "defaults_#{plugin}.rb" )
+      [plugin.to_sym, get_default_config()]
+    end
+  end
 
-          object = eval("get_default_config()")
-          defaults_hash[plugin.to_sym()] = object
-          @plugin_hash_defaults << plugin
-        end
-      end
+  ### Private ###
+
+  private
+
+  # The plugin's directory in the first load path that holds any plugin content. Ruby
+  # files beneath its config/ and lib/ are then loadable by name.
+  def find_plugin(plugin, load_paths)
+    load_paths.each do |root|
+      path    = File.join( root, plugin )
+      content = plugin_content( path )
+      next if content.empty?
+
+      @system_wrapper.add_load_path( File.join( path, 'config' ) ) if content.include?( :config_ruby )
+      @system_wrapper.add_load_path( File.join( path, 'lib' ) )    if content.include?( :lib )
+      return path
     end
 
-    return defaults_hash
+    return nil
+  end
+
+  # #104 -- FilePathUtils.glob escapes literal brackets in a load path, so a bracket-named
+  # directory is matched rather than read as a glob character class
+  def plugin_content(path)
+    return PLUGIN_CONTENT.keys.reject { |kind| @file_wrapper.directory_listing( FilePathUtils.glob( path, *PLUGIN_CONTENT[kind] ) ).empty? }
+  end
+
+  # Each enabled plugin with a found path whose file, named by the block, exists, as
+  # [plugin, plugin path, file]
+  def plugins_with_file(config, plugin_paths)
+    return config[:plugins][:enabled].filter_map do |plugin|
+      path = plugin_paths[:"#{plugin}_path"]
+      next if path.nil?
+
+      file = yield( plugin, path )
+      [plugin, path, file] if @file_wrapper.exist?( file )
+    end
   end
 
 end

@@ -69,4 +69,33 @@ File containing make-style dependency rules created by the `gcc` preprocessor
 
 **Default**: .d
 
+## `:libraries`
+
+Library files, recognized among a release build's link inputs
+
+**Default**: [.a, .so]
+
+## `:map`
+
+Linker map file, named after the test executable or release build it describes
+
+**Default**: .map
+
+## `:list`
+
+Listing file a compiler tool may write beside each object file
+
+**Default**: .lst
+
+## `:yaml`
+
+Mixin files (see [Mixins](../mixins.md))
+
+Ceedling uses this setting only to find a mixin given by name, as _<name>_ plus
+each extension, in each mixin load path. It reads the setting from your project
+file before processing configuration, so it cannot come from a mixin. Ceedling's
+own YAML files always use _.yml_.
+
+**Default**: .yml
+
 <br/><br/>

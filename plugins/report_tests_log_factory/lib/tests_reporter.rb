@@ -10,28 +10,27 @@ require 'stringio'
 
 class TestsReporter
 
+  # The report name when a project names none. A report may title itself differently
+  # for it, so it is shared here.
+  DEFAULT_REPORT_NAME = 'Ceedling Test Suite'
+
   # Dependency injection
   attr_writer :config_walkinator
 
   # Setup value injection
   attr_writer :config
 
-  # Dependency injection -- write() renders into an in-memory buffer and
-  # hands the finished content to this in one call, rather than opening a
-  # real file itself, so a report can be fully exercised in a test without
-  # ever touching disk.
+  # Dependency injection. A report renders in memory and reaches disk only through this,
+  # so a test can exercise a whole report without touching the filesystem.
   attr_writer :file_wrapper
 
   # Publicly accessible filename for the resulting report
   attr_reader :filename
 
+  # A custom subclass that never calls setup() still gets a usable filename, e.g.
+  # 'foo_bar.report' for a report named 'foo_bar'
   def initialize(handle:)
     @handle = handle
-
-    # Safe default filename in case user's custom subclass forgets to call
-    # setup() with a default filename.
-    # If the report is named 'foo_bar' in project configuration, the
-    # fallback filename is 'foo_bar.report'
     @filename = "#{handle}.report"
   end
 
@@ -39,12 +38,12 @@ class TestsReporter
     @filename = update_filename( default_filename )
   end
 
-  # Write report contents to file
+  # Renders the report's sections in order, then writes the whole report in one call
   def write(name:, filepath:, results:, duration_s:nil)
     buffer = StringIO.new
-    header( stream: buffer, name: name, results: results, duration_s: duration_s )
-    body( stream: buffer, name: name, results: results, duration_s: duration_s )
-    footer( stream: buffer, name: name, results: results, duration_s: duration_s )
+    [:header, :body, :footer].each do |section|
+      public_send( section, stream: buffer, name: name, results: results, duration_s: duration_s )
+    end
     @file_wrapper.write( filepath, buffer.string )
   end
 
@@ -64,8 +63,8 @@ class TestsReporter
 
   private
 
+  # The configured filename, or the subclass's default
   def update_filename(default_filename)
-    # Fetch configured filename if it exists, otherwise return default filename
     filename, _ = @config_walkinator.fetch_value( :filename, hash:@config, default:default_filename )
     return filename
   end
@@ -76,19 +75,15 @@ class TestsReporter
     return result
   end
 
-  # Escapes text for safe use inside an XML attribute or element body.
-  # Returns a NEW string -- a reporter must never mutate a test name or
-  # message in place, since the very same results structure this value came
-  # from is handed unmodified to every other configured reporter in turn.
+  # Escapes text for an XML attribute or element body. Every reporter receives the same
+  # results, so this returns a new string and never alters a name or message in place.
   def xml_escape(str)
-    str.to_s.gsub(/[&<>"']/, '&' => '&amp;', '<' => '&lt;', '>' => '&gt;', '"' => '&quot;', "'" => '&apos;')
+    str.to_s.gsub( /[&<>"']/, '&' => '&amp;', '<' => '&lt;', '>' => '&gt;', '"' => '&quot;', "'" => '&apos;' )
   end
 
-  # Escapes text for safe interpolation into HTML. CGI.escapeHTML already
-  # covers the same characters HTML needs escaped, so this reuses it rather
-  # than hand-rolling a second near-identical table.
+  # Escapes text for HTML. Like xml_escape, it returns a new string.
   def html_escape(str)
-    CGI.escapeHTML(str.to_s)
+    CGI.escapeHTML( str.to_s )
   end
 
 end
