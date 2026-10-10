@@ -20,7 +20,6 @@ describe ConfiguratorSetup do
   before(:each) do
     @configurator_builder   = double('ConfiguratorBuilder')
     @configurator_validator = double('ConfiguratorValidator')
-    @configurator_plugins   = double('ConfiguratorPlugins')
     @loginator              = double('Loginator')
     @reportinator           = Reportinator.new
     @file_wrapper           = double('FileWrapper')
@@ -31,7 +30,6 @@ describe ConfiguratorSetup do
       {
         configurator_builder:   @configurator_builder,
         configurator_validator: @configurator_validator,
-        configurator_plugins:   @configurator_plugins,
         loginator:              @loginator,
         reportinator:           @reportinator,
         file_wrapper:           @file_wrapper,
@@ -401,23 +399,28 @@ describe ConfiguratorSetup do
 
       it "rejects a matcher hash outside :test and :preprocess" do
         expect(validate( ":defines:\n  :release:\n    :*: [A]\n" )).to be false
-        logged(/matcher hashes are only available for :test & :preprocess/)
+        logged(/matcher hashes are only available for :test & :preprocess \(/)
       end
 
       it "accepts a matcher hash for :gcov when the gcov plugin is enabled" do
         expect(validate( ":plugins:\n  :enabled: [gcov]\n:defines:\n  :gcov:\n    :*: [A]\n" )).to be true
       end
 
+      it "validates the matchers of :gcov as it does those of :test" do
+        expect(validate( ":plugins:\n  :enabled: [gcov]\n:defines:\n  :gcov:\n    :Model: [7]\n" )).to be false
+        logged(/:defines ↳ :gcov ↳ :Model entry '7' is not a string/)
+      end
+
       it "rejects a context that is neither a list nor a matcher" do
         expect(validate( ":defines:\n  :test: A\n" )).to be false
-        logged(/must be a list or matcher, not string/)
+        logged(/must be a list or matcher hash, not string/)
         expect(validate( ":defines:\n  :release: A\n" )).to be false
         logged(/must be a list, not string/)
       end
 
       it "rejects a symbol that is not a string" do
         expect(validate( ":defines:\n  :release: [A, 7]\n" )).to be false
-        logged(/list entry 7 must be a string, not integer/)
+        logged(/list entry '7' must be a string, not integer/)
       end
 
       it "rejects a matcher whose symbols are not a list of strings" do
@@ -429,7 +432,7 @@ describe ConfiguratorSetup do
 
       it "rejects a matcher key that is not a string or symbol" do
         expect(validate( ":defines:\n  :test:\n    7: [A]\n" )).to be false
-        logged(/matcher is not a string or symbol/)
+        logged(/:defines ↳ :test matcher '7' is not a string or symbol/)
       end
 
       it "rejects a malformed matcher" do
@@ -465,9 +468,10 @@ describe ConfiguratorSetup do
         logged(/:flags must contain key \/ value pairs, not array/)
       end
 
-      it "rejects a context that is not operation key / value pairs" do
-        expect(validate( ":flags:\n  :test: [-g]\n" )).to be false
+      it "rejects a context that is not operation key / value pairs, and still checks the others" do
+        expect(validate( ":flags:\n  :test: [-g]\n  :release:\n    :compile: [7]\n" )).to be false
         logged(/:flags ↳ :test context must contain :<operation> key \/ value pairs, not array/)
+        logged(/:flags ↳ :release ↳ :compile list entry '7' must be a string/)
       end
 
       it "rejects a context with nothing beneath it" do
@@ -487,7 +491,7 @@ describe ConfiguratorSetup do
 
       it "rejects a matcher hash outside :test" do
         expect(validate( ":flags:\n  :release:\n    :compile:\n      :*: [-g]\n" )).to be false
-        logged(/matcher hashes are only available for :test context/)
+        logged(/matcher hashes are only available for :test \(/)
       end
 
       it "accepts a matcher hash for :gcov when the gcov plugin is enabled" do
@@ -503,7 +507,7 @@ describe ConfiguratorSetup do
 
       it "rejects a flag that is not a string" do
         expect(validate( ":flags:\n  :release:\n    :compile: [-g, 7]\n" )).to be false
-        logged(/simple list entry '7' must be a string/)
+        logged(/:flags ↳ :release ↳ :compile list entry '7' must be a string/)
       end
 
       it "rejects a matcher whose flags are not a list of strings" do
@@ -515,12 +519,12 @@ describe ConfiguratorSetup do
 
       it "rejects a matcher key that is not a string or symbol" do
         expect(validate( ":flags:\n  :test:\n    :compile:\n      7: [-g]\n" )).to be false
-        logged(/entry '7' is not a string or symbol/)
+        logged(/:flags ↳ :test ↳ :compile matcher '7' is not a string or symbol/)
       end
 
       it "rejects a malformed matcher" do
         expect(validate( ":flags:\n  :test:\n    :compile:\n      Foo$: [-g]\n" )).to be false
-        logged(/contains invalid substring or wilcard characters/)
+        logged(/contains invalid substring or wildcard characters/)
       end
     end
 
@@ -637,7 +641,6 @@ describe ConfiguratorSetup do
 
   context "#build_project_config" do
     it "merges build paths, Rakefiles, release target, thread counts, and preprocessing accessors" do
-      allow(@configurator_builder).to receive(:cleanup)
       allow(@configurator_builder).to receive(:set_build_paths).with(anything, 'logs').and_return( { a: 1 } )
       allow(@configurator_builder).to receive(:set_rakefile_components).with('lib', anything).and_return( { b: 2 } )
       allow(@configurator_builder).to receive_messages( set_release_target: { c: 3 }, set_build_thread_counts: { d: 4 }, set_test_preprocessor_accessors: { e: 5 } )

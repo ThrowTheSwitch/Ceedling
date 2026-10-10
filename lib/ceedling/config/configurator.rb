@@ -10,7 +10,6 @@ require 'ceedling/constants'
 require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
 require 'ceedling/rake_app/rakefile_component_resolver'
-require 'ceedling/config/config_matchinator'
 require 'ceedling/tool_executor'
 require 'deep_merge'
 
@@ -20,6 +19,25 @@ class Configurator
   attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case, :force_test_rerun
 
   constructor :configurator_setup, :configurator_builder, :configurator_plugins, :config_walkinator, :yaml_wrapper, :system_wrapper, :loginator, :reportinator, :ruby_expandinator
+
+  # Validations of the sections everything else depends on. Configuration can reference
+  # environment variables that are evaluated early, so :environment is among them.
+  ESSENTIAL_VALIDATIONS = [:validate_required_sections, :validate_required_section_values, :validate_environment_vars].freeze
+
+  # Validations of the completed configuration
+  FINAL_VALIDATIONS = [
+    :validate_paths, :validate_tools, :validate_test_runner_generation, :validate_defines, :validate_flags,
+    :validate_test_preprocessor, :validate_backtrace, :validate_threads, :validate_partials, :validate_plugins
+  ].freeze
+
+  # CMock and Unity options that test runner generation also reads
+  RUNNER_CMOCK_OPTIONS = [:mock_prefix, :mock_suffix, :enforce_strict_ordering].freeze
+  RUNNER_UNITY_OPTIONS = [:use_param_tests, :shuffle_tests].freeze
+
+  # A minimal subset of the directives-only preprocessor tool: no defines, no include paths,
+  # and output to stdout, so no platform-specific null device. It is enough to detect
+  # -fdirectives-only support by a warning or exit code.
+  DIRECTIVES_ONLY_PROBE_ARGUMENTS = ['-E', '-fdirectives-only', '-x c', "\"${1}\""].freeze
 
   def setup()
     # Cmock config reference to provide to CMock for mock generation
@@ -50,7 +68,6 @@ class Configurator
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are gigantic and produce a flood of output.
   def inspect
-    # TODO: When identifying information is added to constructor, insert it into `inspect()` string
     return self.class.name
   end
 
@@ -88,104 +105,30 @@ class Configurator
   end
 
 
+  # Directives-only preprocessing is available only when preprocessing is on, fallback
+  # is not forced, and the configured C preprocessor supports -fdirectives-only
   def resolve_directives_only_preprocessing(config, tool_executor)
-    # Nothing to probe if preprocessing is disabled
-    preprocessing = config[:project][:use_test_preprocessor]
     config[:test_build][:preprocess_directives_only_available] = false
-    return if preprocessing == :none
 
-    # When forced fallback is enabled, skip the probe and mark directives-only unavailable
+    return if config[:project][:use_test_preprocessor] == :none
+
     if config[:test_build][:preprocess_force_fallback]
-      @loginator.log(
-        "Forcing fallback text-based preprocessing in place of directives-only (:test_build ↳ :preprocess_force_fallback is enabled).",
-        Verbosity::COMPLAIN,
-        LogLabels::NOTICE
-      )
-      return
+      return log_notice( "Forcing fallback text-based preprocessing in place of directives-only (:test_build ↳ :preprocess_force_fallback is enabled)." )
     end
 
-    # Probe whether the configured C preprocessor supports -fdirectives-only.
-    # Use the Unity header as it is always-available, self-contained, no include paths needed.
-    # Output goes to stdout (no -o flag) to avoid platform-specific null device paths.
-    probe_filepath = File.join( CEEDLING_VENDOR, UNITY_LIB_PATH, UNITY_H_FILE )
-
-    # Minimal subset of the directives-only preprocessor tool: no defines, no include paths,
-    # no output file. Sufficient to detect `-fdirectives-only` support via warning or exit code.
-    probe_tool = {
-      executable: config[:tools][:test_file_directives_only_preprocessor][:executable],
-      name:       'directives_only_probe',
-      arguments:  [
-        '-E',
-        '-fdirectives-only',
-        '-x c',
-        "\"${1}\""
-      ]
-    }
-
-    command = tool_executor.build_command_line( probe_tool, [], probe_filepath )
-    # A failed probe means no support, so it must not raise
-    command[:options][:boom] = false
-    results = tool_executor.exec( command )
-
-    # Clang and some older GCC emit a warning (not an error) when -fdirectives-only is unsupported
-    warning_detected = results[:output].match?( /warning[^\n]+-fdirectives-only/ )
-
-    if warning_detected || tool_executor.failed?( results )
-      @loginator.log(
-        "Preprocessor lacks -fdirectives-only support ➡️ Ceedling will use text-based fallback for preprocessing.",
-        Verbosity::COMPLAIN,
-        LogLabels::NOTICE
-      )
-      # :preprocess_directives_only_available already set to false above
-    else
-      config[:test_build][:preprocess_directives_only_available] = true
+    if !directives_only_supported?( config, tool_executor )
+      return log_notice( "Preprocessor lacks -fdirectives-only support ➡️ Ceedling will use text-based fallback for preprocessing." )
     end
+
+    config[:test_build][:preprocess_directives_only_available] = true
   end
 
 
-  # The default tools (eg. DEFAULT_TOOLS_TEST) are merged into default config hash
+  # The default tools a build needs are merged into the default config hash
   def merge_tools_defaults(config, default_config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
-      @reportinator.generate_progress( 'Collecting default tool configurations' )
-    end
+    progress( 'Collecting default tool configurations' )
 
-    # config[:project] is guaranteed to exist / validated to exist but may not include elements referenced below
-    # config[:test_build] and config[:release_build] are optional in a user project configuration
-
-
-    release_build, _      = @config_walkinator.fetch_value( :project, :release_build, 
-                              hash:config,
-                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:project][:release_build]
-                            )
-
-    test_preprocessing, _ = @config_walkinator.fetch_value( :project, :use_test_preprocessor,
-                              hash:config,
-                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:project][:use_test_preprocessor]
-                            )
-
-    backtrace, _          = @config_walkinator.fetch_value( :project, :use_backtrace,
-                              hash:config,
-                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:project][:use_backtrace]
-                            )
-
-    release_assembly, _   = @config_walkinator.fetch_value( :release_build, :use_assembly,
-                              hash:config,
-                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:release_build][:use_assembly]
-                            )
-
-    test_assembly, _      = @config_walkinator.fetch_value( :test_build, :use_assembly,
-                              hash:config,
-                              default: DEFAULT_CEEDLING_PROJECT_CONFIG[:test_build][:use_assembly]
-                            )
-
-    default_config.deep_merge( DEFAULT_TOOLS_TEST.deep_clone() )
-
-    default_config.deep_merge( DEFAULT_TOOLS_TEST_PREPROCESSORS.deep_clone() ) if (test_preprocessing != :none)
-    default_config.deep_merge( DEFAULT_TOOLS_TEST_ASSEMBLER.deep_clone() )     if test_assembly
-    default_config.deep_merge( DEFAULT_TOOLS_TEST_GDB_BACKTRACE.deep_clone() ) if (backtrace == :gdb)
-
-    default_config.deep_merge( DEFAULT_TOOLS_RELEASE.deep_clone() )            if release_build
-    default_config.deep_merge( DEFAULT_TOOLS_RELEASE_ASSEMBLER.deep_clone() )  if (release_build and release_assembly)
+    needed_tools_defaults( config ).each { |defaults| default_config.deep_merge( defaults.deep_clone() ) }
   end
 
 
@@ -193,9 +136,7 @@ class Configurator
     # Cmock has its own internal defaults handling, but we need to set these specific values
     # so they're guaranteed values and present for the Ceedling environment to access
 
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
-      @reportinator.generate_progress( 'Collecting CMock defaults' )
-    end
+    progress( 'Collecting CMock defaults' )
 
     # Begin populating defaults with CMock defaults as set by Ceedling
     default_cmock = default_config[:cmock]
@@ -224,52 +165,14 @@ class Configurator
   end
 
 
+  # Plugin YAML defaults merge before plugin Ruby defaults. Neither replaces a value already present.
   def merge_plugins_defaults(paths_hash, config, default_config)
-    # Config YAML defaults plugins
-    plugin_yml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash )
-    
-    # Config Ruby-based hash defaults plugins
-    plugin_hash_defaults = @configurator_plugins.find_plugin_hash_defaults( config, paths_hash )
-
-
-    if !plugin_hash_defaults.empty?
-      @loginator.lazy( Verbosity::OBNOXIOUS ) do 
-        @reportinator.generate_progress( 'Collecting Plugin YAML defaults' )
-      end
+    yaml_defaults = @configurator_plugins.find_plugin_yml_defaults( config, paths_hash ).to_h do |plugin, path|
+      [plugin, load_plugin_yaml( path, "Could not load default configuration for plugin '#{plugin}'" )]
     end
 
-    # Load base configuration values (defaults) from YAML
-    plugin_yml_defaults.each do |plugin, defaults|
-      _defaults = begin
-        @yaml_wrapper.load( defaults )
-      rescue YamlLoadException => e
-        raise YamlLoadException.new(
-          reason: e.reason, source: e.source, original_error: e.original_error,
-          message: "Could not load default configuration for plugin '#{plugin}' ⏩️ #{e.message}"
-        )
-      end
-
-      @loginator.lazy( Verbosity::DEBUG ) do
-        " - #{plugin} >> " + _defaults.to_s()
-      end
-
-      default_config.deep_merge( _defaults )
-    end
-
-    if !plugin_hash_defaults.empty?
-      @loginator.lazy( Verbosity::OBNOXIOUS ) do 
-        @reportinator.generate_progress( 'Collecting Plugin Ruby hash defaults' )
-      end
-    end
-
-    # Load base configuration values (defaults) as hash from Ruby
-    plugin_hash_defaults.each do |plugin, defaults|
-      @loginator.lazy( Verbosity::DEBUG ) do 
-        " - #{plugin} >> " + defaults.to_s()
-      end
-
-      default_config.deep_merge( defaults )
-    end
+    merge_plugin_defaults( 'YAML', yaml_defaults, default_config )
+    merge_plugin_defaults( 'Ruby hash', @configurator_plugins.find_plugin_hash_defaults( config, paths_hash ), default_config )
   end
 
 
@@ -278,11 +181,9 @@ class Configurator
     config.deep_merge( runtime_config )
   end
 
-  
+
   def populate_with_defaults( config_hash, defaults_hash )
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do 
-      @reportinator.generate_progress( 'Populating project configuration with collected default values' )
-    end
+    progress( 'Populating project configuration with collected default values' )
 
     @configurator_builder.populate_with_defaults( config_hash, defaults_hash )
 
@@ -293,22 +194,16 @@ class Configurator
   end
 
 
+  # Parameterized tests need Unity's test case and variadic macro support
   def populate_unity_config(config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Processing Unity configuration' )
-    end
+    progress( 'Processing Unity configuration' )
 
     # Save Unity config reference
     @unity_config = config[:unity]
 
-    if config[:unity][:use_param_tests]
-      config[:unity][:defines] << 'UNITY_SUPPORT_TEST_CASES'
-      config[:unity][:defines] << 'UNITY_SUPPORT_VARIADIC_MACROS'
-    end
+    config[:unity][:defines].concat( ['UNITY_SUPPORT_TEST_CASES', 'UNITY_SUPPORT_VARIADIC_MACROS'] ) if config[:unity][:use_param_tests]
 
-    @loginator.lazy( Verbosity::DEBUG ) do 
-      "Unity configuration >> #{config[:unity]}"
-    end
+    debug { "Unity configuration >> #{config[:unity]}" }
   end
 
 
@@ -317,99 +212,49 @@ class Configurator
     # test runner above, since nothing else derives values from or into this section.
     @partials_config = config[:partials]
 
-    @loginator.lazy( Verbosity::DEBUG ) do
-      "Partials configuration >> #{config[:partials]}"
-    end
+    debug { "Partials configuration >> #{config[:partials]}" }
   end
 
 
+  # CMock needs no preparation when mocks are off
   def populate_cmock_config(config)
     # Save CMock config reference
     @cmock_config = config[:cmock]
 
-    cmock = config[:cmock]
-
-    # Do no more prep if we're not using mocks
-    if !config[:project][:use_mocks]
-      @loginator.lazy( Verbosity::DEBUG ) do 
-        "CMock configuration >> #{cmock}"
-      end
-      return
+    if config[:project][:use_mocks]
+      progress( 'Processing CMock configuration' )
+      prepare_cmock_config( config[:cmock] )
     end
 
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Processing CMock configuration' )
-    end
-
-    # Plugins housekeeping
-    cmock[:plugins].map! { |plugin| plugin.to_sym() }
-    cmock[:plugins].uniq!
-
-    # Reformulate CMock helper path value as array of one element if it's a string in config
-    cmock[:unity_helper_path] = [cmock[:unity_helper_path]] if cmock[:unity_helper_path].is_a?( String )
-
-    # CMock Unity helper handling
-    cmock[:unity_helper_path].each do |path|
-      cmock[:includes] << File.basename( path )
-    end
-
-    cmock[:includes].uniq!
-
-    # Add mocking prefix symbol for all test compilation
-    cmock[:defines] << "CMOCK_MOCK_PREFIX=#{cmock[:mock_prefix]}"
-
-    @loginator.lazy( Verbosity::DEBUG ) do
-      "CMock configuration >> #{cmock}"
-    end
+    debug { "CMock configuration >> #{config[:cmock]}" }
   end
 
 
   def populate_test_runner_generation_config(config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Populating test runner generation settings' )
-    end    
+    progress( 'Populating test runner generation settings' )
 
-    use_backtrace = config[:project][:use_backtrace]
+    runner = config[:test_runner]
 
-    # Force command line argument option for any backtrace option
-    if use_backtrace != :none
-      if config[:test_runner][:cmdline_args] == false
-        config[:test_runner][:cmdline_args] = true
-        @loginator.log( "Enabled :test_runner ↳ :cmdline_args because :project ↳ :use_backtrace is enabled.", Verbosity::COMPLAIN, LogLabels::NOTICE )
-      end
-    end
+    # Backtraces rerun test cases by name, which takes runner command line arguments
+    force_cmdline_args( runner ) if config[:project][:use_backtrace] != :none
 
-    # Copy CMock options used by test runner generation
-    config[:test_runner][:mock_prefix] = config[:cmock][:mock_prefix]
-    config[:test_runner][:mock_suffix] = config[:cmock][:mock_suffix]
-    config[:test_runner][:enforce_strict_ordering] = config[:cmock][:enforce_strict_ordering]
+    copy_runner_options( config, runner )
 
-    # Merge Unity options used by test runner generation
-    config[:test_runner][:defines] += config[:unity][:defines]
-    config[:test_runner][:use_param_tests] = config[:unity][:use_param_tests]
-    config[:test_runner][:shuffle_tests] = config[:unity][:shuffle_tests]
+    @runner_config = runner
 
-    @runner_config = config[:test_runner]
-
-    @loginator.lazy( Verbosity::DEBUG ) do
-      "Test Runner configuration >> #{config[:test_runner]}"
-    end
+    debug { "Test Runner configuration >> #{runner}" }
   end
 
 
   def populate_exceptions_config(config)
     # Automagically set exception handling if CMock is configured for it
     if config[:cmock][:plugins] && config[:cmock][:plugins].include?(:cexception)
-      @loginator.lazy( Verbosity::OBNOXIOUS ) do
-        @reportinator.generate_progress( 'Enabling CException use based on CMock plugins settings' )
-      end   
+      progress( 'Enabling CException use based on CMock plugins settings' )
 
       config[:project][:use_exceptions] = true
     end
 
-    @loginator.lazy( Verbosity::DEBUG ) do
-      "CException configuration >> #{config[:cexception]}"
-    end
+    debug { "CException configuration >> #{config[:cexception]}" }
   end
 
 
@@ -439,120 +284,44 @@ class Configurator
   end
 
 
-  # Process our tools
-  #  - :tools entries
-  #    - Insert missing names for
-  #    - Handle needed defaults
-  #  - Configure test runner from backtrace configuration
+  # Fills in each tool's missing name, $stderr redirect, and optional flag
   def populate_tools_config(config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Populating tool definition settings and expanding any string replacements' )
-    end
+    progress( 'Populating tool definition settings and expanding any string replacements' )
 
-    config[:tools].each_key do |name|
-      tool = config[:tools][name]
-
-      if not tool.is_a?(Hash)
-        raise CeedlingException.new( "Expected configuration for tool :#{name} is a Hash but found #{tool.class}" )
-      end
-
-      # Populate name if not given
-      ToolExecutor.default_name!( tool, name.to_s )
-
-      # Populate $stderr redirect option
-      tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
-
-      # Populate optional option to control verification of executable in search paths
-      tool[:optional] = false if (tool[:optional].nil?)
-    end
+    config[:tools].each { |name, tool| populate_tool( name, tool ) }
   end
 
 
-  # Process any tool definition shortcuts
-  #  - Append extra arguments
-  #  - Redefine executable  
+  # A tool definition shortcut, :tools_<name>, may redefine the tool's executable and add
+  # arguments to it
   #
   # :tools_<name>
   #   :arguments: [...]
   #   :executable: '...'
   def populate_tools_shortcuts(config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Processing tool definition shortcuts' )
-    end
+    progress( 'Processing tool definition shortcuts' )
 
-    prefix = 'tools_'
     config[:tools].each do |name, tool|
-      # Lookup shortcut tool definition (:tools_<name>)
-      shortcut = (prefix + name.to_s).to_sym
+      executable, arguments = tool_shortcut( config, name )
+      next if executable.nil? and arguments.empty?
 
-      # Try to lookup the executable from user config
-      executable, _  = @config_walkinator.fetch_value(shortcut, :executable, 
-                         hash:config
-                       )
+      tool[:executable] = executable unless executable.nil?
+      tool[:arguments].concat( arguments )
 
-      # Try to lookup arguments from user config
-      args_to_add, _ = @config_walkinator.fetch_value(shortcut, :arguments, 
-                         hash:config,
-                         default: []
-                       )
-
-      # Redefine the tool config
-      if !executable.nil?
-        tool[:executable] = executable
-      end
-
-      # Add to the tool config
-      if !args_to_add.empty?
-        tool[:arguments].concat( args_to_add )
-      end
-
-      # Log
-      if !args_to_add.empty? or !executable.nil?
-        @loginator.lazy( Verbosity::DEBUG ) do 
-          msg = " > #{name}\n"
-
-          if !executable.nil?
-            msg += "   executable: \"#{executable}\"\n"
-          end
-
-          if !args_to_add.empty?
-            msg += "   arguments: " + args_to_add.map{|arg| "\"#{arg}\""}.join( ', ' ) + "\n"
-          end
-
-          msg
-        end
-      end
+      debug { shortcut_message( name, executable, arguments ) }
     end
   end
 
 
   def discover_plugins(paths_hash, config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Discovering all plugins' )
-    end
+    progress( 'Discovering all plugins' )
 
-    # Rake-based plugins
-    @rake_plugins = @configurator_plugins.find_rake_plugins( config, paths_hash )
-    if !@configurator_plugins.rake_plugins.empty?
-      @loginator.lazy( Verbosity::DEBUG ) do
-        " > Rake plugins: " + @configurator_plugins.rake_plugins.map{|p| p[:plugin]}.join( ', ' )
-      end
-    end
-
-    # Ruby `Plugin` subclass programmatic plugins
+    @rake_plugins         = @configurator_plugins.find_rake_plugins( config, paths_hash )
     @programmatic_plugins = @configurator_plugins.find_programmatic_plugins( config, paths_hash )
-    if !@configurator_plugins.programmatic_plugins.empty?
-      @loginator.lazy( Verbosity::DEBUG ) do
-        " > Programmatic plugins: " + @configurator_plugins.programmatic_plugins.map{|p| p[:plugin]}.join( ', ' )
-      end
-    end
-    
-    # Config plugins
-    @configurator_plugins.find_config_plugins( config, paths_hash )
-    if !@configurator_plugins.config_plugins.empty?
-      @loginator.lazy( Verbosity::DEBUG ) do
-        " > Config plugins: " + @configurator_plugins.config_plugins.map{|p| p[:plugin]}.join( ', ' )
-      end
+    config_plugins        = @configurator_plugins.find_config_plugins( config, paths_hash )
+
+    { 'Rake' => @rake_plugins, 'Programmatic' => @programmatic_plugins, 'Config' => config_plugins }.each do |kind, plugins|
+      debug { " > #{kind} plugins: " + plugins.map { |plugin| plugin[:plugin] }.join( ', ' ) } unless plugins.empty?
     end
   end
 
@@ -566,81 +335,27 @@ class Configurator
   end
 
 
+  # A plugin's configuration merges into the project's like a project file
   def merge_config_plugins(config)
-    return if @configurator_plugins.config_plugins.empty?
+    @configurator_plugins.config_plugins.each do |plugin|
+      plugin_config = load_plugin_yaml( plugin[:path], "Could not load configuration from plugin '#{plugin[:plugin]}'" )
 
-    # Merge plugin configuration values (like Ceedling project file)
-    @configurator_plugins.config_plugins.each do |hash|
-      _config = begin
-        @yaml_wrapper.load( hash[:path] )
-      rescue YamlLoadException => e
-        raise YamlLoadException.new(
-          reason: e.reason, source: e.source, original_error: e.original_error,
-          message: "Could not load configuration from plugin '#{hash[:plugin]}' ⏩️ #{e.message}"
-        )
-      end
+      progress( "Merging configuration from plugin #{plugin[:plugin]}" )
+      debug { plugin_config.to_s }
 
-      @loginator.lazy( Verbosity::OBNOXIOUS ) do
-        @reportinator.generate_progress( "Merging configuration from plugin #{hash[:plugin]}" )
-      end
-      @loginator.lazy( Verbosity::DEBUG ) do 
-        _config.to_s
-      end
-
-      # Special handling for plugin paths
-      if (_config.include?( :paths ))
-        _config[:paths].update( _config[:paths] ) do |_k,v| 
-          plugin_path = hash[:path].match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
-          v.map {|vv| File.expand_path( vv.gsub( /\$PLUGIN_PATH/, plugin_path) ) }
-        end
-      end
-
-      config.deep_merge( _config )
+      resolve_plugin_paths( plugin_config, plugin[:path] )
+      config.deep_merge( plugin_config )
     end
   end
 
 
-  # Process environment variables set in configuration file
-  # (Each entry within the :environment array is a hash)
+  # Each :environment entry is a single-pair hash: a variable name and its value
   def eval_environment_variables(config)
     return if config[:environment].nil?
 
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Processing environment variables' )
-    end
+    progress( 'Processing environment variables' )
 
-    config[:environment].each do |hash|
-      key   = hash.keys[0] # Get first (should be only) environment variable entry
-      value = hash[key]    # Get associated value
-
-      # Special case handling for :path environment variable entry
-      # File::PATH_SEPARATOR => ':' (Unix-ish) or ';' (Windows)
-      interstitial = ((key == :path) ? File::PATH_SEPARATOR : ' ')
-
-      # Create an array container for the value of this entry
-      #  - If the value is an array, get it
-      #  - Otherwise, place value in a single item array
-      items = ((value.class == Array) ? hash[key] : [value])
-
-      # Process value array
-      items.each do |item|
-        # Process each item for Ruby string replacement
-        if item.is_a? String
-          item.replace( @ruby_expandinator.expand( item, source: ":environment ↳ #{key}" ) )
-        end
-      end
-
-      # Join any value items (become a flattened string)
-      #  - With path separator if the key was :path
-      #  - With space otherwise
-      hash[key] = items.join( interstitial )
-
-      # Set the environment variable for our session
-      @system_wrapper.env_set( key.to_s.upcase, hash[key] )
-      @loginator.lazy( Verbosity::DEBUG ) do 
-        " - #{key.to_s.upcase}: \"#{hash[key]}\""
-      end
-    end
+    config[:environment].each { |entry| eval_environment_variable( entry ) }
   end
 
 
@@ -648,24 +363,12 @@ class Configurator
   def eval_paths(config)
     # :plugins ↳ :load_paths already handled
 
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Processing path entries and expanding any string replacements' )
-    end
+    progress( 'Processing path entries and expanding any string replacements' )
 
     eval_path_entries( config[:project][:build_root], source: ":project ↳ :build_root" )
     eval_path_entries( config[:release_build][:artifacts], source: ":release_build ↳ :artifacts" )
 
-    config[:paths].each_pair do |entry, paths|
-      # :paths sub-entries (e.g. :test) could be a single string -> make array
-      reform_path_entries_as_lists( config[:paths], entry, paths )
-      eval_path_entries( paths, source: ":paths ↳ #{entry}" )
-    end
-
-    config[:files].each_pair do |entry, files|
-      # :files sub-entries (e.g. :test) could be a single string -> make array
-      reform_path_entries_as_lists( config[:files], entry, files )
-      eval_path_entries( files, source: ":files ↳ #{entry}" )
-    end
+    [:paths, :files].each { |section| eval_path_section( config, section ) }
 
     # All other paths at secondary hash key level processed by convention (`_path`):
     # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are evaluated
@@ -675,9 +378,7 @@ class Configurator
 
   # Handle any Ruby string replacement for :flags string arrays
   def eval_flags(config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Expanding any string replacements in :flags entries' )
-    end
+    progress( 'Expanding any string replacements in :flags entries' )
 
     # Descend down to array of command line flags strings regardless of depth in config block
     traverse_hash_eval_string_arrays( config[:flags], source: ":flags" )
@@ -686,9 +387,7 @@ class Configurator
 
   # Handle any Ruby string replacement for :defines string arrays
   def eval_defines(config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Expanding any string replacements in :defines entries' )
-    end
+    progress( 'Expanding any string replacements in :defines entries' )
 
     # Descend down to array of #define strings regardless of depth in config block
     traverse_hash_eval_string_arrays( config[:defines], source: ":defines" )
@@ -696,93 +395,37 @@ class Configurator
 
 
   def standardize_paths(config)
-    @loginator.lazy( Verbosity::OBNOXIOUS ) do
-      @reportinator.generate_progress( 'Standardizing all paths' )
-    end
+    progress( 'Standardizing all paths' )
 
-    # :project ↳ :build_root and :release_build ↳ :artifacts are individual paths
-    # that don't follow the _path/_paths key convention — handle them explicitly.
-    # :release_build may be absent in minimal configs; guard prevents NoMethodError.
-    paths = [config[:project][:build_root]]
-    if config[:release_build]
-      paths << config[:release_build][:artifacts]
-    else
-      @loginator.log(
-        ":release_build section absent from config ➡️ skipping :artifacts path standardization.",
-        Verbosity::COMPLAIN,
-        LogLabels::NOTICE
-      )
-    end
+    standalone_paths( config ).flatten.each { |path| FilePathUtils::standardize_in_place( path ) }
 
-    paths.flatten.each { |path| FilePathUtils::standardize_in_place( path ) }
+    [:paths, :files].each { |section| standardize_path_section( config[section] ) }
 
-    config[:paths].each_pair do |collection, paths|
-      # Flatten to handle single strings or nested arrays; reject nils (non-String passthrough
-      # from standardize) and empty strings left after stripping whitespace-only entries.
-      config[:paths][collection] = [paths].flatten
-        .map    { |path| FilePathUtils::standardize_in_place( path ) }
-        .reject { |path| path.nil? || (path.is_a?( String ) && path.empty?) }
-    end
+    config[:tools].each_value { |tool| FilePathUtils::standardize_in_place( tool[:executable] ) if tool.include?( :executable ) }
 
-    config[:files].each_pair do |collection, files|
-      # Same sanitization as :paths — replace array to remove any nil or empty entries
-      # produced by standardize on non-String or whitespace-only values.
-      config[:files][collection] = [files].flatten
-        .map    { |path| FilePathUtils::standardize_in_place( path ) }
-        .reject { |path| path.nil? || (path.is_a?( String ) && path.empty?) }
-    end
-
-    config[:tools].each_pair { |_, config| FilePathUtils::standardize_in_place( config[:executable] ) if (config.include? :executable) }
-
-    # All other paths at secondary hash key level processed by convention (`_path`):
-    # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are standardized
-    config.each_pair do |_, child|
-      collect_path_list( child ).each { |path| FilePathUtils::standardize_in_place( path ) }
-    end
+    standardize_convention_paths( config )
   end
 
 
+  # Every validation runs, so every problem is reported, before configuration fails
   def validate_essential(config)
-    # Collect all infractions, everybody on probation until final adjudication
-    blotter = true
+    valid = ESSENTIAL_VALIDATIONS.map { |validation| @configurator_setup.public_send( validation, config ) }
 
-    blotter &= @configurator_setup.validate_required_sections( config )
-    blotter &= @configurator_setup.validate_required_section_values( config )
-
-    # Configuration sections can reference environment variables that are evaluated early on.
-    # So, we validate :environment early as an essential section.
-    blotter &= @configurator_setup.validate_environment_vars( config )
-
-    if !blotter
-      raise CeedlingException.new("Ceedling configuration failed validation")
-    end
+    raise CeedlingException.new( "Ceedling configuration failed validation" ) unless valid.all?
   end
 
 
+  # Every validation runs, so every problem is reported, before configuration fails.
+  # Runner generation also checks the command line's test case filters.
   def validate_final(config, app_cfg)
-    # Collect all infractions, everybody on probation until final adjudication
-    blotter = true
-    blotter &= @configurator_setup.validate_paths( config )
-    blotter &= @configurator_setup.validate_tools( config )
-    blotter &= @configurator_setup.validate_test_runner_generation(
-                 config,
-                 app_cfg[:include_test_case],
-                 app_cfg[:exclude_test_case]
-               )
-    blotter &= @configurator_setup.validate_defines( config )
-    blotter &= @configurator_setup.validate_flags( config )
-    blotter &= @configurator_setup.validate_test_preprocessor( config )
-    blotter &= @configurator_setup.validate_backtrace( config )
-    blotter &= @configurator_setup.validate_threads( config )
-    blotter &= @configurator_setup.validate_partials( config )
-    blotter &= @configurator_setup.validate_plugins( config )
+    filters = [ app_cfg[:include_test_case], app_cfg[:exclude_test_case] ]
 
-    # Informational notices
-    @configurator_setup.warnings_for_problematic_configs( config )
-
-    if !blotter
-      raise CeedlingException.new( "Ceedling configuration failed validation" )
+    valid = FINAL_VALIDATIONS.map do |validation|
+      arguments = (validation == :validate_test_runner_generation) ? [config, *filters] : [config]
+      @configurator_setup.public_send( validation, *arguments )
     end
+
+    raise CeedlingException.new( "Ceedling configuration failed validation" ) unless valid.all?
   end
 
 
@@ -791,23 +434,17 @@ class Configurator
     flattened_config = @configurator_builder.flattenify( config )
 
     @configurator_setup.build_project_config( ceedling_lib_path, logging_path, flattened_config )
-
     @configurator_setup.build_directory_structure( flattened_config )
 
     # Copy Unity, CMock, CException into vendor directory within build directory
     @configurator_setup.vendor_frameworks_and_support_files( ceedling_lib_path, flattened_config )
-
     @configurator_setup.build_project_collections( flattened_config )
 
     @project_config_hash = flattened_config.clone
-
     @configurator_setup.build_constants_and_accessors( flattened_config, self )
 
     # Top-level keys disappear when we flatten, so create global constants & accessors to any specified keys
-    keys.each do |key|
-      hash = { key => config[key] }
-      @configurator_setup.build_constants_and_accessors( hash, self )
-    end
+    build_section_constants( config, keys )
   end
 
 
@@ -844,18 +481,13 @@ class Configurator
     @configurator_setup.build_constants_and_accessors(config_more_flattened, self)
 
     # recreate constants & update accessors with new merged, base values
-    config_more.keys.each do |key|
-      hash = { key => config_base[key] }
-      @configurator_setup.build_constants_and_accessors(hash, self)
-    end
+    build_section_constants( config_base, config_more.keys )
   end
 
 
   def insert_rake_plugins(plugins)
     plugins.each do |hash|
-      @loginator.lazy( Verbosity::OBNOXIOUS ) do
-        @reportinator.generate_progress( "Adding plugin #{hash[:plugin]} to Rake load list" )
-      end
+      progress( "Adding plugin #{hash[:plugin]} to Rake load list" )
 
       @project_config_hash[:project_rakefile_component_files] << hash[:path]
     end
@@ -865,33 +497,218 @@ class Configurator
 
   private
 
+  def progress(message)
+    @loginator.lazy( Verbosity::OBNOXIOUS ) { @reportinator.generate_progress( message ) }
+  end
+
+  def debug(&message)
+    @loginator.lazy( Verbosity::DEBUG, &message )
+  end
+
+  def log_notice(message)
+    @loginator.log( message, Verbosity::COMPLAIN, LogLabels::NOTICE )
+  end
+
+  # Probes the configured C preprocessor with the Unity header, which is always available,
+  # self-contained, and needs no include paths
+  def directives_only_supported?(config, tool_executor)
+    probe_tool = {
+      executable: config[:tools][:test_file_directives_only_preprocessor][:executable],
+      name:       'directives_only_probe',
+      arguments:  DIRECTIVES_ONLY_PROBE_ARGUMENTS
+    }
+    command = tool_executor.build_command_line( probe_tool, [], File.join( CEEDLING_VENDOR, UNITY_LIB_PATH, UNITY_H_FILE ) )
+
+    # A failed probe means no support, so it must not raise
+    command[:options][:boom] = false
+    results = tool_executor.exec( command )
+
+    # Clang and some older GCC emit a warning (not an error) when -fdirectives-only is unsupported
+    return !(results[:output].match?( /warning[^\n]+-fdirectives-only/ ) || tool_executor.failed?( results ))
+  end
+
+  # config[:project] is guaranteed to exist / validated to exist but may not include the
+  # settings read here. config[:test_build] and config[:release_build] are optional.
+  def needed_tools_defaults(config)
+    release = setting( config, :project, :release_build )
+
+    return [
+      [DEFAULT_TOOLS_TEST,               true],
+      [DEFAULT_TOOLS_TEST_PREPROCESSORS, setting( config, :project, :use_test_preprocessor ) != :none],
+      [DEFAULT_TOOLS_TEST_ASSEMBLER,     setting( config, :test_build, :use_assembly )],
+      [DEFAULT_TOOLS_TEST_GDB_BACKTRACE, setting( config, :project, :use_backtrace ) == :gdb],
+      [DEFAULT_TOOLS_RELEASE,            release],
+      [DEFAULT_TOOLS_RELEASE_ASSEMBLER,  release && setting( config, :release_build, :use_assembly )]
+    ].select { |_, needed| needed }.map( &:first )
+  end
+
+  # A setting from the configuration, or Ceedling's default when the configuration lacks it
+  def setting(config, *keys)
+    value, _ = @config_walkinator.fetch_value( *keys, hash:config, default: DEFAULT_CEEDLING_PROJECT_CONFIG.dig( *keys ) )
+    return value
+  end
+
+  # Loads a plugin's YAML, naming the plugin in any failure
+  def load_plugin_yaml(path, failure)
+    return @yaml_wrapper.load( path )
+  rescue YamlLoadException => e
+    raise YamlLoadException.new(
+      reason: e.reason, source: e.source, original_error: e.original_error,
+      message: "#{failure} ⏩️ #{e.message}"
+    )
+  end
+
+  def merge_plugin_defaults(kind, defaults_by_plugin, default_config)
+    return if defaults_by_plugin.empty?
+
+    progress( "Collecting Plugin #{kind} defaults" )
+
+    defaults_by_plugin.each do |plugin, defaults|
+      debug { " - #{plugin} >> #{defaults}" }
+      default_config.deep_merge( defaults )
+    end
+  end
+
+  def prepare_cmock_config(cmock)
+    # Plugins housekeeping
+    cmock[:plugins].map! { |plugin| plugin.to_sym() }.uniq!
+
+    include_unity_helpers( cmock )
+
+    # Add mocking prefix symbol for all test compilation
+    cmock[:defines] << "CMOCK_MOCK_PREFIX=#{cmock[:mock_prefix]}"
+  end
+
+  # A Unity helper path may be a single string. Each helper's header is included in every mock.
+  def include_unity_helpers(cmock)
+    cmock[:unity_helper_path] = [cmock[:unity_helper_path]] if cmock[:unity_helper_path].is_a?( String )
+    cmock[:includes].concat( cmock[:unity_helper_path].map { |path| File.basename( path ) } ).uniq!
+  end
+
+  def copy_runner_options(config, runner)
+    RUNNER_CMOCK_OPTIONS.each { |option| runner[option] = config[:cmock][option] }
+    RUNNER_UNITY_OPTIONS.each { |option| runner[option] = config[:unity][option] }
+    runner[:defines] += config[:unity][:defines]
+  end
+
+  def force_cmdline_args(runner)
+    return unless runner[:cmdline_args] == false
+
+    runner[:cmdline_args] = true
+    log_notice( "Enabled :test_runner ↳ :cmdline_args because :project ↳ :use_backtrace is enabled." )
+  end
+
+  def populate_tool(name, tool)
+    raise CeedlingException.new( "Expected configuration for tool :#{name} is a Hash but found #{tool.class}" ) unless tool.is_a?( Hash )
+
+    # Populate name if not given
+    ToolExecutor.default_name!( tool, name.to_s )
+
+    # Populate $stderr redirect option
+    tool[:stderr_redirect] = StdErrRedirect::NONE if (tool[:stderr_redirect].nil?)
+
+    # Populate optional option to control verification of executable in search paths
+    tool[:optional] = false if (tool[:optional].nil?)
+  end
+
+  # The executable and arguments a tool's :tools_<name> shortcut gives, if any
+  def tool_shortcut(config, name)
+    shortcut = :"tools_#{name}"
+
+    executable, _ = @config_walkinator.fetch_value( shortcut, :executable, hash:config )
+    arguments, _  = @config_walkinator.fetch_value( shortcut, :arguments, hash:config, default: [] )
+
+    return executable, arguments
+  end
+
+  def shortcut_message(name, executable, arguments)
+    message  = " > #{name}\n"
+    message += "   executable: \"#{executable}\"\n" unless executable.nil?
+    message += "   arguments: " + arguments.map { |arg| "\"#{arg}\"" }.join( ', ' ) + "\n" unless arguments.empty?
+    return message
+  end
+
+  # A plugin's :paths entries are expanded. $PLUGIN_PATH in one names the plugin's own directory.
+  def resolve_plugin_paths(plugin_config, plugin_config_path)
+    return unless plugin_config.include?( :paths )
+
+    plugin_path = plugin_config_path.match( /(.*)[\/]config[\/]\w+\.yml/ )[1]
+    plugin_config[:paths].transform_values! do |paths|
+      paths.map { |path| File.expand_path( path.gsub( /\$PLUGIN_PATH/, plugin_path ) ) }
+    end
+  end
+
+  # The value, a string or list of strings, is expanded and joined into one string. A
+  # :path list joins with the platform path separator, ':' or ';', and any other list with
+  # spaces. The variable is set in the environment by its name upcased.
+  def eval_environment_variable(entry)
+    name, value = entry.first
+    items = expand_environment_items( name, value.is_a?( Array ) ? value : [value] )
+    entry[name] = items.join( (name == :path) ? File::PATH_SEPARATOR : ' ' )
+
+    @system_wrapper.env_set( name.to_s.upcase, entry[name] )
+    debug { " - #{name.to_s.upcase}: \"#{entry[name]}\"" }
+  end
+
+  def expand_environment_items(name, items)
+    items.each { |item| item.replace( @ruby_expandinator.expand( item, source: ":environment ↳ #{name}" ) ) if item.is_a?( String ) }
+  end
+
+  def eval_path_section(config, section)
+    config[section].each_pair do |entry, paths|
+      # Sub-entries (e.g. :test) could be a single string -> make array
+      reform_path_entries_as_lists( config[section], entry, paths )
+      eval_path_entries( paths, source: ":#{section} ↳ #{entry}" )
+    end
+  end
+
+  # :project ↳ :build_root and :release_build ↳ :artifacts are individual paths that don't
+  # follow the _path/_paths key convention. :release_build may be absent in minimal configs.
+  def standalone_paths(config)
+    return [ config[:project][:build_root], config[:release_build][:artifacts] ] if config[:release_build]
+
+    log_notice( ":release_build section absent from config ➡️ skipping :artifacts path standardization." )
+    return [ config[:project][:build_root] ]
+  end
+
+  # Each entry becomes a list, without the nil or empty entries standardizing leaves of a
+  # non-String or whitespace-only value
+  def standardize_path_section(section)
+    section.transform_values! do |paths|
+      [paths].flatten
+        .map    { |path| FilePathUtils::standardize_in_place( path ) }
+        .reject { |path| path.nil? || (path.is_a?( String ) && path.empty?) }
+    end
+  end
+
+  # All other paths at secondary hash key level processed by convention (`_path`):
+  # ex. :toplevel ↳ :foo_path & :toplevel ↳ :bar_paths are standardized
+  def standardize_convention_paths(config)
+    config.each_value { |child| collect_path_list( child ).each { |path| FilePathUtils::standardize_in_place( path ) } }
+  end
+
+  def build_section_constants(config, keys)
+    keys.each { |key| @configurator_setup.build_constants_and_accessors( { key => config[key] }, self ) }
+  end
+
   def reform_path_entries_as_lists( container, entry, value )
     container[entry] = [value]  if value.kind_of?( String )
   end
 
 
   def collect_path_list( container )
-    paths = []
+    return [] unless container.is_a?( Hash )
 
-    if (container.class == Hash)
-      container.each_key do |key|
-        paths << container[key] if (key.to_s =~ /_path(s)?$/)
-      end
-    end
-    
-    return paths.flatten()
+    return container.select { |key, _| key.to_s =~ /_path(s)?$/ }.values.flatten
   end
 
 
   def eval_path_entries( container, source: )
-    paths = []
-
-    case(container)
-    when Array then paths = Array.new( container ).flatten()
-    when String then paths << container
-    else
-      return
-    end
+    paths = case container
+            when Array  then container.flatten
+            when String then [container]
+            else             []
+            end
 
     # An unset path setting has nothing to expand
     paths.each do |path|
@@ -921,4 +738,3 @@ class Configurator
   end
 
 end
-

@@ -56,7 +56,6 @@ describe 'Vendor-copy transient I/O retry (integration)' do
     ConfiguratorSetup.new(
       configurator_builder:   IntegrationSpecHelpers::NULL,
       configurator_validator: IntegrationSpecHelpers::NULL,
-      configurator_plugins:   IntegrationSpecHelpers::NULL,
       loginator:               IntegrationSpecHelpers::NULL,
       reportinator:            IntegrationSpecHelpers::NULL,
       file_wrapper:            file_wrapper,

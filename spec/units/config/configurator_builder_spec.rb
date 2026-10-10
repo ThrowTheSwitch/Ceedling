@@ -85,6 +85,8 @@ describe ConfiguratorBuilder do
   # A FileList stand-in that records the glob patterns a collection asks for, so a unit
   # spec can read which files a collection would gather without a filesystem
   class RecordingFileList
+    include Enumerable
+
     attr_reader :patterns, :excluded
 
     def initialize(found = [])

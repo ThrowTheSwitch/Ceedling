@@ -87,7 +87,6 @@ configurator_setup:
   compose:
     - configurator_builder
     - configurator_validator
-    - configurator_plugins
     - loginator
     - reportinator
     - file_wrapper
@@ -104,7 +103,6 @@ configurator_validator:
     - config_walkinator
     - file_wrapper
     - loginator
-    - system_wrapper
     - reportinator
     - tool_validator
 

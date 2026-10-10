@@ -59,10 +59,10 @@ module ConfiguratorIntegrationHelpers
     o[:configurator_plugins]   = ConfiguratorPlugins.new( o.slice( :file_wrapper, :system_wrapper ) )
     o[:configurator_builder]   = ConfiguratorBuilder.new( o.slice( :file_path_collection_utils, :loginator, :file_wrapper, :system_wrapper ) )
     o[:configurator_validator] = ConfiguratorValidator.new(
-      o.slice( :config_walkinator, :file_wrapper, :loginator, :system_wrapper, :reportinator, :tool_validator )
+      o.slice( :config_walkinator, :file_wrapper, :loginator, :reportinator, :tool_validator )
     )
     o[:configurator_setup] = ConfiguratorSetup.new(
-      o.slice( :configurator_builder, :configurator_validator, :configurator_plugins, :loginator, :reportinator,
+      o.slice( :configurator_builder, :configurator_validator, :loginator, :reportinator,
                :file_wrapper, :system_wrapper, :tool_executor )
     )
     o[:configurator] = Configurator.new(

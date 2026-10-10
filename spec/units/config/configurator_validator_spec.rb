@@ -27,7 +27,6 @@ describe ConfiguratorValidator do
         config_walkinator: ConfigWalkinator.new,
         file_wrapper:      @file_wrapper,
         loginator:         @loginator,
-        system_wrapper:    nil,
         reportinator:      Reportinator.new,
         tool_validator:    @tool_validator
       }
