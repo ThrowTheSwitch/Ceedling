@@ -10,7 +10,10 @@ require 'rake' # for FileList
 require 'fileutils'
 require 'pathname'
 require 'tmpdir'
-require 'digest'
+# Generated include guards are built inside parallel worker threads. Loading SHA-256 here,
+# once and single-threaded, settles the class before any thread first reaches for it,
+# which Digest's lazy autoload does not survive under contention.
+require 'digest/sha2'
 require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
@@ -49,19 +52,22 @@ class FileWrapper
 
   # drivers/uart/config.h --> GEN2B4E27AE_DRIVERS_UART_CONFIG_H_CEEDLING
   #
-  # Every guard is unique within its first eleven characters. C90 guarantees only 31
-  # significant characters in a macro name and C99 only 63, and MISRA C:2012 Rule 5.4 asks
-  # macro names to differ within those limits; a guard is distinct inside any of them.
+  # A guard carries its distinguishing hash within its first eleven characters. C90
+  # guarantees only 31 significant characters in a macro name and C99 only 63, and MISRA
+  # C:2012 Rule 5.4 asks macro names to differ within those limits; guards for different
+  # names differ inside any of them, barring a collision of the eight-digit hash.
   #
   # The guard opens with the letter G. A hash alone could open with a digit, which no
   # identifier may, or with E and a digit or uppercase letter, a form C reserves for
-  # <errno.h>. No reserved C or POSIX name family opens with G, and GEN says what the
-  # guard belongs to. Neither does any guard begin with an underscore, a form C reserves
-  # with an uppercase letter or second underscore following (C99 7.1.3).
+  # <errno.h>. No reserved C or POSIX prefix opens with GEN (POSIX's GLOB_ and gl_ are
+  # the nearest), and GEN says what the guard belongs to. Neither does any guard begin with
+  # an underscore, a form C reserves with an uppercase letter or second underscore
+  # following (C99 7.1.3).
   #
-  # The readable stem folds in whatever path `name` carries, every non-word character
-  # becoming one underscore. Underscores stay single, since C++ reserves any identifier
-  # holding a double underscore, and a name contributing nothing drops out of the join.
+  # The readable stem folds in whatever path `name` carries, each run of non-word
+  # characters and underscores becoming one underscore. Underscores stay single, since C++
+  # reserves any identifier holding a double underscore, and a name contributing nothing
+  # drops out of the join.
   # The trailing _CEEDLING lets Ceedling recognize its own guards by a pattern anchored
   # at both ends (GENERATED_INCLUDE_GUARD_PATTERN).
   def self.generate_include_guard(name)

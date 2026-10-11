@@ -392,7 +392,7 @@ describe FileWrapper do
   # beginning with an underscore and an uppercase letter or with a double underscore
   # (C99 7.1.3), and C++ reserves any identifier containing a double underscore. C90
   # guarantees only 31 significant characters in a macro name, and C99 only 63 (MISRA
-  # C:2012 Rule 5.4), so a guard is unique within its first eleven.
+  # C:2012 Rule 5.4), so guards for different names differ within their first eleven.
   describe 'generated include guard properties' do
     names = ['config.h', 'drivers/uart/config.h', 'drivers/spi/config.h', '../_lib--core/__x_.h',
              '.h', 'a-b.h', 'a_b.h', 'Foo.h', 'foo.h']

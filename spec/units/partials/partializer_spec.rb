@@ -464,12 +464,12 @@ describe Partializer do
         make_macro('#define GEN0123ABCD_CEEDLING 4')
       ]
       mod = make_module(macros: lookalikes)
-    
+
       @partializer.sanitize(mod)
-    
+
       expect(mod.macro_definitions).to eq(lookalikes)
     end
-    
+
     it "does not remove non-macro elements from element_sequence" do
       generated  = make_macro('#ifndef GEN0123ABCD_C_H_CEEDLING')
       other_elem = double('CFunction', text: 'void foo(void){}')
