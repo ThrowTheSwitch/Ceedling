@@ -197,6 +197,9 @@ The templates behind the `$stdout` test results reporting plugins have been rena
 ### Status line coloring for `ceedling new`, `ceedling example`, and `ceedling upgrade`
 The `create`, `exist`, `identical`, and `force` status lines these commands print are now colored according to Ceedling’s own decoration settings rather than a separate scheme. Coloring also requires a terminal, so redirecting output to a file produces plain text. Set `CEEDLING_DECORATORS` to `0` to disable the coloring entirely.
 
+### Generated `#include` guard format
+Ceedling writes `#include` guards into the headers it generates for test builds (e.g. Partials and reconstructed headers resulting from preprocessing). These guards now take the form `GEN<hash>_<NAME>_H_CEEDLING` (e.g. `GEN2B4E27AE_DRIVERS_UART_CONFIG_H_CEEDLING`), where the hash is derived from the header's path. This format ensures uniqueness while conforming to the C standard's reserved identifier and significant length rules (C99 §7.1.3, §5.2.4.1), MISRA C:2012 Rules 5.4 and 21.1, and CERT DCL37-C. Nothing in your project configuration or source code needs to change unless you referenced a generated guard by name.
+
 ## 👋 Removed
 
 - The `erb` gem dependency has been removed. Ceedling renders some of its plugin reports with a small template compiler of its own in place of `erb`. This reduces Ceedling’s external dependencies, simplifies installations where more recent versions of `erb` pull in further dependencies, and resolves security scanning findings against `erb` (CVE-2026-41316). Ceedling never used the feature that security advisory concerns, but carrying the dependency at all was enough to be flagged. Custom plugin templates are unaffected unless they use ERB syntax Ceedling itself never used — see [plugin development documentation](https://docs.throwtheswitch.org/Ceedling/1.2.0/development/plugins/plugin-subclass/) for the supported template syntax.

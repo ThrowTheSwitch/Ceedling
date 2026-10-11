@@ -288,7 +288,7 @@ class GeneratorPartials
   # @param function_definitions [Array]  Pre-filtered Partials::FunctionDefinition objects
   # @param c_module             [CExtractorTypes::CModule] Merged module with element_sequence
   def generate_source(io, includes, function_definitions, c_module)
-    io << "// Ceeding generated file\n"
+    io << "// Ceedling generated file\n"
     includes.each do |include|
       io << "#{include}\n"
     end

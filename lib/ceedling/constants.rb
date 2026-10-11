@@ -149,8 +149,13 @@ DOCS_SITE_LOCAL_PATH = 'site-local'
 
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
 
-# String used in generated include guards
-CEEDLING_GENERATED = 'CEEDLING_GENERATED'
+# Generated include guards take the form GEN<hash>_<STEM>_H_CEEDLING (see
+# FileWrapper.generate_include_guard). The pattern recognizes one wherever it appears in a
+# line of text by its fixed head and tail, each at an identifier boundary.
+GENERATED_INCLUDE_GUARD_PREFIX      = 'GEN'
+GENERATED_INCLUDE_GUARD_SUFFIX      = '_CEEDLING'
+GENERATED_INCLUDE_GUARD_HASH_LENGTH = 8
+GENERATED_INCLUDE_GUARD_PATTERN     = /\b#{GENERATED_INCLUDE_GUARD_PREFIX}[0-9A-F]{#{GENERATED_INCLUDE_GUARD_HASH_LENGTH}}_\w+#{GENERATED_INCLUDE_GUARD_SUFFIX}\b/
 
 PREPROCESS_SYM = :preprocess
 

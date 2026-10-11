@@ -10,6 +10,10 @@ require 'rake' # for FileList
 require 'fileutils'
 require 'pathname'
 require 'tmpdir'
+# Generated include guards are built inside parallel worker threads. Loading SHA-256 here,
+# once and single-threaded, settles the class before any thread first reaches for it,
+# which Digest's lazy autoload does not survive under contention.
+require 'digest/sha2'
 require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
@@ -35,17 +39,44 @@ class FileWrapper
     linux:   4096,
   }.freeze unless const_defined?(:PATH_LENGTH_LIMITS, false)
 
-  # abc-XYZ.h --> __CEEDLING_GENERATED_ABC_XYZ_H__
-  # drivers/uart/config.h --> __CEEDLING_GENERATED_DRIVERS_UART_CONFIG_H__
+  # The leading, uniquely identifying portion of a generated include guard: the first eight
+  # hex digits of the SHA-256 digest of `name`, uppercased. Backslashes count as forward
+  # slashes, so a header receives the same hash on every platform. The hash comes from the
+  # name as given, before any folding, so names differing only in case or punctuation
+  # still differ here.
+  def self.include_guard_hash(name)
+    digest = Digest::SHA256.hexdigest( name.tr('\\', '/') )
+
+    return digest[0, GENERATED_INCLUDE_GUARD_HASH_LENGTH].upcase
+  end
+
+  # drivers/uart/config.h --> GEN2B4E27AE_DRIVERS_UART_CONFIG_H_CEEDLING
   #
-  # Whatever path `name` carries is folded into the guard rather than discarded. Two
-  # headers sharing a basename in one test would otherwise share one guard, and whichever
-  # the compiler reads second would be emptied of everything it declares. Separators need
-  # no special handling: the substitution below already replaces every non-word character.
+  # A guard carries its distinguishing hash within its first eleven characters. C90
+  # guarantees only 31 significant characters in a macro name and C99 only 63, and MISRA
+  # C:2012 Rule 5.4 asks macro names to differ within those limits; guards for different
+  # names differ inside any of them, barring a collision of the eight-digit hash.
+  #
+  # The guard opens with the letter G. A hash alone could open with a digit, which no
+  # identifier may, or with E and a digit or uppercase letter, a form C reserves for
+  # <errno.h>. No reserved C or POSIX prefix opens with GEN (POSIX's GLOB_ and gl_ are
+  # the nearest), and GEN says what the guard belongs to. Neither does any guard begin with
+  # an underscore, a form C reserves with an uppercase letter or second underscore
+  # following (C99 7.1.3).
+  #
+  # The readable stem folds in whatever path `name` carries, each run of non-word
+  # characters and underscores becoming one underscore. Underscores stay single, since C++
+  # reserves any identifier holding a double underscore, and a name contributing nothing
+  # drops out of the join.
+  # The trailing _CEEDLING lets Ceedling recognize its own guards by a pattern anchored
+  # at both ends (GENERATED_INCLUDE_GUARD_PATTERN).
   def self.generate_include_guard(name)
     base = name.sub(/\.[^.\/\\]*\z/, '') # Remove any extension, keeping any path
+    base = base.gsub(/\W/, '_').squeeze('_').delete_prefix('_').delete_suffix('_')
 
-    return '__' + CEEDLING_GENERATED + '_' + base.gsub(/\W/, '_').upcase + '_H__'
+    head = GENERATED_INCLUDE_GUARD_PREFIX + include_guard_hash( name )
+
+    return [head, base.upcase, 'H'].reject(&:empty?).join('_') + GENERATED_INCLUDE_GUARD_SUFFIX
   end
 
   def get_expanded_path(path)

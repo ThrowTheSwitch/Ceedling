@@ -324,35 +324,99 @@ describe FileWrapper do
     end
   end
 
-  # Guards a reconstructed or generated header against double inclusion. Two headers
-  # sharing a basename in one test would otherwise share one guard, and whichever the
-  # compiler reads second would be emptied of everything it declares.
+  # The hash leads every generated include guard. It is computed from the name exactly as
+  # given, so names that fold to the same readable stem still receive distinct guards.
+  describe '.include_guard_hash' do
+    it 'yields the first eight hex digits of the name\'s SHA-256 digest, uppercased' do
+      expect( FileWrapper.include_guard_hash('config.h') ).to eq('DBA8F242')
+      expect( FileWrapper.include_guard_hash('drivers/uart/config.h') ).to eq('2B4E27AE')
+    end
+
+    it 'treats a backslash separator as a forward slash' do
+      expect( FileWrapper.include_guard_hash('drivers\\uart\\config.h') )
+        .to eq( FileWrapper.include_guard_hash('drivers/uart/config.h') )
+    end
+
+    it 'distinguishes names that differ only in punctuation or case' do
+      expect( FileWrapper.include_guard_hash('a-b.h') ).to_not eq( FileWrapper.include_guard_hash('a_b.h') )
+      expect( FileWrapper.include_guard_hash('Foo.h') ).to_not eq( FileWrapper.include_guard_hash('foo.h') )
+    end
+  end
+
+  # Guards a reconstructed or generated header against double inclusion. The fixed hash
+  # makes the formatting expectations below exact.
   describe '.generate_include_guard' do
+    before(:each) do
+      allow(FileWrapper).to receive(:include_guard_hash).and_return('0123ABCD')
+    end
+
     it 'derives a guard from a bare filename' do
-      expect( FileWrapper.generate_include_guard('config.h') )
-        .to eq("__#{CEEDLING_GENERATED}_CONFIG_H__")
+      expect( FileWrapper.generate_include_guard('config.h') ).to eq('GEN0123ABCD_CONFIG_H_CEEDLING')
     end
 
-    it 'folds a path into the guard rather than discarding it' do
+    it 'hashes the name exactly as given' do
+      FileWrapper.generate_include_guard('drivers\\uart\\config.h')
+
+      expect(FileWrapper).to have_received(:include_guard_hash).with('drivers\\uart\\config.h')
+    end
+
+    it 'folds a path into the readable stem' do
       expect( FileWrapper.generate_include_guard('drivers/uart/config.h') )
-        .to eq("__#{CEEDLING_GENERATED}_DRIVERS_UART_CONFIG_H__")
-    end
-
-    it 'distinguishes two headers sharing a basename' do
-      uart = FileWrapper.generate_include_guard('drivers/uart/config.h')
-      spi  = FileWrapper.generate_include_guard('drivers/spi/config.h')
-
-      expect( uart ).to_not eq(spi)
+        .to eq('GEN0123ABCD_DRIVERS_UART_CONFIG_H_CEEDLING')
     end
 
     it 'folds a backslash separator too' do
       expect( FileWrapper.generate_include_guard('drivers\\uart\\config.h') )
-        .to eq("__#{CEEDLING_GENERATED}_DRIVERS_UART_CONFIG_H__")
+        .to eq('GEN0123ABCD_DRIVERS_UART_CONFIG_H_CEEDLING')
     end
 
     it 'strips only the extension, keeping a dotted filename otherwise intact' do
       expect( FileWrapper.generate_include_guard('abc-XYZ.v2.h') )
-        .to eq("__#{CEEDLING_GENERATED}_ABC_XYZ_V2_H__")
+        .to eq('GEN0123ABCD_ABC_XYZ_V2_H_CEEDLING')
+    end
+
+    it 'collapses runs of separators and underscores into single underscores' do
+      expect( FileWrapper.generate_include_guard('../_lib--core/__x_.h') )
+        .to eq('GEN0123ABCD_LIB_CORE_X_H_CEEDLING')
+    end
+
+    # A name of only separators and an extension leaves nothing to fold into the stem
+    it 'omits an empty stem rather than doubling an underscore' do
+      ['.h', '_.h', '--.h'].each do |name|
+        expect( FileWrapper.generate_include_guard(name) ).to eq('GEN0123ABCD_H_CEEDLING')
+      end
+    end
+  end
+
+  # Properties every generated guard holds with its real hash. C reserves identifiers
+  # beginning with an underscore and an uppercase letter or with a double underscore
+  # (C99 7.1.3), and C++ reserves any identifier containing a double underscore. C90
+  # guarantees only 31 significant characters in a macro name, and C99 only 63 (MISRA
+  # C:2012 Rule 5.4), so guards for different names differ within their first eleven.
+  describe 'generated include guard properties' do
+    names = ['config.h', 'drivers/uart/config.h', 'drivers/spi/config.h', '../_lib--core/__x_.h',
+             '.h', 'a-b.h', 'a_b.h', 'Foo.h', 'foo.h']
+
+    it 'opens with GEN and eight uppercase hex digits and closes with _CEEDLING' do
+      names.each do |name|
+        expect( FileWrapper.generate_include_guard(name) ).to match( /\AGEN[0-9A-F]{8}_\w+_CEEDLING\z/ )
+      end
+    end
+
+    it 'never contains a double underscore' do
+      names.each { |name| expect( FileWrapper.generate_include_guard(name) ).to_not include('__') }
+    end
+
+    it 'is unique within its first eleven characters across distinct names' do
+      leads = names.map { |name| FileWrapper.generate_include_guard(name)[0, 11] }
+
+      expect( leads.uniq.size ).to eq(names.size)
+    end
+
+    it 'is recognized by the generated include guard pattern' do
+      names.each do |name|
+        expect( FileWrapper.generate_include_guard(name) ).to match( GENERATED_INCLUDE_GUARD_PATTERN )
+      end
     end
   end
 
