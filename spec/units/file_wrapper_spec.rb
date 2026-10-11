@@ -354,19 +354,26 @@ describe FileWrapper do
       expect( FileWrapper.generate_include_guard('abc-XYZ.v2.h') )
         .to eq("#{CEEDLING_GENERATED}_ABC_XYZ_V2_H")
     end
-    
+
     # A leading underscore followed by an uppercase letter, or any double underscore, is
     # reserved to the C implementation (C99 7.1.3, MISRA C:2012 21.1, CERT DCL37-C).
-    it %q(never begins with an underscore or contains a double underscore) do
-      guard = FileWrapper.generate_include_guard(%q(../_lib--core/__x_.h))
-    
-      expect( guard ).to_not start_with(%q(_))
-      expect( guard ).to_not include(%q(__))
+    it 'never begins with an underscore or contains a double underscore' do
+      guard = FileWrapper.generate_include_guard('../_lib--core/__x_.h')
+
+      expect( guard ).to_not start_with('_')
+      expect( guard ).to_not include('__')
     end
-    
-    it %q(collapses runs of separators and underscores into single underscores) do
-      expect( FileWrapper.generate_include_guard(%q(../_lib--core/__x_.h)) )
+
+    it 'collapses runs of separators and underscores into single underscores' do
+      expect( FileWrapper.generate_include_guard('../_lib--core/__x_.h') )
         .to eq("#{CEEDLING_GENERATED}_LIB_CORE_X_H")
+    end
+
+    # A name of only separators and an extension leaves nothing to fold into the guard
+    it 'stays free of a double underscore when the name contributes nothing' do
+      ['.h', '_.h', '--.h'].each do |name|
+        expect( FileWrapper.generate_include_guard(name) ).to eq("#{CEEDLING_GENERATED}_H")
+      end
     end
   end
 

@@ -45,11 +45,13 @@ class FileWrapper
   #
   # Underscores stay single and never lead. C reserves identifiers that begin with an
   # underscore and an uppercase letter or that contain a double underscore (C99 7.1.3).
+  # Separator runs collapse to one underscore, and a name that contributes nothing after
+  # that drops out of the join entirely.
   def self.generate_include_guard(name)
     base = name.sub(/\.[^.\/\\]*\z/, '') # Remove any extension, keeping any path
     base = base.gsub(/\W/, '_').squeeze('_').delete_prefix('_').delete_suffix('_')
 
-    return "#{CEEDLING_GENERATED}_#{base.upcase}_H"
+    return [CEEDLING_GENERATED, base.upcase, 'H'].reject(&:empty?).join('_')
   end
 
   def get_expanded_path(path)
