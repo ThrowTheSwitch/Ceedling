@@ -7,12 +7,15 @@
 
 require 'spec_helper'
 require 'stringio'
+require 'include_guard_helper'
 require 'ceedling/preprocess/preprocessinator_file_assembler'
 require 'ceedling/preprocess/preprocessinator_reconstructor'
 require 'ceedling/parsing_parcels'
 require 'ceedling/encodinator'
 
 RSpec.describe PreprocessinatorFileAssembler do
+  include IncludeGuardHelper
+
 
   # Use real ParsingParcels for _filter_conditionals and collect_file_contents_fallback tests
   let(:real_parsing_parcels) { ParsingParcels.new }
@@ -465,8 +468,8 @@ RSpec.describe PreprocessinatorFileAssembler do
         includes:              []
       )
 
-      expect(output.string).to include("#ifndef CEEDLING_GENERATED_MODULE_H\n")
-      expect(output.string).to include("#define CEEDLING_GENERATED_MODULE_H\n")
+      expect(mask_include_guard_hashes(output.string)).to include("#ifndef GEN<HASH>_MODULE_H_CEEDLING\n")
+      expect(mask_include_guard_hashes(output.string)).to include("#define GEN<HASH>_MODULE_H_CEEDLING\n")
     end
 
     it 'writes provided includes and contents between the guard lines' do

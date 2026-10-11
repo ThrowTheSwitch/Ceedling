@@ -403,7 +403,7 @@ describe Partializer do
       m
     end
 
-    it "leaves macro_definitions unchanged when no macros contain CEEDLING_GENERATED" do
+    it "leaves macro_definitions unchanged when no macro carries a generated include guard" do
       macro = make_macro('#define MY_GUARD_H')
       mod   = make_module(macros: [macro])
 
@@ -412,7 +412,7 @@ describe Partializer do
       expect(mod.macro_definitions).to eq([macro])
     end
 
-    it "leaves element_sequence unchanged when no macros contain CEEDLING_GENERATED" do
+    it "leaves element_sequence unchanged when no macro carries a generated include guard" do
       macro = make_macro('#define MY_GUARD_H')
       mod   = make_module(macros: [macro])
 
@@ -421,8 +421,8 @@ describe Partializer do
       expect(mod.element_sequence).to eq([macro])
     end
 
-    it "removes macros whose text includes CEEDLING_GENERATED from macro_definitions" do
-      generated = make_macro('#ifndef CEEDLING_GENERATED_FOO_H')
+    it "removes macros carrying a generated include guard from macro_definitions" do
+      generated = make_macro('#ifndef GEN0123ABCD_FOO_H_CEEDLING')
       kept      = make_macro('#define MY_DEFINE 1')
       mod       = make_module(macros: [generated, kept])
 
@@ -433,7 +433,7 @@ describe Partializer do
     end
 
     it "removes the same macro objects from element_sequence" do
-      generated = make_macro('#ifndef CEEDLING_GENERATED_BAR_H')
+      generated = make_macro('#ifndef GEN0123ABCD_BAR_H_CEEDLING')
       kept      = make_macro('#define MY_DEFINE 2')
       mod       = make_module(macros: [generated, kept])
 
@@ -443,9 +443,9 @@ describe Partializer do
       expect(mod.element_sequence).to include(kept)
     end
 
-    it "removes all macros when every macro contains CEEDLING_GENERATED" do
-      m1  = make_macro('#ifndef CEEDLING_GENERATED_A_H')
-      m2  = make_macro('#define CEEDLING_GENERATED_A_H')
+    it "removes all macros when every macro carries a generated include guard" do
+      m1  = make_macro('#ifndef GEN0123ABCD_A_H_CEEDLING')
+      m2  = make_macro('#define GEN0123ABCD_A_H_CEEDLING')
       mod = make_module(macros: [m1, m2])
 
       @partializer.sanitize(mod)
@@ -454,8 +454,24 @@ describe Partializer do
       expect(mod.element_sequence).to be_empty
     end
 
+    # A generated guard opens with GEN and eight hex digits and closes with _CEEDLING, each
+    # at an identifier boundary, so a macro merely resembling one stays
+    it "keeps macros whose names only resemble a generated include guard" do
+      lookalikes = [
+        make_macro('#define MY_GEN0123ABCD_FOO_H_CEEDLING 1'),
+        make_macro('#define GEN0123ABCD_FOO_H_CEEDLING_LIMIT 2'),
+        make_macro('#define GEN0123ABC_FOO_H_CEEDLING 3'),
+        make_macro('#define GEN0123ABCD_CEEDLING 4')
+      ]
+      mod = make_module(macros: lookalikes)
+    
+      @partializer.sanitize(mod)
+    
+      expect(mod.macro_definitions).to eq(lookalikes)
+    end
+    
     it "does not remove non-macro elements from element_sequence" do
-      generated  = make_macro('#ifndef CEEDLING_GENERATED_C_H')
+      generated  = make_macro('#ifndef GEN0123ABCD_C_H_CEEDLING')
       other_elem = double('CFunction', text: 'void foo(void){}')
       mod = CExtractorTypes::CModule.new
       mod.macro_definitions = [generated]

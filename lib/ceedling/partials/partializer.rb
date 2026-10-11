@@ -53,11 +53,11 @@ class Partializer
   end
 
   def sanitize(c_module)
-    # Remove macro definitions that contain the CEEDLING_GENERATED sentinel string.
-    # These are include-guard and boilerplate macros injected into Ceedling-generated header files.
-    removed = c_module.macro_definitions.select { |m| m.text.include?(CEEDLING_GENERATED) }
+    # Remove macro definitions carrying a generated include guard. Ceedling writes these into
+    # the headers it generates, and they belong to those headers, not the module.
+    removed = c_module.macro_definitions.select { |m| m.text.match?(GENERATED_INCLUDE_GUARD_PATTERN) }
     # Remove from both the macro_definitions list and the element_sequence that references it
-    c_module.macro_definitions.reject! { |m| m.text.include?(CEEDLING_GENERATED) }
+    c_module.macro_definitions.reject! { |m| removed.include?(m) }
     c_module.element_sequence.reject!  { |e| removed.include?(e) }
   end
 

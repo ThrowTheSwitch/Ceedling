@@ -11,8 +11,11 @@ require 'ceedling/partials/partials'
 require 'ceedling/includes/includes'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'stringio'
+require 'include_guard_helper'
 
 describe GeneratorPartials do
+  include IncludeGuardHelper
+
   before(:each) do
     @file_wrapper    = double( "FileWrapper" )
     @file_path_utils = double( "FilePathUtils" )
@@ -346,14 +349,14 @@ describe GeneratorPartials do
 
     it "writes the typedefs and aggregate definitions, guarded and in element_sequence order, carrying forward a macro that precedes one of them, and returns the bare filename" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_MY_MODULE_TYPES_H
-      #define CEEDLING_GENERATED_MY_MODULE_TYPES_H
+      #ifndef GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
+      #define GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
 
       typedef uint8_t Byte;
       #define FOO 1
       struct Config { int id; };
 
-      #endif // CEEDLING_GENERATED_MY_MODULE_TYPES_H
+      #endif // GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
 
       CONTENTS
 
@@ -396,7 +399,7 @@ describe GeneratorPartials do
         output_path: output_path
       )
 
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
       expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'wb')
       expect(result).to eq(header_filename)
     end
@@ -406,8 +409,8 @@ describe GeneratorPartials do
     # module header, so the guard has to be satisfied before any include is processed.
     it "states the module's own guard before the includes it carries, then the types" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_MY_MODULE_TYPES_H
-      #define CEEDLING_GENERATED_MY_MODULE_TYPES_H
+      #ifndef GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
+      #define GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
 
       #define MY_MODULE_H
 
@@ -416,7 +419,7 @@ describe GeneratorPartials do
 
       typedef uint8_t Byte;
 
-      #endif // CEEDLING_GENERATED_MY_MODULE_TYPES_H
+      #endif // GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
 
       CONTENTS
 
@@ -434,7 +437,7 @@ describe GeneratorPartials do
         include_guard: 'MY_MODULE_H'
       )
 
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "states no guard when the module's header has none to spoof" do
@@ -656,26 +659,26 @@ describe GeneratorPartials do
 
     it "should generate a nearly empty header file" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_FOO_BAR_H
-      #define CEEDLING_GENERATED_FOO_BAR_H
+      #ifndef GEN<HASH>_FOO_BAR_H_CEEDLING
+      #define GEN<HASH>_FOO_BAR_H_CEEDLING
 
-      #endif // CEEDLING_GENERATED_FOO_BAR_H
+      #endif // GEN<HASH>_FOO_BAR_H_CEEDLING
 
       CONTENTS
 
       @generator.send(:generate_header, buf, 'foo_bar', [], [], empty_module, include_variables: false)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should generate a header file with #include statements but nothing else" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_APPLES_AND_BANANAS_H
-      #define CEEDLING_GENERATED_APPLES_AND_BANANAS_H
+      #ifndef GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
+      #define GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
 
       #include "foo.h"
       #include "bar.h"
 
-      #endif // CEEDLING_GENERATED_APPLES_AND_BANANAS_H
+      #endif // GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
 
       CONTENTS
 
@@ -687,18 +690,18 @@ describe GeneratorPartials do
         [], empty_module, include_variables: false
       )
 
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should generate a header file with variable declarations (extern prefix added automatically)" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_PB_AND_J_H
-      #define CEEDLING_GENERATED_PB_AND_J_H
+      #ifndef GEN<HASH>_PB_AND_J_H_CEEDLING
+      #define GEN<HASH>_PB_AND_J_H_CEEDLING
 
       extern unsigned int slices_of_bread;
       extern char crumbs;
 
-      #endif // CEEDLING_GENERATED_PB_AND_J_H
+      #endif // GEN<HASH>_PB_AND_J_H_CEEDLING
 
       CONTENTS
 
@@ -707,7 +710,7 @@ describe GeneratorPartials do
         make_var(name: 'crumbs', type: 'char', text: 'char crumbs[10];')
       )
       @generator.send(:generate_header, buf, 'pb-and-j', [], [], c_module, include_variables: true)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should reapply a leading qualifier decorator to an extern declaration" do
@@ -730,8 +733,8 @@ describe GeneratorPartials do
 
     it "should generate a header file with #include statements, variable declarations, and function signatures" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_APPLES_AND_BANANAS_H
-      #define CEEDLING_GENERATED_APPLES_AND_BANANAS_H
+      #ifndef GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
+      #define GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
 
       #include "Eeny.h"
       #include "Meeny.h"
@@ -743,7 +746,7 @@ describe GeneratorPartials do
 
       int razzleDazzle(void* ptr);
 
-      #endif // CEEDLING_GENERATED_APPLES_AND_BANANAS_H
+      #endif // GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
 
       CONTENTS
 
@@ -780,19 +783,19 @@ describe GeneratorPartials do
         include_variables: true
       )
 
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should emit CStatement text as-is in the header" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_DEFS_H
-      #define CEEDLING_GENERATED_DEFS_H
+      #ifndef GEN<HASH>_DEFS_H_CEEDLING
+      #define GEN<HASH>_DEFS_H_CEEDLING
 
       #define MAX_SIZE 100
       typedef uint8_t Byte;
       struct Point { int x; int y; };
 
-      #endif // CEEDLING_GENERATED_DEFS_H
+      #endif // GEN<HASH>_DEFS_H_CEEDLING
 
       CONTENTS
 
@@ -803,7 +806,7 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_header, buf, 'defs', [], [], c_module, include_variables: false)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     # #1262: a header with several single-line macros in a row and nothing
@@ -813,14 +816,14 @@ describe GeneratorPartials do
     # own carry-forward logic, which already had its own adjacency coverage.
     it "emits three consecutive macros each on their own line, with nothing following them" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_REGS_H
-      #define CEEDLING_GENERATED_REGS_H
+      #ifndef GEN<HASH>_REGS_H_CEEDLING
+      #define GEN<HASH>_REGS_H_CEEDLING
 
       #define START_ADDRESS 0x00
       #define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)
       #define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)
 
-      #endif // CEEDLING_GENERATED_REGS_H
+      #endif // GEN<HASH>_REGS_H_CEEDLING
 
       CONTENTS
 
@@ -831,7 +834,7 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_header, buf, 'regs', [], [], c_module, include_variables: false)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     # #1262 regression: the actual reported shape -- one macro's trailing // comment
@@ -872,13 +875,13 @@ describe GeneratorPartials do
       # element_sequence — not typed-array membership — governs emit order for the items
       # that do remain inline.
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_ALL_STATEMENTS_H
-      #define CEEDLING_GENERATED_ALL_STATEMENTS_H
+      #ifndef GEN<HASH>_ALL_STATEMENTS_H_CEEDLING
+      #define GEN<HASH>_ALL_STATEMENTS_H_CEEDLING
 
       #define MAX_ITEMS 16
       extern int item_count;
 
-      #endif // CEEDLING_GENERATED_ALL_STATEMENTS_H
+      #endif // GEN<HASH>_ALL_STATEMENTS_H_CEEDLING
 
       CONTENTS
 
@@ -896,19 +899,19 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_header, buf, 'all_statements', [], [], c_module, include_variables: true)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should emit mixed CStatement and CVariableDeclaration items in element_sequence order" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_MIXED_H
-      #define CEEDLING_GENERATED_MIXED_H
+      #ifndef GEN<HASH>_MIXED_H_CEEDLING
+      #define GEN<HASH>_MIXED_H_CEEDLING
 
       #define FOO 1
       extern int counter;
       typedef uint8_t Byte;
 
-      #endif // CEEDLING_GENERATED_MIXED_H
+      #endif // GEN<HASH>_MIXED_H_CEEDLING
 
       CONTENTS
 
@@ -920,17 +923,17 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_header, buf, 'mixed', [], [], c_module, include_variables: true)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should not emit variable declarations when include_variables is false" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_INTERFACE_H
-      #define CEEDLING_GENERATED_INTERFACE_H
+      #ifndef GEN<HASH>_INTERFACE_H_CEEDLING
+      #define GEN<HASH>_INTERFACE_H_CEEDLING
 
       #define FOO 1
 
-      #endif // CEEDLING_GENERATED_INTERFACE_H
+      #endif // GEN<HASH>_INTERFACE_H_CEEDLING
 
       CONTENTS
 
@@ -940,7 +943,7 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_header, buf, 'interface', [], [], c_module, include_variables: false)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     # make_module bins every CStatement into macro_definitions, the wrong bucket for a
@@ -958,12 +961,12 @@ describe GeneratorPartials do
     # containing it. See #generate_source for where it actually belongs.
     it "should not emit a bare macro invocation in the implementation header (include_variables true)" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_IMPL_INVOCATION_H
-      #define CEEDLING_GENERATED_IMPL_INVOCATION_H
+      #ifndef GEN<HASH>_IMPL_INVOCATION_H_CEEDLING
+      #define GEN<HASH>_IMPL_INVOCATION_H_CEEDLING
 
       #define FOO(x) void bar##x(void) { }
 
-      #endif // CEEDLING_GENERATED_IMPL_INVOCATION_H
+      #endif // GEN<HASH>_IMPL_INVOCATION_H_CEEDLING
 
       CONTENTS
 
@@ -977,17 +980,17 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_header, buf, 'impl_invocation', [], [], c_module, include_variables: true)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should not emit a bare macro invocation in the mockable interface header (include_variables false)" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_INTERFACE_INVOCATION_H
-      #define CEEDLING_GENERATED_INTERFACE_INVOCATION_H
+      #ifndef GEN<HASH>_INTERFACE_INVOCATION_H_CEEDLING
+      #define GEN<HASH>_INTERFACE_INVOCATION_H_CEEDLING
 
       #define FOO(x) void bar##x(void) { }
 
-      #endif // CEEDLING_GENERATED_INTERFACE_INVOCATION_H
+      #endif // GEN<HASH>_INTERFACE_INVOCATION_H_CEEDLING
 
       CONTENTS
 
@@ -1001,13 +1004,13 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_header, buf, 'interface_invocation', [], [], c_module, include_variables: false)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should interleave functions with other elements in element_sequence order, skipping a leading typedef routed to the shared types header" do
       file_contents = <<~CONTENTS
-      #ifndef CEEDLING_GENERATED_INTERLEAVED_H
-      #define CEEDLING_GENERATED_INTERLEAVED_H
+      #ifndef GEN<HASH>_INTERLEAVED_H_CEEDLING
+      #define GEN<HASH>_INTERLEAVED_H_CEEDLING
 
       void foo(void);
 
@@ -1015,7 +1018,7 @@ describe GeneratorPartials do
 
       int bar(int x);
 
-      #endif // CEEDLING_GENERATED_INTERLEAVED_H
+      #endif // GEN<HASH>_INTERLEAVED_H_CEEDLING
 
       CONTENTS
 
@@ -1043,7 +1046,7 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_header, buf, 'interleaved', [], [foo_decl, bar_decl], c_module, include_variables: true)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "emits function signature with __declspec(dllexport) verbatim in header" do
@@ -1096,7 +1099,7 @@ describe GeneratorPartials do
         [], empty_module
       )
 
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should preserve internal whitespace of function code block for coverage instrumentation line mapping" do
@@ -1126,7 +1129,7 @@ describe GeneratorPartials do
       c_module = make_module( CExtractorTypes::CFunctionDefinition.new(name: 'foobar') )
 
       @generator.send(:generate_source, buf, [], defns, c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should reapply a leading qualifier decorator to a variable definition" do
@@ -1198,7 +1201,7 @@ describe GeneratorPartials do
         [defn],
         c_module
       )
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should generate a source file with functions and #line directives" do
@@ -1245,7 +1248,7 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_source, buf, [], defns, c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should pass a code_block's line endings through unchanged, including embedded CRLF" do
@@ -1310,7 +1313,7 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_source, buf, [], [defn], c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should emit only CVariableDeclaration items from element_sequence, skipping CStatement items" do
@@ -1329,7 +1332,7 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_source, buf, [], [], c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should interleave variables and functions in element_sequence order" do
@@ -1378,7 +1381,7 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_source, buf, [], [foo_defn, bar_defn], c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "emits function code_block with __attribute__((noreturn)) verbatim in source" do
