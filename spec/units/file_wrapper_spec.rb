@@ -330,12 +330,12 @@ describe FileWrapper do
   describe '.generate_include_guard' do
     it 'derives a guard from a bare filename' do
       expect( FileWrapper.generate_include_guard('config.h') )
-        .to eq("__#{CEEDLING_GENERATED}_CONFIG_H__")
+        .to eq("#{CEEDLING_GENERATED}_CONFIG_H")
     end
 
     it 'folds a path into the guard rather than discarding it' do
       expect( FileWrapper.generate_include_guard('drivers/uart/config.h') )
-        .to eq("__#{CEEDLING_GENERATED}_DRIVERS_UART_CONFIG_H__")
+        .to eq("#{CEEDLING_GENERATED}_DRIVERS_UART_CONFIG_H")
     end
 
     it 'distinguishes two headers sharing a basename' do
@@ -347,12 +347,26 @@ describe FileWrapper do
 
     it 'folds a backslash separator too' do
       expect( FileWrapper.generate_include_guard('drivers\\uart\\config.h') )
-        .to eq("__#{CEEDLING_GENERATED}_DRIVERS_UART_CONFIG_H__")
+        .to eq("#{CEEDLING_GENERATED}_DRIVERS_UART_CONFIG_H")
     end
 
     it 'strips only the extension, keeping a dotted filename otherwise intact' do
       expect( FileWrapper.generate_include_guard('abc-XYZ.v2.h') )
-        .to eq("__#{CEEDLING_GENERATED}_ABC_XYZ_V2_H__")
+        .to eq("#{CEEDLING_GENERATED}_ABC_XYZ_V2_H")
+    end
+    
+    # A leading underscore followed by an uppercase letter, or any double underscore, is
+    # reserved to the C implementation (C99 7.1.3, MISRA C:2012 21.1, CERT DCL37-C).
+    it %q(never begins with an underscore or contains a double underscore) do
+      guard = FileWrapper.generate_include_guard(%q(../_lib--core/__x_.h))
+    
+      expect( guard ).to_not start_with(%q(_))
+      expect( guard ).to_not include(%q(__))
+    end
+    
+    it %q(collapses runs of separators and underscores into single underscores) do
+      expect( FileWrapper.generate_include_guard(%q(../_lib--core/__x_.h)) )
+        .to eq("#{CEEDLING_GENERATED}_LIB_CORE_X_H")
     end
   end
 

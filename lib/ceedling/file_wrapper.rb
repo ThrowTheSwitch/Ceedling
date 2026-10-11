@@ -35,17 +35,21 @@ class FileWrapper
     linux:   4096,
   }.freeze unless const_defined?(:PATH_LENGTH_LIMITS, false)
 
-  # abc-XYZ.h --> __CEEDLING_GENERATED_ABC_XYZ_H__
-  # drivers/uart/config.h --> __CEEDLING_GENERATED_DRIVERS_UART_CONFIG_H__
+  # abc-XYZ.h --> CEEDLING_GENERATED_ABC_XYZ_H
+  # drivers/uart/config.h --> CEEDLING_GENERATED_DRIVERS_UART_CONFIG_H
   #
   # Whatever path `name` carries is folded into the guard rather than discarded. Two
   # headers sharing a basename in one test would otherwise share one guard, and whichever
   # the compiler reads second would be emptied of everything it declares. Separators need
   # no special handling: the substitution below already replaces every non-word character.
+  #
+  # Underscores stay single and never lead. C reserves identifiers that begin with an
+  # underscore and an uppercase letter or that contain a double underscore (C99 7.1.3).
   def self.generate_include_guard(name)
     base = name.sub(/\.[^.\/\\]*\z/, '') # Remove any extension, keeping any path
+    base = base.gsub(/\W/, '_').squeeze('_').delete_prefix('_').delete_suffix('_')
 
-    return '__' + CEEDLING_GENERATED + '_' + base.gsub(/\W/, '_').upcase + '_H__'
+    return "#{CEEDLING_GENERATED}_#{base.upcase}_H"
   end
 
   def get_expanded_path(path)

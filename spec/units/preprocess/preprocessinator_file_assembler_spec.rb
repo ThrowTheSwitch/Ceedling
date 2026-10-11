@@ -465,8 +465,8 @@ RSpec.describe PreprocessinatorFileAssembler do
         includes:              []
       )
 
-      expect(output.string).to include("#ifndef __CEEDLING_GENERATED_MODULE_H__\n")
-      expect(output.string).to include("#define __CEEDLING_GENERATED_MODULE_H__\n")
+      expect(output.string).to include("#ifndef CEEDLING_GENERATED_MODULE_H\n")
+      expect(output.string).to include("#define CEEDLING_GENERATED_MODULE_H\n")
     end
 
     it 'writes provided includes and contents between the guard lines' do

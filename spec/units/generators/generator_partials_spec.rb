@@ -346,14 +346,14 @@ describe GeneratorPartials do
 
     it "writes the typedefs and aggregate definitions, guarded and in element_sequence order, carrying forward a macro that precedes one of them, and returns the bare filename" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
-      #define __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+      #ifndef CEEDLING_GENERATED_MY_MODULE_TYPES_H
+      #define CEEDLING_GENERATED_MY_MODULE_TYPES_H
 
       typedef uint8_t Byte;
       #define FOO 1
       struct Config { int id; };
 
-      #endif // __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+      #endif // CEEDLING_GENERATED_MY_MODULE_TYPES_H
 
       CONTENTS
 
@@ -406,8 +406,8 @@ describe GeneratorPartials do
     # module header, so the guard has to be satisfied before any include is processed.
     it "states the module's own guard before the includes it carries, then the types" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
-      #define __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+      #ifndef CEEDLING_GENERATED_MY_MODULE_TYPES_H
+      #define CEEDLING_GENERATED_MY_MODULE_TYPES_H
 
       #define MY_MODULE_H
 
@@ -416,7 +416,7 @@ describe GeneratorPartials do
 
       typedef uint8_t Byte;
 
-      #endif // __CEEDLING_GENERATED_MY_MODULE_TYPES_H__
+      #endif // CEEDLING_GENERATED_MY_MODULE_TYPES_H
 
       CONTENTS
 
@@ -656,10 +656,10 @@ describe GeneratorPartials do
 
     it "should generate a nearly empty header file" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_FOO_BAR_H__
-      #define __CEEDLING_GENERATED_FOO_BAR_H__
+      #ifndef CEEDLING_GENERATED_FOO_BAR_H
+      #define CEEDLING_GENERATED_FOO_BAR_H
 
-      #endif // __CEEDLING_GENERATED_FOO_BAR_H__
+      #endif // CEEDLING_GENERATED_FOO_BAR_H
 
       CONTENTS
 
@@ -669,13 +669,13 @@ describe GeneratorPartials do
 
     it "should generate a header file with #include statements but nothing else" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
-      #define __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #ifndef CEEDLING_GENERATED_APPLES_AND_BANANAS_H
+      #define CEEDLING_GENERATED_APPLES_AND_BANANAS_H
 
       #include "foo.h"
       #include "bar.h"
 
-      #endif // __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #endif // CEEDLING_GENERATED_APPLES_AND_BANANAS_H
 
       CONTENTS
 
@@ -692,13 +692,13 @@ describe GeneratorPartials do
 
     it "should generate a header file with variable declarations (extern prefix added automatically)" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_PB_AND_J_H__
-      #define __CEEDLING_GENERATED_PB_AND_J_H__
+      #ifndef CEEDLING_GENERATED_PB_AND_J_H
+      #define CEEDLING_GENERATED_PB_AND_J_H
 
       extern unsigned int slices_of_bread;
       extern char crumbs;
 
-      #endif // __CEEDLING_GENERATED_PB_AND_J_H__
+      #endif // CEEDLING_GENERATED_PB_AND_J_H
 
       CONTENTS
 
@@ -730,8 +730,8 @@ describe GeneratorPartials do
 
     it "should generate a header file with #include statements, variable declarations, and function signatures" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
-      #define __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #ifndef CEEDLING_GENERATED_APPLES_AND_BANANAS_H
+      #define CEEDLING_GENERATED_APPLES_AND_BANANAS_H
 
       #include "Eeny.h"
       #include "Meeny.h"
@@ -743,7 +743,7 @@ describe GeneratorPartials do
 
       int razzleDazzle(void* ptr);
 
-      #endif // __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #endif // CEEDLING_GENERATED_APPLES_AND_BANANAS_H
 
       CONTENTS
 
@@ -785,14 +785,14 @@ describe GeneratorPartials do
 
     it "should emit CStatement text as-is in the header" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_DEFS_H__
-      #define __CEEDLING_GENERATED_DEFS_H__
+      #ifndef CEEDLING_GENERATED_DEFS_H
+      #define CEEDLING_GENERATED_DEFS_H
 
       #define MAX_SIZE 100
       typedef uint8_t Byte;
       struct Point { int x; int y; };
 
-      #endif // __CEEDLING_GENERATED_DEFS_H__
+      #endif // CEEDLING_GENERATED_DEFS_H
 
       CONTENTS
 
@@ -813,14 +813,14 @@ describe GeneratorPartials do
     # own carry-forward logic, which already had its own adjacency coverage.
     it "emits three consecutive macros each on their own line, with nothing following them" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_REGS_H__
-      #define __CEEDLING_GENERATED_REGS_H__
+      #ifndef CEEDLING_GENERATED_REGS_H
+      #define CEEDLING_GENERATED_REGS_H
 
       #define START_ADDRESS 0x00
       #define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)
       #define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)
 
-      #endif // __CEEDLING_GENERATED_REGS_H__
+      #endif // CEEDLING_GENERATED_REGS_H
 
       CONTENTS
 
@@ -872,13 +872,13 @@ describe GeneratorPartials do
       # element_sequence — not typed-array membership — governs emit order for the items
       # that do remain inline.
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_ALL_STATEMENTS_H__
-      #define __CEEDLING_GENERATED_ALL_STATEMENTS_H__
+      #ifndef CEEDLING_GENERATED_ALL_STATEMENTS_H
+      #define CEEDLING_GENERATED_ALL_STATEMENTS_H
 
       #define MAX_ITEMS 16
       extern int item_count;
 
-      #endif // __CEEDLING_GENERATED_ALL_STATEMENTS_H__
+      #endif // CEEDLING_GENERATED_ALL_STATEMENTS_H
 
       CONTENTS
 
@@ -901,14 +901,14 @@ describe GeneratorPartials do
 
     it "should emit mixed CStatement and CVariableDeclaration items in element_sequence order" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_MIXED_H__
-      #define __CEEDLING_GENERATED_MIXED_H__
+      #ifndef CEEDLING_GENERATED_MIXED_H
+      #define CEEDLING_GENERATED_MIXED_H
 
       #define FOO 1
       extern int counter;
       typedef uint8_t Byte;
 
-      #endif // __CEEDLING_GENERATED_MIXED_H__
+      #endif // CEEDLING_GENERATED_MIXED_H
 
       CONTENTS
 
@@ -925,12 +925,12 @@ describe GeneratorPartials do
 
     it "should not emit variable declarations when include_variables is false" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_INTERFACE_H__
-      #define __CEEDLING_GENERATED_INTERFACE_H__
+      #ifndef CEEDLING_GENERATED_INTERFACE_H
+      #define CEEDLING_GENERATED_INTERFACE_H
 
       #define FOO 1
 
-      #endif // __CEEDLING_GENERATED_INTERFACE_H__
+      #endif // CEEDLING_GENERATED_INTERFACE_H
 
       CONTENTS
 
@@ -958,12 +958,12 @@ describe GeneratorPartials do
     # containing it. See #generate_source for where it actually belongs.
     it "should not emit a bare macro invocation in the implementation header (include_variables true)" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_IMPL_INVOCATION_H__
-      #define __CEEDLING_GENERATED_IMPL_INVOCATION_H__
+      #ifndef CEEDLING_GENERATED_IMPL_INVOCATION_H
+      #define CEEDLING_GENERATED_IMPL_INVOCATION_H
 
       #define FOO(x) void bar##x(void) { }
 
-      #endif // __CEEDLING_GENERATED_IMPL_INVOCATION_H__
+      #endif // CEEDLING_GENERATED_IMPL_INVOCATION_H
 
       CONTENTS
 
@@ -982,12 +982,12 @@ describe GeneratorPartials do
 
     it "should not emit a bare macro invocation in the mockable interface header (include_variables false)" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_INTERFACE_INVOCATION_H__
-      #define __CEEDLING_GENERATED_INTERFACE_INVOCATION_H__
+      #ifndef CEEDLING_GENERATED_INTERFACE_INVOCATION_H
+      #define CEEDLING_GENERATED_INTERFACE_INVOCATION_H
 
       #define FOO(x) void bar##x(void) { }
 
-      #endif // __CEEDLING_GENERATED_INTERFACE_INVOCATION_H__
+      #endif // CEEDLING_GENERATED_INTERFACE_INVOCATION_H
 
       CONTENTS
 
@@ -1006,8 +1006,8 @@ describe GeneratorPartials do
 
     it "should interleave functions with other elements in element_sequence order, skipping a leading typedef routed to the shared types header" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_INTERLEAVED_H__
-      #define __CEEDLING_GENERATED_INTERLEAVED_H__
+      #ifndef CEEDLING_GENERATED_INTERLEAVED_H
+      #define CEEDLING_GENERATED_INTERLEAVED_H
 
       void foo(void);
 
@@ -1015,7 +1015,7 @@ describe GeneratorPartials do
 
       int bar(int x);
 
-      #endif // __CEEDLING_GENERATED_INTERLEAVED_H__
+      #endif // CEEDLING_GENERATED_INTERLEAVED_H
 
       CONTENTS
 
@@ -1078,12 +1078,12 @@ describe GeneratorPartials do
 
     it "should generate a nearly empty source file" do
       @generator.send(:generate_source, buf, [], [], empty_module)
-      expect( buf.string.strip() ).to eq '// Ceeding generated file'
+      expect( buf.string.strip() ).to eq '// Ceedling generated file'
     end
 
     it "should generate a source file with #include directives" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
       #include "foo.h"
       #include <bar.h>
 
@@ -1101,7 +1101,7 @@ describe GeneratorPartials do
 
     it "should preserve internal whitespace of function code block for coverage instrumentation line mapping" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       void foobar(int x, int y)
 
@@ -1165,7 +1165,7 @@ describe GeneratorPartials do
 
     it "should generate a source file with include directives, variable declarations, and functions" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
       #include "foobar.h"
       #include "baz.h"
 
@@ -1203,7 +1203,7 @@ describe GeneratorPartials do
 
     it "should generate a source file with functions and #line directives" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       #line 9 "../foo/bar/fubar.c"
       void foobarbaz(int x, int y) {
@@ -1280,7 +1280,7 @@ describe GeneratorPartials do
       # All four categories are present in element_sequence to confirm the full
       # filtering and emission behavior in a single test.
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       int counter = 0;
 
@@ -1315,7 +1315,7 @@ describe GeneratorPartials do
 
     it "should emit only CVariableDeclaration items from element_sequence, skipping CStatement items" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       int counter = 0;
 
@@ -1334,7 +1334,7 @@ describe GeneratorPartials do
 
     it "should interleave variables and functions in element_sequence order" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       int x = 1;
 
