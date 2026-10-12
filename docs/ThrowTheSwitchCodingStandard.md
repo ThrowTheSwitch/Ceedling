@@ -160,7 +160,7 @@ catching an error and you have a one-line, go ahead and to it on the same line.
 ```C
     while (blah)
     {
-        //Like so. Even if only one line, we use braces.
+        /* Like so. Even if only one line, we use braces. */
     }
 ```
 
@@ -198,10 +198,28 @@ that happens, we like to indent further to line things up in nice tidy columns.
 - Constants - all upper case with underscores
 
 
+#### Linting
+
+Ceedling lints its Ruby with [RuboCop](https://rubocop.org). Its configuration in
+`.rubocop.yml` is the enforced part of this standard. It covers defects,
+complexity, security, and performance, leaving the style choices above to
+this document and to review.
+
+
 ## Documentation
 
-Egad. Really? We use markdown and we like pdf files because they can be made to
-look nice while still being portable. Good enough?
+We use Markdown. Ceedling builds its Markdown into a versioned
+documentation website with [MkDocs](https://www.mkdocs.org), published at
+[docs.throwtheswitch.org](https://docs.throwtheswitch.org/Ceedling/).
 
+These same Markdown files are also rendered into a bundle of HTML docs 
+locally navigable from your filesystem with your browser. The `ceedling` CLI 
+includes various options to export that local documentation bundle.
+
+The `docs/` directory of the project contains a handful of PDFs that predate
+the wide availability of better documentation options. The content of these 
+guides largely remains valuable if outdated because of changes to certain 
+features, conventions, or websites. New PDFs should not be generated. The 
+current set is preserved as an archive.
 
 *Find The Latest of This And More at [ThrowTheSwitch.org](https://throwtheswitch.org)*
