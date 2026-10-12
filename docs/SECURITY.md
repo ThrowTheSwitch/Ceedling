@@ -3,10 +3,28 @@
 This document outlines security procedures and general policies for all `ThrowTheSwitch.org`
 projects, including `Unity`, `CMock`, and `Ceedling`.
 
+  * [Supported Versions](#supported-versions)
   * [Software Bill of Materials](#software-bill-of-materials)
+  * [Automated Security Scanner False Positives](#automated-security-scanner-false-positives)
   * [Reporting a Bug](#reporting-a-bug)
   * [Disclosure Policy](#disclosure-policy)
   * [Comments on this Policy](#comments-on-this-policy)
+
+## Supported Versions
+
+For Ceedling, security fixes are made for two lines of development.
+
+| Version | Branch | Receives security fixes |
+|---|---|---|
+| Latest release | `master` | Yes |
+| Current pre-release | `next_version` | Yes |
+| Any earlier release | | No |
+
+The `master` branch contains the latest release and its bug fix patch 
+derivatives. `next_version` contains the development work for the next 
+minor or major release.
+
+If you use an earlier release, upgrade to the latest release to receive a fix.
 
 ## Software Bill of Materials
 
@@ -96,8 +114,8 @@ release process, involving the following steps:
 
   * Confirm the problem and determine the affected versions.
   * Audit code to find any potential similar problems.
-  * Prepare fixes for all releases still under maintenance. These fixes will be
-    released as fast as possible.
+  * Prepare fixes for all [supported versions](#supported-versions). These fixes
+    will be released as fast as possible.
 
 ## Comments on this Policy
 
