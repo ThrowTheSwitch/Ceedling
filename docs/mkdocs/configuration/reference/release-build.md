@@ -6,6 +6,14 @@
     In future versions of Ceedling, release-related settings presently
     organized beneath `:project` will be renamed and migrated to this section.
 
+!!! tip "Guide: Managing Release Code (PDF)"
+    The [Ceedling Managing Release Code guide][release-guide] walks through
+    setting up and customizing a release build.
+
+    Written in 2020, before Ceedling 1.0. Its concepts still apply, but some
+    configuration details may differ from this documentation, which takes
+    precedence.
+
 ## Example `:release_build` YAML
 
 ```yaml
@@ -58,5 +66,6 @@ is available in artifact paths.
 **Default**: `[]` (empty)
 
 [inline-ruby-string-expansion]: ../project-file.md#inline-ruby-string-expansion
+[release-guide]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Ceedling%20Managing%20Release%20Code.pdf
 
 <br/><br/>

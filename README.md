@@ -430,7 +430,7 @@ The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedl
 ## Ceedling docs
 
 * **_[Ceedling’s documentation site][ceedling-docs-site]_** contains everything you need to know to run Ceedling. It also references and links to the documentation of the projects, _Unity_ and _CMock_, that Ceedling weaves together into your test and release builds.
-* **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, **[Known Issues][known-issues]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a number of guides (PDFs).
+* **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, **[Known Issues][known-issues]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory.
 * The **[Plugins section][ceedling-docs-plugins]** of Ceedling’s documentation lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
 
 _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustrating project configuration option changes for new releases in the form of a Ceedling project YAML configuration file. This may be especially useful to those already familiar with the tool wanting to update to the latest and greatest as quickly as possible.

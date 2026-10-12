@@ -37,6 +37,14 @@
     techniques and embedded software practices through testing. So you too can
     take over the world.
 
+-   :material-file-document-multiple: **[Classic Guides (PDF)][pdf-guides]**
+
+    ---
+
+    [Basic Porting][porting-guide], [Managing Release Code][release-guide], and
+    [Working with IDEs][ide-guide]. Written in 2020, before Ceedling 1.0, so
+    configuration details may differ from this documentation.
+
 </div>
 
 [ceedling-issues]:       https://github.com/ThrowTheSwitch/Ceedling/issues
@@ -44,6 +52,10 @@
 [ceedling-assist]:       https://www.thingamabyte.com/ceedlingassist
 [ThingamaByte]:          https://www.thingamabyte.com/
 [thingamabyte-ceedling]: https://www.thingamabyte.com/ceedling
+[pdf-guides]:            https://github.com/ThrowTheSwitch/Ceedling/tree/master/docs
+[porting-guide]:         https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Ceedling%20Basic%20Porting.pdf
+[release-guide]:         https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Ceedling%20Managing%20Release%20Code.pdf
+[ide-guide]:             https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Ceedling%20Working%20with%20IDEs.pdf
 [drsurlys-school]:       https://www.throwtheswitch.org/dr-surlys-school
 
 <br/><br/>
