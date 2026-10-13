@@ -61,10 +61,16 @@ describe GtestlikeReport do
   end
 
   describe 'sections' do
-    it 'groups tests by file, passes before failures' do
+    it 'groups tests by file in source order' do
       report = GtestlikeReport.new( mixed, context: TEST_SYM )
 
       expect( report.sections.map(&:file) ).to eq( ['test/TestA.c', 'test/TestB.c'] )
+      expect( report.sections.first.tests.map(&:name) ).to eq( ['test_a1', 'test_a3', 'test_a2'] )
+    end
+
+    it 'groups tests by file, passes before failures, when ignored tests are left out' do
+      report = GtestlikeReport.new( mixed, context: TEST_SYM, ignored_as_skipped: false )
+
       expect( report.sections.first.tests.map(&:name) ).to eq( ['test_a1', 'test_a2', 'test_a3'] )
       expect( report.sections.first.tests.map(&:status) ).to eq( [:ok, :ok, :failed] )
     end
@@ -91,6 +97,145 @@ describe GtestlikeReport do
     it 'falls back to a boolean framing for any other message' do
       expect( GtestlikeReport.expectation('Something else') ).to eq( ['FALSE', 'TRUE'] )
       expect( GtestlikeReport.expectation(nil) ).to eq( ['FALSE', 'TRUE'] )
+    end
+  end
+
+  # A Unity ignore is a runtime decision, like GoogleTest's GTEST_SKIP(), so an ignored
+  # test reports as skipped. Without the option, ignored tests are left out entirely.
+  describe 'ignored tests' do
+    # The worked example: an all-pass file, a mixed file with an ignore, an all-ignored
+    # file, and a file with a failure
+    let(:suite) do
+      results(
+        successes: [ entry('test/TestA.c', test('a1', 1), test('a2', 2), test('a3', 3), test('a4', 4)),
+                     entry('test/TestB.c', test('b1', 1), test('b3', 9)),
+                     entry('test/TestD.c', test('d1', 1)) ],
+        failures:  [ entry('test/TestD.c', test('d2', 8, 'Expected 1 Was 2.')) ],
+        ignores:   [ entry('test/TestB.c', test('b2', 5, 'Waiting on driver rewrite')),
+                     entry('test/TestC.c', test('c1', 3), test('c2', 7, 'not ready')) ],
+        times: { 'test/TestA.c' => 0.1, 'test/TestB.c' => 0.1, 'test/TestC.c' => 0.1, 'test/TestD.c' => 0.1 }
+      )
+    end
+
+    context 'reported as skipped' do
+      let(:report) { GtestlikeReport.new( suite, context: TEST_SYM, ignored_as_skipped: true ) }
+
+      it 'counts every test and every file' do
+        expect( report.total ).to eq(11)
+        expect( report.suite_count ).to eq(4)
+        expect( report.passed ).to eq(7)
+        expect( report.skipped.length ).to eq(3)
+        expect( report.failures.length ).to eq(1)
+      end
+
+      it 'gives a file of only ignored tests its own section' do
+        expect( report.sections.map(&:file) ).to include('test/TestC.c')
+        expect( report.render ).to include( "[----------] 2 tests from test/TestC.c\n" )
+      end
+
+      it 'lists a file\'s tests in source order' do
+        section = report.sections.find { |s| s.file == 'test/TestB.c' }
+
+        expect( section.tests.map(&:name) ).to eq( ['b1', 'b2', 'b3'] )
+        expect( section.tests.map(&:status) ).to eq( [:ok, :skipped, :ok] )
+      end
+
+      it 'frames the run with every test counted' do
+        output = report.render
+
+        expect( output ).to include( '[==========] Running 11 tests from 4 test suites.' )
+        expect( output ).to include( '[==========] 11 tests from 4 test suites ran.' )
+      end
+
+      it 'prints a skipped test with its location and message' do
+        expect( report.render ).to include( <<~BLOCK )
+          [ RUN      ] test/TestB.c.b2
+          test/TestB.c(5): Skipped
+          Waiting on driver rewrite
+
+          [  SKIPPED ] test/TestB.c.b2 (0 ms)
+        BLOCK
+      end
+
+      it 'prints a skipped test without a message line when it has none' do
+        expect( report.render ).to include( <<~BLOCK )
+          [ RUN      ] test/TestC.c.c1
+          test/TestC.c(3): Skipped
+
+          [  SKIPPED ] test/TestC.c.c1 (0 ms)
+        BLOCK
+      end
+
+      it 'prints a multi-line ignore message as it arrives' do
+        report = GtestlikeReport.new(
+          results( ignores: [ entry('test/TestA.c', test('a', 4, "first line\nsecond line")) ] ),
+          context: TEST_SYM, ignored_as_skipped: true
+        )
+
+        expect( report.render ).to include( "test/TestA.c(4): Skipped\nfirst line\nsecond line\n\n[  SKIPPED ]" )
+      end
+
+      it 'summarizes passed, then skipped, then failed tests' do
+        expect( report.render ).to end_with( <<~FOOTER )
+          [  PASSED  ] 7 tests.
+          [  SKIPPED ] 3 tests, listed below:
+          [  SKIPPED ] test/TestB.c.b2
+          [  SKIPPED ] test/TestC.c.c1
+          [  SKIPPED ] test/TestC.c.c2
+          [  FAILED  ] 1 test, listed below:
+          [  FAILED  ] test/TestD.c.d2
+
+           1 FAILED TEST
+        FOOTER
+      end
+
+      it 'reports a run of only ignored tests rather than no tests executed' do
+        report = GtestlikeReport.new(
+          results( ignores: [ entry('test/TestC.c', test('c1', 3)) ] ), context: TEST_SYM, ignored_as_skipped: true
+        )
+
+        expect( report.render ).to end_with( "[  PASSED  ] 0 tests.\n[  SKIPPED ] 1 test, listed below:\n[  SKIPPED ] test/TestC.c.c1\n" )
+      end
+
+      it 'leaves the results it reads unaltered' do
+        pristine = Marshal.load( Marshal.dump( suite ) )
+
+        report.render
+
+        expect( suite ).to eq(pristine)
+      end
+
+      it 'prints no skipped summary when nothing was ignored' do
+        expect( GtestlikeReport.new( mixed, context: TEST_SYM, ignored_as_skipped: true ).render ).not_to include('SKIPPED')
+      end
+    end
+
+    context 'left out' do
+      let(:report) { GtestlikeReport.new( suite, context: TEST_SYM, ignored_as_skipped: false ) }
+
+      it 'counts only passed and failed tests and the files holding them' do
+        expect( report.total ).to eq(8)
+        expect( report.suite_count ).to eq(3)
+        expect( report.passed ).to eq(7)
+        expect( report.skipped ).to be_empty
+      end
+
+      it 'omits a file of only ignored tests' do
+        expect( report.render ).not_to include('TestC.c')
+        expect( report.render ).to include( "[----------] 2 tests from test/TestB.c\n" )
+      end
+
+      it 'lists a file\'s passes before its failures' do
+        expect( report.sections.last.tests.map(&:name) ).to eq( ['d1', 'd2'] )
+      end
+
+      it 'never mentions an ignored test' do
+        output = report.render
+
+        expect( output ).not_to include('SKIPPED')
+        expect( output ).not_to include('b2')
+        expect( output ).to include( '[==========] Running 8 tests from 3 test suites.' )
+      end
     end
   end
 
@@ -122,13 +267,13 @@ describe GtestlikeReport do
         [----------] 3 tests from test/TestA.c
         [ RUN      ] test/TestA.c.test_a1
         [       OK ] test/TestA.c.test_a1 (0 ms)
-        [ RUN      ] test/TestA.c.test_a2
-        [       OK ] test/TestA.c.test_a2 (0 ms)
         [ RUN      ] test/TestA.c.test_a3
         test/TestA.c(7): error: Expected 1 Was 2.
          Actual:   2
          Expected: 1
         [  FAILED  ] test/TestA.c.test_a3 (0 ms)
+        [ RUN      ] test/TestA.c.test_a2
+        [       OK ] test/TestA.c.test_a2 (0 ms)
         [----------] 3 tests from test/TestA.c (13 ms total)
 
         [----------] 1 test from test/TestB.c

@@ -67,6 +67,29 @@ TEST_ADDER_C = <<~C
   #endif // TEST
 C
 
+# A test file whose every test is ignored, one with a message and one without
+TEST_ADDER_PENDING_C = <<~C
+  #ifdef TEST
+
+  #include "unity.h"
+  #include "adder.h"
+
+  void setUp(void) {}
+  void tearDown(void) {}
+
+  void test_adder_carries(void)
+  {
+      TEST_IGNORE_MESSAGE("Waiting on a carry flag");
+  }
+
+  void test_adder_overflows(void)
+  {
+      TEST_IGNORE();
+  }
+
+  #endif // TEST
+C
+
 # An inline function makes a header mockable only through a shadow header, which is
 # what sends a source beside it to an isolated copy
 GPIO_HEADER_C = <<~C
@@ -201,15 +224,44 @@ ceedling_system_tests do
         end
       end
 
-      # GTest has no ignored outcome, so the ignored test is left out of every count
-      it "frames the run with GTest's header and footer counts" do
+      # A Unity ignore reports as a GTest skipped test by default, counted in the run
+      it "frames the run with GTest's header and footer counts, the ignored test skipped" do
         in_project do
           output = @c.ceedling_build_exec("test:all")
 
-          expect(output).to include('[==========] Running 2 tests from 1 test suite.')
+          expect(output).to include('[==========] Running 3 tests from 1 test suite.')
           expect(output).to include('[       OK ] test/test_adder.c.test_adder_adds')
-          expect(output).to include('[  PASSED  ] 1 test.')
+          expect(output).to match(/^test\/test_adder\.c\(\d+\): Skipped$/)
+          expect(output).to include('[  SKIPPED ] test/test_adder.c.test_adder_waits (0 ms)')
+          expect(output).to include("[  PASSED  ] 1 test.\n[  SKIPPED ] 1 test, listed below:\n")
           expect(output).to include('[  FAILED  ] 1 test, listed below:')
+        end
+      end
+
+      it "gives a test file of only ignored tests its own suite" do
+        in_project do
+          File.write('test/test_adder_pending.c', TEST_ADDER_PENDING_C)
+
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(output).to include('[==========] Running 5 tests from 2 test suites.')
+          expect(output).to include('[----------] 2 tests from test/test_adder_pending.c')
+          expect(output).to match(/^Waiting on a carry flag$/)
+          expect(output).to include('[  SKIPPED ] 3 tests, listed below:')
+        end
+      end
+
+      # The opt-out leaves ignored tests out of the report and its counts
+      it "leaves ignored tests out when configured to" do
+        in_project do
+          @c.merge_project_yml_for_test( :report_tests_gtestlike_stdout => { :ignored_as_skipped => false } )
+
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(output).to include('[==========] Running 2 tests from 1 test suite.')
+          expect(output).not_to include('[ RUN      ] test/test_adder.c.test_adder_waits')
+          expect(output).not_to include('[  SKIPPED ]')
+          expect(output).to include('[  PASSED  ] 1 test.')
         end
       end
     end
