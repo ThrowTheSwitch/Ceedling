@@ -36,19 +36,35 @@ inject assembly code into the build of a test executable:
 
 ## `:preprocess_force_fallback`
 
-This option is primarily used to enable certain Ceedling self-tests,
-but it may be valuable is a tool chain’s preprocessor somehow falsely
-indicates that directives-only preprocessing is available.
+!!! tip
+    See [test preprocessing conventions](../../testing-guide/conventions.md#test-file-preprocessing)
+    to fully understand how this setting relates to your Ceedling 
+    feature selection and overall test build.
+
+This setting forces Ceedling to use text-scanning fallback preprocessing 
+mechanisms regardless of your toolchain’s preprocessor capabilities.
+
+Forcing fallback preprocessing is useful in a handful of scenarios:
+
+1. As a much faster alternative to full preprocessing in test projects
+   with relatively simple conditional compilation preprocessing needs
+   (e.g. `#ifdef`). Ceedling’s advanced features require preprocessing;
+   forcing fallback preprocessing can be a shortcut for faster test
+   builds for some projects.
+2. Overriding Ceedling’s probe of your toolchain’s preprocessor 
+   features in the event of a false positive.
+3. Forcing the fallback mode for self-tests of the fallback mode.
 
 At startup, if test preprocessing is enabled, Ceedling probes the 
-C preprocessor tool for indications that it support directives-only
-mode. If it does not, Ceedling uses less capable text-only scanning
-of C files when directives-only C preprocessing is preferred. Some 
-toolchains, particularly older variations, may not support this mode.
+your toolchain’s C preprocessor tool for indications that it supports
+directives-only mode. Some toolchains, particularly older variations, 
+may not support this mode. If directives-only mode is not available,
+Ceedling uses less capable text-only scanning of C files instead 
+attempting to accomplish as much as possible for a given test build.
 
-This flag forces Ceedling to use text-scanning fallback mechanisms
-regardless of preprocessor capabilities (the start up probe is 
-entirely skipped.)
+When `:preprocess_force_fallback` is enabled, the start up probe of 
+your toolchain’s preprocessor is entirely skipped, and Ceedling 
+uses its internal text-scanning preprocessing instead.
 
 **Default**: FALSE
 
