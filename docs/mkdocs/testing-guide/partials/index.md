@@ -24,6 +24,12 @@ Partials are useful when you need to test:
     example available within Ceedling for a working example project 
     demonstrating Partials in action.
 
+!!! warning "Partials test suite build time"
+    Partials require multiple runs of preprocessing and complex code scanning
+    across each C file within a partialized module. This can drive up test 
+    suite build time noticeably — particularly if you are migrating from 
+    a Ceedling test build with no preprocessing enabled to adopting Partials.
+
 ---
 
 <div class="grid cards" markdown>
