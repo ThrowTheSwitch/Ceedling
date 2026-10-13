@@ -106,6 +106,48 @@ describe "report_tests_gtestlike_stdout template" do
     end
   end
 
+  # A file's section lists its passes before its failures, whatever their source lines
+  it 'lists a file\'s passing tests before its failing tests' do
+    results = {
+      times: { 'test/TestFoo.c' => 0.5 },
+      counts: { total: 2, passed: 1, failed: 1, ignored: 0, stdout: 0 },
+      successes: [ { source: { file: 'test/TestFoo.c' }, collection: [ { test: 'test_late', line: 50, message: '' } ] } ],
+      failures:  [ { source: { file: 'test/TestFoo.c' }, collection: [ { test: 'test_early', line: 5, message: 'Expected 1 Was 2.' } ] } ],
+      ignores: []
+    }
+
+    output = render(results)
+
+    expect(output.index('test_late')).to be < output.index('test_early')
+  end
+
+  # Sections follow each file's first appearance, successes before failures
+  it 'orders file sections by first appearance among successes, then failures' do
+    results = {
+      times: { 'test/TestA.c' => 0.1, 'test/TestB.c' => 0.2 },
+      counts: { total: 2, passed: 1, failed: 1, ignored: 0, stdout: 0 },
+      successes: [ { source: { file: 'test/TestB.c' }, collection: [ { test: 'test_b', line: 5, message: '' } ] } ],
+      failures:  [ { source: { file: 'test/TestA.c' }, collection: [ { test: 'test_a', line: 5, message: 'Expected 1 Was 2.' } ] } ],
+      ignores: []
+    }
+
+    output = render(results)
+
+    expect(output.index('tests from test/TestB.c')).to be < output.index('tests from test/TestA.c')
+  end
+
+  # Durations arrive in seconds and print as whole milliseconds, rounded half up
+  it 'rounds a file\'s duration to whole milliseconds' do
+    results = {
+      times: { 'test/TestFoo.c' => 0.0125 },
+      counts: { total: 1, passed: 1, failed: 0, ignored: 0, stdout: 0 },
+      successes: [ { source: { file: 'test/TestFoo.c' }, collection: [ { test: 'test_a', line: 5, message: '' } ] } ],
+      failures: [], ignores: []
+    }
+
+    expect(render(results)).to include('tests from test/TestFoo.c (13 ms total)')
+  end
+
   it 'produces no per-file section at all for a file whose only test is ignored' do
     results = {
       times: { 'test/TestOnlyIgnored.c' => 0.1 },
