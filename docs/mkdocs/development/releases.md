@@ -7,8 +7,12 @@ release.
 
 ## Branches
 
-`master` holds the latest release and subsequent patch releases. `next_version` 
-holds the next minor or major release.
+* `master` holds the latest release and subsequent patch releases.
+* `next_version` holds the next minor or major release.
+
+Both branches are protected. Changes reach them only through pull requests, and
+only a maintainer merges a pull request, once CI passes. Direct pushes,
+force-pushes, and branch deletion are blocked.
 
 ### Patch work
 
