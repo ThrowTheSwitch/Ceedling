@@ -206,7 +206,7 @@ module GcovCommonTestCases
           expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
-        if @gcov_reports.include? :modulegenerator
+        if @gcov_reports.include? :reportgenerator
           expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
@@ -460,7 +460,7 @@ module GcovCommonTestCases
           expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
-        if @gcov_reports.include? :modulegenerator
+        if @gcov_reports.include? :reportgenerator
           expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
@@ -495,7 +495,7 @@ module GcovCommonTestCases
           expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
-        if @gcov_reports.include? :modulegenerator
+        if @gcov_reports.include? :reportgenerator
           expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
@@ -533,7 +533,7 @@ module GcovCommonTestCases
           expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
-        if @gcov_reports.include? :modulegenerator
+        if @gcov_reports.include? :reportgenerator
           expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
