@@ -188,11 +188,7 @@ class GcovrReportinator < GcovReportinator
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
     if report_enabled?(gcovr_opts, ReportTypes::COBERTURA)
-      # Determine the Cobertura XML report file name.
-      artifacts_file_cobertura = GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA
-      if !(gcovr_opts[:cobertura_artifact_filename].nil?)
-        artifacts_file_cobertura = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:cobertura_artifact_filename])
-      end
+      artifacts_file_cobertura = artifact_file(gcovr_opts, :cobertura_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA)
 
       args += "--xml-pretty " if gcovr_opts[:cobertura_pretty] && !config_file_in_use?(gcovr_opts)
       args += "--xml #{use_output_option ? "--output " : ""} \"#{artifacts_file_cobertura}\" "
@@ -208,11 +204,7 @@ class GcovrReportinator < GcovReportinator
 
     # Determine if the gcovr SonarQube XML report is enabled. Defaults to disabled.
     if report_enabled?(gcovr_opts, ReportTypes::SONARQUBE)
-      # Determine the SonarQube XML report file name.
-      artifacts_file_sonarqube = GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE
-      if !(gcovr_opts[:sonarqube_artifact_filename].nil?)
-        artifacts_file_sonarqube = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:sonarqube_artifact_filename])
-      end
+      artifacts_file_sonarqube = artifact_file(gcovr_opts, :sonarqube_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE)
 
       args += "--sonarqube #{use_output_option ? "--output " : ""} \"#{artifacts_file_sonarqube}\" "
     end
@@ -227,11 +219,7 @@ class GcovrReportinator < GcovReportinator
 
     # Determine if the gcovr JSON report is enabled. Defaults to disabled.
     if report_enabled?( gcovr_opts, ReportTypes::JSON )
-      # Determine the JSON report file name.
-      artifacts_file_json = GCOV_GCOVR_ARTIFACTS_FILE_JSON
-      if !(gcovr_opts[:json_artifact_filename].nil?)
-        artifacts_file_json = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:json_artifact_filename])
-      end
+      artifacts_file_json = artifact_file(gcovr_opts, :json_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_JSON)
 
       args += "--json-pretty " if gcovr_opts[:json_pretty] && !config_file_in_use?(gcovr_opts)
       # Note: In gcovr 4.2, the JSON report is output only when the --output option is specified.
@@ -252,11 +240,7 @@ class GcovrReportinator < GcovReportinator
                    report_enabled?(gcovr_opts, ReportTypes::HTML_DETAILED)
 
     if html_enabled
-      # Determine the HTML report file name.
-      artifacts_file_html = GCOV_GCOVR_ARTIFACTS_FILE_HTML
-      if !(gcovr_opts[:html_artifact_filename].nil?)
-        artifacts_file_html = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:html_artifact_filename])
-      end
+      artifacts_file_html = artifact_file(gcovr_opts, :html_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_HTML)
 
       is_html_report_type_detailed = (gcovr_opts[:gcov_html_report_type].is_a? String) && (gcovr_opts[:gcov_html_report_type].casecmp("detailed") == 0)
 
@@ -288,9 +272,8 @@ class GcovrReportinator < GcovReportinator
     args_text = ""
     message_text = "Generating a text coverage report"
 
-    filename = gcovr_opts[:text_artifact_filename] || GCOV_GCOVR_DEFAULT_TEXT_ARTIFACT_FILENAME
-
-    artifacts_file_txt = File.join(GCOV_GCOVR_ARTIFACTS_PATH, filename)
+    default_txt = File.join(GCOV_GCOVR_ARTIFACTS_PATH, GCOV_GCOVR_DEFAULT_TEXT_ARTIFACT_FILENAME)
+    artifacts_file_txt = artifact_file(gcovr_opts, :text_artifact_filename, default_txt)
     args_text += "--output \"#{artifacts_file_txt}\" "
     message_text += " in '#{GCOV_GCOVR_ARTIFACTS_PATH}'"
 
@@ -372,6 +355,15 @@ class GcovrReportinator < GcovReportinator
     :cobertura_pretty, :json_pretty,
     :html_title, :html_absolute_paths, :html_encoding, :html_medium_threshold, :html_high_threshold
   ].freeze
+
+  # A report writes to its default artifact file unless its :*_artifact_filename option names
+  # another. Either way the file lands beneath the gcovr artifacts path.
+  def artifact_file(gcovr_opts, key, default)
+    filename = gcovr_opts[key]
+
+    return filename.nil? ? default : File.join(GCOV_GCOVR_ARTIFACTS_PATH, filename)
+  end
+
 
   # True when a gcovr configuration file is in use, meaning Ceedling must defer to it and
   # withhold any option that would silently override its settings.

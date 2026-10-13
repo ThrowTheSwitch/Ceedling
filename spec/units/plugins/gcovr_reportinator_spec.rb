@@ -441,6 +441,49 @@ describe GcovrReportinator do
       expect(reportinator).to receive(:run_gcovr).once
       reportinator.send(:generate_reports_modern, { gcov_reports: ['HtmlBasic'] }, '--root x ', false)
     end
+
+    # gcovr 4.2 only honors --html as the last report argument, so every other format precedes it
+    it 'places every report format\'s arguments ahead of the HTML arguments' do
+      captured = nil
+      allow(reportinator).to receive(:run_gcovr) { |_opts, args, _boom| captured = args }
+
+      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON] }, '--root x ', false)
+
+      positions = ['--xml ', '--sonarqube ', '--json ', '--html '].map { |flag| captured.index(flag) }
+      expect( positions ).to eq( positions.sort )
+      expect( captured.index('--html ') ).to eq( positions.max )
+    end
+
+    it 'logs one progress line naming each enabled report format' do
+      allow(reportinator).to receive(:run_gcovr)
+      allow(reportinator_obj).to receive(:generate_progress) { |msg| msg }
+
+      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON] }, '--root x ', false)
+
+      ['Cobertura XML', 'SonarQube', 'JSON', 'HTML'].each do |name|
+        expect(loginator).to have_received(:log).with( /Generating #{name} coverage report/, Verbosity::NORMAL, LogLabels::NOTICE )
+      end
+    end
+  end
+
+  describe '#generate_text_report' do
+    let(:reportinator) { build_reportinator({}) }
+
+    def text_args(gcovr_opts)
+      captured = nil
+      allow(reportinator).to receive(:run_gcovr) { |_opts, args, _boom| captured = args }
+      reportinator.send(:generate_text_report, gcovr_opts, '', false)
+
+      return captured
+    end
+
+    it 'writes to the default text artifact under the gcovr artifacts path' do
+      expect( text_args( {} ) ).to include( File.join(GCOV_GCOVR_ARTIFACTS_PATH, GCOV_GCOVR_DEFAULT_TEXT_ARTIFACT_FILENAME) )
+    end
+
+    it 'joins a custom filename under the gcovr artifacts path' do
+      expect( text_args( { text_artifact_filename: 'Custom.txt' } ) ).to include( File.join(GCOV_GCOVR_ARTIFACTS_PATH, 'Custom.txt') )
+    end
   end
 
   describe '#generate_reports_legacy' do
