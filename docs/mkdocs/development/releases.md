@@ -7,8 +7,8 @@ release.
 
 ## Branches
 
-`master` holds the latest patch release. `next_version` holds the next minor or
-major release.
+`master` holds the latest release and subsequent patch releases. `next_version` 
+holds the next minor or major release.
 
 ### Patch work
 
