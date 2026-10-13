@@ -11,6 +11,11 @@ require 'ceedling/reportinator'
 require 'ceedling/plugins/plugin_reportinator'
 require 'ceedling/templateinator'
 require 'template_render_cases'
+require 'ceedling/plugins/plugin'
+
+$: << File.expand_path('../../../../plugins/report_tests_gtestlike_stdout/lib', __FILE__)
+$: << File.expand_path('../../../../lib/ceedling/plugins', __FILE__)
+require 'report_tests_gtestlike_stdout'
 
 # Renders every real report template through the real PluginReportinator pipeline
 # and compares byte for byte against output captured from ERB 2.2.0 before ERB was
@@ -54,7 +59,10 @@ describe 'Report template rendering against captured ERB output' do
         templateinator: Templateinator.new
       }
     )
-    reportinator_plugin.set_system_objects({ plugin_reportinator: reportinator_plugin })
+    # The gtest-style template builds its report through its plugin object
+    reportinator_plugin.set_system_objects(
+      { plugin_reportinator: reportinator_plugin, report_tests_gtestlike_stdout: ReportTestsGtestlikeStdout.allocate }
+    )
     reportinator_plugin.run_report( template, hash )
 
     return captured

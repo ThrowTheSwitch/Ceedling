@@ -6,7 +6,13 @@
 # =========================================================================
 
 require 'report_tests_stdout_plugin'
+require 'gtestlike_report'
 
+# Parent class loads template from plugin assets directory and runs the reporting hooks
 class ReportTestsGtestlikeStdout < ReportTestsStdoutPlugin
-  # Parent class loads template from plugin assets directory
+
+  # Renders the GTest console report for a results hash. The plugin's template calls this
+  # through its system object, so every context rendering results here gets the same report.
+  def gtest_report(hash) = GtestlikeReport.new( hash[:results], context: hash[:context] ).render
+
 end

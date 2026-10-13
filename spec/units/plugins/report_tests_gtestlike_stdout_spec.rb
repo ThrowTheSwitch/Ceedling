@@ -10,6 +10,11 @@ require 'ceedling/constants'
 require 'ceedling/reportinator'
 require 'ceedling/plugins/plugin_reportinator'
 require 'ceedling/templateinator'
+require 'ceedling/plugins/plugin'
+
+$: << File.expand_path('../../../../plugins/report_tests_gtestlike_stdout/lib', __FILE__)
+$: << File.expand_path('../../../../lib/ceedling/plugins', __FILE__)
+require 'report_tests_gtestlike_stdout'
 
 describe "report_tests_gtestlike_stdout template" do
   before(:each) do
@@ -23,7 +28,9 @@ describe "report_tests_gtestlike_stdout template" do
         templateinator: Templateinator.new
       }
     )
-    @plugin_reportinator.set_system_objects({ plugin_reportinator: @plugin_reportinator })
+    @plugin_reportinator.set_system_objects(
+      { plugin_reportinator: @plugin_reportinator, report_tests_gtestlike_stdout: ReportTestsGtestlikeStdout.allocate }
+    )
 
     template = File.read(File.expand_path('../../../../plugins/report_tests_gtestlike_stdout/assets/test_results.template', __FILE__))
     @plugin_reportinator.register_test_results_template(template)
