@@ -2,7 +2,7 @@
 
 👍🎉 _First off, thanks for taking the time to contribute!_ 🎉👍
 
-The following is a set of guidelines for contributing to any of ThrowTheSwitch.org's projects or the website itself, hosted at throwtheswitch.org or ThrowTheSwitch's organization on GitHub. These are mostly guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request.
+The following is a set of guidelines for contributing to any of ThrowTheSwitch.org’s projects or the website itself, hosted at throwtheswitch.org or ThrowTheSwitch’s organization on GitHub. These are mostly guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request.
 
 ### Table Of Contents
 
@@ -61,6 +61,8 @@ In short, since you are most likely a developer, **provide a ticket that you wou
 - **Prefer using [reactions](https://github.blog/2016-03-10-add-reactions-to-pull-requests-issues-and-comments/)**, not comments, if you simply want to "+1" an existing issue.
 
 - **Fully complete the provided issue template.** The bug report template requests all the information we need to quickly and efficiently address your issue. Be clear, concise, and descriptive. Provide as much information as you can, including steps to reproduce, stack traces, compiler errors, library versions, OS versions, and screenshots (if applicable).
+
+- **[Report security vulnerabilities privately](https://github.com/ThrowTheSwitch/Ceedling/security/advisories/new).** Do not open a public issue for a vulnerability. See the [Security Policy](SECURITY.md).
 
 - **Use [GitHub-flavored Markdown](https://help.github.com/en/github/writing-on-github/basic-writing-and-formatting-syntax).** Especially put code blocks and console outputs in backticks (```). This improves readability.
 
@@ -157,7 +159,7 @@ See also: #456, #789
 
 ## :white_check_mark: Pull Request Checklist
 
-Not all Pull Requests require these things, but [here's a great list](CeedlingPullRequestChecklist.md) of things to check to see if it makes sense for your situation:
+Not all Pull Requests require these things, but [here’s a great list](CeedlingPullRequestChecklist.md) of things to check to see if it makes sense for your situation.
 
 ## :heart: Who Loves Emoji?
 
