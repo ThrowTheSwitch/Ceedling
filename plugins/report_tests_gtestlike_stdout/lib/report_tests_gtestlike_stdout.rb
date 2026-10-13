@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/exceptions'
 require 'report_tests_stdout_plugin'
 require 'gtestlike_report'
 
@@ -15,8 +16,15 @@ class ReportTestsGtestlikeStdout < ReportTestsStdoutPlugin
   def setup
     super
 
-    # Whether Unity ignored tests report as GTest skipped tests or are left out
+    # Whether Unity ignored tests report as GTest skipped tests or are left out. Only a
+    # true boolean is accepted, since a quoted 'false' would otherwise read as true.
     @ignored_as_skipped = @ceedling[:configurator].report_tests_gtestlike_stdout_ignored_as_skipped
+
+    return if [true, false].include?( @ignored_as_skipped )
+
+    raise CeedlingException.new(
+      ":report_tests_gtestlike_stdout ↳ :ignored_as_skipped must be TRUE or FALSE, not nil."
+    )
   end
 
   # Renders the GTest console report for a results hash. The plugin's template calls this

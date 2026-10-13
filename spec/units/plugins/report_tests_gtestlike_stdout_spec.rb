@@ -148,11 +148,11 @@ describe "report_tests_gtestlike_stdout template" do
     expect(output.index('test_early')).to be < output.index('test_late')
   end
 
-  # With ignored tests left out, a file's section lists its passes before its failures
+  # Source order holds whether or not ignored tests are reported
   context 'left out' do
     let(:ignored_as_skipped) { false }
 
-    it 'lists a file\'s passing tests before its failing tests' do
+    it 'still lists a file\'s tests in source order' do
       results = {
         times: { 'test/TestFoo.c' => 0.5 },
         counts: { total: 2, passed: 1, failed: 1, ignored: 0, stdout: 0 },
@@ -163,7 +163,7 @@ describe "report_tests_gtestlike_stdout template" do
 
       output = render(results)
 
-      expect(output.index('test_late')).to be < output.index('test_early')
+      expect(output.index('test_early')).to be < output.index('test_late')
     end
   end
 
@@ -252,6 +252,11 @@ describe 'ReportTestsGtestlikeStdout' do
 
   it 'leaves ignored tests out when configured not to' do
     expect( setup_plugin( false ).gtest_report( { context: TEST_SYM, results: results } ) ).not_to include('test_ignored')
+  end
+
+  # A quoted 'false' would otherwise read as true and report ignored tests anyway
+  it 'rejects a setting that is not a boolean' do
+    expect { setup_plugin( 'false' ) }.to raise_error( CeedlingException, /:report_tests_gtestlike_stdout ↳ :ignored_as_skipped/ )
   end
 
   # The plugin's whole difference from its siblings is the template asset it ships

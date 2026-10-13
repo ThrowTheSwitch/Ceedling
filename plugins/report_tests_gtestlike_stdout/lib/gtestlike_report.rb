@@ -45,7 +45,7 @@ class GtestlikeReport
   # Failures and skips are listed in suite order, as GoogleTest's summary walks its suites
   def initialize(results, context:, ignored_as_skipped: true)
     @context  = context
-    @sections = build_sections( results[:times], gather( results, ignored_as_skipped ), in_source_order: ignored_as_skipped )
+    @sections = build_sections( results[:times], gather( results, ignored_as_skipped ) )
     @failures, @skipped = %i[failed skipped].map { |status| all_tests.select { |test| test.status == status } }
     @total_ms = to_ms( results.fetch( :total_time, 0 ) )
   end
@@ -94,13 +94,13 @@ class GtestlikeReport
   end
 
   # Sections keep each file's first appearance in order. A file's tests arrive grouped
-  # by outcome, so source order sorts them by line, with arrival order breaking ties.
-  # Durations arrive in seconds per file.
-  def build_sections(times, tests, in_source_order:)
+  # by outcome, so each section sorts them into source order by line. Arrival order
+  # breaks ties. Durations arrive in seconds per file.
+  def build_sections(times, tests)
     return tests.group_by( &:file ).map do |file, file_tests|
-      file_tests = file_tests.each_with_index.sort_by { |test, i| [test.line.to_i, i] }.map( &:first ) if in_source_order
+      in_order = file_tests.each_with_index.sort_by { |test, i| [test.line.to_i, i] }.map( &:first )
 
-      Section.new( file: file, tests: file_tests, duration_ms: to_ms( times.fetch( file, 0 ) ) )
+      Section.new( file: file, tests: in_order, duration_ms: to_ms( times.fetch( file, 0 ) ) )
     end
   end
 

@@ -68,11 +68,11 @@ describe GtestlikeReport do
       expect( report.sections.first.tests.map(&:name) ).to eq( ['test_a1', 'test_a3', 'test_a2'] )
     end
 
-    it 'groups tests by file, passes before failures, when ignored tests are left out' do
+    it 'groups tests by file in source order when ignored tests are left out' do
       report = GtestlikeReport.new( mixed, context: TEST_SYM, ignored_as_skipped: false )
 
-      expect( report.sections.first.tests.map(&:name) ).to eq( ['test_a1', 'test_a2', 'test_a3'] )
-      expect( report.sections.first.tests.map(&:status) ).to eq( [:ok, :ok, :failed] )
+      expect( report.sections.first.tests.map(&:name) ).to eq( ['test_a1', 'test_a3', 'test_a2'] )
+      expect( report.sections.first.tests.map(&:status) ).to eq( [:ok, :failed, :ok] )
     end
 
     it 'rounds each file\'s duration to whole milliseconds' do
@@ -225,8 +225,10 @@ describe GtestlikeReport do
         expect( report.render ).to include( "[----------] 2 tests from test/TestB.c\n" )
       end
 
-      it 'lists a file\'s passes before its failures' do
-        expect( report.sections.last.tests.map(&:name) ).to eq( ['d1', 'd2'] )
+      it 'lists a file\'s remaining tests in source order' do
+        section = report.sections.find { |s| s.file == 'test/TestB.c' }
+
+        expect( section.tests.map(&:name) ).to eq( ['b1', 'b3'] )
       end
 
       it 'never mentions an ignored test' do
