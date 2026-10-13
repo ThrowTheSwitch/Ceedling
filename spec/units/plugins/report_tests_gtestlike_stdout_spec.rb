@@ -59,11 +59,11 @@ describe "report_tests_gtestlike_stdout template" do
   it 'lists every passed and failed test, with correct header/footer counts, when there are no ignores at all' do
     output = render(pass_fail_only)
 
-    expect(output).to include('Running 2 tests from 1 test cases.')
+    expect(output).to include('Running 2 tests from 1 test suite.')
     expect(output).to include('[       OK ] test/TestFoo.c.test_a (0 ms)')
     expect(output).to include('[  FAILED  ] test/TestFoo.c.test_b (0 ms)')
-    expect(output).to include('[  PASSED  ] 1 tests.')
-    expect(output).to include('[  FAILED  ] 1 tests, listed below:')
+    expect(output).to include('[  PASSED  ] 1 test.')
+    expect(output).to include('[  FAILED  ] 1 test, listed below:')
   end
 
   # Every reporting plugin receives the same results, so rendering must not alter them
@@ -103,13 +103,13 @@ describe "report_tests_gtestlike_stdout template" do
 
     it "reports the header total as passed+failed, not counts[:total] which includes the ignore" do
       output = render(results)
-      expect(output).to include('Running 2 tests from 1 test cases.')
+      expect(output).to include('Running 2 tests from 1 test suite.')
     end
 
     it 'still reports the real passed/failed footer counts, unaffected by the ignore' do
       output = render(results)
-      expect(output).to include('[  PASSED  ] 1 tests.')
-      expect(output).to include('[  FAILED  ] 1 tests, listed below:')
+      expect(output).to include('[  PASSED  ] 1 test.')
+      expect(output).to include('[  FAILED  ] 1 test, listed below:')
     end
   end
 
@@ -140,7 +140,7 @@ describe "report_tests_gtestlike_stdout template" do
 
     output = render(results)
 
-    expect(output.index('tests from test/TestB.c')).to be < output.index('tests from test/TestA.c')
+    expect(output.index('from test/TestB.c')).to be < output.index('from test/TestA.c')
   end
 
   # Durations arrive in seconds and print as whole milliseconds, rounded half up
@@ -152,7 +152,7 @@ describe "report_tests_gtestlike_stdout template" do
       failures: [], ignores: []
     }
 
-    expect(render(results)).to include('tests from test/TestFoo.c (13 ms total)')
+    expect(render(results)).to include('test from test/TestFoo.c (13 ms total)')
   end
 
   it 'produces no per-file section at all for a file whose only test is ignored' do
@@ -171,13 +171,6 @@ describe "report_tests_gtestlike_stdout template" do
 end
 
 describe 'ReportTestsGtestlikeStdout' do
-  before(:all) do
-    require 'ceedling/plugins/plugin'
-    $: << File.expand_path('../../../../plugins/report_tests_gtestlike_stdout/lib', __FILE__)
-    $: << File.expand_path('../../../../lib/ceedling/plugins', __FILE__)
-    require 'report_tests_gtestlike_stdout'
-  end
-
   # The plugin's whole difference from its siblings is the template asset it ships
   it 'reports with the template in its own assets directory' do
     file_wrapper = double('file_wrapper')

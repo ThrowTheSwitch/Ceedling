@@ -206,10 +206,10 @@ ceedling_system_tests do
         in_project do
           output = @c.ceedling_build_exec("test:all")
 
-          expect(output).to include('[==========] Running 2 tests from 1 test cases.')
+          expect(output).to include('[==========] Running 2 tests from 1 test suite.')
           expect(output).to include('[       OK ] test/test_adder.c.test_adder_adds')
-          expect(output).to include('[  PASSED  ] 1 tests.')
-          expect(output).to include('[  FAILED  ] 1 tests, listed below:')
+          expect(output).to include('[  PASSED  ] 1 test.')
+          expect(output).to include('[  FAILED  ] 1 test, listed below:')
         end
       end
     end

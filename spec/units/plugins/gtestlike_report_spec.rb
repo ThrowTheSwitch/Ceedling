@@ -56,7 +56,7 @@ describe GtestlikeReport do
     it 'lists failures in the order the results carry them' do
       report = GtestlikeReport.new( mixed, context: TEST_SYM )
 
-      expect( report.failures.map { |t| "#{t.file}.#{t.name}" } ).to eq( ['test/TestA.c.test_a3', 'test/TestB.c.test_b1'] )
+      expect( report.failures.map( &:full_name ) ).to eq( ['test/TestA.c.test_a3', 'test/TestB.c.test_b1'] )
     end
   end
 
@@ -103,11 +103,21 @@ describe GtestlikeReport do
     expect( mixed ).to eq(pristine)
   end
 
+  describe '.count' do
+    # GoogleTest's FormatCountableNoun: singular for exactly one, plural otherwise
+    it 'uses the singular noun for exactly one and the plural otherwise' do
+      expect( GtestlikeReport.count( 0, 'test' ) ).to eq('0 tests')
+      expect( GtestlikeReport.count( 1, 'test' ) ).to eq('1 test')
+      expect( GtestlikeReport.count( 2, 'test suite' ) ).to eq('2 test suites')
+    end
+  end
+
+  # Expectations follow GoogleTest's own console output (gtest.cc, PrettyUnitTestResultPrinter)
   describe '#render' do
     it 'prints the full report' do
       expected = <<~REPORT
 
-        [==========] Running 4 tests from 2 test cases.
+        [==========] Running 4 tests from 2 test suites.
         [----------] Global test environment set-up.
         [----------] 3 tests from test/TestA.c
         [ RUN      ] test/TestA.c.test_a1
@@ -120,16 +130,17 @@ describe GtestlikeReport do
          Expected: 1
         [  FAILED  ] test/TestA.c.test_a3 (0 ms)
         [----------] 3 tests from test/TestA.c (13 ms total)
-        [----------] 1 tests from test/TestB.c
+
+        [----------] 1 test from test/TestB.c
         [ RUN      ] test/TestB.c.test_b1
         test/TestB.c(3): error: Something else
          Actual:   FALSE
          Expected: TRUE
         [  FAILED  ] test/TestB.c.test_b1 (0 ms)
-        [----------] 1 tests from test/TestB.c (500 ms total)
+        [----------] 1 test from test/TestB.c (500 ms total)
 
-        [----------] Global test environment tear-down.
-        [==========] 4 tests from 2 test cases ran.
+        [----------] Global test environment tear-down
+        [==========] 4 tests from 2 test suites ran. (513 ms total)
         [  PASSED  ] 2 tests.
         [  FAILED  ] 2 tests, listed below:
         [  FAILED  ] test/TestA.c.test_a3
@@ -141,6 +152,49 @@ describe GtestlikeReport do
       expect( GtestlikeReport.new( mixed, context: TEST_SYM ).render ).to eq(expected)
     end
 
+    it 'names a single failure in the singular' do
+      report = GtestlikeReport.new(
+        results( failures: [ entry('test/TestA.c', test('test_a', 5, 'Expected 1 Was 2.')) ], times: { 'test/TestA.c' => 0.001 } ),
+        context: TEST_SYM
+      )
+
+      expect( report.render ).to include( "[  PASSED  ] 0 tests.\n[  FAILED  ] 1 test, listed below:\n" )
+      expect( report.render ).to end_with( "\n 1 FAILED TEST\n" )
+    end
+
+    # GoogleTest prints its failure list and trailer only when a test failed
+    it 'prints no failure summary when every test passes' do
+      expected = <<~REPORT
+
+        [==========] Running 1 test from 1 test suite.
+        [----------] Global test environment set-up.
+        [----------] 1 test from test/TestA.c
+        [ RUN      ] test/TestA.c.test_a
+        [       OK ] test/TestA.c.test_a (0 ms)
+        [----------] 1 test from test/TestA.c (2 ms total)
+
+        [----------] Global test environment tear-down
+        [==========] 1 test from 1 test suite ran. (2 ms total)
+        [  PASSED  ] 1 test.
+      REPORT
+
+      report = GtestlikeReport.new( results( successes: [ entry('test/TestA.c', test('test_a', 5)) ], times: { 'test/TestA.c' => 0.002 } ), context: TEST_SYM )
+
+      expect( report.render ).to eq(expected)
+    end
+
+    it 'prints a failure without a message on a line of its own' do
+      report = GtestlikeReport.new( results( failures: [ entry('test/TestA.c', test('test_a', 5)) ] ), context: TEST_SYM )
+
+      expect( report.render ).to include( "test/TestA.c(5): fail:\n Actual:   FALSE\n Expected: TRUE\n" )
+    end
+
+    it 'prints a multi-line failure message as it arrives' do
+      report = GtestlikeReport.new( results( failures: [ entry('test/TestA.c', test('test_a', 5, "Expected 1 Was 2.\nsecond line")) ] ), context: TEST_SYM )
+
+      expect( report.render ).to include( "test/TestA.c(5): error: Expected 1 Was 2.\nsecond line\n Actual:   2\n Expected: 1\n" )
+    end
+
     it 'names a non-test context ahead of the report' do
       report = GtestlikeReport.new( mixed, context: :gcov )
 
@@ -150,9 +204,8 @@ describe GtestlikeReport do
     it 'reports an empty run as no tests executed' do
       expected = <<~REPORT
 
-        [==========] Running 0 tests from 0 test cases.
+        [==========] Running 0 tests from 0 test suites.
         [----------] Global test environment set-up.
-
 
         No tests executed.
       REPORT

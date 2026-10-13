@@ -15,10 +15,9 @@ require 'ceedling/defaults'
 # against them read from one definition. Two copies would drift, and a drifted
 # case would silently stop comparing what it claims to compare.
 #
-# Cases are chosen to reach every branch across the four templates: empty runs,
+# Cases are chosen to reach every branch across the three templates: empty runs,
 # passing runs, failures and ignores with empty, single line, and multi line
-# messages, stdout capture, a non-test context that prepends a header, a failure
-# message that does not match the gtest-style Expected/Was pattern, and each
+# messages, stdout capture, a non-test context that prepends a header, and each
 # shape of missing coverage data.
 module TemplateRenderCases
 
@@ -27,7 +26,7 @@ module TemplateRenderCases
   FIXTURES_PATH = File.join( ROOT, 'spec', 'support', 'fixtures', 'templates' )
 
   # Name => template string. The ide template is a constant rather than an asset
-  # file, which is why it is read differently from the other three.
+  # file, which is why it is read differently from the other two.
   #
   # Every template is normalized to line feeds. The fixtures record what ERB
   # produced from the canonical template content, so the comparison has to be about
@@ -43,7 +42,6 @@ module TemplateRenderCases
   def self.templates
     return {
       'pretty'    => read_template( 'plugins', 'report_tests_pretty_stdout', 'assets', 'test_results.template' ),
-      'gtestlike' => read_template( 'plugins', 'report_tests_gtestlike_stdout', 'assets', 'test_results.template' ),
       'bullseye'  => read_template( 'plugins', 'bullseye', 'assets', 'coverage.template' ),
       'ide'       => normalize_newlines( DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE ),
     }
@@ -64,7 +62,7 @@ module TemplateRenderCases
 
   MULTILINE_MESSAGE = "Expected 1 Was 2.\nsecond line\nthird line"
 
-  # Every case carries both :results and :coverage so all four templates can render
+  # Every case carries both :results and :coverage so all three templates can render
   # all of them. The templates each ignore what they do not use.
   def self.cases
     return {
@@ -93,8 +91,7 @@ module TemplateRenderCases
                                      stdout:   [ stdout_entry ]
                                    ),
 
-      # A non-test context prepends a header to every banner and adds a line of its
-      # own in the gtest-style template.
+      # A non-test context prepends a header to every banner.
       'gcov_context'            => build(
                                      context: :gcov,
                                      passed: 1,
