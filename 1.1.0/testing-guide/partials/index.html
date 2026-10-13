@@ -4121,6 +4121,13 @@ Think of Partials as a unit testing scalpel.</p>
 example available within Ceedling for a working example project 
 demonstrating Partials in action.</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">Partials test suite build time</p>
+<p>Partials require multiple runs of preprocessing and complex code scanning
+across each C file within a partialized module. This can drive up test 
+suite build time noticeably — particularly if you are migrating from 
+a Ceedling test build with no preprocessing enabled to adopting Partials.</p>
+</div>
 <hr />
 <div class="grid cards">
 <ul>
