@@ -9,13 +9,15 @@ The following is a set of guidelines for contributing to any of ThrowTheSwitch.o
 - [Code of Conduct](#book-code-of-conduct)
 - [Asking Questions](#bulb-asking-questions)
 - [Opening an Issue](#inbox_tray-opening-an-issue)
-- [Feature Requests](#love_letter-feature-requests)
+- [Feature Requests](#seedling-feature-requests)
 - [Triaging Issues](#mag-triaging-issues)
 - [Submitting Pull Requests](#repeat-submitting-pull-requests)
 - [Writing Commit Messages](#memo-writing-commit-messages)
+- [Pull Request Checklist](#white_check_mark-pull-request-checklist)
+- [Who Loves Emoji?](#heart-who-loves-emoji)
 - [Code Review](#white_check_mark-code-review)
-- [Coding Style](#nail_care-coding-style)
 - [Certificate of Origin](#medal_sports-certificate-of-origin)
+- [Coding Style](#violin-coding-style)
 - [Credits](#pray-credits)
 
 ## :book: Code of Conduct
@@ -24,9 +26,9 @@ Please review our [Code of Conduct](CODE_OF_CONDUCT.md). It is in effect at all 
 
 ## :bulb: Asking Questions
 
-> **Note:** Please don't file an issue to ask a question. We have an official forum where the community chimes in with helpful advice if you have questions.
+> **Note:** Please try to ask questions in our community forum where the community chimes in with helpful advice. Generally speaking, GitHub Issues should be reserved for bug reports and feature requests. That said, sometimes there’s a gray zone. Try your best.
 
-* [ThrowTheSwitch Forums](https://throwtheswitch.org/forums)
+* [ThrowTheSwitch Discourse forum](https://throwtheswitch.discourse.group)
 
 ### What should I know before I get started?
 
@@ -34,17 +36,17 @@ ThrowTheSwitch hosts a number of open source projects &mdash; Ceedling is the en
 
 Here are some of the main projects hosted by ThrowTheSwitch.org:
 
- - [Ceedling](https://www.github.com/throwtheswitch/ceedling) -- Build coordinator for testing C applications, especially embedded C (and optionally your release build too!)
- - [CMock](https://www.github.com/throwtheswitch/cmock) -- Mocking tool for automatically creating stubs, mocks, and skeletons in C
- - [Unity](https://www.github.com/throwtheswitch/unity) -- Unit Testing framework for C, specially embedded C.
- - [MadScienceLabDocker](https://www.github.com/throwtheswitch/madsciencelabdocker) -- Docker image giving you a shortcut to getting running with Ceedling
- - [CException](https://www.github.com/throwtheswitch/cexception) -- An exception framework for using simple exceptions in C.
+ - [Ceedling](https://www.github.com/throwtheswitch/ceedling) — Build coordinator for testing C applications, especially embedded C (and optionally your release build too!)
+ - [CMock](https://www.github.com/throwtheswitch/cmock) — Mocking tool for automatically creating stubs, mocks, and skeletons in C
+ - [Unity](https://www.github.com/throwtheswitch/unity) — Unit Testing framework for C, specially embedded C.
+ - [MadScienceLabDocker](https://www.github.com/throwtheswitch/madsciencelabdocker) [[Docker Hub](https://hub.docker.com/u/throwtheswitch?page=1&search=madscience)] — Docker image giving you a shortcut to getting running with Ceedling
+ - [CException](https://www.github.com/throwtheswitch/cexception) — An exception framework for using simple exceptions in C.
 
 There are many more, but this list should be a good starting point.
 
 ## :inbox_tray: Opening an Issue
 
-Before [creating an issue](https://help.github.com/en/github/managing-your-work-on-github/creating-an-issue), check if you are using the latest version of the project. If you are not up-to-date, see if updating fixes your issue first.
+Before [creating an issue](https://help.github.com/en/github/managing-your-work-on-github/creating-an-issue), check if you are using the latest version of the project. If you are not up-to-date, see if updating fixes your issue first. Consult the [Changelog](Changelog.md), [Known Issues](KnownIssues.md), and [Breaking Changes](BreakingChanges.md).
 
 ### :beetle: Bug Reports and Other Issues
 
@@ -52,7 +54,7 @@ A great way to contribute to the project is to send a detailed issue when you en
 
 In short, since you are most likely a developer, **provide a ticket that you would like to receive**.
 
-- **Review the documentation** before opening a new issue.
+- **Review [the documentation](https://docs.throwtheswitch.org/Ceedling/)** before opening a new issue.
 
 - **Try not to open a duplicate issue** Search through existing issues to see if your issue has previously been reported. If your issue exists, comment with any additional information you have. You may simply note "I have this problem too", which helps prioritize the most common problems and requests. 
 
@@ -64,7 +66,7 @@ In short, since you are most likely a developer, **provide a ticket that you wou
 
 ## :seedling: Feature Requests
 
-Feature requests are welcome! We don't have all the answers and we truly love the collaborative experience of building software together! That being said, we cannot guarantee your request will be accepted. We want to avoid [feature creep](https://en.wikipedia.org/wiki/Feature_creep). Your idea may be great, but also out-of-scope for the project. If accepted, we'll do our best to tackle it in a timely manner, but cannot make any commitments regarding the timeline for implementation and release. However, you are welcome to submit a pull request to help!
+Feature requests are welcome! We don't have all the answers, and we truly love the collaborative experience of building software together! That being said, we cannot guarantee your request will be accepted. We want to avoid [feature creep](https://en.wikipedia.org/wiki/Feature_creep). Your idea may be great but also out-of-scope for the project. If accepted, we will do our best to tackle it in a timely manner, but we cannot make any commitments regarding the timeline for implementation and release. However, you are welcome to submit a pull request to help!
 
 - **Please don't open a duplicate feature request.** Search for existing feature requests first. If you find your feature (or one very similar) previously requested, comment on that issue.
 
@@ -80,7 +82,7 @@ You can triage issues which may include reproducing bug reports or asking for ad
 
 We **love** pull requests! Before [forking the repo](https://help.github.com/en/github/getting-started-with-github/fork-a-repo) and [creating a pull request](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/proposing-changes-to-your-work-with-pull-requests) for non-trivial changes, it is usually best to first open an issue to discuss the changes, or discuss your intended approach for solving the problem in the comments for an existing issue.
 
-*Note: All contributions will be licensed under the project's license.*
+*Note: All contributions will be licensed under the project’s license.*
 
 - **Smaller is better.** Submit **one** pull request per bug fix or feature. A pull request should contain isolated changes pertaining to a single bug fix or feature implementation. **Do not** refactor or reformat code that is unrelated to your change. It is better to **submit many small pull requests** rather than a single large one. Enormous pull requests will take enormous amounts of time to review, or may be rejected altogether. 
 
@@ -92,17 +94,17 @@ We **love** pull requests! Before [forking the repo](https://help.github.com/en/
 
 - **Include test coverage.** Add unit, integration, and/or system tests when possible. Follow existing patterns for implementing tests (see `spec/` directory and `spec:` tasks among root Rake tasks).
 
-- **Update the example project** if one exists to exercise any new functionality you have added.
+- **Update the example projects** in `examples/` where one would exercise any new functionality you have added.
 
-- **Add documentation.** Document your changes with code doc comments or in existing guides.
+- **Add documentation.** Document your changes with code doc comments or in the [documentation site](https://docs.throwtheswitch.org/Ceedling/) source under `docs/mkdocs/`.
 
-- **Update the CHANGELOG** for all enhancements and bug fixes. Include the corresponding issue number if one exists, and your GitHub username. (example: "- Fixed crash in profile view. #123 @jessesquires")
+- **Leave the Changelog to the maintainers.** Maintainers write the Changelog, Release Notes, and Breaking Changes entries when changes are prepared for release. Describe your change clearly in your pull request so those edits can happen.
 
-- **Use the repo's default branch.** Branch from and [submit your pull request](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork) to the repo's default branch. Usually this is `main`, but it could be `dev`, `develop`, or `master`.
+- **Use the proper branch.** Branch from and [submit your pull request](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork) to `master` for a fix to the latest release, or to `next_version` for the next minor or major release in progress. See [Branching & Releases](https://docs.throwtheswitch.org/Ceedling/latest/development/releases/).
 
 - **[Resolve any merge conflicts](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/resolving-a-merge-conflict-on-github)** that occur.
 
-- **Promptly address any CI failures**. If your pull request fails to build or pass tests, please push another commit to fix it. 
+- **Promptly address any CI failures**. If your pull request fails to build or pass tests, please push another commit to fix it. Only maintainers merge pull requests, and only once CI passes. 
 
 - When writing comments, use properly constructed sentences, including punctuation.
 
@@ -140,7 +142,7 @@ are making this change as opposed to how or what. The code explains
 how or what. Reviewers and your future self can read the patch, 
 but might not understand why a particular solution was implemented.
 Are there side effects or other unintuitive consequences of this
-change? Here's the place to explain them.
+change? Here’s the place to explain them.
 
  - Bullet points are awesome, too
 
@@ -191,6 +193,8 @@ Commit comments, Issues, Feature Requests... they can all use a little sprucing 
 
 - Kindly note any violations to the guidelines specified in this document. 
 
+A maintainer reviews and merges every pull request.
+
 ## :violin: Coding Style
 
 Consistency is the most important. Following the existing style, formatting, and naming conventions of the file you are modifying and of the overall project. Failure to do so will result in a prolonged review process that has to focus on updating the superficial aspects of your code, rather than improving its functionality and performance.
@@ -201,19 +205,21 @@ When possible, style and format will be enforced with a linter.
 
 ### C Styleguide
 
-C code is linted with [AStyle](https://astyle.sourceforge.net/).
+C code follows the [ThrowTheSwitch Coding Standard](ThrowTheSwitchCodingStandard.md). No C linter is presently run automatically. Style is checked in review.
+
+Continuous integration does dynamically analyze the C that Ceedling generates and builds. One leg of the Linux test matrix builds and runs system tests under `AddressSanitizer` and `UndefinedBehaviorSanitizer`, with leak detection; any finding fails the build.
 
 ### Ruby Styleguide
 
-Ruby code is linted with [Rubocop](https://github.com/rubocop/rubocop). Linting covers the Lint, Metrics, Security, and Performance departments. Style, layout, and naming are deliberately not enforced, because this project follows the conventions described above rather than Ruby community defaults.
+Ruby code is linted with [RuboCop](https://github.com/rubocop/rubocop). Linting covers the Lint, Metrics, Security, and Performance departments. Style, layout, and naming are deliberately not enforced, because this project follows the conventions described above rather than Ruby community defaults.
 
 Run `rake lint:setup` once to install the linting gems, which an ordinary `bundle install` does not fetch. Then run `rake lint` to check the whole project, or `rake lint:changed` to check only what your branch changed. `rake lint:fix` applies the corrections RuboCop can make safely.
 
-Continuous integration runs the same check on every pull request and reports findings as annotations on your diff. Linting does not currently fail the build. See Ceedling's development workflow documentation for the offense backlog recorded in `.rubocop_todo.yml`.
+Continuous integration runs the same check on every pull request and reports findings as annotations on your diff. Linting does not currently fail the build as the backlog of issues is retired. See Ceedling’s development workflow documentation for the offense backlog recorded in `.rubocop_todo.yml`.
 
 ## :medal_sports: Certificate of Origin
 
-*Developer's Certificate of Origin 1.1*
+*Developer’s Certificate of Origin 1.1*
 
 By making a contribution to this project, I certify that:
 
@@ -222,7 +228,7 @@ By making a contribution to this project, I certify that:
 > 1. The contribution was provided directly to me by some other person who certified (1), (2) or (3) and I have not modified it.
 > 1. I understand and agree that this project and the contribution are public and that a record of the contribution (including all personal information I submit with it, including my sign-off) is maintained indefinitely and may be redistributed consistent with this project or the open source license(s) involved.
 
-## [No Brown M&M's](https://en.wikipedia.org/wiki/Van_Halen#Contract_riders)
+## [No Brown M&M’s](https://en.wikipedia.org/wiki/Van_Halen#Contract_riders)
 
 If you are reading this, bravo dear user and (hopefully) contributor for making it this far! You are awesome. :100: 
 
@@ -230,7 +236,7 @@ To confirm that you have read this guide and are following it as best as possibl
 
 ## :pray: Credits
 
-Written by [@jessesquires](https://github.com/jessesquires). Lovingly adapted to ThrowTheSwitch.org by [@mvandervoord](https://github.com/mvandervoord).
+Oringally written by [@jessesquires](https://github.com/jessesquires). Lovingly adapted to ThrowTheSwitch.org by [Mark VanderVoord](https://github.com/mvandervoord) and [Michael Karlesky](https://gihub.com/mkarlesky)
 
 **Please feel free to adopt this guide in your own projects. Fork it wholesale or remix it for your needs.**
 
