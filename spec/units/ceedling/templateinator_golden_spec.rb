@@ -27,7 +27,7 @@ describe 'Report template rendering against captured ERB output' do
   # checkout intact. A clone made before that was added keeps its converted copies,
   # because git does not re-check-out files whose content did not change, and every
   # example below would then fail against bytes nobody recorded. Said plainly once
-  # here rather than discovered across 56 byte-level diffs.
+  # here rather than discovered across 42 byte-level diffs.
   before(:all) do
     converted = Dir.glob( File.join( TemplateRenderCases::FIXTURES_PATH, '*.txt' ) ).select do |path|
       File.binread( path ).include?( "\r\n" )
@@ -66,8 +66,8 @@ describe 'Report template rendering against captured ERB output' do
         it "renders #{case_name} exactly as ERB did" do
           fixture = File.join( TemplateRenderCases::FIXTURES_PATH, "#{template_name}__#{case_name}.txt" )
 
-          # The gtest-style template mutates the collections it walks, so each render
-          # gets its own deep copy rather than one shared across examples.
+          # Each render gets its own deep copy, so no template can alter the input another
+          # example renders.
           output = render( template, Marshal.load( Marshal.dump( hash ) ) )
 
           # Compared as bytes on both sides. A rendered string carries the encoding

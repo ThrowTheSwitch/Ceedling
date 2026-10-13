@@ -18,6 +18,7 @@ project set up.
 * **Shuffled test order.** Ceedling now supports Unity’s randomized test case ordering (via a `:unity` configuration setting). Delta builds automatically adjust to always rerun test executables so test case ordering is shuffled.
 * The `TEST_SOURCE_FILE()` build directive macro can now be used to remove source files from a test executable build. This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
 * [Bullseye code coverage plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) re-enabled and modernized (disabled since 1.0.0).
+* Ceedling prerelease and release builds now automatically [generate Software Bills of Material](https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/) (SBOMs) and attach them to GitHub pre/releases along with the final Ruby gem.
 
 **Goodness introduced in 1.1.0:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
