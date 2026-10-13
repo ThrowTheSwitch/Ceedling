@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Feature requests are welcome. Please search existing issues first, and comment on an existing request rather than opening a duplicate.
+        Feature requests are welcome. Please search existing issues first and comment on an existing request rather than opening a duplicate.
   - type: textarea
     id: problem
     attributes:
@@ -24,7 +24,7 @@ body:
     id: alternatives
     attributes:
       label: Alternatives considered
-      description: Workarounds you use today, or other approaches you considered.
+      description: Workarounds you use today or other approaches you have considered.
   - type: checkboxes
     id: checks
     attributes:

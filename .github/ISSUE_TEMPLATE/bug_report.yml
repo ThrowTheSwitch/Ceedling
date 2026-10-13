@@ -10,7 +10,7 @@ body:
     id: version
     attributes:
       label: Ceedling version
-      description: Paste the output of `ceedling version`.
+      description: Paste the output of `ceedling version` from the command line.
     validations:
       required: true
   - type: input
@@ -24,9 +24,10 @@ body:
   - type: dropdown
     id: test_results
     attributes:
-      label: Were any test results wrong?
-      description: A test that passes when it should fail, a test that silently does not run, or wrong totals or coverage are especially serious for a test tool.
+      label: Were any C test suite results wrong?
+      description: A test that passes when it should fail, a test that silently does not run, or wrong totals or coverage are especially serious for a test tool. Note: This refers to the test suite Ceedling generates, not its own self-tests.
       options:
+        - "Not applicable"
         - "No"
         - "Yes: a test passed that should have failed"
         - "Yes: a test did not run or was not reported"
@@ -45,13 +46,13 @@ body:
     id: configuration
     attributes:
       label: Project configuration
-      description: The relevant parts of your project file. `ceedling dumpconfig` can help.
+      description: The relevant parts of your project file. `ceedling dumpconfig` at the command line may help here. Please use a markdown code block (triple backticks) to format your configuration excerpt.
       render: yaml
   - type: textarea
     id: output
     attributes:
       label: Console output
-      description: Run with `--verbosity=obnoxious` or `--debug` and paste the relevant output.
+      description: Run with `--verbosity=obnoxious` or `--verbosity=debug` and paste the relevant output excerpt.
       render: shell
   - type: checkboxes
     id: checks
