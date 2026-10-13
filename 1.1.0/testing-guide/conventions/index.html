@@ -1244,45 +1244,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#distinguishing-same-named-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distinguishing same-named files
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Distinguishing same-named files">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#header-source-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Header / source files
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#test-files-cli-test-tasks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Test files (CLI test tasks)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#test-build-search-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1528,6 +1489,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Dependency tracking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#not-so-smart-rebuilds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (Not so) smart rebuilds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4435,45 +4413,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#distinguishing-same-named-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distinguishing same-named files
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Distinguishing same-named files">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#header-source-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Header / source files
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#test-files-cli-test-tasks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Test files (CLI test tasks)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#test-build-search-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4720,6 +4659,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Dependency tracking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#not-so-smart-rebuilds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        (Not so) smart rebuilds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4852,10 +4808,10 @@
 
 
 <h1 id="conventions-behaviors">Conventions &amp; Behaviors</h1>
-<p><strong>How to get things done and understand what’s happening during builds</strong></p>
+<p><strong>How to get things done and understand what's happening during builds</strong></p>
 <h2 id="directory-structure-filenames">Directory structure &amp; filenames</h2>
-<p>Much of Ceedling’s functionality is driven by collecting files
-matching certain patterns inside the paths it’s configured
+<p>Much of Ceedling's functionality is driven by collecting files
+matching certain patterns inside the paths it's configured
 to search. See the documentation for the <code>:extension</code> section
 of your configuration file (found in the <a href="../../configuration/">configuration reference</a>) to
 configure the file extensions Ceedling uses to match and collect
@@ -4863,70 +4819,14 @@ files. Test file naming is covered later in this section.</p>
 <p>Test files and source files must be segregated by directories.
 Any directory structure will do. Tests can be held in subdirectories
 within source directories, or tests and source directories
-can be wholly separated at the top of your project’s directory
+can be wholly separated at the top of your project's directory
 tree.</p>
-<h2 id="distinguishing-same-named-files">Distinguishing same-named files</h2>
-<h3 id="header-source-files">Header / source files</h3>
-<p>Ceedling distinguishes files by their full relative path, not just their
-filename. A project may have, for example, both <code>src/drivers/uart.c</code> and
-<code>src/sensors/uart.c</code> without one hiding or colliding with the other.</p>
-<p>Distinguishing files is mostly an issue in test builds. If two files share
-a name without enough path to distinguish them, Ceedling resolves the reference 
-to the first match among the file collection. File collections are ordered per
-your project configuration (<code>:paths</code>). The ordering of collected files is
-identical to the search path ordering provided to the compiler from the same
-<code>:paths</code> configuration plus any use of
-<a href="../build-directives/#test_include_path"><code>TEST_INCLUDE_PATH()</code></a> directives in
-a test file. When Ceedling finds more than one reference, it uses the first
-in the ordered file list but logs an informational notice naming multi-file 
-matches, so the choice is not silent.</p>
-<p>If Ceedling uses the wrong match for lack of path information, your test build 
-fails downstream with an ordinary compilation error indirectly revealing the
-issue. Add enough path at the point of reference to select the file you actually 
-meant.</p>
-<ul>
-<li>Use paths in <code>#include</code> directives in your test files to distinguish header 
-  files of the same name (mocks are distiguished by the same filepath as the 
-  headers from which they are generated). Examples: <code>#include "foo/bar/file.h"</code>
-  and/or <code>#include "foo/bar/mock_file.h"</code>.</li>
-<li>Use the <a href="../build-directives/"><code>TEST_SOURCE_FILE()</code> build directive macro</a>
-  to provide a path to distinguish source files of the same name to be 
-  compiled and linked with a test executable.</li>
-</ul>
-<div class="admonition warning">
-<p class="admonition-title">One test file cannot mock two same-named headers</p>
-<p>Path information distinguishes which header a mock is generated <em>from</em>, but a
-single test file cannot presently mock two headers that share a filename 
-because of a (temporary) CMock limitation. See
-<a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md">Known Issues</a>.</p>
-</div>
-<p><code>TEST_SOURCE_FILE()</code> also takes precedence over the header/source correspondence
-convention above. If a test both <code>#include</code>s a header and separately names a
-same-named source via <code>TEST_SOURCE_FILE()</code>, the directive’s own path wins outright
-— its source is the one compiled, and the header/source convention does not also
-compile whatever it would otherwise have found on its own for that same name. This
-holds even when the header’s own <code>#include</code> was already unambiguous; a
-<code>TEST_SOURCE_FILE()</code> entry sharing that basename is always authoritative. (The
-header itself is still validated/resolved as usual — only which <em>source</em> file gets
-compiled for a shared basename is affected.) Like the search-path resolution
-above, this override is logged with an informational notice naming the winning
-<code>TEST_SOURCE_FILE()</code> entry and the <code>#include</code> it overrode, so the substitution
-is not silent either.</p>
-<h3 id="test-files-cli-test-tasks">Test files (CLI test tasks)</h3>
-<p>Execute <a href="../../getting-started/command-line/"><code>ceedling test:</code> tasks</a> at the command line with an
-optional partial path to distinguish test executables (e.g. <code>test:foo/bar.c</code>),
-recalling that multiple conventions exist for finding/executing a test
-executable via <code>test:</code> task.</p>
-<p>Unlike the cases above, a same-named test file given at the command line is 
-<strong>not</strong> auto-resolved. You must supply enough path yourself in the task
-name. Ceedling will complain about colliding task names and provide a list
-of matching candidates to help you provide path to disambiguate test files.</p>
 <h2 id="test-build-search-paths">Test build search paths</h2>
 <p>Test builds in C are fairly complex. Each test file becomes a test
 executable. Each test executable needs generated runner code and 
 optionally generated mocks. Slicing and dicing what files are 
 compiled and linked and how search paths are assembled is tricky
-business. That’s why Ceedling exists in the first place. Because
+business. That's why Ceedling exists in the first place. Because
 of these issues, search paths, in particular, require quite a bit
 of special handling.</p>
 <p>Unless your project is relying exclusively on <code>extern</code> statements and
@@ -4964,8 +4864,8 @@ it is assembled from a variety of sources. In order:</p>
 <li><code>:paths</code> ↳ <code>:support</code> list from your project configuration</li>
 <li><code>:paths</code> ↳ <code>:include</code> list from your project configuration</li>
 <li><code>:paths</code> ↳ <code>:libraries</code> list from your project configuration</li>
-<li>Internal path for Unity’s unit test framework C code</li>
-<li>Internal paths for CMock’s C code (if respective feature enabled)</li>
+<li>Internal path for Unity's unit test framework C code</li>
+<li>Internal paths for CMock's C code (if respective feature enabled)</li>
 <li><code>:paths</code> ↳ <code>:test_toolchain_include</code> list from your project 
    configuration</li>
 </ol>
@@ -5006,7 +4906,7 @@ source file is compiled into an object file. All object files are linked.
 A Ceedling release build may optionally compile and link in CException
 and can handle linking in libraries as well.</p>
 <p>Search paths for release builds are configured with <code>:paths</code> ↳ <code>:include</code> 
-in your project configuration. That’s about all there is to it.</p>
+in your project configuration. That's about all there is to it.</p>
 <h2 id="source-files-release-artifacts">Source files &amp; release artifacts</h2>
 <p>Your binary release artifact results from the compilation and
 linking of all source files Ceedling finds in the specified source
@@ -5045,23 +4945,12 @@ test file and optional test directive macros.</p>
    compile &amp; link that generated code into into the test executable 
    as well.</li>
 </ol>
-<p>A mock is generated into the directory mirroring the header it came from, so two
-same-named headers in different directories produce two mocks in different
-directories. Even so, a single test file cannot mock both because of a temporary
-CMock limitation that will cause duplicated symbol names and missing defintions.
-Mock either header alone, or split the two across separate test files.</p>
 <p>Sometimes the source file you need to add to your test executable has
 no corresponding header file — e.g. <code>file_abc.h</code> contains symbols 
 present in <code>file_xyz.c</code>. In these cases, you can use the test 
 directive macro <code>TEST_SOURCE_FILE(...)</code> to tell Ceedling to compile 
 and link the desired source file into the test executable (see 
 <a href="../build-directives/">macro documentation</a>).</p>
-<p>Conversely, sometimes you may need to remove from a test executable 
-build a source file that corresponds to an <code>#include</code> directive in your
-test file. A <code>TEST_SOURCE_FILE()</code> entry prefixed with a <code>-:</code> decorator 
-removes a named file from a test‘s compile/link list. See 
-<a href="../build-directives/#test_source_file-subtractive-notation"><code>TEST_SOURCE_FILE()</code> Subtractive Notation</a>
-for the full discussion.</p>
 <p>That was a lot of information and many clauses in a very few 
 sentences; the commented example test file code that follows in a 
 bit will make it clearer.</p>
@@ -5332,8 +5221,8 @@ effort is usually required to map Ceedling duration values to a relevant test
 suite abstraction within a given test report format.</p>
 <p>Because Ceedling can execute builds with multiple threads, care must be taken
 to interpret test suite duration values — particularly in relation to 
-Ceedling’s logged run times.</p>
-<p>In a multi-threaded build it’s quite common for the logged Ceedling project run
+Ceedling's logged run times.</p>
+<p>In a multi-threaded build it's quite common for the logged Ceedling project run
 time to be less than the total suite time in a test report. In multi-threaded 
 builds on multi-core machines, test executables are run on different processors
 simultaneously. As such, the total on-processor time in a test report can 
@@ -5347,7 +5236,7 @@ a in a comparable single-threaded build.</p>
 supports the time mechanism Unity relies on, Ceedling will automatically 
 collect test case time values — generally made use of by test report plugins.</p>
 <p>To enable test case duration measurements, they must be enabled as a Unity
-compilation option. Add <code>UNITY_INCLUDE_EXEC_TIME</code> to Unity’s compilation
+compilation option. Add <code>UNITY_INCLUDE_EXEC_TIME</code> to Unity's compilation
 symbols (<code>:unity</code> ↳ <code>:defines</code>) in your Ceedling project file (see example
 below). Unity test case durations as reported by Ceedling default to 0 if the
 compilation option is not set.</p>
@@ -5361,30 +5250,46 @@ compilation option is not set.</p>
  range. Unity would require special rigging that is inconsistently available
  across platforms to measure test case durations at a finer resolution.</p>
 <h2 id="dependency-tracking">Dependency tracking</h2>
-<p>Ceedling only regenerates, compiles, links, or runs an element of the build
-pipeline if a change in the dependency tree requires it. This includes “deep
-dependencies” wherein a change in a header file several nested layers deep in
-<code>#include</code> statements correctly triggers a rebuild of every test executable
-that depends on it, directly or indirectly.</p>
-<p>This is called a delta build. Delta builds are automatic, need no
-configuration, and complement Ceedling’s parallel build steps for further
-build time speedups. See <a href="../getting-started/builds.md">Delta Builds</a> for the
-full picture, including how test result caching works and the
-<code>--force-test-rerun</code> flag.</p>
+<p>Previous versions of Ceedling used features of Rake to offer
+various kinds of smart rebuilds — that is, only regenerating files, 
+recompiling code files, or relinking executables when changes within 
+the project had occurred since the last build. Optional Ceedling 
+features discovered “deep dependencies” such that, for example, a 
+change in a header file several nested layers deep in <code>#include</code> 
+statements would cause all the correct test executables to be 
+updated and run.</p>
+<p>These features have been temporarily disabled and/or removed for 
+test suites and remain in limited form for release build while
+Ceedling undergoes a major overhaul.</p>
+<p>Please see the <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md">Release Notes</a>.</p>
+<h3 id="not-so-smart-rebuilds">(Not so) smart rebuilds</h3>
+<ul>
+<li>
+<p>New features that are a part of the Ceedling overhaul can 
+  significantly speed up test suite execution and release builds 
+  despite the present behavior of brute force running all build 
+  steps. See the discussion of enabling multi-threaded builds in 
+  later sections.</p>
+</li>
+<li>
+<p>When smart rebuilds return, they will further speed up builds as
+  will other planned optimizations.</p>
+</li>
+</ul>
 <h2 id="build-output">Build output</h2>
 <p>Ceedling requires a top-level build directory for all the stuff
 that it, the accompanying test tools, and your toolchain generate.
-That build directory’s location is configured in the top-level 
+That build directory's location is configured in the top-level 
 <code>:project</code> section of your configuration file (discussed in the
 <a href="../../configuration/">configuration reference</a>). There
 can be a ton of generated files. By and large, you can live a full
 and meaningful life knowing absolutely nothing at all about
 the files and directories generated below the root build directory.</p>
-<p>As noted already, it’s good practice to add your top-level build
+<p>As noted already, it's good practice to add your top-level build
 directory to source control but nothing generated beneath it.
 you'll spare yourself headache if you let Ceedling delete and
 regenerate files and directories in a non-versioned corner
-of your project’s filesystem beneath the top-level build directory.</p>
+of your project's filesystem beneath the top-level build directory.</p>
 <p>The <code>artifacts/</code> directory is the one and only directory you may
 want to know about beneath the top-level build directory. The
 subdirectories beneath <code>artifacts</code> will hold your binary release
@@ -5427,13 +5332,13 @@ build with an exit code of 0 even upon test case failures.</p>
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">   </span><span class="nt">:graceful_fail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
 <p>If you use the option for graceful failures in CI, you'll want to
-rig up some kind of logging monitor that scans Ceedling’s test
+rig up some kind of logging monitor that scans Ceedling's test
 summary report sent to <code>$stdout</code> and/or a log file. Otherwise, you
 could have a successful build but failing tests.</p>
 <h3 id="test-executable-exit-codes">Test executable exit codes</h3>
 <p>Ceedling works by collecting multiple Unity test executables together 
 into a test suite (more here: <a href="../test-suite-anatomy/">Anatomy of a Test Suite</a>).</p>
-<p>A Unity test executable’s exit code is the number of failed tests. An
+<p>A Unity test executable's exit code is the number of failed tests. An
 exit code of <code>0</code> means all tests passed while anything larger than zero
 is the number of test failures.</p>
 <p>Because of platform limitations on how big an exit code number can be
