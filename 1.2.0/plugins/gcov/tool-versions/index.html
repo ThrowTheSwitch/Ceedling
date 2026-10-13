@@ -4422,7 +4422,7 @@
 
 
 <h1 id="supported-tool-versions">Supported tool versions</h1>
-<p><em><strong>Last updated:</strong></em> May 17, 2026</p>
+<p><em><strong>Last updated:</strong></em> October 13, 2026</p>
 <p>At the time of the last major updates to the Gcov plugin, the following notes
 on version compatibility were known to be accurate.</p>
 <p>Keep in mind that for proper functioning, you do not necessarily need to
@@ -4465,7 +4465,7 @@ plugin processes coverage.</p>
 Gcov plugin supports <code>gcovr</code> command line conventions since version 4.2 and
 attempts to support <code>gcovr</code> command lines before version 4.2. We recommend 
 using <code>gcovr</code> 5 and later.</p>
-<p>Several <code>:gcovr</code> options depend on a minimum <code>gcovr</code> version, checked and
+<p>Several <code>:gcovr</code> options and report types depend on a minimum <code>gcovr</code> version, checked and
 enforced by this plugin (see <a href="../gcovr/">GCovr Configuration</a> for each
 option's own details):</p>
 <table>
@@ -4487,6 +4487,14 @@ option's own details):</p>
 <tr>
 <td><code>:fail_under_decision</code></td>
 <td>7.0</td>
+</tr>
+<tr>
+<td><code>JaCoCo</code> report</td>
+<td>7.0</td>
+</tr>
+<tr>
+<td><code>lcov</code> report</td>
+<td>7.0 (gcovr only; ReportGenerator has no minimum)</td>
 </tr>
 <tr>
 <td><code>:mcdc</code></td>
