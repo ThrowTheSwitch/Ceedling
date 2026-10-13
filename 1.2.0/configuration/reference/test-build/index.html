@@ -4447,17 +4447,34 @@ inject assembly code into the build of a test executable:</p>
 </ol>
 <p><strong>Default</strong>: FALSE</p>
 <h2 id="preprocess_force_fallback"><code>:preprocess_force_fallback</code></h2>
-<p>This option is primarily used to enable certain Ceedling self-tests,
-but it may be valuable is a tool chain’s preprocessor somehow falsely
-indicates that directives-only preprocessing is available.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>See <a href="../../../testing-guide/conventions/#test-file-preprocessing">test preprocessing conventions</a>
+to fully understand how this setting relates to your Ceedling 
+feature selection and overall test build.</p>
+</div>
+<p>This setting forces Ceedling to use text-scanning fallback preprocessing 
+mechanisms regardless of your toolchain’s preprocessor capabilities.</p>
+<p>Forcing fallback preprocessing is useful in a handful of scenarios:</p>
+<ol>
+<li>As a much faster alternative to full preprocessing in test projects
+   with relatively simple conditional compilation preprocessing needs
+   (e.g. <code>#ifdef</code>). Ceedling’s advanced features require preprocessing;
+   forcing fallback preprocessing can be a shortcut for faster test
+   builds for some projects.</li>
+<li>Overriding Ceedling’s probe of your toolchain’s preprocessor 
+   features in the event of a false positive.</li>
+<li>Forcing the fallback mode for self-tests of the fallback mode.</li>
+</ol>
 <p>At startup, if test preprocessing is enabled, Ceedling probes the 
-C preprocessor tool for indications that it support directives-only
-mode. If it does not, Ceedling uses less capable text-only scanning
-of C files when directives-only C preprocessing is preferred. Some 
-toolchains, particularly older variations, may not support this mode.</p>
-<p>This flag forces Ceedling to use text-scanning fallback mechanisms
-regardless of preprocessor capabilities (the start up probe is 
-entirely skipped.)</p>
+your toolchain’s C preprocessor tool for indications that it supports
+directives-only mode. Some toolchains, particularly older variations, 
+may not support this mode. If directives-only mode is not available,
+Ceedling uses less capable text-only scanning of C files instead 
+attempting to accomplish as much as possible for a given test build.</p>
+<p>When <code>:preprocess_force_fallback</code> is enabled, the start up probe of 
+your toolchain’s preprocessor is entirely skipped, and Ceedling 
+uses its internal text-scanning preprocessing instead.</p>
 <p><strong>Default</strong>: FALSE</p>
 <p><br/><br/></p>
 
