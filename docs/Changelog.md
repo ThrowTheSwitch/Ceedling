@@ -48,6 +48,13 @@ Tasks mirroring command line `test:` task invocation but with an early terminati
 
 Like with command line `test:` tasks, `<test>` can be `all`, a test file name, or a source file name that has a corresponding test file.
 
+### Test build fallback preprocessing improvements
+If your toolchain’s preprocessor lacks certain features, Ceedling still attempts to extract information and code from C files through fallback text processing. In 1.1.0 this was exposed as a project configuration option mostly for Ceedling’s self-tests and also noted as a possible option should Ceedling’s probe for toolhcain preprocessor features ever provide a false positive.
+
+In 1.2.0, fallback preprocessing has been further improved and can often be used in projects with simple conditional compilation (e.g. `#ifdef`) as a much faster alternative to full toolchain preprocessing. Error messages will indicate if fallback preprocessing is insufficient for your project’s preprocessing needs.
+
+Force fallback preprocessing with [`:test_build` ↳ `:preprocess_force_fallback`](https://docs.throwtheswitch.org/Ceedling/latest/configuration/reference/test-build/#preprocess_force_fallback) but **_be sure to understand [Ceedling’s test preprocessing](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#test-preprocessing) before doing so_**.
+
 ### Test case shuffling at runtime
 Ceedling now integrates Unity’s features for randomizing test case execution within a test executable ([PR #1041](https://github.com/ThrowTheSwitch/Ceedling/pull/1041) via [`:unity` ↳ `:shuffle_tests`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/unity/#shuffle_tests) ⇒ `TRUE`. If enabled, the behavior of delta builds automatically adjusts to always execute test executables even if no code changes have occurred. This ensures the randomization occurs when test executables would otherwise fail to run for lack of any code or configuration changes up the dependency tree.
 
@@ -198,7 +205,7 @@ The templates behind the `$stdout` test results reporting plugins have been rena
 The `create`, `exist`, `identical`, and `force` status lines these commands print are now colored according to Ceedling’s own decoration settings rather than a separate scheme. Coloring also requires a terminal, so redirecting output to a file produces plain text. Set `CEEDLING_DECORATORS` to `0` to disable the coloring entirely.
 
 ### Generated `#include` guard format
-Ceedling writes `#include` guards into the headers it generates for test builds (e.g. Partials and reconstructed headers resulting from preprocessing). These guards now take the form `GEN<hash>_<NAME>_H_CEEDLING` (e.g. `GEN2B4E27AE_DRIVERS_UART_CONFIG_H_CEEDLING`), where the hash is derived from the header's path. This format ensures uniqueness while conforming to the C standard's reserved identifier and significant length rules (C99 §7.1.3, §5.2.4.1), MISRA C:2012 Rules 5.4 and 21.1, and CERT DCL37-C. Nothing in your project configuration or source code needs to change unless you referenced a generated guard by name.
+Ceedling writes `#include` guards into the headers it generates for test builds (e.g. Partials and reconstructed headers resulting from preprocessing). These guards now take the form `GEN<hash>_<NAME>_H_CEEDLING` (e.g. `GEN2B4E27AE_DRIVERS_UART_CONFIG_H_CEEDLING`), where the hash is derived from the header’s path. This format ensures uniqueness while conforming to the C standard’s reserved identifier and significant length rules (C99 §7.1.3, §5.2.4.1), MISRA C:2012 Rules 5.4 and 21.1, and CERT DCL37-C. Nothing in your project configuration or source code needs to change unless you referenced a generated guard by name.
 
 ## 👋 Removed
 
