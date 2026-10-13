@@ -37,7 +37,7 @@ inject assembly code into the build of a test executable:
 ## `:preprocess_force_fallback`
 
 !!! tip
-    See [test preprocessing conventions](../../testing-guide/conventions.md#test-file-preprocessing)
+    See [test preprocessing conventions](../../testing-guide/conventions.md#test-preprocessing)
     to fully understand how this setting relates to your Ceedling 
     feature selection and overall test build.
 
