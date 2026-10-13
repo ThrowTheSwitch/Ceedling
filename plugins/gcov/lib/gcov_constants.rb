@@ -28,6 +28,7 @@ GCOV_GCOVR_ARTIFACTS_FILE_HTML        = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "Gc
 GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA   = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageCobertura.xml")
 GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE   = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageSonarQube.xml")
 GCOV_GCOVR_ARTIFACTS_FILE_JSON        = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverage.json")
+GCOV_GCOVR_ARTIFACTS_FILE_JACOCO      = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageJaCoCo.xml")
 GCOV_GCOVR_DEFAULT_TEXT_ARTIFACT_FILENAME = "coverage.txt".freeze
 
 # Report Creation Utilities
@@ -57,6 +58,7 @@ class ReportTypes
   COBERTURA = "Cobertura"
   SONARQUBE = "SonarQube"
   JSON = "JSON"
+  JACOCO = "JaCoCo"
   BADGES = "Badges"
   CSV_SUMMARY = "CsvSummary"
   LATEX = "Latex"

@@ -43,6 +43,11 @@ class GcovrReportinator < GcovReportinator
       min: [5, 1],
       message: ":gcov ↳ :gcovr ↳ :decisions ➡️ requires gcovr %{req} or higher (found %{found})"
     },
+    # Report formats gate on whether :gcov ↳ :reports names them
+    :jacoco => {
+      min: [7, 0],
+      message: ":gcov ↳ :reports ➡️ JaCoCo reports require gcovr %{req} or higher (found %{found})"
+    },
   }.freeze
 
   # Declarative map of :gcov ↳ :gcovr options handled identically regardless of report
@@ -114,6 +119,7 @@ class GcovrReportinator < GcovReportinator
         :mcdc                 => @configurator.gcov_mcdc,
         :fail_under_decision  => gcovr_opts[:fail_under_decision],
         :decisions            => gcovr_opts[:decisions],
+        :jacoco               => report_enabled?( @config, ReportTypes::JACOCO ),
       },
       @gcovr_version,
       VERSION_GATES
@@ -231,6 +237,20 @@ class GcovrReportinator < GcovReportinator
   end
 
 
+# Build the gcovr JaCoCo XML report generation arguments.
+# gcovr's --jacoco-pretty implies --jacoco, but both are given so the artifact path is explicit.
+def args_builder_jacoco(gcovr_opts)
+  return '' unless report_enabled?( gcovr_opts, ReportTypes::JACOCO )
+
+  artifacts_file_jacoco = artifact_file( gcovr_opts, :jacoco_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_JACOCO )
+
+  args = ''
+  args += '--jacoco-pretty ' if gcovr_opts[:jacoco_pretty] && !config_file_in_use?( gcovr_opts )
+
+  return args + "--jacoco \"#{artifacts_file_jacoco}\" "
+end
+
+
   # Build the gcovr HTML report generation arguments.
   def args_builder_html(gcovr_opts, use_output_option=false)
     args = ""
@@ -301,6 +321,9 @@ class GcovrReportinator < GcovReportinator
     args += (_args = args_builder_json(gcovr_opts, true))
     reports << "JSON" unless _args.empty?
 
+    args += (_args = args_builder_jacoco(gcovr_opts))
+    reports << "JaCoCo XML" unless _args.empty?
+
     # --html must be last (gcovr 4.2 requirement)
     args += (_args = args_builder_html(gcovr_opts, false))
     reports << "HTML" unless _args.empty?
@@ -343,7 +366,7 @@ class GcovrReportinator < GcovReportinator
 
 
   # gcovr options silently ignored whenever :config_file is set (dropped by args_builder_common's
-  # early return, or gated in args_builder_cobertura/json/html) -- in that case all such
+  # early return, or gated in args_builder_cobertura/json/jacoco/html) -- in that case all such
   # configuration must come from the gcovr configuration file itself.
   IGNORED_WHEN_CONFIG_FILE_SET = [
     :report_include, :report_exclude, :gcov_filter, :gcov_exclude, :exclude_directories,
@@ -352,7 +375,7 @@ class GcovrReportinator < GcovReportinator
     :keep, :delete, :threads, :merge_mode_function,
     :fail_under_line, :fail_under_branch, :fail_under_decision, :fail_under_function,
     :source_encoding, :object_directory,
-    :cobertura_pretty, :json_pretty,
+    :cobertura_pretty, :json_pretty, :jacoco_pretty,
     :html_title, :html_absolute_paths, :html_encoding, :html_medium_threshold, :html_high_threshold
   ].freeze
 
@@ -580,7 +603,7 @@ class GcovrReportinator < GcovReportinator
 
   # Returns true if the given report type is enabled, otherwise returns false.
   def report_enabled?(gcovr_opts, report_type)
-    return gcovr_opts[:gcov_reports].map(&:upcase).include?( report_type.upcase )
+    return Array( gcovr_opts[:gcov_reports] ).map( &:upcase ).include?( report_type.upcase )
   end
 
 end

@@ -104,6 +104,23 @@ describe GcovrReportinator do
       config = { gcov_gcovr: { decisions: true } }
       expect { build_reportinator(config, gcovr_version: ToolVersion.new(5, 1)) }.to_not raise_error
     end
+    # JaCoCo XML output arrived in gcovr 7.0, so a JaCoCo report stops the build on anything older
+    it 'raises when a JaCoCo report is configured against gcovr older than 7.0' do
+      config = { gcov_reports: ['JaCoCo'] }
+      expect {
+        build_reportinator(config, gcovr_version: ToolVersion.new(6, 9))
+      }.to raise_error(CeedlingException, /:reports.*JaCoCo reports require gcovr 7\.0 or higher \(found 6\.9\)/)
+    end
+
+    it 'matches the JaCoCo report name case-insensitively when gating it' do
+      config = { gcov_reports: ['jacoco'] }
+      expect { build_reportinator(config, gcovr_version: ToolVersion.new(6, 9)) }.to raise_error(CeedlingException, /JaCoCo/)
+    end
+
+    it 'does not raise when a JaCoCo report is configured against gcovr 7.0+' do
+      config = { gcov_reports: ['JaCoCo'] }
+      expect { build_reportinator(config, gcovr_version: ToolVersion.new(7, 0)) }.to_not raise_error
+    end
   end
 
   describe '#args_builder_common' do
@@ -176,6 +193,12 @@ describe GcovrReportinator do
     it 'logs a COMPLAIN-level warning listing options ignored due to :config_file' do
       config = { gcov_gcovr: { config_file: 'gcovr.cfg', branches: true, decisions: true } }
       expect(loginator).to receive(:log).with(/:branches.*:decisions/, Verbosity::COMPLAIN)
+      build_reportinator(config)
+    end
+
+    it 'lists :jacoco_pretty among the options a config file overrides' do
+      config = { gcov_gcovr: { config_file: 'gcovr.cfg', jacoco_pretty: true } }
+      expect(loginator).to receive(:log).with(/:jacoco_pretty/, Verbosity::COMPLAIN)
       build_reportinator(config)
     end
 
@@ -386,6 +409,32 @@ describe GcovrReportinator do
     end
   end
 
+  describe '#args_builder_jacoco' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'returns an empty string when JaCoCo is not an enabled report type' do
+      expect( reportinator.send(:args_builder_jacoco, { gcov_reports: ['HtmlBasic'] }) ).to eq('')
+    end
+
+    it 'writes the default artifact, quoted, when no filename is configured' do
+      args = reportinator.send(:args_builder_jacoco, { gcov_reports: ['JaCoCo'] })
+      expect(args).to include( "--jacoco \"#{GCOV_GCOVR_ARTIFACTS_FILE_JACOCO}\"" )
+    end
+
+    it 'joins a custom filename under the gcovr artifacts path' do
+      args = reportinator.send(:args_builder_jacoco, { gcov_reports: ['JaCoCo'], jacoco_artifact_filename: 'Custom.xml' })
+      expect(args).to include( File.join(GCOV_GCOVR_ARTIFACTS_PATH, 'Custom.xml') )
+    end
+
+    it 'includes --jacoco-pretty only when jacoco_pretty is set and no config file is in use' do
+      with_pretty = { gcov_reports: ['JaCoCo'], jacoco_pretty: true }
+      expect( reportinator.send(:args_builder_jacoco, with_pretty) ).to include('--jacoco-pretty')
+
+      with_pretty_and_config = with_pretty.merge(config_file: 'gcovr.cfg')
+      expect( reportinator.send(:args_builder_jacoco, with_pretty_and_config) ).to_not include('--jacoco-pretty')
+    end
+  end
+
   describe '#args_builder_html' do
     let(:reportinator) { build_reportinator({}) }
 
@@ -447,9 +496,9 @@ describe GcovrReportinator do
       captured = nil
       allow(reportinator).to receive(:run_gcovr) { |_opts, args, _boom| captured = args }
 
-      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON] }, '--root x ', false)
+      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON JaCoCo] }, '--root x ', false)
 
-      positions = ['--xml ', '--sonarqube ', '--json ', '--html '].map { |flag| captured.index(flag) }
+      positions = ['--xml ', '--sonarqube ', '--json ', '--jacoco ', '--html '].map { |flag| captured.index(flag) }
       expect( positions ).to eq( positions.sort )
       expect( captured.index('--html ') ).to eq( positions.max )
     end
@@ -458,9 +507,9 @@ describe GcovrReportinator do
       allow(reportinator).to receive(:run_gcovr)
       allow(reportinator_obj).to receive(:generate_progress) { |msg| msg }
 
-      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON] }, '--root x ', false)
+      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON JaCoCo] }, '--root x ', false)
 
-      ['Cobertura XML', 'SonarQube', 'JSON', 'HTML'].each do |name|
+      ['Cobertura XML', 'SonarQube', 'JSON', 'JaCoCo XML', 'HTML'].each do |name|
         expect(loginator).to have_received(:log).with( /Generating #{name} coverage report/, Verbosity::NORMAL, LogLabels::NOTICE )
       end
     end
