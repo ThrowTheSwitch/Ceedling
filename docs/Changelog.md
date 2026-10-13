@@ -89,6 +89,9 @@ The refreshed Bullseye plugin offers additional features over the original versi
 - Added [`:cppcheck` ↳ `:fail_build:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/cppcheck/#fail_build) and `:fail_build_severities:` to break a build on findings. Cppcheck exits successfully even when it finds defects, so `cppcheck:all` previously could not fail a build at all. Only `error` severity fails by default, since whole project analysis always enables every check.
 - `cppcheck:all` now prints a per-severity tally of findings. Results previously landed only in report files, with nothing shown at the console.
 
+### GTest-like report plugin skipped tests
+The [GTest-like console report](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/) (`report_tests_gtestlike_stdout`) now reports a Unity test ignored with `TEST_IGNORE()` or `TEST_IGNORE_MESSAGE()` as a GoogleTest skipped test. A skipped test is listed with its location and message, counted in the run, and summarized between passed and failed tests, the way GoogleTest 1.10.0 and later reports `GTEST_SKIP()`. A test file whose every test is ignored now gets its own section. The new `:report_tests_gtestlike_stdout` ↳ `:ignored_as_skipped:` setting defaults to `TRUE`. Set it to `FALSE` to leave ignored tests out of the report for tools that do not understand skipped tests (see the related _Changed_ entry below).
+
 ### Filepath limit checks
 Platform filepath limits (especially on Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
 
@@ -206,6 +209,9 @@ The `create`, `exist`, `identical`, and `force` status lines these commands prin
 
 ### Generated `#include` guard format
 Ceedling writes `#include` guards into the headers it generates for test builds (e.g. Partials and reconstructed headers resulting from preprocessing). These guards now take the form `GEN<hash>_<NAME>_H_CEEDLING` (e.g. `GEN2B4E27AE_DRIVERS_UART_CONFIG_H_CEEDLING`), where the hash is derived from the header’s path. This format ensures uniqueness while conforming to the C standard’s reserved identifier and significant length rules (C99 §7.1.3, §5.2.4.1), MISRA C:2012 Rules 5.4 and 21.1, and CERT DCL37-C. Nothing in your project configuration or source code needs to change unless you referenced a generated guard by name.
+
+### GTest-like report plugin output matches GoogleTest
+The GTest-like console report’s output now better matches GoogleTest’s own console format. Counts read in the singular for one (`1 test`, ` 1 FAILED TEST`), test files are named test suites, and the run’s total time appears on its closing line. The failure list and its trailer appear only when a test fails. By default, ignored tests now appear in the report and its counts as skipped tests (see the related _Added_ entry above). A tool that checks this report’s totals will see ignored tests counted unless `:report_tests_gtestlike_stdout` ↳ `:ignored_as_skipped:` is set to `FALSE`.
 
 ## 👋 Removed
 
