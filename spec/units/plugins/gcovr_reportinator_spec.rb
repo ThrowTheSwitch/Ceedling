@@ -121,6 +121,28 @@ describe GcovrReportinator do
       config = { gcov_reports: ['JaCoCo'] }
       expect { build_reportinator(config, gcovr_version: ToolVersion.new(7, 0)) }.to_not raise_error
     end
+    # LCOV output arrived in gcovr 7.0. ReportGenerator also writes lcov, so an older gcovr
+    # stops the build only when it is lcov's sole utility.
+    it 'raises when lcov is configured for gcovr alone against gcovr older than 7.0' do
+      config = { gcov_reports: ['lcov'], gcov_utilities: ['gcovr'] }
+      expect {
+        build_reportinator(config, gcovr_version: ToolVersion.new(6, 9))
+      }.to raise_error(CeedlingException, /:reports.*LCOV reports require gcovr 7\.0 or higher \(found 6\.9\)/)
+    end
+
+    it 'warns and leaves lcov to ReportGenerator when gcovr is older than 7.0' do
+      config = { gcov_reports: ['lcov'], gcov_utilities: ['gcovr', 'ReportGenerator'] }
+      expect(loginator).to receive(:log).with(/LCOV.*require gcovr 7\.0 or higher \(found 6\.9\).*ReportGenerator/, Verbosity::COMPLAIN)
+
+      reportinator = build_reportinator(config, gcovr_version: ToolVersion.new(6, 9))
+
+      expect( reportinator.send(:args_builder_lcov, { gcov_reports: ['lcov'] }) ).to eq('')
+    end
+
+    it 'does not raise when lcov is configured against gcovr 7.0+' do
+      config = { gcov_reports: ['lcov'], gcov_utilities: ['gcovr'] }
+      expect { build_reportinator(config, gcovr_version: ToolVersion.new(7, 0)) }.to_not raise_error
+    end
   end
 
   describe '#args_builder_common' do
@@ -199,6 +221,12 @@ describe GcovrReportinator do
     it 'lists :jacoco_pretty among the options a config file overrides' do
       config = { gcov_gcovr: { config_file: 'gcovr.cfg', jacoco_pretty: true } }
       expect(loginator).to receive(:log).with(/:jacoco_pretty/, Verbosity::COMPLAIN)
+      build_reportinator(config)
+    end
+
+    it 'lists :lcov_comment and :lcov_test_name among the options a config file overrides' do
+      config = { gcov_gcovr: { config_file: 'gcovr.cfg', lcov_comment: 'c', lcov_test_name: 't' } }
+      expect(loginator).to receive(:log).with(/:lcov_comment.*:lcov_test_name/, Verbosity::COMPLAIN)
       build_reportinator(config)
     end
 
@@ -435,6 +463,39 @@ describe GcovrReportinator do
     end
   end
 
+  describe '#args_builder_lcov' do
+    let(:reportinator) { build_reportinator({}) }
+
+    it 'returns an empty string when lcov is not an enabled report type' do
+      expect( reportinator.send(:args_builder_lcov, { gcov_reports: ['HtmlBasic'] }) ).to eq('')
+    end
+
+    it 'writes the default artifact, quoted, when no filename is configured' do
+      args = reportinator.send(:args_builder_lcov, { gcov_reports: ['lcov'] })
+      expect(args).to include( "--lcov \"#{GCOV_GCOVR_ARTIFACTS_FILE_LCOV}\"" )
+    end
+
+    it 'joins a custom filename under the gcovr artifacts path' do
+      args = reportinator.send(:args_builder_lcov, { gcov_reports: ['lcov'], lcov_artifact_filename: 'Custom.info' })
+      expect(args).to include( File.join(GCOV_GCOVR_ARTIFACTS_PATH, 'Custom.info') )
+    end
+
+    it 'passes a quoted comment and test name' do
+      args = reportinator.send(:args_builder_lcov, { gcov_reports: ['lcov'], lcov_comment: 'Nightly run', lcov_test_name: 'unit_tests' })
+      expect(args).to include( '--lcov-comment "Nightly run"' )
+      expect(args).to include( '--lcov-test-name "unit_tests"' )
+    end
+
+    it 'withholds the comment and test name when a config file is in use' do
+      args = reportinator.send(:args_builder_lcov,
+        { gcov_reports: ['lcov'], config_file: 'gcovr.cfg', lcov_comment: 'Nightly run', lcov_test_name: 'unit_tests' }
+      )
+      expect(args).to_not include('--lcov-comment')
+      expect(args).to_not include('--lcov-test-name')
+      expect(args).to include('--lcov ')
+    end
+  end
+
   describe '#args_builder_html' do
     let(:reportinator) { build_reportinator({}) }
 
@@ -496,9 +557,9 @@ describe GcovrReportinator do
       captured = nil
       allow(reportinator).to receive(:run_gcovr) { |_opts, args, _boom| captured = args }
 
-      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON JaCoCo] }, '--root x ', false)
+      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON JaCoCo lcov] }, '--root x ', false)
 
-      positions = ['--xml ', '--sonarqube ', '--json ', '--jacoco ', '--html '].map { |flag| captured.index(flag) }
+      positions = ['--xml ', '--sonarqube ', '--json ', '--jacoco ', '--lcov ', '--html '].map { |flag| captured.index(flag) }
       expect( positions ).to eq( positions.sort )
       expect( captured.index('--html ') ).to eq( positions.max )
     end
@@ -507,9 +568,9 @@ describe GcovrReportinator do
       allow(reportinator).to receive(:run_gcovr)
       allow(reportinator_obj).to receive(:generate_progress) { |msg| msg }
 
-      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON JaCoCo] }, '--root x ', false)
+      reportinator.send(:generate_reports_modern, { gcov_reports: %w[HtmlBasic Cobertura SonarQube JSON JaCoCo lcov] }, '--root x ', false)
 
-      ['Cobertura XML', 'SonarQube', 'JSON', 'JaCoCo XML', 'HTML'].each do |name|
+      ['Cobertura XML', 'SonarQube', 'JSON', 'JaCoCo XML', 'LCOV', 'HTML'].each do |name|
         expect(loginator).to have_received(:log).with( /Generating #{name} coverage report/, Verbosity::NORMAL, LogLabels::NOTICE )
       end
     end

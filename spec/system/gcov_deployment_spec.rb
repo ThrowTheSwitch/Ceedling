@@ -88,6 +88,7 @@ ceedling_system_tests do
       end
 
       test_case :create_gcovr_jacoco_report
+      test_case :create_gcovr_lcov_report
     end
 
     describe "Function merge mode" do
