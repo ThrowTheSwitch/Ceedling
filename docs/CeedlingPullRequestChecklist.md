@@ -6,19 +6,18 @@ Below is a quick checklist of the things that need to be done before a full PR i
 
 ### Documentation
 
- - [ ] Has `README.md` been updated? (if it provides a huge feature or change... or maybe version bump)
- - [ ] Has `CeedlingPacket.md` been updated? (if it provides a new or changed feature)
- - [ ] Has `ReleaseNotes.md` been updated? (if it provides a new or changed feature)
- - [ ] Has `Changelog.md` been updated? (if it fixes something or provides something new)
- - [ ] Has `BreakingChanges.md` been updated? (if it changes compatibility with something that has existed before)
+ - [ ] Has the [documentation site](https://docs.throwtheswitch.org/Ceedling/) source in `docs/mkdocs/` been updated? (if it provides a new or changed feature)
+ - [ ] Does the pull request description explain what changed and why, well enough for maintainers to write the Changelog, Release Notes, and Breaking Changes entries? (maintainers write those entries)
+ - [ ] Does the description say so if it changes compatibility with something that has existed before?
 
- ### Software
+### Software
 
- - [ ] Does it follow our coding standards?
+ - [ ] Does it follow our [coding standard](ThrowTheSwitchCodingStandard.md)?
  - [ ] Are all existing tests passing?
  - [ ] Are there new tests added and passing?
- - [ ] Have new config options been added as defaults to the `project.yml` file?
- - [ ] Should new config options be added to example projects' `project.yml` files?
+ - [ ] Do new configuration options have defaults in `lib/ceedling/defaults.rb` and entries in the configuration reference (`docs/mkdocs/configuration/reference/`)?
+ - [ ] Should new configuration options be added to the starter project file (`assets/features/project.yml`) or the example projects' `project.yml` files?
  - [ ] Does the feature follow our "Logical Defaults" philosophy where possible?
  - [ ] Has it passed a peer review?
+ - [ ] Could this change make a failing test appear to pass, keep a test from running, or misreport results or coverage? If so, explain in the description.
  - [ ] Does it pass CI (continuous integration) tests?
