@@ -420,8 +420,9 @@ nothing. Add it under [`:defines`][defines] ↳ `:test`:
     - CEEDLING_TEST
 ```
 
-`module:create` and `module:test` warn when no test define in your project names the
-symbol.
+`module:create` and `module:test` warn about each generated test file whose build would
+not define the symbol. Each file is checked as a test build would compile it, so a symbol
+under a per-test matcher counts only for the test files that matcher matches.
 
 ### Test guards
 
