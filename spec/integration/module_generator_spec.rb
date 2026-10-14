@@ -224,6 +224,16 @@ describe 'Module Generator plugin (integration)' do
       end
     end
 
+    it 'guards a test file with #if when :test_guard asks for it' do
+      in_project( 'src', 'inc', 'test' ) do
+        run_task( flat_config( test_define: 'UNIT_TEST', test_guard: :if ), 'create', 'a_file' )
+
+        expect(File.read( 'test/test_a_file.c' )).to include( "#if UNIT_TEST\n" )
+        expect(File.read( 'test/test_a_file.c' )).to include( '#endif // UNIT_TEST' )
+        expect(File.read( 'src/a_file.c' )).not_to include( '#if' )
+      end
+    end
+
     it 'applies a :snake naming convention' do
       in_project( 'src', 'inc', 'test' ) do
         run_task( flat_config( naming: :snake ), 'create', 'MadScience' )

@@ -12,9 +12,10 @@ require 'module_generator_request'
 require 'module_generator_options'
 
 # Creates, destroys, and stubs modules for the `module:` tasks. Unity's module
-# generator writes and removes source, header, and test files, and CMock's skeleton
-# generator writes a source file of stubs from a header. This plugin hands each one the
-# options ModuleGeneratorOptions builds for a request from the project configuration.
+# generator, through ModuleGeneratorUnity, writes and removes source, header, and test
+# files, and CMock's skeleton generator writes a source file of stubs from a header. This
+# plugin hands each one the options ModuleGeneratorOptions builds for a request from the
+# project configuration.
 class ModuleGenerator < Plugin
 
   # The configured test file prefix, which marks a module argument as a test file
@@ -40,9 +41,9 @@ class ModuleGenerator < Plugin
   private
 
   def unity_generator(request)
-    require 'generate_module'
+    require 'module_generator_unity'
 
-    return UnityModuleGenerator.new( options.unity( request ) )
+    return ModuleGeneratorUnity.new( options.unity( request ) )
   end
 
   def options

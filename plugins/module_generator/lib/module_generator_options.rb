@@ -26,6 +26,8 @@ class ModuleGeneratorOptions
 
   KINDS = %i[src inc tst].freeze
 
+  TEST_GUARDS = %w[ifdef if].freeze
+
   # `path_finder` returns the path in a list a hint matches best, or nil for no match.
   # `boilerplate_reader` returns a file's contents, or nil when it does not exist.
   def initialize(config:, cmock_config:, path_finder:, boilerplate_reader:)
@@ -33,6 +35,7 @@ class ModuleGeneratorOptions
     @cmock_config = cmock_config
     @path_finder  = path_finder
     @naming       = naming( config[:module_generator_naming] )
+    @test_guard   = test_guard( config[:module_generator_test_guard] )
     @boilerplates = boilerplates( boilerplate_reader )
     @collections  = collections
     @shared       = shared_options
@@ -63,6 +66,13 @@ class ModuleGeneratorOptions
     return NAMING.fetch( value.to_s ) do
       raise CeedlingException.new( "Module Generator :naming `#{value}` is not one of #{NAMING.keys.map { |key| ":#{key}" }.join( ', ' )}." )
     end
+  end
+
+  def test_guard(value)
+    guard = (value || :ifdef).to_s
+    return guard if TEST_GUARDS.include?( guard )
+
+    raise CeedlingException.new( "Module Generator :test_guard `#{value}` is not one of #{TEST_GUARDS.map { |key| ":#{key}" }.join( ', ' )}." )
   end
 
   # Configured boilerplates, each replaced by the contents of a configured boilerplate file
@@ -98,7 +108,8 @@ class ModuleGeneratorOptions
       boilerplates: @boilerplates,
       naming:       @naming,
       update_svn:   false,
-      test_define:  @config[:module_generator_test_define] || 'TEST'
+      test_define:  @config[:module_generator_test_define] || 'TEST',
+      test_guard:   @test_guard
     }
   end
 

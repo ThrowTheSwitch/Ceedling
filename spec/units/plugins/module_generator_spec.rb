@@ -17,6 +17,7 @@ require 'ceedling/plugins/plugin'
 require 'module_generator'
 require 'generate_module'
 require 'cmock'
+require 'module_generator_unity'
 
 # The plugin hands each request to Unity's module generator or CMock's skeleton
 # generator. Both are doubled here, so nothing touches the filesystem.
@@ -50,14 +51,14 @@ describe ModuleGenerator do
   end
 
   it 'creates a module with the options built for its request' do
-    expect(UnityModuleGenerator).to receive(:new).with( hash_including( pattern: 'mch', path_src: 'src' ) ).and_return( unity )
+    expect(ModuleGeneratorUnity).to receive(:new).with( hash_including( pattern: 'mch', path_src: 'src' ) ).and_return( unity )
     expect(unity).to receive(:generate).with( 'Lair' )
 
     plugin.create( request( 'Lair', pattern: 'mch' ) )
   end
 
   it 'destroys a module with the options built for its request' do
-    expect(UnityModuleGenerator).to receive(:new).with( hash_including( path_src: 'src' ) ).and_return( unity )
+    expect(ModuleGeneratorUnity).to receive(:new).with( hash_including( path_src: 'src' ) ).and_return( unity )
     expect(unity).to receive(:destroy).with( 'Lair' )
 
     plugin.destroy( request( 'Lair' ) )
@@ -65,7 +66,7 @@ describe ModuleGenerator do
 
   it 'matches a hint through the path finder' do
     allow(file_finder_helper).to receive(:find_best_path_in_collection) { |_hint, paths| paths.last }
-    expect(UnityModuleGenerator).to receive(:new).with( hash_including( path_src: 'src/lab' ) ).and_return( unity )
+    expect(ModuleGeneratorUnity).to receive(:new).with( hash_including( path_src: 'src/lab' ) ).and_return( unity )
     allow(unity).to receive(:generate)
 
     plugin.create( request( 'Lair', path_hint: 'lab' ) )
@@ -81,7 +82,7 @@ describe ModuleGenerator do
     config[:module_generator_boilerplate_files] = { src: 'bp.txt' }
     allow(file_wrapper).to receive(:exist?).with( 'bp.txt' ).and_return( true )
     allow(file_wrapper).to receive(:read).with( 'bp.txt' ).and_return( '/* bp */' )
-    expect(UnityModuleGenerator).to receive(:new).with( hash_including( boilerplates: hash_including( src: '/* bp */' ) ) ).and_return( unity )
+    expect(ModuleGeneratorUnity).to receive(:new).with( hash_including( boilerplates: hash_including( src: '/* bp */' ) ) ).and_return( unity )
     allow(unity).to receive(:generate)
 
     plugin.create( request( 'Lair' ) )
@@ -89,7 +90,7 @@ describe ModuleGenerator do
 
   it 'warns that :update_svn is deprecated when it is configured' do
     config[:module_generator_update_svn] = true
-    allow(UnityModuleGenerator).to receive(:new).and_return( unity )
+    allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:generate)
     expect(loginator).to receive(:log).with( /:update_svn.*deprecated/, Verbosity::COMPLAIN, LogLabels::WARNING )
 
@@ -97,7 +98,7 @@ describe ModuleGenerator do
   end
 
   it 'says nothing about :update_svn when it is not configured' do
-    allow(UnityModuleGenerator).to receive(:new).and_return( unity )
+    allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:generate)
     expect(loginator).not_to receive(:log)
 

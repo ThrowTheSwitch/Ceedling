@@ -55,6 +55,15 @@ describe ModuleGeneratorOptions do
       )
     end
 
+    it 'guards tests with #ifdef unless :test_guard asks for #if' do
+      expect(options.unity( request( 'x' ) )[:test_guard]).to eq( 'ifdef' )
+      expect(options( module_generator_test_guard: :if ).unity( request( 'x' ) )[:test_guard]).to eq( 'if' )
+    end
+
+    it 'refuses an unknown :test_guard' do
+      expect { options( module_generator_test_guard: :ifndef ) }.to raise_error( CeedlingException, /:test_guard.*ifndef/ )
+    end
+
     it 'never asks Unity to run Subversion, even when :update_svn is configured' do
       expect(options( module_generator_update_svn: true ).unity( request( 'x' ) )[:update_svn]).to be( false )
     end
