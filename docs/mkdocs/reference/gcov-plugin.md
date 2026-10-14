@@ -492,6 +492,43 @@ Override the default JSON report output filename.
 
 ---
 
+### `:jacoco_pretty`
+
+Pretty-print the JaCoCo XML report. Requires `gcovr` 7.0 or higher. (`gcovr --jacoco-pretty`)
+
+**Default:** `FALSE`
+
+---
+
+### `:jacoco_artifact_filename`
+
+Override the default JaCoCo XML report output filename. Requires `gcovr` 7.0 or higher.
+
+**Default:** `GcovCoverageJaCoCo.xml`
+
+---
+
+### `:lcov_comment`
+
+Set a comment in the LCOV report. Requires `gcovr` 7.0 or higher. (`gcovr --lcov-comment`)
+
+---
+
+### `:lcov_test_name`
+
+Set the test name recorded in the LCOV report. Requires `gcovr` 7.0 or higher.
+(`gcovr --lcov-test-name`)
+
+---
+
+### `:lcov_artifact_filename`
+
+Override the default LCOV report output filename. Requires `gcovr` 7.0 or higher.
+
+**Default:** `GcovCoverage.lcov`
+
+---
+
 ### `:text_artifact_filename`
 
 Override the default text report output filename.

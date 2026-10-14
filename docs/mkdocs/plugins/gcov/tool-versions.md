@@ -1,6 +1,6 @@
 # Supported tool versions
 
-_**Last updated:**_ May 17, 2026
+_**Last updated:**_ October 13, 2026
 
 At the time of the last major updates to the Gcov plugin, the following notes
 on version compatibility were known to be accurate.
@@ -53,7 +53,7 @@ Gcov plugin supports `gcovr` command line conventions since version 4.2 and
 attempts to support `gcovr` command lines before version 4.2. We recommend 
 using `gcovr` 5 and later.
 
-Several `:gcovr` options depend on a minimum `gcovr` version, checked and
+Several `:gcovr` options and report types depend on a minimum `gcovr` version, checked and
 enforced by this plugin (see [GCovr Configuration](gcovr.md) for each
 option's own details):
 
@@ -62,6 +62,8 @@ option's own details):
 | `:decisions` | 5.1 |
 | `:merge_mode_function` | 6.0 (ignored for earlier versions) |
 | `:fail_under_decision` | 7.0 |
+| `JaCoCo` report | 7.0 |
+| `lcov` report | 7.0 (gcovr only; ReportGenerator has no minimum) |
 | `:mcdc` | 8.0 |
 
 `gcovr` 7.0 also deprecated `:branches`, `:sort_uncovered`, and

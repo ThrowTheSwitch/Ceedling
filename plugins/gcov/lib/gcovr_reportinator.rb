@@ -43,6 +43,16 @@ class GcovrReportinator < GcovReportinator
       min: [5, 1],
       message: ":gcov ↳ :gcovr ↳ :decisions ➡️ requires gcovr %{req} or higher (found %{found})"
     },
+    # Report formats gate on whether :gcov ↳ :reports names them
+    :jacoco => {
+      min: [7, 0],
+      message: ":gcov ↳ :reports ➡️ JaCoCo reports require gcovr %{req} or higher (found %{found})"
+    },
+    # ReportGenerator also writes lcov, so this gate applies only when gcovr is lcov's sole utility
+    :lcov => {
+      min: [7, 0],
+      message: ":gcov ↳ :reports ➡️ LCOV reports require gcovr %{req} or higher (found %{found})"
+    },
   }.freeze
 
   # Declarative map of :gcov ↳ :gcovr options handled identically regardless of report
@@ -114,10 +124,14 @@ class GcovrReportinator < GcovReportinator
         :mcdc                 => @configurator.gcov_mcdc,
         :fail_under_decision  => gcovr_opts[:fail_under_decision],
         :decisions            => gcovr_opts[:decisions],
+        :jacoco               => report_enabled?( @config, ReportTypes::JACOCO ),
+        :lcov                 => report_enabled?( @config, ReportTypes::LCOV ) && !report_generator_enabled?,
       },
       @gcovr_version,
       VERSION_GATES
     )
+
+    @lcov_supported = lcov_supported?()
   end
 
   # Generate the gcovr report(s) specified in the options.
@@ -188,11 +202,7 @@ class GcovrReportinator < GcovReportinator
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
     if report_enabled?(gcovr_opts, ReportTypes::COBERTURA)
-      # Determine the Cobertura XML report file name.
-      artifacts_file_cobertura = GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA
-      if !(gcovr_opts[:cobertura_artifact_filename].nil?)
-        artifacts_file_cobertura = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:cobertura_artifact_filename])
-      end
+      artifacts_file_cobertura = artifact_file(gcovr_opts, :cobertura_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA)
 
       args += "--xml-pretty " if gcovr_opts[:cobertura_pretty] && !config_file_in_use?(gcovr_opts)
       args += "--xml #{use_output_option ? "--output " : ""} \"#{artifacts_file_cobertura}\" "
@@ -208,11 +218,7 @@ class GcovrReportinator < GcovReportinator
 
     # Determine if the gcovr SonarQube XML report is enabled. Defaults to disabled.
     if report_enabled?(gcovr_opts, ReportTypes::SONARQUBE)
-      # Determine the SonarQube XML report file name.
-      artifacts_file_sonarqube = GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE
-      if !(gcovr_opts[:sonarqube_artifact_filename].nil?)
-        artifacts_file_sonarqube = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:sonarqube_artifact_filename])
-      end
+      artifacts_file_sonarqube = artifact_file(gcovr_opts, :sonarqube_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE)
 
       args += "--sonarqube #{use_output_option ? "--output " : ""} \"#{artifacts_file_sonarqube}\" "
     end
@@ -227,11 +233,7 @@ class GcovrReportinator < GcovReportinator
 
     # Determine if the gcovr JSON report is enabled. Defaults to disabled.
     if report_enabled?( gcovr_opts, ReportTypes::JSON )
-      # Determine the JSON report file name.
-      artifacts_file_json = GCOV_GCOVR_ARTIFACTS_FILE_JSON
-      if !(gcovr_opts[:json_artifact_filename].nil?)
-        artifacts_file_json = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:json_artifact_filename])
-      end
+      artifacts_file_json = artifact_file(gcovr_opts, :json_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_JSON)
 
       args += "--json-pretty " if gcovr_opts[:json_pretty] && !config_file_in_use?(gcovr_opts)
       # Note: In gcovr 4.2, the JSON report is output only when the --output option is specified.
@@ -240,6 +242,59 @@ class GcovrReportinator < GcovReportinator
     end
 
     return args
+  end
+
+
+  # Build the gcovr JaCoCo XML report generation arguments.
+  # gcovr's --jacoco-pretty implies --jacoco, but both are given so the artifact path is explicit.
+  def args_builder_jacoco(gcovr_opts)
+    return '' unless report_enabled?( gcovr_opts, ReportTypes::JACOCO )
+
+    artifacts_file_jacoco = artifact_file( gcovr_opts, :jacoco_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_JACOCO )
+
+    args = ''
+    args += '--jacoco-pretty ' if gcovr_opts[:jacoco_pretty] && !config_file_in_use?( gcovr_opts )
+
+    return args + "--jacoco \"#{artifacts_file_jacoco}\" "
+  end
+
+
+  # Build the gcovr LCOV report generation arguments.
+  # The comment and test name are withheld with a config file, which then supplies them.
+  def args_builder_lcov(gcovr_opts)
+    return '' unless @lcov_supported && report_enabled?( gcovr_opts, ReportTypes::LCOV )
+
+    artifacts_file_lcov = artifact_file( gcovr_opts, :lcov_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_LCOV )
+
+    args = ''
+    if !config_file_in_use?( gcovr_opts )
+      args += "--lcov-comment \"#{gcovr_opts[:lcov_comment]}\" " unless gcovr_opts[:lcov_comment].nil?
+      args += "--lcov-test-name \"#{gcovr_opts[:lcov_test_name]}\" " unless gcovr_opts[:lcov_test_name].nil?
+    end
+
+    return args + "--lcov \"#{artifacts_file_lcov}\" "
+  end
+
+
+  # gcovr writes LCOV from 7.0. With ReportGenerator also enabled, an older gcovr leaves lcov
+  # to ReportGenerator rather than stopping the build, and says so. The gate above covers
+  # gcovr as lcov's sole utility.
+  def lcov_supported?
+    return true if min_version?( @gcovr_version, 7, 0 )
+    return false unless report_enabled?( @config, ReportTypes::LCOV )
+
+    @loginator.log(
+      ":gcov ↳ :reports ➡️ Gcovr LCOV reports require gcovr 7.0 or higher (found " \
+      "#{@gcovr_version.major}.#{@gcovr_version.minor}). Only ReportGenerator generates lcov.",
+      Verbosity::COMPLAIN
+    )
+
+    return false
+  end
+
+
+  def report_generator_enabled?
+    return Array( @config[:gcov_utilities] ).any? { |utility| utility.casecmp?( GCOV_UTILITY_NAME_REPORT_GENERATOR ) }
   end
 
 
@@ -252,11 +307,7 @@ class GcovrReportinator < GcovReportinator
                    report_enabled?(gcovr_opts, ReportTypes::HTML_DETAILED)
 
     if html_enabled
-      # Determine the HTML report file name.
-      artifacts_file_html = GCOV_GCOVR_ARTIFACTS_FILE_HTML
-      if !(gcovr_opts[:html_artifact_filename].nil?)
-        artifacts_file_html = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:html_artifact_filename])
-      end
+      artifacts_file_html = artifact_file(gcovr_opts, :html_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_HTML)
 
       is_html_report_type_detailed = (gcovr_opts[:gcov_html_report_type].is_a? String) && (gcovr_opts[:gcov_html_report_type].casecmp("detailed") == 0)
 
@@ -288,9 +339,8 @@ class GcovrReportinator < GcovReportinator
     args_text = ""
     message_text = "Generating a text coverage report"
 
-    filename = gcovr_opts[:text_artifact_filename] || GCOV_GCOVR_DEFAULT_TEXT_ARTIFACT_FILENAME
-
-    artifacts_file_txt = File.join(GCOV_GCOVR_ARTIFACTS_PATH, filename)
+    default_txt = File.join(GCOV_GCOVR_ARTIFACTS_PATH, GCOV_GCOVR_DEFAULT_TEXT_ARTIFACT_FILENAME)
+    artifacts_file_txt = artifact_file(gcovr_opts, :text_artifact_filename, default_txt)
     args_text += "--output \"#{artifacts_file_txt}\" "
     message_text += " in '#{GCOV_GCOVR_ARTIFACTS_PATH}'"
 
@@ -317,6 +367,12 @@ class GcovrReportinator < GcovReportinator
 
     args += (_args = args_builder_json(gcovr_opts, true))
     reports << "JSON" unless _args.empty?
+
+    args += (_args = args_builder_jacoco(gcovr_opts))
+    reports << "JaCoCo XML" unless _args.empty?
+
+    args += (_args = args_builder_lcov(gcovr_opts))
+    reports << "LCOV" unless _args.empty?
 
     # --html must be last (gcovr 4.2 requirement)
     args += (_args = args_builder_html(gcovr_opts, false))
@@ -360,7 +416,7 @@ class GcovrReportinator < GcovReportinator
 
 
   # gcovr options silently ignored whenever :config_file is set (dropped by args_builder_common's
-  # early return, or gated in args_builder_cobertura/json/html) -- in that case all such
+  # early return, or gated in args_builder_cobertura/json/jacoco/lcov/html) -- in that case all such
   # configuration must come from the gcovr configuration file itself.
   IGNORED_WHEN_CONFIG_FILE_SET = [
     :report_include, :report_exclude, :gcov_filter, :gcov_exclude, :exclude_directories,
@@ -369,9 +425,18 @@ class GcovrReportinator < GcovReportinator
     :keep, :delete, :threads, :merge_mode_function,
     :fail_under_line, :fail_under_branch, :fail_under_decision, :fail_under_function,
     :source_encoding, :object_directory,
-    :cobertura_pretty, :json_pretty,
+    :cobertura_pretty, :json_pretty, :jacoco_pretty, :lcov_comment, :lcov_test_name,
     :html_title, :html_absolute_paths, :html_encoding, :html_medium_threshold, :html_high_threshold
   ].freeze
+
+  # A report writes to its default artifact file unless its :*_artifact_filename option names
+  # another. Either way the file lands beneath the gcovr artifacts path.
+  def artifact_file(gcovr_opts, key, default)
+    filename = gcovr_opts[key]
+
+    return filename.nil? ? default : File.join(GCOV_GCOVR_ARTIFACTS_PATH, filename)
+  end
+
 
   # True when a gcovr configuration file is in use, meaning Ceedling must defer to it and
   # withhold any option that would silently override its settings.
@@ -588,7 +653,7 @@ class GcovrReportinator < GcovReportinator
 
   # Returns true if the given report type is enabled, otherwise returns false.
   def report_enabled?(gcovr_opts, report_type)
-    return gcovr_opts[:gcov_reports].map(&:upcase).include?( report_type.upcase )
+    return Array( gcovr_opts[:gcov_reports] ).map( &:upcase ).include?( report_type.upcase )
   end
 
 end

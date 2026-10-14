@@ -76,6 +76,21 @@ ceedling_system_tests do
       test_case :project_with_gcov_fail_under_decision
     end
 
+    describe "JaCoCo and LCOV reports" do
+      # gcovr gained JaCoCo XML and LCOV output in 7.0. The plugin stops the build when either
+      # report is configured against an older gcovr, so these assert generation only where it exists.
+      include_context "requires gcovr", [7, 0]
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :create_gcovr_jacoco_report
+      test_case :create_gcovr_lcov_report
+    end
+
     describe "Function merge mode" do
       # Ceedling injects --merge-mode-functions, which gcovr gained in 6.0. Below that the
       # plugin omits the flag silently rather than breaking the build, so these cases would

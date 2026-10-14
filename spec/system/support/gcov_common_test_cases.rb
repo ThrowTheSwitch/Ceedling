@@ -206,7 +206,7 @@ module GcovCommonTestCases
           expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
-        if @gcov_reports.include? :modulegenerator
+        if @gcov_reports.include? :reportgenerator
           expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
@@ -354,6 +354,52 @@ module GcovCommonTestCases
   # confirms it still applies alongside a :config_file: (unlike every other :gcovr:
   # option, which config_file_in_use? defers to the file instead) -- it's meant to
   # keep working right alongside a config file, not be silently dropped by it.
+  # A JaCoCo report names the JaCoCo report DTD and has a <report> root element
+  def create_gcovr_jacoco_report
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        @c.merge_project_yml_for_test( { :gcov => { :reports => ['JaCoCo'], :gcovr => { :jacoco_pretty => true } } } )
+
+        output = @c.ceedling_build_exec("gcov:all")
+
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/Generating JaCoCo XML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
+
+        report = File.read('build/artifacts/gcov/gcovr/GcovCoverageJaCoCo.xml')
+        expect(report).to match(%r{<!DOCTYPE \w+ SYSTEM 'https://www\.jacoco\.org/.+/report\.dtd'>})
+        expect(report).to match(/<report\b[^>]*>/)
+        expect(report).to include('example_file.c')
+      end
+    end
+  end
+
+  # An LCOV info file records each source file between SF: and end_of_record, under its test name
+  def create_gcovr_lcov_report
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        @c.merge_project_yml_for_test( { :gcov => { :reports => ['lcov'], :gcovr => { :lcov_test_name => 'ceedling_suite' } } } )
+
+        output = @c.ceedling_build_exec("gcov:all")
+
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/Generating LCOV coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
+
+        report = File.read('build/artifacts/gcov/gcovr/GcovCoverage.lcov')
+        expect(report).to include('TN:ceedling_suite')
+        expect(report).to match(/^SF:.*example_file\.c$/)
+        expect(report).to include('end_of_record')
+      end
+    end
+  end
+
   def create_html_report_with_gcovr_custom_args
     @c.with_context do
       Dir.chdir @proj_name do
@@ -414,7 +460,7 @@ module GcovCommonTestCases
           expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
-        if @gcov_reports.include? :modulegenerator
+        if @gcov_reports.include? :reportgenerator
           expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
@@ -449,7 +495,7 @@ module GcovCommonTestCases
           expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
-        if @gcov_reports.include? :modulegenerator
+        if @gcov_reports.include? :reportgenerator
           expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
@@ -487,7 +533,7 @@ module GcovCommonTestCases
           expect(output).to match(/Generating HTML coverage report in 'build\/artifacts\/gcov\/gcovr\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/gcovr/GcovCoverageResults.html')).to eq true
         end
-        if @gcov_reports.include? :modulegenerator
+        if @gcov_reports.include? :reportgenerator
           expect(output).to match(/Generating HtmlBasic coverage report in 'build\/artifacts\/gcov\/ReportGenerator\/'\.\.\./)
           expect(File.exist?('build/artifacts/gcov/ReportGenerator/summary.htm')).to eq true
         end
