@@ -10,18 +10,22 @@ require 'ceedling/exceptions'
 # A dependency's :environment entries, in effect only while its own commands run.
 #
 # Each entry sets a variable (`NAME=value`), appends to it (`NAME+=value`), or removes
-# text from it (`NAME-=value`), in order. Afterward every variable returns to its earlier
+# text from it (`NAME-=value`), in order. Appended and removed text is used exactly as
+# written, leading spaces included. Afterward every variable returns to its earlier
 # value, and one that was unset is removed again, so one dependency's environment never
 # reaches the next dependency or Ceedling itself.
 class DependencyEnvironment
 
-  ENTRY = /\A(\w+)\s*(\+=|-=|=)\s*(.*)\z/
+  # Text after += or -= is kept exactly, so it can carry its own delimiter (a space
+  # between compiler flags). A value after = loses its leading spaces.
+  ENTRY = /\A(\w+)\s*(?:(\+=|-=)(.*)|(=)\s*(.*))\z/
 
   def initialize(entries, dependency:)
     @assignments = entries.map do |entry|
       match = ENTRY.match( entry.to_s ) or
         raise CeedlingException.new( "Environment entry `#{entry}` for dependency `#{dependency}` is not NAME=value, NAME+=value, or NAME-=value." )
-      match.captures
+      name, operator, text, equals, value = match.captures
+      [name, operator || equals, operator ? text : value]
     end
   end
 

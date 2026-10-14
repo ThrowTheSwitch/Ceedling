@@ -23,9 +23,16 @@ describe DependencyEnvironment do
 
   it 'sets, appends to, and removes text from variables while its block runs' do
     env  = { 'PATH' => '/bin', 'FLAGS' => '-O2 -g' }
-    seen = inside( ['CC=clang', 'PATH += :/opt/bin', 'FLAGS -= -g'], env )
+    seen = inside( ['CC = clang', 'PATH+=:/opt/bin', 'FLAGS-=-g'], env )
 
     expect(seen).to eq( 'PATH' => '/bin:/opt/bin', 'FLAGS' => '-O2 ', 'CC' => 'clang' )
+  end
+
+  # Appending needs its own delimiter, such as the space between compiler flags
+  it 'keeps the text after += and -= exactly, leading spaces included' do
+    seen = inside( ['CFLAGS+= -mcpu=m4', 'LDFLAGS-= -lm'], { 'CFLAGS' => '-O2', 'LDFLAGS' => '-lc -lm' } )
+
+    expect(seen).to eq( 'CFLAGS' => '-O2 -mcpu=m4', 'LDFLAGS' => '-lc' )
   end
 
   it 'appends to and removes from a variable that is not set' do
