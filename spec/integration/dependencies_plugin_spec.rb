@@ -166,8 +166,6 @@ describe 'Dependencies plugin (integration)' do
     end
 
     it 'accepts a dependency with no artifacts' do
-      pending 'a dependency without :artifacts raises NoMethodError'
-
       in_project do
         write_build_script( 'deps/tool', 'build/out.txt' )
         deps = [dependency( 'tool' ).tap { |dep| dep.delete( :artifacts ) }]
