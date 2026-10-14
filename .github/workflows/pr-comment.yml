@@ -1,0 +1,89 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# -----------------------------------------------------------------------
+# Pull Request CI Summary Comment
+#
+# Purpose:
+#   Post the CI summary a pull request's CI run rendered as one sticky comment on
+#   that pull request, updated in place on every later run.
+#
+# Why a separate workflow:
+#   A pull request from a fork runs CI with a read-only token, so CI itself cannot
+#   comment. A workflow_run workflow runs in this repository's own context with the
+#   write permission granted below.
+#
+# Safety:
+#   This workflow never checks out or runs pull request code. It treats the summary
+#   artifact as untrusted data, and it posts only to the pull request whose head commit
+#   is the commit the triggering run tested, so a run cannot aim its comment at another
+#   pull request.
+# -----------------------------------------------------------------------
+
+---
+name: PR Comment
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  comment:
+    name: "Post CI Summary"
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+
+    # actions: read downloads the triggering run's artifact; pull-requests: write posts
+    permissions:
+      actions: read
+      pull-requests: write
+
+    steps:
+      # A run cancelled before its summary job uploaded anything leaves no artifact
+      - name: Download CI Summary
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-summary
+          path: ci-summary/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Verify Pull Request
+        id: pr
+        if: steps.download.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          number=$(tr -d '[:space:]' < ci-summary/ci-summary-pr.txt)
+          if ! [[ "$number" =~ ^[0-9]+$ ]]; then
+            echo "The summary names no valid pull request number"
+            exit 1
+          fi
+
+          head_sha=$(gh api "repos/$REPO/pulls/$number" --jq '.head.sha')
+          if [ "$head_sha" != "$RUN_SHA" ]; then
+            echo "Pull request #$number is at $head_sha, not the tested $RUN_SHA; skipping"
+            exit 0
+          fi
+
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+      - name: Post Sticky Comment
+        if: steps.pr.outputs.number != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: ci-summary
+          number: ${{ steps.pr.outputs.number }}
+          path: ci-summary/ci-summary.md
