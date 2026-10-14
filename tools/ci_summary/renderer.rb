@@ -24,14 +24,14 @@ module CiSummary
     SUITES          = %w[units integration system].freeze
     COVERAGE_SUITES = %w[units integration system combined].freeze
     FAILED          = %w[failure cancelled timed_out].freeze
+    UNCOVERED_LIMIT = 20
 
     extend Format
 
     module_function
 
     def render(sha:, jobs:, legs:, coverage:, diff_coverage:, baseline:)
-      # A skipped job ran nothing, and a job without a conclusion is still running
-      run = jobs.reject { |job| job['conclusion'].nil? or job['conclusion'] == 'skipped' }
+      run = finished( jobs )
 
       sections = [
         header( sha, run, baseline ), warnings( legs, baseline ), failing_jobs( run ),
@@ -40,6 +40,11 @@ module CiSummary
         diff_coverage_line( diff_coverage ), legs_details( legs ), jobs_details( run )
       ]
       return sections.compact.join( "\n" )
+    end
+
+    # A skipped job ran nothing, and a job without a conclusion is still running
+    def finished(jobs)
+      return jobs.reject { |job| job['conclusion'].nil? or job['conclusion'] == 'skipped' }
     end
 
     ### Sections ###
@@ -114,7 +119,13 @@ module CiSummary
              "(#{diff[:covered]}/#{diff[:relevant]} changed lines)."
       uncovered = diff[:uncovered].flat_map { |path, ranges| ranges.map { |range| "`#{path}:#{range}`" } }
 
-      return uncovered.empty? ? "#{line}\n" : "#{line} Uncovered: #{uncovered.join( ', ' )}\n"
+      return uncovered.empty? ? "#{line}\n" : "#{line} Uncovered: #{capped_list( uncovered )}\n"
+    end
+
+    # A pull request comment has a size limit, so a long list stops at a count
+    def capped_list(items)
+      shown = items.first( UNCOVERED_LIMIT ).join( ', ' )
+      return items.size > UNCOVERED_LIMIT ? "#{shown}, and #{items.size - UNCOVERED_LIMIT} more" : shown
     end
 
     def legs_details(legs)

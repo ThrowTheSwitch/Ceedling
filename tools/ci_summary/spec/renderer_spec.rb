@@ -84,6 +84,15 @@ describe CiSummary::Renderer do
     expect(render).to include( '**Diff coverage:** 96.00% (48/50 changed lines). Uncovered: `lib/x.rb:42-43`' )
   end
 
+  # A pull request comment has a size limit, and a large change can miss many ranges
+  it 'lists at most twenty uncovered ranges and counts the rest' do
+    ranges   = (1..25).map { |n| (n * 10).to_s }
+    markdown = render( diff_coverage: { covered: 0, relevant: 25, uncovered: { 'lib/x.rb' => ranges } } )
+
+    expect(markdown).to include( '`lib/x.rb:200`, and 5 more' )
+    expect(markdown).not_to include( '`lib/x.rb:210`' )
+  end
+
   it 'says when no changed line is Ruby that coverage tracks' do
     expect(render( diff_coverage: { covered: 0, relevant: 0, uncovered: {} } )).to include( '**Diff coverage:** no changed lines tracked' )
   end
