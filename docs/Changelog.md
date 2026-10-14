@@ -158,6 +158,15 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - Fixed `module:stub` ignoring the project’s `:cmock` settings and a subdirectory named with a slash, printing its configuration, and triggering a CMock warning about `:includes`.
 - Fixed `:boilerplate_files` changing the configured `:boilerplates`. A boilerplate file that does not exist now stops the command rather than being ignored.
 
+### Dependencies plugin
+
+- [#1076](https://github.com/ThrowTheSwitch/Ceedling/issues/1076) Fixed a second `dependencies:fetch`, or a `dependencies:make` after a fetch, failing because `git clone` ran into the already-populated folder. A dependency whose fetch path holds files now counts as fetched, and `dependencies:clean` allows a fresh fetch. Working paths are no longer created ahead of fetching, which made a clone into a fetch path containing the build path fail.
+- [#1110](https://github.com/ThrowTheSwitch/Ceedling/issues/1110) Fixed `dependencies:deploy` trying to copy a file named for the dependency rather than its dynamic libraries. It now copies every dynamic library from the artifact path beside the release executable.
+- Fixed a dependency's `:environment` variables lasting for the rest of the run, reaching every later dependency and Ceedling itself. They now apply only while that dependency's commands run. An entry not of the form `NAME=value`, `NAME+=value`, or `NAME-=value` now stops the build rather than being ignored. Text after `+=` and `-=` now keeps its leading space, so an appended flag can carry the delimiter it needs.
+- Fixed a dependency without `:artifacts` crashing the build. Configuration problems now stop the build with a message naming the dependency: a missing name, a name without letters or digits, two names sharing a task name, an unknown fetch method, or a fetch method missing its `:source` or `:executable`.
+- Fixed an `:includes` glob under `:artifacts` expanding against the working directory rather than the artifact path, and joining every directory it found into one path.
+- Fixed `:build_lib` depending on the process working directory, and miscomputing where to copy its library when the `:artifact` path was absolute or climbed with `..`. The `:deps_compiler` tool now receives its search paths and defines as `${5}` and `${6}`, like Ceedling's own compilers.
+
 ### Valgrind & Cppcheck plugins
 
 - Fixed enabling either plugin making its analysis tool a hard dependency of *every* Ceedling command, including plain `test:all`. Each tool is now required only by its own plugin’s tasks. `ceedling files:cppcheck` no longer needs Cppcheck installed either.
