@@ -92,6 +92,12 @@ The refreshed Bullseye plugin offers additional features over the original versi
 - Added [`:cppcheck` ↳ `:fail_build:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/cppcheck/#fail_build) and `:fail_build_severities:` to break a build on findings. Cppcheck exits successfully even when it finds defects, so `cppcheck:all` previously could not fail a build at all. Only `error` severity fails by default, since whole project analysis always enables every check.
 - `cppcheck:all` now prints a per-severity tally of findings. Results previously landed only in report files, with nothing shown at the console.
 
+### Module Generator plugin
+
+- [#695](https://github.com/ThrowTheSwitch/Ceedling/issues/695) Added [`module:test[...]`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#testing-from-headers), which writes a test file holding an ignored test for each function a module’s header declares. Run again, it adds tests only for newly declared functions.
+- [#665](https://github.com/ThrowTheSwitch/Ceedling/issues/665) Added [`:test_guard`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#test-guards) to wrap generated tests in `#if` rather than `#ifdef`. Generating tests now warns when the guarding test define is not defined for test builds, since those tests would compile to nothing.
+- [#1025](https://github.com/ThrowTheSwitch/Ceedling/issues/1025) `module:create` now warns about each [existing file elsewhere in the project that shares a name](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#same-named-files) with a file it creates.
+
 ### GTest-like report plugin skipped tests
 The [GTest-like console report](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/) (`report_tests_gtestlike_stdout`) now reports a Unity test ignored with `TEST_IGNORE()` or `TEST_IGNORE_MESSAGE()` as a GoogleTest skipped test. A skipped test is listed with its location and message, counted in the run, and summarized between passed and failed tests, the way GoogleTest 1.10.0 and later reports `GTEST_SKIP()`. A test file whose every test is ignored now gets its own section. The new `:report_tests_gtestlike_stdout` ↳ `:ignored_as_skipped:` setting defaults to `TRUE`. Set it to `FALSE` to leave ignored tests out of the report for tools that do not understand skipped tests (see the related _Changed_ entry below).
 

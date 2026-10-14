@@ -2,19 +2,27 @@
 
 This plugin adds commands to Ceedling that create a module’s source, header, and test
 files from templates; remove them again; and stub a source file from its header. Files
-land in your project’s `:paths`, guided by optional hints.
+land in your project’s [`:paths`][paths], guided by optional hints.
 
 ## Overview
 
-Enable the plugin by adding `module_generator` to `:plugins` ↳ `:enabled` in your
-project file. Then a single call creates a new module:
+Enable the plugin by adding `module_generator` to the enabled [plugins][plugins] list in
+your project configuration:
+
+```yaml
+:plugins:
+  :enabled:
+    - module_generator
+```
+
+Then a single call creates a new module:
 
 ```sh
 ceedling "module:create[MadScience]"
 ```
 
 This creates `MadScience.c`, `MadScience.h`, and `test_MadScience.c`. The test file
-carries your project’s `:test_file_prefix`. Names keep the case you type unless you
+carries your project’s [`:test_file_prefix`][test-file-prefix]. Names keep the case you type unless you
 configure a [naming convention](#naming-convention).
 
 Several modules can be named in one call, separated by commas. Leave no spaces between
@@ -31,6 +39,7 @@ The plugin’s three commands take the same arguments:
 | `module:create[...]` | Creates each module’s files, skipping any that already exist and stopping when all of them do |
 | `module:destroy[...]` | Removes each module’s files |
 | `module:stub[...]` | Writes a source file of function stubs from each module’s header |
+| `module:test[...]` | Writes a test file with a test for each function in each module’s header |
 
 A name that begins with your test file prefix asks for a test file alone.
 `"module:create[test_MadScience]"` creates only `test_MadScience.c`. When the prefix ends
@@ -76,7 +85,7 @@ argument is always a module name, even one spelled like a pattern.
 ## Paths
 
 Without any hint, each kind of file goes to the first path listed for it under
-`:paths`. Source files go to the first `:source` path, headers to the first `:include`
+[`:paths`][paths]. Source files go to the first `:source` path, headers to the first `:include`
 path, and tests to the first `:test` path. Headers go with the source when your project
 lists no include paths. To choose other default locations, configure them:
 
@@ -176,6 +185,13 @@ The module generator does not check whether a new subdirectory is covered by you
 `:paths`. You can create files before updating your project file. You might also create
 a file Ceedling does not see until you add its folder to `:paths`.
 
+### Same-named files
+
+`module:create` warns about each existing source, header, or test file elsewhere in your
+project that shares a name with a file it is about to create, then creates the module.
+Ceedling distinguishes same-named files by their paths, so this is allowed. The warning
+catches the case where you meant to work with the existing module instead.
+
 ## Stubbing
 
 `module:stub` writes a source file containing a stub for each function its header
@@ -193,8 +209,31 @@ Hints and slashes work as they do for `module:create`. `"module:stub[lab:rev/Sec
 reads `rev/SecretLair.h` below the include path `lab:` matches and writes
 `rev/SecretLair.c` below the matching source path.
 
-Headers are parsed with your project’s `:cmock` settings, the same ones that generate
+Headers are parsed with your project’s [`:cmock`][cmock] settings, the same ones that generate
 your mocks, so options like `:strippables` and `:treat_as` apply to stubs too.
+
+## Testing from headers
+
+`module:test` writes a test file containing an ignored test for each function its
+module’s header declares, a starting point for testing a module that already exists:
+
+```sh
+ceedling "module:test[SecretLair]"
+```
+
+This reads `SecretLair.h` from your include path and writes `test_SecretLair.c` to your
+test path, with a `test_<function>_NeedToImplement` test for each function. Each test
+calls `TEST_IGNORE_MESSAGE()` until you fill it in.
+
+Run it again after adding functions to the header, and only tests for the new functions
+are added, ahead of the file’s closing `#endif`. A function already counts as tested by
+any test named `test_<function>` or `test_<function>_<anything>`, so your own
+descriptive test names are respected and your existing tests are left alone.
+
+Hints and slashes work as they do for `module:create`. The test file uses your
+configured [includes](#includes), [boilerplate](#boilerplates),
+[test define](#test-defines), and [test guard](#test-guards). Headers are parsed with
+your project’s [`:cmock`][cmock] settings, as for [stubbing](#stubbing).
 
 ## Destroying
 
@@ -220,6 +259,7 @@ The module generator runs as-is with its defaults. Every setting lives under
 | `:boilerplates` | [Text at the top of every generated file](#boilerplates) | none |
 | `:boilerplate_files` | [Files holding that text instead](#boilerplate-files) | none |
 | `:test_define` | [Symbol guarding each test file](#test-defines) | `TEST` |
+| `:test_guard` | [`#ifdef` or `#if` around each test file](#test-guards) | `:ifdef` |
 
 ### Naming convention
 
@@ -370,5 +410,49 @@ ceedling "module:create[Widget]"
 ```
 
 creates `test_Widget.c` wrapped in `#ifdef CEEDLING_TEST` and `#endif // CEEDLING_TEST`.
+
+The symbol must be defined for your test builds, or every generated test compiles to
+nothing. Add it under [`:defines`][defines] ↳ `:test`:
+
+```yaml
+:defines:
+  :test:
+    - CEEDLING_TEST
+```
+
+`module:create` and `module:test` warn when no test define in your project names the
+symbol.
+
+### Test guards
+
+Each generated test file is guarded with `#ifdef`. Some coding standards forbid `#ifdef`
+in favor of `#if`, and `:test_guard` set to `:if` uses `#if` instead. The options are
+`:ifdef` (the default) and `:if`.
+
+```yaml
+:defines:
+  :test:
+    - UNIT_TEST
+
+:module_generator:
+  :test_define: UNIT_TEST
+  :test_guard: :if
+```
+
+With these settings, this command:
+
+```sh
+ceedling "module:create[Widget]"
+```
+
+creates `test_Widget.c` wrapped in `#if UNIT_TEST` and `#endif // UNIT_TEST`. With
+`#if`, the symbol must be defined to a nonzero value. A bare `UNIT_TEST` under `:defines`
+is defined as `1`.
+
+[plugins]: ../configuration/reference/plugins.md
+[paths]: ../configuration/reference/paths.md
+[test-file-prefix]: ../configuration/reference/project.md#test_file_prefix
+[cmock]: ../configuration/reference/cmock.md
+[defines]: ../configuration/reference/defines.md
 
 <br/><br/>
