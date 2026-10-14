@@ -37,7 +37,6 @@ class Dependencies < Plugin
       keys = [spec.name, spec.task_name] + spec.static_libraries + spec.dynamic_libraries +
              spec.include_directories( path_collector ) + spec.include_files + spec.source_paths
       keys.each { |key| @lookup[key] = spec }
-      validate_fetch_tools( spec )
       environment_for( spec )
     end
   end
@@ -189,6 +188,7 @@ class Dependencies < Plugin
       return
     end
 
+    check_tools( *fetch_tools( spec.fetch_method ) )
     log( "Fetching dependency #{spec.name}..." )
     @ceedling[:file_wrapper].mkdir( path )
     steps = commands.fetch( spec )
@@ -226,6 +226,7 @@ class Dependencies < Plugin
       raise CeedlingException.new( "Dependency `#{spec.name}` needs a :static_libraries entry for :build_lib to build." )
 
     sources, assembly, search_paths = build_lib_inputs( spec )
+    check_tools( *(sources.empty? ? [] : [TOOLS_DEPS_COMPILER]), *(assembly.empty? ? [] : [TOOLS_DEPS_ASSEMBLER]), TOOLS_DEPS_LINKER )
     objects = sources.map { |source| compile( spec, source, search_paths ) } +
               assembly.map { |source| assemble( spec, source ) }
 
@@ -321,12 +322,22 @@ class Dependencies < Plugin
     end
   end
 
-  # Unknown fetch methods are already refused by DependencySpec
-  def validate_fetch_tools(spec)
-    tools = { zip: [TOOLS_DEPS_ZIP], tar_gzip: [TOOLS_DEPS_TARGZIP], git: [TOOLS_DEPS_GIT_CLONE, TOOLS_DEPS_GIT_CHECKOUT],
-              svn: [TOOLS_DEPS_SUBVERSION] }.fetch( spec.fetch_method, [] )
+  # The tools a fetch method runs. Unknown methods are already refused by DependencySpec.
+  def fetch_tools(method)
+    return { zip: [TOOLS_DEPS_ZIP], tar_gzip: [TOOLS_DEPS_TARGZIP], git: [TOOLS_DEPS_GIT_CLONE, TOOLS_DEPS_GIT_CHECKOUT],
+             svn: [TOOLS_DEPS_SUBVERSION] }.fetch( method, [] )
+  end
 
-    tools.each { |tool| @ceedling[:tool_validator].validate( tool: tool, boom: true ) }
+  # Each tool is checked once, just before its first use, so a tool only some dependency
+  # or task needs never becomes a requirement of every Ceedling command
+  def check_tools(*tools)
+    @checked_tools ||= []
+    tools.each do |tool|
+      next if @checked_tools.include?( tool )
+
+      @ceedling[:tool_validator].validate( tool: tool, boom: true )
+      @checked_tools << tool
+    end
   end
 
 end

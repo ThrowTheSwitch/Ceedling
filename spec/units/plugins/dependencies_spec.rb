@@ -47,7 +47,7 @@ describe Dependencies do
 
   let(:objects) do
     { tool_executor: tool_executor, file_wrapper: file_wrapper, generator: generator,
-      tool_validator: double( 'tool_validator', validate: true ),
+      tool_validator: double( 'tool_validator' ).tap { |validator| allow(validator).to receive(:validate).and_return( true ) },
       loginator: double( 'loginator', lazy: nil ).tap { |log| allow(log).to receive(:log) { |message, *| logged << message } },
       file_path_collection_utils: double( 'file_path_collection_utils', collect_paths: [] ),
       file_path_utils: double( 'file_path_utils', form_release_build_list_filepath: 'list', form_test_build_map_filepath: 'map' ) }
@@ -76,6 +76,38 @@ describe Dependencies do
     plugin = described_class.new( objects, 'dependencies', '/plugins/dependencies' )
     allow(plugin).to receive(:in_directory) { |path, &block| executed << "cd #{path}"; block.call }
     return plugin
+  end
+
+  # A tool a dependency needs is checked when it is about to run, so enabling the plugin
+  # never makes a fetch or build tool a requirement of every Ceedling command
+  describe 'tool checks' do
+    let(:validator) { objects[:tool_validator] }
+
+    it 'checks no tools as the plugin loads' do
+      plugin_for( dependency, dependency( 'zipped', fetch: { method: :zip, source: 'a.zip' } ) )
+
+      expect(validator).not_to have_received(:validate)
+    end
+
+    it 'checks the tools a fetch method uses before fetching' do
+      plugin_for( dependency ).fetch_if_required( 'dep' )
+
+      expect(validator).to have_received(:validate).with( tool: { name: 'git_clone' }, boom: true )
+      expect(validator).to have_received(:validate).with( tool: { name: 'git_checkout' }, boom: true )
+    end
+
+    it 'runs nothing when a fetch tool is missing' do
+      allow(validator).to receive(:validate).and_raise( CeedlingException.new( 'git does not exist' ) )
+
+      expect { plugin_for( dependency ).fetch_if_required( 'dep' ) }.to raise_error( CeedlingException, /git does not exist/ )
+      expect(executed).to be_empty
+    end
+
+    it 'checks nothing for a dependency fetched by :none' do
+      plugin_for( dependency( fetch: { method: :none }, build: [] ) ).make_if_required( 'dep' )
+
+      expect(validator).not_to have_received(:validate)
+    end
   end
 
   describe 'fetching' do
@@ -220,6 +252,13 @@ describe Dependencies do
       expect(generator).to have_received(:generate_executable_file)
         .with( anything, anything, ['cc/build/a.o', 'cc/build/b.o'], [], 'cc/build/libcc.a', 'map', [], [] )
       expect(file_wrapper).to have_received(:cp).with( 'cc/build/libcc.a', 'cc/out/libcc.a' )
+    end
+
+    it 'checks its compiler and archiver before building' do
+      plugin_for( lib ).make_if_required( 'dep' )
+
+      expect(objects[:tool_validator]).to have_received(:validate).with( tool: { name: 'compiler' }, boom: true )
+      expect(objects[:tool_validator]).to have_received(:validate).with( tool: { name: 'linker' }, boom: true )
     end
 
     it 'refuses to build without a static library to build' do

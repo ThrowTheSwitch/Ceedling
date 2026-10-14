@@ -13,6 +13,7 @@
   :deps_compiler:  
     :executable: gcc
     :name: 'Dependencies compiler'
+    :optional: true  # Checked when :build_lib compiles, not by every Ceedling command
     :arguments:  
       - -g  
       - -I"${5}"  # Search paths: header directories under the source path
@@ -23,6 +24,7 @@
   :deps_linker:
     :executable: ar  
     :name: 'Dependencies archiver'
+    :optional: true  # Checked when :build_lib archives, not by every Ceedling command
     :arguments:  
       - rcs  
       - ${2}  

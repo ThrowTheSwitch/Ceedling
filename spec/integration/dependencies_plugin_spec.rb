@@ -151,6 +151,27 @@ describe 'Dependencies plugin (integration)' do
     expect(plugin.environment).to eq( [] )
   end
 
+  describe 'a missing tool' do
+    # Optional tools are left to the plugin, which checks each one only where it is used
+    it 'marks the build_lib compiler and archiver optional' do
+      expect(default_tools.values_at( :deps_compiler, :deps_linker ).map { |tool| tool[:optional] }).to all( be true )
+    end
+
+    it 'fails only the fetch that needs it' do
+      in_project do
+        write_build_script( 'deps/local', 'build/liblocal.a' )
+        zipped = dependency( 'zipped', fetch: { method: :zip, source: 'a.zip' } )
+        default_tools[:deps_zip] = default_tools[:deps_zip].merge( executable: 'no-such-unzip-tool' )
+
+        run_tasks( [dependency( 'local' ), zipped], 'dependencies:make:local' )
+        expect(File.exist?( 'deps/local/build/liblocal.a' )).to be true
+
+        expect { run_tasks( [dependency( 'local' ), zipped], 'dependencies:fetch:zipped' ) }
+          .to raise_error( CeedlingException, /no-such-unzip-tool/ )
+      end
+    end
+  end
+
   describe 'dependencies:make' do
     it 'builds a dependency already in place' do
       in_project do
