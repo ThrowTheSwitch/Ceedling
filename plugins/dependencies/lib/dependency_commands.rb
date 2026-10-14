@@ -31,7 +31,7 @@ class DependencyCommands
     when :tar_gzip then [command( :tar_gzip, fetch[:source] )]
     when :git      then git( fetch )
     when :svn      then [command( :subversion, option( '--revision', fetch[:revision] ), fetch[:source] )]
-    when :custom   then fetch[:executable].map.with_index( 1 ) { |line, index| written( line, "Dependencies custom command ##{index}" ) }
+    when :custom   then custom( fetch[:executable] )
     else []
     end
   end
@@ -52,6 +52,11 @@ class DependencyCommands
     return [command( :git_clone, branch, '--depth 1', fetch[:source] )] if fetch[:hash].nil?
 
     return [command( :git_clone, branch, '', fetch[:source] ), command( :git_checkout, fetch[:hash] )]
+  end
+
+  # Custom commands, one or a list, each named for its place in the list
+  def custom(lines)
+    return Array( lines ).map.with_index( 1 ) { |line, index| written( line, "Dependencies custom command ##{index}" ) }
   end
 
   def option(flag, value)

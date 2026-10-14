@@ -57,7 +57,7 @@ describe 'Dependencies plugin (integration)' do
   end
 
   def project_config
-    @project_config ||= Hash.new { |hash, key| hash[key] = [] }
+    @project_config ||= Hash.new { |hash, key| hash[key] = (key == :files ? {} : []) }
   end
 
   # Invokes the plugin's rake tasks, in order, in a fresh Rake application
@@ -199,6 +199,19 @@ describe 'Dependencies plugin (integration)' do
         deps = [dependency( 'tool' ).tap { |dep| dep.delete( :artifacts ) }]
 
         expect { run_tasks( deps, 'dependencies:make' ) }.not_to raise_error
+      end
+    end
+  end
+
+  describe 'a dependency that provides only headers' do
+    it 'builds when its include directory is missing' do
+      in_project do
+        write_build_script( 'deps/headers', 'include/api.h' )
+        deps = [dependency( 'headers', paths: { source: 'deps/headers', artifact: 'deps/headers' },
+                                       artifacts: { includes: ['include'] } )]
+        run_tasks( deps, 'dependencies:make' )
+
+        expect(File.exist?( 'deps/headers/include/api.h' )).to be true
       end
     end
   end

@@ -72,9 +72,13 @@ class DependencySpec
   def build_path    = @paths[:build] || @paths[:source] || @paths[:fetch] || default_path
   def artifact_path = @paths[:artifact] || @paths[:build] || default_path
 
-  # Every configured path, or only the artifact path, for creating and cleaning
+  # Every configured path, for cleaning a fetched dependency away, or only the artifact
+  # path, for cleaning one that is not fetched. The artifact path never includes the
+  # source path, which a dependency that is not fetched keeps.
   def working_paths(artifacts_only: false)
-    paths = (artifacts_only ? [@paths[:artifact]] : @paths.values).compact.uniq
+    return [artifact_path] - [source_path, fetch_path] if artifacts_only
+
+    paths = @paths.values.compact.uniq
     return paths.empty? ? [default_path] : paths
   end
 

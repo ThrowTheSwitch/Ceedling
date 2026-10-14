@@ -77,8 +77,22 @@ describe DependencySpec do
       expect(spec.working_paths( artifacts_only: true )).to eq( ['f/a'] )
     end
 
+    it 'takes the artifact path, falling back to the build path, as the artifacts-only working path' do
+      expect(spec_for( paths: { source: 's', build: 's/build' } ).working_paths( artifacts_only: true )).to eq( ['s/build'] )
+    end
+
+    # Cleaning a dependency that is not fetched removes only its artifacts, never its source
+    it 'never offers the source path as an artifacts-only working path' do
+      expect(spec_for( paths: { source: 's', build: 's' } ).working_paths( artifacts_only: true )).to eq( [] )
+    end
+
     it 'uses the default path as its working path when none are configured' do
-      expect(spec_for.working_paths( artifacts_only: true )).to eq( ['dependencies/WorkerBees'] )
+      expect(spec_for.working_paths).to eq( ['dependencies/WorkerBees'] )
+    end
+
+    # With no paths configured, the artifact path is the source path
+    it 'offers no artifacts-only working path when none are configured' do
+      expect(spec_for.working_paths( artifacts_only: true )).to eq( [] )
     end
   end
 

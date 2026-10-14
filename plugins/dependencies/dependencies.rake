@@ -31,11 +31,12 @@
   end
 
   # Add a rule for building the source and includes from dependency list
+  # A task's name is the project path the dependency is found by
   headers_and_sources.each do |libpath|
     task libpath do |filetask|
-      path = File.expand_path(filetask.name)
+      path = filetask.name
 
-      if (File.file?(path) || File.directory?(path))
+      if File.exist?( path )
         @ceedling[:loginator].lazy( Verbosity::OBNOXIOUS ) { "Nothing to do for dependency #{path}" }
       else
         @ceedling[DEPENDENCIES_SYM].make_if_required(path)

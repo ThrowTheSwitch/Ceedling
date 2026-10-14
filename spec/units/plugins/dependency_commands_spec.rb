@@ -66,6 +66,12 @@ describe DependencyCommands do
     end
   end
 
+  it 'runs a single custom command given as a string' do
+    expect(commands.fetch( spec_for( fetch: { method: :custom, executable: 'curl -O https://x' } ) )).to eq(
+      [['Dependencies custom command #1', 'curl', '-O https://x']]
+    )
+  end
+
   describe '#build' do
     it 'turns each build command into a command, leaving built-in steps as symbols' do
       expect(commands.build( spec_for( build: ['./configure --prefix "/opt/a  b"', :build_lib, 'make'] ) )).to eq(
