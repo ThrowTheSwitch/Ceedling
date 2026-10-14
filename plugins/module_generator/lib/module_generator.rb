@@ -6,121 +6,62 @@
 # =========================================================================
 
 require 'ceedling/plugins/plugin'
-require 'ceedling/constants'
-require 'fileutils'
+require 'ceedling/exceptions'
+require 'module_generator_request'
+require 'module_generator_options'
 
+# Creates, destroys, and stubs modules for the `module:` tasks. Unity's module
+# generator writes and removes source, header, and test files, and CMock's skeleton
+# generator writes a source file of stubs from a header. This plugin hands each one the
+# options ModuleGeneratorOptions builds for a request from the project configuration.
 class ModuleGenerator < Plugin
-
-  attr_reader :config, :interactionizer
 
   # The configured test file prefix, which marks a module argument as a test file
   def test_prefix
     return @ceedling[:configurator].project_config_hash[:project_test_file_prefix]
   end
 
-  def create(module_name, optz={})
-
-    # grab our own reference to the main configuration hash
-    @project_config = @ceedling[:configurator].project_config_hash
-
-    # load the generate module script form Unity's collection of scripts.
-    require "generate_module.rb" 
-
-    # if asked to destroy, do so. otherwise create (because isn't creating something always better?)
-    if ((!optz.nil?) && (optz[:destroy]))
-      UnityModuleGenerator.new( divine_options(optz) ).destroy(module_name)
-    else
-      UnityModuleGenerator.new( divine_options(optz) ).generate(module_name)
-    end
+  def create(request)
+    unity_generator( request ).generate( request.name )
   end
 
-  def stub_from_header(module_name, optz={})
+  def destroy(request)
+    unity_generator( request ).destroy( request.name )
+  end
 
-    # grab our own reference to the main configuration hash
-    @project_config = @ceedling[:configurator].project_config_hash
+  def stub(request)
+    require 'cmock'
 
-    # load CMock to be used for stubbing here.
-    require "cmock.rb"
-
-    # generate skeleton file
-    stuboptz = divine_options(optz)
-    stuboptz[:subdir] = nil
-    stuboptz[:mock_path] = stuboptz[:path_src]
-    filename = File.join(stuboptz[:path_inc], module_name + ".h")
-    puts stuboptz.to_yaml
-    CMock.new(stuboptz).setup_skeletons(filename)
+    stub = options.stub( request )
+    CMock.new( stub[:cmock] ).setup_skeletons( stub[:header] )
   end
 
   private
 
-  def divine_options(optz={})
-    # Build default configuration based on looking up other values
-    unity_generator_options =
-    {
-      :pattern      => optz[:pattern],
-      :test_prefix  => ((defined? PROJECT_TEST_FILE_PREFIX     ) ? PROJECT_TEST_FILE_PREFIX : "Test" ),
-      :mock_prefix  => ((defined? CMOCK_MOCK_PREFIX            ) ? CMOCK_MOCK_PREFIX : "Mock" ),
-      :includes     => ((defined? MODULE_GENERATOR_INCLUDES    ) ? MODULE_GENERATOR_INCLUDES : {} ),
-      :boilerplates => ((defined? MODULE_GENERATOR_BOILERPLATES) ? MODULE_GENERATOR_BOILERPLATES : {} ),
-      :naming       => ((defined? MODULE_GENERATOR_NAMING      ) ? MODULE_GENERATOR_NAMING : nil ),
-      :update_svn   => ((defined? MODULE_GENERATOR_UPDATE_SVN  ) ? MODULE_GENERATOR_UPDATE_SVN : false ),
-      :test_define  => ((defined? MODULE_GENERATOR_TEST_DEFINE ) ? MODULE_GENERATOR_TEST_DEFINE : "TEST" ),
-      :path_src     => ((defined? MODULE_GENERATOR_PATH_SRC    ) ? MODULE_GENERATOR_PATH_SRC : nil ),
-      :path_inc     => ((defined? MODULE_GENERATOR_PATH_INC    ) ? MODULE_GENERATOR_PATH_INC : nil ),
-      :path_tst     => ((defined? MODULE_GENERATOR_PATH_TST    ) ? MODULE_GENERATOR_PATH_TST : nil ),
-    }
+  def unity_generator(request)
+    require 'generate_module'
 
-    # Add our lookup paths to this, based on overall project configuration
-    unity_generator_options[:paths_src] = @project_config[:collection_paths_source]  || [ 'src' ]
-    unity_generator_options[:paths_inc] = @project_config[:collection_paths_include] || @project_config[:collection_paths_source] || [ 'src' ]
-    unity_generator_options[:paths_tst] = @project_config[:collection_paths_test]    || [ 'test' ]
+    return UnityModuleGenerator.new( options.unity( request ) )
+  end
 
-    # Flatten if necessary
-    if (unity_generator_options[:paths_src].class == Hash)
-      unity_generator_options[:paths_src] = unity_generator_options[:paths_src].values.flatten
-    end
-    if (unity_generator_options[:paths_inc].class == Hash)
-      unity_generator_options[:paths_inc] = unity_generator_options[:paths_inc].values.flatten
-    end
-    if (unity_generator_options[:paths_tst].class == Hash)
-      unity_generator_options[:paths_tst] = unity_generator_options[:paths_tst].values.flatten
-    end
+  def options
+    return ModuleGeneratorOptions.new(
+      config:             @ceedling[:configurator].project_config_hash,
+      cmock_config:       @ceedling[:configurator].get_cmock_config,
+      path_finder:        method( :find_path ),
+      boilerplate_reader: method( :read_boilerplate )
+    )
+  end
 
-    # Read Boilerplate template file.
-    if (defined? MODULE_GENERATOR_BOILERPLATE_FILES)
+  # The path in a list a hint matches best, or nil when it matches none
+  def find_path(hint, paths)
+    return @ceedling[:file_finder_helper].find_best_path_in_collection( hint, paths, :error, 'module' )
+  rescue CeedlingException
+    return nil
+  end
 
-      bf = MODULE_GENERATOR_BOILERPLATE_FILES
-
-      if !bf[:src].nil? && File.exist?(bf[:src])
-        unity_generator_options[:boilerplates][:src] = File.read(bf[:src])
-      end
-
-      if !bf[:inc].nil? && File.exist?(bf[:inc])
-        unity_generator_options[:boilerplates][:inc] = File.read(bf[:inc])
-      end
-
-      if !bf[:tst].nil? && File.exist?(bf[:tst])
-        unity_generator_options[:boilerplates][:tst] = File.read(bf[:tst])
-      end
-    end
-
-    # Check if using "create[<module_root>:<module_name>]" optional paths from command line.
-    if optz[:module_root_path].to_s.empty?
-      # No path specified. Use the one specified in the module generator section if it exists, 
-      # else the first of each list because we have nothing else to base it on
-      unity_generator_options[:skeleton_path] ||= unity_generator_options[:paths_src][0]
-      unity_generator_options[:path_src] ||= unity_generator_options[:paths_src][0]
-      unity_generator_options[:path_inc] ||= unity_generator_options[:paths_inc][0]
-      unity_generator_options[:path_tst] ||= unity_generator_options[:paths_tst][0]
-    else
-      # A path was specified. Do our best to determine which is the best choice based on this information
-      unity_generator_options[:path_src] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_src], :error, 'source')  || unity_generator_options[:paths_src][0]
-      unity_generator_options[:path_inc] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_inc], :error, 'include') || unity_generator_options[:paths_inc][0]
-      unity_generator_options[:path_tst] = @ceedling[:file_finder_helper].find_best_path_in_collection(optz[:module_root_path], unity_generator_options[:paths_tst], :error, 'test')    || unity_generator_options[:paths_tst][0]
-      unity_generator_options[:skeleton_path] = unity_generator_options[:path_src]
-    end
-
-    return unity_generator_options
+  def read_boilerplate(path)
+    return @ceedling[:file_wrapper].exist?( path ) ? @ceedling[:file_wrapper].read( path ) : nil
   end
 
 end

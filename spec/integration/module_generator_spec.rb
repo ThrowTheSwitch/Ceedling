@@ -22,6 +22,7 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/plugins/plugin'
 require 'ceedling/file_finder_helper'
+require 'ceedling/file_wrapper'
 
 PLUGIN_ROOT = File.expand_path( '../../plugins/module_generator', __dir__ )
 
@@ -48,21 +49,12 @@ describe 'Module Generator plugin (integration)' do
     return config
   end
 
-  # Configuration also reaches plugins as global constants, one per flattened key
-  def define_constants(config)
-    stub_const( 'PROJECT_TEST_FILE_PREFIX', config[:project_test_file_prefix] )
-    stub_const( 'CMOCK_MOCK_PREFIX', config[:cmock_mock_prefix] )
-    config.each do |key, value|
-      stub_const( key.to_s.upcase, value ) if key.to_s.start_with?( 'module_generator_' )
-    end
-  end
-
   def plugin_for(config)
-    define_constants( config )
     loginator = double( 'loginator', log: nil )
     objects   = {
-      configurator:       double( 'configurator', project_config_hash: config ),
+      configurator:       double( 'configurator', project_config_hash: config, get_cmock_config: { mock_prefix: config[:cmock_mock_prefix] } ),
       file_finder_helper: FileFinderHelper.new( { loginator: loginator } ),
+      file_wrapper:       FileWrapper.new( { loginator: loginator, verbosinator: double( 'verbosinator' ) } ),
       loginator:          loginator
     }
     return ModuleGenerator.new( objects, 'module_generator', PLUGIN_ROOT )
@@ -84,6 +76,13 @@ describe 'Module Generator plugin (integration)' do
       $stdout = output
       Rake.application = previous
     end
+  end
+
+  def capture_stdout
+    output, $stdout = $stdout, StringIO.new
+    yield
+  ensure
+    $stdout = output
   end
 
   def in_project(*dirs)
@@ -136,7 +135,6 @@ describe 'Module Generator plugin (integration)' do
     end
 
     it 'falls back to the first path of a list the hint matches nothing in' do
-      pending 'a hint that misses any one list fails the whole create'
       config = project_config( source: ['src', 'src/lab'], include: ['inc', 'inc/lab'], test: ['test'] )
 
       in_project( 'src/lab', 'inc/lab', 'test' ) do
@@ -156,7 +154,7 @@ describe 'Module Generator plugin (integration)' do
 
     it 'refuses a hint that matches no path and creates nothing' do
       in_project( 'src', 'inc', 'test' ) do
-        expect { run_task( flat_config, 'create', 'bad:stubby' ) }.to raise_error( CeedlingException, /Found no path `bad`/ )
+        expect { run_task( flat_config, 'create', 'bad:stubby' ) }.to raise_error( CeedlingException, /hint `bad` matches no source, include, or test path/ )
         expect(files).to be_empty
       end
     end
@@ -224,8 +222,6 @@ describe 'Module Generator plugin (integration)' do
     end
 
     it 'applies a :snake naming convention' do
-      pending ':naming arrives as a Symbol, which Unity never matches'
-
       in_project( 'src', 'inc', 'test' ) do
         run_task( flat_config( naming: :snake ), 'create', 'MadScience' )
 
@@ -234,8 +230,6 @@ describe 'Module Generator plugin (integration)' do
     end
 
     it 'applies :bumpy and :camel as the documentation describes them' do
-      pending ':naming arrives as a Symbol, and Unity reverses bumpy and camel'
-
       in_project( 'src', 'inc', 'test' ) do
         run_task( flat_config( naming: :bumpy ), 'create', 'mad_science' )
         run_task( flat_config( naming: :camel ), 'create', 'evil_genius' )
@@ -255,7 +249,6 @@ describe 'Module Generator plugin (integration)' do
     end
 
     it 'places headers with the matched source when no include paths are listed' do
-      pending 'an empty include list fails the hint match'
       config = project_config( source: ['lab/src', 'lair/src'], test: ['lab/test', 'lair/test'] )
 
       in_project( 'lab/src', 'lair/src', 'lab/test', 'lair/test' ) do
@@ -315,9 +308,31 @@ describe 'Module Generator plugin (integration)' do
       end
     end
 
-    it 'prints no configuration dump' do
-      pending 'the stub task prints its options as YAML'
+    it 'reads a header from a subdirectory a slash names and writes the stub beside it' do
+      in_project( 's/rev', 'i/rev', 't' ) do
+        File.write( 'i/rev/stubby.h', header_v1 )
+        run_task( project_config( source: ['s'], include: ['i'], test: ['t'] ), 'stub', 'rev/stubby' )
 
+        expect(File.read( 's/rev/stubby.c' )).to include( 'void shorty(void)' )
+      end
+    end
+
+    it 'parses the header with the project CMock settings' do
+      config = project_config( source: ['s'], include: ['i'], test: ['t'] )
+
+      in_project( 's', 'i', 't' ) do
+        File.write( 'i/stubby.h', "void SPECIAL_ATTR shorty(void);\n" )
+        plugin = plugin_for( config )
+        allow(plugin.instance_variable_get( :@ceedling )[:configurator]).to receive(:get_cmock_config).and_return( strippables: ['SPECIAL_ATTR'] )
+
+        capture_stdout { plugin.stub( ModuleGeneratorRequest.new( name: 'stubby' ) ) }
+
+        expect(File.read( 's/stubby.c' )).to include( 'void shorty(void)' )
+        expect(File.read( 's/stubby.c' )).not_to include( 'SPECIAL_ATTR' )
+      end
+    end
+
+    it 'prints no configuration dump' do
       in_project( 's', 'i', 't' ) do
         File.write( 'i/stubby.h', header_v1 )
         output = run_task( project_config( source: ['s'], include: ['i'], test: ['t'] ), 'stub', 'stubby' )
@@ -327,8 +342,6 @@ describe 'Module Generator plugin (integration)' do
     end
 
     it 'hands CMock options it accepts without warning' do
-      pending 'the stub task passes Unity\'s per-file :includes hash to CMock'
-
       in_project( 's', 'i', 't' ) do
         File.write( 'i/stubby.h', header_v1 )
         output = run_task( project_config( source: ['s'], include: ['i'], test: ['t'] ), 'stub', 'stubby' )
