@@ -1,70 +1,107 @@
 # Module Generator
 
-This plugin adds a pair of new commands to Ceedling allowing you to generate or remove 
-module skeletons according to predefined templates.
+This plugin adds commands to Ceedling that create a module’s source, header, and test
+files from templates; remove them again; and stub a source file from its header. Files
+land in your project’s `:paths`, guided by optional hints.
 
 ## Overview
-With a single call, Ceedling can generate a source, header, and test file for a new 
-module. If given a pattern, it can even create a series of submodules to support 
-specific design patterns. Finally, it can just as easily remove related modules, 
-avoiding the need to delete each individually.
 
-Let's say, for example, that you want to create a single module named `MadScience`.
+Enable the plugin by adding `module_generator` to `:plugins` ↳ `:enabled` in your
+project file. Then a single call creates a new module:
 
 ```sh
-ceedling module:create[MadScience]
+ceedling "module:create[MadScience]"
 ```
 
-It says we're speaking to the module plugin, and we want to create a new module. The
-name of that module is between the brackets. It will keep this case, unless you have
-specified a different default (see configuration). It will create three files:
-`MadScience.c`, `MadScience.h`, and `TestMadScience.c`. *NOTE* that it is important that
-there are no spaces between the brackets. We know, it's annoying... but it's the rules.
+This creates `MadScience.c`, `MadScience.h`, and `test_MadScience.c`. The test file
+carries your project’s `:test_file_prefix`. Names keep the case you type unless you
+configure a [naming convention](#naming-convention).
+
+Several modules can be named in one call, separated by commas. Leave no spaces between
+the brackets or rely on surrounding quotes; your shell would otherwise split the command.
+
+```sh
+ceedling "module:create[MadScience,EvilGenius,SecretLair]"
+```
+
+The plugin’s three commands take the same arguments:
+
+| Command | Does |
+|---|---|
+| `module:create[...]` | Creates each module’s files, skipping any that already exist and stopping when all of them do |
+| `module:destroy[...]` | Removes each module’s files |
+| `module:stub[...]` | Writes a source file of function stubs from each module’s header |
+
+A name that begins with your test file prefix asks for a test file alone.
+`"module:create[test_MadScience]"` creates only `test_MadScience.c`. When the prefix ends
+in a letter or digit, as a prefix of `Test` does, the character after the prefix must
+not be a lowercase letter or digit. An uppercase letter starts the module name, so
+`TestMadScience` is a test file for `MadScience`, while `Testimony` and `Test2Widget`
+are modules. A prefix ending in a separator, like the default `test_`,
+needs no such check.
 
 ## Patterns
 
-You can also create an entire pattern of files. To do that, just add a second argument
-to the pattern ID. Something like this:
+A pattern creates a set of related modules at once. Name it after the module:
 
 ```sh
-ceedling module:create[SecretLair,mch]
+ceedling "module:create[SecretLair,mch]"
 ```
 
-In this example, we'd create 9 files total: 3 headers, 3 source files, and 3 test files. These
-files would be named `SecretLairModel`, `SecretLairConductor`, and `SecretLairHardware`. Isn't
-that nice?
+This creates nine files: a source, header, and test file each for `SecretLair_Model`,
+`SecretLair_Conductor`, and `SecretLair_Hardware`. With `:naming` set to `:bumpy`, the
+same call creates `SecretLairModel`, `SecretLairConductor`, and `SecretLairHardware`.
+Each generated module includes the headers its role depends on, and each test includes
+the mocks of those headers.
 
 The module generator understands the following patterns:
 
-- `src` -- generate only a source file
-- `test` -- generate only a test file
-- `dh` -- generate 6 files for the driver-hardware pattern
-- `dih` -- generate 9 files for the driver-interrupt-hardware pattern
-- `mch` -- generate 9 files for the model-conductor-hardware pattern
-- `mvp` -- generate 9 files for the model-view-presenter pattern
+- `src` — a source, header, and test file (the default)
+- `test` — only a test file
+- `mch` — 9 files for the [model-conductor-hardware (pdf)][mch-paper] pattern ([html][mch-article])
+- `mvp` — 9 files for the [model-view-presenter][mvp-wikipedia] pattern
+- `dh` — 6 files for the driver-hardware pattern
+- `dih` — 9 files for the driver-interrupt-hardware pattern
+
+The `dh` and `dih` patterns are alternate namings and conceptual organizations of the
+model-conductor-hardware pattern.
+
+[mch-paper]: https://cdn.prod.website-files.com/628fcc1631ad0b25b32f223e/62e43a26764867e95fe5a138_ESC-413Paper_KarleskyWilliams.pdf
+[mch-article]: https://www.methodsandtools.com/archive/archive.php?id=59
+[mvp-wikipedia]: https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93presenter
+
+A pattern applies to every module in the call, and a call takes one pattern. The first
+argument is always a module name, even one spelled like a pattern.
 
 ## Paths
 
-The directories found in the project `:paths:` are reused. You can also specify an alternative default generation path using: 
+Without any hint, each kind of file goes to the first path listed for it under
+`:paths`. Source files go to the first `:source` path, headers to the first `:include`
+path, and tests to the first `:test` path. Headers go with the source when your project
+lists no include paths. To choose other default locations, configure them:
 
 ```yaml
 :module_generator:
   :path_src: src/
-  :path_inc: src/
+  :path_inc: include/
   :path_tst: test/
 ```
 
-But what if I don't want it to place my new files in the default location?
+### Path hints
 
-It can do that too! You can give it a hint as to where to find your files. The pattern matching
-here is fairly basic, but it is usually sufficient. It works perfectly if your directory structure
-matches a common pattern. For example, let's say you issue this command:
+A hint before a colon steers a module toward matching paths:
 
 ```sh
-ceedling module:create[lab:SecretLair,mch]
+ceedling "module:create[lab:SecretLair,mch]"
 ```
 
-Say your directory structure looks like this:
+The hint is matched separately against your source, include, and test paths, and each
+kind of file goes to the path the hint matches best. A path matches best when its
+trailing folders match the hint. When the hint matches nothing among one kind of path,
+those files go to the first path of that kind. When it matches nothing at all, the
+command stops with an error and creates nothing.
+
+Say your project lists these paths:
 
 ```yaml
 :paths:
@@ -78,153 +115,196 @@ Say your directory structure looks like this:
     - other/test
 ```
 
-In this case, the `lab:` hint would make the module generator guess you want your files here:
+The `lab:` hint places files here:
 
-- source files: `lab/src` (because it's a close match)
-- include files: `lab/src` (because no include paths were listed)
-- test files: `lab/test` (because it's a close match)
+- source files: `lab/src` (a close match)
+- include files: `lab/src` (no include paths are listed, so headers go with the source)
+- test files: `lab/test` (a close match)
 
-Instead, if your directory structure looks like this:
-
-```yaml
-:paths:
-  :source:
-    - src/**   #this might contain subfolders lab, lair, and other
-  :include:
-    - inc/**   #again, this might contain subfolders lab, lair, other, and shared
-  :test:
-    - test
-```
-
-In this case, the `lab:` hint would make the module generator guess you want your files here:
-
-- source files: `src/lab` (because it's a close match)
-- include files: `inc/lab` (because it's a close match)
-- test files: `test` (because there wasn't a close match, and this was the first entry on our list)
-
-You can see that more complicated structures will have files placed in the wrong place from time to
-time... no worries... you can move the file after it's created... but if your project has any kind of 
-consistent structure, the guessing engine does a good job of making it work.
-
-A few more quick notes about the path-matching:
-
-1. You can give multiple ordered hints that map roughly to folder nesting! `lab:secret:lair` will 
-   happily match to put `lair.c` in a folder like `my/lab/secret/`.
-
-2. If the matcher isn't given any path information or it finds multiple equally good candidates, 
-   it will always guess in the order you have the paths listed in your project.yml file
-
-3. If the matcher completely fails to find a good candidate, it will return an error, allowing you
-   to rectify the situation.
-
-4. What path is "first" when you're using `**` pattern in your `:paths:` specifications? The parent
-   folder is used first, then its children alphabetically, and so on. This is important when 
-   considering where files (or especially subfolders... see below) will be generated.
-
-### Adding to Paths
-
-In addition to the pattern matching above, you can add slashes (`/`) to your filename specification.
-When a slash is used instead of a colon (`:`), it will stop using pattern matching and assume the
-subdirectory is supposed to be there. If the subdir is NOT there, it will automatically add it.
-
-Let's try an example with our previous path specification:
+Instead, say your paths look like this:
 
 ```yaml
 :paths:
   :source:
-    - src/**   #this might contain subfolders lab, lair, and other
+    - src/**   # might contain subfolders lab, lair, and other
   :include:
-    - inc/**   #again, this might contain subfolders lab, lair, other, and shared
+    - inc/**   # might contain subfolders lab, lair, other, and shared
   :test:
     - test
 ```
 
-Then, use the following command:
+Now the `lab:` hint places files here:
+
+- source files: `src/lab` (a close match)
+- include files: `inc/lab` (a close match)
+- test files: `test` (no close match, so the first test path)
+
+A few more notes about hints:
+
+1. Several hints narrow the match through nested folders. `lab:secret:lair` places
+   `lair.c` in a folder like `my/lab/secret/`.
+2. Among equally good matches, and without any hint, the order of your paths in the
+   project file decides.
+3. With a `**` glob under `:paths`, the parent folder comes first, then its
+   subfolders alphabetically, and so on.
+4. A hint may be an absolute path, including one with a Windows drive letter, as in
+   `C:/project/lab:SecretLair`.
+
+More complicated structures will sometimes place a file in the wrong folder, and you
+can move it afterward. A project with a consistent structure gets good placement.
+
+### Adding to paths
+
+A slash in the name, rather than a colon, names a subdirectory to use as given. The
+module generator creates it if it does not exist. With the second set of paths above,
+this call:
 
 ```sh
-ceedling module:create[newlab/SecretLair]
+ceedling "module:create[newlab/SecretLair]"
 ```
 
-This will create the following 3 files:
+creates these files:
 
 - `src/newlab/SecretLair.c`
 - `inc/newlab/SecretLair.h`
-- `test/newlab/TestSecretLair.c`
+- `test/newlab/test_SecretLair.c`
 
-Technically, you can start with a colon and specify part of a path, then use a slash
-to specify the remainder of the path to use. In most circumstances, this should work... however
-it suffers from the same potential issues as the matcher above, with the added joy of creating 
-new subdirectories for you without asking. 
+A hint and a slash can combine, as in `lab:newlab/SecretLair`. A hint picks among
+existing paths, and the slash then adds a subdirectory below the chosen path.
 
-It's important to note the module generator doesn't care if these new subdirectories are covered 
-by the current path specification. This allows you to create the files before updating the
-`project.yml` file if desired, but it also means you might accidentally think you've created
-a file that Ceedling can see, when it can't. 
+The module generator does not check whether a new subdirectory is covered by your
+`:paths`. You can create files before updating your project file. You might also create
+a file Ceedling does not see until you add its folder to `:paths`.
 
 ## Stubbing
 
-Similarly, you can create stubs for all functions in a header file just by making a single call
-to your handy `stub` feature, like this:
+`module:stub` writes a source file containing a stub for each function its header
+declares:
 
 ```sh
-ceedling module:stub[SecretLair]
+ceedling "module:stub[SecretLair]"
 ```
 
-This call will look in `SecretLair.h` and will generate a file `SecretLair.c` that contains a stub
-for each function declared in the header! Even better, if `SecretLair.c` already exists, it will
-add only new functions, leaving your existing calls alone so that it doesn't cause any problems.
+This reads `SecretLair.h` from your include path and writes `SecretLair.c` to your
+source path. If `SecretLair.c` already exists, only stubs for newly declared functions
+are added, and your existing code is left alone.
+
+Hints and slashes work as they do for `module:create`. `"module:stub[lab:rev/SecretLair]"`
+reads `rev/SecretLair.h` below the include path `lab:` matches and writes
+`rev/SecretLair.c` below the matching source path.
+
+Headers are parsed with your project’s `:cmock` settings, the same ones that generate
+your mocks, so options like `:strippables` and `:treat_as` apply to stubs too.
+
+## Destroying
+
+`module:destroy` removes the files `module:create` would make for the same arguments,
+pattern and hints included:
+
+```sh
+ceedling "module:destroy[lab:SecretLair,mch]"
+```
+
+A file that does not exist is reported and skipped.
 
 ## Configuration
 
-Enable the plugin in your project.yml by adding `module_generator`
-to the list of enabled plugins.
+The module generator runs as-is with its defaults. Every setting lives under
+`:module_generator` in your project file:
 
-Then, like much of Ceedling, you can just run as-is with the defaults, or you can override those
-defaults for your own needs. For example, new source and header files will be automatically
-placed in the `src/` folder while tests will go in the `test/` folder. That's great if your project
-follows the default ceedling structure... but what if you have a different structure?
+| Setting | Purpose | Default |
+|---|---|---|
+| `:naming` | File [naming convention](#naming-convention) | none (names keep their case) |
+| `:path_src`, `:path_inc`, `:path_tst` | [Default locations when no hint is given](#default-paths) | first path of each `:paths` list |
+| `:includes` | [Headers every generated file includes](#includes) | none |
+| `:boilerplates` | [Text at the top of every generated file](#boilerplates) | none |
+| `:boilerplate_files` | [Files holding that text instead](#boilerplate-files) | none |
+| `:test_define` | [Symbol guarding each test file](#test-defines) | `TEST` |
+
+### Naming convention
+
+A naming convention keeps everyone’s file names consistent, whatever case a name is
+typed in. Words are found at underscores, spaces, and changes of case, so
+`mad_science` and `MadScience` name the same module.
 
 ```yaml
 :module_generator:
   :naming: :bumpy
-  :includes: 
-    - :src: []
-    - :inc: []
-    - :tst: []
-  :boilerplates:
-    - :src: ""
-    - :inc: ""
-    - :tst: ""
 ```
 
-Now I've redirected the location where modules are going to be generated.
+The options for `:naming`, and the source file each creates for this command:
+
+```sh
+ceedling "module:create[mad_science]"
+```
+
+| `:naming` | Style | Source file |
+|---|---|---|
+| `:bumpy` | BumpyFilesLookLikeSo | `MadScience.c` |
+| `:camel` | camelFilesAreSimilarButStartLow | `madScience.c` |
+| `:snake` | snake_case_is_all_lower_and_uses_underscores | `mad_science.c` |
+| `:caps` | CAPS_FEELS_LIKE_YOU_ARE_SCREAMING | `MAD_SCIENCE.c` |
+
+The header and test file follow the same convention, as do a pattern’s module names.
+Without `:naming`, names keep the case you type.
+
+### Default paths
+
+`:path_src`, `:path_inc`, and `:path_tst` choose where files go when a command gives no
+[hint](#path-hints). A hint still matches against your `:paths` and ignores these
+settings.
+
+```yaml
+:module_generator:
+  :path_src: src/
+  :path_inc: include/
+  :path_tst: test/
+```
+
+With these settings, this command:
+
+```sh
+ceedling "module:create[Widget]"
+```
+
+creates `src/Widget.c`, `include/Widget.h`, and `test/test_Widget.c`.
 
 ### Includes
 
-You can make it so that all of your files are generated with a standard include list. This is done
-by adding to the `:includes` array. For example:
+Every generated file of a kind can include a standard list of headers. `:src` lists
+those for source files, `:inc` for headers, and `:tst` for tests:
 
 ```yaml
 :module_generator:
   :includes:
+    :src:
+      - board.h
+    :inc:
+      - types.h
     :tst:
       - defs.h
       - board.h
-    :src:
-      - board.h
 ```
+
+With these settings, this command:
+
+```sh
+ceedling "module:create[Widget]"
+```
+
+creates `Widget.c` including `board.h`, `Widget.h` including `types.h`, and
+`test_Widget.c` including `defs.h` and `board.h`, each ahead of the module’s own
+includes.
 
 ### Boilerplates
 
-You can specify the actual boilerplate used for each of your files. This is the handy place to
-put that corporate copyright notice (or maybe a copyleft notice, if that's your preference?)
-
-Notice there is a separate template for source files, include files, and test files. Also, 
-your boilerplates can optionally contain `%1$s` which will inject the filename into that spot.
+A boilerplate is text placed at the top of each generated file, the handy place for a
+copyright notice. Each kind of file has its own. A boilerplate may contain `%1$s`, which
+is replaced with the module name.
 
 ```yaml
 :module_generator:
-  :boilerplates: 
+  :boilerplates:
     :src: |
       /***************************
       * %1$s
@@ -241,27 +321,54 @@ your boilerplates can optionally contain `%1$s` which will inject the filename i
       ***************************/
 ```
 
-### Test Defines
+With these settings, this command:
 
-You can specify the "#ifdef TEST" at the top of the test files with a custom define.
-This example will put a "#ifdef CEEDLING_TEST" at the top of the test files.  
+```sh
+ceedling "module:create[Widget]"
+```
+
+creates `Widget.c` beginning with the source boilerplate, its second line reading
+`* Widget`, and `test_Widget.c` beginning with `* My Awesome Test For Widget`.
+
+### Boilerplate files
+
+A boilerplate can instead live in a file, which keeps long notices out of your project
+file. `:boilerplate_files` names a file for any kind, and that file’s contents replace
+the kind’s `:boilerplates` text. A named file that does not exist stops the command.
+
+```yaml
+:module_generator:
+  :boilerplate_files:
+    :src: config/boilerplate_source.txt
+    :tst: config/boilerplate_test.txt
+```
+
+With these settings, this command:
+
+```sh
+ceedling "module:create[Widget]"
+```
+
+creates `Widget.c` beginning with the contents of `config/boilerplate_source.txt` and
+`test_Widget.c` beginning with the contents of `config/boilerplate_test.txt`. `Widget.h`
+uses the `:inc` boilerplate, if any.
+
+### Test defines
+
+Each generated test file is wrapped in `#ifdef TEST`. `:test_define` names a
+different symbol.
 
 ```yaml
 :module_generator:
   :test_define: CEEDLING_TEST
 ```
 
-### Naming Convention
+With this setting, this command:
 
-Finally, you can force a particular naming convention. Even if someone calls the generator
-with something like `MyNewModule`, if they have the naming convention set to `:caps`, it will
-generate files like `MY_NEW_MODULE.c`. This keeps everyone on your team behaving the same way.
+```sh
+ceedling "module:create[Widget]"
+```
 
-Your options for `:naming:` are as follows:
-
-    - `:bumpy` - BumpyFilesLooksLikeSo
-    - `:camel` - camelFilesAreSimilarButStartLow
-    - `:snake` - snake_case_is_all_lower_and_uses_underscores
-    - `:caps`  - CAPS_FEELS_LIKE_YOU_ARE_SCREAMING
+creates `test_Widget.c` wrapped in `#ifdef CEEDLING_TEST` and `#endif // CEEDLING_TEST`.
 
 <br/><br/>
