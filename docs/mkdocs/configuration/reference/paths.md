@@ -267,6 +267,21 @@ use `+:`, but strictly speaking, it’s not necessary.
 
 Subtractive paths may be simple paths or globs just like any other path entry.
 
+!!! warning "Quote the whole entry, decoration included"
+    YAML keeps quote marks that begin partway through a value as part of the
+    value. Quoting only the path leaves quote marks in the path, and
+    Ceedling rejects the entry. Quote an entry whenever it holds `#{…}`
+    [inline Ruby string expansion][inline-ruby-string-expansion], because YAML
+    otherwise reads the `#` as the start of a comment.
+
+    ```yaml
+    # Correct
+    - "-:#{ENV['SRC_ROOT']}/vendor/legacy"
+
+    # Incorrect -- the quote marks become part of the path
+    - -:"#{ENV['SRC_ROOT']}/vendor/legacy"
+    ```
+
 !!! note "Subtractive paths resolve after all mixins merge"
     The resolution of subtractive paths happens after your full paths lists are
     assembled. So, if you use `:paths` entries in Mixins to build up your
