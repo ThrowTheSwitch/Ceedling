@@ -10,6 +10,7 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'pathname'
 require 'dependency_spec'
+require 'dependency_commands'
 
 DEPENDENCIES_ROOT_NAME = 'dependencies'
 DEPENDENCIES_TASK_ROOT = DEPENDENCIES_ROOT_NAME + ':'
@@ -73,34 +74,17 @@ class Dependencies < Plugin
     end
   end
 
-  def generate_command_line(cmdline, name=nil)
-    # Break apart command line at white spaces
-    cmdline_items = cmdline.split(/\s+/)
+  # The commands that fetch and build dependencies, from the plugin's configured tools
+  def commands
+    tools = { zip: TOOLS_DEPS_ZIP, tar_gzip: TOOLS_DEPS_TARGZIP, git_clone: TOOLS_DEPS_GIT_CLONE,
+              git_checkout: TOOLS_DEPS_GIT_CHECKOUT, subversion: TOOLS_DEPS_SUBVERSION }
+    builder = ->( tool, *args ) { @ceedling[:tool_executor].build_command_line( tool, [], *args ) }
 
-    # Even though it may seem redundant to build a command line we already have,
-    # we do so for possible argument expansion/substitution and, more importantly, logging output.
-
-    # Construct a tool configuration
-    tool_config = { 
-      # Use tool name if provided, otherwise, grab something from the command line
-      :name => name.nil? ? cmdline_items[0] : name,
-
-      # Extract executable as first item on the command line
-      :executable => cmdline_items[0],
-
-      # Extract remaining arguments if there are any
-      :arguments => (cmdline_items.length > 1) ? cmdline_items[1..-1] : []
-    }
-
-    # Construct a command from our tool configuration
-    command = @ceedling[:tool_executor].build_command_line( tool_config, [] )
-
-    return command
+    return @commands ||= DependencyCommands.new( tools: tools, builder: builder )
   end
 
   def fetch_if_required(lib_path)
     spec = spec_for( lib_path )
-    blob = { name: spec.name, fetch: spec.fetch }
 
     if spec.fetch_method.nil?
       @ceedling[:loginator].log("No fetch method for dependency '#{spec.name}'", Verbosity::COMPLAIN)
@@ -114,95 +98,10 @@ class Dependencies < Plugin
 
     FileUtils.mkdir_p(spec.fetch_path) unless File.exist?(spec.fetch_path)
 
-    steps = []
-
-    # Tools already validated within `setup()`
-    case blob[:fetch][:method]
-    when :none
-      # Do nothing
-
-    when :zip
-      steps <<
-      @ceedling[:tool_executor].build_command_line(
-        TOOLS_DEPS_ZIP,
-        # No additional arguments
-        [],
-        # Argument replacement
-        blob[:fetch][:source]
-      )
-
-    when :tar_gzip
-      steps <<
-      @ceedling[:tool_executor].build_command_line(
-        TOOLS_DEPS_TARGZIP,
-        # No additional arguments
-        [],
-        # Argument replacement
-        blob[:fetch][:source]
-      )
-
-    when :git
-      branch = blob[:fetch][:tag] || blob[:fetch][:branch] || ''
-      branch = '-b ' + branch unless branch.empty?
-
-      unless blob[:fetch][:hash].nil?
-        # Do a deep clone to ensure the commit we want is available
-        steps <<
-        @ceedling[:tool_executor].build_command_line(
-          TOOLS_DEPS_GIT_CLONE,
-          # No additional arguments
-          [],
-          # Argument replacement
-          branch,
-          '', # No depth
-          blob[:fetch][:source]
-        )
-
-        # Checkout the specified commit
-        steps <<
-        @ceedling[:tool_executor].build_command_line(
-          TOOLS_DEPS_GIT_CHECKOUT,
-          # No additional arguments
-          [],
-          # Argument replacement
-          blob[:fetch][:hash]
-        )
-      else
-        # Do a thin clone
-        steps <<
-        @ceedling[:tool_executor].build_command_line(
-          TOOLS_DEPS_GIT_CLONE,
-          # No additional arguments
-          [],
-          # Argument replacement
-          branch,
-          '--depth 1',
-          blob[:fetch][:source]
-        )
-      end
-    
-    when :svn
-      revision = blob[:fetch][:revision] || ''
-      revision = '--revision ' + revision unless revision.empty?
-
-      steps <<
-      @ceedling[:tool_executor].build_command_line(
-        TOOLS_DEPS_SUBVERSION,
-        # No additional arguments
-        [],
-        # Argument replacement
-        revision,
-        blob[:fetch][:source]
-      )
-    
-    when :custom
-      blob[:fetch][:executable].each.with_index(1) do |cmdline, index|
-        steps << generate_command_line( cmdline, "Dependencies custom command \##{index}" )
-      end
-    end
+    steps = commands.fetch( spec )
 
     # Perform the actual fetching
-    @ceedling[:loginator].log("Fetching dependency #{blob[:name]}...", Verbosity::NORMAL)
+    @ceedling[:loginator].log("Fetching dependency #{spec.name}...", Verbosity::NORMAL)
     Dir.chdir(spec.fetch_path) do
       steps.each do |step|
         @ceedling[:tool_executor].exec( step )
@@ -224,11 +123,11 @@ class Dependencies < Plugin
     # Perform the build
     @ceedling[:loginator].log("Building dependency #{spec.name}...", Verbosity::NORMAL)
     Dir.chdir(spec.source_path) do
-      spec.build_steps.each do |step|
-        if (step.class == Symbol)
+      commands.build( spec ).each do |step|
+        if step.is_a?( Symbol )
           exec_dependency_builtin_command(step, spec)
         else
-          @ceedling[:tool_executor].exec( generate_command_line(step) )
+          @ceedling[:tool_executor].exec( step )
         end
       end
     end
