@@ -39,6 +39,10 @@ describe ModuleGeneratorRequest do
     expect(parse( 'C:\\proj:Foo' )).to eq( [request( 'Foo', path_hint: 'C:\\proj' )] )
   end
 
+  it 'reads an absolute Windows path without a hint as the name' do
+    expect(parse( 'C:/proj/Foo' )).to eq( [request( 'C:/proj/Foo' )] )
+  end
+
   it 'keeps a slash-separated subdirectory in the name' do
     expect(parse( 'lab:newlab/SecretLair' )).to eq( [request( 'newlab/SecretLair', path_hint: 'lab' )] )
   end

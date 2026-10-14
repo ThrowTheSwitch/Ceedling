@@ -66,7 +66,9 @@ describe 'Module Generator plugin (integration)' do
     previous = Rake.application
     Rake.application = Rake::Application.new
     load File.join( PLUGIN_ROOT, 'module_generator.rake' )
-    TOPLEVEL_BINDING.receiver.instance_variable_set( :@ceedling, { module_generator: plugin_for( config ) } )
+    main              = TOPLEVEL_BINDING.receiver
+    previous_ceedling = main.instance_variable_get( :@ceedling )
+    main.instance_variable_set( :@ceedling, { module_generator: plugin_for( config ) } )
 
     output, $stdout = $stdout, StringIO.new
     begin
@@ -75,6 +77,7 @@ describe 'Module Generator plugin (integration)' do
     ensure
       $stdout = output
       Rake.application = previous
+      main.instance_variable_set( :@ceedling, previous_ceedling )
     end
   end
 

@@ -46,16 +46,25 @@ class ModuleGeneratorRequest < Struct.new( :name, :path_hint, :pattern, keyword_
   end
 
   def self.from_argument(arg, pattern)
+    hint, name = split_hint( arg )
+    raise CeedlingException.new( "The module argument `#{arg}` names no module." ) if name.empty?
+
+    return new( name: name, path_hint: hint, pattern: pattern ).freeze
+  end
+
+  # The joined hint, or nil, and the name. A drive letter belongs to the hint when hints
+  # follow it, and to the name otherwise.
+  def self.split_hint(arg)
     drive = arg[DRIVE].to_s
     hints = arg.delete_prefix( drive ).split( ':', -1 )
     name  = hints.pop
-    raise CeedlingException.new( "The module argument `#{arg}` names no module." ) if name.empty?
+    return [nil, drive + name] if hints.empty?
 
-    hint = hints.reject( &:empty? ).join( '/' )
-    return new( name: name, path_hint: (drive + hint).then { |path| path.empty? ? nil : path }, pattern: pattern ).freeze
+    hint = drive + hints.reject( &:empty? ).join( '/' )
+    return [hint.empty? ? nil : hint, name]
   end
 
-  private_class_method :split_pattern, :from_argument
+  private_class_method :split_pattern, :from_argument, :split_hint
 
   # This request as a test-only module when its name carries the test file prefix. A
   # prefix ending in a letter or digit (`Test`) needs a word boundary after it, so
