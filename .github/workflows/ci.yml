@@ -831,7 +831,8 @@ jobs:
   # pull requests from forks get the comment too. A push run instead publishes the
   # baseline later pull requests compare against.
   #
-  # always() runs it after a failed or cancelled job too, when the summary matters most.
+  # !cancelled() runs it after a failed job too, when the summary matters most, but not
+  # after a cancel, whose partial results nothing reads.
   ci-summary:
     name: "CI Summary"
     needs:
@@ -842,7 +843,7 @@ jobs:
       - tests-linux-encoding-stress
       - lint
       - build-gem
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     runs-on: ubuntu-latest
 
     # actions: read lists this run's jobs and downloads the baseline from a base-branch run

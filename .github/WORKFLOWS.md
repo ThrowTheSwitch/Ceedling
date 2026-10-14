@@ -97,7 +97,7 @@ This job runs once every test job passes. It builds the gem with the documentati
 
 ### CI Summary
 
-This job runs after every other job, including failed and cancelled ones (`always()`).
+This job runs after every other job, including failed ones, but not in a cancelled run (`!cancelled()`).
 
 1. Download every leg’s results.
 2. Fetch the run’s job list from the GitHub API.
