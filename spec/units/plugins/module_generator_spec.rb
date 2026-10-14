@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/exceptions'
+require 'ceedling/constants'
 require 'ceedling/plugins/plugin'
 
 [File.expand_path( '../../../plugins/module_generator/lib', __dir__ ),
@@ -29,12 +30,13 @@ describe ModuleGenerator do
   let(:configurator)       { double( 'configurator', project_config_hash: config, get_cmock_config: { mock_prefix: 'mock_' } ) }
   let(:file_finder_helper) { double( 'file_finder_helper' ) }
   let(:file_wrapper)       { double( 'file_wrapper' ) }
+  let(:loginator)          { double( 'loginator' ) }
   let(:unity)              { double( 'unity_module_generator' ) }
   let(:cmock)              { double( 'cmock' ) }
 
   let(:plugin) do
     described_class.new(
-      { configurator: configurator, file_finder_helper: file_finder_helper, file_wrapper: file_wrapper },
+      { configurator: configurator, file_finder_helper: file_finder_helper, file_wrapper: file_wrapper, loginator: loginator },
       'module_generator', '/plugins/module_generator'
     )
   end
@@ -81,6 +83,23 @@ describe ModuleGenerator do
     allow(file_wrapper).to receive(:read).with( 'bp.txt' ).and_return( '/* bp */' )
     expect(UnityModuleGenerator).to receive(:new).with( hash_including( boilerplates: hash_including( src: '/* bp */' ) ) ).and_return( unity )
     allow(unity).to receive(:generate)
+
+    plugin.create( request( 'Lair' ) )
+  end
+
+  it 'warns that :update_svn is deprecated when it is configured' do
+    config[:module_generator_update_svn] = true
+    allow(UnityModuleGenerator).to receive(:new).and_return( unity )
+    allow(unity).to receive(:generate)
+    expect(loginator).to receive(:log).with( /:update_svn.*deprecated/, Verbosity::COMPLAIN, LogLabels::WARNING )
+
+    plugin.create( request( 'Lair' ) )
+  end
+
+  it 'says nothing about :update_svn when it is not configured' do
+    allow(UnityModuleGenerator).to receive(:new).and_return( unity )
+    allow(unity).to receive(:generate)
+    expect(loginator).not_to receive(:log)
 
     plugin.create( request( 'Lair' ) )
   end

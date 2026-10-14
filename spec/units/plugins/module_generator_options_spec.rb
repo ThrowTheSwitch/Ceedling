@@ -55,6 +55,10 @@ describe ModuleGeneratorOptions do
       )
     end
 
+    it 'never asks Unity to run Subversion, even when :update_svn is configured' do
+      expect(options( module_generator_update_svn: true ).unity( request( 'x' ) )[:update_svn]).to be( false )
+    end
+
     it 'uses the first path of each list without a hint' do
       expect(options.unity( request( 'Lair' ) )).to include( path_src: 'src', path_inc: 'inc', path_tst: 'test' )
     end

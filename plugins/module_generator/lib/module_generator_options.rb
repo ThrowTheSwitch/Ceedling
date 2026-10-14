@@ -89,7 +89,7 @@ class ModuleGeneratorOptions
     }
   end
 
-  # Unity options every request shares
+  # Unity options every request shares. Unity's own Subversion support stays off.
   def shared_options
     return {
       test_prefix:  @config[:project_test_file_prefix],
@@ -97,7 +97,7 @@ class ModuleGeneratorOptions
       includes:     KINDS.to_h { |kind| [kind, Array( (@config[:module_generator_includes] || {})[kind] )] },
       boilerplates: @boilerplates,
       naming:       @naming,
-      update_svn:   @config[:module_generator_update_svn] || false,
+      update_svn:   false,
       test_define:  @config[:module_generator_test_define] || 'TEST'
     }
   end

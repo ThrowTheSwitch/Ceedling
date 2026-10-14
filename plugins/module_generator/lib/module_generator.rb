@@ -7,6 +7,7 @@
 
 require 'ceedling/plugins/plugin'
 require 'ceedling/exceptions'
+require 'ceedling/constants'
 require 'module_generator_request'
 require 'module_generator_options'
 
@@ -45,11 +46,23 @@ class ModuleGenerator < Plugin
   end
 
   def options
+    warn_update_svn
     return ModuleGeneratorOptions.new(
       config:             @ceedling[:configurator].project_config_hash,
       cmock_config:       @ceedling[:configurator].get_cmock_config,
       path_finder:        method( :find_path ),
       boilerplate_reader: method( :read_boilerplate )
+    )
+  end
+
+  # Subversion support is gone, so a configured :update_svn is noted once and ignored
+  def warn_update_svn
+    return if @update_svn_warned or !@ceedling[:configurator].project_config_hash.key?( :module_generator_update_svn )
+
+    @update_svn_warned = true
+    @ceedling[:loginator].log(
+      'Module Generator :update_svn is deprecated and ignored. Add generated files to source control with your own tools.',
+      Verbosity::COMPLAIN, LogLabels::WARNING
     )
   end
 
