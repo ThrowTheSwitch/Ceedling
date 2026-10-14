@@ -92,6 +92,12 @@ The refreshed Bullseye plugin offers additional features over the original versi
 - Added [`:cppcheck` ↳ `:fail_build:`](https://throwtheswitch.github.io/Ceedling/1.2.0/plugins/cppcheck/#fail_build) and `:fail_build_severities:` to break a build on findings. Cppcheck exits successfully even when it finds defects, so `cppcheck:all` previously could not fail a build at all. Only `error` severity fails by default, since whole project analysis always enables every check.
 - `cppcheck:all` now prints a per-severity tally of findings. Results previously landed only in report files, with nothing shown at the console.
 
+### Module Generator plugin
+
+- [#695](https://github.com/ThrowTheSwitch/Ceedling/issues/695) Added [`module:test[...]`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#testing-from-headers), which writes a test file holding an ignored test for each function a module’s header declares. Run again, it adds tests only for newly declared functions.
+- [#665](https://github.com/ThrowTheSwitch/Ceedling/issues/665) Added [`:test_guard`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#test-guards) to wrap generated tests in `#if` rather than `#ifdef`. Generating tests now warns when the guarding test define is not defined for test builds, since those tests would compile to nothing.
+- [#1025](https://github.com/ThrowTheSwitch/Ceedling/issues/1025) `module:create` now warns about each [existing file elsewhere in the project that shares a name](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#same-named-files) with a file it creates.
+
 ### GTest-like report plugin skipped tests
 The [GTest-like console report](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/) (`report_tests_gtestlike_stdout`) now reports a Unity test ignored with `TEST_IGNORE()` or `TEST_IGNORE_MESSAGE()` as a GoogleTest skipped test. A skipped test is listed with its location and message, counted in the run, and summarized between passed and failed tests, the way GoogleTest 1.10.0 and later reports `GTEST_SKIP()`. A test file whose every test is ignored now gets its own section. The new `:report_tests_gtestlike_stdout` ↳ `:ignored_as_skipped:` setting defaults to `TRUE`. Set it to `FALSE` to leave ignored tests out of the report for tools that do not understand skipped tests (see the related _Changed_ entry below).
 
@@ -143,6 +149,15 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - Fixed `report_tests_log_factory`’s JUnit, CppUnit, and HTML reports producing malformed or unsafe output when processing characters like `<`, `>`, `&`, or `"`.
 - Fixed `report_tests_log_factory` report content silently depending on the order reports were listed in `:report_tests_log_factory` ↳ `:reports:` (e.g. enabling `junit` ahead of `cppunit`)
 
+### Module Generator plugin
+
+- Fixed a path hint carrying over from one module to the next when a call names several, such as `module:create[lab:First,Second]`.
+- Fixed several ordered hints such as `lab:secret:lair` creating a file named `secret:lair` rather than matching nested folders. A Windows drive letter in a hint now stays part of its path.
+- Fixed a hint failing the whole command when it matched no path of one kind. Files of that kind now go to its first path, and only a hint matching nothing at all stops the command. Headers go with the source when no include paths are listed.
+- Fixed any name beginning with `test` being taken as a test file, turning `testimony` into `imony`. Only a name carrying the configured `:test_file_prefix` asks for a test file alone.
+- Fixed `module:stub` ignoring the project’s `:cmock` settings and a subdirectory named with a slash, printing its configuration, and triggering a CMock warning about `:includes`.
+- Fixed `:boilerplate_files` changing the configured `:boilerplates`. A boilerplate file that does not exist now stops the command rather than being ignored.
+
 ### Valgrind & Cppcheck plugins
 
 - Fixed enabling either plugin making its analysis tool a hard dependency of *every* Ceedling command, including plain `test:all`. Each tool is now required only by its own plugin’s tasks. `ceedling files:cppcheck` no longer needs Cppcheck installed either.
@@ -164,6 +179,9 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - Fixed a misspelled path under `:paths` ↳ `:cppcheck` silently collecting no suppression files, indistinguishable from a directory holding none.
 
 ## ⚠️ Changed
+
+### Module Generator `:naming` takes effect
+[#518](https://github.com/ThrowTheSwitch/Ceedling/issues/518) The Module Generator plugin’s [`:naming`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#naming-convention) setting now applies. Previously it had no effect, and every name kept the case typed. `:naming` no longer defaults to `:snake`, so a project that does not set it still sees names kept as typed. `:bumpy` and `:camel` produce the case their documentation describes (`BumpyFiles`, `camelFiles`). A project that sets `:naming` will see generated file names change.
 
 ### Performance improvements
 Optimizations and fixes have yielded a 5–10% speed increase for most builds _before_ the second-run speedup of the new delta build abilities.
@@ -222,6 +240,7 @@ The GTest-like console report’s output now better matches GoogleTest’s own c
 ## 👋 Removed
 
 - The `erb` gem dependency has been removed. Ceedling renders some of its plugin reports with a small template compiler of its own in place of `erb`. This reduces Ceedling’s external dependencies, simplifies installations where more recent versions of `erb` pull in further dependencies, and resolves security scanning findings against `erb` (CVE-2026-41316). Ceedling never used the feature that security advisory concerns, but carrying the dependency at all was enough to be flagged. Custom plugin templates are unaffected unless they use ERB syntax Ceedling itself never used — see [plugin development documentation](https://docs.throwtheswitch.org/Ceedling/1.2.0/development/plugins/plugin-subclass/) for the supported template syntax.
+- The Module Generator plugin no longer adds and removes generated files in Subversion, and its `:update_svn` setting is ignored with a deprecation warning. Add new files to source control with your own tools.
 
 ---
 
