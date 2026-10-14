@@ -76,7 +76,6 @@ class ModuleGenerator < Plugin
     @ceedling[:loginator].log( "#{created ? 'Created' : 'Updated'} #{path} with #{result.added.size} test(s)" )
   end
 
-
   def unity_generator(request)
     require 'module_generator_unity'
 
