@@ -151,8 +151,15 @@ describe 'Dependencies plugin (integration)' do
     expect(plugin.environment).to eq( [] )
   end
 
-  describe 'a missing tool' do
+  describe 'tools' do
     # Optional tools are left to the plugin, which checks each one only where it is used
+    # GNU tar reads a path beginning `D:` as a remote host named D, so the archive arrives
+    # on standard input, where its path never reaches tar. Windows CI's absolute paths
+    # exercise this through the gzipped tar fetch below.
+    it 'hands tar its archive on standard input' do
+      expect(default_tools[:deps_targzip][:arguments]).to include( '-xvzf -', '< "${1}"' )
+    end
+
     it 'marks the build_lib compiler and archiver optional' do
       expect(default_tools.values_at( :deps_compiler, :deps_linker ).map { |tool| tool[:optional] }).to all( be true )
     end

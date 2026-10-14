@@ -42,11 +42,12 @@
     :executable: tar
     :name: 'Dependencies tar gzip unarchiver'
     :optional: true
+    # The archive arrives on standard input. GNU tar reads a path beginning `D:` as a
+    # remote host named D, so a Windows path given to -f fails.
     :arguments:
-      - -xvzf
-      - ${1}  # Filepath
-      - -C
-      - ./
+      - -xvzf -
+      - -C ./
+      - < "${1}"  # Filepath
 
   :deps_git_clone:
     :executable: git
