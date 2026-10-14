@@ -23,6 +23,8 @@ require 'ceedling/exceptions'
 require 'ceedling/plugins/plugin'
 require 'ceedling/file_finder_helper'
 require 'ceedling/file_wrapper'
+require 'ceedling/config/config_matchinator'
+require 'ceedling/defineinator'
 
 PLUGIN_ROOT = File.expand_path( '../../plugins/module_generator', __dir__ )
 
@@ -49,10 +51,16 @@ describe 'Module Generator plugin (integration)' do
     return config
   end
 
+  # Test defines resolve per test file through Ceedling's own matching, which reads
+  # :defines ↳ :test through the configurator's flattened accessor
   def plugin_for(config)
-    loginator = double( 'loginator', log: nil )
-    objects   = {
-      configurator:       double( 'configurator', project_config_hash: config, get_cmock_config: { mock_prefix: config[:cmock_mock_prefix] } ),
+    loginator    = double( 'loginator', log: nil, lazy: nil )
+    accessors    = config.key?( :defines_test ) ? { defines_test: config[:defines_test] } : {}
+    configurator = double( 'configurator', project_config_hash: config, get_cmock_config: { mock_prefix: config[:cmock_mock_prefix] }, **accessors )
+    matchinator  = ConfigMatchinator.new( { configurator: configurator, loginator: loginator, reportinator: double( 'reportinator', generate_config_walk: ':defines ↳ :test' ) } )
+    objects      = {
+      configurator:       configurator,
+      defineinator:       Defineinator.new( { configurator: configurator, loginator: loginator, config_matchinator: matchinator } ).tap( &:setup ),
       file_finder_helper: FileFinderHelper.new( { loginator: loginator } ),
       file_wrapper:       FileWrapper.new( { loginator: loginator, verbosinator: double( 'verbosinator', should_output?: false ) } ),
       loginator:          loginator
@@ -246,6 +254,32 @@ describe 'Module Generator plugin (integration)' do
         capture_stdout { plugin.create( ModuleGeneratorRequest.new( name: 'a_file' ) ) }
 
         expect(files).to include( 'src/a_file.c', 'inc/a_file.h', 'test/test_a_file.c' )
+      end
+    end
+
+    describe 'test define warning' do
+      def warnings_for(defines)
+        config = flat_config( test_define: 'UNIT_TEST' ).merge( defines_test: defines )
+        plugin = plugin_for( config )
+        logged = []
+        allow(plugin.instance_variable_get( :@ceedling )[:loginator]).to receive(:log) { |message, *| logged << message }
+
+        in_project( 'src', 'inc', 'test' ) do
+          capture_stdout { plugin.create( ModuleGeneratorRequest.new( name: 'widget' ) ) }
+        end
+        return logged.grep( /UNIT_TEST/ )
+      end
+
+      it 'says nothing when a simple list defines the symbol' do
+        expect(warnings_for( ['UNIT_TEST'] )).to be_empty
+      end
+
+      it 'says nothing when a matcher for the generated test defines the symbol' do
+        expect(warnings_for( { :* => ['OTHER'], :test_wid => ['UNIT_TEST'] } )).to be_empty
+      end
+
+      it 'warns when only a matcher for other tests defines the symbol' do
+        expect(warnings_for( { :* => ['OTHER'], :test_gadget => ['UNIT_TEST'] } )).to contain_exactly( a_string_including( '`test/test_widget.c`' ) )
       end
     end
 

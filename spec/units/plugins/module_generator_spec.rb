@@ -33,18 +33,23 @@ describe ModuleGenerator do
   let(:file_finder_helper) { double( 'file_finder_helper' ) }
   let(:file_wrapper)       { double( 'file_wrapper' ) }
   let(:loginator)          { double( 'loginator', log: nil ) }
+  let(:defineinator)       { double( 'defineinator' ) }
+
+  # Test defines as a build resolves them for each test file, TEST unless a spec says otherwise
+  let(:resolved_defines)   { Hash.new( ['TEST'] ) }
   let(:unity)              { double( 'unity_module_generator', files_to_operate_on: [] ) }
   let(:cmock)              { double( 'cmock' ) }
 
   let(:plugin) do
     described_class.new(
-      { configurator: configurator, file_finder_helper: file_finder_helper, file_wrapper: file_wrapper, loginator: loginator },
+      { configurator: configurator, file_finder_helper: file_finder_helper, file_wrapper: file_wrapper, loginator: loginator, defineinator: defineinator },
       'module_generator', '/plugins/module_generator'
     )
   end
 
   # A real generator reaching the disk is a broken stub, so it fails loudly instead
   before(:each) do
+    allow(defineinator).to receive(:defines) { |subkey:, filepath:| subkey == :test ? resolved_defines[filepath] : [] }
     %i[generate destroy].each do |method|
       allow_any_instance_of( UnityModuleGenerator ).to receive( method ).and_raise( 'Unit specs must not write module files' )
     end
@@ -98,7 +103,6 @@ describe ModuleGenerator do
 
   it 'warns that :update_svn is deprecated when it is configured' do
     config[:module_generator_update_svn] = true
-    config[:defines_test] = ['TEST']
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:generate)
     expect(loginator).to receive(:log).with( /:update_svn.*deprecated/, Verbosity::COMPLAIN, LogLabels::WARNING )
@@ -107,7 +111,6 @@ describe ModuleGenerator do
   end
 
   it 'says nothing about :update_svn when it is not configured' do
-    config[:defines_test] = ['TEST']
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:generate)
     expect(loginator).not_to receive(:log)
@@ -115,27 +118,34 @@ describe ModuleGenerator do
     plugin.create( request( 'Lair' ) )
   end
 
-  it 'warns once that generated tests compile to nothing when the test define is undefined' do
+  def planned_test(path)
+    return { path: Pathname.new( path ), test_define: 'TEST' }
+  end
+
+  it 'warns about each generated test file its test define does not reach' do
+    resolved_defines['test/test_Lair.c'] = ['OTHER']
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
+    allow(unity).to receive(:files_to_operate_on).with( 'Lair' ).and_return( [{ path: Pathname.new( 'src/Lair.c' ) }, planned_test( 'test/test_Lair.c' )] )
     allow(unity).to receive(:generate)
-    expect(loginator).to receive(:log).with( /`#ifdef TEST`.*TEST.*:defines/m, Verbosity::COMPLAIN, LogLabels::WARNING ).once
+    expect(loginator).to receive(:log).with( /`test\/test_Lair.c`.*`#ifdef TEST`.*:defines/m, Verbosity::COMPLAIN, LogLabels::WARNING ).once
 
     plugin.create( request( 'Lair' ) )
-    plugin.create( request( 'Lab' ) )
   end
 
   it 'names the #if guard in the warning when :test_guard is #if' do
     config[:module_generator_test_guard] = :if
+    resolved_defines['test/test_Lair.c'] = []
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
+    allow(unity).to receive(:files_to_operate_on).and_return( [planned_test( 'test/test_Lair.c' )] )
     allow(unity).to receive(:generate)
     expect(loginator).to receive(:log).with( /`#if TEST`/, Verbosity::COMPLAIN, LogLabels::WARNING )
 
     plugin.create( request( 'Lair' ) )
   end
 
-  it 'says nothing about the test define when the project defines it' do
-    config[:defines_test] = ['TEST']
+  it 'says nothing about the test define when it reaches the generated test file' do
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
+    allow(unity).to receive(:files_to_operate_on).and_return( [planned_test( 'test/test_Lair.c' )] )
     allow(unity).to receive(:generate)
     expect(loginator).not_to receive(:log)
 
@@ -143,7 +153,7 @@ describe ModuleGenerator do
   end
 
   it 'warns about each existing file that shares a name with a file it creates, then creates them' do
-    config.merge!( defines_test: ['TEST'], collection_all_source: ['lib/Lair.c'], collection_all_headers: [], collection_all_tests: [] )
+    config.merge!( collection_all_source: ['lib/Lair.c'], collection_all_headers: [], collection_all_tests: [] )
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:files_to_operate_on).with( 'Lair' ).and_return( [{ path: Pathname.new( 'src/Lair.c' ) }] )
     expect(loginator).to receive(:log).with( /`src\/Lair.c`.*`lib\/Lair.c`/, Verbosity::COMPLAIN, LogLabels::WARNING )
@@ -156,8 +166,7 @@ describe ModuleGenerator do
     let(:parser) { double( 'cmock_header_parser' ) }
 
     before(:each) do
-      config[:defines_test] = ['TEST']
-      allow(CMockConfig).to receive(:new).and_return( double( 'cmock_config' ) )
+        allow(CMockConfig).to receive(:new).and_return( double( 'cmock_config' ) )
       allow(CMockHeaderParser).to receive(:new).and_return( parser )
       allow(file_wrapper).to receive(:read).with( 'inc/widget.h' ).and_return( 'void shorty(void);' )
       allow(parser).to receive(:parse).with( 'widget', 'void shorty(void);' ).and_return( functions: [{ name: 'shorty' }] )
@@ -175,6 +184,15 @@ describe ModuleGenerator do
       allow(file_wrapper).to receive(:exist?).with( 'test/test_widget.c' ).and_return( true )
       allow(file_wrapper).to receive(:read).with( 'test/test_widget.c' ).and_return( "void test_shorty(void) {}\n" )
       expect(file_wrapper).not_to receive(:write)
+
+      plugin.test( request( 'widget' ) )
+    end
+
+    it 'warns when its test define does not reach the test file it writes' do
+      resolved_defines['test/test_widget.c'] = []
+      allow(file_wrapper).to receive(:exist?).with( 'test/test_widget.c' ).and_return( false )
+      allow(file_wrapper).to receive(:write)
+      expect(loginator).to receive(:log).with( /`test\/test_widget.c`.*`#ifdef TEST`/m, Verbosity::COMPLAIN, LogLabels::WARNING )
 
       plugin.test( request( 'widget' ) )
     end

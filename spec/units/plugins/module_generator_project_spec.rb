@@ -14,29 +14,28 @@ require 'module_generator_project'
 describe ModuleGeneratorProject do
 
   describe '#test_defined?' do
-    it 'finds a symbol in a plain list, with or without a value' do
-      expect(described_class.new( defines_test: ['TEST'] ).test_defined?( 'TEST' )).to be true
-      expect(described_class.new( defines_test: ['TEST=1'] ).test_defined?( 'TEST' )).to be true
+    # Test defines as a build resolves them for each test file
+    let(:resolved) { { 'test/test_widget.c' => ['UNIT_TEST=1', 'OTHER'], 'test/test_gadget.c' => ['OTHER'] } }
+    let(:project)  { described_class.new( {}, test_defines: ->( path ) { resolved.fetch( path, [] ) } ) }
+
+    it 'finds a symbol among the defines resolved for that test file, with or without a value' do
+      expect(project.test_defined?( 'UNIT_TEST', 'test/test_widget.c' )).to be true
+      expect(project.test_defined?( 'OTHER', 'test/test_gadget.c' )).to be true
     end
 
-    it 'finds a symbol among per-test matchers' do
-      defines = { '*' => ['OTHER'], 'test_widget' => ['CEEDLING_TEST'] }
-
-      expect(described_class.new( defines_test: defines ).test_defined?( 'CEEDLING_TEST' )).to be true
-    end
-
-    it 'reports a symbol no test defines' do
-      expect(described_class.new( defines_test: ['UNIT_TEST'] ).test_defined?( 'TEST' )).to be false
-      expect(described_class.new( {} ).test_defined?( 'TEST' )).to be false
+    it 'reports a symbol the defines resolved for that test file lack' do
+      expect(project.test_defined?( 'UNIT_TEST', 'test/test_gadget.c' )).to be false
+      expect(project.test_defined?( 'UNIT_TEST', 'test/test_other.c' )).to be false
     end
   end
 
   describe '#same_named' do
     let(:project) do
       described_class.new(
-        collection_all_source:  ['src/Widget.c', 'lib/net/Socket.c'],
+        { collection_all_source:  ['src/Widget.c', 'lib/net/Socket.c'],
         collection_all_headers: ['inc/net/Widget.h'],
-        collection_all_tests:   ['test/test_Socket.c']
+        collection_all_tests:   ['test/test_Socket.c'] },
+        test_defines: ->( _path ) { [] }
       )
     end
 

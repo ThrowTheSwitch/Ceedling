@@ -27,9 +27,10 @@ class ModuleGenerator < Plugin
 
   def create(request)
     generator = unity_generator( request )
-    warn_same_named( generator.files_to_operate_on( request.name ) )
+    planned   = generator.files_to_operate_on( request.name )
+    warn_same_named( planned )
     generator.generate( request.name )
-    warn_undefined_test_define
+    warn_undefined_test_define( planned.reject { |file| file[:test_define].nil? }.map { |file| file[:path].to_s } )
   end
 
   def destroy(request)
@@ -54,7 +55,7 @@ class ModuleGenerator < Plugin
     result    = ModuleGeneratorTestFile.new( **test[:file] ).render( functions, existing: existing )
 
     write_test( test[:path], result, existing.nil? )
-    warn_undefined_test_define
+    warn_undefined_test_define( [test[:path]] )
   end
 
   private
@@ -96,7 +97,10 @@ class ModuleGenerator < Plugin
   end
 
   def project
-    return @project ||= ModuleGeneratorProject.new( @ceedling[:configurator].project_config_hash )
+    return @project ||= ModuleGeneratorProject.new(
+      @ceedling[:configurator].project_config_hash,
+      test_defines: ->( path ) { @ceedling[:defineinator].defines( subkey: :test, filepath: path ) }
+    )
   end
 
   # Subversion support is gone, so a configured :update_svn is noted, once with the
@@ -120,17 +124,18 @@ class ModuleGenerator < Plugin
     end
   end
 
-  # Noted once per run, since every generated test shares the same guard
-  def warn_undefined_test_define
+  # A test file whose build lacks its guard symbol compiles to nothing. Per-test matchers
+  # can give each test file different defines, so each is checked on its own.
+  def warn_undefined_test_define(test_paths)
     define = options.test_define
-    return if @test_define_warned or project.test_defined?( define )
 
-    @test_define_warned = true
-    @ceedling[:loginator].log(
-      "Generated tests are wrapped in `##{options.test_guard} #{define}`, but #{define} is not among the project's " \
-      ":defines for tests. Add it under :defines ↳ :test, or the tests compile to nothing.",
-      Verbosity::COMPLAIN, LogLabels::WARNING
-    )
+    test_paths.reject { |path| project.test_defined?( define, path ) }.each do |path|
+      @ceedling[:loginator].log(
+        "Generated test `#{path}` is wrapped in `##{options.test_guard} #{define}`, but its build does not " \
+        "define #{define}. Add it under :defines ↳ :test, or the test compiles to nothing.",
+        Verbosity::COMPLAIN, LogLabels::WARNING
+      )
+    end
   end
 
   # The path in a list a hint matches best, or nil when it matches none

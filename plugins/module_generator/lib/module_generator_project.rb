@@ -13,14 +13,16 @@ class ModuleGeneratorProject
 
   COLLECTIONS = %i[collection_all_source collection_all_headers collection_all_tests].freeze
 
-  def initialize(config)
-    @config = config
+  # `test_defines` returns the defines a build gives a test file, resolving per-test
+  # matchers against that file's path exactly as a test build does
+  def initialize(config, test_defines:)
+    @config       = config
+    @test_defines = test_defines
   end
 
-  # Whether any test defines the symbol, with or without a value. Test defines are a
-  # list, or a hash of per-test matchers whose values are lists.
-  def test_defined?(symbol)
-    return strings( @config[:defines_test] ).any? { |entry| entry.split( '=', 2 ).first.strip == symbol }
+  # Whether a build of the test file defines the symbol, with or without a value
+  def test_defined?(symbol, test_path)
+    return @test_defines.call( test_path ).any? { |entry| entry.to_s.split( '=', 2 ).first.strip == symbol }
   end
 
   # Existing project files elsewhere that share a planned file's name, keyed by the
@@ -38,15 +40,6 @@ class ModuleGeneratorProject
 
   def same_name_elsewhere?(file, target)
     return File.basename( file ) == target.basename.to_s && Pathname.new( file ).cleanpath != target
-  end
-
-  def strings(value)
-    case value
-    when Hash   then value.values.flat_map { |entry| strings( entry ) }
-    when Array  then value.flat_map { |entry| strings( entry ) }
-    when String then [value]
-    else []
-    end
   end
 
 end
