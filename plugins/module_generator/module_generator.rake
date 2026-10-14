@@ -30,6 +30,13 @@ namespace :module do
     end
   end
 
+  desc "Generate module tests from header"
+  task :test, :module_path do |_t, args|
+    module_requests.call( args, patterns: false ).each do |request|
+      @ceedling[:module_generator].test( request )
+    end
+  end
+
   desc "Destroy module (source, header and test files)"
   task :destroy, :module_path do |_t, args|
     module_requests.call( args ).each do |request|

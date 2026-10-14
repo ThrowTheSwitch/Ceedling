@@ -11,8 +11,9 @@ require 'ceedling/constants'
 require 'module_generator_request'
 require 'module_generator_options'
 require 'module_generator_project'
+require 'module_generator_test_file'
 
-# Creates, destroys, and stubs modules for the `module:` tasks. Unity's module
+# Creates, destroys, stubs, and tests modules for the `module:` tasks. Unity's module
 # generator, through ModuleGeneratorUnity, writes and removes source, header, and test
 # files, and CMock's skeleton generator writes a source file of stubs from a header. This
 # plugin hands each one the options ModuleGeneratorOptions builds for a request from the
@@ -42,7 +43,39 @@ class ModuleGenerator < Plugin
     CMock.new( stub[:cmock] ).setup_skeletons( stub[:header] )
   end
 
+  # Writes a test file with an ignored test for each function the module's header
+  # declares, or adds tests for newly declared functions to an existing one
+  def test(request)
+    require 'cmock'
+
+    test      = options.test( request )
+    functions = header_functions( test )
+    existing  = @ceedling[:file_wrapper].exist?( test[:path] ) ? @ceedling[:file_wrapper].read( test[:path] ) : nil
+    result    = ModuleGeneratorTestFile.new( **test[:file] ).render( functions, existing: existing )
+
+    write_test( test[:path], result, existing.nil? )
+    warn_undefined_test_define
+  end
+
   private
+
+  def header_functions(test)
+    source = @ceedling[:file_wrapper].read( test[:header] )
+    parsed = CMockHeaderParser.new( CMockConfig.new( test[:cmock] ) ).parse( test[:file][:module_name], source )
+
+    return parsed[:functions].map { |function| function[:name] }
+  rescue SystemCallError
+    raise CeedlingException.new( "Module header `#{test[:header]}` does not exist." )
+  end
+
+  def write_test(path, result, created)
+    return @ceedling[:loginator].log( "No new functions to test in #{path}" ) if !created and result.added.empty?
+
+    @ceedling[:file_wrapper].mkdir( File.dirname( path ) )
+    @ceedling[:file_wrapper].write( path, result.content )
+    @ceedling[:loginator].log( "#{created ? 'Created' : 'Updated'} #{path} with #{result.added.size} test(s)" )
+  end
+
 
   def unity_generator(request)
     require 'module_generator_unity'

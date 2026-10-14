@@ -54,7 +54,7 @@ describe 'Module Generator plugin (integration)' do
     objects   = {
       configurator:       double( 'configurator', project_config_hash: config, get_cmock_config: { mock_prefix: config[:cmock_mock_prefix] } ),
       file_finder_helper: FileFinderHelper.new( { loginator: loginator } ),
-      file_wrapper:       FileWrapper.new( { loginator: loginator, verbosinator: double( 'verbosinator' ) } ),
+      file_wrapper:       FileWrapper.new( { loginator: loginator, verbosinator: double( 'verbosinator', should_output?: false ) } ),
       loginator:          loginator
     }
     return ModuleGenerator.new( objects, 'module_generator', PLUGIN_ROOT )
@@ -314,6 +314,26 @@ describe 'Module Generator plugin (integration)' do
         run_task( config, 'destroy', 'sub:b_file' )
 
         expect(files).to be_empty
+      end
+    end
+  end
+
+  describe 'module:test' do
+    it 'writes a test for each declared function, then adds tests for new ones' do
+      config = project_config( source: ['s'], include: ['i', 'i/lab'], test: ['t', 't/lab'], test_define: 'UNIT_TEST' )
+
+      in_project( 's', 'i/lab', 't/lab' ) do
+        File.write( 'i/lab/widget.h', "void shorty(void);\n" )
+        run_task( config, 'test', 'lab:widget' )
+        expect(File.read( 't/lab/test_widget.c' )).to include( '#ifdef UNIT_TEST', '#include "widget.h"', 'void test_shorty_NeedToImplement(void)' )
+
+        File.write( 't/lab/test_widget.c', File.read( 't/lab/test_widget.c' ).sub( 'TEST_IGNORE_MESSAGE("Need to Implement shorty");', 'TEST_PASS();' ) )
+        File.write( 'i/lab/widget.h', "void shorty(void);\nint tiny(int a);\n" )
+        run_task( config, 'test', 'lab:widget' )
+
+        test = File.read( 't/lab/test_widget.c' )
+        expect(test).to include( 'TEST_PASS();', 'void test_tiny_NeedToImplement(void)' )
+        expect(test.scan( 'void test_shorty_NeedToImplement' ).size).to eq( 1 )
       end
     end
   end

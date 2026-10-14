@@ -134,6 +134,34 @@ describe ModuleGeneratorOptions do
     expect(options.test_define).to eq( 'TEST' )
   end
 
+  describe '#test' do
+    it 'reads the header from the include path and writes the test to the test path' do
+      test = options.test( request( 'widget', path_hint: 'lab' ) )
+
+      expect(test).to include( header: 'inc/lab/widget.h', path: 'test/lab/test_widget.c' )
+    end
+
+    it 'keeps a subdirectory a slash names for both the header and the test' do
+      test = options.test( request( 'rev/widget' ) )
+
+      expect(test).to include( header: 'inc/rev/widget.h', path: 'test/rev/test_widget.c' )
+      expect(test[:file]).to include( module_name: 'widget', header: 'widget.h' )
+    end
+
+    it 'describes the test file with the configured includes, boilerplate, and guard' do
+      test = options(
+        module_generator_includes: { tst: ['defs.h'] }, module_generator_boilerplates: { tst: '/* t */' },
+        module_generator_test_define: 'UNIT_TEST', module_generator_test_guard: :if
+      ).test( request( 'widget' ) )
+
+      expect(test[:file]).to include( includes: ['defs.h'], boilerplate: '/* t */', test_define: 'UNIT_TEST', test_guard: 'if' )
+    end
+
+    it 'parses the header with the project CMock configuration' do
+      expect(options.test( request( 'widget' ) )[:cmock]).to include( treat_as: { 'BYTE' => 'HEX8' } )
+    end
+  end
+
   describe '#stub' do
     it 'reads the header from the include path and writes the skeleton to the source path' do
       stub = options.stub( request( 'stubby', path_hint: 'lab' ) )

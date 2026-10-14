@@ -60,9 +60,23 @@ class ModuleGeneratorOptions
     }
   end
 
-  def test_define
-    return @shared[:test_define]
+  # The header to parse, the test file to write, and what goes into it. A subdirectory
+  # the name carries applies to both paths.
+  def test(request)
+    _, inc, tst = paths( request.path_hint )
+    module_name = File.basename( request.name )
+    subdir      = File.dirname( request.name )
+
+    return {
+      header: File.join( inc, "#{request.name}.h" ),
+      path:   File.join( [tst, (subdir unless subdir == '.'), "#{@shared[:test_prefix]}#{module_name}.c"].compact ),
+      cmock:  @cmock_config,
+      file:   { module_name: module_name, header: "#{module_name}.h", includes: @shared[:includes][:tst],
+                boilerplate: @boilerplates[:tst], test_define: test_define, test_guard: @test_guard }
+    }
   end
+
+  def test_define = @shared[:test_define]
 
   private
 

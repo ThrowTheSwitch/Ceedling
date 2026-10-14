@@ -145,6 +145,40 @@ describe ModuleGenerator do
     plugin.create( request( 'Lair' ) )
   end
 
+  describe '#test' do
+    let(:parser) { double( 'cmock_header_parser' ) }
+
+    before(:each) do
+      config[:defines_test] = ['TEST']
+      allow(CMockConfig).to receive(:new).and_return( double( 'cmock_config' ) )
+      allow(CMockHeaderParser).to receive(:new).and_return( parser )
+      allow(file_wrapper).to receive(:read).with( 'inc/widget.h' ).and_return( 'void shorty(void);' )
+      allow(parser).to receive(:parse).with( 'widget', 'void shorty(void);' ).and_return( functions: [{ name: 'shorty' }] )
+      allow(file_wrapper).to receive(:mkdir)
+    end
+
+    it 'writes a test file with a test for each function the header declares' do
+      allow(file_wrapper).to receive(:exist?).with( 'test/test_widget.c' ).and_return( false )
+      expect(file_wrapper).to receive(:write).with( 'test/test_widget.c', /void test_shorty_NeedToImplement/ )
+
+      plugin.test( request( 'widget' ) )
+    end
+
+    it 'adds tests to an existing test file only for untested functions' do
+      allow(file_wrapper).to receive(:exist?).with( 'test/test_widget.c' ).and_return( true )
+      allow(file_wrapper).to receive(:read).with( 'test/test_widget.c' ).and_return( "void test_shorty(void) {}\n" )
+      expect(file_wrapper).not_to receive(:write)
+
+      plugin.test( request( 'widget' ) )
+    end
+
+    it 'refuses a header that does not exist' do
+      allow(file_wrapper).to receive(:read).with( 'inc/widget.h' ).and_raise( Errno::ENOENT )
+
+      expect { plugin.test( request( 'widget' ) ) }.to raise_error( CeedlingException, %r{`inc/widget.h`} )
+    end
+  end
+
   it 'stubs a header through CMock with the skeleton beside the source' do
     expect(CMock).to receive(:new).with( hash_including( mock_prefix: 'mock_', skeleton_path: 'src' ) ).and_return( cmock )
     expect(cmock).to receive(:setup_skeletons).with( 'inc/stubby.h' )
