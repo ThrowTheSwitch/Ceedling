@@ -83,6 +83,9 @@ class DependencySpec
     return (Array( @dep[:source] ) + Array( @dep[:include] )).compact.uniq
   end
 
+  # Static libraries as configured, relative to the artifact path
+  def static_library_entries = Array( @artifacts[:static_libraries] )
+
   def static_libraries  = artifacts( :static_libraries )
   def dynamic_libraries = artifacts( :dynamic_libraries )
   def include_files     = artifacts( :includes )

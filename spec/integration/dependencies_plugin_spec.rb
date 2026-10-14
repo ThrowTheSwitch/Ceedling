@@ -73,6 +73,7 @@ describe 'Dependencies plugin (integration)' do
     Rake.application = Rake::Application.new
     main.instance_variable_set( :@ceedling, objects )
     begin
+      Rake::Task.define_task( :directories )
       load File.join( DEPENDENCIES_PLUGIN_ROOT, 'dependencies.rake' )
       tasks.each { |task| Rake::Task[task].invoke }
     ensure
@@ -220,8 +221,6 @@ describe 'Dependencies plugin (integration)' do
     end
 
     it 'skips a git dependency already fetched', skip: (GIT ? false : 'git is not installed') do
-      pending 'a second fetch clones into the populated folder and fails (#1076)'
-
       in_project do |root|
         deps = [dependency( 'cloned', fetch: { method: :git, source: git_repository( root ) } )]
         run_tasks( deps, 'dependencies:fetch' )
@@ -231,14 +230,27 @@ describe 'Dependencies plugin (integration)' do
     end
 
     it 'builds a git dependency fetched beforehand', skip: (GIT ? false : 'git is not installed') do
-      pending 'make fetches again before building (#1076)'
-
       in_project do |root|
         deps = [dependency( 'cloned', fetch: { method: :git, source: git_repository( root ) },
                                       paths: { fetch: 'deps/cloned', build: 'deps/cloned/build', artifact: 'deps/cloned/build' },
                                       artifacts: { static_libraries: ['libcloned.a'], dynamic_libraries: [], includes: [] } )]
         run_tasks( deps, 'dependencies:fetch' )
         run_tasks( deps, 'dependencies:make' )
+
+        expect(File.exist?( 'deps/cloned/build/libcloned.a' )).to be true
+      end
+    end
+  end
+
+  describe 'a build start' do
+    # Ceedling runs its directories task as a build starts, ahead of any fetch, and a
+    # build path inside the fetch path must not make an unfetched dependency look fetched
+    it 'fetches and builds a git dependency whose build path lies inside its fetch path', skip: (GIT ? false : 'git is not installed') do
+      in_project do |root|
+        deps = [dependency( 'cloned', fetch: { method: :git, source: git_repository( root ) },
+                                      paths: { fetch: 'deps/cloned', build: 'deps/cloned/build', artifact: 'deps/cloned/build' },
+                                      artifacts: { static_libraries: ['libcloned.a'], dynamic_libraries: [], includes: [] } )]
+        run_tasks( deps, 'directories', 'dependencies:make' )
 
         expect(File.exist?( 'deps/cloned/build/libcloned.a' )).to be true
       end
@@ -271,8 +283,6 @@ describe 'Dependencies plugin (integration)' do
 
   describe 'dependencies:deploy' do
     it 'copies every dynamic library from its artifact path beside the release build' do
-      pending 'deploy copies the dependency name, not its libraries (#1110)'
-
       in_project do
         FileUtils.mkdir_p( %w[deps/shared/build build/release] )
         File.write( 'deps/shared/build/libone.so', 'one' )

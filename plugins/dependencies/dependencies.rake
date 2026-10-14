@@ -7,11 +7,9 @@
 
 @ceedling[DEPENDENCIES_SYM].specs.each do |dep|
 
-  # Make sure the required working directories exists
-  # (don't worry about the subdirectories. That's the job of the dep's build tool)
-  paths = dep.working_paths
-  paths.each {|path| directory(path) }
-  task :directories => paths
+  # The plugin creates each working path as fetching and building need it. Created any
+  # earlier, a build path inside the fetch path would make an unfetched dependency look
+  # fetched and stop a git clone into it.
 
   collector = @ceedling[DEPENDENCIES_SYM].path_collector
   headers_and_sources = dep.include_directories( collector ) + dep.include_files + dep.source_paths
@@ -68,7 +66,7 @@
 
     namespace :fetch do
       # Add task to directly clobber this dependency
-      task(dep.task_name => dep.source_path) do
+      task(dep.task_name) do
         @ceedling[DEPENDENCIES_SYM].fetch_if_required(dep.task_name)
       end
     end
@@ -84,21 +82,15 @@
   # Add the dynamic libraries to our RELEASE task dependency list so that they will be copied automatically
   task RELEASE_SYM => dep.dynamic_libraries
 
-  # Paths to Libraries need to be Added to the Lib Path List
-  all_libs = dep.static_libraries + dep.dynamic_libraries
-  PATHS_LIBRARIES ||= []
-  all_libs.each {|lib| PATHS_LIBRARIES << File.dirname(lib) }
-  PATHS_LIBRARIES.uniq!
-  PATHS_LIBRARIES.reject!{|s| s.empty?}
-
-  # Libraries Need to be Added to the Library List
-  LIBRARIES_SYSTEM ||= []
-  all_libs.each {|lib| LIBRARIES_SYSTEM << File.basename(lib,'.*').sub(/^lib/,'') }
-  LIBRARIES_SYSTEM.uniq!
-  LIBRARIES_SYSTEM.reject!{|s| s.empty?}
-
   task :prepare => all_deps
 end
+
+# Dependency libraries join the library names and paths test and release builds link with
+link_libraries = @ceedling[DEPENDENCIES_SYM].link_libraries
+PATHS_LIBRARIES ||= []
+PATHS_LIBRARIES.concat( link_libraries[:paths] ).uniq!
+LIBRARIES_SYSTEM ||= []
+LIBRARIES_SYSTEM.concat( link_libraries[:names] ).uniq!
 
 # Add any artifact:include or :source folders to our release & test includes paths so linking and mocking work.
 @ceedling[DEPENDENCIES_SYM].add_headers_and_sources()

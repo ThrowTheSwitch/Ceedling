@@ -8,7 +8,6 @@
 require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'pathname'
 require 'dependency_spec'
 require 'dependency_commands'
 require 'dependency_environment'
@@ -17,6 +16,14 @@ DEPENDENCIES_ROOT_NAME = 'dependencies'
 DEPENDENCIES_TASK_ROOT = DEPENDENCIES_ROOT_NAME + ':'
 DEPENDENCIES_SYM       = DEPENDENCIES_ROOT_NAME.to_sym
 
+# Fetches, builds, cleans, and deploys the third-party code a project depends on, and adds
+# its headers, sources, and libraries to test and release builds.
+#
+# DependencySpec reads each configured dependency, DependencyCommands decides which tool
+# commands fetch and build it, and DependencyEnvironment holds its environment variables
+# while they run. This plugin carries those out. Files and directories go through the
+# file wrapper and commands through the tool executor, and only a dependency's own
+# commands run from inside its directories.
 class Dependencies < Plugin
 
   attr_reader :specs
@@ -58,6 +65,99 @@ class Dependencies < Plugin
     return @lookup[key] || raise( CeedlingException.new( "Could not find dependency '#{key}'" ) )
   end
 
+  # Fetches, then builds, a dependency inside its environment
+  def make_if_required(key)
+    spec = spec_for( key )
+    environment_for( spec ).apply do
+      fetch_dependency( spec )
+      build_dependency( spec )
+    end
+  end
+
+  def fetch_if_required(key)
+    spec = spec_for( key )
+    environment_for( spec ).apply { fetch_dependency( spec ) }
+  end
+
+  # A fetched dependency's every working path goes, so a later fetch gets a fresh copy.
+  # A dependency that is not fetched keeps its source, losing only its artifacts.
+  def clean_if_required(key)
+    spec = spec_for( key )
+
+    if spec.fetch_method.nil?
+      log( "Nothing to clean for dependency #{spec.name}" )
+      return
+    end
+
+    log( "Cleaning dependency #{spec.name}..." )
+    spec.working_paths( artifacts_only: spec.fetch_method == :none ).each do |path|
+      @ceedling[:file_wrapper].rm_rf( path ) if @ceedling[:file_wrapper].directory?( path )
+    end
+  end
+
+  # Copies every dynamic library beside the release build, where it runs from
+  def deploy_if_required(key)
+    spec = spec_for( key )
+
+    if spec.dynamic_libraries.empty?
+      log( "Nothing to deploy for dependency #{spec.name}" )
+      return
+    end
+
+    log( "Deploying dependency #{spec.name}..." )
+    destination = File.dirname( PROJECT_RELEASE_BUILD_TARGET )
+    @ceedling[:file_wrapper].mkdir( destination )
+
+    spec.dynamic_libraries.each do |library|
+      unless @ceedling[:file_wrapper].exist?( library )
+        raise CeedlingException.new( "Dependency `#{spec.name}` has no #{library} to deploy. Build it with `dependencies:make` first." )
+      end
+
+      @ceedling[:file_wrapper].cp( library, destination )
+    end
+  end
+
+  # Library names and their directories, for test and release linking
+  def link_libraries
+    libraries = @specs.flat_map { |spec| spec.static_libraries + spec.dynamic_libraries }
+
+    return {
+      names: libraries.map { |library| File.basename( library, '.*' ).delete_prefix( 'lib' ) }.reject( &:empty? ).uniq,
+      paths: libraries.map { |library| File.dirname( library ) }.reject( &:empty? ).uniq
+    }
+  end
+
+  # Adds each dependency's include directories, headers, and sources to the collections
+  # test and release builds search
+  def add_headers_and_sources()
+    cfg = @ceedling[:configurator].project_config_hash
+
+    @specs.each do |spec|
+      add_include_directories( cfg, spec.include_directories( path_collector ) )
+
+      spec.include_files.each do |header|
+        cfg[:collection_all_headers] << header
+        ((cfg[:files] ||= {})[:include] ||= []) << header
+      end
+
+      spec.source_paths.each { |source| add_source_path( cfg, source ) }
+    end
+  end
+
+  ### Private ###
+
+  private
+
+  def log(message, verbosity = Verbosity::NORMAL)
+    @ceedling[:loginator].log( message, verbosity )
+  end
+
+  # A dependency's :environment, in effect only while its own commands run. Named apart
+  # from Plugin#environment, which Ceedling reads when it loads a plugin.
+  def environment_for(spec)
+    return DependencyEnvironment.new( spec.environment, dependency: spec.name )
+  end
+
   # The commands that fetch and build dependencies, from the plugin's configured tools
   def commands
     tools = { zip: TOOLS_DEPS_ZIP, tar_gzip: TOOLS_DEPS_TARGZIP, git_clone: TOOLS_DEPS_GIT_CLONE,
@@ -67,276 +167,166 @@ class Dependencies < Plugin
     return @commands ||= DependencyCommands.new( tools: tools, builder: builder )
   end
 
-  # Fetches, then builds, a dependency inside its environment
-  def make_if_required(lib_path)
-    spec = spec_for( lib_path )
-    environment_for( spec ).apply do
-      fetch_dependency( spec )
-      build_dependency( spec )
-    end
+  # The one place this plugin changes directory, around a dependency's own commands
+  def in_directory(path, &block)
+    Dir.chdir( path, &block )
   end
 
-  def fetch_if_required(lib_path)
-    spec = spec_for( lib_path )
-    environment_for( spec ).apply { fetch_dependency( spec ) }
-  end
-
-  def build_if_required(lib_path)
-    spec = spec_for( lib_path )
-    environment_for( spec ).apply { build_dependency( spec ) }
-  end
-
-  # A dependency's :environment, in effect only while its own commands run. Named apart
-  # from Plugin#environment, which Ceedling reads when it loads a plugin.
-  def environment_for(spec)
-    return DependencyEnvironment.new( spec.environment, dependency: spec.name )
-  end
-
+  # A fetch path that already holds files is taken as fetched, so fetching again, or
+  # building after a fetch, leaves it alone. Cleaning the dependency allows a fresh fetch.
   def fetch_dependency(spec)
     if spec.fetch_method.nil?
-      @ceedling[:loginator].log("No fetch method for dependency '#{spec.name}'", Verbosity::COMPLAIN)
+      log( "No fetch method for dependency '#{spec.name}'", Verbosity::COMPLAIN )
       return
     end
 
-    unless (directory(spec.source_path))
-      @ceedling[:loginator].log("Path #{spec.source_path} is required", Verbosity::COMPLAIN)
+    # A dependency fetched by :none is already where its paths say
+    return if spec.fetch_method == :none
+
+    path = spec.fetch_path
+    if @ceedling[:file_wrapper].directory?( path ) and !@ceedling[:file_wrapper].directory_entries( path ).empty?
+      log( "Dependency #{spec.name} is already fetched in #{path}. Clean it to fetch it again." )
       return
     end
 
-    FileUtils.mkdir_p(spec.fetch_path) unless File.exist?(spec.fetch_path)
-
+    log( "Fetching dependency #{spec.name}..." )
+    @ceedling[:file_wrapper].mkdir( path )
     steps = commands.fetch( spec )
-
-    # Perform the actual fetching
-    @ceedling[:loginator].log("Fetching dependency #{spec.name}...", Verbosity::NORMAL)
-    Dir.chdir(spec.fetch_path) do
-      steps.each do |step|
-        @ceedling[:tool_executor].exec( step )
-      end
-    end
+    in_directory( path ) { steps.each { |step| @ceedling[:tool_executor].exec( step ) } }
   end
 
+  # Build commands run from the source path; built-in steps use project paths
   def build_dependency(spec)
     if spec.build_steps.empty?
-      @ceedling[:loginator].log("Nothing to build for dependency #{spec.name}", Verbosity::NORMAL)
+      log( "Nothing to build for dependency #{spec.name}" )
       return
     end
 
-    FileUtils.mkdir_p(spec.source_path) unless File.exist?(spec.source_path)
-    FileUtils.mkdir_p(spec.artifact_path) unless File.exist?(spec.artifact_path)
+    [spec.source_path, spec.build_path, spec.artifact_path].uniq.each { |path| @ceedling[:file_wrapper].mkdir( path ) }
 
-    # Perform the build
-    @ceedling[:loginator].log("Building dependency #{spec.name}...", Verbosity::NORMAL)
-    Dir.chdir(spec.source_path) do
-      commands.build( spec ).each do |step|
-        if step.is_a?( Symbol )
-          exec_dependency_builtin_command(step, spec)
-        else
-          @ceedling[:tool_executor].exec( step )
-        end
-      end
+    log( "Building dependency #{spec.name}..." )
+    commands.build( spec ).each do |step|
+      next build_builtin( step, spec ) if step.is_a?( Symbol )
+
+      in_directory( spec.source_path ) { @ceedling[:tool_executor].exec( step ) }
     end
   end
 
-  def clean_if_required(lib_path)
-    spec = spec_for( lib_path )
+  def build_builtin(step, spec)
+    return build_lib( spec ) if step == :build_lib
 
-    # We don't clean anything unless we know how to fetch a new copy
-    if spec.fetch_method.nil?
-      @ceedling[:loginator].log("Nothing to clean for dependency #{spec.name}", Verbosity::NORMAL)
-      return
-    end
-
-    # We only need to clean the artifacts if the source isn't being fetched
-    artifacts_only = (spec.fetch_method == :none)
-
-    # Perform the actual Cleaning
-    @ceedling[:loginator].log("Cleaning dependency #{spec.name}...", Verbosity::NORMAL)
-    spec.working_paths( artifacts_only: artifacts_only ).each do |path|
-      FileUtils.rm_rf(path) if File.directory?(path)
-    end
+    raise CeedlingException.new( "No such build action as #{step.inspect} for dependency #{spec.name}" )
   end
 
-  def deploy_if_required(lib_path)
-    spec = spec_for( lib_path )
-
-    # We don't need to deploy anything if there isn't anything to deploy
-    if spec.dynamic_libraries.empty?
-      @ceedling[:loginator].log("Nothing to deploy for dependency #{spec.name}", Verbosity::NORMAL)
-      return
-    end
-
-    # Perform the actual Deploying
-    @ceedling[:loginator].log("Deploying dependency #{spec.name}...", Verbosity::NORMAL)
-    FileUtils.cp( lib_path, File.dirname(PROJECT_RELEASE_BUILD_TARGET) )
-  end
-
-  def add_headers_and_sources()
-    # Search for header file paths and files to add to our collections
-    cfg = @ceedling[:configurator].project_config_hash
-
-    @specs.each do |spec|
-      spec.include_directories( path_collector ).each do |header|
-        cfg[:collection_paths_include] << header
-        cfg[:collection_paths_source_and_include] << header
-        cfg[:collection_paths_test_support_source_include] << header
-        cfg[:collection_paths_test_support_source_include_vendor] << header
-        cfg[:collection_paths_release_toolchain_include] << header
-      end
-
-      spec.include_files.each do |header|
-        cfg[:collection_all_headers] << header
-
-        cfg[:files] ||= {}
-        cfg[:files][:include] ||= []
-        cfg[:files][:include] << header
-      end
-
-      spec.source_paths.each do |source|
-        cfg[:collection_paths_source_and_include] << source
-        cfg[:collection_paths_test_support_source_include] << source
-        cfg[:collection_paths_test_support_source_include_vendor] << source
-        cfg[:collection_paths_release_toolchain_include] << source
-        Dir[ *EXTENSION_SOURCE.glob_patterns(source) ].each do |f|
-          cfg[:collection_all_source] << f
-        end
-      end
-    end
-  end
-
-  def exec_dependency_builtin_command(step, spec)
-    case step
-    when :build_lib # We are going to use our defined deps tools to build this library
-      build_lib(spec)
-    else
-      raise CeedlingException.new( "No such build action as #{step.inspect} for dependency #{spec.name}" )
-    end
-  end
-
+  # Compiles every C and assembly file under the source path, archives the objects into
+  # the dependency's first static library in the build path, and copies that library to
+  # the artifact path when the two differ
   def build_lib(spec)
-    asm = []
-    obj = []
+    library = spec.static_library_entries.first or
+      raise CeedlingException.new( "Dependency `#{spec.name}` needs a :static_libraries entry for :build_lib to build." )
 
-    name = spec.name
-    source_path = Pathname.new spec.source_path
-    build_path = Pathname.new spec.build_path
-    relative_build_path = begin
-      build_path.relative_path_from(source_path)
-    rescue StandardError
-      build_path 
-    end
+    sources, assembly, search_paths = build_lib_inputs( spec )
+    objects = sources.map { |source| compile( spec, source, search_paths ) } +
+              assembly.map { |source| assemble( spec, source ) }
 
-    # Verify there is an artifact that we're building that makes sense
-    libs = (spec.static_libraries + spec.static_libraries).map { |path| path.delete_prefix( "#{spec.artifact_path}/" ) }.uniq
-    raise CeedlingException.new( "No library artifacts specified for dependency #{name}" ) if libs.empty?
-    lib = libs[0]
-
-    # Find all the source, header, and assembly files 
-    src = Dir[ *EXTENSION_SOURCE.glob_patterns('./**') ]
-    hdr = Dir[ *EXTENSION_HEADER.glob_patterns('./**') ].map{|f| File.dirname(f) }.uniq
-    if (EXTENSION_ASSEMBLY && !EXTENSION_ASSEMBLY.empty?)
-      asm = Dir[ *EXTENSION_ASSEMBLY.glob_patterns('./**') ]
-    end
-
-    # Do we have what we need to do this?
-    raise CeedlingException.new( "Nothing to build" ) if (asm.empty? and src.empty?)
-    raise CeedlingException.new( "No assembler specified for building dependency #{name}" ) unless (defined?(TOOLS_DEPS_ASSEMBLER) || asm.empty?)
-    raise CeedlingException.new( "No compiler specified for building dependency #{name}" ) unless (defined?(TOOLS_DEPS_COMPILER) || src.empty?)
-    raise CeedlingException.new( "No linker specified for building dependency #{name}" ) unless defined?(TOOLS_DEPS_LINKER)
-
-    # Build all the source files
-    src.each do |src_file|
-      object_file = relative_build_path + File.basename(src_file).ext(EXTENSION_OBJECT.primary)
-      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPS, find_my_paths(src_file, spec))
-      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPS, find_my_defines(src_file, spec))
-      @ceedling[:generator].generate_object_file_c(
-        tool:         TOOLS_DEPS_COMPILER,
-        module_name:  File.basename(src_file).ext(),
-        context:      DEPENDENCIES_SYM,
-        source:       src_file,
-        object:       object_file,
-        search_paths: hdr,
-        flags:        spec.flags,
-        defines:      spec.defines,
-        list:         @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename(src_file, EXTENSION_OBJECT.primary) )
-      )
-      obj << object_file
-    end 
-
-    # Build all the assembly files
-    asm.each do |src_file|
-      object_file = relative_build_path + File.basename(src_file).ext(EXTENSION_OBJECT.primary)
-      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_PATHS_DEPS, find_my_paths(src_file, spec))
-      @ceedling[DEPENDENCIES_SYM].replace_constant(:COLLECTION_DEFINES_DEPS, find_my_defines(src_file, spec))
-      @ceedling[:generator].generate_object_file_asm(
-        tool:        TOOLS_DEPS_ASSEMBLER,
-        module_name: File.basename(src_file).ext(),
-        context:     DEPENDENCIES_SYM,
-        source:      src_file,
-        object:      object_file
-      )
-      obj << object_file
-    end
-
-    # Link the library
+    built = File.join( spec.build_path, library )
+    @ceedling[:file_wrapper].mkdir( File.dirname( built ) )
     @ceedling[:generator].generate_executable_file(
-      TOOLS_DEPS_LINKER,
-      DEPENDENCIES_SYM,
-      obj,
-      [],
-      relative_build_path+lib,
-      @ceedling[:file_path_utils].form_test_build_map_filepath(spec.artifact_path,lib),
-      spec.libraries,
-      spec.libpaths
+      TOOLS_DEPS_LINKER, DEPENDENCIES_SYM, objects, [], built,
+      @ceedling[:file_path_utils].form_test_build_map_filepath( spec.artifact_path, library ),
+      spec.libraries, spec.libpaths
     )
 
-    # Move the library to the specifed artifact folder
-    unless spec.build_path == spec.artifact_path
-      src = File.expand_path(lib)
-      dst = File.expand_path(spec.artifact_path, Array.new(spec.build_path.split(/[\\\/]+/).length,"../").join()) + "/" + lib
-      FileUtils.cp_r(src, dst)
+    copy_library( built, File.join( spec.artifact_path, library ) ) unless spec.build_path == spec.artifact_path
+  end
+
+  # Sources, assembly files, and the search paths to compile them with: every directory
+  # holding a header under the source path, plus any the dependency names
+  def build_lib_inputs(spec)
+    sources  = listing( spec, EXTENSION_SOURCE )
+    assembly = (defined?( EXTENSION_ASSEMBLY ) and EXTENSION_ASSEMBLY.any?) ? listing( spec, EXTENSION_ASSEMBLY ) : []
+    headers  = listing( spec, EXTENSION_HEADER ).map { |header| File.dirname( header ) }.uniq
+
+    raise CeedlingException.new( "Dependency `#{spec.name}` has nothing under #{spec.source_path} to build." ) if sources.empty? and assembly.empty?
+    raise CeedlingException.new( "No assembler specified for building dependency `#{spec.name}`." ) unless assembly.empty? or defined?( TOOLS_DEPS_ASSEMBLER )
+
+    search_paths = headers + spec.build_lib_search_paths
+
+    # Custom compiler configurations may still read these, set once per dependency
+    replace_constant( :COLLECTION_PATHS_DEPS, search_paths )
+    replace_constant( :COLLECTION_DEFINES_DEPS, spec.defines )
+
+    return sources, assembly, search_paths
+  end
+
+  # Every file of a type anywhere under the dependency's source path
+  def listing(spec, extension)
+    return extension.glob_patterns( File.join( spec.source_path, '**' ) ).flat_map do |glob|
+      @ceedling[:file_wrapper].directory_listing( glob )
     end
   end
 
-  def find_my_paths( c_file, spec, file_type = :c )
-    return spec.build_lib_search_paths
+  def compile(spec, source, search_paths)
+    object = object_for( spec, source )
+    @ceedling[:generator].generate_object_file_c(
+      tool:         TOOLS_DEPS_COMPILER,
+      module_name:  File.basename( source ).ext,
+      context:      DEPENDENCIES_SYM,
+      source:       source,
+      object:       object,
+      search_paths: search_paths,
+      flags:        spec.flags,
+      defines:      spec.defines,
+      list:         @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename( source ).ext )
+    )
+    return object
   end
 
-  def find_my_defines( c_file, spec, file_type = :c )
-    return spec.defines.compact.uniq
+  def assemble(spec, source)
+    object = object_for( spec, source )
+    @ceedling[:generator].generate_object_file_asm(
+      tool: TOOLS_DEPS_ASSEMBLER, module_name: File.basename( source ).ext, context: DEPENDENCIES_SYM,
+      source: source, object: object
+    )
+    return object
   end
 
-  def replace_constant(constant, new_value)  
-    Object.send(:remove_const, constant.to_sym) if (Object.const_defined? constant)  
-    Object.const_set(constant, new_value)  
+  def object_for(spec, source)
+    return File.join( spec.build_path, File.basename( source ).ext( EXTENSION_OBJECT.primary ) )
   end
 
-  ### Private ###
+  def copy_library(built, destination)
+    @ceedling[:file_wrapper].mkdir( File.dirname( destination ) )
+    @ceedling[:file_wrapper].cp( built, destination )
+  end
 
-  private
+  def replace_constant(constant, new_value)
+    Object.send( :remove_const, constant ) if Object.const_defined?( constant )
+    Object.const_set( constant, new_value )
+  end
 
-  # Unknown methods are already refused by DependencySpec
+  INCLUDE_COLLECTIONS = %i[collection_paths_include collection_paths_source_and_include collection_paths_test_support_source_include
+                           collection_paths_test_support_source_include_vendor collection_paths_release_toolchain_include].freeze
+
+  def add_include_directories(cfg, directories)
+    directories.each { |directory| INCLUDE_COLLECTIONS.each { |key| cfg[key] << directory } }
+  end
+
+  # A source path joins the search collections, and its C files join the source collection
+  def add_source_path(cfg, source)
+    INCLUDE_COLLECTIONS.drop( 1 ).each { |key| cfg[key] << source }
+
+    EXTENSION_SOURCE.glob_patterns( source ).each do |glob|
+      cfg[:collection_all_source].concat( @ceedling[:file_wrapper].directory_listing( glob ) )
+    end
+  end
+
+  # Unknown fetch methods are already refused by DependencySpec
   def validate_fetch_tools(spec)
-    case spec.fetch_method
-    when :zip
-      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_ZIP, boom:true )
+    tools = { zip: [TOOLS_DEPS_ZIP], tar_gzip: [TOOLS_DEPS_TARGZIP], git: [TOOLS_DEPS_GIT_CLONE, TOOLS_DEPS_GIT_CHECKOUT],
+              svn: [TOOLS_DEPS_SUBVERSION] }.fetch( spec.fetch_method, [] )
 
-    when :tar_gzip
-      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_TARGZIP, boom:true )
-
-    when :git
-      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_GIT_CLONE, boom:true )
-      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_GIT_CHECKOUT, boom: true )
-
-    when :svn
-      @ceedling[:tool_validator].validate( tool:TOOLS_DEPS_SUBVERSION, boom: true )
-
-    end
+    tools.each { |tool| @ceedling[:tool_validator].validate( tool: tool, boom: true ) }
   end
 
 end
-
-
-# end blocks always executed following rake run
-END {
-}

@@ -15,8 +15,8 @@
     :name: 'Dependencies compiler'
     :arguments:  
       - -g  
-      - -I"$": COLLECTION_PATHS_DEPS  
-      - -D$: COLLECTION_DEFINES_DEPS  
+      - -I"${5}"  # Search paths: header directories under the source path
+      - -D${6}    # The dependency's :defines
       - -c "${1}"  
       - -o "${2}"  
 
