@@ -234,6 +234,21 @@ describe 'Module Generator plugin (integration)' do
       end
     end
 
+    it 'warns about a same-named file elsewhere in the project and creates the module anyway' do
+      config = flat_config.merge( collection_all_source: ['src/old/a_file.c'], collection_all_headers: [], collection_all_tests: [] )
+
+      in_project( 'src/old', 'inc', 'test' ) do
+        File.write( 'src/old/a_file.c', '' )
+        plugin = plugin_for( config )
+        loginator = plugin.instance_variable_get( :@ceedling )[:loginator]
+        expect(loginator).to receive(:log).with( /`src\/a_file.c`.*`src\/old\/a_file.c`/, anything, anything )
+
+        capture_stdout { plugin.create( ModuleGeneratorRequest.new( name: 'a_file' ) ) }
+
+        expect(files).to include( 'src/a_file.c', 'inc/a_file.h', 'test/test_a_file.c' )
+      end
+    end
+
     it 'applies a :snake naming convention' do
       in_project( 'src', 'inc', 'test' ) do
         run_task( flat_config( naming: :snake ), 'create', 'MadScience' )

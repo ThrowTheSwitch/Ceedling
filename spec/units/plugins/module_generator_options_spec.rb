@@ -129,22 +129,9 @@ describe ModuleGeneratorOptions do
     end
   end
 
-  describe '#undefined_test_define' do
-    it 'names the test define when the project defines it for no test' do
-      expect(options( defines_test: ['UNIT_TEST'] ).undefined_test_define).to eq( 'TEST' )
-      expect(options.undefined_test_define).to eq( 'TEST' )
-    end
-
-    it 'finds the test define in a plain list, with or without a value' do
-      expect(options( defines_test: ['TEST'] ).undefined_test_define).to be_nil
-      expect(options( defines_test: ['TEST=1'] ).undefined_test_define).to be_nil
-    end
-
-    it 'finds the test define among per-test matchers' do
-      defines = { '*' => ['OTHER'], 'test_widget' => ['CEEDLING_TEST'] }
-
-      expect(options( defines_test: defines, module_generator_test_define: 'CEEDLING_TEST' ).undefined_test_define).to be_nil
-    end
+  it 'reports its test define' do
+    expect(options( module_generator_test_define: 'UNIT_TEST' ).test_define).to eq( 'UNIT_TEST' )
+    expect(options.test_define).to eq( 'TEST' )
   end
 
   describe '#stub' do

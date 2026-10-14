@@ -60,26 +60,11 @@ class ModuleGeneratorOptions
     }
   end
 
-  # The test define when the project defines it for no test, else nil. A test file
-  # guarded by an undefined symbol compiles to nothing.
-  def undefined_test_define
-    define  = @shared[:test_define]
-    defined = strings( @config[:defines_test] ).map { |entry| entry.split( '=', 2 ).first.strip }
-
-    return defined.include?( define ) ? nil : define
+  def test_define
+    return @shared[:test_define]
   end
 
   private
-
-  # Every string in a list of defines or a hash of per-test matchers
-  def strings(value)
-    case value
-    when Hash   then value.values.flat_map { |entry| strings( entry ) }
-    when Array  then value.flat_map { |entry| strings( entry ) }
-    when String then [value]
-    else []
-    end
-  end
 
   def naming(value)
     return nil if value.nil?

@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/exceptions'
 require 'ceedling/constants'
 require 'ceedling/plugins/plugin'
+require 'pathname'
 
 [File.expand_path( '../../../plugins/module_generator/lib', __dir__ ),
  File.expand_path( '../../../vendor/unity/auto', __dir__ ),
@@ -32,7 +33,7 @@ describe ModuleGenerator do
   let(:file_finder_helper) { double( 'file_finder_helper' ) }
   let(:file_wrapper)       { double( 'file_wrapper' ) }
   let(:loginator)          { double( 'loginator', log: nil ) }
-  let(:unity)              { double( 'unity_module_generator' ) }
+  let(:unity)              { double( 'unity_module_generator', files_to_operate_on: [] ) }
   let(:cmock)              { double( 'cmock' ) }
 
   let(:plugin) do
@@ -130,6 +131,16 @@ describe ModuleGenerator do
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:generate)
     expect(loginator).not_to receive(:log)
+
+    plugin.create( request( 'Lair' ) )
+  end
+
+  it 'warns about each existing file that shares a name with a file it creates, then creates them' do
+    config.merge!( defines_test: ['TEST'], collection_all_source: ['lib/Lair.c'], collection_all_headers: [], collection_all_tests: [] )
+    allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
+    allow(unity).to receive(:files_to_operate_on).with( 'Lair' ).and_return( [{ path: Pathname.new( 'src/Lair.c' ) }] )
+    expect(loginator).to receive(:log).with( /`src\/Lair.c`.*`lib\/Lair.c`/, Verbosity::COMPLAIN, LogLabels::WARNING )
+    expect(unity).to receive(:generate).with( 'Lair' )
 
     plugin.create( request( 'Lair' ) )
   end

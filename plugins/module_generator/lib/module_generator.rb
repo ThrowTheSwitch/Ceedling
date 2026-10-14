@@ -10,6 +10,7 @@ require 'ceedling/exceptions'
 require 'ceedling/constants'
 require 'module_generator_request'
 require 'module_generator_options'
+require 'module_generator_project'
 
 # Creates, destroys, and stubs modules for the `module:` tasks. Unity's module
 # generator, through ModuleGeneratorUnity, writes and removes source, header, and test
@@ -24,7 +25,9 @@ class ModuleGenerator < Plugin
   end
 
   def create(request)
-    unity_generator( request ).generate( request.name )
+    generator = unity_generator( request )
+    warn_same_named( generator.files_to_operate_on( request.name ) )
+    generator.generate( request.name )
     warn_undefined_test_define
   end
 
@@ -60,6 +63,10 @@ class ModuleGenerator < Plugin
     )
   end
 
+  def project
+    return @project ||= ModuleGeneratorProject.new( @ceedling[:configurator].project_config_hash )
+  end
+
   # Subversion support is gone, so a configured :update_svn is noted, once with the
   # options, and ignored
   def warn_update_svn
@@ -71,10 +78,20 @@ class ModuleGenerator < Plugin
     )
   end
 
+  # A same-named file elsewhere is allowed, but worth knowing about before it exists
+  def warn_same_named(files)
+    project.same_named( files.map { |file| file[:path].to_s } ).each do |planned, existing|
+      @ceedling[:loginator].log(
+        "Module file `#{planned}` shares its name with #{existing.map { |path| "`#{path}`" }.join( ', ' )}.",
+        Verbosity::COMPLAIN, LogLabels::WARNING
+      )
+    end
+  end
+
   # Noted once per run, since every generated test shares the same guard
   def warn_undefined_test_define
-    define = options.undefined_test_define
-    return if @test_define_warned or define.nil?
+    define = options.test_define
+    return if @test_define_warned or project.test_defined?( define )
 
     @test_define_warned = true
     @ceedling[:loginator].log(
