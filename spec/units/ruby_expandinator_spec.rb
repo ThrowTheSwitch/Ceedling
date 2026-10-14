@@ -48,6 +48,10 @@ describe RubyExpandinator do
         expect(@ruby_expandinator.expand('-:"#{1+1}/a.c" # note', source: 'x')).to eq('-:"2/a.c" # note')
       end
 
+      it 'keeps an escaped segment as literal text' do
+        expect(@ruby_expandinator.expand('a\#{1}b #{2}', source: 'x')).to eq('a#{1}b 2')
+      end
+
       it 'expands every segment in a string' do
         expect(@ruby_expandinator.expand('#{1}-#{2}-#{3}', source: 'x')).to eq('1-2-3')
       end

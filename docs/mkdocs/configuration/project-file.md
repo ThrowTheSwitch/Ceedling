@@ -150,11 +150,12 @@ within a string.
 
 Only the Ruby inside each `#{…}` is evaluated. Text outside it is kept exactly
 as written, so backslashes in Windows paths and any quote marks or `#`
-characters stay literal. A `#{` with no closing `}` stops the build.
+characters stay literal. A `#{` with no closing `}` stops the build. To keep a
+literal `#{`, write `\#{` in a single-quoted or unquoted YAML string.
 
 !!! tip
     Because of the `#` it’s a good idea to wrap any string values in your YAML
-    that rely on Ruby string expansion with quotation marks. Quotates for YAML 
+    that rely on Ruby string expansion with quotation marks. Quotation marks for YAML 
     strings are optional. However, the `#` can cause a YAML parser to see a 
     comment. Explicitly indicating a string to the YAML parser with enclosing 
     quotation marks alleviates this problem.

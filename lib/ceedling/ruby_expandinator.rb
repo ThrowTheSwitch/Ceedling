@@ -56,16 +56,16 @@ class RubyExpandinator
   #
   # Only each #{...} segment is evaluated as Ruby. Text around the segments is kept as
   # written, so backslashes in Windows paths and stray quotes or `#` characters in a
-  # value are never read as Ruby source.
+  # value are never read as Ruby source. An escaped `\#{` is kept as a literal `#{`.
   def expand(string, source:)
     return string unless replacement?(string)
     check!(string, source: source)
 
-    scanner  = StringScanner.new( string )
-    expanded = +''
+    scanner, expanded = StringScanner.new( string ), +''
 
     until scanner.eos?
-      expanded << scanner.scan_until( /(?=#\{)|\z/ )
+      expanded << scanner.scan_until( /(?=\\?#\{)|\z/ )
+      next expanded << '#{' if scanner.skip( /\\#\{/ )
       break unless scanner.skip( /#\{/ )
 
       expanded << Object.module_eval( segment_expression( scanner, source ) ).to_s
