@@ -28,6 +28,8 @@ class ModuleGeneratorOptions
 
   TEST_GUARDS = %w[ifdef if].freeze
 
+  attr_reader :test_guard
+
   # `path_finder` returns the path in a list a hint matches best, or nil for no match.
   # `boilerplate_reader` returns a file's contents, or nil when it does not exist.
   def initialize(config:, cmock_config:, path_finder:, boilerplate_reader:)
@@ -35,7 +37,7 @@ class ModuleGeneratorOptions
     @cmock_config = cmock_config
     @path_finder  = path_finder
     @naming       = naming( config[:module_generator_naming] )
-    @test_guard   = test_guard( config[:module_generator_test_guard] )
+    @test_guard   = guard_style( config[:module_generator_test_guard] )
     @boilerplates = boilerplates( boilerplate_reader )
     @collections  = collections
     @shared       = shared_options
@@ -58,7 +60,26 @@ class ModuleGeneratorOptions
     }
   end
 
+  # The test define when the project defines it for no test, else nil. A test file
+  # guarded by an undefined symbol compiles to nothing.
+  def undefined_test_define
+    define  = @shared[:test_define]
+    defined = strings( @config[:defines_test] ).map { |entry| entry.split( '=', 2 ).first.strip }
+
+    return defined.include?( define ) ? nil : define
+  end
+
   private
+
+  # Every string in a list of defines or a hash of per-test matchers
+  def strings(value)
+    case value
+    when Hash   then value.values.flat_map { |entry| strings( entry ) }
+    when Array  then value.flat_map { |entry| strings( entry ) }
+    when String then [value]
+    else []
+    end
+  end
 
   def naming(value)
     return nil if value.nil?
@@ -68,7 +89,7 @@ class ModuleGeneratorOptions
     end
   end
 
-  def test_guard(value)
+  def guard_style(value)
     guard = (value || :ifdef).to_s
     return guard if TEST_GUARDS.include?( guard )
 

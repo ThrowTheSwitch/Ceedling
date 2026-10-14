@@ -31,7 +31,7 @@ describe ModuleGenerator do
   let(:configurator)       { double( 'configurator', project_config_hash: config, get_cmock_config: { mock_prefix: 'mock_' } ) }
   let(:file_finder_helper) { double( 'file_finder_helper' ) }
   let(:file_wrapper)       { double( 'file_wrapper' ) }
-  let(:loginator)          { double( 'loginator' ) }
+  let(:loginator)          { double( 'loginator', log: nil ) }
   let(:unity)              { double( 'unity_module_generator' ) }
   let(:cmock)              { double( 'cmock' ) }
 
@@ -90,6 +90,7 @@ describe ModuleGenerator do
 
   it 'warns that :update_svn is deprecated when it is configured' do
     config[:module_generator_update_svn] = true
+    config[:defines_test] = ['TEST']
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:generate)
     expect(loginator).to receive(:log).with( /:update_svn.*deprecated/, Verbosity::COMPLAIN, LogLabels::WARNING )
@@ -98,6 +99,34 @@ describe ModuleGenerator do
   end
 
   it 'says nothing about :update_svn when it is not configured' do
+    config[:defines_test] = ['TEST']
+    allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
+    allow(unity).to receive(:generate)
+    expect(loginator).not_to receive(:log)
+
+    plugin.create( request( 'Lair' ) )
+  end
+
+  it 'warns once that generated tests compile to nothing when the test define is undefined' do
+    allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
+    allow(unity).to receive(:generate)
+    expect(loginator).to receive(:log).with( /`#ifdef TEST`.*TEST.*:defines/m, Verbosity::COMPLAIN, LogLabels::WARNING ).once
+
+    plugin.create( request( 'Lair' ) )
+    plugin.create( request( 'Lab' ) )
+  end
+
+  it 'names the #if guard in the warning when :test_guard is #if' do
+    config[:module_generator_test_guard] = :if
+    allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
+    allow(unity).to receive(:generate)
+    expect(loginator).to receive(:log).with( /`#if TEST`/, Verbosity::COMPLAIN, LogLabels::WARNING )
+
+    plugin.create( request( 'Lair' ) )
+  end
+
+  it 'says nothing about the test define when the project defines it' do
+    config[:defines_test] = ['TEST']
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:generate)
     expect(loginator).not_to receive(:log)

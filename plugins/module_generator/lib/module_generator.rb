@@ -25,6 +25,7 @@ class ModuleGenerator < Plugin
 
   def create(request)
     unity_generator( request ).generate( request.name )
+    warn_undefined_test_define
   end
 
   def destroy(request)
@@ -46,9 +47,12 @@ class ModuleGenerator < Plugin
     return ModuleGeneratorUnity.new( options.unity( request ) )
   end
 
+  # Built once per run from configuration that does not change during it
   def options
+    return @options if @options
+
     warn_update_svn
-    return ModuleGeneratorOptions.new(
+    @options = ModuleGeneratorOptions.new(
       config:             @ceedling[:configurator].project_config_hash,
       cmock_config:       @ceedling[:configurator].get_cmock_config,
       path_finder:        method( :find_path ),
@@ -56,13 +60,26 @@ class ModuleGenerator < Plugin
     )
   end
 
-  # Subversion support is gone, so a configured :update_svn is noted once and ignored
+  # Subversion support is gone, so a configured :update_svn is noted, once with the
+  # options, and ignored
   def warn_update_svn
-    return if @update_svn_warned or !@ceedling[:configurator].project_config_hash.key?( :module_generator_update_svn )
+    return unless @ceedling[:configurator].project_config_hash.key?( :module_generator_update_svn )
 
-    @update_svn_warned = true
     @ceedling[:loginator].log(
       'Module Generator :update_svn is deprecated and ignored. Add generated files to source control with your own tools.',
+      Verbosity::COMPLAIN, LogLabels::WARNING
+    )
+  end
+
+  # Noted once per run, since every generated test shares the same guard
+  def warn_undefined_test_define
+    define = options.undefined_test_define
+    return if @test_define_warned or define.nil?
+
+    @test_define_warned = true
+    @ceedling[:loginator].log(
+      "Generated tests are wrapped in `##{options.test_guard} #{define}`, but #{define} is not among the project's " \
+      ":defines for tests. Add it under :defines ↳ :test, or the tests compile to nothing.",
       Verbosity::COMPLAIN, LogLabels::WARNING
     )
   end
