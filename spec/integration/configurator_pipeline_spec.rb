@@ -91,6 +91,30 @@ describe 'Configurator pipeline (integration)' do
     end
   end
 
+  # Quoting only the path after its decoration leaves quote marks in the expanded value
+  it 'refuses a :files entry that quotes only its expanded path, with a quoting hint' do
+    expandinator = RubyExpandinator.new.tap( &:enable! )
+    allow(RubyExpandinator).to receive(:new).and_return( expandinator )
+
+    in_temp_project( minimal_project_files ) do
+      yaml = minimal_project_yaml + ":files:\n  :source:\n    - -:\"\#{'src'}/adder.c\"\n"
+
+      expect { configure( yaml ) }.to raise_error(CeedlingException, /failed validation/)
+      expect(logged.join).to include(%q{:files ↳ :source => '-:"src/adder.c"' wraps its path in quotes})
+      expect(logged.join).to include('Quote the whole entry')
+    end
+  end
+
+  # YAML reads a bare, unquoted decoration as a one-key mapping
+  it 'refuses a :files entry YAML reads as a mapping without crashing' do
+    in_temp_project( minimal_project_files ) do
+      yaml = minimal_project_yaml + ":files:\n  :source:\n    - -:\n"
+
+      expect { configure( yaml ) }.to raise_error(CeedlingException, /failed validation/)
+      expect(logged.join).to include('is not a path (YAML read it as a Hash)')
+    end
+  end
+
   it 'refuses a configuration missing a required section' do
     in_temp_project( minimal_project_files ) do
       expect { configure( ":project:\n  :build_root: build\n" ) }.to raise_error(CeedlingException, /failed validation/)

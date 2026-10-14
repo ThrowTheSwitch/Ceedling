@@ -198,6 +198,9 @@ Ceedling and CMock are interdependent but distinct tools. They each perform thei
 ### Smarter `:flags` and `:defines` matching for preprocessing overrides
 Preprocessing flags and defines matchers now pass through to test compilation flags and defines for any matchers that are not defined. Previously, any preprocessing flags and defines matchers entirely overrode the test compilation flags and defines matchers. Now, you can selectively override them. Note that preprocessing flags and defines matchers are fairly specialized features used in rare cases.
 
+### Inline Ruby string expansion evaluates only `#{…}`
+[#289](https://github.com/ThrowTheSwitch/Ceedling/issues/289) [Inline Ruby string expansion](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/project-file/#ruby-string-expansion-syntax) evaluates only the Ruby inside each `#{…}` and keeps all other text as written. Backslashes in Windows paths and quote marks around an expansion survive intact. Ruby escape sequences written outside `#{…}` (e.g. `\"` or `\n` in a single-quoted YAML string) are no longer interpreted.
+
 ### Gcov console coverage summary names a module by path when needed
 The Gcov plugin’s console summary labeled every file by filename alone, so a test covering two same-named modules produced two sets of figures with nothing to say which module either belonged to. Each label now carries as much trailing path as it takes to tell it apart from the other files in that same test’s summary. A filename that is already unique is labeled exactly as before.
 

@@ -35,6 +35,42 @@ describe RubyExpandinator do
       @ruby_expandinator.enable!
       expect(@ruby_expandinator.expand('#{1+1}', source: 'x')).to eq('2')
     end
+
+    # Only #{...} segments are Ruby. Everything around them is configuration text kept as written.
+    context 'with the feature enabled' do
+      before(:each) { @ruby_expandinator.enable! }
+
+      it 'keeps backslashes outside a segment literal' do
+        expect(@ruby_expandinator.expand('C:\foo\new #{1+1}', source: 'x')).to eq('C:\foo\new 2')
+      end
+
+      it 'keeps quote and comment characters outside a segment literal' do
+        expect(@ruby_expandinator.expand('-:"#{1+1}/a.c" # note', source: 'x')).to eq('-:"2/a.c" # note')
+      end
+
+      it 'keeps an escaped segment as literal text' do
+        expect(@ruby_expandinator.expand('a\#{1}b #{2}', source: 'x')).to eq('a#{1}b 2')
+      end
+
+      it 'expands every segment in a string' do
+        expect(@ruby_expandinator.expand('#{1}-#{2}-#{3}', source: 'x')).to eq('1-2-3')
+      end
+
+      it 'expands a segment holding a block and its braces' do
+        expect(@ruby_expandinator.expand('#{[1, 2].map { |n| n * 2 }.join}/x', source: 'x')).to eq('24/x')
+      end
+
+      it 'expands a segment holding a quoted brace' do
+        expect(@ruby_expandinator.expand('#{"}" + "{"}', source: 'x')).to eq('}{')
+      end
+
+      # A brace inside a quote cannot close the segment, so this segment never closes
+      it 'raises naming the source for a segment that never closes' do
+        expect {
+          @ruby_expandinator.expand('a/#{"}"/b', source: ':paths ↳ :source')
+        }.to raise_error(CeedlingException, /:paths ↳ :source/)
+      end
+    end
   end
 
   describe '#check!' do
