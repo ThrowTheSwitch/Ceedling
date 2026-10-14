@@ -11,6 +11,7 @@ require 'ceedling/exceptions'
 require 'pathname'
 require 'dependency_spec'
 require 'dependency_commands'
+require 'dependency_environment'
 
 DEPENDENCIES_ROOT_NAME = 'dependencies'
 DEPENDENCIES_TASK_ROOT = DEPENDENCIES_ROOT_NAME + ':'
@@ -30,6 +31,7 @@ class Dependencies < Plugin
              spec.include_directories( path_collector ) + spec.include_files + spec.source_paths
       keys.each { |key| @lookup[key] = spec }
       validate_fetch_tools( spec )
+      environment_for( spec )
     end
   end
 
@@ -56,24 +58,6 @@ class Dependencies < Plugin
     return @lookup[key] || raise( CeedlingException.new( "Could not find dependency '#{key}'" ) )
   end
 
-  def set_env_if_required(lib_path)
-    spec = spec_for( lib_path )
-
-    spec.environment.each do |e|
-      m = e.match(/^(\w+)\s*(\+?\-?=)\s*(.*)$/)
-      unless m.nil?
-        case m[2]
-        when "+="
-          ENV[m[1]] = (ENV[m[1]] || "") + m[3]
-        when "-="
-          ENV[m[1]] = (ENV[m[1]] || "").gsub(m[3],'')
-        else
-          ENV[m[1]] = m[3]
-        end
-      end
-    end
-  end
-
   # The commands that fetch and build dependencies, from the plugin's configured tools
   def commands
     tools = { zip: TOOLS_DEPS_ZIP, tar_gzip: TOOLS_DEPS_TARGZIP, git_clone: TOOLS_DEPS_GIT_CLONE,
@@ -83,9 +67,32 @@ class Dependencies < Plugin
     return @commands ||= DependencyCommands.new( tools: tools, builder: builder )
   end
 
+  # Fetches, then builds, a dependency inside its environment
+  def make_if_required(lib_path)
+    spec = spec_for( lib_path )
+    environment_for( spec ).apply do
+      fetch_dependency( spec )
+      build_dependency( spec )
+    end
+  end
+
   def fetch_if_required(lib_path)
     spec = spec_for( lib_path )
+    environment_for( spec ).apply { fetch_dependency( spec ) }
+  end
 
+  def build_if_required(lib_path)
+    spec = spec_for( lib_path )
+    environment_for( spec ).apply { build_dependency( spec ) }
+  end
+
+  # A dependency's :environment, in effect only while its own commands run. Named apart
+  # from Plugin#environment, which Ceedling reads when it loads a plugin.
+  def environment_for(spec)
+    return DependencyEnvironment.new( spec.environment, dependency: spec.name )
+  end
+
+  def fetch_dependency(spec)
     if spec.fetch_method.nil?
       @ceedling[:loginator].log("No fetch method for dependency '#{spec.name}'", Verbosity::COMPLAIN)
       return
@@ -109,9 +116,7 @@ class Dependencies < Plugin
     end
   end
 
-  def build_if_required(lib_path)
-    spec = spec_for( lib_path )
-
+  def build_dependency(spec)
     if spec.build_steps.empty?
       @ceedling[:loginator].log("Nothing to build for dependency #{spec.name}", Verbosity::NORMAL)
       return

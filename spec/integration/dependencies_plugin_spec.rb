@@ -121,6 +121,14 @@ describe 'Dependencies plugin (integration)' do
     return "file://#{repo}"
   end
 
+  # Ceedling reads Plugin#environment when it loads a plugin, so nothing may shadow it
+  it 'keeps the environment Ceedling reads from every plugin' do
+    define_constants( [dependency( 'local', environment: ['A=1'] )] )
+    plugin = Dependencies.new( configurator_objects( quiet_loginator ), 'dependencies', DEPENDENCIES_PLUGIN_ROOT )
+
+    expect(plugin.environment).to eq( [] )
+  end
+
   describe 'dependencies:make' do
     it 'builds a dependency already in place' do
       in_project do
@@ -141,8 +149,6 @@ describe 'Dependencies plugin (integration)' do
     end
 
     it 'keeps one dependency environment from the next dependency build' do
-      pending 'environment variables persist for the rest of the process'
-
       in_project do
         write_build_script( 'deps/first', 'build/libfirst.a' )
         write_build_script( 'deps/second', 'build/libsecond.a' )

@@ -27,10 +27,7 @@
       if (File.exist?(path))
         @ceedling[:loginator].lazy( Verbosity::OBNOXIOUS ) { "Nothing to do for dependency #{path}" }
       else
-        # Set Environment Variables, Fetch, and Build
-        @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
-        @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
-        @ceedling[DEPENDENCIES_SYM].build_if_required(path)
+        @ceedling[DEPENDENCIES_SYM].make_if_required(path)
       end
     end
   end
@@ -43,10 +40,7 @@
       if (File.file?(path) || File.directory?(path))
         @ceedling[:loginator].lazy( Verbosity::OBNOXIOUS ) { "Nothing to do for dependency #{path}" }
       else
-        # Set Environment Variables, Fetch, and Build
-        @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
-        @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
-        @ceedling[DEPENDENCIES_SYM].build_if_required(path)
+        @ceedling[DEPENDENCIES_SYM].make_if_required(path)
       end
     end
   end
