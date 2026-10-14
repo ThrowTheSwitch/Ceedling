@@ -13,6 +13,11 @@ class ModuleGenerator < Plugin
 
   attr_reader :config, :interactionizer
 
+  # The configured test file prefix, which marks a module argument as a test file
+  def test_prefix
+    return @ceedling[:configurator].project_config_hash[:project_test_file_prefix]
+  end
+
   def create(module_name, optz={})
 
     # grab our own reference to the main configuration hash

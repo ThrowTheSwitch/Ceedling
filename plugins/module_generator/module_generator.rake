@@ -5,64 +5,37 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require_relative 'lib/module_generator_request'
+
 namespace :module do
-  module_root_separator = ":"
+
+  # One request per module a task's arguments name, each carrying only its own hint
+  module_requests = lambda do |args, patterns: true|
+    ModuleGeneratorRequest.parse(
+      [args[:module_path]] + args.extras,
+      test_prefix: @ceedling[:module_generator].test_prefix,
+      patterns:    patterns
+    )
+  end
 
   desc "Generate module (source, header and test files)"
   task :create, :module_path do |_t, args|
-    files = [args[:module_path]] + (args.extras || [])
-    optz = { :module_root_path => "" }
-    ["dh", "dih", "mch", "mvp", "src", "test"].each do |pat|
-      p = files.delete(pat)
-      optz[:pattern] = p unless p.nil?
-    end
-
-    files.each do |v|
-      module_root_path, module_name = v.split(module_root_separator, 2)
-      if module_name
-        optz[:module_root_path] = module_root_path
-        v = module_name
-      end
-      if (v =~ /^test_?/i)
-        # If the name of the file starts with test, automatically treat it as one
-        @ceedling[:module_generator].create(v.sub(/^test_?/i,''), optz.merge({:pattern => 'test'}))
-      else
-        # Otherwise, go through the normal procedure
-        @ceedling[:module_generator].create(v, optz)
-      end
+    module_requests.call( args ).each do |request|
+      @ceedling[:module_generator].create( request.name, { module_root_path: request.path_hint.to_s, pattern: request.pattern } )
     end
   end
 
   desc "Generate module stubs from header"
   task :stub, :module_path do |_t, args|
-    files = [args[:module_path]] + (args.extras || [])
-    optz = { :module_root_path => "" }
-    files.each do |v|
-      module_root_path, module_name = v.split(module_root_separator, 2)
-      if module_name
-        optz[:module_root_path] = module_root_path
-        v = module_name
-      end
-      # Otherwise, go through the normal procedure
-      @ceedling[:module_generator].stub_from_header(v, optz)
+    module_requests.call( args, patterns: false ).each do |request|
+      @ceedling[:module_generator].stub_from_header( request.name, { module_root_path: request.path_hint.to_s } )
     end
   end
 
   desc "Destroy module (source, header and test files)"
   task :destroy, :module_path do |_t, args|
-    files = [args[:module_path]] + (args.extras || [])
-    optz = { :destroy => true, :module_root_path => "" }
-    ["dh", "dih", "mch", "mvp", "src", "test"].each do |pat|
-      p = files.delete(pat)
-      optz[:pattern] = p unless p.nil?
-    end
-    files.each do |v|
-      module_root_path, module_name = v.split(module_root_separator, 2)
-      if module_name
-        optz[:module_root_path] = module_root_path
-        v = module_name
-      end
-      @ceedling[:module_generator].create(v, optz)
+    module_requests.call( args ).each do |request|
+      @ceedling[:module_generator].create( request.name, { destroy: true, module_root_path: request.path_hint.to_s, pattern: request.pattern } )
     end
   end
 

@@ -245,7 +245,6 @@ describe 'Module Generator plugin (integration)' do
     end
 
     it 'matches several ordered hints to nested folders' do
-      pending 'hints split only on the first colon'
       config = project_config( source: ['src', 'my/lab/secret'], include: ['inc', 'my/lab/secret'], test: ['test', 'my/lab/secret'] )
 
       in_project( 'src', 'inc', 'test', 'my/lab/secret' ) do
@@ -267,7 +266,6 @@ describe 'Module Generator plugin (integration)' do
     end
 
     it 'applies a hint only to the module it precedes' do
-      pending 'a hint persists into the modules after it'
       config = project_config( source: ['src', 'src/lab'], include: ['inc', 'inc/lab'], test: ['test', 'test/lab'] )
 
       in_project( 'src/lab', 'inc/lab', 'test/lab' ) do
@@ -278,8 +276,6 @@ describe 'Module Generator plugin (integration)' do
     end
 
     it 'treats a name that only begins with the letters of the test prefix as a module' do
-      pending 'any name starting with "test" is taken as a test file'
-
       in_project( 'src', 'inc', 'test' ) do
         run_task( flat_config, 'create', 'testimony' )
 
