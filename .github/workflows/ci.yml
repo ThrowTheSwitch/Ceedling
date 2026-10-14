@@ -108,6 +108,9 @@ jobs:
       fail-fast: false
       matrix:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4', '3.5']
+    # Each spec suite also writes RSpec JSON results here for the CI summary
+    env:
+      CI_RESULTS_DIR: tmp/ci
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       #
@@ -291,6 +294,17 @@ jobs:
           path: coverage/
           if-no-files-found: error
 
+      # The CI summary reads each leg's RSpec counts from here, and the coverage leg's
+      # coverage too, whether or not the leg passed
+      - name: Upload CI Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-results-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: tmp/ci/
+          if-no-files-found: ignore
+          retention-days: 7
+
 
   # Job: Windows test suite
   tests-windows:
@@ -303,6 +317,9 @@ jobs:
       matrix:
         # Ruby 3.5 not available on Windows runners [July 2026]
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
+    # Each spec suite also writes RSpec JSON results here for the CI summary
+    env:
+      CI_RESULTS_DIR: tmp/ci
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
@@ -376,6 +393,17 @@ jobs:
       - name: Run Plugin Tests
         uses: ./.github/actions/run-plugin-tests
 
+      # The CI summary reads each leg's RSpec counts from here, and the coverage leg's
+      # coverage too, whether or not the leg passed
+      - name: Upload CI Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-results-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: tmp/ci/
+          if-no-files-found: ignore
+          retention-days: 7
+
 
   # Job: macOS test suite
   # Targets Apple Clang (the gcc alias on macOS resolves to Xcode's LLVM-based Clang).
@@ -392,6 +420,9 @@ jobs:
       fail-fast: false
       matrix:
         ruby: ['3.1', '3.2', '3.3', '3.4', '3.5']
+    # Each spec suite also writes RSpec JSON results here for the CI summary
+    env:
+      CI_RESULTS_DIR: tmp/ci
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
@@ -472,6 +503,17 @@ jobs:
       # Common plugin test steps
       - name: Run Plugin Tests
         uses: ./.github/actions/run-plugin-tests
+
+      # The CI summary reads each leg's RSpec counts from here, and the coverage leg's
+      # coverage too, whether or not the leg passed
+      - name: Upload CI Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-results-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: tmp/ci/
+          if-no-files-found: ignore
+          retention-days: 7
 
 
   # Job: Preprocessing locale encoding regression test

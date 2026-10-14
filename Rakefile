@@ -68,10 +68,19 @@ end
 # Most CI systems (GitHub Actions, GitLab CI, CircleCI, etc.) set CI=true automatically.
 RSPEC_FORMAT = ENV['CI_RSPEC_PROGRESS_FORMAT'] ? '--format progress' : '--format documentation'
 
+# CI_RESULTS_DIR names where a suite also writes RSpec's JSON results, which the CI
+# summary reads for its counts. Unset, a suite writes only its console output.
+def rspec_opts_for(suite)
+  results_dir = ENV['CI_RESULTS_DIR'].to_s
+  return RSPEC_FORMAT if results_dir.empty?
+
+  return "#{RSPEC_FORMAT} --format json --out #{File.join( results_dir, "#{suite}.json" )}"
+end
+
 desc "Run unit specs only"
 RSpec::Core::RakeTask.new('specs:units') do |t|
   t.pattern    = 'spec/units/**/*_spec.rb'
-  t.rspec_opts = RSPEC_FORMAT
+  t.rspec_opts = rspec_opts_for( 'units' )
 end
 
 # Integration specs sit between units and system: they compose real lib/ceedling
@@ -80,13 +89,13 @@ end
 desc "Run integration specs only"
 RSpec::Core::RakeTask.new('specs:integration') do |t|
   t.pattern    = 'spec/integration/**/*_spec.rb'
-  t.rspec_opts = RSPEC_FORMAT
+  t.rspec_opts = rspec_opts_for( 'integration' )
 end
 
 desc "Run system specs only"
 RSpec::Core::RakeTask.new('specs:system') do |t|
   t.pattern    = 'spec/system/**/*_spec.rb'
-  t.rspec_opts = RSPEC_FORMAT
+  t.rspec_opts = rspec_opts_for( 'system' )
 end
 
 # Ordered fastest to slowest so a failure surfaces as early as possible.
@@ -181,6 +190,9 @@ task 'coverage:report' do
     'combined'    => units_files + integration_files + system_files
   }
 
+  summary   = {}
+  line_hits = nil
+
   reports.each do |label, files|
     if files.empty?
       want = label == 'combined' ? 'units/integration/system' : label
@@ -209,7 +221,33 @@ task 'coverage:report' do
     SimpleCov::Formatter::HTMLFormatter.new(silent: true).format(result)
     puts "#{label.capitalize} coverage: #{result.covered_percent.round(2)}% " \
          "(#{result.covered_lines}/#{result.total_lines} lines)"
+
+    summary[label] = { 'covered' => result.covered_lines, 'total' => result.total_lines }
+    line_hits      = combined_line_hits( result ) if label == 'combined'
   end
+
+  write_ci_coverage( summary, line_hits )
+end
+
+# The combined result's per-line hit counts, keyed by repository-relative path, for
+# the CI summary's diff coverage. A nil entry is a line Ruby never counts.
+def combined_line_hits(result)
+  root = "#{SimpleCov.root}/"
+  return result.original_result.to_h do |path, coverage|
+    [path.delete_prefix( root ), coverage.is_a?( Hash ) ? coverage['lines'] : coverage]
+  end
+end
+
+# Per-suite line counts, plus the combined line hits, for the CI summary. Written only
+# when CI_RESULTS_DIR names a destination.
+def write_ci_coverage(summary, line_hits)
+  results_dir = ENV['CI_RESULTS_DIR'].to_s
+  return if results_dir.empty?
+
+  require 'json'
+  FileUtils.mkdir_p( results_dir )
+  File.write( File.join( results_dir, 'coverage.json' ), JSON.generate( summary ) )
+  File.write( File.join( results_dir, 'line_hits.json' ), JSON.generate( line_hits ) ) unless line_hits.nil?
 end
 
 # Individual unit specs
