@@ -108,6 +108,8 @@ We **love** pull requests! Before [forking the repo](https://help.github.com/en/
 
 - **Promptly address any CI failures**. If your pull request fails to build or pass tests, please push another commit to fix it. Only maintainers merge pull requests, and only once CI passes. 
 
+- **Read the CI summary comment.** Each CI run posts or updates a “sticky” comment on your pull request that collects CI job results and metrics from instrumentation. It lists failing jobs first. It flags any test leg that skips more specs than the same leg on the base branch. It reports test counts, coverage changes against the base branch, and the share of your changed Ruby lines that tests execute. See [`.github/WORKFLOWS.md`](../.github/WORKFLOWS.md) for how CI works.
+
 - When writing comments, use properly constructed sentences, including punctuation.
 
 - Use spaces, not tabs.
