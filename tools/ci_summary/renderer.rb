@@ -30,7 +30,8 @@ module CiSummary
     module_function
 
     def render(sha:, jobs:, legs:, coverage:, diff_coverage:, baseline:)
-      run = jobs.reject { |job| job['conclusion'] == 'skipped' }
+      # A skipped job ran nothing, and a job without a conclusion is still running
+      run = jobs.reject { |job| job['conclusion'].nil? or job['conclusion'] == 'skipped' }
 
       sections = [
         header( sha, run, baseline ), warnings( legs, baseline ), failing_jobs( run ),

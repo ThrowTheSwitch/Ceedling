@@ -32,7 +32,7 @@ module CiSummary
 
     # Per-leg suite counts, keyed by leg name, from each leg's own artifact directory
     def legs
-      @legs ||= Dir.children( @results_dir ).sort.each_with_object( {} ) do |artifact, legs|
+      @legs ||= artifacts.each_with_object( {} ) do |artifact, legs|
         leg = Results.leg_name( artifact )
         next if leg.nil?
 
@@ -82,8 +82,13 @@ module CiSummary
     private
 
     def reference_path(name)
-      artifact = Dir.children( @results_dir ).find { |entry| Results.leg_name( entry ) == Renderer::REFERENCE_LEG }
+      artifact = artifacts.find { |entry| Results.leg_name( entry ) == Renderer::REFERENCE_LEG }
       return artifact.nil? ? nil : File.join( @results_dir, artifact, name )
+    end
+
+    # A run whose legs all failed before uploading leaves no results directory at all
+    def artifacts
+      return Dir.exist?( @results_dir ) ? Dir.children( @results_dir ).sort : []
     end
 
     def read_json(path)

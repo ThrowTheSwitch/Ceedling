@@ -821,3 +821,137 @@ jobs:
           name: ceedling-gem
           path: ceedling-*.gem
           if-no-files-found: error
+
+
+  # Job: CI summary
+  # Gathers every leg's results, the run's job list, and on a pull request the base
+  # branch's baseline and the pull request's diff, into one markdown summary. The summary
+  # shows on this run's own page. A pull request's copy is uploaded for pr-comment.yml,
+  # which holds the write permission to post it that this read-only workflow lacks, so
+  # pull requests from forks get the comment too. A push run instead publishes the
+  # baseline later pull requests compare against.
+  #
+  # always() runs it after a failed or cancelled job too, when the summary matters most.
+  ci-summary:
+    name: "CI Summary"
+    needs:
+      - tests-linux
+      - tests-windows
+      - tests-macos
+      - tests-linux-locale
+      - tests-linux-encoding-stress
+      - lint
+      - build-gem
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-latest
+
+    # actions: read lists this run's jobs and downloads the baseline from a base-branch run
+    permissions:
+      contents: read
+      actions: read
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+
+    steps:
+      - uses: actions/cache@v6
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-3.3-
+
+      # Full history, for the merge base and the diff a pull request is measured against
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      # Each artifact lands in its own directory, named for the leg that uploaded it
+      - name: Download Leg Results
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ci-results-*
+          path: ci-results/
+
+      - name: Fetch This Run's Jobs
+        run: |
+          gh api "repos/$REPO/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs?per_page=100" > ci-jobs.json
+
+      # The baseline comes from the base branch's push run for the merge base itself. A
+      # merge base with no such run (a [skip ci] commit, an expired artifact) falls back
+      # to the base branch's latest successful push run, which the summary marks nearest.
+      # No baseline at all leaves the summary's deltas blank rather than failing it.
+      - name: Fetch Baseline and Diff
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          merge_base=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
+          echo "CI_SUMMARY_MERGE_BASE=$merge_base" >> "$GITHUB_ENV"
+          git diff --unified=0 "$merge_base" "$HEAD_SHA" > ci-diff.txt
+
+          run_id=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$merge_base&event=push&status=success" \
+                     --jq '.workflow_runs[0].id // empty')
+          if [ -z "$run_id" ]; then
+            run_id=$(gh run list --repo "$REPO" --workflow ci.yml --branch "$BASE_REF" --event push \
+                       --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          fi
+          if [ -n "$run_id" ]; then
+            gh run download "$run_id" --repo "$REPO" --name ci-baseline --dir ci-baseline \
+              || echo "Run $run_id has no ci-baseline artifact"
+          fi
+
+      - name: Render CI Summary
+        env:
+          CI_SUMMARY_RESULTS: ci-results
+          CI_SUMMARY_JOBS: ci-jobs.json
+          CI_SUMMARY_BASELINE: ci-baseline/ci-baseline.json
+          CI_SUMMARY_DIFF: ci-diff.txt
+          CI_SUMMARY_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_SUMMARY_OUT: ci-summary.md
+          CI_SUMMARY_BASELINE_OUT: ${{ github.event_name == 'push' && 'ci-baseline.json' || '' }}
+          CI_SUMMARY_BRANCH: ${{ github.ref_name }}
+        run: |
+          bundle exec rake ci:summary
+          cat ci-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      # pr-comment.yml reads the pull request number from here, because a workflow_run
+      # event does not reliably name the pull request for a fork's branch
+      - name: Record Pull Request Number
+        if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "$PR_NUMBER" > ci-summary-pr.txt
+
+      - name: Upload Pull Request Summary
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-summary
+          path: |
+            ci-summary.md
+            ci-summary-pr.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Baseline
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-baseline
+          path: ci-baseline.json
+          if-no-files-found: error
+          retention-days: 90

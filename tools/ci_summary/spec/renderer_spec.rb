@@ -53,6 +53,14 @@ describe CiSummary::Renderer do
     expect(render).to start_with( "### CI summary · a1b2c3d · ✅ 2/2 jobs passed · baseline 9f8e7d6 (next_version)\n" )
   end
 
+  # The summary job itself is still running when it reads the run's job list
+  it 'leaves out jobs still running' do
+    running = jobs + [{ 'name' => 'CI Summary', 'conclusion' => nil, 'url' => 'https://ci/4' }]
+
+    expect(render( jobs: running )).to include( '✅ 2/2 jobs passed' )
+    expect(render( jobs: running )).not_to include( 'CI Summary](' )
+  end
+
   it 'leads with the failing jobs, each linked' do
     failing = jobs.dup
     failing[0] = jobs[0].merge( 'conclusion' => 'failure' )
