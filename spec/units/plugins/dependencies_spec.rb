@@ -70,6 +70,9 @@ describe Dependencies do
     stub_const( 'EXTENSION_OBJECT', FilenameExtension.new( '.o' ) )
     stub_const( 'EXTENSION_ASSEMBLY', FilenameExtension.new( [] ) )
 
+    # Only the doubled directory seam below may change directory; anything else is a leak
+    allow(Dir).to receive(:chdir).and_raise( 'Unit specs must not change directory' )
+
     plugin = described_class.new( objects, 'dependencies', '/plugins/dependencies' )
     allow(plugin).to receive(:in_directory) { |path, &block| executed << "cd #{path}"; block.call }
     return plugin

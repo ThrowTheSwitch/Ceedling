@@ -112,14 +112,35 @@ describe 'Dependencies plugin (integration)' do
     system( 'git', '-C', dir, *args, out: File::NULL, err: File::NULL ) or raise "git #{args.join( ' ' )} failed"
   end
 
-  # A local repository holding a build script, so cloning needs no network
+  def git_commit(repo, message)
+    git( repo, 'add', '.' )
+    git( repo, '-c', 'user.name=Spec', '-c', 'user.email=spec@example.com', 'commit', '-q', '-m', message )
+  end
+
+  # A local repository holding a build script, so cloning needs no network. Its path
+  # serves as the clone source on every platform, where a file:// URL would not.
   def git_repository(root)
     repo = File.join( root, 'upstream' )
     write_build_script( repo, 'build/libcloned.a' )
     git( repo, 'init', '-q' )
-    git( repo, 'add', '.' )
-    git( repo, '-c', 'user.name=Spec', '-c', 'user.email=spec@example.com', 'commit', '-q', '-m', 'first' )
-    return "file://#{repo}"
+    git_commit( repo, 'first' )
+    return repo
+  end
+
+  def git_head(repo)
+    return IO.popen( ['git', '-C', repo, 'rev-parse', 'HEAD'], &:read ).strip
+  end
+
+  # A local subversion repository holding one file in trunk, at revision 1
+  def svn_repository(root)
+    repo   = File.join( root, 'svnrepo' )
+    import = File.join( root, 'import' )
+    FileUtils.mkdir_p( import )
+    File.write( File.join( import, 'first.txt' ), 'first' )
+    system( 'svnadmin', 'create', repo, out: File::NULL ) or raise 'svnadmin create failed'
+    url = "file://#{repo.start_with?( '/' ) ? '' : '/'}#{repo}/trunk"
+    system( 'svn', 'import', '-q', '-m', 'first', import, url, out: File::NULL ) or raise 'svn import failed'
+    return url
   end
 
   # Ceedling reads Plugin#environment when it loads a plugin, so nothing may shadow it
@@ -217,6 +238,58 @@ describe 'Dependencies plugin (integration)' do
         run_tasks( deps, 'dependencies:fetch' )
 
         expect(File.exist?( 'deps/cloned/build.rb' )).to be true
+      end
+    end
+
+    it 'clones a git branch', skip: (GIT ? false : 'git is not installed') do
+      in_project do |root|
+        repo = git_repository( root )
+        git( repo, 'checkout', '-q', '-b', 'dev' )
+        File.write( File.join( repo, 'dev.txt' ), 'dev' )
+        git_commit( repo, 'dev' )
+        git( repo, 'checkout', '-q', '-' )
+
+        run_tasks( [dependency( 'cloned', fetch: { method: :git, source: repo, branch: 'dev' } )], 'dependencies:fetch' )
+
+        expect(File.read( 'deps/cloned/dev.txt' )).to eq( 'dev' )
+      end
+    end
+
+    it 'clones a git tag', skip: (GIT ? false : 'git is not installed') do
+      in_project do |root|
+        repo = git_repository( root )
+        git( repo, 'tag', 'v1' )
+        File.write( File.join( repo, 'later.txt' ), 'later' )
+        git_commit( repo, 'later' )
+
+        run_tasks( [dependency( 'cloned', fetch: { method: :git, source: repo, tag: 'v1' } )], 'dependencies:fetch' )
+
+        expect(File.exist?( 'deps/cloned/build.rb' )).to be true
+        expect(File.exist?( 'deps/cloned/later.txt' )).to be false
+      end
+    end
+
+    it 'checks out a git commit hash', skip: (GIT ? false : 'git is not installed') do
+      in_project do |root|
+        repo  = git_repository( root )
+        first = git_head( repo )
+        File.write( File.join( repo, 'later.txt' ), 'later' )
+        git_commit( repo, 'later' )
+
+        run_tasks( [dependency( 'cloned', fetch: { method: :git, source: repo, hash: first } )], 'dependencies:fetch' )
+
+        expect(git_head( 'deps/cloned' )).to eq( first )
+        expect(File.exist?( 'deps/cloned/later.txt' )).to be false
+      end
+    end
+
+    it 'checks out a subversion repository at a revision', skip: (SVN ? false : 'svn is not installed') do
+      in_project do |root|
+        url = svn_repository( root )
+
+        run_tasks( [dependency( 'svn', fetch: { method: :svn, source: url, revision: '1' } )], 'dependencies:fetch' )
+
+        expect(File.read( 'deps/svn/first.txt' )).to eq( 'first' )
       end
     end
 
