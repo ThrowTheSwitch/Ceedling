@@ -83,6 +83,38 @@ describe ConfiguratorValidator do
     end
   end
 
+  # An entry naming no path, or wrapping its path in quotes, is rejected before any
+  # filesystem check. Both usually come from quoting only the path after a +: or -:
+  # decoration, so each rejection carries a hint about quoting.
+  shared_examples 'an entry that names no usable path' do |walk|
+    {
+      'a bare subtractive decoration' => "    - '-:'\n",
+      'a bare additive decoration'    => "    - '+:'\n",
+      'an empty string'               => "    - ''\n",
+      'whitespace alone'              => "    - '   '\n",
+      'a YAML null'                   => "    -\n",
+    }.each_pair do |label, yaml|
+      it "rejects #{label} as naming no path, with a quoting hint" do
+        expect(validate( yaml )).to be false
+        expect(@loginator).to have_received(:log).with(/#{Regexp.escape(walk)} => '.*' names no path/, Verbosity::ERRORS)
+        expect(@loginator).to have_received(:log).with(/Quote the whole entry/, Verbosity::ERRORS)
+      end
+    end
+
+    # YAML reads an unquoted decoration with nothing after it as a one-key mapping
+    it 'rejects an entry YAML read as something other than a path, with a quoting hint' do
+      expect(validate( "    - -:\n" )).to be false
+      expect(@loginator).to have_received(:log).with(/#{Regexp.escape(walk)} => '.*' is not a path \(YAML read it as a Hash\)/, Verbosity::ERRORS)
+      expect(@loginator).to have_received(:log).with(/Quote the whole entry/, Verbosity::ERRORS)
+    end
+
+    it 'rejects a path wrapped in quotes after its decoration, with a quoting hint' do
+      expect(validate( "    - '-:\"src/a.c\"'\n" )).to be false
+      expect(@loginator).to have_received(:log).with(/#{Regexp.escape(walk)} => '-:"src\/a.c"' wraps its path in quotes/, Verbosity::ERRORS)
+      expect(@loginator).to have_received(:log).with(/Quote the whole entry/, Verbosity::ERRORS)
+    end
+  end
+
   describe '#validate_paths_entries' do
     def validate(yaml_list)
       @validator.validate_paths_entries( config_from_yaml( ":paths:\n  :source:\n#{yaml_list}" ), :source )
@@ -127,6 +159,8 @@ describe ConfiguratorValidator do
     it 'fails a missing entry' do
       expect(@validator.validate_paths_entries( { paths: {} }, :source )).to be false
     end
+
+    it_behaves_like 'an entry that names no usable path', ':paths ↳ :source'
   end
 
   describe '#validate_files_entries' do
@@ -166,6 +200,8 @@ describe ConfiguratorValidator do
     it 'fails a missing entry' do
       expect(@validator.validate_files_entries( { files: {} }, :source )).to be false
     end
+
+    it_behaves_like 'an entry that names no usable path', ':files ↳ :source'
   end
 
   describe '#validate_filepath_simple' do

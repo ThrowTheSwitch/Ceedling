@@ -30,8 +30,9 @@ class ConfiguratorValidator
     return false if list.nil?
 
     # Trimming add/subtract notation and glob specifiers leaves nothing of a path that
-    # begins with a glob, so there is nothing to check
-    paths   = list.map { |path| FilePathUtils::no_decorators( path ) }
+    # begins with a glob, so there is nothing to check. An entry YAML read as something
+    # other than a string is left to the entries validation, which reports it.
+    paths   = list.grep( String ).map { |path| FilePathUtils::no_decorators( path ) }
     missing = paths.reject { |path| path.empty? or @file_wrapper.exist?( path ) }
 
     walk = @reportinator.generate_config_walk( keys, depth )
@@ -47,7 +48,7 @@ class ConfiguratorValidator
     return false if list.nil?
 
     walk = @reportinator.generate_config_walk( [:paths, key] )
-    return list.map { |path| valid_paths_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
+    return list.map { |path| usable_entry?( path, walk ) && valid_paths_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
   end
 
 
@@ -57,7 +58,7 @@ class ConfiguratorValidator
     return false if list.nil?
 
     walk = @reportinator.generate_config_walk( [:files, key] )
-    return list.map { |path| valid_files_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
+    return list.map { |path| usable_entry?( path, walk ) && valid_files_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
   end
 
 
@@ -100,6 +101,28 @@ class ConfiguratorValidator
   ### Private ###
 
   private
+
+  # A :paths or :files entry that names no path, or wraps its path in quotes, usually
+  # quotes only the path after its decoration. YAML keeps those quote marks as part of
+  # the value, so the hint points at quoting the whole entry. YAML also reads an unquoted
+  # decoration with nothing after it (`- -:`) as a one-key mapping rather than a string.
+  ENTRY_QUOTING_HINT = 'Quote the whole entry, decoration included (e.g. "-:path/to/file.c"), ' +
+                       'not only the path after its +: or -: decoration.'
+
+  def usable_entry?(entry, walk)
+    path = entry.is_a?( String ) ? FilePathUtils::no_aggregation_decorators( entry ) : ''
+
+    problem =
+      if !entry.nil? and !entry.is_a?( String ) then "is not a path (YAML read it as a #{entry.class})"
+      elsif path.empty? then 'names no path'
+      elsif path.start_with?( '"', "'" ) then 'wraps its path in quotes'
+      end
+    return true if problem.nil?
+
+    log_error( "#{walk} => '#{entry}' #{problem}" )
+    log_error( ENTRY_QUOTING_HINT )
+    return false
+  end
 
   # A path naming a file is ignored with a warning. Any other entry must yield directories,
   # except a subdirectories glob of a directory that has none.
