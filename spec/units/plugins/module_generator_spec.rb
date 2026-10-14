@@ -43,6 +43,13 @@ describe ModuleGenerator do
     )
   end
 
+  # A real generator reaching the disk is a broken stub, so it fails loudly instead
+  before(:each) do
+    %i[generate destroy].each do |method|
+      allow_any_instance_of( UnityModuleGenerator ).to receive( method ).and_raise( 'Unit specs must not write module files' )
+    end
+  end
+
   def request(name, path_hint: nil, pattern: nil)
     return ModuleGeneratorRequest.new( name: name, path_hint: path_hint, pattern: pattern )
   end
