@@ -160,6 +160,7 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 
 ### Dependencies plugin
 
+- Fixed enabling the plugin making its fetch tools (`unzip`, `tar`, `git`, `svn`) and its `:build_lib` compiler and archiver requirements of every Ceedling command, including plain `test:all`. Each is now checked just before a dependency fetches or builds with it.
 - [#1076](https://github.com/ThrowTheSwitch/Ceedling/issues/1076) Fixed a second `dependencies:fetch`, or a `dependencies:make` after a fetch, failing because `git clone` ran into the already-populated folder. A dependency whose fetch path holds files now counts as fetched, and `dependencies:clean` allows a fresh fetch. Working paths are no longer created ahead of fetching, which made a clone into a fetch path containing the build path fail.
 - [#1110](https://github.com/ThrowTheSwitch/Ceedling/issues/1110) Fixed `dependencies:deploy` trying to copy a file named for the dependency rather than its dynamic libraries. It now copies every dynamic library from the artifact path beside the release executable.
 - Fixed a dependency's `:environment` variables lasting for the rest of the run, reaching every later dependency and Ceedling itself. They now apply only while that dependency's commands run. An entry not of the form `NAME=value`, `NAME+=value`, or `NAME-=value` now stops the build rather than being ignored. Text after `+=` and `-=` now keeps its leading space, so an appended flag can carry the delimiter it needs.

@@ -117,8 +117,9 @@ building it after a fetch, leaves those files alone. To fetch a fresh copy, clea
 dependency first with `dependencies:clean`.
 
 The `:zip`, `:tar_gzip`, `:git`, and `:svn` methods use the plugin’s
-[tools](#custom-tools) (`unzip`, `tar`, `git`, and `svn`), which must be installed when a
-dependency uses that method.
+[tools](#custom-tools) (`unzip`, `tar`, `git`, and `svn`). Each is checked just before a
+dependency fetches with it, so a missing tool stops only that fetch, and a machine that
+never fetches, such as a CI agent working from fetched dependencies, needs none of them.
 
 ## Environment variables
 
@@ -250,6 +251,9 @@ under `:tools`:
 | `:deps_targzip` | `tar` | `:tar_gzip` fetching |
 | `:deps_git_clone`, `:deps_git_checkout` | `git` | `:git` fetching |
 | `:deps_subversion` | `svn` | `:svn` fetching |
+
+The compiler, assembler, and archiver are checked just before `:build_lib` uses them, so
+a project without `:build_lib` needs none of them.
 
 `:build_lib` compiles every C file anywhere under the dependency’s `:source` path, with
 every directory holding a header there as a search path. It then archives the objects
