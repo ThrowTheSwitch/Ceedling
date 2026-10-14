@@ -179,6 +179,10 @@ jobs:
       - name: Run SBOM Generator Specs
         run: rake sbom:specs
 
+      # The CI summary's own specs, which live in tools/ for the same reason
+      - name: Run CI Summary Specs
+        run: rake ci:summary:specs
+
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
         run: |

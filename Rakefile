@@ -499,6 +499,39 @@ task 'sbom:licenses:audit' do
   end
 end
 
+##
+## CI summary tasks
+##
+## The CI summary lives in tools/, which the gemspec excludes from the gem, so these
+## tasks run only from the repository. Every input is a file the CI workflow gathered
+## beforehand; see tools/ci_summary/collector.rb.
+
+desc "Render the CI summary markdown, and the baseline on a push run"
+task 'ci:summary' do
+  repo_only!( 'ci:summary' )
+  require_relative 'tools/ci_summary/collector'
+
+  collector = CiSummary::Collector.new(
+    results_dir:   ENV.fetch( 'CI_SUMMARY_RESULTS' ),
+    jobs_path:     ENV['CI_SUMMARY_JOBS'],
+    baseline_path: ENV['CI_SUMMARY_BASELINE'],
+    diff_path:     ENV['CI_SUMMARY_DIFF'],
+    merge_base:    ENV['CI_SUMMARY_MERGE_BASE']
+  )
+
+  sha = ENV.fetch( 'CI_SUMMARY_SHA' )
+  collector.write_summary( ENV.fetch( 'CI_SUMMARY_OUT' ), sha: sha )
+
+  baseline_out = ENV['CI_SUMMARY_BASELINE_OUT'].to_s
+  collector.write_baseline( baseline_out, sha: sha, branch: ENV.fetch( 'CI_SUMMARY_BRANCH' ) ) unless baseline_out.empty?
+end
+
+desc "Run the CI summary's own specs"
+task 'ci:summary:specs' do
+  repo_only!( 'ci:summary:specs' )
+  sh 'bundle exec rspec tools/ci_summary/spec --format documentation'
+end
+
 desc "Run the SBOM generator's own specs"
 task 'sbom:specs' do
   repo_only!( 'sbom:specs' )
