@@ -237,7 +237,10 @@ class PreprocessinatorLineMarkerIncludesExtractor
   def canonicalize_marker_path(path)
     resolved = PathMatcher.resolve_relative( path, anchor: '' )
     segments = resolved.split(%r{[\\/]}).reject(&:empty?)
-    return resolved unless segments.include?('..')
+
+    # A relative result keeps only the leading .. segments naming a path above the
+    # project root, which are already as collapsed as they can be
+    return resolved unless segments.include?('..') and PathMatcher.absolute?( resolved )
 
     # Absolute forms this can see: a leading "/" (Unix), or a drive letter
     # ("C:\..." / "C:/..."). Either way, remember the prefix so the collapsed

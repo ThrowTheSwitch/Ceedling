@@ -63,8 +63,9 @@ class PathMatcher
   # Collapses a `..` segment in `query` against `anchor`, a directory path in the
   # same representation as every other path this class handles (e.g. a test file's
   # own `File.dirname`) -- one anchor segment is popped per leading `..`, so the
-  # result is an ordinary, `..`-free query ready for `.match`/`.resolve`/`.candidates`
-  # exactly as if it had been written that way to begin with. A query with no `..` at
+  # result is an ordinary query ready for `.match`/`.resolve`/`.candidates` exactly as
+  # if it had been written that way to begin with. Only the leading `..` segments that
+  # climb above a relative anchor remain, naming a path outside it. A query with no `..` at
   # all is returned completely untouched, so this is a no-op for the overwhelming
   # majority of callers.
   #
@@ -100,14 +101,18 @@ class PathMatcher
     anchor_was_absolute = anchor.start_with?('/')
     resolved = segments(anchor)
 
+    # A `..` beyond a relative anchor's own segments names a directory above it, as a
+    # project's paths outside its own root do (`../shared`), so it stays in the result.
+    # Nothing lies above an absolute anchor's root.
     query_segments.each do |segment|
-      if segment == '..'
-        if resolved.empty?
-          raise CeedlingException.new("Relative path reference '..' in '#{query}' goes outside the project.")
-        end
-        resolved.pop
-      else
+      if segment != '..'
         resolved << segment
+      elsif !resolved.empty? and resolved.last != '..'
+        resolved.pop
+      elsif anchor_was_absolute
+        raise CeedlingException.new("Relative path reference '..' in '#{query}' climbs above the filesystem root.")
+      else
+        resolved << '..'
       end
     end
 
@@ -126,12 +131,12 @@ class PathMatcher
     tail_matches?(shorter, longer)
   end
 
-  ### Private ###
-
+  # A Unix absolute path or one beginning with a Windows drive letter
   def self.absolute?(path)
-    path.start_with?('/') || path =~ /\A[A-Za-z]:[\\\/]/
+    path.start_with?('/') || path.match?( /\A[A-Za-z]:[\\\/]/ )
   end
-  private_class_method :absolute?
+
+  ### Private ###
 
   def self.segments(path)
     path.split(/[\\\/]/).reject(&:empty?)

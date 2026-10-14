@@ -147,8 +147,20 @@ describe PathMatcher do
       end
     end
 
-    it 'raises a CeedlingException naming the query when .. traverses past the anchor root' do
-      expect { described_class.resolve_relative('../../common/helper.h', anchor: 'test') }.to raise_error(CeedlingException) do |error|
+    # A project's paths may lie above its own root, such as `:paths` ↳ `:include: [../shared]`
+    # or a dependency beside the project, and GCC names such a header `../shared/shared.h`
+    it 'keeps the .. segments that climb above a relative anchor' do
+      expect(described_class.resolve_relative('../../common/helper.h', anchor: 'test')).to eq('../common/helper.h')
+      expect(described_class.resolve_relative('../shared/shared.h', anchor: '')).to eq('../shared/shared.h')
+      expect(described_class.resolve_relative('../../a/b.h', anchor: '')).to eq('../../a/b.h')
+    end
+
+    it 'collapses an internal .. within a path that lies above the anchor' do
+      expect(described_class.resolve_relative('../supervisor/build/../src/supervisor.h', anchor: '')).to eq('../supervisor/src/supervisor.h')
+    end
+
+    it 'raises a CeedlingException naming the query when .. climbs above an absolute anchor root' do
+      expect { described_class.resolve_relative('../../common/helper.h', anchor: '/test') }.to raise_error(CeedlingException) do |error|
         expect(error.message).to include('../../common/helper.h')
       end
     end
