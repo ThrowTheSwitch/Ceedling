@@ -259,7 +259,8 @@ describe 'Dependencies plugin (integration)' do
         deps = [dependency( 'version', fetch: { method: :tar_gzip, source: File.join( FIXTURES, 'version.tar.gzip' ) } )]
         run_tasks( deps, 'dependencies:fetch' )
 
-        expect(File.exist?( 'deps/version/version.c' )).to be true
+        # Exactly the archive's files, none of the metadata entries some archivers add
+        expect(Dir.children( 'deps/version' ).sort).to eq( ['version.c', 'version.h'] )
       end
     end
 
