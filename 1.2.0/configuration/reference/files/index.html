@@ -4735,6 +4735,20 @@ to remove certain file paths from a collection after it builds that collection.<
 <p>By default, paths are additive. For pretty alignment in your YAML, you may also
 use <code>+:</code>, but strictly speaking, it’s not necessary.</p>
 <p>Subtractive paths may be simple paths or globs just like any other path entry.</p>
+<div class="admonition warning">
+<p class="admonition-title">Quote the whole entry, decoration included</p>
+<p>YAML keeps quote marks that begin partway through a value as part of the
+value. Quoting only the path leaves quote marks in the path, and
+Ceedling rejects the entry. Quote an entry whenever it holds <code>#{…}</code>
+<a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>, because YAML
+otherwise reads the <code>#</code> as the start of a comment.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Correct</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;-:#{ENV[&#39;SRC_ROOT&#39;]}/platform/uptime.c&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Incorrect -- the quote marks become part of the path</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-:&quot;#{ENV[&#39;SRC_ROOT&#39;]}/platform/uptime.c&quot;</span>
+</code></pre></div>
+</div>
 <p>See the <a href="#advanced-tailoring">example section</a>.</p>
 <p><br/><br/></p>
 
