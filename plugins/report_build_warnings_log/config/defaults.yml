@@ -8,7 +8,8 @@
 
 ---
 :report_build_warnings_log:
-  :filename: warnings.log
+  :filename: warnings   # Base name of each report; its extension is the report type's own
+  :reports: []          # Any of :text, :sarif, :json; none is :text alone
   :patterns: []   # Regular expressions replacing the default match of any line mentioning "warning"
   :excludes: []   # Regular expressions dropping matched warnings, context included
 ...

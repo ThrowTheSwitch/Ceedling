@@ -13,6 +13,7 @@ require 'spec_helper'
 require 'spec_integration_helper'
 require 'tmpdir'
 require 'open3'
+require 'json'
 require 'ceedling/constants'
 require 'ceedling/plugins/plugin'
 require 'ceedling/file_wrapper'
@@ -33,10 +34,10 @@ describe 'Build Warnings Log plugin (integration)' do
 
   let(:logged) { [] }
 
-  def plugin(excludes: [])
+  def plugin(excludes: [], reports: [])
     loginator = double( 'loginator' ).tap { |log| allow(log).to receive(:log) { |message, *| logged << message } }
     objects   = {
-      configurator: double( 'configurator', report_build_warnings_log_filename: 'warnings.log',
+      configurator: double( 'configurator', report_build_warnings_log_filename: 'warnings', report_build_warnings_log_reports: reports,
                             report_build_warnings_log_patterns: [], report_build_warnings_log_excludes: excludes ),
       file_wrapper: FileWrapper.new( { loginator: loginator, verbosinator: double( 'verbosinator', should_output?: false ) } ),
       loginator:    loginator,
@@ -126,6 +127,43 @@ describe 'Build Warnings Log plugin (integration)' do
       warnings.post_build( 0 )
 
       expect(log_for( :test ).scan( /warning: .*unused_helper/ ).size).to eq( 1 )
+    end
+  end
+
+  # Structured reports of the same build agree with its text log
+  it 'writes SARIF and JSON reports of the warnings in the text log' do
+    in_project do
+      warnings = plugin( reports: %i[text sarif json] )
+      %w[a.c b.c].each { |file| warnings.post_compile_execute( context: :test, shell_result: compile( file ) ) }
+      warnings.post_build( 0 )
+
+      json    = JSON.parse( File.read( 'build/artifacts/test/warnings.json' ) )
+      sarif   = JSON.parse( File.read( 'build/artifacts/test/warnings.sarif' ) )
+      results = sarif.dig( 'runs', 0, 'results' )
+
+      expect(json['warnings'].map { |warning| warning['text'] }.join).to eq( log_for( :test ) )
+      expect(json['warnings'].map { |warning| [warning['file'].delete_prefix( './' ), warning['line'], warning['flag']] })
+        .to contain_exactly( ['a.c', 2, '-Wunused-variable'], ['shared.h', 1, '-Wunused-function'] )
+
+      expect(sarif).to include( 'version' => '2.1.0' )
+      expect(sarif.dig( 'runs', 0, 'tool', 'driver', 'name' )).to eq( 'Ceedling' )
+      expect(results.map { |result| result['ruleId'] }).to contain_exactly( '-Wunused-variable', '-Wunused-function' )
+      results.each do |result|
+        expect(result).to include( 'level' => 'warning', 'message' => hash_including( 'text' ) )
+        expect(result.dig( 'locations', 0, 'physicalLocation', 'region', 'startLine' )).to be_a( Integer )
+        expect(result.dig( 'locations', 0, 'physicalLocation', 'artifactLocation', 'uri' )).to eq( 'a.c' ).or eq( 'shared.h' )
+      end
+    end
+  end
+
+  it 'writes empty structured reports, and no text log, for a build without warnings' do
+    in_project do
+      warnings = plugin( reports: %i[text sarif json] )
+      warnings.post_compile_execute( context: :test, shell_result: { output: "Compiling foo.c...\n" } )
+      warnings.post_build( 0 )
+
+      expect(Dir.children( 'build/artifacts/test' )).to contain_exactly( 'warnings.sarif', 'warnings.json' )
+      expect(JSON.parse( File.read( 'build/artifacts/test/warnings.sarif' ) ).dig( 'runs', 0, 'results' )).to eq( [] )
     end
   end
 

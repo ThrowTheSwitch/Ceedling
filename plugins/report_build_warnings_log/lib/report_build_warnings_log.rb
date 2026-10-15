@@ -10,6 +10,8 @@ require 'ceedling/plugins/report_log_writer_plugin'
 require 'ceedling/constants'
 require 'set'
 require 'warning_collector'
+require 'warning_reports'
+require 'version'
 
 class ReportBuildWarningsLog < ReportLogWriterPlugin
 
@@ -17,16 +19,17 @@ class ReportBuildWarningsLog < ReportLogWriterPlugin
   def setup
     super
 
-    # Plain Hash -- populated only at write time (process_output), never by
-    # merely reading an absent context, so `.empty?` stays a trustworthy
-    # "have we collected anything at all?" check.
+    # Each build context that ran a build step, with its warnings. A plain Hash, so
+    # merely reading an absent context never adds it.
     @warnings = Hash.new
 
-    # Get default (default.yml) / user-set log filename in project configuration
-    @log_filename = @ceedling[:configurator].report_build_warnings_log_filename
+    configurator = @ceedling[:configurator]
+
+    # The configured reports, each written as the configured filename with its own extension
+    @basename = WarningReports.basename( configurator.report_build_warnings_log_filename )
+    @reports  = WarningReports.load( configurator.report_build_warnings_log_reports, version: Ceedling::Version::TAG )
 
     # Optional patterns replace the default warning match, and excludes drop matches
-    configurator = @ceedling[:configurator]
     @collector   = WarningCollector.new(
       patterns: WarningCollector.compile( configurator.report_build_warnings_log_patterns, setting: ':report_build_warnings_log ↳ :patterns' ),
       excludes: WarningCollector.compile( configurator.report_build_warnings_log_excludes, setting: ':report_build_warnings_log ↳ :excludes' )
@@ -90,10 +93,10 @@ class ReportBuildWarningsLog < ReportLogWriterPlugin
   private
 
   # Stores each warning in the output, with its context, once per build context. A
-  # header's warning repeated by every file including it is stored the first time.
+  # header's warning repeated by every file including it is stored the first time. A
+  # context is stored even without warnings, as a structured report still covers it.
   def process_output(context, output, hash)
     warnings = @collector.warnings( output )
-    return if warnings.empty?
 
     @mutex.synchronize do
       entry = (hash[context] ||= { collection: [], seen: Set.new })
@@ -103,16 +106,23 @@ class ReportBuildWarningsLog < ReportLogWriterPlugin
     end
   end
 
-  # Walk warnings hash and write contents to log file(s)
+  # Writes each configured report for each build context. A report that skips a context
+  # without warnings leaves nothing to write when no context has any.
   def write_logs
     flush_log(
       heading: 'Running Warnings Report',
       empty_message: 'Build produced no warnings.',
-      empty: -> { @warnings.empty? }
+      empty: -> { reports_for_contexts.empty? }
     ) do
-      @warnings.each do |context, hash|
-        write_artifact(artifact_filepath(context, @log_filename), hash[:collection].join)
+      reports_for_contexts.each do |context, report, warnings|
+        write_artifact( artifact_filepath( context, "#{@basename}.#{report.extension}" ), report.render( context, warnings ) )
       end
+    end
+  end
+
+  def reports_for_contexts
+    return @warnings.flat_map do |context, entry|
+      @reports.filter_map { |report| [context, report, entry[:collection]] if report.write_empty? or entry[:collection].any? }
     end
   end
 

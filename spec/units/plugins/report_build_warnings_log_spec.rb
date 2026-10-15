@@ -28,23 +28,21 @@ describe ReportBuildWarningsLog do
     @plugin = described_class.allocate
     @plugin.instance_variable_set(:@warnings, Hash.new)
     @plugin.instance_variable_set(:@mutex, Mutex.new)
-    @plugin.instance_variable_set(:@log_filename, 'warnings.log')
+    @plugin.instance_variable_set(:@basename, 'warnings')
+    @plugin.instance_variable_set(:@reports, WarningReports.load( [:text], version: '1' ))
     @plugin.instance_variable_set(:@collector, WarningCollector.new)
     @plugin.instance_variable_set(:@file_wrapper, @file_wrapper)
     @plugin.instance_variable_set(:@loginator, @loginator)
     @plugin.instance_variable_set(:@reportinator, @reportinator)
   end
 
-  # This bail-out is core to the plugin's own purpose (only ever collect
-  # output that looks like a warning) and is untouched by the upcoming
-  # line-filtering fix -- a line-by-line scan that finds no matching line
-  # bails out exactly the same way a whole-output scan that finds no match
-  # already does.
+  # Output without warnings still marks its build context as built, so a structured
+  # report can say that context had none
   describe '#process_output' do
-    it 'stores nothing when output contains no warning-like text, case-insensitively' do
+    it 'stores no warning, only its build context, when output has no warning-like text' do
       hash = {}
       @plugin.send(:process_output, :test, "Compiling foo.c...\nLinking...\n", hash)
-      expect(hash).to be_empty
+      expect(hash[:test][:collection]).to be_empty
     end
   end
 
@@ -70,7 +68,7 @@ describe ReportBuildWarningsLog do
 
       @plugin.send(:process_output, :test, output, hash)
 
-      expect(hash[:test][:collection]).to eq(["foo.c: In function 'main':\nfoo.c:3:5: warning: unused variable 'x'\n    3 |   int x;\n"])
+      expect(hash[:test][:collection].map( &:text )).to eq(["foo.c: In function 'main':\nfoo.c:3:5: warning: unused variable 'x'\n    3 |   int x;\n"])
     end
 
     it 'stores a warning reached through a different include chain only once per context' do
@@ -81,8 +79,8 @@ describe ReportBuildWarningsLog do
       @plugin.send(:process_output, :test, warning.call( 'b.c' ), hash)
       @plugin.send(:process_output, :release, warning.call( 'b.c' ), hash)
 
-      expect(hash[:test][:collection]).to eq([warning.call( 'a.c' )])
-      expect(hash[:release][:collection]).to eq([warning.call( 'b.c' )])
+      expect(hash[:test][:collection].map( &:text )).to eq([warning.call( 'a.c' )])
+      expect(hash[:release][:collection].map( &:text )).to eq([warning.call( 'b.c' )])
     end
   end
 
@@ -90,7 +88,7 @@ describe ReportBuildWarningsLog do
   describe '#post_build' do
     it 'joins the collected warning lines for one context and hands them to file_wrapper.write' do
       @plugin.instance_variable_get(:@warnings)[:test] = {
-        collection: ["foo.c:3:5: warning: unused variable 'x'\n", "bar.c:9:1: warning: missing return\n"]
+        collection: WarningCollector.new.warnings( "foo.c:3:5: warning: unused variable 'x'\nbar.c:9:1: warning: missing return\n" )
       }
 
       expect(@file_wrapper).to receive(:mkdir).with(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test'))
@@ -105,7 +103,7 @@ describe ReportBuildWarningsLog do
 
   describe 'configured matching' do
     def plugin_with(patterns:, excludes:)
-      configurator = double( 'configurator', report_build_warnings_log_filename: 'warnings.log',
+      configurator = double( 'configurator', report_build_warnings_log_filename: 'warnings.log', report_build_warnings_log_reports: [],
                              report_build_warnings_log_patterns: patterns, report_build_warnings_log_excludes: excludes )
       plugin = described_class.allocate
       plugin.instance_variable_set(:@ceedling, { configurator: configurator, file_wrapper: @file_wrapper, loginator: @loginator, reportinator: @reportinator })
@@ -118,11 +116,63 @@ describe ReportBuildWarningsLog do
       hash   = {}
       plugin.send(:process_output, :test, "a.c:1:1: remark: kept\nvendor/b.c:2:1: remark: dropped\na.c:3:1: warning: not a remark\n", hash)
 
-      expect(hash[:test][:collection]).to eq( ["a.c:1:1: remark: kept\n"] )
+      expect(hash[:test][:collection].map( &:text )).to eq( ["a.c:1:1: remark: kept\n"] )
     end
 
     it 'refuses an invalid pattern as it sets up' do
       expect { plugin_with( patterns: ['bad('], excludes: [] ) }.to raise_error( CeedlingException, /:patterns.*bad\(/ )
+    end
+  end
+
+  # Each configured report is one artifact per build context, named by the configured
+  # filename with the report's own extension
+  describe 'configured reports' do
+    def plugin_with(filename:, reports:)
+      configurator = double( 'configurator', report_build_warnings_log_filename: filename, report_build_warnings_log_reports: reports,
+                             report_build_warnings_log_patterns: [], report_build_warnings_log_excludes: [] )
+      plugin = described_class.allocate
+      plugin.instance_variable_set(:@ceedling, { configurator: configurator, file_wrapper: @file_wrapper, loginator: @loginator, reportinator: @reportinator })
+      plugin.setup
+      return plugin
+    end
+
+    def written
+      files = []
+      allow(@file_wrapper).to receive(:mkdir)
+      allow(@file_wrapper).to receive(:write) { |path, _| files << path }
+      return files
+    end
+
+    it 'writes every report for a context with warnings, replacing the filename extension' do
+      plugin = plugin_with( filename: 'build_warnings.txt', reports: ['sarif', :JSON, :text] )
+      files  = written
+      plugin.post_compile_execute( context: :test, shell_result: { output: "a.c:1:1: warning: w\n" } )
+      plugin.post_build( 0 )
+
+      expect(files).to eq( %w[sarif json log].map { |ext| File.join( 'artifacts', 'test', "build_warnings.#{ext}" ) } )
+    end
+
+    it 'writes structured reports but no text log for a context without warnings' do
+      plugin = plugin_with( filename: 'warnings', reports: [:text, :sarif] )
+      files  = written
+      plugin.post_compile_execute( context: :release, shell_result: { output: "Compiling a.c...\n" } )
+      plugin.post_build( 0 )
+
+      expect(files).to eq( [File.join( 'artifacts', 'release', 'warnings.sarif' )] )
+    end
+
+    it 'says the build produced no warnings, and writes nothing, when only the text log is configured' do
+      plugin = plugin_with( filename: 'warnings', reports: [] )
+      files  = written
+      expect(@loginator).to receive(:log).with( "Build produced no warnings.\n" )
+      plugin.post_compile_execute( context: :test, shell_result: nil )
+      plugin.post_build( 0 )
+
+      expect(files).to be_empty
+    end
+
+    it 'refuses an unknown report as it sets up' do
+      expect { plugin_with( filename: 'warnings', reports: [:xml] ) }.to raise_error( CeedlingException, /`xml`/ )
     end
   end
 
@@ -132,6 +182,7 @@ describe ReportBuildWarningsLog do
       allow(configurator).to receive(:report_build_warnings_log_filename).and_return('warnings.log')
       allow(configurator).to receive(:report_build_warnings_log_patterns).and_return([])
       allow(configurator).to receive(:report_build_warnings_log_excludes).and_return([])
+      allow(configurator).to receive(:report_build_warnings_log_reports).and_return([:text])
 
       plugin = described_class.allocate
       plugin.instance_variable_set(:@ceedling, {
