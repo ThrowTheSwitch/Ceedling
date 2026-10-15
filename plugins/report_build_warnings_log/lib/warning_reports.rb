@@ -49,9 +49,12 @@ module WarningReports
     def extension = 'sarif'
     def write_empty? = true
 
+    # The driver's rules are the warnings' distinct flags, which code scanning services
+    # expect to find for each result's rule
     def render(context, warnings)
-      run = {
-        tool:              { driver: { name: 'Ceedling', version: @version, informationUri: 'https://www.throwtheswitch.org/ceedling' } },
+      rules = warnings.filter_map( &:flag ).uniq.map { |flag| { id: flag } }
+      run   = {
+        tool:              { driver: { name: 'Ceedling', version: @version, informationUri: 'https://www.throwtheswitch.org/ceedling', rules: rules } },
         automationDetails: { id: "#{context}/" },
         results:           warnings.map { |warning| result( warning ) }
       }

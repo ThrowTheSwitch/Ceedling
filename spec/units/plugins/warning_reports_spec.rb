@@ -97,6 +97,7 @@ describe WarningReports do
       expect(sarif).to include( 'version' => '2.1.0', '$schema' => 'https://json.schemastore.org/sarif-2.1.0.json' )
       expect(sarif['runs'].size).to eq( 1 )
       expect(run['tool']['driver']).to include( 'name' => 'Ceedling', 'version' => '9.9.9' )
+      expect(run['tool']['driver']['rules']).to eq( [{ 'id' => '-Wunused-variable' }] )
       expect(run['automationDetails']).to eq( 'id' => 'test/' )
     end
 
