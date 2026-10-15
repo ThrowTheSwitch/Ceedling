@@ -109,9 +109,12 @@ class Dependencies < Plugin
     destination = spec.deploy_path( File.dirname( PROJECT_RELEASE_BUILD_TARGET ) )
     @ceedling[:file_wrapper].mkdir( destination )
 
+    # The deploy task builds missing artifacts first, so one still missing was never made
     artifacts.each do |artifact|
       unless @ceedling[:file_wrapper].exist?( artifact )
-        raise CeedlingException.new( "Dependency `#{spec.name}` has no #{artifact} to deploy. Build it with `dependencies:make` first." )
+        raise CeedlingException.new(
+          "Dependency `#{spec.name}` has no #{artifact} to deploy: its build did not produce it. Check its :build steps and :artifacts."
+        )
       end
 
       @ceedling[:file_wrapper].cp( artifact, destination )

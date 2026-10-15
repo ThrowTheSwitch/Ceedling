@@ -209,8 +209,8 @@ describe Dependencies do
       expect(file_wrapper).to have_received(:cp).with( 'deps/dep/build/libtwo.so', 'build/release' )
     end
 
-    it 'refuses to deploy a dynamic library that was not built' do
-      expect { plugin_for( shared ).deploy_if_required( 'dep' ) }.to raise_error( CeedlingException, %r{deps/dep/build/libone.so} )
+    it 'refuses to deploy a dynamic library its build did not produce' do
+      expect { plugin_for( shared ).deploy_if_required( 'dep' ) }.to raise_error( CeedlingException, %r{deps/dep/build/libone.so.*did not produce} )
     end
 
     it 'copies every executable along with the dynamic libraries' do

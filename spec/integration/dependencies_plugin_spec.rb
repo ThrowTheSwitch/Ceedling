@@ -389,6 +389,24 @@ describe 'Dependencies plugin (integration)' do
       end
     end
 
+    it 'deploys an executable that stays executable', skip: (Gem.win_platform? ? 'Windows has no execute permission bit' : false) do
+      in_project do
+        write_build_script( 'deps/tools', 'build/tool' )
+        File.write( 'deps/tools/build.rb', File.read( 'deps/tools/build.rb' ) + "File.chmod( 0o755, 'build/tool' )\n" )
+        run_tasks( [tools], 'dependencies:deploy' )
+
+        expect(File.executable?( 'out/bin/tool' )).to be true
+      end
+    end
+
+    it 'explains an executable its build did not produce' do
+      in_project do
+        write_build_script( 'deps/tools', 'build/other' )
+
+        expect { run_tasks( [tools], 'dependencies:deploy' ) }.to raise_error( CeedlingException, /did not produce.*:build.*:artifacts/ )
+      end
+    end
+
     # A release may ship a tool, but no test build links one
     it 'makes its executables a prerequisite of release but not of test builds' do
       in_project do
