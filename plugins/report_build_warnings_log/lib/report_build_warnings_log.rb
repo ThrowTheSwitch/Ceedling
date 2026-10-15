@@ -25,7 +25,12 @@ class ReportBuildWarningsLog < ReportLogWriterPlugin
     # Get default (default.yml) / user-set log filename in project configuration
     @log_filename = @ceedling[:configurator].report_build_warnings_log_filename
 
-    @collector = WarningCollector.new
+    # Optional patterns replace the default warning match, and excludes drop matches
+    configurator = @ceedling[:configurator]
+    @collector   = WarningCollector.new(
+      patterns: WarningCollector.compile( configurator.report_build_warnings_log_patterns, setting: ':report_build_warnings_log ↳ :patterns' ),
+      excludes: WarningCollector.compile( configurator.report_build_warnings_log_excludes, setting: ':report_build_warnings_log ↳ :excludes' )
+    )
   end
 
   # `Plugin` build step hook

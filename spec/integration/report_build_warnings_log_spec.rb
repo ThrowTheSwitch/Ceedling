@@ -33,10 +33,11 @@ describe 'Build Warnings Log plugin (integration)' do
 
   let(:logged) { [] }
 
-  def plugin
+  def plugin(excludes: [])
     loginator = double( 'loginator' ).tap { |log| allow(log).to receive(:log) { |message, *| logged << message } }
     objects   = {
-      configurator: double( 'configurator', report_build_warnings_log_filename: 'warnings.log' ),
+      configurator: double( 'configurator', report_build_warnings_log_filename: 'warnings.log',
+                            report_build_warnings_log_patterns: [], report_build_warnings_log_excludes: excludes ),
       file_wrapper: FileWrapper.new( { loginator: loginator, verbosinator: double( 'verbosinator', should_output?: false ) } ),
       loginator:    loginator,
       reportinator: double( 'reportinator', generate_heading: '', generate_progress: '' )
@@ -73,6 +74,17 @@ describe 'Build Warnings Log plugin (integration)' do
       expect(log_for( :test )).to include( 'spare' )
       expect(log_for( :release )).to include( 'unused_helper' )
       expect(log_for( :release )).not_to include( 'spare' )
+    end
+  end
+
+  it 'leaves out warnings a configured exclude matches' do
+    in_project do
+      warnings = plugin( excludes: ['unused_helper'] )
+      warnings.post_compile_execute( context: :test, shell_result: compile( 'a.c' ) )
+      warnings.post_build( 0 )
+
+      expect(log_for( :test )).to include( 'spare' )
+      expect(log_for( :test )).not_to include( 'unused_helper' )
     end
   end
 

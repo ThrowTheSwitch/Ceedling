@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/plugins/plugin'
+require 'ceedling/exceptions'
 
 $: << File.expand_path('../../../../plugins/report_build_warnings_log/lib', __FILE__)
 require 'report_build_warnings_log'
@@ -102,10 +103,35 @@ describe ReportBuildWarningsLog do
     end
   end
 
+  describe 'configured matching' do
+    def plugin_with(patterns:, excludes:)
+      configurator = double( 'configurator', report_build_warnings_log_filename: 'warnings.log',
+                             report_build_warnings_log_patterns: patterns, report_build_warnings_log_excludes: excludes )
+      plugin = described_class.allocate
+      plugin.instance_variable_set(:@ceedling, { configurator: configurator, file_wrapper: @file_wrapper, loginator: @loginator, reportinator: @reportinator })
+      plugin.setup
+      return plugin
+    end
+
+    it 'collects what configured patterns match and drops what excludes match' do
+      plugin = plugin_with( patterns: [': remark:'], excludes: ['vendor/'] )
+      hash   = {}
+      plugin.send(:process_output, :test, "a.c:1:1: remark: kept\nvendor/b.c:2:1: remark: dropped\na.c:3:1: warning: not a remark\n", hash)
+
+      expect(hash[:test][:collection]).to eq( ["a.c:1:1: remark: kept\n"] )
+    end
+
+    it 'refuses an invalid pattern as it sets up' do
+      expect { plugin_with( patterns: ['bad('], excludes: [] ) }.to raise_error( CeedlingException, /:patterns.*bad\(/ )
+    end
+  end
+
   describe '#setup' do
     it 'builds a plain Hash, so merely reading an absent context can never silently create an entry' do
       configurator = double('configurator')
       allow(configurator).to receive(:report_build_warnings_log_filename).and_return('warnings.log')
+      allow(configurator).to receive(:report_build_warnings_log_patterns).and_return([])
+      allow(configurator).to receive(:report_build_warnings_log_excludes).and_return([])
 
       plugin = described_class.allocate
       plugin.instance_variable_set(:@ceedling, {

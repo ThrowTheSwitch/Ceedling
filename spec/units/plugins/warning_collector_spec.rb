@@ -9,6 +9,7 @@ require 'spec_helper'
 
 $LOAD_PATH.unshift( File.expand_path( '../../../plugins/report_build_warnings_log/lib', __dir__ ) )
 
+require 'ceedling/exceptions'
 require 'warning_collector'
 
 describe WarningCollector do
@@ -85,6 +86,21 @@ describe WarningCollector do
 
     expect(collector.identity( header_warning.call( via_b ) )).to eq( collector.identity( header_warning.call( CLANG ) ) )
     expect(collector.identity( header_warning.call( CLANG ) )).not_to include( 'In file included from' )
+  end
+
+  describe '.compile' do
+    it 'makes regular expressions of configured strings' do
+      expect(described_class.compile( [': remark:', '(?i)WARN'], setting: ':patterns' )).to eq( [/: remark:/, /(?i)WARN/] )
+    end
+
+    it 'refuses an invalid expression, naming its setting and itself' do
+      expect { described_class.compile( ['ok', 'bad('], setting: ':report_build_warnings_log ↳ :excludes' ) }
+        .to raise_error( CeedlingException, /:excludes.*`bad\(`/ )
+    end
+
+    it 'refuses an entry that is not a string' do
+      expect { described_class.compile( [42], setting: ':patterns' ) }.to raise_error( CeedlingException, /`42`/ )
+    end
   end
 
   describe 'configured matching' do

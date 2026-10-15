@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/exceptions'
+
 # The warnings in one build step's tool output, each with the context lines that explain
 # it.
 #
@@ -26,6 +28,18 @@ class WarningCollector
   CONTEXT    = /\A(?:In file included from |\s+from |\S[^\n]*: (?:In (?:function|member function|instantiation)|At (?:top level|global scope)))/
   INCLUDE    = /\A(?:In file included from |\s+from )/
   SUMMARY    = /\A\d+ (?:warnings?|errors?)(?: and \d+ (?:warnings?|errors?))? generated\.\s*\z/
+
+  # Regular expressions from configured strings. An entry that is not a valid expression
+  # stops the build, naming `setting` and the entry.
+  def self.compile(entries, setting:)
+    return Array( entries ).map do |entry|
+      raise CeedlingException.new( "#{setting} entry `#{entry}` is not a string." ) unless entry.is_a?( String )
+
+      Regexp.new( entry )
+    rescue RegexpError => e
+      raise CeedlingException.new( "#{setting} entry `#{entry}` is not a valid regular expression: #{e.message}" )
+    end
+  end
 
   # `patterns` replaces the default warning match; `excludes` drops any warning whose text
   # matches one of them
