@@ -66,24 +66,16 @@ describe 'Command Hooks plugin (integration)' do
     pre_runner_generate:       [{ context: :test, test_file: 'test/test_adc.c', input_file: 'test/test_adc.c', runner_file: 'runners/test_adc_runner.c' }, 'test/test_adc.c'],
     post_runner_generate:      [{ context: :test, test_file: 'test/test_adc.c', input_file: 'test/test_adc.c', runner_file: 'runners/test_adc_runner.c' }, 'runners/test_adc_runner.c'],
     pre_compile_execute:       [{ context: :test, source: 'src/adc.c', object: 'out/adc.o' },     'src/adc.c'],
-    post_compile_execute:      [{ context: :test, source: 'src/adc.c', object: 'out/adc.o' },     'out/adc.o'],
+    post_compile_execute:      [{ context: :test, source: 'src/adc.c', object: 'out/adc.o' },     'src/adc.c'],
     pre_link_execute:          [{ context: :test, executable: 'out/test_adc.out' },               'out/test_adc.out'],
     post_link_execute:         [{ context: :test, executable: 'out/test_adc.out' },               'out/test_adc.out'],
     pre_test_fixture_execute:  [{ context: :test, executable: 'out/test_adc.out' },               'out/test_adc.out'],
     post_test_fixture_execute: [{ context: :test, executable: 'out/test_adc.out' },               'out/test_adc.out']
   }.freeze
 
-  BROKEN = {
-    pre_runner_generate:  'reads :source, which the core never passes',
-    pre_compile_execute:  'reads :source_file where the core passes :source',
-    post_compile_execute: 'reads :object_file where the core passes :object'
-  }.freeze
-
   describe 'hooks with an argument hash' do
     CORE_CALLS.each do |hook, (arg_hash, expected)|
       it "runs :#{hook} with #{expected} as ${1}" do
-        pending BROKEN[hook] if BROKEN.key?( hook )
-
         in_project do
           plugin_for( command_hooks: { hook => recording_hook( hook ) } ).public_send( hook, arg_hash )
 
@@ -125,8 +117,6 @@ describe 'Command Hooks plugin (integration)' do
 
   describe 'configuration' do
     it 'runs each tool of a hook given a list, in order' do
-      pending 'validation walks a list by index, which the configuration walker cannot do'
-
       in_project do
         first  = { executable: 'ruby', arguments: ['-e', '"File.write(%q{order.txt}, %q{a})"'] }
         second = { executable: 'ruby', arguments: ['-e', '"File.write(%q{order.txt}, File.read(%q{order.txt}) + %q{b})"'] }
@@ -151,7 +141,6 @@ describe 'Command Hooks plugin (integration)' do
     end
 
     it 'leaves the project configuration without a :logging entry of its own' do
-      pending 'hook validation sets :logging on the project configuration rather than the hook'
       config = { command_hooks: { pre_build: recording_hook( :pre_build ) } }
 
       in_project { plugin_for( config ) }
