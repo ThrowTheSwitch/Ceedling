@@ -191,6 +191,10 @@ jobs:
       - name: Run CI Summary Specs
         run: rake ci:summary:specs
 
+      # The coverage report tooling's own specs, which live in tools/ for the same reason
+      - name: Run Coverage Report Specs
+        run: rake coverage:specs
+
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
         run: |
