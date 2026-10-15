@@ -17,7 +17,7 @@ require 'ceedling/exceptions'
 # default any mention of "warning". Output in any other format is taken a line at a time.
 # Summary lines counting warnings (`2 warnings generated.`) are never warnings.
 #
-# A warning's identity leaves out its include chain, so a header's warning reached
+# A warning's identity leaves out its context lines, so a header's warning reached
 # through several files is one warning.
 class WarningCollector
 
@@ -26,7 +26,6 @@ class WarningCollector
   DIAGNOSTIC = /\A\S[^\n]*?:\d+(?::\d+)?:\s+(?:fatal error|error|warning|note|remark)\b/i
   NOTE       = /\A\S[^\n]*?:\d+(?::\d+)?:\s+note\b/i
   CONTEXT    = /\A(?:In file included from |\s+from |\S[^\n]*: (?:In (?:function|member function|instantiation)|At (?:top level|global scope)))/
-  INCLUDE    = /\A(?:In file included from |\s+from )/
   SUMMARY    = /\A\d+ (?:warnings?|errors?)(?: and \d+ (?:warnings?|errors?))? generated\.\s*\z/
 
   # Regular expressions from configured strings. An entry that is not a valid expression
@@ -52,9 +51,12 @@ class WarningCollector
     return groups( output ).select { |group| warning?( group ) }.map( &:join ).reject { |text| excluded?( text ) }
   end
 
-  # A warning without its include chain, for recognizing one already collected
+  # A warning without the context lines before it, for recognizing one already collected.
+  # Those lines vary with the file that included a header and with whatever GCC reported
+  # just before, as its `At top level` line does; the diagnostic line itself names where
+  # the warning is.
   def identity(warning)
-    return warning.lines.reject { |line| line.match?( INCLUDE ) }.join
+    return warning.lines.reject { |line| line.match?( CONTEXT ) }.join
   end
 
   private

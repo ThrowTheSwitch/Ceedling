@@ -103,6 +103,30 @@ describe WarningCollector do
     end
   end
 
+  # GCC 14 reports a header's warning after a function's warning with an `At top level`
+  # line it leaves out when nothing came before
+  it 'gives a warning the same identity whatever scope line GCC puts before it' do
+    after_function = <<~OUT
+      a.c: In function ‘a’:
+      a.c:2:21: warning: unused variable ‘spare’ [-Wunused-variable]
+          2 | int a( void ) { int spare; return 0; }
+            |                     ^~~~~
+      In file included from a.c:1:
+      shared.h: At top level:
+      shared.h:1:12: warning: ‘unused_helper’ defined but not used [-Wunused-function]
+          1 | static int unused_helper( void ) { return 1; }
+            |            ^~~~~~~~~~~~~
+    OUT
+    alone = <<~OUT
+      In file included from b.c:1:
+      shared.h:1:12: warning: ‘unused_helper’ defined but not used [-Wunused-function]
+          1 | static int unused_helper( void ) { return 1; }
+            |            ^~~~~~~~~~~~~
+    OUT
+
+    expect(collector.identity( collector.warnings( after_function ).last )).to eq( collector.identity( collector.warnings( alone ).last ) )
+  end
+
   describe 'configured matching' do
     it 'collects what custom patterns match instead of warnings' do
       remarks = described_class.new( patterns: [/: remark:/] )
