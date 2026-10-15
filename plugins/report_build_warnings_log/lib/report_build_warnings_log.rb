@@ -8,6 +8,8 @@
 
 require 'ceedling/plugins/report_log_writer_plugin'
 require 'ceedling/constants'
+require 'set'
+require 'warning_collector'
 
 class ReportBuildWarningsLog < ReportLogWriterPlugin
 
@@ -22,6 +24,8 @@ class ReportBuildWarningsLog < ReportLogWriterPlugin
 
     # Get default (default.yml) / user-set log filename in project configuration
     @log_filename = @ceedling[:configurator].report_build_warnings_log_filename
+
+    @collector = WarningCollector.new
   end
 
   # `Plugin` build step hook
@@ -80,17 +84,17 @@ class ReportBuildWarningsLog < ReportLogWriterPlugin
 
   private
 
-  # Extract warning messages and store to hash in thread-safe manner.
-  # Keeps only the line(s) that themselves look like a warning -- not the
-  # entire tool-output blob a build step produced -- so a log file holds
-  # just the warnings a user actually asked this plugin to collect.
+  # Stores each warning in the output, with its context, once per build context. A
+  # header's warning repeated by every file including it is stored the first time.
   def process_output(context, output, hash)
-    lines = output.each_line.select { |line| line =~ /warning/i }
-    return if lines.empty?
+    warnings = @collector.warnings( output )
+    return if warnings.empty?
 
     @mutex.synchronize do
-      entry = (hash[context] ||= { collection: [] })
-      entry[:collection].concat(lines)
+      entry = (hash[context] ||= { collection: [], seen: Set.new })
+      warnings.each do |warning|
+        entry[:collection] << warning if entry[:seen].add?( @collector.identity( warning ) )
+      end
     end
   end
 

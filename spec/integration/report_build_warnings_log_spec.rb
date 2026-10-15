@@ -98,8 +98,6 @@ describe 'Build Warnings Log plugin (integration)' do
   end
 
   it 'keeps the source and caret lines that belong to each warning' do
-    pending 'only lines containing "warning" are kept'
-
     in_project do
       warnings = plugin
       warnings.post_compile_execute( context: :test, shell_result: compile( 'a.c' ) )
@@ -110,8 +108,6 @@ describe 'Build Warnings Log plugin (integration)' do
   end
 
   it 'logs a warning from a shared header once' do
-    pending 'a header warning repeats once per file that includes it'
-
     in_project do
       warnings = plugin
       %w[a.c b.c].each { |file| warnings.post_compile_execute( context: :test, shell_result: compile( file ) ) }

@@ -28,6 +28,7 @@ describe ReportBuildWarningsLog do
     @plugin.instance_variable_set(:@warnings, Hash.new)
     @plugin.instance_variable_set(:@mutex, Mutex.new)
     @plugin.instance_variable_set(:@log_filename, 'warnings.log')
+    @plugin.instance_variable_set(:@collector, WarningCollector.new)
     @plugin.instance_variable_set(:@file_wrapper, @file_wrapper)
     @plugin.instance_variable_set(:@loginator, @loginator)
     @plugin.instance_variable_set(:@reportinator, @reportinator)
@@ -60,15 +61,27 @@ describe ReportBuildWarningsLog do
     end
   end
 
-  # Tool output mixes warnings with progress and context lines
+  # Tool output mixes warnings, their context, and unrelated lines
   describe '#process_output' do
-    it 'stores only the line(s) that actually look like a warning, not the entire tool output' do
+    it 'stores each warning with its context, leaving out unrelated lines' do
       hash = {}
-      output = "foo.c: In function 'main':\nfoo.c:3:5: warning: unused variable 'x'\nCompiling foo.c...\n"
+      output = "Compiling foo.c...\nfoo.c: In function 'main':\nfoo.c:3:5: warning: unused variable 'x'\n    3 |   int x;\n"
 
       @plugin.send(:process_output, :test, output, hash)
 
-      expect(hash[:test][:collection]).to eq(["foo.c:3:5: warning: unused variable 'x'\n"])
+      expect(hash[:test][:collection]).to eq(["foo.c: In function 'main':\nfoo.c:3:5: warning: unused variable 'x'\n    3 |   int x;\n"])
+    end
+
+    it 'stores a warning reached through a different include chain only once per context' do
+      hash = {}
+      warning = ->( via ) { "In file included from #{via}:1:\nshared.h:1:12: warning: unused function 'f'\n" }
+
+      @plugin.send(:process_output, :test, warning.call( 'a.c' ), hash)
+      @plugin.send(:process_output, :test, warning.call( 'b.c' ), hash)
+      @plugin.send(:process_output, :release, warning.call( 'b.c' ), hash)
+
+      expect(hash[:test][:collection]).to eq([warning.call( 'a.c' )])
+      expect(hash[:release][:collection]).to eq([warning.call( 'b.c' )])
     end
   end
 
