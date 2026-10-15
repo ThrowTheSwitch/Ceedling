@@ -101,7 +101,7 @@ GPIO_HEADER_C = <<~C
   #endif // GPIO_H
 C
 
-READER_HEADER_C = <<~C
+TOOLING_PLUGINS_READER_HEADER_C = <<~C
   #ifndef READER_H
   #define READER_H
 
@@ -291,7 +291,7 @@ ceedling_system_tests do
       it "names the original source in the command for a source compiled from an isolated copy" do
         in_project do
           File.write('src/gpio.h', GPIO_HEADER_C)
-          File.write('src/reader.h', READER_HEADER_C)
+          File.write('src/reader.h', TOOLING_PLUGINS_READER_HEADER_C)
           File.write('src/reader.c', READER_SOURCE_C)
           File.write('test/test_reader.c', TEST_READER_C)
           @c.merge_project_yml_for_test(

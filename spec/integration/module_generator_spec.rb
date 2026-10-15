@@ -26,9 +26,9 @@ require 'ceedling/file_wrapper'
 require 'ceedling/config/config_matchinator'
 require 'ceedling/defineinator'
 
-PLUGIN_ROOT = File.expand_path( '../../plugins/module_generator', __dir__ )
+MODULE_GENERATOR_PLUGIN_ROOT = File.expand_path( '../../plugins/module_generator', __dir__ )
 
-[File.join( PLUGIN_ROOT, 'lib' ),
+[File.join( MODULE_GENERATOR_PLUGIN_ROOT, 'lib' ),
  File.expand_path( '../../vendor/unity/auto', __dir__ ),
  File.expand_path( '../../vendor/cmock/lib', __dir__ )].each { |path| $LOAD_PATH.unshift( path ) unless $LOAD_PATH.include?( path ) }
 
@@ -65,7 +65,7 @@ describe 'Module Generator plugin (integration)' do
       file_wrapper:       FileWrapper.new( { loginator: loginator, verbosinator: double( 'verbosinator', should_output?: false ) } ),
       loginator:          loginator
     }
-    return ModuleGenerator.new( objects, 'module_generator', PLUGIN_ROOT )
+    return ModuleGenerator.new( objects, 'module_generator', MODULE_GENERATOR_PLUGIN_ROOT )
   end
 
   # Invokes one of the plugin's rake tasks in a fresh Rake application, returning what
@@ -73,7 +73,7 @@ describe 'Module Generator plugin (integration)' do
   def run_task(config, task, *args)
     previous = Rake.application
     Rake.application = Rake::Application.new
-    load File.join( PLUGIN_ROOT, 'module_generator.rake' )
+    load File.join( MODULE_GENERATOR_PLUGIN_ROOT, 'module_generator.rake' )
     main              = TOPLEVEL_BINDING.receiver
     previous_ceedling = main.instance_variable_get( :@ceedling )
     main.instance_variable_set( :@ceedling, { module_generator: plugin_for( config ) } )

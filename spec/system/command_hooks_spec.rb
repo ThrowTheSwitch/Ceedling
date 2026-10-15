@@ -15,9 +15,9 @@ ceedling_system_tests do
   describe 'Command Hooks' do
 
     # Appends a line naming the hook and each argument it received
-    RECORDER = "File.open( 'hooks.log', 'a' ) { |log| log.puts ARGV.join( ' | ' ) }\n".freeze
+    COMMAND_HOOKS_SYSTEM_RECORDER = "File.open( 'hooks.log', 'a' ) { |log| log.puts ARGV.join( ' | ' ) }\n".freeze
 
-    HOOKS = %i[
+    COMMAND_HOOKS_SYSTEM_HOOKS = %i[
       pre_mock_preprocess post_mock_preprocess pre_test_preprocess post_test_preprocess
       pre_mock_generate post_mock_generate pre_runner_generate post_runner_generate
       pre_compile_execute post_compile_execute pre_link_execute post_link_execute
@@ -26,7 +26,7 @@ ceedling_system_tests do
     ].freeze
 
     # The first argument each hook should record
-    EXPECTED = {
+    COMMAND_HOOKS_SYSTEM_EXPECTED = {
       pre_mock_preprocess:       %r{\Asrc/example_file\.h\z},
       post_mock_preprocess:      %r{\Asrc/example_file\.h\z},
       pre_test_preprocess:       %r{\Atest/test_example_file_with_mock\.c\z},
@@ -71,9 +71,9 @@ ceedling_system_tests do
       @c.uncomment_project_yml_option_for_test( '- command_hooks' )
       @c.merge_project_yml_for_test(
         project:       { use_test_preprocessor: :all },
-        command_hooks: HOOKS.to_h { |hook| [hook, recording_hook( hook )] }
+        command_hooks: COMMAND_HOOKS_SYSTEM_HOOKS.to_h { |hook| [hook, recording_hook( hook )] }
       )
-      File.write( 'record.rb', RECORDER )
+      File.write( 'record.rb', COMMAND_HOOKS_SYSTEM_RECORDER )
       FileUtils.cp test_asset_path( 'example_file.h' ), 'src/'
       FileUtils.cp test_asset_path( 'example_file.c' ), 'src/'
       FileUtils.cp test_asset_path( 'example_file_call.h' ), 'src/'
@@ -97,9 +97,9 @@ ceedling_system_tests do
           expect(@c.last_exit_status).to eq( 0 ), output
 
           calls = recorded
-          HOOKS.each do |hook|
+          COMMAND_HOOKS_SYSTEM_HOOKS.each do |hook|
             expect(calls).to have_key( hook.to_s ), "expected :#{hook} to run"
-            expect(calls[hook.to_s].map( &:first )).to all( match( EXPECTED[hook] ) ), ":#{hook} received #{calls[hook.to_s].inspect}"
+            expect(calls[hook.to_s].map( &:first )).to all( match( COMMAND_HOOKS_SYSTEM_EXPECTED[hook] ) ), ":#{hook} received #{calls[hook.to_s].inspect}"
           end
 
           # Compile hooks also receive the object file

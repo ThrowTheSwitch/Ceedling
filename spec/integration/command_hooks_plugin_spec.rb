@@ -27,7 +27,7 @@ describe 'Command Hooks plugin (integration)' do
   include ConfiguratorIntegrationHelpers
 
   # Writes each argument it receives to <hook>.txt, one per line
-  RECORDER = <<~RUBY
+  COMMAND_HOOKS_RECORDER = <<~RUBY
     File.write( "\#{ARGV.shift}.txt", ARGV.join( "\\n" ) )
   RUBY
 
@@ -45,7 +45,7 @@ describe 'Command Hooks plugin (integration)' do
   def in_project
     Dir.mktmpdir( 'command_hooks' ) do |root|
       Dir.chdir( root ) do
-        File.write( 'record.rb', RECORDER )
+        File.write( 'record.rb', COMMAND_HOOKS_RECORDER )
         yield
       end
     end
@@ -56,7 +56,7 @@ describe 'Command Hooks plugin (integration)' do
   end
 
   # Each hook, the argument hash or values the core passes it, and the `${1}` it promises
-  CORE_CALLS = {
+  COMMAND_HOOKS_CORE_CALLS = {
     pre_mock_preprocess:       [{ header_file: 'src/adc.h', test: 'test_adc' },                    'src/adc.h'],
     post_mock_preprocess:      [{ header_file: 'src/adc.h', test: 'test_adc' },                    'src/adc.h'],
     pre_test_preprocess:       [{ test_file: 'test/test_adc.c', test: 'test_adc' },                'test/test_adc.c'],
@@ -74,7 +74,7 @@ describe 'Command Hooks plugin (integration)' do
   }.freeze
 
   describe 'hooks with an argument hash' do
-    CORE_CALLS.each do |hook, (arg_hash, expected)|
+    COMMAND_HOOKS_CORE_CALLS.each do |hook, (arg_hash, expected)|
       it "runs :#{hook} with #{expected} as ${1}" do
         in_project do
           plugin_for( command_hooks: { hook => recording_hook( hook ) } ).public_send( hook, arg_hash )

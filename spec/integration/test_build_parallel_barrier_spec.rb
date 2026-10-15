@@ -34,7 +34,7 @@ describe 'TestBuildExecutor two-pass compile barrier (integration)' do
     def method_missing(*_args, **_kwargs); self; end
     def respond_to_missing?(*); true; end
   end
-  NULL = NullObject.new
+  PARALLEL_BARRIER_NULL = NullObject.new
 
   class StubConfigurator
     def initialize(threads); @threads = threads; end
@@ -51,7 +51,7 @@ describe 'TestBuildExecutor two-pass compile barrier (integration)' do
   TESTABLE_COUNT  = 40
   ITERATIONS      = 40 # sized for CI runtime, not exhaustive reproduction -- see below
 
-  let(:batchinator) { Batchinator.new(configurator: StubConfigurator.new(THREADS), loginator: NULL, reportinator: NULL) }
+  let(:batchinator) { Batchinator.new(configurator: StubConfigurator.new(THREADS), loginator: PARALLEL_BARRIER_NULL, reportinator: PARALLEL_BARRIER_NULL) }
 
   # Mirrors stage_build_objects's own two sequential compile_pass.call invocations:
   # every testable's "own file" batch (the only place search_paths is corrected)

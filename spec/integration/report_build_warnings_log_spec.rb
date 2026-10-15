@@ -25,7 +25,7 @@ describe 'Build Warnings Log plugin (integration)' do
   include_context 'requires gcc'
 
   # A header warning every file including it repeats, and an unused variable
-  FILES = {
+  BUILD_WARNINGS_FILES = {
     'shared.h' => "static int unused_helper( void ) { return 1; }\n",
     'a.c'      => "#include \"shared.h\"\nint a( void ) { int spare; return 0; }\n",
     'b.c'      => "#include \"shared.h\"\nint b( void ) { return 0; }\n"
@@ -53,7 +53,7 @@ describe 'Build Warnings Log plugin (integration)' do
   def in_project
     Dir.mktmpdir( 'warnings' ) do |root|
       Dir.chdir( root ) do
-        FILES.each { |name, text| File.write( name, text ) }
+        BUILD_WARNINGS_FILES.each { |name, text| File.write( name, text ) }
         stub_const( 'PROJECT_BUILD_ARTIFACTS_ROOT', 'build/artifacts' )
         yield
       end

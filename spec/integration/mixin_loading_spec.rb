@@ -69,7 +69,7 @@ class NullObject
   def method_missing(*_args, **_kwargs); self; end
   def respond_to_missing?(*); true; end
 end
-NULL = NullObject.new
+MIXIN_LOADING_NULL = NullObject.new
 
 # Trivial mixin YAML content -- adds a harmless empty :paths ↳ :include entry
 # so a merge has no side effects beyond what each test itself is checking.
@@ -89,23 +89,23 @@ describe 'Mixin loading and merging (integration)' do
   # thread this spec has no need of, matching the same convention other
   # integration/system-support helpers in this repo already use).
   def build_composinator
-    file_wrapper = FileWrapper.new(loginator: NULL, verbosinator: NULL)
-    path_validator = PathValidator.new(file_wrapper: file_wrapper, loginator: NULL)
+    file_wrapper = FileWrapper.new(loginator: MIXIN_LOADING_NULL, verbosinator: MIXIN_LOADING_NULL)
+    path_validator = PathValidator.new(file_wrapper: file_wrapper, loginator: MIXIN_LOADING_NULL)
     yaml_wrapper = YamlWrapper.new(file_wrapper: file_wrapper)
 
     projectinator = Projectinator.new(
       file_wrapper: file_wrapper, path_validator: path_validator,
-      yaml_wrapper: yaml_wrapper, loginator: NULL
+      yaml_wrapper: yaml_wrapper, loginator: MIXIN_LOADING_NULL
     )
     mixin_resolvinator = MixinResolvinator.new(
       file_wrapper: file_wrapper, path_validator: path_validator,
-      loginator: NULL, ruby_expandinator: RubyExpandinator.new
+      loginator: MIXIN_LOADING_NULL, ruby_expandinator: RubyExpandinator.new
     )
     mixin_standardizer = MixinStandardizer.new(reportinator: Reportinator.new)
     merginator = Merginator.new(reportinator: Reportinator.new)
     mixinator = Mixinator.new(
       mixin_standardizer: mixin_standardizer, merginator: merginator,
-      path_validator: path_validator, yaml_wrapper: yaml_wrapper, loginator: NULL
+      path_validator: path_validator, yaml_wrapper: yaml_wrapper, loginator: MIXIN_LOADING_NULL
     )
     mixinator.setup
 
