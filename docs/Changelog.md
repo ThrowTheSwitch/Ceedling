@@ -169,6 +169,7 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - Fixed certain hooks handing their tools an empty `${1}`.
 - The compile hooks now pass the source file as `${1}` and the object file as `${2}`, and `:pre_runner_generate` passes the test file, as documented.
 - Fixed a hook configured with a list of tools failing validation.
+- Fixed the build hooks (`:pre_build`, `:post_build`, `:pre_test_build`, and the like) handing their tools a date string rather than a timestamp in seconds on Windows.
 
 ### Dependencies plugin
 
