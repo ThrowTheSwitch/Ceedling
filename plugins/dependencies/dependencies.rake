@@ -5,27 +5,18 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-DEPENDENCIES_DEPS.each do |deplib|
+@ceedling[DEPENDENCIES_SYM].specs.each do |dep|
 
-  # Look up the name of this dependency library
-  deplib_name = @ceedling[DEPENDENCIES_SYM].get_name(deplib)
+  # The plugin creates each working path as fetching and building need it. Created any
+  # earlier, a build path inside the fetch path would make an unfetched dependency look
+  # fetched and stop a git clone into it.
 
-  # Make sure the required working directories exists
-  # (don't worry about the subdirectories. That's the job of the dep's build tool)
-  paths = @ceedling[DEPENDENCIES_SYM].get_working_paths(deplib)
-  paths.each {|path| directory(path) }
-  task :directories => paths
+  collector = @ceedling[DEPENDENCIES_SYM].path_collector
+  headers_and_sources = dep.include_directories( collector ) + dep.include_files + dep.source_paths
+  all_deps = dep.static_libraries + dep.dynamic_libraries + headers_and_sources
 
-  all_deps = @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
-             @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib) +
-             @ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) +
-             @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib) +
-             @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
-
-  # Add a rule for building the actual libraries from dependency list
-  (@ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib) +
-   @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
-  ).each do |libpath|
+  # Add a rule for building the actual libraries and executables from dependency list
+  (dep.static_libraries + dep.dynamic_libraries + dep.executables).each do |libpath|
     file libpath do |filetask|
       path = filetask.name
 
@@ -34,29 +25,21 @@ DEPENDENCIES_DEPS.each do |deplib|
       if (File.exist?(path))
         @ceedling[:loginator].lazy( Verbosity::OBNOXIOUS ) { "Nothing to do for dependency #{path}" }
       else
-        # Set Environment Variables, Fetch, and Build
-        @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
-        @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
-        @ceedling[DEPENDENCIES_SYM].build_if_required(path)
+        @ceedling[DEPENDENCIES_SYM].make_if_required(path)
       end
     end
   end
 
   # Add a rule for building the source and includes from dependency list
-  (@ceedling[DEPENDENCIES_SYM].get_include_directories_for_dependency(deplib) +
-   @ceedling[DEPENDENCIES_SYM].get_include_files_for_dependency(deplib) +
-   @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
-  ).each do |libpath|
+  # A task's name is the project path the dependency is found by
+  headers_and_sources.each do |libpath|
     task libpath do |filetask|
-      path = File.expand_path(filetask.name)
+      path = filetask.name
 
-      if (File.file?(path) || File.directory?(path))
+      if File.exist?( path )
         @ceedling[:loginator].lazy( Verbosity::OBNOXIOUS ) { "Nothing to do for dependency #{path}" }
       else
-        # Set Environment Variables, Fetch, and Build
-        @ceedling[DEPENDENCIES_SYM].set_env_if_required(path)
-        @ceedling[DEPENDENCIES_SYM].fetch_if_required(path)
-        @ceedling[DEPENDENCIES_SYM].build_if_required(path)
+        @ceedling[DEPENDENCIES_SYM].make_if_required(path)
       end
     end
   end
@@ -65,90 +48,80 @@ DEPENDENCIES_DEPS.each do |deplib|
   namespace DEPENDENCIES_SYM do
     namespace :deploy do
       # Add task to directly just build this dependency
-      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)) do |_t,_args|
-        @ceedling[DEPENDENCIES_SYM].deploy_if_required(deplib_name)
+      task(dep.task_name => dep.dynamic_libraries + dep.executables) do |_t,_args|
+        @ceedling[DEPENDENCIES_SYM].deploy_if_required(dep.task_name)
       end
     end
 
     namespace :make do
       # Add task to directly just build this dependency
-      task(deplib_name => all_deps)
+      task(dep.task_name => all_deps + dep.executables)
     end
 
     namespace :clean do
       # Add task to directly clobber this dependency
-      task(deplib_name) do
-        @ceedling[DEPENDENCIES_SYM].clean_if_required(deplib_name)
+      task(dep.task_name) do
+        @ceedling[DEPENDENCIES_SYM].clean_if_required(dep.task_name)
       end
     end
 
     namespace :fetch do
       # Add task to directly clobber this dependency
-      task(deplib_name => @ceedling[DEPENDENCIES_SYM].get_source_path(deplib)) do
-        @ceedling[DEPENDENCIES_SYM].fetch_if_required(deplib_name)
+      task(dep.task_name) do
+        @ceedling[DEPENDENCIES_SYM].fetch_if_required(dep.task_name)
       end
     end
   end
 
 
   # Add source files to our list of things to build during release
-  source_files = @ceedling[DEPENDENCIES_SYM].get_source_files_for_dependency(deplib)
-  task PROJECT_RELEASE_BUILD_TARGET => source_files
+  task PROJECT_RELEASE_BUILD_TARGET => dep.source_paths
 
   # Finally, add the static libraries to our RELEASE build dependency list
-  static_libs = @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib)
-  task RELEASE_SYM => static_libs
+  task RELEASE_SYM => dep.static_libraries
 
   # Add the dynamic libraries to our RELEASE task dependency list so that they will be copied automatically
-  dynamic_libs = @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
-  task RELEASE_SYM => dynamic_libs
+  task RELEASE_SYM => dep.dynamic_libraries
 
-  # Paths to Libraries need to be Added to the Lib Path List
-  all_libs = static_libs + dynamic_libs
-  PATHS_LIBRARIES ||= []
-  all_libs.each {|lib| PATHS_LIBRARIES << File.dirname(lib) }
-  PATHS_LIBRARIES.uniq!
-  PATHS_LIBRARIES.reject!{|s| s.empty?}
-
-  # Libraries Need to be Added to the Library List
-  LIBRARIES_SYSTEM ||= []
-  all_libs.each {|lib| LIBRARIES_SYSTEM << File.basename(lib,'.*').sub(/^lib/,'') }
-  LIBRARIES_SYSTEM.uniq!
-  LIBRARIES_SYSTEM.reject!{|s| s.empty?}
+  # A release may ship a dependency's executables, which no test build links
+  task RELEASE_SYM => dep.executables
 
   task :prepare => all_deps
 end
+
+# Dependency libraries join the library names and paths test and release builds link with
+link_libraries = @ceedling[DEPENDENCIES_SYM].link_libraries
+PATHS_LIBRARIES ||= []
+PATHS_LIBRARIES.concat( link_libraries[:paths] ).uniq!
+LIBRARIES_SYSTEM ||= []
+LIBRARIES_SYSTEM.concat( link_libraries[:names] ).uniq!
 
 # Add any artifact:include or :source folders to our release & test includes paths so linking and mocking work.
 @ceedling[DEPENDENCIES_SYM].add_headers_and_sources()
 
 # Add tasks for building or cleaning ALL depencies
 namespace DEPENDENCIES_SYM do
+  task_names = @ceedling[DEPENDENCIES_SYM].specs.map( &:task_name )
+
   desc "Deploy missing dependencies."
-  task :deploy => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:deploy:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :deploy => task_names.map { |name| "#{DEPENDENCIES_SYM}:deploy:#{name}" }
 
   desc "Build any missing dependencies."
-  task :make => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:make:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :make => task_names.map { |name| "#{DEPENDENCIES_SYM}:make:#{name}" }
 
   desc "Clean all dependencies."
-  task :clean => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:clean:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :clean => task_names.map { |name| "#{DEPENDENCIES_SYM}:clean:#{name}" }
 
   desc "Fetch all dependencies."
-  task :fetch => DEPENDENCIES_DEPS.map{|deplib| "#{DEPENDENCIES_SYM}:fetch:#{@ceedling[DEPENDENCIES_SYM].get_name(deplib)}"}
+  task :fetch => task_names.map { |name| "#{DEPENDENCIES_SYM}:fetch:#{name}" }
 end
 
 namespace :files do
-  desc "List all collected dependency libraries."
+  desc "List all collected dependency libraries and executables."
   task :dependencies do
     puts "dependency files:"
-    deps = []
-    DEPENDENCIES_DEPS.each do |deplib|
-      deps << @ceedling[DEPENDENCIES_SYM].get_static_libraries_for_dependency(deplib)
-      deps << @ceedling[DEPENDENCIES_SYM].get_dynamic_libraries_for_dependency(deplib)
-    end
-    deps.flatten!
+    deps = @ceedling[DEPENDENCIES_SYM].specs.flat_map { |dep| dep.static_libraries + dep.dynamic_libraries + dep.executables }
     deps.sort.each {|dep| puts " - #{dep}"}
     puts "file count: #{deps.size}"
   end
 end
-

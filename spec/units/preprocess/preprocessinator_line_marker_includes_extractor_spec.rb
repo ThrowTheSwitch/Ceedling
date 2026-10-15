@@ -214,6 +214,20 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
       expect( paths_of(includes) ).to eq( ['C:/proj/test/common/helper.h'] )
     end
 
+    # An include path above the project root, such as `:paths` ↳ `:include: [../shared]`
+    # or a dependency beside the project, gives GCC a marker that starts with ..
+    it 'keeps a marker path that lies above the project root, relative' do
+      content = <<~OUTPUT
+        # 1 "test/test_value.c"
+        # 1 "../shared/shared.h" 1
+        # 1 "../supervisor/build/../src/supervisor.h" 1
+      OUTPUT
+
+      includes = @extractor.extract_includes_from_string( content, 'test/test_value.c', described_class::USER )
+
+      expect( paths_of(includes) ).to eq( ['../shared/shared.h', '../supervisor/src/supervisor.h'] )
+    end
+
     it 'deduplicates a path reached more than once (e.g. via an include guard)' do
       content = <<~OUTPUT
         # 1 "test.c"

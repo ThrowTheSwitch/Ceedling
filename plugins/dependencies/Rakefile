@@ -8,6 +8,7 @@
 require 'rake'
 
 require 'rbconfig'
+require 'open3'
 
 def windows?()
   return (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
@@ -50,8 +51,18 @@ def assert_file_not_exist(path)
   end
 end
 
+# Runs Ceedling, failing on a nonzero exit status. Output includes stderr, where Ceedling
+# reports its own errors.
+def run_ceedling(cmd)
+  output, status = Open3.capture2e( "#{CEEDLING_CLI_EXEC} #{cmd}" )
+  return output if status.success?
+
+  puts output # Debug logging
+  raise "`ceedling #{cmd}` exited with status #{status.exitstatus}"
+end
+
 def assert_cmd_return(cmd, expected)
-  retval = `#{CEEDLING_CLI_EXEC} #{cmd}`
+  retval = run_ceedling( cmd )
   if (retval.include? expected)
     puts "Testing included `#{expected}`"
   else
@@ -61,10 +72,11 @@ def assert_cmd_return(cmd, expected)
 end
 
 def assert_cmd_not_return(cmd, expected)
-  retval = `#{CEEDLING_CLI_EXEC} #{cmd}`
+  retval = run_ceedling( cmd )
   if (!retval.include? expected)
     puts "Testing didn't included `#{expected}`"
   else
+    puts retval # Debug logging
     raise "Testing included `#{expected}`, which was unexpected."
   end
 end

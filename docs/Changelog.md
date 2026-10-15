@@ -98,6 +98,9 @@ The refreshed Bullseye plugin offers additional features over the original versi
 - [#665](https://github.com/ThrowTheSwitch/Ceedling/issues/665) Added [`:test_guard`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#test-guards) to wrap generated tests in `#if` rather than `#ifdef`. Generating tests now warns when the guarding test define is not defined for test builds, since those tests would compile to nothing.
 - [#1025](https://github.com/ThrowTheSwitch/Ceedling/issues/1025) `module:create` now warns about each [existing file elsewhere in the project that shares a name](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#same-named-files) with a file it creates.
 
+### Dependencies plugin executables
+[#1110](https://github.com/ThrowTheSwitch/Ceedling/issues/1110) A dependency can now list the programs it builds under [`:artifacts` ↳ `:executables`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/dependencies/#executables) for tools rather than libraries. A release build or `dependencies:make` builds them when missing, test builds do not wait on them, and they are never linked. `dependencies:deploy` copies them, along with dynamic libraries, to a new optional [`:paths` ↳ `:deploy`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/dependencies/#working-paths) folder, by default beside the release executable.
+
 ### GTest-like report plugin skipped tests
 The [GTest-like console report](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/) (`report_tests_gtestlike_stdout`) now reports a Unity test ignored with `TEST_IGNORE()` or `TEST_IGNORE_MESSAGE()` as a GoogleTest skipped test. A skipped test is listed with its location and message, counted in the run, and summarized between passed and failed tests, the way GoogleTest 1.10.0 and later reports `GTEST_SKIP()`. A test file whose every test is ignored now gets its own section. The new `:report_tests_gtestlike_stdout` ↳ `:ignored_as_skipped:` setting defaults to `TRUE`. Set it to `FALSE` to leave ignored tests out of the report for tools that do not understand skipped tests (see the related _Changed_ entry below).
 
@@ -157,6 +160,17 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - Fixed any name beginning with `test` being taken as a test file, turning `testimony` into `imony`. Only a name carrying the configured `:test_file_prefix` asks for a test file alone.
 - Fixed `module:stub` ignoring the project’s `:cmock` settings and a subdirectory named with a slash, printing its configuration, and triggering a CMock warning about `:includes`.
 - Fixed `:boilerplate_files` changing the configured `:boilerplates`. A boilerplate file that does not exist now stops the command rather than being ignored.
+
+### Dependencies plugin
+
+- Fixed enabling the plugin making its fetch tools (`unzip`, `tar`, `git`, `svn`) and its `:build_lib` compiler and archiver requirements of every Ceedling command, including plain `test:all`. Each is now checked just before a dependency fetches or builds with it.
+- [#1076](https://github.com/ThrowTheSwitch/Ceedling/issues/1076) Fixed a second `dependencies:fetch`, or a `dependencies:make` after a fetch, failing because `git clone` ran into the already-populated folder. A dependency whose fetch path holds files now counts as fetched, and `dependencies:clean` allows a fresh fetch. Working paths are no longer created ahead of fetching, which made a clone into a fetch path containing the build path fail.
+- [#1110](https://github.com/ThrowTheSwitch/Ceedling/issues/1110) Fixed `dependencies:deploy` trying to copy a file named for the dependency rather than its dynamic libraries. It now copies every dynamic library from the artifact path beside the release executable.
+- Fixed a `:tar_gzip` fetch from an absolute Windows path failing with "Cannot connect to D: resolve failed" where GNU tar, as Git for Windows provides, came first on the path. GNU tar reads a path beginning with a drive letter as a remote host, so `tar` now reads the archive on its standard input.
+- Fixed a dependency's `:environment` variables lasting for the rest of the run, reaching every later dependency and Ceedling itself. They now apply only while that dependency's commands run. An entry not of the form `NAME=value`, `NAME+=value`, or `NAME-=value` now stops the build rather than being ignored. Text after `+=` and `-=` now keeps its leading space, so an appended flag can carry the delimiter it needs.
+- Fixed a dependency without `:artifacts` crashing the build. Configuration problems now stop the build with a message naming the dependency: a missing name, a name without letters or digits, two names sharing a task name, an unknown fetch method, or a fetch method missing its `:source` or `:executable`.
+- Fixed an `:includes` glob under `:artifacts` expanding against the working directory rather than the artifact path, and joining every directory it found into one path.
+- Fixed `:build_lib` depending on the process working directory, and miscomputing where to copy its library when the `:artifact` path was absolute or climbed with `..`. The `:deps_compiler` tool now receives its search paths and defines as `${5}` and `${6}`, like Ceedling's own compilers.
 
 ### Valgrind & Cppcheck plugins
 

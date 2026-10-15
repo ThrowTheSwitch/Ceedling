@@ -44,6 +44,24 @@ describe 'Includes extraction (integration)' do
 
   # --- Basics ------------------------------------------------------------
 
+  # A build runs from the project root with project-relative paths, so a header on an
+  # include path above that root, such as `:paths` ↳ `:include: [../shared]` or a
+  # dependency beside the project, reaches GCC's line markers as `../shared/...`
+  it 'extracts a user include from a search path above the project root' do
+    tree = {
+      'proj/src/value.c' => %(#include "shared.h"\nint value(void) { return SHARED; }\n),
+      'shared/shared.h'  => %(#ifndef SHARED_H\n#define SHARED_H\n#define SHARED 3\n#endif\n)
+    }
+
+    result = with_source_tree( tree ) do |dir|
+      Dir.chdir( File.join( dir, 'proj' ) ) do
+        build_includes_harness( '.' ).reconcile( file: 'src/value.c', search_paths: ['src', '../shared'], fallback: !@accurate ).map( &:to_s )
+      end
+    end
+
+    expect(result).to eq( ['#include "shared.h"'] )
+  end
+
   it 'extracts a single literal user include' do
     tree = {
       'widget.c' => %(#include "widget.h"\nint w(void){return 0;}\n),

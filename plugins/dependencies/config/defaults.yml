@@ -13,16 +13,18 @@
   :deps_compiler:  
     :executable: gcc
     :name: 'Dependencies compiler'
+    :optional: true  # Checked when :build_lib compiles, not by every Ceedling command
     :arguments:  
       - -g  
-      - -I"$": COLLECTION_PATHS_DEPS  
-      - -D$: COLLECTION_DEFINES_DEPS  
+      - -I"${5}"  # Search paths: header directories under the source path
+      - -D${6}    # The dependency's :defines
       - -c "${1}"  
       - -o "${2}"  
 
   :deps_linker:
     :executable: ar  
     :name: 'Dependencies archiver'
+    :optional: true  # Checked when :build_lib archives, not by every Ceedling command
     :arguments:  
       - rcs  
       - ${2}  
@@ -40,11 +42,12 @@
     :executable: tar
     :name: 'Dependencies tar gzip unarchiver'
     :optional: true
+    # The archive arrives on standard input. GNU tar reads a path beginning `D:` as a
+    # remote host named D, so a Windows path given to -f fails.
     :arguments:
-      - -xvzf
-      - ${1}  # Filepath
-      - -C
-      - ./
+      - -xvzf -
+      - -C ./
+      - < "${1}"  # Filepath
 
   :deps_git_clone:
     :executable: git
