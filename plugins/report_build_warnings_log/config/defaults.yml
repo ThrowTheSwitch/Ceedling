@@ -9,4 +9,6 @@
 ---
 :report_build_warnings_log:
   :filename: warnings.log
+  :patterns: []   # Regular expressions replacing the default match of any line mentioning "warning"
+  :excludes: []   # Regular expressions dropping matched warnings, context included
 ...

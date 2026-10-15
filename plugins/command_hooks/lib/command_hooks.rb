@@ -13,228 +13,146 @@ require 'ceedling/tool_executor'
 COMMAND_HOOKS_ROOT_NAME = 'command_hooks'.freeze
 COMMAND_HOOKS_SYM       = COMMAND_HOOKS_ROOT_NAME.to_sym
 
-COMMAND_HOOKS_LIST = [
-  :pre_mock_preprocess,
-  :post_mock_preprocess,
-  :pre_test_preprocess,
-  :post_test_preprocess,
-  :pre_mock_generate,
-  :post_mock_generate,
-  :pre_runner_generate,
-  :post_runner_generate,
-  :pre_compile_execute,
-  :post_compile_execute,
-  :pre_link_execute,
-  :post_link_execute,
-  :pre_test_fixture_execute,
-  :post_test_fixture_execute,
-  :pre_test,
-  :post_test,
-  :pre_test_build,
-  :post_test_build,
-  :pre_release_build,
-  :post_release_build,
-  :pre_build,
-  :post_build,
-  :post_error,
-].freeze
+# Hooks whose build step hands over an argument hash, and the hash entries its tools
+# receive as ${1}, ${2}, ... The keys are those Ceedling's core builds for each step.
+COMMAND_HOOKS_ARGUMENTS = {
+  pre_mock_preprocess:       [:header_file],
+  post_mock_preprocess:      [:header_file],
+  pre_test_preprocess:       [:test_file],
+  post_test_preprocess:      [:test_file],
+  pre_mock_generate:         [:header_file],
+  post_mock_generate:        [:header_file],
+  pre_runner_generate:       [:test_file],
+  post_runner_generate:      [:runner_file],
+  pre_compile_execute:       [:source, :object],
+  post_compile_execute:      [:source, :object],
+  pre_link_execute:          [:executable],
+  post_link_execute:         [:executable],
+  pre_test_fixture_execute:  [:executable],
+  post_test_fixture_execute: [:executable]
+}.freeze
 
+# Hooks whose build step hands over plain values, which their tools receive in order
+COMMAND_HOOKS_VALUES = %i[pre_test post_test pre_test_build post_test_build pre_release_build post_release_build
+                          pre_build post_build post_error].freeze
+
+COMMAND_HOOKS_LIST = (COMMAND_HOOKS_ARGUMENTS.keys + COMMAND_HOOKS_VALUES).freeze
+
+# Runs the tools a project configures under :command_hooks at Ceedling's build steps.
+#
+# Each hook takes one tool or a list of tools, every one validated as Ceedling validates
+# any tool. A tool receives its hook's arguments as ${1}, ${2}, and so on, and logs its
+# output when its :logging is set.
 class CommandHooks < Plugin
 
   def setup
-    # Get a copy of the project configuration
     project_config = @ceedling[:setupinator].config_hash
 
-    # Convenience object references
-    @loginator = @ceedling[:loginator]
-    @reportinator = @ceedling[:reportinator]
-    @walkinator = @ceedling[:config_walkinator]
-    @tool_validator = @ceedling[:tool_validator]
-    @tool_executor = @ceedling[:tool_executor]
-    @verbosinator = @ceedling[:verbosinator]
-    @configurator_validator = @ceedling[:configurator_validator]
-    
-    # Look up if the accompanying `:command_hooks` configuration block exists
-    config_exists = @configurator_validator.exists?(
-      project_config,
-      COMMAND_HOOKS_SYM
-    )
+    @loginator     = @ceedling[:loginator]
+    @reportinator  = @ceedling[:reportinator]
+    @verbosinator  = @ceedling[:verbosinator]
 
-    # Go boom if the required configuration block does not exist
-    unless config_exists
-      name = @reportinator.generate_config_walk([COMMAND_HOOKS_SYM])
-      error = "Command Hooks plugin is enabled but is missing a required configuration block `#{name}`"
-      raise CeedlingException.new(error)
+    unless @ceedling[:configurator_validator].exists?( project_config, COMMAND_HOOKS_SYM )
+      name = @reportinator.generate_config_walk( [COMMAND_HOOKS_SYM] )
+      raise CeedlingException.new( "Command Hooks plugin is enabled but is missing a required configuration block `#{name}`" )
     end
-    
-    @config = project_config[COMMAND_HOOKS_SYM]
-    
-    # Validate the command hook keys (look out for typos)
-    validate_config( @config )
-    
-    # Validate the tools beneath the keys
-    @config.each do |hook, tool|
-      if tool.is_a?(Array)
-        tool.each_index {|index| validate_hook( project_config, hook, index )}
-      else
-        validate_hook( project_config, hook )
-      end
-    end
+
+    config = project_config[COMMAND_HOOKS_SYM]
+    validate_config( config )
+
+    # Every hook as a list of its validated tools
+    @hooks = config.to_h { |hook, tools| [hook, validate_tools( hook, tools )] }
   end
 
-  def pre_mock_preprocess(arg_hash);           run_hook( :pre_mock_preprocess,       arg_hash[:header_file] ); end
-  def post_mock_preprocess(arg_hash);          run_hook( :post_mock_preprocess,      arg_hash[:header_file] ); end
-  def pre_test_preprocess(arg_hash);           run_hook( :pre_test_preprocess,       arg_hash[:test_file]   ); end
-  def post_test_preprocess(arg_hash);          run_hook( :post_test_preprocess,      arg_hash[:test_file]   ); end
-  def pre_mock_generate(arg_hash);             run_hook( :pre_mock_generate,         arg_hash[:header_file] ); end
-  def post_mock_generate(arg_hash);            run_hook( :post_mock_generate,        arg_hash[:header_file] ); end
-  def pre_runner_generate(arg_hash);           run_hook( :pre_runner_generate,       arg_hash[:source]      ); end
-  def post_runner_generate(arg_hash);          run_hook( :post_runner_generate,      arg_hash[:runner_file] ); end
-  def pre_compile_execute(arg_hash);           run_hook( :pre_compile_execute,       arg_hash[:source_file] ); end
-  def post_compile_execute(arg_hash);          run_hook( :post_compile_execute,      arg_hash[:object_file] ); end
-  def pre_link_execute(arg_hash);              run_hook( :pre_link_execute,          arg_hash[:executable]  ); end
-  def post_link_execute(arg_hash);             run_hook( :post_link_execute,         arg_hash[:executable]  ); end
-  def pre_test_fixture_execute(arg_hash);      run_hook( :pre_test_fixture_execute,  arg_hash[:executable]  ); end
-  def post_test_fixture_execute(arg_hash);     run_hook( :post_test_fixture_execute, arg_hash[:executable]  ); end
-  def pre_test(test);                          run_hook( :pre_test,                  test ); end
-  def post_test(test);                         run_hook( :post_test,                 test ); end
-  def pre_test_build(context, timestamp_s);    run_hook( :pre_test_build,            context.to_s, timestamp_s.to_s ); end
-  def post_test_build(context, timestamp_s);   run_hook( :post_test_build,           context.to_s, timestamp_s.to_s ); end
-  def pre_release_build(timestamp_s);          run_hook( :pre_release_build,         timestamp_s.to_s ); end
-  def post_release_build(timestamp_s);         run_hook( :post_release_build,        timestamp_s.to_s ); end
-  def pre_build(timestamp_s);                  run_hook( :pre_build,                 timestamp_s.to_s ); end
-  def post_build(timestamp_s);                 run_hook( :post_build,                timestamp_s.to_s ); end
-  def post_error(timestamp_s);                 run_hook( :post_error,                timestamp_s.to_s ); end
+  COMMAND_HOOKS_ARGUMENTS.each do |hook, keys|
+    define_method( hook ) { |arg_hash| run_hook( hook, *arg_hash.values_at( *keys ) ) }
+  end
+
+  def pre_test(test);                        run_hook( :pre_test,           test ); end
+  def post_test(test);                       run_hook( :post_test,          test ); end
+  def pre_test_build(context, timestamp_s);  run_hook( :pre_test_build,     context.to_s, seconds( timestamp_s ) ); end
+  def post_test_build(context, timestamp_s); run_hook( :post_test_build,    context.to_s, seconds( timestamp_s ) ); end
+  def pre_release_build(timestamp_s);        run_hook( :pre_release_build,  seconds( timestamp_s ) ); end
+  def post_release_build(timestamp_s);       run_hook( :post_release_build, seconds( timestamp_s ) ); end
+  def pre_build(timestamp_s);                run_hook( :pre_build,          seconds( timestamp_s ) ); end
+  def post_build(timestamp_s);               run_hook( :post_build,         seconds( timestamp_s ) ); end
+  def post_error(timestamp_s);               run_hook( :post_error,         seconds( timestamp_s ) ); end
 
   ### Private
 
   private
-  
-  ##
-  # Validate plugin configuration.
-  #
-  # :args:
-  #   - config: :command_hooks section from project config hash
-  #
+
+  # A stopwatch value as seconds. Ceedling's stopwatch is a Float count of seconds on most
+  # platforms but the wall clock, a Time, on Windows. Converting through the exact
+  # Rational keeps a Time's fraction from picking up rounding noise.
+  def seconds(timestamp)
+    return timestamp.to_r.to_f.to_s
+  end
+
+  # The :command_hooks section must be a hash of recognized hooks, so a misspelled hook
+  # stops the build rather than silently never running
   def validate_config(config)
-    unless config.is_a?(Hash)
-      name = @reportinator.generate_config_walk([COMMAND_HOOKS_SYM])
-      error = "Expected configuration #{name} to be a Hash but found #{config.class}"
-      raise CeedlingException.new(error)
-    end
-    
-    unrecognized_hooks = config.keys - COMMAND_HOOKS_LIST
-    
-    unrecognized_hooks.each do |not_a_hook|
-      name = @reportinator.generate_config_walk( [COMMAND_HOOKS_SYM, not_a_hook] )
-      error = "Unrecognized Command Hook: #{name}"
-      @loginator.log( error, Verbosity::ERRORS )
-    end
-    
-    unless unrecognized_hooks.empty?
-      error = "Unrecognized hooks found in Command Hooks plugin configuration"
-      raise CeedlingException.new(error)
-    end
-  end
-  
-  ##
-  # Validate given hook
-  #
-  # :args:
-  #   - config: Project configuration hash
-  #   - keys: Key and index of hook inside :command_hooks configuration
-  #
-  def validate_hook(config, *keys)
-    walk = [COMMAND_HOOKS_SYM, *keys]
-    name = @reportinator.generate_config_walk( walk )
-    entry, _ = @walkinator.fetch_value( *walk, hash:config )
-
-    if entry.nil?
-      raise CeedlingException.new( "Missing Command Hook plugin configuration for #{name}" )
-    end
-        
-    unless entry.is_a?(Hash)
-      error = "Expected configuration #{name} for Command Hooks plugin to be a Hash but found #{entry.class}"
-      raise CeedlingException.new( error )
+    unless config.is_a?( Hash )
+      name = @reportinator.generate_config_walk( [COMMAND_HOOKS_SYM] )
+      raise CeedlingException.new( "Expected configuration #{name} to be a Hash but found #{config.class}" )
     end
 
-    # Populate name if not given
-    ToolExecutor.default_name!( entry, keys.join('_') )
+    unrecognized = config.keys - COMMAND_HOOKS_LIST
+    return if unrecognized.empty?
 
-    # Validate the Ceedling tool components of the hook entry config
-    @tool_validator.validate( tool: entry, name: name, boom: true )
-
-    # Default logging configuration
-    config[:logging] = false if config[:logging].nil?
-  end
-  
-  ##
-  # Run a hook if its available.
-  #
-  # If __which_hook__ is an array, run each of them sequentially.
-  #
-  # :args:
-  #   - which_hook: Name of the hook to run
-  #   - args: Zero or more substitution values available as ${1}, ${2}, ... in tool argument lists
-  #
-  def run_hook(which_hook, *args)
-    if (@config[which_hook])
-      msg = "Running Command Hook :#{which_hook}"
-      msg = @reportinator.generate_progress( msg )
-      @loginator.log( msg )
-
-      # Single tool config
-      if (@config[which_hook].is_a? Hash)
-        run_hook_step( which_hook, @config[which_hook], *args )
-
-      # Multiple tool configs
-      elsif (@config[which_hook].is_a? Array)
-        @config[which_hook].each do |hook|
-          run_hook_step( which_hook, hook, *args )
-        end
-
-      # Tool config is bad
-      else
-        msg = "The tool config for Command Hook #{which_hook} was poorly formed and not run"
-        @loginator.log( msg, Verbosity::COMPLAIN )
-      end
+    unrecognized.each do |hook|
+      @loginator.log( "Unrecognized Command Hook: #{@reportinator.generate_config_walk( [COMMAND_HOOKS_SYM, hook] )}", Verbosity::ERRORS )
     end
+    raise CeedlingException.new( 'Unrecognized hooks found in Command Hooks plugin configuration' )
   end
 
-  ##
-  # Run a hook step (single tool execution).
-  #
-  # :args:
-  #   - which_hook: Name of the hook to run
-  #   - hook: Tool configuration hash for this step
-  #   - args: Zero or more substitution values available as ${1}, ${2}, ... in tool argument lists
-  #
-  # :return:
-  #    shell_result.
-  #
-  def run_hook_step(which_hook, hook, *args)
-    if (hook[:executable])
-      # Handle argument replacement (${1}, ${2}, ...) and get commandline
-      cmd = @ceedling[:tool_executor].build_command_line( hook, [], *args )
-      shell_result = @ceedling[:tool_executor].exec( cmd )
+  # A hook's tools as a list, each validated. A single tool may stand alone or be the only
+  # entry in a list.
+  def validate_tools(hook, tools)
+    return [validate_tool( tools, [hook] )] unless tools.is_a?( Array )
 
-      # If hook logging is enabled
-      if hook[:logging]
-        # Skip debug logging -- allow normal tool debug logging to do its thing
-        return if @verbosinator.should_output?( Verbosity::DEBUG )
+    return tools.each_with_index.map { |tool, index| validate_tool( tool, [hook, index] ) }
+  end
 
-        output = shell_result[:output].strip
+  def validate_tool(tool, keys)
+    name = @reportinator.generate_config_walk( [COMMAND_HOOKS_SYM, *keys] )
 
-        # Set empty output to empty string if we're in OBNOXIOUS logging mode
-        output = '<empty>' if output.empty? and @verbosinator.should_output?( Verbosity::OBNOXIOUS )
-
-        # Don't add to logging output if there's nothing to output
-        return if output.empty?
-
-        # NORMAL and OBNOXIOUS logging
-        @loginator.log( "Command Hook :#{which_hook} output >> #{output}" )
-      end
+    raise CeedlingException.new( "Missing Command Hook plugin configuration for #{name}" ) if tool.nil?
+    unless tool.is_a?( Hash )
+      raise CeedlingException.new( "Expected configuration #{name} for Command Hooks plugin to be a Hash but found #{tool.class}" )
     end
+
+    ToolExecutor.default_name!( tool, keys.join( '_' ) )
+    @ceedling[:tool_validator].validate( tool: tool, name: name, boom: true )
+    tool[:logging] = false if tool[:logging].nil?
+
+    return tool
+  end
+
+  # Runs each of a hook's tools in order, handing each the hook's arguments
+  def run_hook(hook, *args)
+    tools = @hooks[hook]
+    return if tools.nil?
+
+    @loginator.log( @reportinator.generate_progress( "Running Command Hook :#{hook}" ) )
+    tools.each { |tool| run_tool( hook, tool, *args ) }
+  end
+
+  def run_tool(hook, tool, *args)
+    command      = @ceedling[:tool_executor].build_command_line( tool, [], *args )
+    shell_result = @ceedling[:tool_executor].exec( command )
+    log_output( hook, shell_result[:output] ) if tool[:logging]
+  end
+
+  # Debug verbosity already logs every tool's output, so a hook's own logging stands aside
+  def log_output(hook, output)
+    return if @verbosinator.should_output?( Verbosity::DEBUG )
+
+    output = output.to_s.strip
+    output = '<empty>' if output.empty? and @verbosinator.should_output?( Verbosity::OBNOXIOUS )
+    return if output.empty?
+
+    @loginator.log( "Command Hook :#{hook} output >> #{output}" )
   end
 
 end

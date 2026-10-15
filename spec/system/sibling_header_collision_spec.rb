@@ -112,7 +112,7 @@ TEST_MODULE_A_MOCKS_GPIO_AND_BOARD_C = <<~C
   #endif // TEST
 C
 
-READER_HEADER_C = <<~C
+SIBLING_COLLISION_READER_HEADER_C = <<~C
   #ifndef READER_H
   #define READER_H
 
@@ -218,7 +218,7 @@ ceedling_system_tests do
           FileUtils.mkdir_p('library')
           FileUtils.mkdir_p('syscfg')
           File.write('src/gpio.h', GPIO_HEADER_CRASH_ON_REAL_USE)
-          File.write('src/reader.h', READER_HEADER_C)
+          File.write('src/reader.h', SIBLING_COLLISION_READER_HEADER_C)
           File.write('src/reader.c', READER_SOURCE_BESIDE_GPIO_C)
           File.write('test/test_reader.c', TEST_READER_MOCKS_GPIO_C)
 

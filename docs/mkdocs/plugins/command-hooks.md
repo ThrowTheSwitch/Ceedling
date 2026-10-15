@@ -24,7 +24,7 @@ To connect utilties or scripts to build step hooks, Ceedling tools must be defin
 
 A Ceedling tool is just a YAML blob that gathers together a handful of settings and values that tell Ceedling how to build and execute a command line. Your tool can be a command line utility, a script, etc.
 
-Example Ceedling tools follow. When enabled, this plugin ensures any tools you define are executed by the corresponding build step hook they are organized beneath. The configurtion of enabled hooks and tools happens in a top-level `:command_hooks:` block within your project configuration. One or more tools can be attached to a build step hook.
+Example Ceedling tools follow. When enabled, this plugin ensures any tools you define are executed by the corresponding build step hook they are organized beneath. The configurtion of enabled hooks and tools happens in a top-level `:command_hooks` block within your project configuration. One or more tools can be attached to a build step hook.
 
 ### Tool lists
 
@@ -41,6 +41,8 @@ See the commented examples below.
 Each Ceedling tool requires an `:executable` string and an optional `:arguments` list. See the [`:tools` configuration reference][tools-doc] to understand how to craft your argument list and other tool options.
 
 This plugin passes one or two runtime parameters for use in a hook’s tool argument list depending on the hook. These parameters are referenced with Ceedling tool argument expansion identifiers `${1}`, `${2}`, etc. Wherever you place `${1}` or `${2}` in your tool argument list, they expand in the command line Ceedling constructs with the parameters this plugin provides for that build step hook. The list of build step hooks below documents which parameters are available for each hook.
+
+A tool that fails, exiting with a nonzero code, stops the build with its output.
 
 Each tool may optionally include a `:name` — a simple nickname used in log and error messages. If omitted, the plugin forms a default name from the hook’s key (e.g. `pre_mock_generate`). For a hook configured with a list of tools, the default name additionally includes the tool’s position in the list (e.g. `post_link_execute_0`, `post_link_execute_1`). See the commented examples below.
 
@@ -86,8 +88,8 @@ When logging is enabled and logging conditions are appropriate, any output from 
         - ${1} # Replaced with the filepath to the linker’s binary artifact output
         - output.srec
         - --strip-all
-    - :executable: 
-      :arguments: tar.exe
+    - :executable: tar.exe
+      :arguments:
         - -acf
         - awesome_build.zip
         - ${1} # Replaced with the filepath to the linker’s binary artifact output
@@ -106,16 +108,16 @@ As an example, consider a Ceedling project with ten test files and seventeen moc
 * 1 occurrence of the `:pre_test_build` hook.
 * 10 occurrences of the `:pre_test` and `:post_test` hooks.
 * 17 occurrences of the `:pre_mock_generate` and `:post_mock_generate` hooks.
-* 10 occurrences of the `:pre_test_runner_generate` and `:post_test_runner_generate` hooks.
-* 27(+) occurrences of the `:pre_compile` and `:post_compile` hooks. These hooks would be called 27 times for test file and mock file compilation. A test suite build will also include compilation of the source files under tests, Unity’s source, CMock’s source, and generated test runner C files -- easily more than another two dozen compilation hook calls.
-* 10 occurrences of the `:pre_link` and `:post_link` hooks for test executable creation.
+* 10 occurrences of the `:pre_runner_generate` and `:post_runner_generate` hooks.
+* 27(+) occurrences of the `:pre_compile_execute` and `:post_compile_execute` hooks. These hooks would be called 27 times for test file and mock file compilation. A test suite build will also include compilation of the source files under tests, Unity’s source, CMock’s source, and generated test runner C files -- easily more than another two dozen compilation hook calls.
+* 10 occurrences of the `:pre_link_execute` and `:post_link_execute` hooks for test executable creation.
 * 10 occurrences of the `:pre_test_fixture_execute` and `:post_test_fixture_execute` hooks for running test executables and gathering the results of the tests cases they contain.
 * 1 occurrence of the `:post_test_build` hook.
 * 1 occurrence of the `:post_build` hook unless a build error occurred (`:post_error` would be called instead).
 
 ### `:pre_build`
 
-Called once just before Ceedling executes any tasks.
+Called once just before Ceedling executes a build. Commands that build nothing, such as `clean`, `clobber`, or `module:create`, don’t call it, nor `:post_build` or `:post_error`.
 
 The parameter available to a tool (`${1}`) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding `post_build` value can be used to compute the total build duration.
 
@@ -227,19 +229,19 @@ The parameter available to a tool (`${1}`) when the hook is called is the test�
 
 Called just after each test runner is generated.
 
-The parameter available to a tool (`${1}`) when the hook is called is the test’s filepath.
+The parameter available to a tool (`${1}`) when the hook is called is the generated test runner’s filepath.
 
 ### `:pre_compile_execute`
 
 Called just before each C or assembly file is compiled.
 
-The parameter available to a tool (`${1}`) when the hook is called is the filepath of the file to be compiled.
+The parameters available to a tool when the hook is called are the filepath of the file to be compiled (`${1}`) and the filepath of the object file to be produced (`${2}`).
 
 ### `:post_compile_execute`
 
 Called just after each file compilation.
 
-The parameter available to a tool (`${1}`) when the hook is called is the filepath of the input file that was compiled.
+The parameters available to a tool when the hook is called are the filepath of the input file that was compiled (`${1}`) and the filepath of the object file produced (`${2}`).
 
 ### `:pre_link_execute`
 

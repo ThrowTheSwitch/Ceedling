@@ -31,7 +31,7 @@ require 'dependencies'
 describe 'Dependencies plugin (integration)' do
   include ConfiguratorIntegrationHelpers
 
-  FIXTURES = File.join( DEPENDENCIES_PLUGIN_ROOT, 'example' )
+  DEPENDENCIES_FIXTURES = File.join( DEPENDENCIES_PLUGIN_ROOT, 'example' )
 
   def self.tool?(command)
     system( command, out: File::NULL, err: File::NULL )
@@ -69,7 +69,7 @@ describe 'Dependencies plugin (integration)' do
     objects[:dependencies] = Dependencies.new( objects, 'dependencies', DEPENDENCIES_PLUGIN_ROOT )
 
     previous = Rake.application
-    main     = TOOLBOX_MAIN
+    main     = DEPENDENCIES_TOPLEVEL_MAIN
     ceedling = main.instance_variable_get( :@ceedling )
     Rake.application = Rake::Application.new
     main.instance_variable_set( :@ceedling, objects )
@@ -84,7 +84,7 @@ describe 'Dependencies plugin (integration)' do
     end
   end
 
-  TOOLBOX_MAIN = TOPLEVEL_BINDING.receiver
+  DEPENDENCIES_TOPLEVEL_MAIN = TOPLEVEL_BINDING.receiver
 
   def in_project
     Dir.mktmpdir( 'dependencies' ) { |root| Dir.chdir( root ) { yield root } }
@@ -249,7 +249,7 @@ describe 'Dependencies plugin (integration)' do
   describe 'dependencies:fetch' do
     it 'unpacks a zip archive', skip: (UNZIP ? false : 'unzip is not installed') do
       in_project do
-        deps = [dependency( 'bees', fetch: { method: :zip, source: File.join( FIXTURES, 'workerbees.zip' ) } )]
+        deps = [dependency( 'bees', fetch: { method: :zip, source: File.join( DEPENDENCIES_FIXTURES, 'workerbees.zip' ) } )]
         run_tasks( deps, 'dependencies:fetch' )
 
         expect(File.exist?( 'deps/bees/src/worker.c' )).to be true
@@ -258,7 +258,7 @@ describe 'Dependencies plugin (integration)' do
 
     it 'unpacks a gzipped tar archive' do
       in_project do
-        deps = [dependency( 'version', fetch: { method: :tar_gzip, source: File.join( FIXTURES, 'version.tar.gzip' ) } )]
+        deps = [dependency( 'version', fetch: { method: :tar_gzip, source: File.join( DEPENDENCIES_FIXTURES, 'version.tar.gzip' ) } )]
         run_tasks( deps, 'dependencies:fetch' )
 
         # Exactly the archive's files, none of the metadata entries some archivers add

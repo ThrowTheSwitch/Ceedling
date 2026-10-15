@@ -101,6 +101,9 @@ The refreshed Bullseye plugin offers additional features over the original versi
 ### Dependencies plugin executables
 [#1110](https://github.com/ThrowTheSwitch/Ceedling/issues/1110) A dependency can now list the programs it builds under [`:artifacts` ↳ `:executables`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/dependencies/#executables) for tools rather than libraries. A release build or `dependencies:make` builds them when missing, test builds do not wait on them, and they are never linked. `dependencies:deploy` copies them, along with dynamic libraries, to a new optional [`:paths` ↳ `:deploy`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/dependencies/#working-paths) folder, by default beside the release executable.
 
+### Build warnings plugin context, deduplication, and filtering
+The [Build Warnings Log plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-build-warnings-log/) now logs each GCC or Clang warning with the lines that explain it — the function or include context before it along with the source line, caret, and any note after it. Each distinct warning is logged once per build context, so a header's warning appears once rather than once per file including it, and compiler summary lines are left out. New `:patterns` and `:excludes` settings optionally take regular expressions that replace the default match of any line mentioning “warning” and optionally drop warnings you have already accepted or prevent false positives.
+
 ### GTest-like report plugin skipped tests
 The [GTest-like console report](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/) (`report_tests_gtestlike_stdout`) now reports a Unity test ignored with `TEST_IGNORE()` or `TEST_IGNORE_MESSAGE()` as a GoogleTest skipped test. A skipped test is listed with its location and message, counted in the run, and summarized between passed and failed tests, the way GoogleTest 1.10.0 and later reports `GTEST_SKIP()`. A test file whose every test is ignored now gets its own section. The new `:report_tests_gtestlike_stdout` ↳ `:ignored_as_skipped:` setting defaults to `TRUE`. Set it to `FALSE` to leave ignored tests out of the report for tools that do not understand skipped tests (see the related _Changed_ entry below).
 
@@ -160,6 +163,13 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - Fixed any name beginning with `test` being taken as a test file, turning `testimony` into `imony`. Only a name carrying the configured `:test_file_prefix` asks for a test file alone.
 - Fixed `module:stub` ignoring the project’s `:cmock` settings and a subdirectory named with a slash, printing its configuration, and triggering a CMock warning about `:includes`.
 - Fixed `:boilerplate_files` changing the configured `:boilerplates`. A boilerplate file that does not exist now stops the command rather than being ignored.
+
+### Command Hooks plugin
+
+- Fixed certain hooks handing their tools an empty `${1}`.
+- The compile hooks now pass the source file as `${1}` and the object file as `${2}`, and `:pre_runner_generate` passes the test file, as documented.
+- Fixed a hook configured with a list of tools failing validation.
+- Fixed the build hooks (`:pre_build`, `:post_build`, `:pre_test_build`, and the like) handing their tools a date string rather than a timestamp in seconds on Windows.
 
 ### Dependencies plugin
 

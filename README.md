@@ -1,4 +1,4 @@
-Ceedling [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15117/badge)](https://www.bestpractices.dev/projects/15117) ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
+Ceedling [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15117/badge)](https://www.bestpractices.dev/projects/15117) [![Docs](https://img.shields.io/badge/Docs-white?logo=materialformkdocs&link=https%3A%2F%2Fdocs.throwtheswitch.org%2FCeedling%2F)](https://docs.throwtheswitch.org/Ceedling/) [![Discourse](https://img.shields.io/badge/Discourse-purple?logo=discourse&link=https%3A%2F%2Fthrowtheswitch.discourse.group)](https://throwtheswitch.discourse.group) ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
 **Ceedling 1.2.0** is nearing release.

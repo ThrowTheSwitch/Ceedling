@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/plugins/plugin'
+require 'ceedling/exceptions'
 
 $: << File.expand_path('../../../../plugins/report_build_warnings_log/lib', __FILE__)
 require 'report_build_warnings_log'
@@ -28,6 +29,7 @@ describe ReportBuildWarningsLog do
     @plugin.instance_variable_set(:@warnings, Hash.new)
     @plugin.instance_variable_set(:@mutex, Mutex.new)
     @plugin.instance_variable_set(:@log_filename, 'warnings.log')
+    @plugin.instance_variable_set(:@collector, WarningCollector.new)
     @plugin.instance_variable_set(:@file_wrapper, @file_wrapper)
     @plugin.instance_variable_set(:@loginator, @loginator)
     @plugin.instance_variable_set(:@reportinator, @reportinator)
@@ -60,15 +62,27 @@ describe ReportBuildWarningsLog do
     end
   end
 
-  # Tool output mixes warnings with progress and context lines
+  # Tool output mixes warnings, their context, and unrelated lines
   describe '#process_output' do
-    it 'stores only the line(s) that actually look like a warning, not the entire tool output' do
+    it 'stores each warning with its context, leaving out unrelated lines' do
       hash = {}
-      output = "foo.c: In function 'main':\nfoo.c:3:5: warning: unused variable 'x'\nCompiling foo.c...\n"
+      output = "Compiling foo.c...\nfoo.c: In function 'main':\nfoo.c:3:5: warning: unused variable 'x'\n    3 |   int x;\n"
 
       @plugin.send(:process_output, :test, output, hash)
 
-      expect(hash[:test][:collection]).to eq(["foo.c:3:5: warning: unused variable 'x'\n"])
+      expect(hash[:test][:collection]).to eq(["foo.c: In function 'main':\nfoo.c:3:5: warning: unused variable 'x'\n    3 |   int x;\n"])
+    end
+
+    it 'stores a warning reached through a different include chain only once per context' do
+      hash = {}
+      warning = ->( via ) { "In file included from #{via}:1:\nshared.h:1:12: warning: unused function 'f'\n" }
+
+      @plugin.send(:process_output, :test, warning.call( 'a.c' ), hash)
+      @plugin.send(:process_output, :test, warning.call( 'b.c' ), hash)
+      @plugin.send(:process_output, :release, warning.call( 'b.c' ), hash)
+
+      expect(hash[:test][:collection]).to eq([warning.call( 'a.c' )])
+      expect(hash[:release][:collection]).to eq([warning.call( 'b.c' )])
     end
   end
 
@@ -89,10 +103,35 @@ describe ReportBuildWarningsLog do
     end
   end
 
+  describe 'configured matching' do
+    def plugin_with(patterns:, excludes:)
+      configurator = double( 'configurator', report_build_warnings_log_filename: 'warnings.log',
+                             report_build_warnings_log_patterns: patterns, report_build_warnings_log_excludes: excludes )
+      plugin = described_class.allocate
+      plugin.instance_variable_set(:@ceedling, { configurator: configurator, file_wrapper: @file_wrapper, loginator: @loginator, reportinator: @reportinator })
+      plugin.setup
+      return plugin
+    end
+
+    it 'collects what configured patterns match and drops what excludes match' do
+      plugin = plugin_with( patterns: [': remark:'], excludes: ['vendor/'] )
+      hash   = {}
+      plugin.send(:process_output, :test, "a.c:1:1: remark: kept\nvendor/b.c:2:1: remark: dropped\na.c:3:1: warning: not a remark\n", hash)
+
+      expect(hash[:test][:collection]).to eq( ["a.c:1:1: remark: kept\n"] )
+    end
+
+    it 'refuses an invalid pattern as it sets up' do
+      expect { plugin_with( patterns: ['bad('], excludes: [] ) }.to raise_error( CeedlingException, /:patterns.*bad\(/ )
+    end
+  end
+
   describe '#setup' do
     it 'builds a plain Hash, so merely reading an absent context can never silently create an entry' do
       configurator = double('configurator')
       allow(configurator).to receive(:report_build_warnings_log_filename).and_return('warnings.log')
+      allow(configurator).to receive(:report_build_warnings_log_patterns).and_return([])
+      allow(configurator).to receive(:report_build_warnings_log_excludes).and_return([])
 
       plugin = described_class.allocate
       plugin.instance_variable_set(:@ceedling, {
