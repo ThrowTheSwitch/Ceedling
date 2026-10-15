@@ -70,6 +70,16 @@ describe DependencySpec do
       expect(spec_for( paths: { build: 'b' } ).artifact_path).to eq( 'b' )
     end
 
+    it 'deploys to the configured deploy path, or a default it is given' do
+      expect(spec_for( paths: { deploy: 'bin' } ).deploy_path( 'build/release' )).to eq( 'bin' )
+      expect(spec_for.deploy_path( 'build/release' )).to eq( 'build/release' )
+    end
+
+    # The deploy path holds deployed copies alongside the project's own files
+    it 'never offers the deploy path as a working path' do
+      expect(spec_for( paths: { fetch: 'f', deploy: 'bin' } ).working_paths).to eq( ['f'] )
+    end
+
     it 'lists every configured path as a working path, or only the artifact path' do
       spec = spec_for( paths: { fetch: 'f', source: 'f', build: 'f/b', artifact: 'f/a' } )
 
@@ -108,6 +118,7 @@ describe DependencySpec do
       expect(spec.dynamic_libraries).to eq( ['out/libw.so'] )
       expect(spec.include_files).to eq( ['out/inc/w.h', 'out/api'] )
       expect(spec.source_paths).to eq( ['out/src'] )
+      expect(spec_for( paths: { artifact: 'out' }, artifacts: { executables: ['bin/tool'] } ).executables).to eq( ['out/bin/tool'] )
     end
 
     it 'lists the directory of an included header and an included directory itself' do
@@ -124,7 +135,7 @@ describe DependencySpec do
     it 'treats missing artifacts as empty' do
       spec = DependencySpec.build_all( [{ name: 'tool', fetch: { method: :none } }] ).first
 
-      expect([spec.static_libraries, spec.dynamic_libraries, spec.include_files, spec.source_paths]).to all( be_empty )
+      expect([spec.static_libraries, spec.dynamic_libraries, spec.executables, spec.include_files, spec.source_paths]).to all( be_empty )
     end
   end
 

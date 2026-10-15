@@ -34,7 +34,7 @@ class Dependencies < Plugin
 
     # A dependency is found by its name, its task name, or any artifact it produces
     @specs.each do |spec|
-      keys = [spec.name, spec.task_name] + spec.static_libraries + spec.dynamic_libraries +
+      keys = [spec.name, spec.task_name] + spec.static_libraries + spec.dynamic_libraries + spec.executables +
              spec.include_directories( path_collector ) + spec.include_files + spec.source_paths
       keys.each { |key| @lookup[key] = spec }
       environment_for( spec )
@@ -94,25 +94,27 @@ class Dependencies < Plugin
     end
   end
 
-  # Copies every dynamic library beside the release build, where it runs from
+  # Copies every dynamic library and executable to the deploy path, by default beside the
+  # release build, where they run from
   def deploy_if_required(key)
-    spec = spec_for( key )
+    spec      = spec_for( key )
+    artifacts = spec.dynamic_libraries + spec.executables
 
-    if spec.dynamic_libraries.empty?
+    if artifacts.empty?
       log( "Nothing to deploy for dependency #{spec.name}" )
       return
     end
 
     log( "Deploying dependency #{spec.name}..." )
-    destination = File.dirname( PROJECT_RELEASE_BUILD_TARGET )
+    destination = spec.deploy_path( File.dirname( PROJECT_RELEASE_BUILD_TARGET ) )
     @ceedling[:file_wrapper].mkdir( destination )
 
-    spec.dynamic_libraries.each do |library|
-      unless @ceedling[:file_wrapper].exist?( library )
-        raise CeedlingException.new( "Dependency `#{spec.name}` has no #{library} to deploy. Build it with `dependencies:make` first." )
+    artifacts.each do |artifact|
+      unless @ceedling[:file_wrapper].exist?( artifact )
+        raise CeedlingException.new( "Dependency `#{spec.name}` has no #{artifact} to deploy. Build it with `dependencies:make` first." )
       end
 
-      @ceedling[:file_wrapper].cp( library, destination )
+      @ceedling[:file_wrapper].cp( artifact, destination )
     end
   end
 

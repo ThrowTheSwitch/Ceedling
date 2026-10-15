@@ -213,7 +213,31 @@ describe Dependencies do
       expect { plugin_for( shared ).deploy_if_required( 'dep' ) }.to raise_error( CeedlingException, %r{deps/dep/build/libone.so} )
     end
 
-    it 'deploys nothing for a dependency without dynamic libraries' do
+    it 'copies every executable along with the dynamic libraries' do
+      files['deps/dep/build'] = ['deps/dep/build/libone.so', 'deps/dep/build/libtwo.so', 'deps/dep/build/bin/tool']
+      shared[:artifacts][:executables] = ['bin/tool']
+      plugin_for( shared ).deploy_if_required( 'dep' )
+
+      expect(file_wrapper).to have_received(:cp).with( 'deps/dep/build/bin/tool', 'build/release' )
+    end
+
+    it 'deploys a dependency that builds only executables to its configured deploy path' do
+      files['deps/dep/build'] = ['deps/dep/build/tool']
+      tools = dependency( paths: { fetch: 'deps/dep', build: 'deps/dep/build', deploy: '/opt/tools/bin' },
+                          artifacts: { executables: ['tool'] } )
+      plugin_for( tools ).deploy_if_required( 'dep' )
+
+      expect(file_wrapper).to have_received(:mkdir).with( '/opt/tools/bin' )
+      expect(file_wrapper).to have_received(:cp).with( 'deps/dep/build/tool', '/opt/tools/bin' )
+    end
+
+    it 'refuses to deploy an executable that was not built' do
+      tools = dependency( artifacts: { executables: ['tool'] } )
+
+      expect { plugin_for( tools ).deploy_if_required( 'dep' ) }.to raise_error( CeedlingException, %r{deps/dep/build/tool} )
+    end
+
+    it 'deploys nothing for a dependency without dynamic libraries or executables' do
       plugin_for( dependency ).deploy_if_required( 'dep' )
 
       expect(file_wrapper).not_to have_received(:cp)
@@ -221,8 +245,8 @@ describe Dependencies do
   end
 
   describe 'libraries' do
-    it 'names every library and its directory for linking' do
-      plugin = plugin_for( dependency( artifacts: { static_libraries: ['libw.a'], dynamic_libraries: ['sub/libv.so'] } ) )
+    it 'names every library and its directory for linking, leaving executables out' do
+      plugin = plugin_for( dependency( artifacts: { static_libraries: ['libw.a'], dynamic_libraries: ['sub/libv.so'], executables: ['bin/tool'] } ) )
 
       expect(plugin.link_libraries).to eq( names: ['w', 'v'], paths: ['deps/dep/build', 'deps/dep/build/sub'] )
     end

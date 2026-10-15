@@ -12,7 +12,8 @@ require 'ceedling/exceptions'
 # Each dependency names its paths under :paths, and each path falls back to another when
 # left out: :source and :fetch to each other, :build to :source then :fetch, :artifact to
 # :build. With none configured, every path is `dependencies/<task name>`. Artifacts
-# (libraries, includes, sources) live under the artifact path.
+# (libraries, executables, includes, sources) live under the artifact path. An optional
+# :deploy path receives deployed copies.
 #
 # The task name is the configured name's word characters, which `dependencies:*` tasks
 # use, so it must be non-empty and unique among dependencies.
@@ -78,8 +79,13 @@ class DependencySpec
   def working_paths(artifacts_only: false)
     return [artifact_path] - [source_path, fetch_path] if artifacts_only
 
-    paths = @paths.values.compact.uniq
+    paths = @paths.except( :deploy ).values.compact.uniq
     return paths.empty? ? [default_path] : paths
+  end
+
+  # Where deploying copies dynamic libraries and executables, never cleaned away
+  def deploy_path(default)
+    return @paths[:deploy] || default
   end
 
   # Search paths a dependency's undocumented :source and :include keys add to `:build_lib`
@@ -92,6 +98,7 @@ class DependencySpec
 
   def static_libraries  = artifacts( :static_libraries )
   def dynamic_libraries = artifacts( :dynamic_libraries )
+  def executables       = artifacts( :executables )
   def include_files     = artifacts( :includes )
   def source_paths      = artifacts( :source )
 

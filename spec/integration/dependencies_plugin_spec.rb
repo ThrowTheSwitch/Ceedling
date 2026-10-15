@@ -16,6 +16,7 @@ require 'spec_helper'
 require 'rake'
 require 'tmpdir'
 require 'yaml'
+require 'stringio'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/plugins/plugin'
@@ -76,6 +77,7 @@ describe 'Dependencies plugin (integration)' do
       Rake::Task.define_task( :directories )
       load File.join( DEPENDENCIES_PLUGIN_ROOT, 'dependencies.rake' )
       tasks.each { |task| Rake::Task[task].invoke }
+      yield if block_given?
     ensure
       Rake.application = previous
       main.instance_variable_set( :@ceedling, ceedling )
@@ -368,6 +370,46 @@ describe 'Dependencies plugin (integration)' do
         run_tasks( deps, 'directories', 'dependencies:make' )
 
         expect(File.exist?( 'deps/cloned/build/libcloned.a' )).to be true
+      end
+    end
+  end
+
+  describe 'a dependency that builds executables' do
+    let(:tools) do
+      dependency( 'tools', paths: { source: 'deps/tools', build: 'deps/tools/build', deploy: 'out/bin' },
+                           artifacts: { executables: ['tool'] } )
+    end
+
+    it 'builds its executables, then deploys them to its deploy path' do
+      in_project do
+        write_build_script( 'deps/tools', 'build/tool' )
+        run_tasks( [tools], 'dependencies:make', 'dependencies:deploy' )
+
+        expect(File.read( 'out/bin/tool' )).to start_with( 'built:' )
+      end
+    end
+
+    # A release may ship a tool, but no test build links one
+    it 'makes its executables a prerequisite of release but not of test builds' do
+      in_project do
+        run_tasks( [tools] ) do
+          expect(Rake::Task[RELEASE_SYM.to_s].prerequisites).to include( 'deps/tools/build/tool' )
+          expect(Rake::Task['prepare'].prerequisites).not_to include( 'deps/tools/build/tool' )
+        end
+      end
+    end
+
+    it 'lists its executables among the dependency files' do
+      in_project do
+        output = StringIO.new
+        $stdout, previous = output, $stdout
+        begin
+          run_tasks( [tools], 'files:dependencies' )
+        ensure
+          $stdout = previous
+        end
+
+        expect(output.string).to include( 'deps/tools/build/tool' )
       end
     end
   end

@@ -15,8 +15,8 @@
   headers_and_sources = dep.include_directories( collector ) + dep.include_files + dep.source_paths
   all_deps = dep.static_libraries + dep.dynamic_libraries + headers_and_sources
 
-  # Add a rule for building the actual libraries from dependency list
-  (dep.static_libraries + dep.dynamic_libraries).each do |libpath|
+  # Add a rule for building the actual libraries and executables from dependency list
+  (dep.static_libraries + dep.dynamic_libraries + dep.executables).each do |libpath|
     file libpath do |filetask|
       path = filetask.name
 
@@ -48,14 +48,14 @@
   namespace DEPENDENCIES_SYM do
     namespace :deploy do
       # Add task to directly just build this dependency
-      task(dep.task_name => dep.dynamic_libraries) do |_t,_args|
+      task(dep.task_name => dep.dynamic_libraries + dep.executables) do |_t,_args|
         @ceedling[DEPENDENCIES_SYM].deploy_if_required(dep.task_name)
       end
     end
 
     namespace :make do
       # Add task to directly just build this dependency
-      task(dep.task_name => all_deps)
+      task(dep.task_name => all_deps + dep.executables)
     end
 
     namespace :clean do
@@ -82,6 +82,9 @@
 
   # Add the dynamic libraries to our RELEASE task dependency list so that they will be copied automatically
   task RELEASE_SYM => dep.dynamic_libraries
+
+  # A release may ship a dependency's executables, which no test build links
+  task RELEASE_SYM => dep.executables
 
   task :prepare => all_deps
 end
@@ -114,10 +117,10 @@ namespace DEPENDENCIES_SYM do
 end
 
 namespace :files do
-  desc "List all collected dependency libraries."
+  desc "List all collected dependency libraries and executables."
   task :dependencies do
     puts "dependency files:"
-    deps = @ceedling[DEPENDENCIES_SYM].specs.flat_map { |dep| dep.static_libraries + dep.dynamic_libraries }
+    deps = @ceedling[DEPENDENCIES_SYM].specs.flat_map { |dep| dep.static_libraries + dep.dynamic_libraries + dep.executables }
     deps.sort.each {|dep| puts " - #{dep}"}
     puts "file count: #{deps.size}"
   end
