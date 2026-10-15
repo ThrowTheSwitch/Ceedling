@@ -70,17 +70,24 @@ class CommandHooks < Plugin
 
   def pre_test(test);                        run_hook( :pre_test,           test ); end
   def post_test(test);                       run_hook( :post_test,          test ); end
-  def pre_test_build(context, timestamp_s);  run_hook( :pre_test_build,     context.to_s, timestamp_s.to_s ); end
-  def post_test_build(context, timestamp_s); run_hook( :post_test_build,    context.to_s, timestamp_s.to_s ); end
-  def pre_release_build(timestamp_s);        run_hook( :pre_release_build,  timestamp_s.to_s ); end
-  def post_release_build(timestamp_s);       run_hook( :post_release_build, timestamp_s.to_s ); end
-  def pre_build(timestamp_s);                run_hook( :pre_build,          timestamp_s.to_s ); end
-  def post_build(timestamp_s);               run_hook( :post_build,         timestamp_s.to_s ); end
-  def post_error(timestamp_s);               run_hook( :post_error,         timestamp_s.to_s ); end
+  def pre_test_build(context, timestamp_s);  run_hook( :pre_test_build,     context.to_s, seconds( timestamp_s ) ); end
+  def post_test_build(context, timestamp_s); run_hook( :post_test_build,    context.to_s, seconds( timestamp_s ) ); end
+  def pre_release_build(timestamp_s);        run_hook( :pre_release_build,  seconds( timestamp_s ) ); end
+  def post_release_build(timestamp_s);       run_hook( :post_release_build, seconds( timestamp_s ) ); end
+  def pre_build(timestamp_s);                run_hook( :pre_build,          seconds( timestamp_s ) ); end
+  def post_build(timestamp_s);               run_hook( :post_build,         seconds( timestamp_s ) ); end
+  def post_error(timestamp_s);               run_hook( :post_error,         seconds( timestamp_s ) ); end
 
   ### Private
 
   private
+
+  # A stopwatch value as seconds. Ceedling's stopwatch is a Float count of seconds on most
+  # platforms but the wall clock, a Time, on Windows. Converting through the exact
+  # Rational keeps a Time's fraction from picking up rounding noise.
+  def seconds(timestamp)
+    return timestamp.to_r.to_f.to_s
+  end
 
   # The :command_hooks section must be a hash of recognized hooks, so a misspelled hook
   # stops the build rather than silently never running

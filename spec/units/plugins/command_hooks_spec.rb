@@ -82,6 +82,17 @@ describe CommandHooks do
       expect(commands.map { |c| c[:args] }).to eq( [['test_adc.c'], ['gcov', '1.5'], ['2.5']] )
     end
 
+    # On Windows, Ceedling's stopwatch is the wall clock, a Time rather than a Float
+    it 'hands build hooks their stopwatch value in seconds whether it arrives as a Float or a Time' do
+      plugin = plugin_for( command_hooks: { pre_build: tool( 'a' ), post_build: tool( 'b' ), pre_release_build: tool( 'c' ), post_test_build: tool( 'd' ) } )
+      plugin.pre_build( Time.at( 1_700_000_000, 250, :millisecond ) )
+      plugin.post_build( 12.5 )
+      plugin.pre_release_build( Time.at( 1_700_000_001, 500, :millisecond ) )
+      plugin.post_test_build( :test, Time.at( 1_700_000_002, 750, :millisecond ) )
+
+      expect(commands.map { |c| c[:args] }).to eq( [['1700000000.25'], ['12.5'], ['1700000001.5'], ['test', '1700000002.75']] )
+    end
+
     it 'runs nothing for a hook without configured tools' do
       plugin_for( command_hooks: {} ).pre_build( 1 )
 
