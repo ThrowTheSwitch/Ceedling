@@ -111,6 +111,12 @@ describe WarningCollector do
         .to eq( ['C:\\proj\\src\\a.c', 7, nil, nil, 'implicit declaration'] )
     end
 
+    it 'takes as its flag only a bracketed option, leaving older GCC notes in the message' do
+      warning = collector.warnings( "a.c:3:1: warning: 'f' declared but never defined [enabled by default]\n" ).first
+
+      expect([warning.flag, warning.message]).to eq( [nil, "'f' declared but never defined [enabled by default]"] )
+    end
+
     it 'gives output in another format only its text and message' do
       warning = collector.warnings( "ld: warning: object file was built for a newer OS\n" ).first
 

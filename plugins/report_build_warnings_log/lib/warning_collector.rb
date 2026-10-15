@@ -33,9 +33,10 @@ class WarningCollector
   NOTE       = /\A\S[^\n]*?:\d+(?::\d+)?:\s+note\b/i
   CONTEXT    = /\A(?:In file included from |\s+from |\S[^\n]*: (?:In (?:function|member function|instantiation)|At (?:top level|global scope)))/
   # A diagnostic line's parts. A Windows drive letter's colon is not followed by digits, so
-  # the lazy file match passes it.
+  # the lazy file match passes it. The flag is a trailing bracketed option such as
+  # `[-Wunused-variable]`; other bracketed text stays in the message.
   PARTS      = /\A(?<file>.+?):(?<line>\d+)(?::(?<column>\d+))?:\s+(?<severity>fatal error|error|warning|note|remark):?\s*
-                (?<message>.*?)(?:\s+\[(?<flag>[^\]]+)\])?\s*\z/xi
+                (?<message>.*?)(?:\s+\[(?<flag>-[^\]]+)\])?\s*\z/xi
   SUMMARY    = /\A\d+ (?:warnings?|errors?)(?: and \d+ (?:warnings?|errors?))? generated\.\s*\z/
 
   # Regular expressions from configured strings. An entry that is not a valid expression
