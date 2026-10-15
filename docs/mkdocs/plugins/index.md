@@ -59,7 +59,7 @@ important issues:
 
 Each of these plugins maintains its own separate delta build cache, apart from
 plain test builds and from each other. A file with no role specific to a
-given plugin will still be rebuilt the first you run that plugin's build.
+given plugin will still be rebuilt the first you run that plugin’s build.
 This happens because each build tracks state in its own dependency cache, 
 not because of the file itself.
 
@@ -92,7 +92,7 @@ not because of the file itself.
     ---
 
     Prints test results to the console in a format that mimics
-    [Google Test's output][gtest-sample-output] — both human readable and
+    [Google Test’s output][gtest-sample-output] — both human readable and 
     recognized by a variety of reporting tools, IDEs, and CI servers.
 
 -   :material-monitor-screenshot: **[`report_tests_teamcity_stdout`](report-tests-teamcity-stdout.md)**
@@ -128,8 +128,8 @@ not because of the file itself.
 
     ---
 
-    Scans the output of build tools for console warning notices and produces
-    a simple text file that collects all such warning messages.
+    Scans the output of build tools for console warning notices and collects
+    them in a simple text file and optional SARIF and JSON reports.
 
 </div>
 
@@ -213,9 +213,9 @@ not because of the file itself.
 
     ---
 
-    Connects Ceedling's build events to tool entries you define in your
-    project configuration. Easily attach your own scripts or command line
-    utilities to build steps without writing a full custom plugin.
+    Connects Ceedling’s build events to tool entries you define. Easily 
+    attach your own scripts or command line utilities to build steps 
+    without writing a full custom plugin.
 
 -   :material-database: **[`compile_commands_json_db`](compile-commands-json-db.md)**
 
@@ -243,18 +243,17 @@ not because of the file itself.
 
     ---
 
-    Saves time in Test-Driven Development by generating a templated triplet
+    Save time in Test-Driven Development by generating a templated triplet
     of source file, header file, and test file — scaffolded such that they
-    refer to one another — with convenient command line tasks.
+    refer to one another — with a variety of options through command line tasks.
 
 -   :material-package-variant-closed: **[`dependencies`](dependencies.md)**
 
     ---
 
-    Manages release build dependencies (e.g. static libraries) including 
-    fetching those dependencies and calling a given dependency‘s build 
-    process to generate the components needed by your Ceedling release 
-    build target.
+    Manages release build dependencies (e.g. static libraries or built tools)
+    including fetching dependencies, calling a dependency’s build process, 
+    and deploying resulting executables and dynamic libraries.
 
 </div>
 

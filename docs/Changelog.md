@@ -104,6 +104,9 @@ The refreshed Bullseye plugin offers additional features over the original versi
 ### Build warnings plugin context, deduplication, and filtering
 The [Build Warnings Log plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-build-warnings-log/) now logs each GCC or Clang warning with the lines that explain it — the function or include context before it along with the source line, caret, and any note after it. Each distinct warning is logged once per build context, so a header's warning appears once rather than once per file including it, and compiler summary lines are left out. New `:patterns` and `:excludes` settings optionally take regular expressions that replace the default match of any line mentioning “warning” and optionally drop warnings you have already accepted or prevent false positives.
 
+### Build warnings plugin SARIF and JSON reports
+The [Build Warnings Log plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-build-warnings-log/#reports) can now write its warnings as [SARIF](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-build-warnings-log/#sarif-report) and JSON reports alongside, or instead of, its plain text log. SARIF, the standard format for static analysis results, lets GitHub code scanning, Azure DevOps, SonarQube, Jenkins, and IDE viewers show each warning on the line it concerns. The JSON report lists each warning’s file, line, column, severity, flag, message, and context for scripts. The new `:reports` setting selects any of `:text`, `:sarif`, and `:json`, and defaults to `:text`. The structured reports are written for every build context that ran a build step, even without warnings, so a CI step always finds its file.
+
 ### GTest-like report plugin skipped tests
 The [GTest-like console report](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/) (`report_tests_gtestlike_stdout`) now reports a Unity test ignored with `TEST_IGNORE()` or `TEST_IGNORE_MESSAGE()` as a GoogleTest skipped test. A skipped test is listed with its location and message, counted in the run, and summarized between passed and failed tests, the way GoogleTest 1.10.0 and later reports `GTEST_SKIP()`. A test file whose every test is ignored now gets its own section. The new `:report_tests_gtestlike_stdout` ↳ `:ignored_as_skipped:` setting defaults to `TRUE`. Set it to `FALSE` to leave ignored tests out of the report for tools that do not understand skipped tests (see the related _Changed_ entry below).
 
@@ -203,6 +206,9 @@ Note: 1.2.0 includes all bug fixes for 1.1.x.
 - Fixed a misspelled path under `:paths` ↳ `:cppcheck` silently collecting no suppression files, indistinguishable from a directory holding none.
 
 ## ⚠️ Changed
+
+### Build warnings plugin `:filename` is a base name
+The [Build Warnings Log plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-build-warnings-log/#filename)’s `:filename` now names the base of each report, and each report adds its own extension (`.log`, `.sarif`, `.json`). Its default is `warnings`, so the text log is still `warnings.log`. A project that sets `:filename` with any extension will have that extension overwritten by the default associated with each report type.
 
 ### Module Generator `:naming` takes effect
 [#518](https://github.com/ThrowTheSwitch/Ceedling/issues/518) The Module Generator plugin’s [`:naming`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/#naming-convention) setting now applies. Previously it had no effect, and every name kept the case typed. `:naming` no longer defaults to `:snake`, so a project that does not set it still sees names kept as typed. `:bumpy` and `:camel` produce the case their documentation describes (`BumpyFiles`, `camelFiles`). A project that sets `:naming` will see generated file names change.
