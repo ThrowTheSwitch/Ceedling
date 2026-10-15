@@ -51,7 +51,7 @@ Ruby 3.0 through 3.5 on `ubuntu-latest`. This is the most complete leg, and two 
 1. Check out with submodules, and set up Ruby through [`actions/setup`](#composite-actions).
 2. Apply the toolcache permissions workaround (see [Special matrix legs](#special-matrix-legs)), then `bundle install`.
 3. Run unit specs, then integration specs. Both run before the slow tool installs, so their failures surface early.
-4. Run the SBOM generator’s specs and the CI summary’s specs, which live in `tools/` and so are outside the shipped suites.
+4. Run the specs of the SBOM generator, the CI summary, and the coverage report tooling, which live in `tools/` and so are outside the shipped suites.
 5. Install gdb and valgrind, then cppcheck 2.16.0. cppcheck is built from source and cached by version.
 6. Install gcovr and ReportGenerator.
 7. Run system specs through [`run-system-tests`](#composite-actions), then plugin tests through [`run-plugin-tests`](#composite-actions).
@@ -110,7 +110,7 @@ It needs `actions: read` and nothing more.
 
 ## Special matrix legs
 
-- **Linux Ruby 3.3 measures coverage.** `CEEDLING_TEST_COVERAGE` instruments the unit, integration, system, and plugin runs. `coverage:report` merges them into per-suite and combined HTML reports, uploaded as `coverage-report`, and into the summary’s coverage and line-hit data. This leg is also the summary’s reference leg. One leg suffices because coverage of Ruby does not vary by platform, and this leg already pays for every tool install.
+- **Linux Ruby 3.3 measures coverage.** `CEEDLING_TEST_COVERAGE` instruments the unit, integration, system, and plugin runs. `coverage:report` merges them into per-suite and combined HTML reports, uploaded as `coverage-report`, and into the summary’s coverage and line-hit data. Each report is named for the suites it merges, such as `units, integration, system (714 runs)`, rather than for each run, since the system suite records one run per child process and their names would fill every page’s footer. This leg is also the summary’s reference leg. One leg suffices because coverage of Ruby does not vary by platform, and this leg already pays for every tool install.
 - **Linux Ruby 3.5 runs sanitizers.** System specs build and run the generated C under ASan and UBSan with leak detection (`asan_ubsan_leaks`). Fixtures that fault on purpose are excluded by name. One leg suffices because a finding in generated C appears identically everywhere, and instrumentation roughly doubles build time.
 - **Tool installs differ by OS.** Linux has every tool. Windows lacks gdb and valgrind. macOS lacks both and compiles with Apple Clang, which ignores `-fdirectives-only`. Specs that need a missing tool or feature detect its absence and skip or assert the fallback.
 - **Ruby ranges differ by OS.** Linux runs 3.0–3.5, Windows 3.0–3.4, and macOS 3.1–3.5.
@@ -154,8 +154,8 @@ It needs `actions: read` and nothing more.
 | `specs:units`, `specs:integration` | Test jobs | Run the shipped unit and integration suites |
 | `specs:system:debug` | `run-system-tests` | Run system specs, keeping only failing projects |
 | `spec:system:debug:<name>` | Locale and encoding stress jobs | Run one system spec file the same way |
-| `sbom:specs`, `ci:summary:specs` | Linux Test Suite | Run the specs of the tools in `tools/` |
-| `coverage:report` | Linux Ruby 3.3 | Merge coverage into reports and summary data |
+| `sbom:specs`, `ci:summary:specs`, `coverage:specs` | Linux Test Suite | Run the specs of the tools in `tools/` |
+| `coverage:report` | Linux Ruby 3.3 | Merge coverage into reports, each named for its suites, and summary data |
 | `lint` | Lint Ruby Source | Run RuboCop |
 | `docs:build:local` | `_generate-docs.yml` | Build the documentation bundle the gem ships |
 | `sbom:build` | Gem build and publish | Generate the SBOMs and enforce the license list |
