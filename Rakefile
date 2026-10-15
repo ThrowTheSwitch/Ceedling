@@ -171,6 +171,7 @@ end
 desc "Merge and format units-only, integration-only, system-only, and combined SimpleCov coverage reports"
 task 'coverage:report' do
   require 'simplecov'
+  require_relative 'tools/coverage/report_label'
   SimpleCov.at_exit { }
 
   units_file        = File.join('coverage', '.resultset.json')
@@ -182,6 +183,9 @@ task 'coverage:report' do
         if !File.exist?(units_file) && integration_files.empty? && system_files.empty?
 
   units_files = File.exist?(units_file) ? [units_file] : []
+
+  # Resultsets merged from each suite, which name each report's runs
+  suite_runs = { 'units' => units_files.size, 'integration' => integration_files.size, 'system' => system_files.size }
 
   reports = {
     'units'       => units_files,
@@ -212,12 +216,15 @@ task 'coverage:report' do
     # in HTMLFormatter#format on a nil result.
     result = SimpleCov::ResultMerger.merge_results(*files, ignore_timeout: true)
 
+    # A merged result is named with every merged run's own name, and the system suite
+    # records hundreds of runs. The report prints that name in the footer of every
+    # source file view, where it buries the source, so each report names its suites.
+    result.command_name = CoverageReportLabel.for( label == 'combined' ? suite_runs : suite_runs.slice( label ) )
+
     SimpleCov.coverage_dir(File.join('coverage', label))
     # silent: true suppresses SimpleCov's own "Coverage report generated for
-    # <command_name> to ..." status line. For the merged system/combined reports
-    # that command_name is every system-<pid>-<timestamp> name joined with ", " --
-    # hundreds of them, burying this task's own one-line summary below. The
-    # concise line this task prints next says everything that noise did.
+    # <command_name> to ..." status line. The concise line this task prints next
+    # says the same with coverage figures.
     SimpleCov::Formatter::HTMLFormatter.new(silent: true).format(result)
     puts "#{label.capitalize} coverage: #{result.covered_percent.round(2)}% " \
          "(#{result.covered_lines}/#{result.total_lines} lines)"
@@ -530,6 +537,12 @@ desc "Run the CI summary's own specs"
 task 'ci:summary:specs' do
   repo_only!( 'ci:summary:specs' )
   sh 'bundle exec rspec tools/ci_summary/spec --format documentation'
+end
+
+desc "Run the coverage report tooling's own specs"
+task 'coverage:specs' do
+  repo_only!( 'coverage:specs' )
+  sh 'bundle exec rspec tools/coverage/spec --format documentation'
 end
 
 desc "Run the SBOM generator's own specs"
