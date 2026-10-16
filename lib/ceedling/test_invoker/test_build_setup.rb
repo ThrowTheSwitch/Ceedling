@@ -35,7 +35,8 @@ class TestBuildSetup
     :file_path_utils,
     :file_finder,
     :test_runner_manager,
-    :dependinator
+    :dependinator,
+    :test_search_paths
   )
 
   def setup()
@@ -192,7 +193,7 @@ class TestBuildSetup
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
 
-      srch_paths     = search_paths( filepath, testable.paths, testable.mock_search_paths )
+      srch_paths     = @test_search_paths.compose( filepath, testable.paths, testable.mock_search_paths )
       cmp_flags      = flags( context: state.context, operation: OPERATION_COMPILE_SYM,    filepath: filepath )
       pre_flags      = preprocess_flags( context: state.context, compile_flags: cmp_flags, filepath: filepath )
       asm_flags      = flags( context: state.context, operation: OPERATION_ASSEMBLE_SYM,   filepath: filepath )
@@ -295,7 +296,7 @@ class TestBuildSetup
       # the ones the build uses. The second pass needs their directories to find the
       # stand-ins just placed.
       if reconciling
-        paths = search_paths( filepath, testable.paths, mock_dirs )
+        paths = @test_search_paths.compose( filepath, testable.paths, mock_dirs )
         state.lock.synchronize do
           testable.mock_search_paths = mock_dirs
           testable.search_paths      = paths
@@ -532,7 +533,7 @@ class TestBuildSetup
   # Every mocked header's own mirrored directory below this test's mock root -- a mock is
   # only ever findable by the compiler via a search path pointing directly at wherever it
   # actually lives, since C's own #include resolution has no notion of a recursive search
-  # path, so this feeds directly into this test's own search paths (search_paths, below).
+  # path, so this feeds directly into this test's own search paths (TestSearchPaths).
   #
   # These come from the text-scanned #includes, which ignore #if. With test preprocessing
   # on, stage 4 settles which mocks the build uses, and where it reconciles it sets these
@@ -551,7 +552,7 @@ class TestBuildSetup
     # resolve mocks identically, so both reconstruct this exact ordering by subtracting
     # testable.mock_search_paths back out of the real testable.search_paths.
     collection = @include_pathinator.ordered_header_files(
-      search_paths( testable.filepath, testable.paths, [] )
+      @test_search_paths.compose( testable.filepath, testable.paths )
     )
 
     dirs = []
@@ -565,42 +566,6 @@ class TestBuildSetup
       dirs << @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir )
     end
     return dirs.uniq
-  end
-
-  # Every Partialized module's own directory below this test's Partials root.
-  #
-  # A generated Partial is only findable by the compiler via a search path pointing
-  # directly at where it sits, since C's own #include resolution has no notion of a
-  # recursive search path. This is the same reason each mock's own mirrored directory
-  # is collected above, and it covers the generated test runner, which includes a
-  # Partial header by basename alone.
-  #
-  # The module keys carry the directory, so nothing has to exist on disk yet.
-  def collect_partial_search_paths(filepath, paths)
-    return [] unless paths[:partials]
-
-    dirs = @context_extractor.lookup_partials_config( filepath ).keys.map do |_module|
-      dir = File.dirname( _module )
-      dir == '.' ? nil : File.join( paths[:partials], dir )
-    end
-
-    return dirs.compact.uniq
-  end
-
-  def search_paths(filepath, paths, mock_search_paths = [])
-    _paths = []
-    _paths << paths[:mocks]    if paths[:mocks]
-    _paths += mock_search_paths
-    _paths << paths[:partials] if paths[:partials]
-    _paths += collect_partial_search_paths( filepath, paths )
-    _paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
-    _paths += @include_pathinator.collect_test_include_paths()
-    _paths += @configurator.collection_paths_support
-    _paths += @configurator.collection_paths_include
-    _paths += @configurator.collection_paths_libraries
-    _paths += @configurator.collection_paths_vendor
-    _paths += @configurator.collection_paths_test_toolchain_include
-    return _paths.uniq
   end
 
   def framework_defines()

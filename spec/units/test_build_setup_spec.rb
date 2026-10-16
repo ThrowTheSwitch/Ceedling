@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/test_invoker/test_build_setup'
 require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/test_invoker/test_search_paths'
 
 describe TestBuildSetup do
   before(:each) do
@@ -102,7 +103,11 @@ describe TestBuildSetup do
         :file_path_utils        => @file_path_utils,
         :file_finder            => @file_finder,
         :test_runner_manager    => @test_runner_manager,
-        :dependinator           => @dependinator
+        :dependinator           => @dependinator,
+        # Real, over the same doubles, so search path expectations read as paths
+        :test_search_paths      => TestSearchPaths.new(
+          configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
+        )
       }
     )
 
@@ -915,36 +920,6 @@ describe TestBuildSetup do
       expect {
         @setup.validate_partials_in_use( filename: 'TestFoo.c', partials_in_use: true, includes: includes )
       }.to_not raise_error
-    end
-  end
-
-  describe "#search_paths" do
-    before(:each) do
-      allow(@include_pathinator).to receive(:lookup_test_directive_include_paths).and_return( [] )
-      allow(@include_pathinator).to receive(:collect_test_include_paths).and_return( [] )
-      allow(@configurator).to receive(:collection_paths_support).and_return( [] )
-      allow(@configurator).to receive(:collection_paths_include).and_return( [] )
-      allow(@configurator).to receive(:collection_paths_libraries).and_return( [] )
-      allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
-      allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
-    end
-
-    it "includes a mocked header's own mirrored directory alongside the flat mock root" do
-      paths = { mocks: 'build/test/mocks/a_test' }
-      mock_search_paths = ['build/test/mocks/a_test/drivers']
-
-      result = @setup.search_paths( 'test/TestFoo.c', paths, mock_search_paths )
-
-      expect(result).to include('build/test/mocks/a_test')
-      expect(result).to include('build/test/mocks/a_test/drivers')
-    end
-
-    it "carries only the flat mock root when no mock needs a mirrored directory of its own" do
-      paths = { mocks: 'build/test/mocks/a_test' }
-
-      result = @setup.search_paths( 'test/TestFoo.c', paths )
-
-      expect(result).to eq(['build/test/mocks/a_test'])
     end
   end
 

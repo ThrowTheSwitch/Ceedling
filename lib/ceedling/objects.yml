@@ -428,6 +428,13 @@ test_build_setup:
     - file_finder
     - test_runner_manager
     - dependinator
+    - test_search_paths
+
+test_search_paths:
+  compose:
+    - configurator
+    - include_pathinator
+    - test_context_extractor
 
 test_source_file_directive_resolver:
   compose:
