@@ -584,52 +584,12 @@ class Preprocessinator
       defines:       defines
     )
 
-    # Supplement with a literal text scan of the original file's own #include
-    # lines -- the gcc-based bare pass above runs against an isolated copy that
-    # can never open another header, so a conditional #include whose guard
-    # depends on a macro defined by an *earlier #include in this same file*
-    # evaluates false there and silently drops out. Unioning in this text-based
-    # pass's result only ever adds candidates for Includes.reconcile below to
-    # match against the accurate directives-only pass -- it can't introduce a
-    # spurious entry on its own, since reconcile still requires the accurate
-    # pass to also report it.
-    #
-    # This supplements the gcc-based pass rather than replacing it: gcc can
-    # resolve an #include whose target is itself a macro (e.g. the
-    # MOCK_PARTIAL_ALL_MODULE()-style directives this project's own generated
-    # test files use), since a command-line -D define is visible even to the
-    # isolated copy -- a literal text scan has no filename there to find at
-    # all, since none exists until a real preprocessor expands the macro. The
-    # two passes catch different, non-overlapping failure modes; keeping both
-    # covers both.
-    #
-    # Deduped by filepath, not filename: two bare entries sharing only a basename
-    # (e.g. "hw/config.h" and "app/config.h") are genuinely different files and must
-    # both survive into reconcile below, which disambiguates same-basename user
-    # includes using each one's own real resolved path (see Includes.reconcile) --
-    # collapsing them by filename here would silently drop whichever one lost, along
-    # with everything it declares, from the reconstructed file, before reconcile
-    # ever got the chance.
-    bare_includes = (
-      bare_includes + @includes_handler.extract_bare_includes_from_text( filepath: filepath )
-    ).uniq( &:filepath )
-
-    # Supplement again with computed #includes -- a directive whose target is a macro
-    # invocation rather than a literal filename. Both bare passes above are blind to
-    # one: the gcc dep pass can't evaluate a sibling-header guard around it in the
-    # isolated copy, and the text scan has no literal filename to find. The accurate
-    # directives-only pass did resolve it, though, so extract_computed_includes reads
-    # that pass's own line markers back and hands us GCC's resolution to fold into
-    # `bare` like any literal. Guarded `unless fallback`: fallback has no
-    # directives-only stream to correlate against (documented limitation). Same
-    # reconcile safety as the text scan above -- an entry only survives if the
-    # accurate user/system list also carries it.
+    # Fallback has no directives-only output to resolve computed #includes from
+    bare_includes = supplement_with_text_includes( filepath: filepath, bare: bare_includes )
     unless fallback
-      bare_includes = (
-        bare_includes + @includes_handler.extract_computed_includes(
-          filepath: filepath, directives_only_filepath: directives_only_filepath
-        )
-      ).uniq( &:filepath )
+      bare_includes = supplement_with_computed_includes(
+        filepath: filepath, bare: bare_includes, directives_only_filepath: directives_only_filepath
+      )
     end
 
     # Extract user includes
@@ -657,6 +617,32 @@ class Preprocessinator
     store_includes_list( filepath: filepath, test: test, includes: includes )
 
     return includes
+  end
+
+  # A bare list with the file's own literal #include lines added. The gcc bare pass runs
+  # on an isolated copy that can never open another header, so an #include guarded by a
+  # macro another header defines evaluates false there and drops out. The text scan
+  # evaluates nothing and still lists it. Each added entry is only a candidate:
+  # reconciliation keeps it only if the accurate directives-only pass also reports it.
+  #
+  # A supplement, not a replacement: gcc resolves an #include whose target is a macro
+  # given on the command line, where a text scan finds no filename at all.
+  def supplement_with_text_includes(filepath:, bare:)
+    return union_includes( bare, @includes_handler.extract_bare_includes_from_text( filepath: filepath ) )
+  end
+
+  # A bare list with the #includes a macro names, as the directives-only output resolved
+  # them. Neither bare pass sees one whose macro comes from another header: the gcc pass
+  # can't open that header, and the text scan has no filename to find. The same
+  # reconciliation safety applies. Without directives-only output there is nothing to add.
+  def supplement_with_computed_includes(filepath:, bare:, directives_only_filepath:)
+    computed = @includes_handler.extract_computed_includes( filepath: filepath, directives_only_filepath: directives_only_filepath )
+    return union_includes( bare, computed )
+  end
+
+  # The user files a directives-only output entered, which that output depends on
+  def directives_only_dependencies(directives_only_filepath:)
+    return @includes_handler.extract_directives_only_dependencies( directives_only_filepath: directives_only_filepath )
   end
 
   # The merge step every includes-reconciliation site shares: intersect a bare list
@@ -692,6 +678,13 @@ class Preprocessinator
   # directly by the integration spec tier against real GCC output, and
   # `reconcile_includes` is the merge step stage 4's test-file pass calls too.
   # Re-publicized here rather than relocated to keep the diff small.
-  public :preprocess_file_includes_common, :reconcile_includes
+  # Deduplicated by filepath, not filename: two entries sharing only a basename, such as
+  # "hw/config.h" and "app/config.h", are different files, and reconciliation tells them
+  # apart by their resolved paths (Includes.reconcile)
+  def union_includes(bare, more)
+    return (bare + more).uniq( &:filepath )
+  end
+
+  public :preprocess_file_includes_common, :reconcile_includes, :supplement_with_text_includes, :supplement_with_computed_includes, :directives_only_dependencies
 
 end

@@ -28,14 +28,15 @@ class TestBuildSetup
     :batchinator,
     :test_context_extractor,
     :include_pathinator,
-    :preprocessinator,
     :defineinator,
     :flaginator,
     :file_wrapper,
     :file_path_utils,
     :file_finder,
     :test_runner_manager,
-    :dependinator
+    :dependinator,
+    :test_search_paths,
+    :mock_locator
   )
 
   def setup()
@@ -192,7 +193,7 @@ class TestBuildSetup
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
 
-      srch_paths     = search_paths( filepath, testable.paths, testable.mock_search_paths )
+      srch_paths     = @test_search_paths.compose( filepath, testable.paths, testable.mock_search_paths )
       cmp_flags      = flags( context: state.context, operation: OPERATION_COMPILE_SYM,    filepath: filepath )
       pre_flags      = preprocess_flags( context: state.context, compile_flags: cmp_flags, filepath: filepath )
       asm_flags      = flags( context: state.context, operation: OPERATION_ASSEMBLE_SYM,   filepath: filepath )
@@ -219,228 +220,6 @@ class TestBuildSetup
     end
   end
 
-  # Stage 4 (conditional on preprocessing): Extract includes using the preprocessor.
-  #
-  # All three passes below are dependency-tracker-gated (or, for the third,
-  # cheap enough not to need its own gate at all -- see its comment). The
-  # first two passes each invoke a real, separate preprocessor subprocess
-  # (bare-includes extraction uses `-MM -MG -MP`; directives-only generation
-  # uses `-fdirectives-only`) and are exactly the "expensive" work worth
-  # skipping when nothing relevant changed.
-  def stage_collect_preprocessor_context(state)
-    # First pass: extract bare includes; create stand-in files for mocks and partials.
-    #
-    # The extracted list is needed immediately (stand-in generation, below) and
-    # again by the third pass's reconciliation -- on a cache hit, it's recalled
-    # via `load_includes_list` rather than just leaving a file on disk for
-    # something else to notice, since nothing else reads this list back off
-    # disk on its own the way stage 9/11's plain preprocessed-output targets do.
-    skipped_includes = 0
-    reconciling      = @configurator.test_build_preprocess_directives_only_available
-
-    @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      name     = testable.name
-      filepath = testable.filepath
-
-      target = @file_path_utils.form_preprocessed_includes_list_filepath( filepath, name )
-
-      @dependinator.register(
-        target,
-        files: [filepath],
-        meta:  dependency_meta(
-          flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths,
-          tools: [@configurator.tools_test_bare_includes_preprocessor]
-        )
-      )
-
-      if @dependinator.stale?( target )
-        arg_hash = {
-          test:         name,
-          filepath:     filepath,
-          search_paths: vendor_search_paths(),
-          flags:        testable.preprocess_flags,
-          defines:      testable.preprocess_defines
-        }
-
-        msg = @reportinator.generate_module_progress(
-          operation:   'Extracting #includes from',
-          module_name: name,
-          filename:    File.basename( filepath )
-        )
-        @loginator.log( msg )
-
-        includes = @preprocessinator.preprocess_bare_includes( **arg_hash )
-
-        testable.preprocess[:includes] = includes
-
-        @preprocessinator.store_includes_list( test: name, filepath: filepath, includes: includes )
-        @dependinator.mark_fresh( target )
-      else
-        msg = @reportinator.generate_module_progress(
-          operation:   'Skipping preprocessing for #includes in favor of cached #includes for',
-          module_name: name,
-          filename:    File.basename( filepath )
-        )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-        state.lock.synchronize { skipped_includes += 1 }
-
-        testable.preprocess[:includes] = @preprocessinator.load_includes_list( test: name, filepath: filepath )
-      end
-
-      # A cached list says nothing about whether its stand-ins survived, so they are
-      # placed either way
-      mock_dirs = generate_test_includes_standins( testable, testable.preprocess[:includes] )
-
-      # Reconciliation draws only from this list, so where it runs, this list's mocks are
-      # the ones the build uses. The second pass needs their directories to find the
-      # stand-ins just placed.
-      if reconciling
-        paths = search_paths( filepath, testable.paths, mock_dirs )
-        state.lock.synchronize do
-          testable.mock_search_paths = mock_dirs
-          testable.search_paths      = paths
-        end
-      end
-    end
-
-    log_skip_summary( task: "#include extraction", count: skipped_includes, noun: "test files" )
-
-    # Second pass: generate directives-only preprocessor output after stand-ins exist
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-    skipped_directives_only = 0
-
-    @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      next unless directives_only
-
-      name     = testable.name
-      filepath = testable.filepath
-
-      # The raw output path is deterministic (form_preprocessed_file_raw_directives_only_filepath),
-      # so it can be registered and checked before deciding whether to actually
-      # (re)run the preprocessor. `generate_directives_only_output` also writes a
-      # second, compacted file from the same run, which the raw target vouches for
-      # as an output.
-      target = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, name )
-
-      @dependinator.register(
-        target,
-        files: [filepath],
-        meta:  dependency_meta(
-          flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths,
-          tools: [@configurator.tools_test_file_directives_only_preprocessor]
-        )
-      )
-
-      unless @dependinator.stale?( target )
-        msg = @reportinator.generate_module_progress(
-          operation:   'Skipping directives-only preprocessing for',
-          module_name: name,
-          filename:    File.basename( filepath )
-        )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-        state.lock.synchronize { skipped_directives_only += 1 }
-
-        testable.preprocess[:directives_only][:filepath] = target
-        next
-      end
-
-      arg_hash = {
-        filepath:      filepath,
-        test:          name,
-        flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
-        vendor_paths:  vendor_search_paths(),
-        defines:       testable.preprocess_defines
-      }
-
-      msg = @reportinator.generate_module_progress(
-        operation:   'Preprocessing test files for follow-on details extraction steps',
-        module_name: name,
-        filename:    File.basename( filepath )
-      )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
-
-      testable.preprocess[:directives_only][:filepath] =
-        @preprocessinator.generate_directives_only_output( **arg_hash )
-
-      # A nil result means the preprocessor failed (see generate_directives_only_output) --
-      # nothing was actually written, so there's nothing to mark fresh; the next
-      # run will correctly see this target as still missing and retry.
-      unless testable.preprocess[:directives_only][:filepath].nil?
-        @dependinator.register( target, outputs: [@file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, name )] )
-        @dependinator.mark_fresh( target )
-      end
-    end
-
-    log_skip_summary( task: "directives-only preprocessing", count: skipped_directives_only, noun: "test files" ) if directives_only
-
-    # Third pass: reconcile includes from all extraction sources and ingest.
-    #
-    # No dependency-tracker gate of its own: the user/system extraction below
-    # either parses the second pass's already-gated output or (fallback) does
-    # a cheap in-Ruby text scan, and reconciling that with the first pass's
-    # (fresh-or-recalled) bare-includes list is plain list-merging -- there's
-    # no expensive subprocess step here left to skip.
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-    @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      filepath = testable.filepath
-      filename = File.basename( filepath )
-      name     = testable.name
-
-      unless directives_only
-        msg = @reportinator.generate_module_progress(
-          operation:   'Using fallback text-only includes extracted for',
-          module_name: name,
-          filename:    filename
-        )
-        @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-        next
-      end
-
-      directive_only_filepath = testable.preprocess[:directives_only][:filepath]
-      system_includes = []
-      user_includes   = []
-
-      unless directive_only_filepath.nil?
-        arg_hash = {
-          name:                     name,
-          filepath:                 filepath,
-          directives_only_filepath: directive_only_filepath
-        }
-
-        user_includes   = @preprocessinator.preprocess_user_includes( **arg_hash )
-        system_includes = @preprocessinator.preprocess_system_includes( **arg_hash )
-      else
-        msg = @reportinator.generate_module_progress(
-          operation:   'Using fallback text-only includes extracted for',
-          module_name: name,
-          filename:    filename
-        )
-        @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-
-        all_includes    = @context_extractor.lookup_all_header_includes_list( filepath )
-        user_includes   = Includes.user( all_includes )
-        system_includes = Includes.system( all_includes )
-      end
-
-      # Shares the reconcile core with the mockable-header/Partial path, but keeps its
-      # own bare source (stage 4's list, no text supplement) and skips the mock-filter:
-      # a test file's own #include of a mock is deliberate and must survive.
-      all_includes = @preprocessinator.reconcile_includes(
-        bare:          testable.preprocess[:includes],
-        user:          user_includes,
-        system:        system_includes,
-        test_filepath: filepath,
-        drop_mocked:   false
-      )
-
-      header = "Extracted reconciled #include list from #{filepath}:"
-      @loginator.log_list( all_includes, header, Verbosity::OBNOXIOUS )
-
-      @context_extractor.ingest_includes( filepath, all_includes )
-    end
-  end
-
   # -----------------------------------------------------------------------
   # Helper methods
   # -----------------------------------------------------------------------
@@ -451,88 +230,10 @@ class TestBuildSetup
     @include_pathinator.augment_environment_header_files( headers )
   end
 
-  # Writes placeholder header files for any mock or partial a test #includes,
-  # so early preprocessing/context-extraction steps have something to resolve
-  # before the real mock (stage 10) or partial (stage 8) exists yet. Later
-  # stages overwrite these paths with real generated content; a test build
-  # that never runs those later stages (e.g. :sources_only) is left with only
-  # the placeholder, which is sufficient for its purposes.
-  #
-  # A path already holding a file -- real generated content from a prior run,
-  # or an earlier placeholder -- is left untouched rather than blanked. Only
-  # gcc's need for *something* resolvable at the #include path depends on this
-  # file at all; nothing reads its content for meaning. Overwriting it
-  # unconditionally would needlessly perturb it as a hash antecedent (mock
-  # generation, stage 10, tracks its own stand-in header as one of the inputs
-  # it hashes), invalidating a target purely because this stand-in step ran,
-  # independent of whether anything the mock or partial actually depends on
-  # changed. Whether real regeneration is warranted stays entirely up to each
-  # later stage's own dependency-tracker check.
-  #
-  # Returns each ordinary mock's mirrored directory below this test's mock root,
-  # the mock search paths these includes call for.
-  def generate_test_includes_standins(testable, includes)
-    test = testable.name
-    mocks    = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
-    partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )
-
-    # A mock's header resolves against this test's search paths without its own mock
-    # directories, the ordering collect_mock_search_paths and stage 5 also use
-    collection = @include_pathinator.ordered_header_files(
-      testable.search_paths - testable.mock_search_paths
-    )
-    mock_dirs = []
-
-    mocks.each do |include|
-      # A Partial mock is Ceedling's own generated content with no real header to resolve
-      # against, always flat per test. An ordinary mock's stand-in mirrors wherever its real
-      # header actually lives, matching the real mock (stage 10) -- both are findable by the
-      # compiler only via a search path pointing directly at that mirrored directory.
-      if mock_partial?( include )
-        filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
-      else
-        _source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection )
-        mock_dir = subdir.empty? ? test : File.join( test, subdir )
-        filepath = @file_path_utils.form_mock_header_filepath( mock_dir, include.filename )
-        mock_dirs << @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir ) if testable.paths[:mocks]
-      end
-
-      next if @file_wrapper.exist?( filepath )
-
-      msg = @reportinator.generate_module_progress(
-        operation:   'Generating stand-in header for',
-        module_name: test,
-        filename:    include.filename
-      )
-      @loginator.log( msg, Verbosity::DEBUG )
-      @file_wrapper.mkdir( File.dirname( filepath ) )
-      @file_wrapper.write_blank_file( filepath )
-    end
-
-    partials.each do |include|
-      # A Partial's own generated #include carries whatever directory its module was
-      # named by, and the stand-in has to sit where that #include points -- the same
-      # reason an ordinary mock's stand-in mirrors its real header's directory above.
-      filepath = @file_path_utils.form_partial_header_filepath( test, include.filepath )
-      next if @file_wrapper.exist?( filepath )
-
-      msg = @reportinator.generate_module_progress(
-        operation:   'Generating stand-in header for',
-        module_name: test,
-        filename:    include.filename
-      )
-      @loginator.log( msg, Verbosity::DEBUG )
-      @file_wrapper.mkdir( File.dirname( filepath ) )
-      @file_wrapper.write_blank_file( filepath )
-    end
-
-    return mock_dirs.uniq
-  end
-
   # Every mocked header's own mirrored directory below this test's mock root -- a mock is
   # only ever findable by the compiler via a search path pointing directly at wherever it
   # actually lives, since C's own #include resolution has no notion of a recursive search
-  # path, so this feeds directly into this test's own search paths (search_paths, below).
+  # path, so this feeds directly into this test's own search paths (TestSearchPaths).
   #
   # These come from the text-scanned #includes, which ignore #if. With test preprocessing
   # on, stage 4 settles which mocks the build uses, and where it reconciles it sets these
@@ -544,63 +245,14 @@ class TestBuildSetup
 
     complain = @configurator.project_use_test_preprocessor_tests ? :ignore : :error
 
-    # testable.search_paths doesn't exist yet -- this method is itself one of that value's own
-    # inputs (stage 2, ahead of stage 3) -- so the ordering it needs is rebuilt directly, with
-    # mock_search_paths deliberately empty since none of this test's own mocks are placed yet.
-    # generate_test_includes_standins (stage 4) and stage_determine_files (stage 5) must
-    # resolve mocks identically, so both reconstruct this exact ordering by subtracting
-    # testable.mock_search_paths back out of the real testable.search_paths.
-    collection = @include_pathinator.ordered_header_files(
-      search_paths( testable.filepath, testable.paths, [] )
+    # This test's search paths don't exist until stage 3, so they are composed here
+    # without mock directories, the same collection later stages resolve against
+    collection = @mock_locator.header_collection( @test_search_paths.compose( testable.filepath, testable.paths ) )
+
+    return @mock_locator.directories(
+      @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
+      mocks_root: testable.paths[:mocks], collection: collection, complain: complain
     )
-
-    dirs = []
-    @context_extractor.lookup_mock_header_includes_list( testable.filepath ).each do |include|
-      next if mock_partial?( include )
-      source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection, complain: complain )
-      next if source.nil?
-
-      # The same composition mock generation itself uses, so a search path cannot point
-      # somewhere a mock is not written.
-      dirs << @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir )
-    end
-    return dirs.uniq
-  end
-
-  # Every Partialized module's own directory below this test's Partials root.
-  #
-  # A generated Partial is only findable by the compiler via a search path pointing
-  # directly at where it sits, since C's own #include resolution has no notion of a
-  # recursive search path. This is the same reason each mock's own mirrored directory
-  # is collected above, and it covers the generated test runner, which includes a
-  # Partial header by basename alone.
-  #
-  # The module keys carry the directory, so nothing has to exist on disk yet.
-  def collect_partial_search_paths(filepath, paths)
-    return [] unless paths[:partials]
-
-    dirs = @context_extractor.lookup_partials_config( filepath ).keys.map do |_module|
-      dir = File.dirname( _module )
-      dir == '.' ? nil : File.join( paths[:partials], dir )
-    end
-
-    return dirs.compact.uniq
-  end
-
-  def search_paths(filepath, paths, mock_search_paths = [])
-    _paths = []
-    _paths << paths[:mocks]    if paths[:mocks]
-    _paths += mock_search_paths
-    _paths << paths[:partials] if paths[:partials]
-    _paths += collect_partial_search_paths( filepath, paths )
-    _paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
-    _paths += @include_pathinator.collect_test_include_paths()
-    _paths += @configurator.collection_paths_support
-    _paths += @configurator.collection_paths_include
-    _paths += @configurator.collection_paths_libraries
-    _paths += @configurator.collection_paths_vendor
-    _paths += @configurator.collection_paths_test_toolchain_include
-    return _paths.uniq
   end
 
   def framework_defines()

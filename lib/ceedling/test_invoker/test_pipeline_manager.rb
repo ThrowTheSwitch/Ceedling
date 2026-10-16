@@ -19,6 +19,7 @@ class TestPipelineManager
 
   constructor(
     :test_build_setup,
+    :test_includes_extractinator,
     :test_build_planner,
     :partials_manager,
     :test_build_executor,
@@ -166,7 +167,7 @@ class TestPipelineManager
       # Stage 4
       stage("Collecting More Test Context",
             condition: use_preprocessing,
-            body: ->(s) { @test_build_setup.stage_collect_preprocessor_context(s) }
+            body: ->(s) { @test_includes_extractinator.stage_collect_preprocessor_context(s) }
       ),
 
       # Stage 5

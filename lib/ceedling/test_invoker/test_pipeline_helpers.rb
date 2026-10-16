@@ -21,6 +21,16 @@ module TestPipelineHelpers
     @loginator.log( msg ) unless msg.nil?
   end
 
+  # Logs a step of a test's build, naming the test and its file
+  def log_module_progress(operation, testable, verbosity = Verbosity::NORMAL, label = LogLabels::AUTO)
+    msg = @reportinator.generate_module_progress(
+      operation:   operation,
+      module_name: testable.name,
+      filename:    File.basename( testable.filepath )
+    )
+    @loginator.log( msg, verbosity, label )
+  end
+
   # Ceedling's own vendor headers/sources (Unity, CMock, CException, the generated
   # ceedling.h) live outside every configured :test/:source/:support/:include root, so
   # any preprocessor invocation resolving a test's own #includes needs this path handed

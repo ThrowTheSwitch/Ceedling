@@ -130,7 +130,7 @@ void module_calculate(int value);
 `Preprocessinator#reconcile_includes(bare:, user:, system:, test_filepath:, drop_mocked: true)` is the shared merge step. It calls `Includes.reconcile`, logs a `NOTICE` on each ambiguity, and — when `drop_mocked` — runs `Includes.sanitize!` to drop a header whose `cmock_mock_prefix`-named mock is also present. Two call sites use it, each owning its own bare source and caching:
 
 - `preprocess_file_includes_common` — mockable headers and Partials. `drop_mocked: true`.
-- `test_invoker/test_build_setup.rb` stage 4, third pass — the test file itself. `drop_mocked: false`, because a test's own `#include` of a mock is deliberate. Its bare source is stage 4's own list (no text or computed supplement).
+- `test_invoker/test_includes_extractinator.rb`, stage 4's third pass — the test file itself. `drop_mocked: false`, because a test's own `#include` of a mock is deliberate. Its bare source is stage 4's own list with the same text and computed supplements (`supplement_with_text_includes`, `supplement_with_computed_includes`), except when its directives-only output failed, when it is GCC's list alone.
 
 The reconciled list is also cleaned of any self-reference (`clean_self_reference`, normalized-path comparison).
 

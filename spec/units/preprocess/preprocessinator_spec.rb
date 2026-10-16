@@ -171,6 +171,44 @@ RSpec.describe Preprocessinator do
   end
 
   # ===========================================================================
+  describe '#directives_only_dependencies' do
+  # ===========================================================================
+
+    it "gives the files a directives-only output entered" do
+      allow(@includes_handler).to receive(:extract_directives_only_dependencies)
+        .with( directives_only_filepath: 'build/do/test_a.c' ).and_return( ['src/config.h'] )
+
+      expect(subject.directives_only_dependencies( directives_only_filepath: 'build/do/test_a.c' )).to eq( ['src/config.h'] )
+    end
+  end
+
+  # ===========================================================================
+  describe '#supplement_with_text_includes / #supplement_with_computed_includes' do
+  # ===========================================================================
+
+    it "adds a file's literal #includes to a bare list, once each by filepath" do
+      allow(@includes_handler).to receive(:extract_bare_includes_from_text).with( filepath: 'test/test_a.c' )
+        .and_return( [ Include.new('a.h'), Include.new('hw/config.h'), Include.new('app/config.h') ] )
+
+      result = subject.supplement_with_text_includes( filepath: 'test/test_a.c', bare: [ Include.new('a.h'), Include.new('hw/config.h') ] )
+
+      expect(result.map(&:filepath)).to eq( ['a.h', 'hw/config.h', 'app/config.h'] )
+    end
+
+    it "adds the #includes a macro names, as the directives-only output resolved them" do
+      allow(@includes_handler).to receive(:extract_computed_includes)
+        .with( filepath: 'test/test_a.c', directives_only_filepath: 'build/do/test_a.c' )
+        .and_return( [ Include.new('mock_widget.h'), Include.new('a.h') ] )
+
+      result = subject.supplement_with_computed_includes(
+        filepath: 'test/test_a.c', bare: [ Include.new('a.h') ], directives_only_filepath: 'build/do/test_a.c'
+      )
+
+      expect(result.map(&:filepath)).to eq( ['a.h', 'mock_widget.h'] )
+    end
+  end
+
+  # ===========================================================================
   describe '#preprocess_partial_header_expand_macros / #preprocess_partial_source_expand_macros' do
   # ===========================================================================
   # Both public methods funnel through the same private _preprocess_partial_expand_macros.

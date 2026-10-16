@@ -404,6 +404,7 @@ test_invoker:
 test_pipeline_manager:
   compose:
     - test_build_setup
+    - test_includes_extractinator
     - test_build_planner
     - partials_manager
     - test_build_executor
@@ -420,7 +421,6 @@ test_build_setup:
     - batchinator
     - test_context_extractor
     - include_pathinator
-    - preprocessinator
     - defineinator
     - flaginator
     - file_wrapper
@@ -428,6 +428,64 @@ test_build_setup:
     - file_finder
     - test_runner_manager
     - dependinator
+    - test_search_paths
+    - mock_locator
+
+test_includes_extractinator:
+  compose:
+    - configurator
+    - test_bare_includes_extractinator
+    - test_directives_only_preprocessinator
+    - test_includes_reconcilinator
+
+test_bare_includes_extractinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
+    - file_path_utils
+    - dependinator
+    - test_search_paths
+    - standin_headerinator
+
+test_directives_only_preprocessinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
+    - file_path_utils
+    - file_wrapper
+    - dependinator
+
+test_includes_reconcilinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - test_context_extractor
+    - preprocessinator
+    - test_search_paths
+    - mock_locator
+
+standin_headerinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - file_wrapper
+    - file_path_utils
+    - mock_locator
+
+test_search_paths:
+  compose:
+    - configurator
+    - include_pathinator
+    - test_context_extractor
 
 test_source_file_directive_resolver:
   compose:
@@ -450,6 +508,14 @@ test_build_planner:
     - file_wrapper
     - plugin_manager
     - test_source_file_directive_resolver
+    - mock_locator
+
+mock_locator:
+  compose:
+    - configurator
+    - include_pathinator
+    - file_finder
+    - file_path_utils
 
 test_build_executor:
   compose:

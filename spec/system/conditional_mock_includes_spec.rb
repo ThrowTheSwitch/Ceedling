@@ -19,6 +19,11 @@ require 'spec_system_helper'
 ## - A mock a macro names, whose header sits in a subdirectory. Only the preprocessor
 ##   sees that #include, and the mock is generated into a mirrored directory the
 ##   compiler must search.
+## - A mock chosen by a macro its other mock's header defines (issue #1083, Case 2).
+##   The macro is visible only through that header, which a mock's stand-in includes.
+##
+## Each shape's variations run in spec/integration/test_includes_extractinator_spec.rb;
+## these examples carry the reported shapes through a whole build.
 ##
 ## Without test preprocessing, every #include is read as written, so the missing
 ## header stops the build. Fallback preprocessing, forced here so every toolchain runs
@@ -79,6 +84,48 @@ ceedling_system_tests do
       output = build
       expect(@c.last_exit_status).to_not eq( 0 )
       expect(output).to include( 'Found no file `Gpt_HwType1.h`' )
+    end
+  end
+
+  describe "a mock chosen by a macro its other mock's header defines" do
+    let(:files) { %w[src/MyModuleConfig.h src/MyModulePart1.h src/MyModulePart2.h src/Case_02.h src/Case_02.c test/test_Case_02.c] }
+
+    it "builds with :all preprocessing, mocking the module the macro enables" do
+      skip 'gcc ignores -fdirectives-only, so the scanned #includes are never reconciled' unless @directives_only
+      prepare( files, :all )
+
+      output = build
+      expect(@c.last_exit_status).to eq( 0 ), output
+      expect(output).to match( /PASSED:\s+1/ )
+    end
+
+    # Stage 4's preprocessing is skipped when nothing it read changed, so it must count
+    # the mocked header among what it read
+    it "builds again with :all preprocessing after only the header enables another module" do
+      skip 'gcc ignores -fdirectives-only, so the scanned #includes are never reconciled' unless @directives_only
+      prepare( files, :all )
+
+      output = build
+      expect(@c.last_exit_status).to eq( 0 ), output
+
+      in_project do
+        config = File.read( 'src/MyModuleConfig.h' ).sub( '//#define MODULE_2_ENABLED', '#define MODULE_2_ENABLED' )
+        File.write( 'src/MyModuleConfig.h', config )
+      end
+
+      output = build
+      expect(@c.last_exit_status).to eq( 0 ), output
+      expect(output).to match( /PASSED:\s+1/ )
+    end
+
+    # Case 1 and Case 2 together, as the issue's project had them
+    it "builds with :all preprocessing when the disabled module's header doesn't exist" do
+      skip 'gcc ignores -fdirectives-only, so the scanned #includes are never reconciled' unless @directives_only
+      prepare( files - ['src/MyModulePart2.h'], :all )
+
+      output = build
+      expect(@c.last_exit_status).to eq( 0 ), output
+      expect(output).to match( /PASSED:\s+1/ )
     end
   end
 

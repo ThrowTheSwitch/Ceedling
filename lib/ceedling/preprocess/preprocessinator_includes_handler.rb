@@ -181,6 +181,11 @@ class PreprocessinatorIncludesHandler
     clean_self_reference( filepath, includes )
   end
 
+  # The user files a directives-only output entered, from its line markers
+  def extract_directives_only_dependencies(directives_only_filepath:)
+    return @line_marker_includes_extractor.extract_entered_files_from_file( directives_only_filepath )
+  end
+
   # Resolve every `#include` in the original file whose target is a macro invocation
   # rather than a literal `"..."` / `<...>` filename. Neither bare pass above can see
   # such a directive: the gcc dep pass runs against an isolated copy and can't evaluate
