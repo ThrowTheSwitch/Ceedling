@@ -1,0 +1,34 @@
+name: Feature request
+description: Propose a new feature or a change to an existing one.
+labels: ["feature request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests are welcome. Please search existing issues first and comment on an existing request rather than opening a duplicate.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that Ceedling makes difficult or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+      description: Be precise about the result you want and how it relates to existing features. Include implementation ideas if you have them.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you use today or other approaches you have considered.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find this request.
+          required: true

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://throwtheswitch.discourse.group
+    about: Questions and usage help are best addressed in the ThrowTheSwitch Discourse forum, not in GitHub issues. Sometimes there’s a gray zone. Try your best.
+  - name: Report a security vulnerability
+    url: https://github.com/ThrowTheSwitch/Ceedling/security/advisories/new
+    about: Report vulnerabilities privately. Please do not open a public issue.
+  - name: Read the documentation
+    url: https://docs.throwtheswitch.org/Ceedling/
+    about: Many questions are answered in Ceedling’s documentation.

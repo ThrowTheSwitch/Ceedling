@@ -60,7 +60,9 @@ In short, since you are most likely a developer, **provide a ticket that you wou
 
 - **Prefer using [reactions](https://github.blog/2016-03-10-add-reactions-to-pull-requests-issues-and-comments/)**, not comments, if you simply want to "+1" an existing issue.
 
-- **Fully complete the provided issue template.** The bug report template requests all the information we need to quickly and efficiently address your issue. Be clear, concise, and descriptive. Provide as much information as you can, including steps to reproduce, stack traces, compiler errors, library versions, OS versions, and screenshots (if applicable).
+- **Fully complete the bug report form.** [Opening a new issue](https://github.com/ThrowTheSwitch/Ceedling/issues/new/choose) offers a bug report form that requests all the information we need to quickly and efficiently address your issue. Be clear, concise, and descriptive. Provide as much information as you can, including steps to reproduce, stack traces, compiler errors, library versions, OS versions, and screenshots (if applicable).
+
+- **Tell us if a test result was wrong.** A test that passes when it should fail, or a test that silently does not run, is among the most serious problems a test tool can have. The bug report form asks about this directly.
 
 - **[Report security vulnerabilities privately](https://github.com/ThrowTheSwitch/Ceedling/security/advisories/new).** Do not open a public issue for a vulnerability. See the [Security Policy](SECURITY.md).
 
@@ -72,7 +74,7 @@ Feature requests are welcome! We don't have all the answers, and we truly love t
 
 - **Please don't open a duplicate feature request.** Search for existing feature requests first. If you find your feature (or one very similar) previously requested, comment on that issue.
 
-- **Fully complete the provided issue template.** The feature request template asks for all necessary information for us to begin a productive conversation. 
+- **Fully complete the feature request form.** The feature request form asks for all necessary information for us to begin a productive conversation. 
 
 - Be precise about the proposed outcome of the feature and how it relates to existing features. Include implementation details if possible.
 
@@ -161,7 +163,7 @@ See also: #456, #789
 
 ## :white_check_mark: Pull Request Checklist
 
-Not all Pull Requests require these things, but [here’s a great list](CeedlingPullRequestChecklist.md) of things to check to see if it makes sense for your situation.
+Not all Pull Requests require these things, but [here’s a great list](CeedlingPullRequestChecklist.md) of things to check to see if it makes sense for your situation. The same checklist appears in the description of every new pull request.
 
 ## :heart: Who Loves Emoji?
 
