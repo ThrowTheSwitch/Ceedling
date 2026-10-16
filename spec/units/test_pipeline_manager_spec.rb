@@ -13,6 +13,7 @@ require 'ceedling/exceptions'
 describe TestPipelineManager do
   before(:each) do
     @test_build_setup     = double( "TestBuildSetup" )
+    @test_includes_extractinator = double( "TestIncludesExtractinator" )
     @test_build_planner   = double( "TestBuildPlanner" )
     @partials_manager     = double( "PartialsManager" )
     @test_build_executor  = double( "TestBuildExecutor" )
@@ -34,7 +35,7 @@ describe TestPipelineManager do
     allow(@test_build_setup).to receive(:stage_prepare_build_paths)
     allow(@test_build_setup).to receive(:stage_collect_test_context)
     allow(@test_build_setup).to receive(:stage_ingest_configurations)
-    allow(@test_build_setup).to receive(:stage_collect_preprocessor_context)
+    allow(@test_includes_extractinator).to receive(:stage_collect_preprocessor_context)
 
     allow(@test_build_planner).to receive(:stage_determine_files)
     allow(@test_build_planner).to receive(:stage_flatten_partials_lists)
@@ -57,6 +58,7 @@ describe TestPipelineManager do
     @manager = described_class.new(
       {
         :test_build_setup    => @test_build_setup,
+        :test_includes_extractinator => @test_includes_extractinator,
         :test_build_planner  => @test_build_planner,
         :partials_manager    => @partials_manager,
         :test_build_executor => @test_build_executor,
@@ -109,7 +111,7 @@ describe TestPipelineManager do
         expect(@test_build_setup).to receive(:stage_prepare_build_paths)
         expect(@test_build_setup).to receive(:stage_collect_test_context)
         expect(@test_build_setup).to receive(:stage_ingest_configurations)
-        expect(@test_build_setup).to receive(:stage_collect_preprocessor_context)
+        expect(@test_includes_extractinator).to receive(:stage_collect_preprocessor_context)
         expect(@test_build_planner).to receive(:stage_determine_files)
         expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
         expect(@partials_manager).to receive(:stage_preprocess_partial_headers)
@@ -278,7 +280,7 @@ describe TestPipelineManager do
         expect(@test_build_setup).to receive(:stage_prepare_build_paths)
         expect(@test_build_setup).to receive(:stage_collect_test_context)
         expect(@test_build_setup).to receive(:stage_ingest_configurations)
-        expect(@test_build_setup).to receive(:stage_collect_preprocessor_context)
+        expect(@test_includes_extractinator).to receive(:stage_collect_preprocessor_context)
         expect(@test_build_planner).to receive(:stage_determine_files)
         expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
         expect(@partials_manager).to receive(:stage_preprocess_partial_headers)
@@ -318,7 +320,7 @@ describe TestPipelineManager do
       it "skips test-file preprocessing and its two dependent stages, independent of any stop-point option" do
         allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
 
-        expect(@test_build_setup).to_not receive(:stage_collect_preprocessor_context)
+        expect(@test_includes_extractinator).to_not receive(:stage_collect_preprocessor_context)
         expect(@test_build_executor).to_not receive(:stage_preprocess_test_files)
         expect(@test_build_executor).to_not receive(:stage_collect_runner_details)
         expect(@test_build_executor).to receive(:stage_generate_runners)

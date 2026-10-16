@@ -404,6 +404,7 @@ test_invoker:
 test_pipeline_manager:
   compose:
     - test_build_setup
+    - test_includes_extractinator
     - test_build_planner
     - partials_manager
     - test_build_executor
@@ -420,7 +421,6 @@ test_build_setup:
     - batchinator
     - test_context_extractor
     - include_pathinator
-    - preprocessinator
     - defineinator
     - flaginator
     - file_wrapper
@@ -430,6 +430,18 @@ test_build_setup:
     - dependinator
     - test_search_paths
     - mock_locator
+
+test_includes_extractinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - test_context_extractor
+    - preprocessinator
+    - file_path_utils
+    - dependinator
+    - test_search_paths
     - standin_headerinator
 
 standin_headerinator:
