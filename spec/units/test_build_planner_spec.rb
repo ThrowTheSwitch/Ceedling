@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'rake'
 require 'ceedling/filename_extension'
 require 'ceedling/test_invoker/test_build_planner'
+require 'ceedling/test_invoker/mock_locator'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partializer_config'
@@ -67,7 +68,11 @@ describe TestBuildPlanner do
         :file_path_utils        => @file_path_utils,
         :file_wrapper           => @file_wrapper,
         :plugin_manager         => @plugin_manager,
-        :test_source_file_directive_resolver => @test_source_file_directive_resolver
+        :test_source_file_directive_resolver => @test_source_file_directive_resolver,
+        # Real, over the same doubles, so mock resolution expectations stay on FileFinder
+        :mock_locator           => MockLocator.new(
+          configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
+        )
       }
     )
 
@@ -167,7 +172,7 @@ describe TestBuildPlanner do
           .with( 'test/TestFoo.c' ).and_return( [mock] )
         allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
         allow(@file_finder).to receive(:resolve_mock)
-          .with( 'MockFoo.h', collection: [] ).and_return( ['src/drivers/foo.h', 'drivers'] )
+          .with( 'MockFoo.h', collection: [], complain: :error ).and_return( ['src/drivers/foo.h', 'drivers'] )
         allow(@file_path_utils).to receive(:form_preprocessed_file_filepath)
           .with( 'src/drivers/foo.h', 'a_test' ).and_return( 'build/test/preprocess/files/a_test/full_expansion/foo.h' )
       end

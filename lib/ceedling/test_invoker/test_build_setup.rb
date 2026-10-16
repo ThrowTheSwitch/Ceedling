@@ -36,7 +36,8 @@ class TestBuildSetup
     :file_finder,
     :test_runner_manager,
     :dependinator,
-    :test_search_paths
+    :test_search_paths,
+    :mock_locator
   )
 
   def setup()
@@ -477,12 +478,8 @@ class TestBuildSetup
     mocks    = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
     partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )
 
-    # A mock's header resolves against this test's search paths without its own mock
-    # directories, the ordering collect_mock_search_paths and stage 5 also use
-    collection = @include_pathinator.ordered_header_files(
-      testable.search_paths - testable.mock_search_paths
-    )
-    mock_dirs = []
+    collection = @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
+    mock_dirs  = []
 
     mocks.each do |include|
       # A Partial mock is Ceedling's own generated content with no real header to resolve
@@ -492,7 +489,7 @@ class TestBuildSetup
       if mock_partial?( include )
         filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
       else
-        _source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection )
+        _source, subdir = @mock_locator.locate( include, collection: collection )
         mock_dir = subdir.empty? ? test : File.join( test, subdir )
         filepath = @file_path_utils.form_mock_header_filepath( mock_dir, include.filename )
         mock_dirs << @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir ) if testable.paths[:mocks]
@@ -545,27 +542,14 @@ class TestBuildSetup
 
     complain = @configurator.project_use_test_preprocessor_tests ? :ignore : :error
 
-    # testable.search_paths doesn't exist yet -- this method is itself one of that value's own
-    # inputs (stage 2, ahead of stage 3) -- so the ordering it needs is rebuilt directly, with
-    # mock_search_paths deliberately empty since none of this test's own mocks are placed yet.
-    # generate_test_includes_standins (stage 4) and stage_determine_files (stage 5) must
-    # resolve mocks identically, so both reconstruct this exact ordering by subtracting
-    # testable.mock_search_paths back out of the real testable.search_paths.
-    collection = @include_pathinator.ordered_header_files(
-      @test_search_paths.compose( testable.filepath, testable.paths )
+    # This test's search paths don't exist until stage 3, so they are composed here
+    # without mock directories, the same collection later stages resolve against
+    collection = @mock_locator.header_collection( @test_search_paths.compose( testable.filepath, testable.paths ) )
+
+    return @mock_locator.directories(
+      @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
+      mocks_root: testable.paths[:mocks], collection: collection, complain: complain
     )
-
-    dirs = []
-    @context_extractor.lookup_mock_header_includes_list( testable.filepath ).each do |include|
-      next if mock_partial?( include )
-      source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection, complain: complain )
-      next if source.nil?
-
-      # The same composition mock generation itself uses, so a search path cannot point
-      # somewhere a mock is not written.
-      dirs << @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir )
-    end
-    return dirs.uniq
   end
 
   def framework_defines()

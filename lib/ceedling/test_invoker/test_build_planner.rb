@@ -29,7 +29,8 @@ class TestBuildPlanner
     :file_path_utils,
     :file_wrapper,
     :plugin_manager,
-    :test_source_file_directive_resolver
+    :test_source_file_directive_resolver,
+    :mock_locator
   )
 
   def setup()
@@ -59,7 +60,7 @@ class TestBuildPlanner
           input  = source
           subdir = partial_mock_subdir( include )
         else
-          source, subdir     = @file_finder.resolve_mock( include.filepath, collection: ordered_mock_header_collection( testable ) )
+          source, subdir     = @mock_locator.locate( include, collection: ordered_mock_header_collection( testable ) )
           preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, test )
           input             = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
         end
@@ -67,8 +68,8 @@ class TestBuildPlanner
         # `path` mirrors the subdirectory the mock's own content sits in -- for a real
         # header, its directory below whichever configured root contains it; for a Partial
         # mock, the directory its generated #include names. Either way it is the same
-        # directory this test's own search paths already carry (collect_mock_search_paths,
-        # stage 2, ahead of stage 3), so the mock stays findable by the compiler regardless
+        # directory this test's own search paths already carry (MockLocator#directories), so
+        # the mock stays findable by the compiler regardless
         # of how much path the #include itself happened to spell out.
         #
         # Keyed by that directory alongside the name. Two modules sharing a basename are
@@ -315,14 +316,10 @@ class TestBuildPlanner
     return @test_context_extractor.lookup_source_includes_list( test_filepath )
   end
 
-  # Reconstructs the ordering collect_mock_search_paths (TestBuildSetup, stage 2) originally
-  # saw when it first resolved this same mock's real header -- before this testable's own
-  # generated mock directories existed to splice into search_paths. Every call site resolving
-  # a mock's real header must agree on the same winner, or Ceedling would place a stand-in
-  # header, a mock search path, and the real generated mock in three different directories for
-  # one mock.
+  # Every stage resolving a mock's real header must agree on the same winner, or a
+  # stand-in, a mock search path, and the real mock would land in different directories
   def ordered_mock_header_collection(testable)
-    @include_pathinator.ordered_header_files( testable.search_paths - testable.mock_search_paths )
+    @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
   end
 
   # One mock's identity within its test. A mock directly in the mock root keeps the bare

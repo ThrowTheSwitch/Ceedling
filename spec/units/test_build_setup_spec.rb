@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/test_invoker/test_build_setup'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_search_paths'
+require 'ceedling/test_invoker/mock_locator'
 
 describe TestBuildSetup do
   before(:each) do
@@ -107,6 +108,9 @@ describe TestBuildSetup do
         # Real, over the same doubles, so search path expectations read as paths
         :test_search_paths      => TestSearchPaths.new(
           configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
+        ),
+        :mock_locator           => MockLocator.new(
+          configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
         )
       }
     )
@@ -585,7 +589,7 @@ describe TestBuildSetup do
         allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
 
         expect(@include_pathinator).to receive(:ordered_header_files).with( ['src'] ).and_return( ['src/Foo.h'] )
-        expect(@file_finder).to receive(:resolve_mock).with( 'MockFoo.h', collection: ['src/Foo.h'] ).and_return( ['src/Foo.h', ''] )
+        expect(@file_finder).to receive(:resolve_mock).with( 'MockFoo.h', collection: ['src/Foo.h'], complain: :error ).and_return( ['src/Foo.h', ''] )
 
         @setup.stage_collect_preprocessor_context( @state )
       end
@@ -656,7 +660,7 @@ describe TestBuildSetup do
       end
       allow(@file_path_utils).to receive(:form_mock_header_filepath) { |dir, name| File.join( 'build/test/mocks', dir, name ) }
       allow(@file_wrapper).to receive(:exist?).and_return( true )
-      allow(@file_finder).to receive(:resolve_mock).with( 'MockFoo.h', collection: anything ).and_return( ['src/drivers/foo.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with( 'MockFoo.h', collection: anything, complain: :error ).and_return( ['src/drivers/foo.h', 'drivers'] )
     end
 
     it "replaces stage 2's mock search paths with the mirrored directories of the bare list's mocks" do
