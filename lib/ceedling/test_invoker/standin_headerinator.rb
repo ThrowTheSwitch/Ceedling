@@ -14,18 +14,30 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 # writes the real file. A stand-in sits exactly where the real file will. A test build
 # that never reaches those stages, such as a :sources_only run, keeps only the stand-in,
 # which is all it needs.
+#
+# A mock's stand-in includes the mock's real header, as the generated mock will, so a
+# macro that header defines is visible through the stand-in. A Partial's is blank.
 class StandinHeaderinator
 
   include TestPipelineHelpers
+
+  # The first line of every stand-in, which tells one apart from a real mock
+  MARKER = '// Ceedling stand-in header'
+
+  # The first line of the blank stand-ins earlier versions wrote (FileWrapper#write_blank_file)
+  BLANK_MARKER = '// Ceedling intentionally blank file'
+
+  MARKER_READ_LENGTH = 64
 
   constructor :configurator, :loginator, :reportinator, :file_wrapper, :file_path_utils, :mock_locator
 
   # Places a stand-in for each mock and Partial among `includes`, and gives the mirrored
   # directories of the ordinary mocks, the mock search paths these includes call for.
   #
-  # A path already holding a file, whether a real mock or Partial from an earlier run or
-  # an earlier stand-in, is left alone. Mock generation tracks the file at a mock's path
-  # as an input, so rewriting it would invalidate the mock for nothing.
+  # A real mock or Partial from an earlier run is left alone, as is a mock's stand-in that
+  # is already current. Mock generation tracks the file at a mock's path as an input, so
+  # rewriting it would invalidate the mock for nothing. A mock's stand-in that is out of
+  # date, such as a blank one from an earlier version, is rewritten.
   def place(testable, includes)
     mock_dirs = place_mocks( testable, Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ ) )
     place_partials( testable, Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ ) )
@@ -47,9 +59,9 @@ class StandinHeaderinator
         next
       end
 
-      _source, subdir = @mock_locator.locate( include, collection: collection )
+      source, subdir = @mock_locator.locate( include, collection: collection )
       mock_dir = subdir.empty? ? testable.name : File.join( testable.name, subdir )
-      write( testable.name, @file_path_utils.form_mock_header_filepath( mock_dir, include.filename ), include )
+      write_mock( testable.name, @file_path_utils.form_mock_header_filepath( mock_dir, include.filename ), include, source )
 
       @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir ) if testable.paths[:mocks]
     end
@@ -66,14 +78,45 @@ class StandinHeaderinator
   def write(test, filepath, include)
     return if @file_wrapper.exist?( filepath )
 
+    log_placement( test, include )
+    @file_wrapper.mkdir( File.dirname( filepath ) )
+    @file_wrapper.write_blank_file( filepath )
+  end
+
+  def write_mock(test, filepath, include, header)
+    contents = "#{MARKER}\n#{header_include( header )}\n"
+    return if current?( filepath, contents )
+
+    log_placement( test, include )
+    @file_wrapper.mkdir( File.dirname( filepath ) )
+    @file_wrapper.write( filepath, contents )
+  end
+
+  # The line CMock opens a mock with: its :orig_header_include_fmt around the header's name.
+  # Ceedling hands CMock no folder, so the name is the header's own.
+  def header_include( header )
+    format = @configurator.get_cmock_config[:orig_header_include_fmt] || '#include "%s"'
+    return format.gsub( '%s', File.basename( header ) )
+  end
+
+  # A file that is not a stand-in, such as a real mock, counts as current. Only its first
+  # line is read to tell, since a real mock can be large.
+  def current?(filepath, contents)
+    return false unless @file_wrapper.exist?( filepath )
+
+    start = @file_wrapper.read( filepath, MARKER_READ_LENGTH ).to_s
+    return true unless start.start_with?( MARKER, BLANK_MARKER )
+
+    return @file_wrapper.read( filepath ) == contents
+  end
+
+  def log_placement(test, include)
     msg = @reportinator.generate_module_progress(
       operation:   'Generating stand-in header for',
       module_name: test,
       filename:    include.filename
     )
     @loginator.log( msg, Verbosity::DEBUG )
-    @file_wrapper.mkdir( File.dirname( filepath ) )
-    @file_wrapper.write_blank_file( filepath )
   end
 
 end

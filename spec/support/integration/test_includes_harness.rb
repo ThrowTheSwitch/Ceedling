@@ -45,6 +45,10 @@ module IntegrationSpecHelpers
     def cmock_mock_path
       'build/mocks'
     end
+
+    def get_cmock_config
+      {}
+    end
     def project_use_mocks
       true
     end
