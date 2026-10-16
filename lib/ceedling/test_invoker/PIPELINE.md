@@ -11,7 +11,7 @@ Seven classes divide the stages, each owning one concern:
 - **`TestInvoker`** owns one test build run from start to finish. It opens the dependency cache before the run and flushes it afterward, and fires the `pre_test_build` and `post_test_build` plugin hooks around it. When anything in the pipeline raises, it catches the exception, logs it, and records the run as a failed build. Once a run finishes, it also answers narrow questions such as which sources a test pulled in, for callers that want dependency information rather than a real build.
 - **`TestPipelineManager`** owns the stage sequence: the fixed list of stages below, and the feature toggles and stop points that let a stage decline to run. It knows nothing of how a stage does its work, only whether it runs.
 - **`TestBuildSetup`** does each test's groundwork in stages 1–3: build directories, the text scan of the test file's `#include`s and build directives, and the flags, defines, and search paths every later stage uses.
-- **`TestIncludesExtractinator`** runs stage 4, which replaces the text scan's `#include`s with what the real preprocessor found.
+- **`TestIncludesExtractinator`** runs stage 4, which replaces the text scan's `#include`s with what the real preprocessor found. It sequences one class per pass: `TestBareIncludesExtractinator`, `TestDirectivesOnlyPreprocessinator`, and `TestIncludesReconcilinator`.
 - **`TestBuildPlanner`** decides what to generate and build: which mocks a test needs, what its runner and Partials will be, and, once everything upstream has run, the final sources, objects, and artifacts to compile and link.
 - **`PartialsManager`** preprocesses each Partial's header and source files and generates its implementation, interface, and, when needed, types header, calling on `Partializer` (`lib/ceedling/partials/`) for the C parsing and extraction.
 - **`TestBuildExecutor`** does the remaining work the planner decided on: generating mocks and runners, compiling objects, linking executables, and running the test fixtures.
@@ -20,7 +20,7 @@ The five stage classes never call each other. `TestPipelineManager` alone sequen
 
 Three collaborators hold logic more than one stage needs, so the stages cannot drift apart:
 
-- **`TestSearchPaths`** composes a test's search paths in the order the compiler searches them (stages 2, 3, and 4).
+- **`TestSearchPaths`** composes a test's search paths in the order the compiler searches them, and sets a test's mock search paths (stages 2, 3, and 4).
 - **`MockLocator`** resolves a mock's real header and the directory mirroring it below the test's mock root (stages 2, 4, and 5).
 - **`StandinHeaderinator`** places stand-in headers for mocks and Partials (stage 4).
 
@@ -74,13 +74,13 @@ A module a Partial has taken over is left out of a test's linked objects, since 
 
 Stage 4 gets a test file's `#include`s from the real preprocessor, and its three passes build on each other. Each of the first two runs a real preprocessor process and is skipped when the dependency tracker reports nothing relevant changed.
 
-1. **Bare includes.** GCC runs with `-MM -MG` on an isolated copy of the test file, listing the `#include`s it reaches with the test's defines applied. `-MG` lets it list a mock that doesn't exist yet. The list is cached between runs.
+1. **Bare includes** (`TestBareIncludesExtractinator`). GCC runs with `-MM -MG` on an isolated copy of the test file, listing the `#include`s it reaches with the test's defines applied. `-MG` lets it list a mock that doesn't exist yet. The list is cached between runs.
 
    The isolated copy can't open any other header, so an `#include` guarded by a macro another header defines evaluates false there and drops out. The test file's literal `#include` lines are therefore added to GCC's list as candidates, as they are for a mockable header (`Preprocessinator#supplement_with_text_includes`). A candidate survives only if the second pass confirms it.
 
    Stand-ins are placed for every candidate mock and Partial (see [Stand-in headers](#stand-in-headers)). A mock on GCC's list must have a real header. A mock only the text scan found may sit in a branch that is off and name a header that doesn't exist, so it gets no stand-in then. Where reconciliation follows, the test's mock search paths are set from the candidates' mocks.
-2. **Directives-only.** GCC preprocesses the test file with `-fdirectives-only`, using the test's full search paths. This pass follows `#include`s, through the stand-ins into the headers they name, so it sees what the compile will see. Its output records which `#include`s came from the test file itself.
-3. **Reconciliation.** The user and system `#include`s from pass 2 are checked against the candidates plus any `#include` a macro names, as resolved by pass 2's output (`Preprocessinator#supplement_with_computed_includes`). The result replaces the stored text-scan list, and the mock search paths narrow to the mocks that remain.
+2. **Directives-only** (`TestDirectivesOnlyPreprocessinator`). GCC preprocesses the test file with `-fdirectives-only`, using the test's full search paths. This pass follows `#include`s, through the stand-ins into the headers they name, so it sees what the compile will see. Its output records which `#include`s came from the test file itself. Because the output depends on every file the pass read, the project files its line markers show it entered are registered as its dependencies, as a compile registers its `.d` file, so editing a header the test reaches reruns it. Generated files below the build root, such as stand-ins and mocks, are left out.
+3. **Reconciliation** (`TestIncludesReconcilinator`). The user and system `#include`s from pass 2 are checked against the candidates plus any `#include` a macro names, as resolved by pass 2's output (`Preprocessinator#supplement_with_computed_includes`). The result replaces the stored text-scan list, and the mock search paths narrow to the mocks that remain.
 
    If pass 2 failed for one file, that file's text-scan includes take its place, checked against GCC's list alone. The candidates hold those same text-scan includes, so checking against them would keep every one, including mocks in branches that are off. GCC's list still evaluated those branches.
 
