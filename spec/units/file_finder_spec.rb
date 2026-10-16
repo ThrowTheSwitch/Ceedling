@@ -149,6 +149,10 @@ describe FileFinder do
       expect { @file_finder.resolve_mock('nonexistent/dir/Mockfoo.h') }.to raise_error(CeedlingException)
     end
 
+    it 'finds nothing for a mock without a header, rather than raising, when told to ignore a missing header' do
+      expect(@file_finder.resolve_mock('Mocknope.h', complain: :ignore)).to eq( [nil, nil] )
+    end
+
     it 'never raises on an ambiguous mock reference -- resolves to the first candidate in collection order' do
       allow(@configurator).to receive(:collection_all_headers).and_return(
         ['src/drivers/dup.h', 'src/other/dup.h']
