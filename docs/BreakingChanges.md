@@ -60,7 +60,7 @@ Flags specified for release builds are applied to all files in the release build
 
 Ceedling’s preprocessing features have been greatly improved. Preprocessing is now no longer all-or-nothing with a simple boolean value.
 
-In place of `true` or `false`, `:use_test_preprocessing` now accepts:
+In place of `true` or `false`, `:use_test_preprocessor` now accepts:
 
 * `:none` disables preprocessing (equivalent to previous `false` setting).
 * `:all` enables preprpocessing for all mockable header files and test C files (equivalent to previous `true` setting).

@@ -303,6 +303,11 @@ directives or include directives with macros as targets, preprocessing is requir
 Ceedling uses various passes of preprocessor modes to successfully extract
 `#include` directives.
 
+A test file’s `#include` directives are extracted with the preprocessor only when
+test files are preprocessed, with `:use_test_preprocessor` set to `:tests` or `:all`.
+With `:mocks`, only mockable headers are preprocessed, and a test file’s
+`#include` directives come from text scanning.
+
 ### Preprocessing for tests and mocks
 
 If your test files rely on macros and `#ifdef` conditionals used in certain

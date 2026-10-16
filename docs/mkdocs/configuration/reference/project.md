@@ -113,6 +113,10 @@ See the [documentation on test preprocessing][test-preprocessing] for more.
 * `:mocks` enables only preprocessing of header files that are to be mocked.
 * `:tests` enables only preprocessing of your test files.
 
+!!! note
+    Enabling Partials (`:project` ↳ `:use_partials`) sets this option to `:all`,
+    whatever value you give it, since Partials require preprocessing.
+
 **Default**: `:none`
 
 ## `:test_file_prefix`
