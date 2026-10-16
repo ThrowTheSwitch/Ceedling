@@ -15,22 +15,40 @@ class TestSearchPaths
   # `paths` is a Testable's paths Hash. `mock_search_paths` are its mocks' mirrored
   # directories, which sit right after the flat mock root.
   def compose(filepath, paths, mock_search_paths = [])
-    _paths = []
-    _paths << paths[:mocks]    if paths[:mocks]
-    _paths += mock_search_paths
-    _paths << paths[:partials] if paths[:partials]
-    _paths += partial_search_paths( filepath, paths )
-    _paths += @include_pathinator.lookup_test_directive_include_paths( filepath )
-    _paths += @include_pathinator.collect_test_include_paths()
-    _paths += @configurator.collection_paths_support
-    _paths += @configurator.collection_paths_include
-    _paths += @configurator.collection_paths_libraries
-    _paths += @configurator.collection_paths_vendor
-    _paths += @configurator.collection_paths_test_toolchain_include
-    return _paths.uniq
+    return (generated_paths( filepath, paths, mock_search_paths ) + configured_paths( filepath )).uniq
+  end
+
+  # Sets a test's mock search paths and composes its search paths around them. `lock`
+  # guards the write, since other threads read the Testable.
+  def assign_mock_search_paths(testable, mock_search_paths, lock)
+    paths = compose( testable.filepath, testable.paths, mock_search_paths )
+    lock.synchronize do
+      testable.mock_search_paths = mock_search_paths
+      testable.search_paths      = paths
+    end
   end
 
   private
+
+  # Where this test's mocks and Partials are generated
+  def generated_paths(filepath, paths, mock_search_paths)
+    _paths = []
+    _paths << paths[:mocks] if paths[:mocks]
+    _paths += mock_search_paths
+    _paths << paths[:partials] if paths[:partials]
+    return _paths + partial_search_paths( filepath, paths )
+  end
+
+  # TEST_INCLUDE_PATH() entries, then the project's configured paths
+  def configured_paths(filepath)
+    return @include_pathinator.lookup_test_directive_include_paths( filepath ) +
+           @include_pathinator.collect_test_include_paths() +
+           @configurator.collection_paths_support +
+           @configurator.collection_paths_include +
+           @configurator.collection_paths_libraries +
+           @configurator.collection_paths_vendor +
+           @configurator.collection_paths_test_toolchain_include
+  end
 
   # Every Partialized module's own directory below this test's Partials root.
   #

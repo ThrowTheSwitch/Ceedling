@@ -434,17 +434,43 @@ test_build_setup:
 test_includes_extractinator:
   compose:
     - configurator
+    - test_bare_includes_extractinator
+    - test_directives_only_preprocessinator
+    - test_includes_reconcilinator
+
+test_bare_includes_extractinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
+    - file_path_utils
+    - dependinator
+    - test_search_paths
+    - standin_headerinator
+
+test_directives_only_preprocessinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
+    - file_path_utils
+    - file_wrapper
+    - dependinator
+
+test_includes_reconcilinator:
+  compose:
+    - configurator
     - loginator
     - reportinator
     - batchinator
     - test_context_extractor
     - preprocessinator
-    - file_path_utils
-    - file_wrapper
-    - dependinator
     - test_search_paths
     - mock_locator
-    - standin_headerinator
 
 standin_headerinator:
   compose:

@@ -9,7 +9,7 @@
 # for real.
 #
 # The stage objects are real: TestContextExtractor's text scan (stage 2), TestSearchPaths
-# (stage 3), and TestIncludesExtractinator with its StandinHeaderinator, MockLocator,
+# (stage 3), and TestIncludesExtractinator's three passes with their StandinHeaderinator, MockLocator,
 # FileFinder, and the Preprocessinator graph from spec_integration_helper.rb (stage 4).
 # Thin stand-ins replace only what would drag in a whole build: a configurator holding
 # one small project's settings, a dependency tracker that always reports stale, a
@@ -29,6 +29,9 @@ require 'ceedling/test_invoker/test_search_paths'
 require 'ceedling/test_invoker/mock_locator'
 require 'ceedling/test_invoker/standin_headerinator'
 require 'ceedling/test_invoker/test_includes_extractinator'
+require 'ceedling/test_invoker/test_bare_includes_extractinator'
+require 'ceedling/test_invoker/test_directives_only_preprocessinator'
+require 'ceedling/test_invoker/test_includes_reconcilinator'
 
 module IntegrationSpecHelpers
 
@@ -228,13 +231,19 @@ module IntegrationSpecHelpers
         configurator: @cfg, loginator: NULL, reportinator: NULL, file_wrapper: @file_wrapper, file_path_utils: @fpu, mock_locator: @locator
       )
 
-      extractinator = TestIncludesExtractinator.new(
-        configurator: @cfg, loginator: NULL, reportinator: NULL, batchinator: SequentialBatchinator.new,
-        test_context_extractor: @context_extractor, preprocessinator: preprocessinator, file_path_utils: @fpu, file_wrapper: @file_wrapper,
-        dependinator: StaleDependinator.new, test_search_paths: @search_paths, mock_locator: @locator, standin_headerinator: standins
+      common = { configurator: @cfg, loginator: NULL, reportinator: NULL, batchinator: SequentialBatchinator.new, preprocessinator: preprocessinator }
+      return TestIncludesExtractinator.new(
+        configurator: @cfg,
+        test_bare_includes_extractinator: TestBareIncludesExtractinator.new(
+          **common, file_path_utils: @fpu, dependinator: StaleDependinator.new, test_search_paths: @search_paths, standin_headerinator: standins
+        ),
+        test_directives_only_preprocessinator: TestDirectivesOnlyPreprocessinator.new(
+          **common, file_path_utils: @fpu, file_wrapper: @file_wrapper, dependinator: StaleDependinator.new
+        ),
+        test_includes_reconcilinator: TestIncludesReconcilinator.new(
+          **common, test_context_extractor: @context_extractor, test_search_paths: @search_paths, mock_locator: @locator
+        )
       )
-      extractinator.setup
-      return extractinator
     end
 
     def testable_for(filepath, defines)

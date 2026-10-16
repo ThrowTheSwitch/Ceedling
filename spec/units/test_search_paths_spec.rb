@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/test_invoker/test_search_paths'
+require 'ceedling/test_invoker/test_invoker_types'
 
 describe TestSearchPaths do
   before(:each) do
@@ -65,6 +66,19 @@ describe TestSearchPaths do
       allow(@configurator).to receive(:collection_paths_support).and_return( ['src'] )
 
       expect(@search_paths.compose( 'test/TestFoo.c', {} )).to eq( ['src'] )
+    end
+  end
+
+  describe "#assign_mock_search_paths" do
+    it "sets a test's mock search paths and composes its search paths around them" do
+      testable = TestInvokerTypes::Testable.new(
+        filepath: 'test/TestFoo.c', paths: { mocks: 'mocks' }, mock_search_paths: ['mocks/old'], search_paths: ['mocks', 'mocks/old']
+      )
+
+      @search_paths.assign_mock_search_paths( testable, ['mocks/drivers'], Mutex.new )
+
+      expect(testable.mock_search_paths).to eq( ['mocks/drivers'] )
+      expect(testable.search_paths).to eq( ['mocks', 'mocks/drivers'] )
     end
   end
 end

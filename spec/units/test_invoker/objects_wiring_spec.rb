@@ -16,8 +16,9 @@ describe 'Test pipeline object wiring' do
   OBJECTS_WIRING = YAML.load_file( File.expand_path( '../../../lib/ceedling/objects.yml', __dir__ ) ).freeze
 
   %w[
-    test_invoker test_pipeline_manager test_build_setup test_includes_extractinator test_build_planner
-    partials_manager test_build_executor test_search_paths mock_locator standin_headerinator
+    test_invoker test_pipeline_manager test_build_setup test_includes_extractinator test_bare_includes_extractinator
+    test_directives_only_preprocessinator test_includes_reconcilinator test_build_planner partials_manager
+    test_build_executor test_search_paths mock_locator standin_headerinator
   ].each do |name|
     it "composes exactly what #{name}'s constructor takes" do
       require "ceedling/test_invoker/#{name}"

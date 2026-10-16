@@ -7,6 +7,9 @@
 
 require 'spec_helper'
 require 'ceedling/test_invoker/test_includes_extractinator'
+require 'ceedling/test_invoker/test_bare_includes_extractinator'
+require 'ceedling/test_invoker/test_directives_only_preprocessinator'
+require 'ceedling/test_invoker/test_includes_reconcilinator'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_search_paths'
 require 'ceedling/test_invoker/mock_locator'
@@ -26,7 +29,7 @@ describe TestIncludesExtractinator do
     @file_finder             = double( "FileFinder" )
     @dependinator            = double( "Dependinator" )
 
-    allow(@batchinator).to receive(:exec) do |workload:, things:, &block|
+    allow(@batchinator).to receive(:exec) do |things:, **_options, &block|
       things.each { |k, v| block.call(k, v) }
     end
 
@@ -96,27 +99,28 @@ describe TestIncludesExtractinator do
       configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
     )
 
+    # The stage's passes and collaborators are real, over the same doubles, so these
+    # examples cover the whole stage and read as paths and files
+    search_paths = TestSearchPaths.new(
+      configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
+    )
+    standins = StandinHeaderinator.new(
+      configurator: @configurator, loginator: @loginator, reportinator: @reportinator,
+      file_wrapper: @file_wrapper, file_path_utils: @file_path_utils, mock_locator: @mock_locator
+    )
+    common = { configurator: @configurator, loginator: @loginator, reportinator: @reportinator, batchinator: @batchinator, preprocessinator: @preprocessinator }
+
     @extractinator = described_class.new(
-      {
-        :configurator           => @configurator,
-        :loginator              => @loginator,
-        :reportinator           => @reportinator,
-        :batchinator            => @batchinator,
-        :test_context_extractor => @test_context_extractor,
-        :preprocessinator       => @preprocessinator,
-        :file_path_utils        => @file_path_utils,
-        :file_wrapper           => @file_wrapper,
-        :dependinator           => @dependinator,
-        # Real, over the same doubles, so expectations read as paths and files
-        :mock_locator           => @mock_locator,
-        :test_search_paths      => TestSearchPaths.new(
-          configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
-        ),
-        :standin_headerinator   => StandinHeaderinator.new(
-          configurator: @configurator, loginator: @loginator, reportinator: @reportinator,
-          file_wrapper: @file_wrapper, file_path_utils: @file_path_utils, mock_locator: @mock_locator
-        )
-      }
+      configurator: @configurator,
+      test_bare_includes_extractinator: TestBareIncludesExtractinator.new(
+        **common, file_path_utils: @file_path_utils, dependinator: @dependinator, test_search_paths: search_paths, standin_headerinator: standins
+      ),
+      test_directives_only_preprocessinator: TestDirectivesOnlyPreprocessinator.new(
+        **common, file_path_utils: @file_path_utils, file_wrapper: @file_wrapper, dependinator: @dependinator
+      ),
+      test_includes_reconcilinator: TestIncludesReconcilinator.new(
+        **common, test_context_extractor: @test_context_extractor, test_search_paths: search_paths, mock_locator: @mock_locator
+      )
     )
 
     @testable = TestInvokerTypes::Testable.new(
