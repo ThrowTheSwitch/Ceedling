@@ -77,6 +77,16 @@ describe TestBuildSetup do
     # collection stub this again with a narrower `.with(...)` match.
     allow(@include_pathinator).to receive(:ordered_header_files).and_return( [] )
 
+    # Search path defaults, so tests of a reconciling first pass, which rebuilds a test's
+    # search paths, need not know every source those paths draw on
+    allow(@include_pathinator).to receive(:lookup_test_directive_include_paths).and_return( [] )
+    allow(@include_pathinator).to receive(:collect_test_include_paths).and_return( [] )
+    allow(@configurator).to receive(:collection_paths_support).and_return( [] )
+    allow(@configurator).to receive(:collection_paths_include).and_return( [] )
+    allow(@configurator).to receive(:collection_paths_libraries).and_return( [] )
+    allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
+    allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
+
     @setup = described_class.new(
       {
         :configurator           => @configurator,
@@ -413,6 +423,8 @@ describe TestBuildSetup do
       testable.preprocess_flags   = ['-Wall']
       testable.preprocess_defines = ['TEST']
       testable.search_paths       = ['src']
+      # The first pass rebuilds the search paths this pass records, from the same sources
+      allow(@configurator).to receive(:collection_paths_include).and_return( ['src'] )
       allow(@dependinator).to receive(:stale?).and_return( true )
       allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.txt' )
 
@@ -448,7 +460,7 @@ describe TestBuildSetup do
       expect( @testable.preprocess[:includes] ).to eq( includes )
     end
 
-    it "recalls the cached bare-includes list and skips extraction, caching, and stand-in generation when the dependency tracker reports it unchanged" do
+    it "recalls the cached bare-includes list and skips extraction and caching when the dependency tracker reports it unchanged" do
       allow(@dependinator).to receive(:stale?).and_return( false )
       cached_includes = []
       expect(@preprocessinator).to_not receive(:preprocess_bare_includes)
@@ -561,7 +573,7 @@ describe TestBuildSetup do
         @setup.stage_collect_preprocessor_context( @state )
       end
 
-      it "resolves a mocked header's real source against the ordering collect_mock_search_paths (stage 2) originally saw for it -- this test's own search_paths minus its own mock_search_paths" do
+      it "resolves a mocked header's real source against this test's search paths without its mock search paths" do
         @testable.search_paths      = ['build/test/mocks/a_test/drivers', 'src']
         @testable.mock_search_paths = ['build/test/mocks/a_test/drivers']
         allow(@file_wrapper).to receive(:exist?).and_return( false )
@@ -569,6 +581,18 @@ describe TestBuildSetup do
 
         expect(@include_pathinator).to receive(:ordered_header_files).with( ['src'] ).and_return( ['src/Foo.h'] )
         expect(@file_finder).to receive(:resolve_mock).with( 'MockFoo.h', collection: ['src/Foo.h'] ).and_return( ['src/Foo.h', ''] )
+
+        @setup.stage_collect_preprocessor_context( @state )
+      end
+
+      # A cached list says nothing about whether its stand-ins survived, and the
+      # directives-only pass needs them
+      it "writes a missing stand-in for a mocked header when the bare-includes list is recalled from cache" do
+        allow(@dependinator).to receive(:stale?).and_return( false )
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
+        allow(@preprocessinator).to receive(:load_includes_list).and_return( [ Include.new('MockFoo.h') ] )
+
+        expect(@file_wrapper).to receive(:write_blank_file).with( 'build/test/mocks/a_test/MockFoo.h' )
 
         @setup.stage_collect_preprocessor_context( @state )
       end
@@ -600,6 +624,85 @@ describe TestBuildSetup do
 
         @setup.stage_collect_preprocessor_context( @state )
       end
+    end
+  end
+
+  # With directives-only output available, the reconciled list drives the build, and it
+  # draws only from the bare list, so the bare list's mocks set the mock search paths
+  context "#stage_collect_preprocessor_context (mock search paths)" do
+    before(:each) do
+      @testable.paths[:mocks]     = 'build/test/mocks/a_test'
+      @testable.mock_search_paths = ['build/test/mocks/a_test/hw']
+      @testable.search_paths      = ['build/test/mocks/a_test', 'build/test/mocks/a_test/hw', 'src']
+
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/includes/Foo.c.yml').and_return( true )
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/raw/Foo.txt').and_return( false )
+
+      allow(@include_pathinator).to receive(:lookup_test_directive_include_paths).and_return( [] )
+      allow(@include_pathinator).to receive(:collect_test_include_paths).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_support).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_include).and_return( ['src'] )
+      allow(@configurator).to receive(:collection_paths_libraries).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
+      allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
+      allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
+        subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
+      end
+      allow(@file_path_utils).to receive(:form_mock_header_filepath) { |dir, name| File.join( 'build/test/mocks', dir, name ) }
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
+      allow(@file_finder).to receive(:resolve_mock).with( 'MockFoo.h', collection: anything ).and_return( ['src/drivers/foo.h', 'drivers'] )
+    end
+
+    it "replaces stage 2's mock search paths with the mirrored directories of the bare list's mocks" do
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
+
+      @setup.stage_collect_preprocessor_context( @state )
+
+      expect(@testable.mock_search_paths).to eq( ['build/test/mocks/a_test/drivers'] )
+      expect(@testable.search_paths).to eq( ['build/test/mocks/a_test', 'build/test/mocks/a_test/drivers', 'src'] )
+    end
+
+    it "sets the mock search paths from a bare list recalled from cache, too" do
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/includes/Foo.c.yml').and_return( false )
+      allow(@preprocessinator).to receive(:load_includes_list).and_return( [ Include.new('MockFoo.h') ] )
+
+      @setup.stage_collect_preprocessor_context( @state )
+
+      expect(@testable.mock_search_paths).to eq( ['build/test/mocks/a_test/drivers'] )
+    end
+
+    it "never resolves a mock the bare list leaves out, such as one in a conditional branch that is off" do
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [] )
+      expect(@file_finder).to_not receive(:resolve_mock)
+
+      @setup.stage_collect_preprocessor_context( @state )
+
+      expect(@testable.mock_search_paths).to eq( [] )
+      expect(@testable.search_paths).to eq( ['build/test/mocks/a_test', 'src'] )
+    end
+
+    it "hands the directives-only pass the rebuilt search paths" do
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/raw/Foo.txt').and_return( true )
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
+
+      expect(@preprocessinator).to receive(:generate_directives_only_output)
+        .with( hash_including( include_paths: ['build/test/mocks/a_test', 'build/test/mocks/a_test/drivers', 'src'] ) )
+        .and_return( nil )
+
+      @setup.stage_collect_preprocessor_context( @state )
+    end
+
+    # Without directives-only output nothing is reconciled, so the text-scan list stage 2
+    # drew its paths from still drives the build
+    it "leaves stage 2's mock search paths in place when directives-only output is unavailable" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
+
+      @setup.stage_collect_preprocessor_context( @state )
+
+      expect(@testable.mock_search_paths).to eq( ['build/test/mocks/a_test/hw'] )
+      expect(@testable.search_paths).to eq( ['build/test/mocks/a_test', 'build/test/mocks/a_test/hw', 'src'] )
     end
   end
 
@@ -659,6 +762,7 @@ describe TestBuildSetup do
       allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
         subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
       end
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
     end
 
     it "collects each non-Partial mocked header's own mirrored directory, deduplicated" do
@@ -666,8 +770,8 @@ describe TestBuildSetup do
       bar_mock = MockInclude.new('MockBar.h')
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [foo_mock, bar_mock] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: []).and_return( ['src/drivers/foo.h', 'drivers'] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockBar.h', collection: []).and_return( ['src/drivers/bar.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: [], complain: :error).and_return( ['src/drivers/foo.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockBar.h', collection: [], complain: :error).and_return( ['src/drivers/bar.h', 'drivers'] )
 
       result = @setup.collect_mock_search_paths( @testable )
 
@@ -686,7 +790,7 @@ describe TestBuildSetup do
       expect(@include_pathinator).to receive(:ordered_header_files)
         .with( ['build/test/mocks/a_test', 'other_inc', 'src'] ).and_return( ['other_inc/foo.h'] )
       expect(@file_finder).to receive(:resolve_mock)
-        .with('MockFoo.h', collection: ['other_inc/foo.h']).and_return( ['other_inc/foo.h', ''] )
+        .with('MockFoo.h', collection: ['other_inc/foo.h'], complain: :error).and_return( ['other_inc/foo.h', ''] )
 
       @setup.collect_mock_search_paths( @testable )
     end
@@ -695,7 +799,7 @@ describe TestBuildSetup do
       foo_mock = MockInclude.new('MockFoo.h')
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [foo_mock] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: []).and_return( ['src/foo.h', ''] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: [], complain: :error).and_return( ['src/foo.h', ''] )
 
       result = @setup.collect_mock_search_paths( @testable )
 
@@ -711,6 +815,27 @@ describe TestBuildSetup do
       result = @setup.collect_mock_search_paths( @testable )
 
       expect(result).to eq([])
+    end
+
+    # With test preprocessing on, stage 4 settles which mocks the build uses, so a mock
+    # whose header is missing may be one the preprocessor discards
+    it "skips a mock whose header is missing when test preprocessing is on, keeping the others" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+        .with('test/TestFoo.c').and_return( [MockInclude.new('MockHw1.h'), MockInclude.new('MockFoo.h')] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockHw1.h', collection: [], complain: :ignore).and_return( [nil, nil] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: [], complain: :ignore).and_return( ['src/drivers/foo.h', 'drivers'] )
+
+      expect(@setup.collect_mock_search_paths( @testable )).to eq( ['build/test/mocks/a_test/drivers'] )
+    end
+
+    it "stops the build over a mock whose header is missing when test preprocessing is off" do
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+        .with('test/TestFoo.c').and_return( [MockInclude.new('MockHw1.h')] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockHw1.h', collection: [], complain: :error)
+        .and_raise( CeedlingException.new( 'Found no file `Hw1.h` in search paths.' ) )
+
+      expect { @setup.collect_mock_search_paths( @testable ) }.to raise_error( CeedlingException, /Hw1\.h/ )
     end
 
     it "returns nothing when the project has no mocks path at all (mocking disabled)" do

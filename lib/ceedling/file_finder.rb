@@ -22,7 +22,9 @@ class FileFinder
   # priority -- TEST_INCLUDE_PATH() ranked ahead of :support/:include, as a real compile would
   # see it. Absent that (a caller with no single test in view, e.g. Partializer resolving a
   # module generically), the project-wide collection_all_headers is the only sensible fallback.
-  def find_header_input_for_mock(mock, collection: nil)
+  # `complain` sets what a missing header does: :error raises, and :warn or :ignore
+  # returns nil.
+  def find_header_input_for_mock(mock, collection: nil, complain: :error)
     # Mock name/path => <mock prefix><header filename (.h)>, optionally preceded by however
     # much path the #include itself carried (e.g. 'Mockfoo.h' or 'drivers/Mockfoo.h').
     # Note: In some rare cases, a mock name may include a dot (ex. Sensor.44) because of versioning file naming convention
@@ -39,7 +41,7 @@ class FileFinder
     found_path = @file_finder_helper.resolve_file_in_collection(
       header,
       collection || @configurator.collection_all_headers,
-      :error
+      complain
     )
 
     return found_path
@@ -51,8 +53,11 @@ class FileFinder
   # also needs (or can reuse) the header path it was derived from, and every caller placing
   # a mock's own files -- its search path, an early stand-in for it, or its real generated
   # content -- must agree on exactly the same subdirectory for that mock to ever compile.
-  def resolve_mock(mock, collection: nil)
-    source = find_header_input_for_mock(mock, collection: collection)
+  # A missing header the caller tolerates through `complain` resolves to neither.
+  def resolve_mock(mock, collection: nil, complain: :error)
+    source = find_header_input_for_mock(mock, collection: collection, complain: complain)
+    return [nil, nil] if source.nil?
+
     subdir = PathMirror.relative_subdir(source, @configurator.paths_test + @configurator.paths_support + @configurator.paths_include)
     return [source, subdir]
   end

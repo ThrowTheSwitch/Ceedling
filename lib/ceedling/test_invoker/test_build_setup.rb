@@ -236,6 +236,7 @@ class TestBuildSetup
     # something else to notice, since nothing else reads this list back off
     # disk on its own the way stage 9/11's plain preprocessed-output targets do.
     skipped_includes = 0
+    reconciling      = @configurator.test_build_preprocess_directives_only_available
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       name     = testable.name
@@ -274,8 +275,6 @@ class TestBuildSetup
 
         @preprocessinator.store_includes_list( test: name, filepath: filepath, includes: includes )
         @dependinator.mark_fresh( target )
-
-        generate_test_includes_standins( testable, includes )
       else
         msg = @reportinator.generate_module_progress(
           operation:   'Skipping preprocessing for #includes in favor of cached #includes for',
@@ -286,6 +285,21 @@ class TestBuildSetup
         state.lock.synchronize { skipped_includes += 1 }
 
         testable.preprocess[:includes] = @preprocessinator.load_includes_list( test: name, filepath: filepath )
+      end
+
+      # A cached list says nothing about whether its stand-ins survived, so they are
+      # placed either way
+      mock_dirs = generate_test_includes_standins( testable, testable.preprocess[:includes] )
+
+      # Reconciliation draws only from this list, so where it runs, this list's mocks are
+      # the ones the build uses. The second pass needs their directories to find the
+      # stand-ins just placed.
+      if reconciling
+        paths = search_paths( filepath, testable.paths, mock_dirs )
+        state.lock.synchronize do
+          testable.mock_search_paths = mock_dirs
+          testable.search_paths      = paths
+        end
       end
     end
 
@@ -454,30 +468,33 @@ class TestBuildSetup
   # independent of whether anything the mock or partial actually depends on
   # changed. Whether real regeneration is warranted stays entirely up to each
   # later stage's own dependency-tracker check.
+  #
+  # Returns each ordinary mock's mirrored directory below this test's mock root,
+  # the mock search paths these includes call for.
   def generate_test_includes_standins(testable, includes)
     test = testable.name
     mocks    = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
     partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )
 
-    # Reconstructs the mock-search-path-free ordering collect_mock_search_paths (stage 2)
-    # originally saw when it first resolved these same mocks' real headers -- this test's own
-    # generated mock directories weren't spliced into search_paths yet at that point.
+    # A mock's header resolves against this test's search paths without its own mock
+    # directories, the ordering collect_mock_search_paths and stage 5 also use
     collection = @include_pathinator.ordered_header_files(
       testable.search_paths - testable.mock_search_paths
     )
+    mock_dirs = []
 
     mocks.each do |include|
       # A Partial mock is Ceedling's own generated content with no real header to resolve
       # against, always flat per test. An ordinary mock's stand-in mirrors wherever its real
       # header actually lives, matching the real mock (stage 10) -- both are findable by the
-      # compiler only via a search path pointing directly at that mirrored directory (already
-      # collected into this test's own search paths, stage 3, before either one is written).
+      # compiler only via a search path pointing directly at that mirrored directory.
       if mock_partial?( include )
         filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
       else
         _source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection )
         mock_dir = subdir.empty? ? test : File.join( test, subdir )
         filepath = @file_path_utils.form_mock_header_filepath( mock_dir, include.filename )
+        mock_dirs << @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir ) if testable.paths[:mocks]
       end
 
       next if @file_wrapper.exist?( filepath )
@@ -508,22 +525,31 @@ class TestBuildSetup
       @file_wrapper.mkdir( File.dirname( filepath ) )
       @file_wrapper.write_blank_file( filepath )
     end
+
+    return mock_dirs.uniq
   end
 
   # Every mocked header's own mirrored directory below this test's mock root -- a mock is
   # only ever findable by the compiler via a search path pointing directly at wherever it
   # actually lives, since C's own #include resolution has no notion of a recursive search
   # path, so this feeds directly into this test's own search paths (search_paths, below).
+  #
+  # These come from the text-scanned #includes, which ignore #if. With test preprocessing
+  # on, stage 4 settles which mocks the build uses, and where it reconciles it sets these
+  # paths again from the preprocessor's list. A scanned mock without a header may be one
+  # the preprocessor discards, so it is skipped here. With preprocessing off, the scanned
+  # list is the build's own, and a missing header stops the build.
   def collect_mock_search_paths(testable)
     return [] unless testable.paths[:mocks]
+
+    complain = @configurator.project_use_test_preprocessor_tests ? :ignore : :error
 
     # testable.search_paths doesn't exist yet -- this method is itself one of that value's own
     # inputs (stage 2, ahead of stage 3) -- so the ordering it needs is rebuilt directly, with
     # mock_search_paths deliberately empty since none of this test's own mocks are placed yet.
     # generate_test_includes_standins (stage 4) and stage_determine_files (stage 5) must
-    # resolve each of these same mocks identically, so both reconstruct this exact ordering by
-    # subtracting testable.mock_search_paths back out of the real testable.search_paths once it
-    # exists, rather than each independently re-deriving it.
+    # resolve mocks identically, so both reconstruct this exact ordering by subtracting
+    # testable.mock_search_paths back out of the real testable.search_paths.
     collection = @include_pathinator.ordered_header_files(
       search_paths( testable.filepath, testable.paths, [] )
     )
@@ -531,7 +557,9 @@ class TestBuildSetup
     dirs = []
     @context_extractor.lookup_mock_header_includes_list( testable.filepath ).each do |include|
       next if mock_partial?( include )
-      _source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection )
+      source, subdir = @file_finder.resolve_mock( include.filepath, collection: collection, complain: complain )
+      next if source.nil?
+
       # The same composition mock generation itself uses, so a search path cannot point
       # somewhere a mock is not written.
       dirs << @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir )
