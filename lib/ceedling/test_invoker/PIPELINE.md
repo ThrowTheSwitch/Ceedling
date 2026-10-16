@@ -6,16 +6,23 @@ Each test file in a run gets its own `Testable` record, and every `Testable` tra
 
 ## The pipeline's shape
 
-Six classes divide the work, each owning one concern:
+Seven classes divide the stages, each owning one concern:
 
 - **`TestInvoker`** owns one test build run from start to finish. It opens the dependency cache before the run and flushes it afterward, and fires the `pre_test_build` and `post_test_build` plugin hooks around it. When anything in the pipeline raises, it catches the exception, logs it, and records the run as a failed build. Once a run finishes, it also answers narrow questions such as which sources a test pulled in, for callers that want dependency information rather than a real build.
 - **`TestPipelineManager`** owns the stage sequence: the fixed list of stages below, and the feature toggles and stop points that let a stage decline to run. It knows nothing of how a stage does its work, only whether it runs.
-- **`TestBuildSetup`** does each test's groundwork: build directories, the test file's `#include`s and build directives, and the flags, defines, and search paths every later stage uses.
+- **`TestBuildSetup`** does each test's groundwork in stages 1–3: build directories, the text scan of the test file's `#include`s and build directives, and the flags, defines, and search paths every later stage uses.
+- **`TestIncludesExtractinator`** runs stage 4, which replaces the text scan's `#include`s with what the real preprocessor found.
 - **`TestBuildPlanner`** decides what to generate and build: which mocks a test needs, what its runner and Partials will be, and, once everything upstream has run, the final sources, objects, and artifacts to compile and link.
 - **`PartialsManager`** preprocesses each Partial's header and source files and generates its implementation, interface, and, when needed, types header, calling on `Partializer` (`lib/ceedling/partials/`) for the C parsing and extraction.
 - **`TestBuildExecutor`** does the remaining work the planner decided on: generating mocks and runners, compiling objects, linking executables, and running the test fixtures.
 
-`TestBuildSetup`, `TestBuildPlanner`, `PartialsManager`, and `TestBuildExecutor` never call each other. `TestPipelineManager` alone sequences them, calling each stage's method on the shared `PipelineState` in turn.
+The five stage classes never call each other. `TestPipelineManager` alone sequences them, calling each stage's method on the shared `PipelineState` in turn.
+
+Three collaborators hold logic more than one stage needs, so the stages cannot drift apart:
+
+- **`TestSearchPaths`** composes a test's search paths in the order the compiler searches them (stages 2, 3, and 4).
+- **`MockLocator`** resolves a mock's real header and the directory mirroring it below the test's mock root (stages 2, 4, and 5).
+- **`StandinHeaderinator`** places stand-in headers for mocks and Partials (stage 4).
 
 ## `PipelineState` and `Testable`
 
@@ -36,7 +43,7 @@ Six classes divide the work, each owning one concern:
 Which mocks, sources, and runner includes a test gets depends on its `#include`s, and the pipeline knows them in two forms. Which one drives a test's build depends on the project's preprocessing.
 
 - **The text-scan list**, from stage 2, reads every `#include` line as written. It strips comments but evaluates no `#if`, so it can't tell that a branch is off, and it can't see an `#include` that a macro names.
-- **The reconciled list**, from the end of stage 4, is what the real preprocessor found. GCC evaluates every `#if` against the test's defines, and the result is checked against the test file's own `#include` lines. Stage 4 replaces the stored text-scan list with it.
+- **The reconciled list**, from the end of stage 4, is what the real preprocessor found, following the test file's `#include`s into the headers they name, so a macro a header defines decides an `#if` as it will at compile time. Stage 4 replaces the stored text-scan list with it.
 
 The text-scan list drives the build whenever stage 4 does not reconcile. That is the case when test preprocessing is off (`:use_test_preprocessor` of `:none` or `:mocks`), and in whole-run fallback mode, when the preprocessor lacks `-fdirectives-only` or `:test_build` ↳ `:preprocess_force_fallback` is set. Otherwise, from stage 5 on, every stage reads the reconciled list.
 
@@ -49,7 +56,7 @@ Stages 2 and 3 run before stage 4, so anything they derive from the `#include`s 
 - **Stage 1** creates each test's build directories and its `Testable`.
 - **Stage 2** scans the test file as text: its `#include`s, its include path build directives (cached between runs), and its Partials configuration. With test preprocessing off, it also scans `TEST_SOURCE_FILE()` directives and test case names, since nothing later will. It checks that the test uses mocks or Partials only where the project enables them, and it collects the test's first mock search paths from the text-scan list.
 - **Stage 3** resolves the flags, defines, and search paths every later tool call for this test uses.
-- **Stage 4** runs only with test preprocessing on. It extracts the test file's `#include`s through the real preprocessor in three passes, described below, and ends by replacing the text-scan list with the reconciled one.
+- **Stage 4** runs only with test preprocessing on. It extracts the test file's `#include`s through the real preprocessor in three passes, described below, ends by replacing the text-scan list with the reconciled one, and narrows the mock search paths to the mocks that remain.
 
 **Planning (stage 5)** is where `TestBuildPlanner` decides what this test needs generated: which of its includes are mocks and where each one's real header resolves, what its Partials configuration looks like, and where its runner will live. It checks that every header the test includes exists, and it fires the `pre_test` plugin hook. Nothing is generated yet.
 
@@ -67,17 +74,27 @@ A module a Partial has taken over is left out of a test's linked objects, since 
 
 Stage 4 gets a test file's `#include`s from the real preprocessor, and its three passes build on each other. Each of the first two runs a real preprocessor process and is skipped when the dependency tracker reports nothing relevant changed.
 
-1. **Bare includes.** GCC runs with `-MM -MG` on an isolated copy of the test file, listing the `#include`s it reaches with the test's defines applied. `-MG` lets it list a mock that doesn't exist yet. The list is cached between runs. For each mock and Partial on it, a stand-in header is placed (see [Stand-in headers](#stand-in-headers)), and, where reconciliation follows, the test's mock search paths are set from this list.
-2. **Directives-only.** GCC preprocesses the test file with `-fdirectives-only`, using the test's full search paths. This pass follows `#include`s, so it needs the stand-ins on those search paths. Its output records which `#include`s came from the test file itself.
-3. **Reconciliation.** The user and system `#include`s from pass 2 are checked against pass 1's list, and the result replaces the stored text-scan list. If pass 2 failed for one file, that file's text-scan includes take its place, still checked against pass 1's list. Because reconciliation walks pass 1's list, the reconciled list never holds an `#include` pass 1 didn't find.
+1. **Bare includes.** GCC runs with `-MM -MG` on an isolated copy of the test file, listing the `#include`s it reaches with the test's defines applied. `-MG` lets it list a mock that doesn't exist yet. The list is cached between runs.
+
+   The isolated copy can't open any other header, so an `#include` guarded by a macro another header defines evaluates false there and drops out. The test file's literal `#include` lines are therefore added to GCC's list as candidates, as they are for a mockable header (`Preprocessinator#supplement_with_text_includes`). A candidate survives only if the second pass confirms it.
+
+   Stand-ins are placed for every candidate mock and Partial (see [Stand-in headers](#stand-in-headers)). A mock on GCC's list must have a real header. A mock only the text scan found may sit in a branch that is off and name a header that doesn't exist, so it gets no stand-in then. Where reconciliation follows, the test's mock search paths are set from the candidates' mocks.
+2. **Directives-only.** GCC preprocesses the test file with `-fdirectives-only`, using the test's full search paths. This pass follows `#include`s, through the stand-ins into the headers they name, so it sees what the compile will see. Its output records which `#include`s came from the test file itself.
+3. **Reconciliation.** The user and system `#include`s from pass 2 are checked against the candidates plus any `#include` a macro names, as resolved by pass 2's output (`Preprocessinator#supplement_with_computed_includes`). The result replaces the stored text-scan list, and the mock search paths narrow to the mocks that remain.
+
+   If pass 2 failed for one file, that file's text-scan includes take its place, checked against GCC's list alone. The candidates hold those same text-scan includes, so checking against them would keep every one, including mocks in branches that are off. GCC's list still evaluated those branches.
 
 In whole-run fallback mode, pass 2 doesn't run, and pass 3 keeps the text-scan list as it is.
 
+One shape still escapes: an `#include` of a mock that a macro from another header names. Neither pass 1 nor the text scan can find its file name, so no stand-in exists for it, and pass 2 fails on it.
+
 ### Stand-in headers
 
-A stand-in is an empty file placed where a test's mock or Partial header will later be generated. The preprocessor needs something to find at each mocked or Partialized `#include` before stage 8 or stage 10 has produced the real file. A stand-in sits exactly where the real file will: a mock's mirrors its real header's directory below the test's mock root, a Partial mock's follows its own `#include`'s path below that root, and a Partial's follows the directory its generated `#include` names.
+A stand-in is a file placed where a test's mock or Partial header will later be generated. The preprocessor needs something to find at each mocked or Partialized `#include` before stage 8 or stage 10 has produced the real file. A stand-in sits exactly where the real file will: a mock's mirrors its real header's directory below the test's mock root, a Partial mock's follows its own `#include`'s path below that root, and a Partial's follows the directory its generated `#include` names.
 
-Pass 1 places stand-ins whether its list was just extracted or recalled from cache, since a cached list says nothing about whether its stand-ins survived. A path already holding a file is left alone, whether real generated content from an earlier run or an earlier stand-in. Mock generation tracks its stand-in as an input, so rewriting one would invalidate the mock for no reason.
+A mock's stand-in includes the mock's real header, the line CMock opens the generated mock with (`:orig_header_include_fmt` around the header's name). A macro the header defines is then visible to pass 2 through the stand-in, as it will be through the real mock. A Partial's stand-in is blank. Every stand-in starts with a marker line that tells it apart from a real mock.
+
+Pass 1 places stand-ins whether its list was just extracted or recalled from cache, since a cached list says nothing about whether its stand-ins survived. A real mock or Partial already at a stand-in's path is left alone, as is a stand-in that is already current. Mock generation tracks the file at a mock's path as an input, so rewriting one would invalidate the mock for no reason. A stand-in that is out of date, such as a blank one an earlier version wrote, is rewritten.
 
 ### Mock search paths
 
@@ -86,9 +103,10 @@ A mock is generated into a directory mirroring its real header's location, and t
 Where the paths come from follows which `#include` list drives the build:
 
 - **Stage 2** collects them from the text-scan list. With test preprocessing off, that list is the build's own, and a mock whose header doesn't exist stops the build. With test preprocessing on, a scanned mock may sit in a branch the preprocessor discards, so one without a header is skipped.
-- **Stage 4's first pass**, where reconciliation follows, replaces them with the directories of its own list's mocks. That list is the only source reconciliation draws on, so it covers every mock the build will use. It also drops paths for mocks the text scan saw but the preprocessor discarded, and adds paths for mocks only the preprocessor sees, such as one a macro names. The paths must be settled here, not later, because pass 2 already needs them to find the stand-ins.
+- **Stage 4's first pass**, where reconciliation follows, replaces them with the directories of the candidates' mocks. Reconciliation draws only on the candidates, so these cover every mock the build will use, including one only the preprocessor sees, such as one a macro names. The paths must be settled here, not later, because pass 2 already needs them to find the stand-ins.
+- **Stage 4's third pass** narrows them to the reconciled list's mocks, dropping directories for candidates the preprocessor discarded.
 
-Every stage that resolves a mock's header does so against the test's search paths minus its `mock_search_paths`, so stages 2, 4, and 5 resolve each mock identically.
+Every stage that resolves a mock's header does so through `MockLocator`, against the test's search paths minus its `mock_search_paths`, so stages 2, 4, and 5 resolve each mock identically.
 
 ## Stop points
 
