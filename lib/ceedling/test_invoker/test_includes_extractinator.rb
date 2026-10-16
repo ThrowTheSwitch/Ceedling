@@ -39,6 +39,7 @@ class TestIncludesExtractinator
     :test_context_extractor,
     :preprocessinator,
     :file_path_utils,
+    :file_wrapper,
     :dependinator,
     :test_search_paths,
     :mock_locator,
@@ -169,20 +170,30 @@ class TestIncludesExtractinator
   end
 
   # The raw output path is deterministic, so it can be registered and checked before
-  # deciding whether to run the preprocessor at all
+  # deciding whether to run the preprocessor at all. The output depends on every file it
+  # read, a mocked header through its stand-in among them, so the files its last run
+  # entered are registered too, as a compile registers its last .d file.
   def directives_only_target(testable)
     target = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( testable.filepath, testable.name )
-
-    @dependinator.register(
-      target,
-      files: [testable.filepath],
-      meta:  dependency_meta(
-        flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths,
-        tools: [@configurator.tools_test_file_directives_only_preprocessor]
-      )
+    meta   = dependency_meta(
+      flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths,
+      tools: [@configurator.tools_test_file_directives_only_preprocessor]
     )
 
+    @dependinator.register( target, files: [testable.filepath], meta: meta )
+    register_directives_only_dependencies( target ) if @file_wrapper.exist?( target )
+
     return target
+  end
+
+  # The project files a directives-only output entered. Files below the build root, such
+  # as stand-ins and the mocks that replace them, are generated from those project files
+  # and would only ever look changed.
+  def register_directives_only_dependencies(target)
+    build_root = File.join( @configurator.project_build_root, '' )
+    files      = @preprocessinator.directives_only_dependencies( directives_only_filepath: target )
+
+    @dependinator.register( target, files: files.reject { |file| file.start_with?( build_root ) } )
   end
 
   # Gives the raw output's path, or nil when the preprocessor failed. A failure writes
@@ -203,6 +214,7 @@ class TestIncludesExtractinator
 
     compacted = @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( testable.filepath, testable.name )
     @dependinator.register( target, outputs: [compacted] )
+    register_directives_only_dependencies( target )
     @dependinator.mark_fresh( target )
 
     return filepath

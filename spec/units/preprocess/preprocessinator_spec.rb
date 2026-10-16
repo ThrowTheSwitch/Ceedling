@@ -171,6 +171,18 @@ RSpec.describe Preprocessinator do
   end
 
   # ===========================================================================
+  describe '#directives_only_dependencies' do
+  # ===========================================================================
+
+    it "gives the files a directives-only output entered" do
+      allow(@includes_handler).to receive(:extract_directives_only_dependencies)
+        .with( directives_only_filepath: 'build/do/test_a.c' ).and_return( ['src/config.h'] )
+
+      expect(subject.directives_only_dependencies( directives_only_filepath: 'build/do/test_a.c' )).to eq( ['src/config.h'] )
+    end
+  end
+
+  # ===========================================================================
   describe '#supplement_with_text_includes / #supplement_with_computed_includes' do
   # ===========================================================================
 

@@ -440,6 +440,7 @@ test_includes_extractinator:
     - test_context_extractor
     - preprocessinator
     - file_path_utils
+    - file_wrapper
     - dependinator
     - test_search_paths
     - mock_locator

@@ -242,6 +242,26 @@ describe PreprocessinatorLineMarkerIncludesExtractor do
     end
   end
 
+  # The files a directives-only run read, so a change to one of them reruns it
+  describe '#extract_entered_files_from_string' do
+    it 'lists each user file the preprocessor entered, once, skipping system headers and its own markers' do
+      content = <<~OUT
+        # 1 "test/test_a.c"
+        # 1 "<built-in>" 1
+        # 1 "<command line>" 1
+        # 1 "test/test_a.c" 2
+        # 1 "build/mocks/test_a/mock_config.h" 1
+        # 1 "src/config.h" 1
+        # 2 "build/mocks/test_a/mock_config.h" 2
+        # 1 "/usr/include/stddef.h" 1 3
+        # 2 "test/test_a.c" 2
+            # 1 "src/config.h" 1
+      OUT
+
+      expect(@extractor.extract_entered_files_from_string( content )).to eq( ['build/mocks/test_a/mock_config.h', 'src/config.h'] )
+    end
+  end
+
   describe '#resolve_computed_includes' do
     # Correlates `-fdirectives-only` entering markers back to the raw source lines
     # that produced them. Used to recover GCC's own resolution of a macro-target

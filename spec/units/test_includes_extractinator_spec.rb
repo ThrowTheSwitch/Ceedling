@@ -71,6 +71,9 @@ describe TestIncludesExtractinator do
     allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )
     allow(@preprocessinator).to receive(:supplement_with_text_includes) { |bare:, **| bare }
     allow(@preprocessinator).to receive(:supplement_with_computed_includes) { |bare:, **| bare }
+    allow(@preprocessinator).to receive(:directives_only_dependencies).and_return( [] )
+    allow(@configurator).to receive(:project_build_root).and_return( 'build' )
+    allow(@file_wrapper).to receive(:exist?).and_return( false )
     allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
     allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
     allow(@test_context_extractor).to receive(:ingest_includes)
@@ -102,6 +105,7 @@ describe TestIncludesExtractinator do
         :test_context_extractor => @test_context_extractor,
         :preprocessinator       => @preprocessinator,
         :file_path_utils        => @file_path_utils,
+        :file_wrapper           => @file_wrapper,
         :dependinator           => @dependinator,
         # Real, over the same doubles, so expectations read as paths and files
         :mock_locator           => @mock_locator,
@@ -530,6 +534,37 @@ describe TestIncludesExtractinator do
       @extractinator.stage_collect_preprocessor_context( @state )
 
       expect(@testable.mock_search_paths).to eq( ['build/test/mocks/a_test/hw'] )
+    end
+  end
+
+  # The directives-only pass reads whatever the test file reaches, a mocked header through
+  # its stand-in among them, so a change to any of those files reruns it
+  context "#stage_collect_preprocessor_context (directives-only dependencies)" do
+    before(:each) do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/includes/Foo.c.yml').and_return( false )
+      allow(@preprocessinator).to receive(:directives_only_dependencies).with( directives_only_filepath: 'build/preprocess/raw/Foo.txt' )
+        .and_return( ['test/TestFoo.c', 'build/test/mocks/a_test/mock_config.h', 'src/config.h'] )
+    end
+
+    it "registers the project files its last output entered, before asking whether it is stale" do
+      allow(@file_wrapper).to receive(:exist?).with( 'build/preprocess/raw/Foo.txt' ).and_return( true )
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/raw/Foo.txt').and_return( false )
+
+      expect(@dependinator).to receive(:register).with( 'build/preprocess/raw/Foo.txt', files: ['test/TestFoo.c', 'src/config.h'] ).ordered
+      expect(@dependinator).to receive(:stale?).with( 'build/preprocess/raw/Foo.txt' ).ordered.and_return( false )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
+    it "registers the project files its new output entered before marking it fresh" do
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/raw/Foo.txt').and_return( true )
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.txt' )
+
+      expect(@dependinator).to receive(:register).with( 'build/preprocess/raw/Foo.txt', files: ['test/TestFoo.c', 'src/config.h'] ).ordered
+      expect(@dependinator).to receive(:mark_fresh).with( 'build/preprocess/raw/Foo.txt' ).ordered
+
+      @extractinator.stage_collect_preprocessor_context( @state )
     end
   end
 end

@@ -15,10 +15,17 @@
 
 void test_function_sums_the_enabled_modules(void)
 {
+  int expected = 1;
+
   Module0_FunctionToCall_ExpectAndReturn( 1 );
 #ifdef MODULE_1_ENABLED
   Module1_FunctionToCall_ExpectAndReturn( 2 );
+  expected += 2;
+#endif
+#ifdef MODULE_2_ENABLED
+  Module2_FunctionToCall_ExpectAndReturn( 4 );
+  expected += 4;
 #endif
 
-  TEST_ASSERT_EQUAL( 3, FunctionToTest( 0 ) );
+  TEST_ASSERT_EQUAL( expected, FunctionToTest( 0 ) );
 }

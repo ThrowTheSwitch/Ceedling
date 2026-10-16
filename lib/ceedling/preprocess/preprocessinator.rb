@@ -640,6 +640,11 @@ class Preprocessinator
     return union_includes( bare, computed )
   end
 
+  # The user files a directives-only output entered, which that output depends on
+  def directives_only_dependencies(directives_only_filepath:)
+    return @includes_handler.extract_directives_only_dependencies( directives_only_filepath: directives_only_filepath )
+  end
+
   # The merge step every includes-reconciliation site shares: intersect a bare list
   # against the accurate user/system lists, log a NOTICE on any genuinely ambiguous
   # `#include` (more than one file on the search path satisfies it), and -- for the
@@ -680,6 +685,6 @@ class Preprocessinator
     return (bare + more).uniq( &:filepath )
   end
 
-  public :preprocess_file_includes_common, :reconcile_includes, :supplement_with_text_includes, :supplement_with_computed_includes
+  public :preprocess_file_includes_common, :reconcile_includes, :supplement_with_text_includes, :supplement_with_computed_includes, :directives_only_dependencies
 
 end

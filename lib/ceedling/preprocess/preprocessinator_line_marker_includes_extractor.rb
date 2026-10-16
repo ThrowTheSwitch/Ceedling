@@ -8,6 +8,7 @@
 require 'ceedling/exceptions'
 require 'ceedling/path_matcher'
 require 'set'
+require 'stringio'
 
 ##
 ## System Includes Directives-only Preprocessor Output Parsing
@@ -122,6 +123,20 @@ class PreprocessinatorLineMarkerIncludesExtractor
       raise CeedlingException.new("Failed to extract #{type} includes from preprocessor output file '#{filepath}' ⏩️ #{e.message}")
     end
     return includes
+  end
+
+  # Every user file the preprocessor entered, once each, in the order entered: the files
+  # its output depends on. System headers (marker flag 3) and the preprocessor's own
+  # markers, such as "<built-in>", are left out.
+  def extract_entered_files_from_string(content)
+    return extract_entered_files( StringIO.new( content ) )
+  end
+
+  # As extract_entered_files_from_string, reading this build's own preprocessor output
+  def extract_entered_files_from_file(filepath)
+    files = []
+    @file_wrapper.open_with_retry( filepath, 'rb' ) { |file| files = extract_entered_files( file ) }
+    return files
   end
 
   # Parse preprocessor output from a string (testing use)
@@ -254,6 +269,20 @@ class PreprocessinatorLineMarkerIncludesExtractor
     segments.each { |segment| segment == '..' ? collapsed.pop : collapsed << segment }
 
     "#{prefix}#{collapsed.join('/')}"
+  end
+
+  def extract_entered_files(io)
+    return io.each_line.filter_map { |line| entered_user_file( LINE_MARKER_REGEX.match( line.chomp ) ) }.uniq
+  end
+
+  # The user file a line marker enters (flag 1), or nil for any other line or marker
+  def entered_user_file(match)
+    return nil if match.nil? or match[2].start_with?( '<' )
+
+    flags = match[3] ? match[3].split.map( &:to_i ) : []
+    return nil if !flags.include?( 1 ) or flags.include?( 3 )
+
+    return canonicalize_marker_path( match[2] )
   end
 
   def validate_type_argument(type)

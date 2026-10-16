@@ -99,6 +99,25 @@ ceedling_system_tests do
       expect(output).to match( /PASSED:\s+1/ )
     end
 
+    # Stage 4's preprocessing is skipped when nothing it read changed, so it must count
+    # the mocked header among what it read
+    it "builds again with :all preprocessing after only the header enables another module" do
+      skip 'gcc ignores -fdirectives-only, so the scanned #includes are never reconciled' unless @directives_only
+      prepare( files, :all )
+
+      output = build
+      expect(@c.last_exit_status).to eq( 0 ), output
+
+      in_project do
+        config = File.read( 'src/MyModuleConfig.h' ).sub( '//#define MODULE_2_ENABLED', '#define MODULE_2_ENABLED' )
+        File.write( 'src/MyModuleConfig.h', config )
+      end
+
+      output = build
+      expect(@c.last_exit_status).to eq( 0 ), output
+      expect(output).to match( /PASSED:\s+1/ )
+    end
+
     # Case 1 and Case 2 together, as the issue's project had them
     it "builds with :all preprocessing when the disabled module's header doesn't exist" do
       skip 'gcc ignores -fdirectives-only, so the scanned #includes are never reconciled' unless @directives_only

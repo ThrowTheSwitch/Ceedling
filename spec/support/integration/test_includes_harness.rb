@@ -61,6 +61,10 @@ module IntegrationSpecHelpers
     def test_build_preprocess_force_fallback
       !@test_build_preprocess_directives_only_available
     end
+    def project_build_root
+      'build'
+    end
+
     def project_build_vendor_ceedling_path
       'build/vendor'
     end
@@ -226,7 +230,7 @@ module IntegrationSpecHelpers
 
       extractinator = TestIncludesExtractinator.new(
         configurator: @cfg, loginator: NULL, reportinator: NULL, batchinator: SequentialBatchinator.new,
-        test_context_extractor: @context_extractor, preprocessinator: preprocessinator, file_path_utils: @fpu,
+        test_context_extractor: @context_extractor, preprocessinator: preprocessinator, file_path_utils: @fpu, file_wrapper: @file_wrapper,
         dependinator: StaleDependinator.new, test_search_paths: @search_paths, mock_locator: @locator, standin_headerinator: standins
       )
       extractinator.setup
