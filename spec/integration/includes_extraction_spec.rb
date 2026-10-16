@@ -16,8 +16,9 @@
 #                user/system categorization
 #   :fallback -- no directives-only stream; categorization comes from scanning the
 #                original file text with #if/#ifdef tracking
-# On a toolchain whose `gcc` ignores -fdirectives-only (Apple Clang), :accurate is
-# unavailable and those examples assert against :fallback instead.
+# On a toolchain whose `gcc` ignores -fdirectives-only (older Apple Clang releases),
+# :accurate is unavailable and those examples assert against :fallback instead. Every
+# toolchain CI runs supports it, so an example covering the fallback forces it.
 
 require 'spec_helper'
 require 'spec_integration_helper'
@@ -167,29 +168,35 @@ describe 'Includes extraction (integration)' do
     expect(extracted(tree, 'feature.c')).to eq(['#include "feature_config.h"'])
   end
 
+  # A file defining the macro its own #if / #elif / #else include choice tests
+  INCLUDES_BAND_TREE = {
+    'radio.c' => <<~C,
+      #define BAND 2
+      #if BAND == 1
+      #include "band_lo.h"
+      #elif BAND == 2
+      #include "band_mid.h"
+      #else
+      #include "band_hi.h"
+      #endif
+      int r(void) { return BAND_MID_MACRO; }
+    C
+    'band_lo.h'  => %(#ifndef BAND_LO_H\n#define BAND_LO_H\n#define BAND_LO_MACRO 1\n#endif\n),
+    'band_mid.h' => %(#ifndef BAND_MID_H\n#define BAND_MID_H\n#define BAND_MID_MACRO 2\n#endif\n),
+    'band_hi.h'  => %(#ifndef BAND_HI_H\n#define BAND_HI_H\n#define BAND_HI_MACRO 3\n#endif\n)
+  }.freeze
+
   it 'selects the taken branch of an #if / #elif / #else include choice' do
-    tree = {
-      'radio.c' => <<~C,
-        #define BAND 2
-        #if BAND == 1
-        #include "band_lo.h"
-        #elif BAND == 2
-        #include "band_mid.h"
-        #else
-        #include "band_hi.h"
-        #endif
-        int r(void) { return BAND_MID_MACRO; }
-      C
-      'band_lo.h'  => %(#ifndef BAND_LO_H\n#define BAND_LO_H\n#define BAND_LO_MACRO 1\n#endif\n),
-      'band_mid.h' => %(#ifndef BAND_MID_H\n#define BAND_MID_H\n#define BAND_MID_MACRO 2\n#endif\n),
-      'band_hi.h'  => %(#ifndef BAND_HI_H\n#define BAND_HI_H\n#define BAND_HI_MACRO 3\n#endif\n)
-    }
-    if @accurate
-      expect(extracted(tree, 'radio.c')).to eq(['#include "band_mid.h"'])
-    else
-      # The text-fallback path tracks #if/#elif/#else and keeps only the active branch.
-      expect(extracted(tree, 'radio.c', fallback: true)).to eq(['#include "band_mid.h"'])
-    end
+    skip 'accurate (-fdirectives-only) path unavailable on this toolchain' unless @accurate
+
+    expect(extracted(INCLUDES_BAND_TREE, 'radio.c')).to eq(['#include "band_mid.h"'])
+  end
+
+  # The fallback evaluator can't evaluate a comparison, so it treats `#if BAND == 1` as
+  # taken and every later branch as not, and it never sees the file's own #define. Forced
+  # here, since every toolchain CI runs supports the accurate path.
+  it 'takes the first branch of an #if / #elif / #else choice it cannot evaluate, in fallback' do
+    expect(extracted(INCLUDES_BAND_TREE, 'radio.c', fallback: true)).to eq(['#include "band_lo.h"'])
   end
 
   # --- Spelling / rendering ------------------------------------------------
