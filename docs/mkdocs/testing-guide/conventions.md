@@ -474,6 +474,40 @@ void TEST_CASE_MAGIC("foo_bar_case") {
 }
 ```
 
+#### Where the macros deciding an `#include` come from
+
+With test preprocessing, a conditional `#include` (item 2 above) is decided by the same
+macros your compiler will see, wherever they are defined. A macro may come from your
+project’s `:defines`, from the test file itself, or from a header the test file includes.
+That header can even be one the test file mocks, since a mock includes its real header.
+
+```c
+// config.h
+#define FEATURE_X_ENABLED
+```
+```c
+// test_feature.c
+#include "mock_config.h"     // The mock includes config.h, defining FEATURE_X_ENABLED
+
+#ifdef FEATURE_X_ENABLED
+#include "mock_feature_x.h"  // Ceedling finds and generates this mock
+#endif
+```
+
+One combination is out of reach. An `#include` whose target is a macro (item 1 above)
+cannot name a mock when only a header defines that macro. Define the macro under
+`:defines` ↳ `:test` instead, so the test file sees it directly.
+
+```c
+// config.h
+#define FEATURE_MOCK "mock_feature_x.h"
+```
+```c
+// test_feature.c
+#include "config.h"
+#include FEATURE_MOCK  // Ceedling cannot find this mock
+```
+
 #### Examples of when test preprocessing is **_not_** needed for test files
 
 ```c
