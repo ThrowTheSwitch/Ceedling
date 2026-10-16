@@ -1,0 +1,118 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'spec_helper'
+require 'ceedling/constants'
+require 'ceedling/includes/includes'
+require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/test_invoker/standin_headerinator'
+
+describe StandinHeaderinator do
+  before(:each) do
+    @configurator    = double( "Configurator", cmock_mock_prefix: 'Mock' )
+    @loginator       = double( "Loginator" )
+    @reportinator    = double( "Reportinator" )
+    @file_wrapper    = double( "FileWrapper" )
+    @file_path_utils = double( "FilePathUtils" )
+    @mock_locator    = double( "MockLocator" )
+
+    allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
+    allow(@loginator).to receive(:log)
+    allow(@file_wrapper).to receive(:exist?).and_return( false )
+    allow(@file_wrapper).to receive(:mkdir)
+    allow(@file_wrapper).to receive(:write_blank_file)
+    allow(@file_path_utils).to receive(:form_mock_header_filepath) { |dir, name| File.join( 'build/test/mocks', dir, name ) }
+    allow(@file_path_utils).to receive(:form_partial_header_filepath) { |dir, name| File.join( 'build/test/partials', dir, name ) }
+    allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
+      subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
+    end
+    allow(@mock_locator).to receive(:header_collection).and_return( ['src/drivers/foo.h'] )
+    allow(@mock_locator).to receive(:locate).and_return( ['src/drivers/foo.h', 'drivers'] )
+
+    @standins = described_class.new(
+      configurator: @configurator, loginator: @loginator, reportinator: @reportinator,
+      file_wrapper: @file_wrapper, file_path_utils: @file_path_utils, mock_locator: @mock_locator
+    )
+
+    @testable = TestInvokerTypes::Testable.new(
+      name: 'a_test', filepath: 'test/TestFoo.c', paths: { mocks: 'build/test/mocks/a_test' },
+      search_paths: ['build/test/mocks/a_test', 'build/test/mocks/a_test/hw', 'src'],
+      mock_search_paths: ['build/test/mocks/a_test/hw']
+    )
+  end
+
+  describe "#place" do
+    it "writes a blank stand-in for a mock in its header's mirrored directory" do
+      expect(@file_wrapper).to receive(:mkdir).with( 'build/test/mocks/a_test/drivers' )
+      expect(@file_wrapper).to receive(:write_blank_file).with( 'build/test/mocks/a_test/drivers/MockFoo.h' )
+
+      @standins.place( @testable, [Include.new( 'MockFoo.h' )] )
+    end
+
+    it "resolves a mock's header against the test's search paths without its mock directories" do
+      expect(@mock_locator).to receive(:header_collection)
+        .with( ['build/test/mocks/a_test', 'build/test/mocks/a_test/hw', 'src'], ['build/test/mocks/a_test/hw'] )
+        .and_return( ['src/drivers/foo.h'] )
+      expect(@mock_locator).to receive(:locate).with( Include.new( 'MockFoo.h' ), collection: ['src/drivers/foo.h'] )
+        .and_return( ['src/drivers/foo.h', 'drivers'] )
+
+      @standins.place( @testable, [Include.new( 'MockFoo.h' )] )
+    end
+
+    it "gives the mirrored directories of the mocks it placed, once each" do
+      dirs = @standins.place( @testable, [Include.new( 'MockFoo.h' ), Include.new( 'MockBar.h' )] )
+
+      expect(dirs).to eq( ['build/test/mocks/a_test/drivers'] )
+    end
+
+    it "gives no directories when the test has no mock root" do
+      @testable.paths = {}
+
+      expect(@standins.place( @testable, [Include.new( 'MockFoo.h' )] )).to eq( [] )
+    end
+
+    it "places a Partial mock's stand-in by its own #include path, resolving no header" do
+      expect(@mock_locator).to_not receive(:locate)
+      expect(@file_wrapper).to receive(:write_blank_file)
+        .with( "build/test/mocks/a_test/Mock#{PARTIAL_FILENAME_PREFIX}foo_interface.h" )
+
+      expect(@standins.place( @testable, [Include.new( "Mock#{PARTIAL_FILENAME_PREFIX}foo_interface.h" )] )).to eq( [] )
+    end
+
+    it "places a Partial's stand-in beneath its test when its #include names no directory" do
+      expect(@file_wrapper).to receive(:mkdir).with( 'build/test/partials/a_test' )
+      expect(@file_wrapper).to receive(:write_blank_file)
+        .with( "build/test/partials/a_test/#{PARTIAL_FILENAME_PREFIX}config_impl.h" )
+
+      @standins.place( @testable, [Include.new( "#{PARTIAL_FILENAME_PREFIX}config_impl.h" )] )
+    end
+
+    it "places a Partial's stand-in under the directory its generated #include names" do
+      expect(@file_wrapper).to receive(:mkdir).with( 'build/test/partials/a_test/drivers/uart' )
+      expect(@file_wrapper).to receive(:write_blank_file)
+        .with( "build/test/partials/a_test/drivers/uart/#{PARTIAL_FILENAME_PREFIX}config_impl.h" )
+
+      @standins.place( @testable, [Include.new( "drivers/uart/#{PARTIAL_FILENAME_PREFIX}config_impl.h" )] )
+    end
+
+    # Mock generation tracks the file at a mock's path as an input, so rewriting it would
+    # invalidate the mock for nothing
+    it "leaves a file already at a stand-in's path alone" do
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
+      expect(@file_wrapper).to_not receive(:write_blank_file)
+      expect(@file_wrapper).to_not receive(:mkdir)
+
+      @standins.place( @testable, [Include.new( 'MockFoo.h' ), Include.new( "#{PARTIAL_FILENAME_PREFIX}config_impl.h" )] )
+    end
+
+    it "places nothing for an ordinary header" do
+      expect(@file_wrapper).to_not receive(:write_blank_file)
+
+      expect(@standins.place( @testable, [Include.new( 'foo.h' )] )).to eq( [] )
+    end
+  end
+end

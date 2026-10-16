@@ -430,6 +430,16 @@ test_build_setup:
     - dependinator
     - test_search_paths
     - mock_locator
+    - standin_headerinator
+
+standin_headerinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - file_wrapper
+    - file_path_utils
+    - mock_locator
 
 test_search_paths:
   compose:

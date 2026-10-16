@@ -10,6 +10,7 @@ require 'ceedling/test_invoker/test_build_setup'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_search_paths'
 require 'ceedling/test_invoker/mock_locator'
+require 'ceedling/test_invoker/standin_headerinator'
 
 describe TestBuildSetup do
   before(:each) do
@@ -89,6 +90,10 @@ describe TestBuildSetup do
     allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
     allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
 
+    @mock_locator = MockLocator.new(
+      configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
+    )
+
     @setup = described_class.new(
       {
         :configurator           => @configurator,
@@ -109,8 +114,10 @@ describe TestBuildSetup do
         :test_search_paths      => TestSearchPaths.new(
           configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
         ),
-        :mock_locator           => MockLocator.new(
-          configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
+        :mock_locator           => @mock_locator,
+        :standin_headerinator   => StandinHeaderinator.new(
+          configurator: @configurator, loginator: @loginator, reportinator: @reportinator,
+          file_wrapper: @file_wrapper, file_path_utils: @file_path_utils, mock_locator: @mock_locator
         )
       }
     )
@@ -518,118 +525,33 @@ describe TestBuildSetup do
       @setup.stage_collect_preprocessor_context( @state )
     end
 
-    context "stand-in generation" do
+    # StandinHeaderinator's own spec covers where each stand-in goes; these cover when
+    # stage 4 places them
+    context "stand-ins" do
       before(:each) do
-        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@file_wrapper).to receive(:exist?).and_return( false )
         allow(@file_wrapper).to receive(:mkdir)
         allow(@file_wrapper).to receive(:write_blank_file)
         allow(@file_path_utils).to receive(:form_mock_header_filepath).and_return( 'build/test/mocks/a_test/MockFoo.h' )
-        allow(@file_path_utils).to receive(:form_partial_header_filepath).and_return( 'build/test/partials/a_test/ceedling_partial_Foo_impl.h' )
         allow(@file_finder).to receive(:resolve_mock).and_return( ['src/Foo.h', ''] )
       end
 
-      it "writes a blank stand-in for a mocked header that does not yet exist on disk" do
-        allow(@file_wrapper).to receive(:exist?).and_return( false )
+      it "places a stand-in for each mock on a freshly extracted bare-includes list" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
         allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
 
-        expect(@file_wrapper).to receive(:mkdir).with( File.dirname('build/test/mocks/a_test/MockFoo.h') )
         expect(@file_wrapper).to receive(:write_blank_file).with( 'build/test/mocks/a_test/MockFoo.h' )
-
-        @setup.stage_collect_preprocessor_context( @state )
-      end
-
-      # A Partial's stand-in follows its generated #include. When that #include names
-      # no directory, the stand-in sits directly beneath its test.
-      it "writes a Partial's stand-in beneath its test when its #include names no directory" do
-        allow(@file_wrapper).to receive(:exist?).and_return( false )
-        allow(@preprocessinator).to receive(:preprocess_bare_includes)
-          .and_return( [ Include.new('ceedling_partial_config_impl.h') ] )
-
-        expect(@file_path_utils).to receive(:form_partial_header_filepath)
-          .with( 'a_test', 'ceedling_partial_config_impl.h' )
-          .and_return( 'build/test/partials/a_test/ceedling_partial_config_impl.h' )
-        expect(@file_wrapper).to receive(:write_blank_file)
-          .with( 'build/test/partials/a_test/ceedling_partial_config_impl.h' )
-
-        @setup.stage_collect_preprocessor_context( @state )
-      end
-
-      it "places a Partial's stand-in under the directory its generated #include names" do
-        allow(@file_wrapper).to receive(:exist?).and_return( false )
-        allow(@preprocessinator).to receive(:preprocess_bare_includes)
-          .and_return( [ Include.new('drivers/uart/ceedling_partial_config_impl.h') ] )
-
-        expect(@file_path_utils).to receive(:form_partial_header_filepath)
-          .with( 'a_test', 'drivers/uart/ceedling_partial_config_impl.h' )
-          .and_return( 'build/test/partials/a_test/drivers/uart/ceedling_partial_config_impl.h' )
-        expect(@file_wrapper).to receive(:mkdir)
-          .with( 'build/test/partials/a_test/drivers/uart' )
-        expect(@file_wrapper).to receive(:write_blank_file)
-          .with( 'build/test/partials/a_test/drivers/uart/ceedling_partial_config_impl.h' )
-
-        @setup.stage_collect_preprocessor_context( @state )
-      end
-
-      it "creates a Partial stand-in's own directory, as a mock's does" do
-        allow(@file_wrapper).to receive(:exist?).and_return( false )
-        allow(@preprocessinator).to receive(:preprocess_bare_includes)
-          .and_return( [ Include.new('ceedling_partial_config_impl.h') ] )
-        allow(@file_path_utils).to receive(:form_partial_header_filepath)
-          .and_return( 'build/test/partials/a_test/ceedling_partial_config_impl.h' )
-
-        expect(@file_wrapper).to receive(:mkdir).with( 'build/test/partials/a_test' )
-
-        @setup.stage_collect_preprocessor_context( @state )
-      end
-
-      it "resolves a mocked header's real source against this test's search paths without its mock search paths" do
-        @testable.search_paths      = ['build/test/mocks/a_test/drivers', 'src']
-        @testable.mock_search_paths = ['build/test/mocks/a_test/drivers']
-        allow(@file_wrapper).to receive(:exist?).and_return( false )
-        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
-
-        expect(@include_pathinator).to receive(:ordered_header_files).with( ['src'] ).and_return( ['src/Foo.h'] )
-        expect(@file_finder).to receive(:resolve_mock).with( 'MockFoo.h', collection: ['src/Foo.h'], complain: :error ).and_return( ['src/Foo.h', ''] )
 
         @setup.stage_collect_preprocessor_context( @state )
       end
 
       # A cached list says nothing about whether its stand-ins survived, and the
       # directives-only pass needs them
-      it "writes a missing stand-in for a mocked header when the bare-includes list is recalled from cache" do
+      it "places a missing stand-in for a mock on a bare-includes list recalled from cache" do
         allow(@dependinator).to receive(:stale?).and_return( false )
-        allow(@file_wrapper).to receive(:exist?).and_return( false )
         allow(@preprocessinator).to receive(:load_includes_list).and_return( [ Include.new('MockFoo.h') ] )
 
         expect(@file_wrapper).to receive(:write_blank_file).with( 'build/test/mocks/a_test/MockFoo.h' )
-
-        @setup.stage_collect_preprocessor_context( @state )
-      end
-
-      it "leaves an existing mocked header's stand-in path untouched, whether it holds real content or a prior stand-in" do
-        allow(@file_wrapper).to receive(:exist?).and_return( true )
-        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
-
-        expect(@file_wrapper).to_not receive(:write_blank_file)
-        expect(@file_wrapper).to_not receive(:mkdir)
-
-        @setup.stage_collect_preprocessor_context( @state )
-      end
-
-      it "writes a blank stand-in for a partial header that does not yet exist on disk" do
-        allow(@file_wrapper).to receive(:exist?).and_return( false )
-        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('ceedling_partial_Foo_impl.h') ] )
-
-        expect(@file_wrapper).to receive(:write_blank_file).with( 'build/test/partials/a_test/ceedling_partial_Foo_impl.h' )
-
-        @setup.stage_collect_preprocessor_context( @state )
-      end
-
-      it "leaves an existing partial header's stand-in path untouched" do
-        allow(@file_wrapper).to receive(:exist?).and_return( true )
-        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('ceedling_partial_Foo_impl.h') ] )
-
-        expect(@file_wrapper).to_not receive(:write_blank_file)
 
         @setup.stage_collect_preprocessor_context( @state )
       end

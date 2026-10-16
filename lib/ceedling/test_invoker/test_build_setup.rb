@@ -37,7 +37,8 @@ class TestBuildSetup
     :test_runner_manager,
     :dependinator,
     :test_search_paths,
-    :mock_locator
+    :mock_locator,
+    :standin_headerinator
   )
 
   def setup()
@@ -291,7 +292,7 @@ class TestBuildSetup
 
       # A cached list says nothing about whether its stand-ins survived, so they are
       # placed either way
-      mock_dirs = generate_test_includes_standins( testable, testable.preprocess[:includes] )
+      mock_dirs = @standin_headerinator.place( testable, testable.preprocess[:includes] )
 
       # Reconciliation draws only from this list, so where it runs, this list's mocks are
       # the ones the build uses. The second pass needs their directories to find the
@@ -451,80 +452,6 @@ class TestBuildSetup
     @include_pathinator.validate_test_build_directive_paths()
     headers = @include_pathinator.validate_header_files_collection()
     @include_pathinator.augment_environment_header_files( headers )
-  end
-
-  # Writes placeholder header files for any mock or partial a test #includes,
-  # so early preprocessing/context-extraction steps have something to resolve
-  # before the real mock (stage 10) or partial (stage 8) exists yet. Later
-  # stages overwrite these paths with real generated content; a test build
-  # that never runs those later stages (e.g. :sources_only) is left with only
-  # the placeholder, which is sufficient for its purposes.
-  #
-  # A path already holding a file -- real generated content from a prior run,
-  # or an earlier placeholder -- is left untouched rather than blanked. Only
-  # gcc's need for *something* resolvable at the #include path depends on this
-  # file at all; nothing reads its content for meaning. Overwriting it
-  # unconditionally would needlessly perturb it as a hash antecedent (mock
-  # generation, stage 10, tracks its own stand-in header as one of the inputs
-  # it hashes), invalidating a target purely because this stand-in step ran,
-  # independent of whether anything the mock or partial actually depends on
-  # changed. Whether real regeneration is warranted stays entirely up to each
-  # later stage's own dependency-tracker check.
-  #
-  # Returns each ordinary mock's mirrored directory below this test's mock root,
-  # the mock search paths these includes call for.
-  def generate_test_includes_standins(testable, includes)
-    test = testable.name
-    mocks    = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
-    partials = Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ )
-
-    collection = @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
-    mock_dirs  = []
-
-    mocks.each do |include|
-      # A Partial mock is Ceedling's own generated content with no real header to resolve
-      # against, always flat per test. An ordinary mock's stand-in mirrors wherever its real
-      # header actually lives, matching the real mock (stage 10) -- both are findable by the
-      # compiler only via a search path pointing directly at that mirrored directory.
-      if mock_partial?( include )
-        filepath = @file_path_utils.form_mock_header_filepath( test, include.filepath )
-      else
-        _source, subdir = @mock_locator.locate( include, collection: collection )
-        mock_dir = subdir.empty? ? test : File.join( test, subdir )
-        filepath = @file_path_utils.form_mock_header_filepath( mock_dir, include.filename )
-        mock_dirs << @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir ) if testable.paths[:mocks]
-      end
-
-      next if @file_wrapper.exist?( filepath )
-
-      msg = @reportinator.generate_module_progress(
-        operation:   'Generating stand-in header for',
-        module_name: test,
-        filename:    include.filename
-      )
-      @loginator.log( msg, Verbosity::DEBUG )
-      @file_wrapper.mkdir( File.dirname( filepath ) )
-      @file_wrapper.write_blank_file( filepath )
-    end
-
-    partials.each do |include|
-      # A Partial's own generated #include carries whatever directory its module was
-      # named by, and the stand-in has to sit where that #include points -- the same
-      # reason an ordinary mock's stand-in mirrors its real header's directory above.
-      filepath = @file_path_utils.form_partial_header_filepath( test, include.filepath )
-      next if @file_wrapper.exist?( filepath )
-
-      msg = @reportinator.generate_module_progress(
-        operation:   'Generating stand-in header for',
-        module_name: test,
-        filename:    include.filename
-      )
-      @loginator.log( msg, Verbosity::DEBUG )
-      @file_wrapper.mkdir( File.dirname( filepath ) )
-      @file_wrapper.write_blank_file( filepath )
-    end
-
-    return mock_dirs.uniq
   end
 
   # Every mocked header's own mirrored directory below this test's mock root -- a mock is
