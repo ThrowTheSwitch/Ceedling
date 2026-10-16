@@ -8,7 +8,7 @@
 # Partial generation when no C preprocessor resolved the module first.
 #
 # Ceedling falls back to a text scan whenever the accurate `-fdirectives-only` pass is
-# unavailable -- Apple Clang ignores the flag, and any single invocation can fail. Fallback is
+# unavailable -- older Apple Clang releases ignore the flag, and any single invocation can fail. Fallback is
 # therefore a real production path, not a degraded mode reserved for broken toolchains, and it
 # resolves strictly less: `CPreprocessorConditionals` evaluates a few directive shapes against
 # a defines list and treats anything it cannot evaluate as active.

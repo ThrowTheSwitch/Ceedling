@@ -223,8 +223,8 @@ module IntegrationSpecHelpers
     false
   end
 
-  # True when `gcc` honours `-fdirectives-only` without complaint. Apple Clang (the
-  # `gcc` alias on macOS) silently ignores the flag and warns, naming it -- exactly the
+  # True when `gcc` honours `-fdirectives-only` without complaint. Older Apple Clang releases
+  # (the `gcc` alias on macOS) ignore the flag and warn, naming it -- exactly the
   # condition under which Ceedling itself falls back to text scanning
   # (Configurator#resolve_directives_only_preprocessing). Integration specs branch on
   # this the same way.

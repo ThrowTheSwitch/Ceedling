@@ -286,9 +286,9 @@ rescue
   false
 end
 
-# True when `gcc` honours `-fdirectives-only` without complaint. Apple Clang (the `gcc`
-# alias on macOS) ignores the flag with a warning naming it, which is exactly when Ceedling
-# falls back to text scanning for a whole run (Configurator#resolve_directives_only_preprocessing).
+# True when `gcc` honours `-fdirectives-only` without complaint. Older Apple Clang releases
+# (the `gcc` alias on macOS) ignore the flag with a warning naming it, which is exactly when
+# Ceedling falls back to text scanning for a whole run (Configurator#resolve_directives_only_preprocessing).
 # The integration tier keeps its own copy so it need not load this helper.
 def directives_only_supported?
   out, status = Open3.capture2e('gcc -E -fdirectives-only -x c -', stdin_data: "\n")

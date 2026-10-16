@@ -44,7 +44,7 @@ ceedling_system_tests do
             output = @c.ceedling_build_exec("test:unicoder")
             expect(@c.last_exit_status).to eq(0)
             # Only assert non-fallback when the platform actually supports -fdirectives-only.
-            # Apple clang (macOS) silently ignores the flag and ceedling falls back automatically.
+            # Older Apple Clang releases ignore the flag, and Ceedling falls back automatically.
             expect(output).not_to match(/using fallback method/i) unless /lacks -fdirectives-only support/i.match?(output)
             expect(output).to match(/TESTED:\s+1/)
             expect(output).to match(/PASSED:\s+1/)
@@ -82,7 +82,7 @@ ceedling_system_tests do
             output = @c.ceedling_build_exec("test:unicoder_partial")
             expect(@c.last_exit_status).to eq(0)
             # Only assert non-fallback when the platform actually supports -fdirectives-only.
-            # Apple clang (macOS) silently ignores the flag and ceedling falls back automatically.
+            # Older Apple Clang releases ignore the flag, and Ceedling falls back automatically.
             expect(output).not_to match(/using fallback method/i) unless /lacks -fdirectives-only support/i.match?(output)
             expect(output).to match(/TESTED:\s+1/)
             expect(output).to match(/PASSED:\s+1/)

@@ -472,9 +472,9 @@ jobs:
         run: rake specs:units
 
       # See the Linux job for why integration tests run here (need only gcc). On macOS
-      # the gcc alias is Apple Clang, which ignores -fdirectives-only; the integration
-      # specs detect that and assert the fallback path, same as the system preprocessing
-      # specs already do.
+      # the gcc alias is Apple Clang, which on current runners supports -fdirectives-only
+      # as GCC does. Specs covering the text-scan fallback force it rather than relying on
+      # the toolchain to lack the flag, so they run here and on Linux and Windows alike.
       - name: Run Integration Tests
         env:
           CI_RSPEC_PROGRESS_FORMAT: true

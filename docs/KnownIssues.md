@@ -32,7 +32,7 @@ Ceedling 1.2.0 requires Ruby 3+ but only unoficially supports Ruby 4.
 1. A `struct`, `union`, or `enum` named but not defined, as in `struct node;`, is reproduced in the generated Partial as an invalid declaration. Builds treating warnings as errors fail on it.
 1. A macro the module retires with `#undef` is carried into the generated Partial anyway, so the name stays visible to your test file and can collide with another macro of the same name.
 1. Exposing a module’s file-scope variables and functions removes what kept their names private to that module. Two Partialized modules in one test file that each use the same name for a file-scope variable collide at link time.
-1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, Apple Clang most notably.
+1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
 
 ## 1.1.0 — 2026-07-16
 
