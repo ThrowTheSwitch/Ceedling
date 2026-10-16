@@ -179,7 +179,7 @@ module IntegrationSpecHelpers
       # Stage 2's tolerant mock search paths and stage 3's search paths
       collection = @locator.header_collection( @search_paths.compose( filepath, testable.paths ) )
       testable.mock_search_paths = @locator.directories(
-        @context_extractor.lookup_mock_header_includes_list( filepath ), mocks_root: testable.paths[:mocks], collection: collection, complain: :ignore
+        @context_extractor.lookup_mock_header_includes_list( filepath ), mocks_root: testable.paths[:mocks], collection: collection, complain: :silent
       )
       testable.search_paths = @search_paths.compose( filepath, testable.paths, testable.mock_search_paths )
 

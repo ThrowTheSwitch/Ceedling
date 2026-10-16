@@ -76,6 +76,30 @@ describe FileFinderHelper do
       end
     end
 
+    # A name matching a file only by letter case is usually a typo, so even a caller
+    # tolerating a miss hears about it
+    context 'file found only with different capitalization' do
+      it 'raises, naming the file found, even when complain is ignore' do
+        expect { @ff_helper.find_file_in_collection('A.c', FILE_LIST, :ignore) }
+          .to raise_error( CeedlingException, /different capitalization was found: 'some\/dir\/a\.c'/ )
+      end
+
+      # A caller that can't know whether the reference is even live, such as a scan of
+      # #includes that ignores #if, asks for silence
+      it 'returns nil without a word when complain is silent' do
+        expect(@loginator).to_not receive(:log)
+
+        expect(@ff_helper.find_file_in_collection('A.c', FILE_LIST, :silent)).to be_nil
+        expect(@ff_helper.resolve_file_in_collection('A.c', FILE_LIST, :silent)).to be_nil
+      end
+    end
+
+    it 'returns nil without a word for a missing file when complain is silent' do
+      expect(@loginator).to_not receive(:log)
+
+      expect(@ff_helper.find_file_in_collection('unknown/d.c', FILE_LIST, :silent)).to be_nil
+    end
+
   end
 
   describe '#resolve_file_in_collection' do

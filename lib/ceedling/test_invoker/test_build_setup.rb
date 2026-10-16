@@ -237,13 +237,14 @@ class TestBuildSetup
   #
   # These come from the text-scanned #includes, which ignore #if. With test preprocessing
   # on, stage 4 settles which mocks the build uses, and where it reconciles it sets these
-  # paths again from the preprocessor's list. A scanned mock without a header may be one
-  # the preprocessor discards, so it is skipped here. With preprocessing off, the scanned
-  # list is the build's own, and a missing header stops the build.
+  # paths again from the preprocessor's list. A scanned mock without a header, or with one
+  # matching only in letter case, may be one the preprocessor discards, so it is skipped
+  # here silently. With preprocessing off, the scanned list is the build's own, and a
+  # missing or mis-cased header stops the build.
   def collect_mock_search_paths(testable)
     return [] unless testable.paths[:mocks]
 
-    complain = @configurator.project_use_test_preprocessor_tests ? :ignore : :error
+    complain = @configurator.project_use_test_preprocessor_tests ? :silent : :error
 
     # This test's search paths don't exist until stage 3, so they are composed here
     # without mock directories, the same collection later stages resolve against

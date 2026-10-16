@@ -64,6 +64,27 @@ describe 'Test file #include extraction (integration)' do
     end
   end
 
+  # A branch can name its mock in letter case its header doesn't have
+  CASE_SLIP_TREE = {
+    'src/Gpt.h'                  => "void Gpt_StartTimer(void);\n",
+    'test/test_Case_01_legacy.c' => "#ifdef LEGACY_NAMES\n#include \"mock_gpt.h\"\n#else\n#include \"mock_Gpt.h\"\n#endif\n"
+  }.freeze
+
+  it 'says nothing of a mis-cased mock in a branch that is off' do
+    needs_directives_only
+
+    extract( CASE_SLIP_TREE, 'test_Case_01_legacy.c' ) do |harness, _testable|
+      expect(harness.mocks( 'test/test_Case_01_legacy.c' )).to eq( ['mock_Gpt.h'] )
+    end
+  end
+
+  it 'stops on a mis-cased mock in a branch that is on, naming the header it found' do
+    needs_directives_only
+
+    expect { extract( CASE_SLIP_TREE, 'test_Case_01_legacy.c', defines: ['LEGACY_NAMES'] ) { nil } }
+      .to raise_error( CeedlingException, /different capitalization was found: 'src\/Gpt\.h'/ )
+  end
+
   it 'gives a mock that a macro names, with its header in a subdirectory, a search path' do
     needs_directives_only
     tree = {

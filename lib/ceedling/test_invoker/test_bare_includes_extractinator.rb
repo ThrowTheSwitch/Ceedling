@@ -95,14 +95,15 @@ class TestBareIncludesExtractinator
   # to find the stand-ins.
   #
   # A literal #include may sit in a branch that is off, naming a mock whose header
-  # doesn't exist, so a mock only the text scan found gets no stand-in without one. A
-  # mock on GCC's list must have its header.
+  # doesn't exist or matches one only in letter case, so a mock only the text scan found
+  # gets no stand-in without an exact header, and nothing is said. A mock on GCC's list
+  # must have its header.
   def place_standins(state, testable)
     bare    = testable.preprocess[:includes]
     literal = testable.preprocess[:candidates].reject { |include| bare.any? { |each| each.filepath == include.filepath } }
 
     mock_dirs  = @standin_headerinator.place( testable, bare )
-    mock_dirs += @standin_headerinator.place( testable, literal, complain: :ignore )
+    mock_dirs += @standin_headerinator.place( testable, literal, complain: :silent )
     return unless @configurator.test_build_preprocess_directives_only_available
 
     @test_search_paths.assign_mock_search_paths( testable, mock_dirs.uniq, state.lock )

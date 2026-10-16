@@ -23,7 +23,8 @@ class FileFinder
   # see it. Absent that (a caller with no single test in view, e.g. Partializer resolving a
   # module generically), the project-wide collection_all_headers is the only sensible fallback.
   # `complain` sets what a missing header does: :error raises, and :warn or :ignore
-  # returns nil.
+  # returns nil. A header matching only in letter case raises under all three; :silent
+  # returns nil for that too.
   def find_header_input_for_mock(mock, collection: nil, complain: :error)
     # Mock name/path => <mock prefix><header filename (.h)>, optionally preceded by however
     # much path the #include itself carried (e.g. 'Mockfoo.h' or 'drivers/Mockfoo.h').

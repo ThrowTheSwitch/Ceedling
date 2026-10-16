@@ -408,13 +408,14 @@ describe TestBuildSetup do
     end
 
     # With test preprocessing on, stage 4 settles which mocks the build uses, so a mock
-    # whose header is missing may be one the preprocessor discards
+    # whose header is missing, or matches one only in letter case, may be one the
+    # preprocessor discards
     it "skips a mock whose header is missing when test preprocessing is on, keeping the others" do
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [MockInclude.new('MockHw1.h'), MockInclude.new('MockFoo.h')] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockHw1.h', collection: [], complain: :ignore).and_return( [nil, nil] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: [], complain: :ignore).and_return( ['src/drivers/foo.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockHw1.h', collection: [], complain: :silent).and_return( [nil, nil] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: [], complain: :silent).and_return( ['src/drivers/foo.h', 'drivers'] )
 
       expect(@setup.collect_mock_search_paths( @testable )).to eq( ['build/test/mocks/a_test/drivers'] )
     end

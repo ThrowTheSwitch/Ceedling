@@ -485,7 +485,7 @@ describe TestIncludesExtractinator do
     # doesn't exist
     it "places stand-ins strictly for the bare list's mocks and tolerantly for the literal additions" do
       expect(@file_finder).to receive(:resolve_mock).with( 'MockConfig.h', collection: anything, complain: :error ).and_return( ['src/Config.h', ''] )
-      expect(@file_finder).to receive(:resolve_mock).with( 'MockPart1.h', collection: anything, complain: :ignore ).and_return( [nil, nil] )
+      expect(@file_finder).to receive(:resolve_mock).with( 'MockPart1.h', collection: anything, complain: :silent ).and_return( [nil, nil] )
 
       @extractinator.stage_collect_preprocessor_context( @state )
     end
@@ -521,6 +521,9 @@ describe TestIncludesExtractinator do
       allow(@file_finder).to receive(:resolve_mock).with( 'MockConfig.h', collection: anything, complain: anything ).and_return( ['src/Config.h', ''] )
       allow(@file_finder).to receive(:resolve_mock).with( 'MockPart1.h', collection: anything, complain: anything ).and_return( ['src/hw/Part1.h', 'hw'] )
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).with( 'test/TestFoo.c' ).and_return( [ MockInclude.new('MockConfig.h') ] )
+
+      # A slip in a reconciled mock's name is reported by stage 5, which resolves strictly
+      expect(@file_finder).to receive(:resolve_mock).with( 'MockConfig.h', collection: anything, complain: :silent ).and_return( ['src/Config.h', ''] )
 
       @extractinator.stage_collect_preprocessor_context( @state )
 

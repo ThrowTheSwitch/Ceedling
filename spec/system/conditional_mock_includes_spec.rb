@@ -78,6 +78,15 @@ ceedling_system_tests do
       end
     end
 
+    it "builds with :all preprocessing when a branch that is off names its mock in the wrong letter case" do
+      skip 'gcc ignores -fdirectives-only, so the scanned #includes are never reconciled' unless @directives_only
+      prepare( %w[src/Gpt.h src/Case_01.h src/Case_01.c test/test_Case_01_legacy.c], :all )
+
+      output = build
+      expect(@c.last_exit_status).to eq( 0 ), output
+      expect(output).to match( /PASSED:\s+1/ )
+    end
+
     it "stops the build naming the missing header without test preprocessing" do
       prepare( files, :none )
 

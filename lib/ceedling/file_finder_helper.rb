@@ -97,7 +97,13 @@ class FileFinderHelper
   # against every list entry case-insensitively -- catches the common slip of a
   # filename typed with the wrong case before falling through to the caller's own
   # not-found handling.
+  #
+  # `complain` of :silent skips that check. A caller asks for silence when it can't know
+  # whether the reference is even live, such as a scan of #includes that ignores #if, and
+  # a later, authoritative lookup reports a real slip.
   def not_found_in_collection(filename, file_list, complain)
+    return nil if complain == :silent
+
     matches = file_list.find_all {|v| v =~ /(?:\\|\/|^)#{Regexp.escape(filename)}$/i}
     if (matches.length > 0)
       blow_up(filename, "However, a filename having different capitalization was found: '#{matches[0]}'.")

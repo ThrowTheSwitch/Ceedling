@@ -153,6 +153,10 @@ describe FileFinder do
       expect(@file_finder.resolve_mock('Mocknope.h', complain: :ignore)).to eq( [nil, nil] )
     end
 
+    it 'finds nothing for a mock whose header differs only in letter case when told to be silent' do
+      expect(@file_finder.resolve_mock('MockFOO.h', complain: :silent)).to eq( [nil, nil] )
+    end
+
     it 'never raises on an ambiguous mock reference -- resolves to the first candidate in collection order' do
       allow(@configurator).to receive(:collection_all_headers).and_return(
         ['src/drivers/dup.h', 'src/other/dup.h']
