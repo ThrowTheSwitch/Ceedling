@@ -494,9 +494,10 @@ That header can even be one the test file mocks, since a mock includes its real 
 #endif
 ```
 
-One combination is out of reach. An `#include` whose target is a macro (item 1 above)
-cannot name a mock when only a header defines that macro. Define the macro under
-`:defines` ↳ `:test` instead, so the test file sees it directly.
+!!! warning
+    One combination is out of reach. An `#include` whose target is a macro (item 1
+    above) cannot name a mock when only a header defines that macro. Define the macro
+    under `:defines` ↳ `:test` instead, so the test file sees it directly.
 
 ```c
 // config.h
