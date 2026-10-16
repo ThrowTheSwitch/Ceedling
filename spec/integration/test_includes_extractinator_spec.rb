@@ -77,6 +77,89 @@ describe 'Test file #include extraction (integration)' do
     end
   end
 
+  # Issue #1083, Case 2: the test picks its second mock with a macro its first mock's
+  # header defines
+  CASE_2_TREE = {
+    'src/MyModuleConfig.h' => <<~C,
+      #ifndef MY_MODULE_CONFIG_H
+      #define MY_MODULE_CONFIG_H
+      #define MODULE_1_ENABLED
+      int Module0_FunctionToCall(void);
+      #ifdef MODULE_1_ENABLED
+      #include "MyModulePart1.h"
+      #endif
+      #endif
+    C
+    'src/MyModulePart1.h' => "int Module1_FunctionToCall(void);\n",
+    'src/MyModulePart2.h' => "int Module2_FunctionToCall(void);\n",
+    'test/test_Case_02.c' => <<~C
+      #include "mock_MyModuleConfig.h"
+      #ifdef MODULE_1_ENABLED
+      #include "mock_MyModulePart1.h"
+      #endif
+      #ifdef MODULE_2_ENABLED
+      #include "mock_MyModulePart2.h"
+      #endif
+    C
+  }.freeze
+
+  describe 'a mock chosen by a macro from a header' do
+    it 'is kept when the macro arrives through another mock' do
+      needs_directives_only
+
+      extract( CASE_2_TREE, 'test_Case_02.c' ) do |harness, _testable|
+        expect(harness.mocks( 'test/test_Case_02.c' )).to eq( ['mock_MyModuleConfig.h', 'mock_MyModulePart1.h'] )
+      end
+    end
+
+    it 'is kept when the test includes the real header itself' do
+      needs_directives_only
+      tree = CASE_2_TREE.merge( 'test/test_Case_02.c' => "#include \"MyModuleConfig.h\"\n" + CASE_2_TREE['test/test_Case_02.c'] )
+
+      extract( tree, 'test_Case_02.c' ) do |harness, _testable|
+        expect(harness.mocks( 'test/test_Case_02.c' )).to eq( ['mock_MyModuleConfig.h', 'mock_MyModulePart1.h'] )
+      end
+    end
+
+    # Issue #1083's Case 1 and Case 2 together: a branch that is off names a mock whose
+    # header doesn't exist
+    it 'is kept while a mock in a branch that is off, without a header, is dropped' do
+      needs_directives_only
+      tree = CASE_2_TREE.reject { |path, _| path == 'src/MyModulePart2.h' }
+
+      extract( tree, 'test_Case_02.c' ) do |harness, _testable|
+        expect(harness.mocks( 'test/test_Case_02.c' )).to eq( ['mock_MyModuleConfig.h', 'mock_MyModulePart1.h'] )
+      end
+    end
+  end
+
+  # A computed #include of a mock can't be resolved this way: no stand-in exists for it
+  # before the directives-only pass, so that pass fails on it
+  it 'keeps a real header that a macro from another header names' do
+    needs_directives_only
+    tree = {
+      'src/config.h'     => "#define BOARD_HEADER \"board.h\"\n",
+      'src/board.h'      => "int board_id(void);\n",
+      'test/test_board.c' => "#include \"config.h\"\n#include BOARD_HEADER\n"
+    }
+
+    extract( tree, 'test_board.c' ) do |harness, _testable|
+      expect(harness.includes( 'test/test_board.c' )).to eq( ['config.h', 'board.h'] )
+    end
+  end
+
+  # The candidates include scanned mocks the preprocessor then discards; their
+  # directories serve the directives-only pass and are dropped once it has decided
+  it 'narrows mock search paths to the mocks the build uses' do
+    needs_directives_only
+    tree = CASE_1_TREE.merge( 'src/hw/Gpt_HwType1.h' => "void Gpt_StartTimer(void);\n" )
+
+    extract( tree, 'test_Case_01.c' ) do |_harness, testable|
+      expect(testable.mock_search_paths).to eq( ['build/mocks/test_Case_01'] )
+      expect(testable.search_paths).to_not include( 'build/mocks/test_Case_01/hw' )
+    end
+  end
+
   describe 'a mock\'s stand-in' do
     let(:standin) { 'build/mocks/test_Case_01/mock_Gpt.h' }
 

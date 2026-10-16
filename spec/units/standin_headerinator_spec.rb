@@ -98,7 +98,7 @@ describe StandinHeaderinator do
       expect(@mock_locator).to receive(:header_collection)
         .with( ['build/test/mocks/a_test', 'build/test/mocks/a_test/hw', 'src'], ['build/test/mocks/a_test/hw'] )
         .and_return( ['src/drivers/foo.h'] )
-      expect(@mock_locator).to receive(:locate).with( Include.new( 'MockFoo.h' ), collection: ['src/drivers/foo.h'] )
+      expect(@mock_locator).to receive(:locate).with( Include.new( 'MockFoo.h' ), collection: ['src/drivers/foo.h'], complain: :error )
         .and_return( ['src/drivers/foo.h', 'drivers'] )
 
       @standins.place( @testable, [Include.new( 'MockFoo.h' )] )
@@ -150,6 +150,13 @@ describe StandinHeaderinator do
       expect(@file_wrapper).to_not receive(:mkdir)
 
       @standins.place( @testable, [Include.new( 'MockFoo.h' ), Include.new( "#{PARTIAL_FILENAME_PREFIX}config_impl.h" )] )
+    end
+
+    it "passes on how to treat a missing header, and places nothing for a mock without one" do
+      expect(@mock_locator).to receive(:locate).with( Include.new( 'MockGone.h' ), collection: anything, complain: :ignore ).and_return( [nil, nil] )
+      expect(@file_wrapper).to_not receive(:write)
+
+      expect(@standins.place( @testable, [Include.new( 'MockGone.h' )], complain: :ignore )).to eq( [] )
     end
 
     it "places nothing for an ordinary header" do

@@ -38,8 +38,12 @@ class StandinHeaderinator
   # is already current. Mock generation tracks the file at a mock's path as an input, so
   # rewriting it would invalidate the mock for nothing. A mock's stand-in that is out of
   # date, such as a blank one from an earlier version, is rewritten.
-  def place(testable, includes)
-    mock_dirs = place_mocks( testable, Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ ) )
+  #
+  # `complain` sets what a mock without a real header does: :error raises, and :ignore
+  # places nothing for it.
+  def place(testable, includes, complain: :error)
+    mocks     = Includes.filter( includes, /^#{@configurator.cmock_mock_prefix}/ )
+    mock_dirs = place_mocks( testable, mocks, complain )
     place_partials( testable, Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ ) )
 
     return mock_dirs.uniq
@@ -50,7 +54,7 @@ class StandinHeaderinator
   # A Partial mock is Ceedling's own generated content with no real header, so its
   # stand-in follows its own #include's path. An ordinary mock's stand-in mirrors its
   # real header's directory, as the real mock will.
-  def place_mocks(testable, mocks)
+  def place_mocks(testable, mocks, complain)
     collection = @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
 
     return mocks.filter_map do |include|
@@ -59,12 +63,22 @@ class StandinHeaderinator
         next
       end
 
-      source, subdir = @mock_locator.locate( include, collection: collection )
-      mock_dir = subdir.empty? ? testable.name : File.join( testable.name, subdir )
-      write_mock( testable.name, @file_path_utils.form_mock_header_filepath( mock_dir, include.filename ), include, source )
-
-      @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir ) if testable.paths[:mocks]
+      place_mock( testable, include, collection, complain )
     end
+  end
+
+  # Gives the mock's mirrored directory, or nil when its missing header is tolerated or
+  # the test has no mock root
+  def place_mock(testable, include, collection, complain)
+    source, subdir = @mock_locator.locate( include, collection: collection, complain: complain )
+    return nil if source.nil?
+
+    mock_dir = subdir.empty? ? testable.name : File.join( testable.name, subdir )
+    write_mock( testable.name, @file_path_utils.form_mock_header_filepath( mock_dir, include.filename ), include, source )
+
+    return nil if testable.paths[:mocks].nil?
+
+    return @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir )
   end
 
   # A Partial's generated #include names whatever directory its module was named by, and

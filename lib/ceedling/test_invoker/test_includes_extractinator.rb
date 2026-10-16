@@ -14,12 +14,15 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 # preprocessor found, in three passes that build on each other.
 #
 # 1. Bare includes: GCC lists the #includes it reaches in an isolated copy of the test
-#    file. The list is cached between runs, and stand-ins are placed for its mocks and
-#    Partials.
-# 2. Directives-only: GCC preprocesses the test file, following its #includes, which
-#    records which of them came from the test file itself.
-# 3. Reconciliation: the second pass's #includes, checked against the first pass's
-#    list, replace the stored text-scan list.
+#    file, and the list is cached between runs. The test file's literal #includes are
+#    added as candidates, as they are for a mockable header, since the isolated copy
+#    can't see a macro another header defines. Stand-ins are placed for the candidates'
+#    mocks and Partials.
+# 2. Directives-only: GCC preprocesses the test file, following its #includes through
+#    the stand-ins, which records which of them came from the test file itself.
+# 3. Reconciliation: the second pass's #includes, checked against the candidates and
+#    the #includes a macro names, replace the stored text-scan list. The mock search
+#    paths narrow to the mocks that remain.
 #
 # Each of the first two passes runs a real preprocessor and is skipped when the
 # dependency tracker reports nothing relevant changed. Without directives-only support,
@@ -38,6 +41,7 @@ class TestIncludesExtractinator
     :file_path_utils,
     :dependinator,
     :test_search_paths,
+    :mock_locator,
     :standin_headerinator
   )
 
@@ -72,6 +76,9 @@ class TestIncludesExtractinator
         state.lock.synchronize { skipped += 1 }
       end
 
+      testable.preprocess[:candidates] = @preprocessinator.supplement_with_text_includes(
+        filepath: testable.filepath, bare: testable.preprocess[:includes]
+      )
       place_standins( state, testable )
     end
 
@@ -117,13 +124,23 @@ class TestIncludesExtractinator
   end
 
   # A cached list says nothing about whether its stand-ins survived, so they are placed
-  # either way. Reconciliation draws only from this list, so where it runs, this list's
-  # mocks are the ones the build uses, and the second pass needs their directories to
-  # find the stand-ins just placed.
+  # either way. Reconciliation draws only from the candidates, so where it runs, their
+  # mocks cover every mock the build uses, and the second pass needs their directories
+  # to find the stand-ins just placed.
+  #
+  # A literal #include may sit in a branch that is off, naming a mock whose header
+  # doesn't exist, so a mock only the text scan found gets no stand-in without one. A
+  # mock on GCC's list must have its header.
   def place_standins(state, testable)
-    mock_dirs = @standin_headerinator.place( testable, testable.preprocess[:includes] )
-    return unless directives_only?
+    bare    = testable.preprocess[:includes]
+    literal = testable.preprocess[:candidates].reject { |include| bare.any? { |each| each.filepath == include.filepath } }
 
+    mock_dirs  = @standin_headerinator.place( testable, bare )
+    mock_dirs += @standin_headerinator.place( testable, literal, complain: :ignore )
+    set_mock_search_paths( state, testable, mock_dirs.uniq ) if directives_only?
+  end
+
+  def set_mock_search_paths(state, testable, mock_dirs)
     paths = @test_search_paths.compose( testable.filepath, testable.paths, mock_dirs )
     state.lock.synchronize do
       testable.mock_search_paths = mock_dirs
@@ -206,7 +223,7 @@ class TestIncludesExtractinator
 
       # A test file's own #include of a mock is deliberate, so mocked headers are kept
       includes = @preprocessinator.reconcile_includes(
-        bare:          testable.preprocess[:includes],
+        bare:          reconciliation_bare( testable ),
         user:          user,
         system:        system,
         test_filepath: testable.filepath,
@@ -215,7 +232,35 @@ class TestIncludesExtractinator
 
       @loginator.log_list( includes, "Extracted reconciled #include list from #{testable.filepath}:", Verbosity::OBNOXIOUS )
       @context_extractor.ingest_includes( testable.filepath, includes )
+      narrow_mock_search_paths( state, testable )
     end
+  end
+
+  # With directives-only output, the candidates plus the #includes a macro names, which
+  # that output resolved. Without it, the text-scanned #includes stand in for the second
+  # pass, and checking them against candidates holding those same #includes would keep
+  # every one, mocks in branches that are off included. GCC's list alone still evaluated
+  # those branches.
+  def reconciliation_bare(testable)
+    directives_only_filepath = testable.preprocess[:directives_only][:filepath]
+    return testable.preprocess[:includes] if directives_only_filepath.nil?
+
+    return @preprocessinator.supplement_with_computed_includes(
+      filepath: testable.filepath, bare: testable.preprocess[:candidates], directives_only_filepath: directives_only_filepath
+    )
+  end
+
+  # The candidates' mock directories served the second pass. Once reconciled, only the
+  # mocks that remain need a search path.
+  def narrow_mock_search_paths(state, testable)
+    return if testable.paths[:mocks].nil?
+
+    collection = @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
+    mock_dirs  = @mock_locator.directories(
+      @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
+      mocks_root: testable.paths[:mocks], collection: collection, complain: :ignore
+    )
+    set_mock_search_paths( state, testable, mock_dirs )
   end
 
   # The user and system #includes from the second pass's output, or from the text scan

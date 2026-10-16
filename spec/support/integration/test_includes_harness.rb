@@ -227,7 +227,7 @@ module IntegrationSpecHelpers
       extractinator = TestIncludesExtractinator.new(
         configurator: @cfg, loginator: NULL, reportinator: NULL, batchinator: SequentialBatchinator.new,
         test_context_extractor: @context_extractor, preprocessinator: preprocessinator, file_path_utils: @fpu,
-        dependinator: StaleDependinator.new, test_search_paths: @search_paths, standin_headerinator: standins
+        dependinator: StaleDependinator.new, test_search_paths: @search_paths, mock_locator: @locator, standin_headerinator: standins
       )
       extractinator.setup
       return extractinator

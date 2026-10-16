@@ -442,6 +442,7 @@ test_includes_extractinator:
     - file_path_utils
     - dependinator
     - test_search_paths
+    - mock_locator
     - standin_headerinator
 
 standin_headerinator:
