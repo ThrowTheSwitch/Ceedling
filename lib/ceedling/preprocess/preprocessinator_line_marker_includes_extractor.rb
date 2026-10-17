@@ -157,7 +157,8 @@ class PreprocessinatorLineMarkerIncludesExtractor
   #
   # @param preprocessed_filepath [String] raw directives-only output (line markers
   #   intact, comments stripped or not -- physical line count is 1:1 with the source
-  #   either way, which is all this walk needs)
+  #   either way, which is all this walk needs), or a test file's plain fallback
+  #   expansion, read as a best effort (see correlate_computed_includes)
   # @param source_basename [String] basename of the original source file, used to
   #   recognize its own line markers in the stream
   # @param source_lines [Enumerable<Integer>] 1-indexed source line numbers to report
@@ -195,6 +196,10 @@ class PreprocessinatorLineMarkerIncludesExtractor
   # `src_line` therefore still reads that directive's own line number when its entering
   # marker appears. Body lines and markers of any OTHER file are skipped entirely, so
   # a header's own nesting can't drift the count.
+  #
+  # A plain expansion, fallback's stand-in for directives-only output, drops runs of lines
+  # it has no use for, but it ends each such gap with a `# n` marker for the file, which
+  # resets the count. Fallback reads it as a best effort.
   def correlate_computed_includes(io:, source_basename:, wanted:)
     resolved = {}
     in_file_of_interest = false

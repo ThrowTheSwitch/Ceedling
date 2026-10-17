@@ -12,25 +12,22 @@
 # 1. Bare includes (TestBareIncludesExtractinator): GCC's list from an isolated copy of
 #    the test file, with the test file's literal #includes added as candidates and
 #    stand-ins placed for their mocks and Partials.
-# 2. Directives-only (TestDirectivesOnlyPreprocessinator): GCC preprocesses the test
-#    file, following its #includes through the stand-ins.
+# 2. Preprocessed includes (TestIncludesPreprocessinator): the preprocessor runs over the
+#    test file, following its #includes through the stand-ins. Without -fdirectives-only,
+#    a plain expansion stands in, as a best effort.
 # 3. Reconciliation (TestIncludesReconcilinator): the second pass's #includes, checked
 #    against the candidates, replace the stored text-scan list.
-#
-# Without directives-only support, only the first pass runs, and the text-scan list
-# stays in place.
 class TestIncludesExtractinator
 
   constructor(
-    :configurator,
     :test_bare_includes_extractinator,
-    :test_directives_only_preprocessinator,
+    :test_includes_preprocessinator,
     :test_includes_reconcilinator
   )
 
   def stage_collect_preprocessor_context(state)
     @test_bare_includes_extractinator.collect( state )
-    @test_directives_only_preprocessinator.preprocess( state ) if @configurator.test_build_preprocess_directives_only_available
+    @test_includes_preprocessinator.preprocess( state )
     @test_includes_reconcilinator.reconcile( state )
   end
 

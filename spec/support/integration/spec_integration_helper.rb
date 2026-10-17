@@ -134,6 +134,10 @@ module IntegrationSpecHelpers
       File.join(ensure_dir(File.join(@root, 'donly', test.to_s)), File.basename(filepath))
     end
 
+    def form_preprocessed_file_fallback_expansion_filepath(filepath, test)
+      File.join(ensure_dir(File.join(@root, 'fallback_expansion', test.to_s)), File.basename(filepath))
+    end
+
     private
 
     def ensure_dir(dir)

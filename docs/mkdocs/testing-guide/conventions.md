@@ -346,18 +346,19 @@ features (such as in the preceding sections).
 
 Older versions of `gcc` or `clang` standins may not support certain preprocessing
 features Ceedling requires. Ceedling probes for those features; if they are not 
-found then Ceedling falls back to a simpler, internal 
-[text-scanning fallback preprocessing][fallback-preprocessing].
+found then Ceedling falls back to a simpler, best-effort
+[fallback preprocessing][fallback-preprocessing].
 
-This simpler preprocessing mode within Ceedling is simply not as capable as full 
-preprocessing, but it can often handle the most common preprocessing needs (i.e. 
-condition compilation). Ceedling does what it can to find and log issues related
-to inadequate preprocessing before you get to mysterious compilation errors.
+Fallback preprocessing is a best effort with no guarantees. It is not as capable 
+as full preprocessing, but it can usually handle the most common preprocessing 
+needs (i.e. conditional compilation). Ceedling does what it can to find and log 
+issues related to inadequate preprocessing before you get to mysterious 
+compilation errors.
 
 !!! tip "Fallback preprocessing for faster test builds"
     Ceedling’s internal [fallback preprocessing mode can be forced][fallback-preprocessing],
     and, for **_some_** projects this can be a shortcut to running advanced 
-    Ceedling features such as Partials with much faster builds.
+    Ceedling features such as Partials with faster builds.
 
     **_If using Partials, there’s a good chance your code is too complex for fallback preprocessing._**
 

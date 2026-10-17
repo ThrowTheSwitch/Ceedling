@@ -345,12 +345,12 @@ ceedling_system_tests do
           # Unlike the single-file :preprocess: ↳ :defines matcher scenario above,
           # this setting has no per-file scope at all -- toggling it changes every
           # preprocessing target's meta project-wide, so re-extraction isn't
-          # limited to one matched file. Forcing text-based fallback extraction
-          # is also a real procedural switch, not merely a meta-tracked value --
-          # it can discover a different #include set than directives-only
-          # expansion does on a real project, so (unlike the :tools scenarios
-          # above) compiling is deliberately left unasserted here rather than
-          # claimed to be absent.
+          # limited to one matched file. Forcing fallback is also a real
+          # procedural switch, not merely a meta-tracked value -- its best-effort
+          # reconciliation can find a different #include set than directives-only
+          # output does on a real project, so (unlike the :tools scenarios above)
+          # compiling is deliberately left unasserted here rather than claimed to
+          # be absent.
           @c.merge_project_yml_for_test({ :test_build => { :preprocess_force_fallback => true } })
 
           rebuild = @c.ceedling_build_exec("test:all")
@@ -358,7 +358,7 @@ ceedling_system_tests do
           expect(rebuild).to match(/^Extracting #includes from TestAdcModel\.c/)
           expect(rebuild).to match(/^Extracting #includes from TestUsartModel\.c/)
           expect(rebuild).to match(/^Extracting #includes from TestTimerModel\.c/)
-          expect(rebuild).to match(/WARNING: Using fallback text-only includes extracted for/)
+          expect(rebuild).to match(/WARNING: Reconciling #includes from best-effort fallback preprocessing for/)
 
           expect(rebuild).to match(/TESTED:\s+86/)
           expect(rebuild).to match(/PASSED:\s+86/)

@@ -27,7 +27,7 @@ require 'spec_system_helper'
 ##
 ## Without test preprocessing, every #include is read as written, so the missing
 ## header stops the build. Fallback preprocessing, forced here so every toolchain runs
-## it, never reconciles the scanned list against the preprocessor's, so the same holds.
+## it, reconciles against a plain expansion as a best effort, which handles this shape.
 ##
 ## Assets: assets/fixtures/tests_with_conditional_mocks/
 ##
@@ -69,12 +69,12 @@ ceedling_system_tests do
         expect(output).to match( /PASSED:\s+1/ )
       end
 
-      it "stops the build naming the missing header with :#{mode} fallback preprocessing" do
+      it "builds with :#{mode} fallback preprocessing, mocking only the branch that is on" do
         prepare( files, mode, fallback: true )
 
         output = build
-        expect(@c.last_exit_status).to_not eq( 0 )
-        expect(output).to include( 'Gpt_HwType1.h' )
+        expect(@c.last_exit_status).to eq( 0 ), output
+        expect(output).to match( /PASSED:\s+1/ )
       end
     end
 
