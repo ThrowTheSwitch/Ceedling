@@ -23,6 +23,8 @@ class TestPipelineManager
     :test_build_planner,
     :partials_manager,
     :test_build_executor,
+    :test_file_preprocessinator,
+    :test_runner_generatinator,
     :configurator,
     :batchinator,
     :loginator,
@@ -231,20 +233,20 @@ class TestPipelineManager
       # Stage 11 — skipped under :mocking.
       stage("Preprocessing Test Files",
             condition: ->(s) { use_preprocessing.call(s) && not_mocking.call(s) },
-            body: ->(s) { @test_build_executor.stage_preprocess_test_files(s) }
+            body: ->(s) { @test_file_preprocessinator.preprocess(s) }
       ),
 
       # Stage 12 — skipped under :mocking.
       stage("Collecting Test Runner Details",
             condition: ->(s) { use_preprocessing.call(s) && not_mocking.call(s) },
-            body: ->(s) { @test_build_executor.stage_collect_runner_details(s) }
+            body: ->(s) { @test_runner_generatinator.collect_details(s) }
       ),
 
       # Stage 13 — skipped under :mocking. The :test_runner stop point runs
       # through here, then halts.
       stage("Test Runners",
             condition: not_mocking,
-            body: ->(s) { @test_build_executor.stage_generate_runners(s) }
+            body: ->(s) { @test_runner_generatinator.generate(s) }
       ),
 
       # Stage 14 — skipped under :mocking or :test_runner.
