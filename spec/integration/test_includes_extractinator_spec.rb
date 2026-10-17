@@ -229,6 +229,20 @@ describe 'Test file #include extraction (integration)' do
         end
       end
 
+      # Nothing then checks the text scan, so it stands as the test's list, as a best effort
+      it 'keeps the text-scan #includes when both passes fail' do
+        tree = {
+          'src/Gpt.h'           => "void Gpt_StartTimer(void);\n",
+          'src/stop.h'          => "#error stops the second pass\n",
+          'test/test_Case_01.c' => "#include \"stop.h\"\n#include \"mock_Gpt.h\"\n"
+        }
+
+        extract_in_mode( tree, 'test_Case_01.c', bare_tool: IntegrationSpecHelpers::FAILING_BARE_TOOL ) do |harness, _testable|
+          expect(harness.includes( 'test/test_Case_01.c' )).to eq( ['stop.h', 'mock_Gpt.h'] )
+          expect(harness.mocks( 'test/test_Case_01.c' )).to eq( ['mock_Gpt.h'] )
+        end
+      end
+
       it 'writes no #include list cache when the first pass fails' do
         extract_in_mode( CASE_1_TREE, 'test_Case_01.c', bare_tool: IntegrationSpecHelpers::FAILING_BARE_TOOL ) do |_harness, _testable|
           expect(Dir.glob( 'build/scratch/includes/**/*.yml' )).to eq( [] )

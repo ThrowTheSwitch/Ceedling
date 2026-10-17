@@ -625,6 +625,20 @@ describe TestIncludesExtractinator do
       @extractinator.stage_collect_preprocessor_context( @state )
     end
 
+    # Nothing then checks the text scan, so stage 2's list stays as it is, the Partial
+    # headers its configuration added included
+    it "keeps the text-scan #includes when GCC's list is empty and the directives-only pass failed" do
+      allow(@file_finder).to receive(:resolve_mock).and_return( ['src/x.h', ''] )
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( nil )
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/raw/Foo.txt').and_return( true )
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( nil )
+
+      expect(@preprocessinator).to_not receive(:reconcile_includes)
+      expect(@test_context_extractor).to_not receive(:ingest_includes)
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
     it "narrows the mock search paths to the reconciled list's mocks" do
       allow(@file_finder).to receive(:resolve_mock).with( 'MockConfig.h', collection: anything, complain: anything ).and_return( ['src/Config.h', ''] )
       allow(@file_finder).to receive(:resolve_mock).with( 'MockPart1.h', collection: anything, complain: anything ).and_return( ['src/hw/Part1.h', 'hw'] )
@@ -663,6 +677,17 @@ describe TestIncludesExtractinator do
         expect(@reportinator).to receive(:generate_module_progress)
           .with( hash_including( operation: 'Reconciling #includes from best-effort fallback preprocessing for' ) ).and_return( 'best effort' )
         expect(@loginator).to receive(:log).with( 'best effort', Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
+        @extractinator.stage_collect_preprocessor_context( @state )
+      end
+
+      it "keeps the text-scan #includes when GCC's list is empty and the fallback expansion failed" do
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [] )
+        allow(@dependinator).to receive(:stale?).with('build/preprocess/fallback/Foo.txt').and_return( true )
+        allow(@preprocessinator).to receive(:generate_fallback_expansion_output).and_return( nil )
+
+        expect(@preprocessinator).to_not receive(:reconcile_includes)
+        expect(@test_context_extractor).to_not receive(:ingest_includes)
 
         @extractinator.stage_collect_preprocessor_context( @state )
       end
