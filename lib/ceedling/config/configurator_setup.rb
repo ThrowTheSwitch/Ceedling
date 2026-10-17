@@ -7,6 +7,7 @@
 
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/config/line_marker_suppressors'
 
 
 class ConfiguratorSetup
@@ -232,6 +233,16 @@ class ConfiguratorSetup
   end
 
 
+  # Test preprocessing reads the line markers -P and --no-line-commands suppress. Without
+  # test preprocessing nothing reads them, so the options are harmless there.
+  def validate_line_markers(config)
+    return true if config.dig( :project, :use_test_preprocessor ) == :none
+
+    found = LineMarkerSuppressors.in_flags( config[:flags], matcher_contexts( config, [:test] ) ) + LineMarkerSuppressors.in_tools( config )
+    found.each { |walk_keys, entry| log_error( line_markers_message( walk_keys, entry ) ) }
+    return found.empty?
+  end
+
   def validate_test_preprocessor(config)
     return validate_option( config, :use_test_preprocessor, [:none, :all, :tests, :mocks] )
   end
@@ -333,6 +344,13 @@ class ConfiguratorSetup
     reason = "`gdb` could not attach to a probe process"
     return reason + " -- this is a macOS `gdb` codesigning / trust problem" if result[:output].to_s.match?( /Unable to find Mach task port/ )
     return reason
+  end
+
+  def line_markers_message(walk_keys, entry)
+    msg = "#{@reportinator.generate_config_walk( walk_keys )} entry '#{entry}' suppresses the preprocessor line markers " \
+          "test preprocessing reads to find #includes, mockable functions, and test cases. Remove it."
+    msg += " Test preprocessing uses :compile flags wherever no :preprocess flags apply." if walk_keys[2] == :compile
+    return msg
   end
 
   # Build contexts that plugins declare peers of :test also support matchers

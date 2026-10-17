@@ -431,6 +431,37 @@ describe ConfiguratorSetup do
       end
     end
 
+    # Test preprocessing reads line markers, and a preprocessor told to drop them still succeeds
+    context "#validate_line_markers" do
+      def validate(yaml, preprocessing: ':all')
+        @setup.validate_line_markers( config_from_yaml( ":project:\n  :use_test_preprocessor: #{preprocessing}\n" + yaml ) )
+      end
+
+      it "rejects -P in flags that reach test preprocessing" do
+        expect(validate( ":flags:\n  :test:\n    :preprocess: [-P]\n" )).to be false
+        logged(/:flags ↳ :test ↳ :preprocess entry '-P' suppresses the preprocessor line markers test preprocessing reads to find #includes, mockable functions, and test cases\. Remove it\./)
+      end
+
+      it "says where :compile flags reach test preprocessing" do
+        expect(validate( ":flags:\n  :test:\n    :compile: [--no-line-commands]\n" )).to be false
+        logged(/:flags ↳ :test ↳ :compile entry '--no-line-commands' .* Test preprocessing uses :compile flags wherever no :preprocess flags apply\./)
+      end
+
+      it "rejects -P in a preprocessor tool's arguments" do
+        expect(validate( ":tools:\n  :test_file_directives_only_preprocessor:\n    :arguments: [-E, -P]\n" )).to be false
+        logged(/:tools ↳ :test_file_directives_only_preprocessor ↳ :arguments entry '-P'/)
+      end
+
+      it "accepts flags that keep line markers" do
+        expect(validate( ":flags:\n  :test:\n    :compile: [-Wall, -MP]\n" )).to be true
+      end
+
+      # Without test preprocessing nothing reads line markers
+      it "accepts -P when test preprocessing is off" do
+        expect(validate( ":flags:\n  :test:\n    :compile: [-P]\n", preprocessing: ':none' )).to be true
+      end
+    end
+
     context "#validate_flags" do
       def validate(yaml)
         @setup.validate_flags( config_from_yaml( yaml ) )

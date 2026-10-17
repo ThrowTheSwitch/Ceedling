@@ -115,6 +115,36 @@ describe 'Configurator pipeline (integration)' do
     end
   end
 
+  # Forced fallback skips the startup probe of the preprocessor, so no compiler is needed
+  describe 'options that suppress line markers' do
+    def preprocessing_yaml(extra)
+      return minimal_project_yaml.sub( ":build_root: build\n", ":build_root: build\n  :use_test_preprocessor: :all\n" ) +
+             ":test_build:\n  :preprocess_force_fallback: TRUE\n" + extra
+    end
+
+    it 'refuses -P in flags that reach test preprocessing' do
+      in_temp_project( minimal_project_files ) do
+        expect { configure( preprocessing_yaml( ":flags:\n  :test:\n    :preprocess: [-P]\n" ) ) }.to raise_error(CeedlingException, /failed validation/)
+        expect(logged.join).to include(":flags ↳ :test ↳ :preprocess entry '-P' suppresses the preprocessor line markers")
+      end
+    end
+
+    it 'refuses --no-line-commands a tool shortcut adds, naming the shortcut' do
+      in_temp_project( minimal_project_files ) do
+        yaml = preprocessing_yaml( ":tools_test_file_directives_only_preprocessor:\n  :arguments: [--no-line-commands]\n" )
+
+        expect { configure( yaml ) }.to raise_error(CeedlingException, /failed validation/)
+        expect(logged.join).to include(":tools_test_file_directives_only_preprocessor ↳ :arguments entry '--no-line-commands'")
+      end
+    end
+
+    it 'accepts -P without test preprocessing' do
+      in_temp_project( minimal_project_files ) do
+        expect { configure( minimal_project_yaml + ":flags:\n  :test:\n    :compile: [-P]\n" ) }.to_not raise_error
+      end
+    end
+  end
+
   it 'refuses a configuration missing a required section' do
     in_temp_project( minimal_project_files ) do
       expect { configure( ":project:\n  :build_root: build\n" ) }.to raise_error(CeedlingException, /failed validation/)
