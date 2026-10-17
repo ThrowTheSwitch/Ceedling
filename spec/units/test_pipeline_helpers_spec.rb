@@ -14,10 +14,12 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 class TestPipelineHelpersIncluder
   include TestPipelineHelpers
 
-  attr_accessor :configurator
+  attr_accessor :configurator, :preprocessinator, :dependinator
 
-  def initialize(configurator)
-    @configurator = configurator
+  def initialize(configurator, preprocessinator = nil, dependinator = nil)
+    @configurator     = configurator
+    @preprocessinator = preprocessinator
+    @dependinator     = dependinator
   end
 end
 
@@ -76,6 +78,23 @@ describe TestPipelineHelpers do
       meta = @host.dependency_meta( flags: [], defines: [], search_paths: [], partials: partials_config )
 
       expect( meta[:partials] ).to eq( partials_config )
+    end
+  end
+
+  # A preprocessor output depends on every file it read. Generated files below the build
+  # root derive from those project files and would only ever look changed.
+  describe "#register_preprocessed_dependencies" do
+    it "registers the project files an output entered, leaving out those below the build root" do
+      preprocessinator = double( "Preprocessinator" )
+      dependinator     = double( "Dependinator" )
+      allow(@configurator).to receive(:project_build_root).and_return( 'build' )
+      allow(preprocessinator).to receive(:preprocessed_dependencies).with( preprocessed_filepath: 'build/out/test_a.c' )
+        .and_return( ['test/test_a.c', 'build/test/mocks/test_a/mock_config.h', 'src/config.h', 'builder/b.h'] )
+
+      expect(dependinator).to receive(:register).with( 'build/target', files: ['test/test_a.c', 'src/config.h', 'builder/b.h'] )
+
+      TestPipelineHelpersIncluder.new( @configurator, preprocessinator, dependinator )
+        .register_preprocessed_dependencies( 'build/target', 'build/out/test_a.c' )
     end
   end
 end

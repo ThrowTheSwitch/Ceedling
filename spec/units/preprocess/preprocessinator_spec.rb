@@ -171,14 +171,14 @@ RSpec.describe Preprocessinator do
   end
 
   # ===========================================================================
-  describe '#directives_only_dependencies' do
+  describe '#preprocessed_dependencies' do
   # ===========================================================================
 
-    it "gives the files a directives-only output entered" do
-      allow(@includes_handler).to receive(:extract_directives_only_dependencies)
-        .with( directives_only_filepath: 'build/do/test_a.c' ).and_return( ['src/config.h'] )
+    it "gives the files a preprocessor's output entered" do
+      allow(@includes_handler).to receive(:extract_preprocessed_dependencies)
+        .with( preprocessed_filepath: 'build/do/test_a.c' ).and_return( ['src/config.h'] )
 
-      expect(subject.directives_only_dependencies( directives_only_filepath: 'build/do/test_a.c' )).to eq( ['src/config.h'] )
+      expect(subject.preprocessed_dependencies( preprocessed_filepath: 'build/do/test_a.c' )).to eq( ['src/config.h'] )
     end
   end
 

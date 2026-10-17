@@ -64,6 +64,17 @@ module TestPipelineHelpers
     meta
   end
 
+  # Registers the project files a preprocessor's output entered as `target`'s
+  # dependencies, as a compile registers its .d file. Files below the build root, such as
+  # stand-ins and generated mocks, derive from those project files and would only ever
+  # look changed. Relies on `@preprocessinator` and `@dependinator`.
+  def register_preprocessed_dependencies(target, output)
+    build_root = File.join( @configurator.project_build_root, '' )
+    files      = @preprocessinator.preprocessed_dependencies( preprocessed_filepath: output )
+
+    @dependinator.register( target, files: files.reject { |file| file.start_with?( build_root ) } )
+  end
+
   # A preprocessing pass falls back to plain, non-directives-only handling either when
   # directives-only support isn't available at all for this toolchain, or when this
   # particular target's own directives-only output failed to generate (see

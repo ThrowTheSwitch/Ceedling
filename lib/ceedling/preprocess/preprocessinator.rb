@@ -640,9 +640,9 @@ class Preprocessinator
     return union_includes( bare, computed )
   end
 
-  # The user files a directives-only output entered, which that output depends on
-  def directives_only_dependencies(directives_only_filepath:)
-    return @includes_handler.extract_directives_only_dependencies( directives_only_filepath: directives_only_filepath )
+  # The user files a preprocessor's output entered, which that output depends on
+  def preprocessed_dependencies(preprocessed_filepath:)
+    return @includes_handler.extract_preprocessed_dependencies( preprocessed_filepath: preprocessed_filepath )
   end
 
   # The merge step every includes-reconciliation site shares: intersect a bare list
@@ -685,6 +685,6 @@ class Preprocessinator
     return (bare + more).uniq( &:filepath )
   end
 
-  public :preprocess_file_includes_common, :reconcile_includes, :supplement_with_text_includes, :supplement_with_computed_includes, :directives_only_dependencies
+  public :preprocess_file_includes_common, :reconcile_includes, :supplement_with_text_includes, :supplement_with_computed_includes, :preprocessed_dependencies
 
 end
