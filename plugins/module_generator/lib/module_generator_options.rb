@@ -16,9 +16,9 @@ require 'ceedling/exceptions'
 # collection, or to that collection's first path when the hint matches nothing there.
 # A hint that matches nothing in any collection is a mistake and stops the task.
 # Without include paths, headers go where the source goes.
-#
 class ModuleGeneratorOptions
 
+  # The :naming values Unity's module generator accepts, passed to it as given
   NAMING = %w[bumpy camel snake caps].freeze
 
   KINDS = %i[src inc tst].freeze
