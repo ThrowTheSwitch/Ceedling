@@ -13,9 +13,9 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 # candidates and the #includes a macro names, replace each test file's stored text-scan
 # list, and its mock search paths narrow to the mocks that remain.
 #
-# No dependency-tracker gate: it parses the second pass's already-gated output or does a
-# cheap text scan, and reconciling is list merging. Without directives-only support,
-# nothing is reconciled, and the text-scan list stays in place.
+# In fallback the second pass's output is a plain expansion, so reconciling against it is
+# a best effort. No dependency-tracker gate: this pass parses the second pass's
+# already-gated output or does a cheap text scan, and reconciling is list merging.
 class TestIncludesReconcilinator
 
   include TestPipelineHelpers
@@ -37,11 +37,6 @@ class TestIncludesReconcilinator
 
   def reconcile(state)
     @batchinator.exec( workload: :compile, things: state.testables ) do |_, testable|
-      unless @configurator.test_build_preprocess_directives_only_available
-        log_module_progress( 'Using fallback text-only includes extracted for', testable, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-        next
-      end
-
       ingest( testable )
       narrow_mock_search_paths( state, testable )
     end
@@ -63,30 +58,41 @@ class TestIncludesReconcilinator
   # The user and system #includes from the second pass's output, or from the text scan
   # when that pass failed for this file
   def accurate_includes(testable)
-    directives_only_filepath = testable.preprocess[:directives_only][:filepath]
+    preprocessed = preprocessed_filepath( testable )
 
-    if directives_only_filepath.nil?
+    if preprocessed.nil?
       log_module_progress( 'Using fallback text-only includes extracted for', testable, Verbosity::OBNOXIOUS, LogLabels::WARNING )
       includes = @context_extractor.lookup_all_header_includes_list( testable.filepath )
       return [Includes.user( includes ), Includes.system( includes )]
     end
 
-    args = { name: testable.name, filepath: testable.filepath, directives_only_filepath: directives_only_filepath }
+    log_module_progress( 'Reconciling #includes from best-effort fallback preprocessing for', testable, Verbosity::OBNOXIOUS, LogLabels::WARNING ) unless directives_only?
+    args = { name: testable.name, filepath: testable.filepath, directives_only_filepath: preprocessed }
     return [@preprocessinator.preprocess_user_includes( **args ), @preprocessinator.preprocess_system_includes( **args )]
   end
 
-  # With directives-only output, the candidates plus the #includes a macro names, which
+  # With the second pass's output, the candidates plus the #includes a macro names, which
   # that output resolved. Without it, the text-scanned #includes stand in for the second
   # pass, and checking them against candidates holding those same #includes would keep
   # every one, mocks in branches that are off included. GCC's list alone still evaluated
   # those branches.
   def bare(testable)
-    directives_only_filepath = testable.preprocess[:directives_only][:filepath]
-    return testable.preprocess[:includes] if directives_only_filepath.nil?
+    preprocessed = preprocessed_filepath( testable )
+    return testable.preprocess[:includes] if preprocessed.nil?
 
     return @preprocessinator.supplement_with_computed_includes(
-      filepath: testable.filepath, bare: testable.preprocess[:candidates], directives_only_filepath: directives_only_filepath
+      filepath: testable.filepath, bare: testable.preprocess[:candidates], directives_only_filepath: preprocessed
     )
+  end
+
+  # The second pass's line-marker output, whichever way it ran, or nil when it failed for
+  # this file
+  def preprocessed_filepath(testable)
+    return testable.preprocess[:directives_only][:filepath] || testable.preprocess.dig( :fallback_expansion, :filepath )
+  end
+
+  def directives_only?
+    return @configurator.test_build_preprocess_directives_only_available
   end
 
   # The candidates' mock directories served the second pass. Once reconciled, only the

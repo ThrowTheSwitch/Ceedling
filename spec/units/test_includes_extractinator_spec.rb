@@ -473,16 +473,27 @@ describe TestIncludesExtractinator do
       @extractinator.stage_collect_preprocessor_context( @state )
     end
 
-    # Without directives-only output nothing is reconciled, so the text-scan list stage 2
-    # drew its paths from still drives the build
-    it "leaves stage 2's mock search paths in place when directives-only output is unavailable" do
+    # Fallback reconciles too, so its expansion needs the stand-ins on its search path
+    it "replaces stage 2's mock search paths in fallback too" do
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
       allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
 
       @extractinator.stage_collect_preprocessor_context( @state )
 
-      expect(@testable.mock_search_paths).to eq( ['build/test/mocks/a_test/hw'] )
-      expect(@testable.search_paths).to eq( ['build/test/mocks/a_test', 'build/test/mocks/a_test/hw', 'src'] )
+      expect(@testable.mock_search_paths).to eq( ['build/test/mocks/a_test/drivers'] )
+      expect(@testable.search_paths).to eq( ['build/test/mocks/a_test', 'build/test/mocks/a_test/drivers', 'src'] )
+    end
+
+    it "hands the fallback expansion the rebuilt search paths" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/fallback/Foo.txt').and_return( true )
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h') ] )
+
+      expect(@preprocessinator).to receive(:generate_fallback_expansion_output)
+        .with( hash_including( include_paths: ['build/test/mocks/a_test', 'build/test/mocks/a_test/drivers', 'src'] ) )
+        .and_return( nil )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
     end
   end
 
@@ -603,16 +614,44 @@ describe TestIncludesExtractinator do
       expect(@testable.search_paths).to eq( ['build/test/mocks/a_test'] )
     end
 
-    it "leaves the paths in place, and reconciles nothing, without directives-only output" do
-      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
-      allow(@file_finder).to receive(:resolve_mock).and_return( ['src/x.h', ''] )
-      @testable.mock_search_paths = ['build/test/mocks/a_test/hw']
+    context "in fallback" do
+      before(:each) do
+        allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+        allow(@file_finder).to receive(:resolve_mock).and_return( ['src/x.h', ''] )
+      end
 
-      expect(@preprocessinator).to_not receive(:reconcile_includes)
+      it "reconciles against the candidates and computed #includes from the fallback expansion" do
+        allow(@preprocessinator).to receive(:supplement_with_computed_includes)
+          .with( filepath: 'test/TestFoo.c', bare: [ Include.new('MockConfig.h'), Include.new('MockPart1.h') ], directives_only_filepath: 'build/preprocess/fallback/Foo.txt' )
+          .and_return( [ Include.new('MockConfig.h'), Include.new('MockPart1.h'), Include.new('board.h') ] )
 
-      @extractinator.stage_collect_preprocessor_context( @state )
+        expect(@preprocessinator).to receive(:preprocess_user_includes)
+          .with( name: 'a_test', filepath: 'test/TestFoo.c', directives_only_filepath: 'build/preprocess/fallback/Foo.txt' ).and_return( [] )
+        expect(@preprocessinator).to receive(:reconcile_includes)
+          .with( hash_including( bare: [ Include.new('MockConfig.h'), Include.new('MockPart1.h'), Include.new('board.h') ] ) )
+          .and_return( [] )
 
-      expect(@testable.mock_search_paths).to eq( ['build/test/mocks/a_test/hw'] )
+        @extractinator.stage_collect_preprocessor_context( @state )
+      end
+
+      it "warns that its reconciliation is best effort" do
+        expect(@reportinator).to receive(:generate_module_progress)
+          .with( hash_including( operation: 'Reconciling #includes from best-effort fallback preprocessing for' ) ).and_return( 'best effort' )
+        expect(@loginator).to receive(:log).with( 'best effort', Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
+        @extractinator.stage_collect_preprocessor_context( @state )
+      end
+
+      it "reconciles against GCC's bare list alone when the fallback expansion failed" do
+        allow(@dependinator).to receive(:stale?).with('build/preprocess/fallback/Foo.txt').and_return( true )
+        allow(@preprocessinator).to receive(:generate_fallback_expansion_output).and_return( nil )
+
+        expect(@preprocessinator).to receive(:reconcile_includes)
+          .with( hash_including( bare: [ Include.new('MockConfig.h') ] ) )
+          .and_return( [] )
+
+        @extractinator.stage_collect_preprocessor_context( @state )
+      end
     end
   end
 

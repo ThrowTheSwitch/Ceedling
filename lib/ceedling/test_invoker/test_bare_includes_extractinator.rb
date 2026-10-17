@@ -12,7 +12,7 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 # test file, a list cached between runs. The test file's literal #includes are added as
 # candidates, as they are for a mockable header, since the isolated copy can't see a
 # macro another header defines. Stand-ins are placed for the candidates' mocks and
-# Partials, and where reconciliation follows, the mock search paths are set from them.
+# Partials, and the mock search paths are set from them.
 class TestBareIncludesExtractinator
 
   include TestPipelineHelpers
@@ -90,9 +90,9 @@ class TestBareIncludesExtractinator
   end
 
   # A cached list says nothing about whether its stand-ins survived, so they are placed
-  # either way. Reconciliation draws only from the candidates, so where it runs, their
-  # mocks cover every mock the build uses, and the second pass needs their directories
-  # to find the stand-ins.
+  # either way. Reconciliation draws only from the candidates, so their mocks cover every
+  # mock the build uses, and the second pass needs their directories to find the
+  # stand-ins.
   #
   # A literal #include may sit in a branch that is off, naming a mock whose header
   # doesn't exist or matches one only in letter case, so a mock only the text scan found
@@ -104,8 +104,6 @@ class TestBareIncludesExtractinator
 
     mock_dirs  = @standin_headerinator.place( testable, bare )
     mock_dirs += @standin_headerinator.place( testable, literal, complain: :silent )
-    return unless @configurator.test_build_preprocess_directives_only_available
-
     @test_search_paths.assign_mock_search_paths( testable, mock_dirs.uniq, state.lock )
   end
 

@@ -608,10 +608,10 @@ class Preprocessinator
     return union_includes( bare, @includes_handler.extract_bare_includes_from_text( filepath: filepath ) )
   end
 
-  # A bare list with the #includes a macro names, as the directives-only output resolved
-  # them. Neither bare pass sees one whose macro comes from another header: the gcc pass
-  # can't open that header, and the text scan has no filename to find. The same
-  # reconciliation safety applies. Without directives-only output there is nothing to add.
+  # A bare list with the #includes a macro names, as the preprocessor's line-marker output
+  # resolved them. Neither bare pass sees one whose macro comes from another header: the
+  # gcc pass can't open that header, and the text scan has no filename to find. The same
+  # reconciliation safety applies. Without line-marker output there is nothing to add.
   def supplement_with_computed_includes(filepath:, bare:, directives_only_filepath:)
     computed = @includes_handler.extract_computed_includes( filepath: filepath, directives_only_filepath: directives_only_filepath )
     return union_includes( bare, computed )

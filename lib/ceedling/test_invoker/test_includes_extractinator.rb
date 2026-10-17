@@ -17,8 +17,6 @@
 #    a plain expansion stands in, as a best effort.
 # 3. Reconciliation (TestIncludesReconcilinator): the second pass's #includes, checked
 #    against the candidates, replace the stored text-scan list.
-#
-# Without directives-only support, the text-scan list stays in place.
 class TestIncludesExtractinator
 
   constructor(
