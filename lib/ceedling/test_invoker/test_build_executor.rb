@@ -552,7 +552,7 @@ class TestBuildExecutor
   # mock's directory. A folder trailing the mirrored location keeps that location. An #include
   # spelling more path than the mirror holds moves its mock below the per-test root at the
   # written path, which the root search path still reaches. A bare #include has no folder.
-  # Without :mock_name_include_folder no folder is passed and CMock behaves as it always has.
+  # Without :mock_name_include_folder no folder is passed, and CMock names by filename alone.
   def mock_folder_and_path(mocks_root, output_path, include_path)
     return [nil, output_path] unless @configurator.cmock_mock_name_include_folder
 

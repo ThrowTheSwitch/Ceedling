@@ -1622,6 +1622,16 @@ describe TestBuildExecutor do
         @executor.stage_generate_mocks( @state )
       end
 
+      # The runner ignores a leading ./ too, so both name the mock alike
+      it "drops a leading ./ from the folder" do
+        include_as( './sub/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/sub', folder: 'sub' ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
       # The mirror cannot hold a folder longer than itself, so the mock moves to the
       # written path below the per-test root, and its tracked target moves with it.
       it "places the mock at its written path when the #include spells more than the mirror" do
