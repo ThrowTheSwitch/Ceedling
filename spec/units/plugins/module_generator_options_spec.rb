@@ -98,9 +98,9 @@ describe ModuleGeneratorOptions do
       expect(unity).to include( path_src: 'src/lab', path_inc: 'src/lab' )
     end
 
-    it 'converts :naming to the Unity convention that produces the documented case' do
-      expect(options( module_generator_naming: :bumpy ).unity( request( 'x' ) )[:naming]).to eq( 'camel' )
-      expect(options( module_generator_naming: :camel ).unity( request( 'x' ) )[:naming]).to eq( 'bumpy' )
+    it 'passes :naming through to Unity unchanged' do
+      expect(options( module_generator_naming: :bumpy ).unity( request( 'x' ) )[:naming]).to eq( 'bumpy' )
+      expect(options( module_generator_naming: :camel ).unity( request( 'x' ) )[:naming]).to eq( 'camel' )
       expect(options( module_generator_naming: :snake ).unity( request( 'x' ) )[:naming]).to eq( 'snake' )
       expect(options( module_generator_naming: 'caps' ).unity( request( 'x' ) )[:naming]).to eq( 'caps' )
     end

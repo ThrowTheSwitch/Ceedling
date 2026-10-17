@@ -17,12 +17,9 @@ require 'ceedling/exceptions'
 # A hint that matches nothing in any collection is a mistake and stops the task.
 # Without include paths, headers go where the source goes.
 #
-# Unity's naming conventions reverse bumpy and camel relative to their documented
-# meaning, so each :naming value maps to the Unity convention that produces it.
 class ModuleGeneratorOptions
 
-  # Documented :naming value => the Unity convention that produces it
-  NAMING = { 'bumpy' => 'camel', 'camel' => 'bumpy', 'snake' => 'snake', 'caps' => 'caps' }.freeze
+  NAMING = %w[bumpy camel snake caps].freeze
 
   KINDS = %i[src inc tst].freeze
 
@@ -83,9 +80,10 @@ class ModuleGeneratorOptions
   def naming(value)
     return nil if value.nil?
 
-    return NAMING.fetch( value.to_s ) do
-      raise CeedlingException.new( "Module Generator :naming `#{value}` is not one of #{NAMING.keys.map { |key| ":#{key}" }.join( ', ' )}." )
-    end
+    str = value.to_s
+    return str if NAMING.include?( str )
+
+    raise CeedlingException.new( "Module Generator :naming `#{value}` is not one of #{NAMING.map { |key| ":#{key}" }.join( ', ' )}." )
   end
 
   def guard_style(value)
