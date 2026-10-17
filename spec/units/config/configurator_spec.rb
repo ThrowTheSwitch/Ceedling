@@ -458,7 +458,7 @@ describe Configurator do
       @configurator.resolve_directives_only_preprocessing( config, double('tool_executor') )
 
       expect( config[:test_build][:preprocess_directives_only_available] ).to be false
-      expect( @loginator ).to have_received(:log).with( /Forcing fallback/, Verbosity::COMPLAIN, LogLabels::NOTICE )
+      expect( @loginator ).to have_received(:log).with( /Forcing best-effort fallback preprocessing/, Verbosity::COMPLAIN, LogLabels::NOTICE )
     end
   end
 

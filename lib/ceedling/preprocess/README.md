@@ -16,6 +16,7 @@ One class is the entry point: `Preprocessinator` (`preprocessinator.rb`). Every 
 
 - `preprocess_bare_includes(filepath:, test:, search_paths:, flags:, defines:)` — the bare `#include` list only, for early stand-in generation. Returns `Array<Include>`.
 - `generate_directives_only_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)` — runs the accurate pass, strips its comments, compacts it. Returns the raw output's path, or `nil` if the preprocessor failed.
+- `generate_fallback_expansion_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)` — runs a test file's plain expansion, fallback's best-effort stand-in for the accurate pass. Returns its path, or `nil` if the preprocessor failed.
 - `preprocess_file_includes_common(test:, filepath:, directives_only_filepath:, fallback:, flags:, include_paths:, vendor_paths:, defines:)` — the full extract-reconcile-cache path for a mockable header or a Partial header/source. Returns the reconciled `Array<Include>`.
 - `preprocess_mockable_header_file(...)`, `preprocess_partial_header_file_preserve_macros(...)`, `preprocess_partial_source_file_preserve_macros(...)`, `preprocess_test_file(...)` — each extracts includes (via the method above, except the test file, which already has its list), then rebuilds the file.
 - `preprocess_partial_header_expand_macros(...)` / `preprocess_partial_source_expand_macros(...)` — the full-expansion pass, for signature extraction.
@@ -84,12 +85,12 @@ It has its own blind spot: an `#include` whose target is a macro has no literal 
 The isolated pass can't evaluate the guard; the text scan has no filename. But the accurate `-fdirectives-only` pass *does* open the header and emit an ordinary entering marker for it. The method recovers that resolution:
 
 1. `computed_include_source_lines(filepath)` scans the raw source with `ParsingParcels#code_lines_with_num` (comments stripped, backslash continuations folded). It collects the 1-indexed line of every `#include` directive whose argument matches neither `PATTERNS::USER_INCLUDE_DIRECTIVE_FILENAME` nor `PATTERNS::SYSTEM_INCLUDE_DIRECTIVE_FILENAME` — a bare token, i.e. a macro. The line reported is the directive's ENDING physical line (`code_lines_with_num`'s 3rd yielded value), not its first: `-fdirectives-only` attributes a consumed multi-line directive's own entering marker to the last physical line it spans, not the first, so the two must agree on which line that is. For an ordinary single-line directive the start and end line are the same.
-2. `PreprocessinatorLineMarkerIncludesExtractor#resolve_computed_includes(preprocessed_filepath:, source_basename:, source_lines:)` walks the directives-only output. It tracks `src_line`, the source line the next non-marker physical line maps to: a `# n "<source basename>" …` marker sets `src_line = n`; each body line of that file increments it. The macro-target directive is *replaced* by the entering marker for the header it pulled in, so it never appears as a body line — `src_line` still names that directive's line when its entering marker (`flag 1`, another file) appears. Body lines and markers of any other file are skipped, so a header's own nesting can't drift the count. It returns `{ source_line => resolved_path }` for every wanted line that produced an entering marker.
+2. `PreprocessinatorLineMarkerIncludesExtractor#resolve_computed_includes(preprocessed_filepath:, source_basename:, source_lines:)` walks the line-marker output. It tracks `src_line`, the source line the next non-marker physical line maps to: a `# n "<source basename>" …` marker sets `src_line = n`; each body line of that file increments it. The macro-target directive is *replaced* by the entering marker for the header it pulled in, so it never appears as a body line — `src_line` still names that directive's line when its entering marker (`flag 1`, another file) appears. Body lines and markers of any other file are skipped, so a header's own nesting can't drift the count. It returns `{ source_line => resolved_path }` for every wanted line that produced an entering marker.
 3. Each resolved path becomes a base `Include`.
 
-`preprocess_file_includes_common` unions the result into `bare` right after contributor 2, guarded `unless fallback` — fallback has no directives-only stream to read. `Includes.reconcile` is untouched: the computed include is now corroborated in `bare` like a literal one and still gated by the accurate list.
+`preprocess_file_includes_common` unions the result into `bare` right after contributor 2, guarded `unless fallback` — a header in fallback has no line-marker stream to read. `Includes.reconcile` is untouched: the computed include is now corroborated in `bare` like a literal one and still gated by the accurate list.
 
-A computed `#include` split across a backslash continuation, of any length, correlates correctly (characterized in the integration suite alongside the single-line shape). The one real limitation: computed-include resolution is unavailable in fallback mode, since there is no directives-only stream to correlate against at all.
+A computed `#include` split across a backslash continuation, of any length, correlates correctly (characterized in the integration suite alongside the single-line shape). The real limitation: computed-include resolution is unavailable for headers and Partials in fallback mode, since there is no line-marker stream to correlate against. A test file in fallback has its plain expansion, read as a best effort (see below).
 
 ### The accurate pass — directives-only
 
@@ -117,6 +118,18 @@ void module_calculate(int value);
 
 `generate_directives_only_output` also strips the raw output's comments in place (`PreprocessinatorCommentStripper`) and writes a second, marker-free compacted file (`PreprocessinatorReconstructor`). Line-to-line correspondence with the source survives comment stripping, which is what the computed-include walk depends on.
 
+### Fallback — a plain expansion in its place
+
+Without `-fdirectives-only`, a test file's accurate list comes from a plain expansion, as a best effort with no guarantees. `generate_fallback_expansion_output` runs `tools_test_file_full_preprocessor` with the test's full search paths, stand-ins included:
+
+```
+gcc -E -I"build/test/mocks/test_module" -I"src" -D"UNIT_TEST" -x c "test_module.c" -o "fallback_expansion/test_module.c"
+```
+
+A plain expansion keeps no macro directives and no comments. Its line markers still record every file the preprocessor entered. `extract_user_includes_preprocess` and `extract_system_includes_preprocess` read it exactly as they read directives-only output. Contributor 3 reads it too. The expansion drops runs of lines it has no use for, but it ends each gap with a `# n` marker for the file, so `src_line` resets. Nothing strips or compacts the expansion, because nothing reads its code.
+
+Two constraints shape where it lives. The output keeps the test file's basename, since `extract_includes` finds the start of the test file's own lines by matching that basename against a `# 1` marker. It also sits apart from `full_expansion/`, which stage 11 writes with real mocks in place of stand-ins. Only stage 4's test-file pass uses this mode. Headers and Partials in fallback still use the text scan described under [Caching and the Fallback Path](#caching-and-the-fallback-path).
+
 ### Reconciliation
 
 `Includes.reconcile(bare:, user:, system:, test_filepath:, &on_ambiguous)`:
@@ -130,7 +143,7 @@ void module_calculate(int value);
 `Preprocessinator#reconcile_includes(bare:, user:, system:, test_filepath:, drop_mocked: true)` is the shared merge step. It calls `Includes.reconcile`, logs a `NOTICE` on each ambiguity, and — when `drop_mocked` — runs `Includes.sanitize!` to drop a header whose `cmock_mock_prefix`-named mock is also present. Two call sites use it, each owning its own bare source and caching:
 
 - `preprocess_file_includes_common` — mockable headers and Partials. `drop_mocked: true`.
-- `test_invoker/test_includes_extractinator.rb`, stage 4's third pass — the test file itself. `drop_mocked: false`, because a test's own `#include` of a mock is deliberate. Its bare source is stage 4's own list with the same text and computed supplements (`supplement_with_text_includes`, `supplement_with_computed_includes`), except when its directives-only output failed, when it is GCC's list alone.
+- `test_invoker/test_includes_reconcilinator.rb`, stage 4's third pass — the test file itself. `drop_mocked: false`, because a test's own `#include` of a mock is deliberate. Its bare source is stage 4's own list with the same text and computed supplements (`supplement_with_text_includes`, `supplement_with_computed_includes`), except when its second pass failed, when it is GCC's list alone. Its accurate lists come from directives-only output, or in fallback from the plain expansion.
 
 The reconciled list is also cleaned of any self-reference (`clean_self_reference`, normalized-path comparison).
 
@@ -143,6 +156,8 @@ gcc -E -I"src" -D"UNIT_TEST" -x c "test_module.c" -o "out.c"
 ```
 
 `command[:options][:boom] = false` — a nonzero exit must fall back to directives-only signatures, not raise. On failure the method returns `nil`. This is the most expensive mode and is used sparingly.
+
+All three runs share one private runner, `run_preprocessor(tool, filepath, output, flags:, include_paths:, vendor_paths:, defines:)`. It builds the command for whichever tool the caller names, with the file's own search paths ahead of vendor paths, and sets `boom: false`. Each caller then handles a failure its own way.
 
 Directives-only output still shows `PRIVATE void module_calculate(void)`; full-expansion output shows `static void module_calculate(void)` with the `#define` gone.
 
@@ -173,8 +188,8 @@ Later steps read macro definitions and marker macros straight out of preprocesso
 
 Running a real preprocessor is expensive and files rarely change. `PreprocessinatorIncludesHandler` owns a per-file YAML cache of reconciled lists (`write_includes_list` / `load_includes_list`, keyed by test and filepath, guarded by a per-file `Mutex`). A corrupt cache raises a `YamlLoadException` wrapped with a clear message. Callers gate every cache use behind their own `DependencyTracker` staleness check.
 
-When a real pass is impossible — the toolchain lacks `-fdirectives-only` (older Apple Clang releases ignore it and warn), or a specific invocation fails — Ceedling falls back to a text scan of the original file, guided by `CPreprocessorConditionals` (`c_preprocessor_conditionals.rb`), which tracks `#ifdef` / `#ifndef` / `#if` / `#elif` / `#else` / `#endif` well enough to skip text real conditional compilation would exclude. `PreprocessinatorIncludesHandler#extract_{user,system}_includes_from_text(name:, filepath:, defines:)` are the fallback counterparts of the directives-only extractors. Fallback is per file: `generate_directives_only_output` returning `nil` for one file drops that file alone to the text path (`directives_only_filepath.nil?` → `fallback` true), while others use the accurate path. Fallback results are less certain, and computed-include resolution is unavailable there.
+When a real pass is impossible — the toolchain lacks `-fdirectives-only` (older Apple Clang releases ignore it and warn), or a specific invocation fails — Ceedling falls back to a text scan of the original file, guided by `CPreprocessorConditionals` (`c_preprocessor_conditionals.rb`), which tracks `#ifdef` / `#ifndef` / `#if` / `#elif` / `#else` / `#endif` well enough to skip text real conditional compilation would exclude. `PreprocessinatorIncludesHandler#extract_{user,system}_includes_from_text(name:, filepath:, defines:)` are the fallback counterparts of the directives-only extractors. Fallback is per file: `generate_directives_only_output` returning `nil` for one file drops that file alone to the text path (`directives_only_filepath.nil?` → `fallback` true), while others use the accurate path. A test file in whole-run fallback reads its plain expansion first (see [Fallback — a plain expansion in its place](#fallback--a-plain-expansion-in-its-place)), and drops to the text path only if that expansion fails. Fallback is a best effort with no guarantees, and computed-include resolution is unavailable on the text path.
 
 ## Executable Specification
 
-`spec/integration/includes_extraction_spec.rb` is the executable specification of everything above. Each example lays a small C tree on disk, runs the real Preprocessinator graph against real GCC (no `ceedling` build), and asserts the reconciled, rendered list — across accurate and fallback modes, every guard shape, the mock filter, same-basename collisions, and the computed-include matrix. The unit specs under `spec/units/preprocess/` cover each parser's branching in isolation.
+`spec/integration/includes_extraction_spec.rb` is the executable specification of everything above. Each example lays a small C tree on disk, runs the real Preprocessinator graph against real GCC (no `ceedling` build), and asserts the reconciled, rendered list — across accurate and fallback modes, every guard shape, the mock filter, same-basename collisions, and the computed-include matrix. `spec/integration/test_includes_extractinator_spec.rb` does the same for a test file's stage 4, running each scenario with directives-only output and again in fallback. The unit specs under `spec/units/preprocess/` cover each parser's branching in isolation.

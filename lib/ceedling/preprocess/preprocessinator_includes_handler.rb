@@ -191,13 +191,15 @@ class PreprocessinatorIncludesHandler
   # rather than a literal `"..."` / `<...>` filename. Neither bare pass above can see
   # such a directive: the gcc dep pass runs against an isolated copy and can't evaluate
   # a sibling-header guard around it, and the text scan has no literal filename to
-  # match. The accurate directives-only pass DID resolve it -- it opened the header and
-  # emitted an ordinary entering line marker. This method finds each non-literal
-  # `#include`'s source line, then asks the line-marker extractor which header GCC
-  # entered at that line, and returns those as base `Include` objects to union into
-  # `bare` (see Preprocessinator#preprocess_file_includes_common). Meaningful only with
-  # a directives-only stream to read; a nil `directives_only_filepath` (fallback, or a
-  # per-file directives-only failure) yields an empty list -- a documented limitation.
+  # match. A real preprocessor pass DID resolve it -- it opened the header and emitted
+  # an ordinary entering line marker. That pass is directives-only output, or for a test
+  # file in fallback, a plain expansion read as a best effort. This method finds each
+  # non-literal `#include`'s source line, then asks the line-marker extractor which
+  # header the preprocessor entered at that line, and returns those as base `Include`
+  # objects to union into `bare` (see Preprocessinator#preprocess_file_includes_common).
+  # Meaningful only with line-marker output to read; a nil `directives_only_filepath`
+  # (a header in fallback, or a per-file failure) yields an empty list -- a documented
+  # limitation.
   #
   # @return [Array<Include>] base Include objects, one per resolved computed #include
   def extract_computed_includes(filepath:, directives_only_filepath:)

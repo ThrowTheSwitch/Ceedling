@@ -212,6 +212,7 @@ describe TestBuildSetup do
       expect(testable.paths[:preprocess_files_raw_directives_only]).to eq( 'build/test/preprocess/raw/a_test' )
       expect(testable.preprocess[:includes]).to eq( [] )
       expect(testable.preprocess[:directives_only]).to eq( { filepath: nil } )
+      expect(testable.preprocess[:fallback_expansion]).to eq( { filepath: nil } )
     end
 
     it "creates every assembled build path on disk" do

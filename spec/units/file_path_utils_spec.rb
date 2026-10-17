@@ -601,6 +601,8 @@ describe FilePathUtils do
         .to eq('build/test/preprocess/files/test_foo/directives_only/raw/foo.c')
       expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/foo.c', 'test_foo') )
         .to eq('build/test/preprocess/files/test_foo/directives_only/foo.c')
+      expect( @fpu.form_preprocessed_file_fallback_expansion_filepath('src/foo.c', 'test_foo') )
+        .to eq('build/test/preprocess/files/test_foo/fallback_expansion/foo.c')
       expect( @fpu.form_preprocessed_includes_list_filepath('src/foo.c', 'test_foo') )
         .to eq('build/test/preprocess/includes/test_foo/foo.c.yml')
     end
@@ -614,6 +616,8 @@ describe FilePathUtils do
         .to eq('build/test/preprocess/files/test_both/directives_only/raw/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
         .to eq('build/test/preprocess/files/test_both/directives_only/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_fallback_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/fallback_expansion/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both') )
         .to eq('build/test/preprocess/includes/test_both/drivers/uart/config.c.yml')
     end

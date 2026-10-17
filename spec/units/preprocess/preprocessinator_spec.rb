@@ -250,6 +250,20 @@ RSpec.describe Preprocessinator do
       expect(captured_command[:options][:boom]).to eq(false)
     end
 
+    # Vendor paths follow the file's own search paths, so a project header wins a name clash
+    it "runs the full preprocessor tool on the file, its output, defines, and search paths ahead of vendor paths" do
+      allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return( { name: 'full' } )
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
+
+      subject.send( :preprocess_partial_header_expand_macros,
+        filepath: filepath, test: 'test', flags: ['-std=c99'], include_paths: ['inc'], vendor_paths: ['vendor'], defines: ['FOO']
+      )
+
+      expect(@tool_executor).to have_received(:build_command_line).with(
+        { name: 'full' }, ['-std=c99'], filepath, '/build/full_expansion/module.c', ['FOO'], ['inc', 'vendor']
+      )
+    end
+
     it "returns nil without raising when the full preprocessor invocation fails" do
       allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
@@ -342,6 +356,27 @@ RSpec.describe Preprocessinator do
       expect(captured_command[:options][:boom]).to eq(false)
     end
 
+    it "runs the directives-only tool on the file, its raw output, defines, and search paths ahead of vendor paths" do
+      allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( { name: 'directives-only' } )
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
+
+      subject.generate_directives_only_output(
+        filepath: filepath, test: 'test', flags: ['-std=c99'], include_paths: ['inc'], vendor_paths: ['vendor'], defines: ['FOO']
+      )
+
+      expect(@tool_executor).to have_received(:build_command_line).with(
+        { name: 'directives-only' }, ['-std=c99'], filepath, '/build/directives_only/module.c', ['FOO'], ['inc', 'vendor']
+      )
+    end
+
+    it "logs that the file falls back when the preprocessor fails" do
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
+
+      call_it()
+
+      expect(@loginator).to have_received(:log).with( /Failed to generate directive-only preprocessor output .* for \/src\/module\.c/, Verbosity::OBNOXIOUS, LogLabels::ERROR )
+    end
+
     it "on success, strips comments, compacts the expansion, and returns the raw filepath" do
       allow(@tool_executor).to receive(:exec).and_return({ exit_code: 0 })
 
@@ -364,6 +399,72 @@ RSpec.describe Preprocessinator do
       expect(@comment_stripper).to_not have_received(:strip_file)
       expect(@reconstructor).to_not have_received(:compact_file_from_expansion)
       expect(result).to be_nil
+    end
+
+  end
+
+  # ===========================================================================
+  describe '#generate_fallback_expansion_output' do
+  # ===========================================================================
+  # Fallback's stand-in for directives-only output: a plain expansion whose line markers
+  # name the files the preprocessor entered. Nothing reads its code, so it is neither
+  # stripped nor compacted.
+
+    let(:filepath) { '/src/test_module.c' }
+
+    def call_it
+      subject.generate_fallback_expansion_output(
+        filepath: filepath, test: 'test', flags: ['-std=c99'], include_paths: ['inc'], vendor_paths: ['vendor'], defines: ['FOO']
+      )
+    end
+
+    before do
+      allow(@file_path_utils).to receive(:form_preprocessed_file_fallback_expansion_filepath).and_return('/build/fallback_expansion/test_module.c')
+      allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return( { name: 'full' } )
+      allow(@tool_executor).to receive(:build_command_line).and_return({ options: {} })
+      allow(@comment_stripper).to receive(:strip_file)
+      allow(@reconstructor).to receive(:compact_file_from_expansion)
+    end
+
+    it 'runs the full preprocessor tool on the file, its expansion, defines, and search paths ahead of vendor paths' do
+      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 0 })
+
+      call_it
+
+      expect(@tool_executor).to have_received(:build_command_line).with(
+        { name: 'full' }, ['-std=c99'], filepath, '/build/fallback_expansion/test_module.c', ['FOO'], ['inc', 'vendor']
+      )
+    end
+
+    it 'sets boom: false and creates the expansion\'s directory' do
+      captured_command = nil
+      allow(@tool_executor).to receive(:exec) { |command| captured_command = command; { exit_code: 0 } }
+
+      expect(@file_wrapper).to receive(:mkdir).with('/build/fallback_expansion')
+
+      call_it
+
+      expect(captured_command[:options][:boom]).to eq(false)
+    end
+
+    it 'returns the expansion\'s path without stripping comments or compacting' do
+      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 0 })
+
+      expect(call_it).to eq('/build/fallback_expansion/test_module.c')
+      expect(@comment_stripper).to_not have_received(:strip_file)
+      expect(@reconstructor).to_not have_received(:compact_file_from_expansion)
+    end
+
+    it 'returns nil without raising, and logs that text-scan #includes will be used, when the preprocessor fails' do
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
+
+      result = nil
+      expect { result = call_it }.to_not raise_error
+
+      expect(result).to be_nil
+      expect(@loginator).to have_received(:log).with(
+        'Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for /src/test_module.c', Verbosity::OBNOXIOUS, LogLabels::ERROR
+      )
     end
 
   end
