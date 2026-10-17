@@ -49,9 +49,9 @@ Tasks mirroring command line `test:` task invocation but with an early terminati
 Like with command line `test:` tasks, `<test>` can be `all`, a test file name, or a source file name that has a corresponding test file.
 
 ### Test build fallback preprocessing improvements
-If your toolchain’s preprocessor lacks certain features, Ceedling still attempts to extract information and code from C files through fallback text processing. In 1.1.0 this was exposed as a project configuration option mostly for Ceedling’s self-tests and also noted as a possible option should Ceedling’s probe for toolhcain preprocessor features ever provide a false positive.
+If your toolchain’s preprocessor lacks certain features, Ceedling still attempts to extract information and code from C files through fallback text processing. In 1.1.0 this was exposed as a project configuration option mostly for Ceedling’s self-tests and also noted as a possible option should Ceedling’s probe for toolchain preprocessor features ever provide a false positive.
 
-In 1.2.0, fallback preprocessing has been further improved and can often be used in projects with simple conditional compilation (e.g. `#ifdef`) as a much faster alternative to full toolchain preprocessing. Error messages will indicate if fallback preprocessing is insufficient for your project’s preprocessing needs.
+In 1.2.0, fallback preprocessing can now sometimes be used in projects with simple conditional compilation (e.g. `#ifdef`) as a faster alternative to full toolchain preprocessing. A test file’s `#include`s are now checked against a plain run of your toolchain’s preprocessor. A mock in an `#if` branch that is off no longer stops a build or replaces the real module it guards. Fallback preprocessing remains a best effort with no guarantees. Error messages will indicate if fallback preprocessing is insufficient for your project’s preprocessing needs.
 
 Force fallback preprocessing with [`:test_build` ↳ `:preprocess_force_fallback`](https://docs.throwtheswitch.org/Ceedling/latest/configuration/reference/test-build/#preprocess_force_fallback) but **_be sure to understand [Ceedling’s test preprocessing](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#test-preprocessing) before doing so_**.
 
