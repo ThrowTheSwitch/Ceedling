@@ -250,6 +250,20 @@ RSpec.describe Preprocessinator do
       expect(captured_command[:options][:boom]).to eq(false)
     end
 
+    # Vendor paths follow the file's own search paths, so a project header wins a name clash
+    it "runs the full preprocessor tool on the file, its output, defines, and search paths ahead of vendor paths" do
+      allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return( { name: 'full' } )
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
+
+      subject.send( :preprocess_partial_header_expand_macros,
+        filepath: filepath, test: 'test', flags: ['-std=c99'], include_paths: ['inc'], vendor_paths: ['vendor'], defines: ['FOO']
+      )
+
+      expect(@tool_executor).to have_received(:build_command_line).with(
+        { name: 'full' }, ['-std=c99'], filepath, '/build/full_expansion/module.c', ['FOO'], ['inc', 'vendor']
+      )
+    end
+
     it "returns nil without raising when the full preprocessor invocation fails" do
       allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
@@ -340,6 +354,27 @@ RSpec.describe Preprocessinator do
       call_it()
 
       expect(captured_command[:options][:boom]).to eq(false)
+    end
+
+    it "runs the directives-only tool on the file, its raw output, defines, and search paths ahead of vendor paths" do
+      allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( { name: 'directives-only' } )
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
+
+      subject.generate_directives_only_output(
+        filepath: filepath, test: 'test', flags: ['-std=c99'], include_paths: ['inc'], vendor_paths: ['vendor'], defines: ['FOO']
+      )
+
+      expect(@tool_executor).to have_received(:build_command_line).with(
+        { name: 'directives-only' }, ['-std=c99'], filepath, '/build/directives_only/module.c', ['FOO'], ['inc', 'vendor']
+      )
+    end
+
+    it "logs that the file falls back when the preprocessor fails" do
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
+
+      call_it()
+
+      expect(@loginator).to have_received(:log).with( /Failed to generate directive-only preprocessor output .* for \/src\/module\.c/, Verbosity::OBNOXIOUS, LogLabels::ERROR )
     end
 
     it "on success, strips comments, compacts the expansion, and returns the raw filepath" do

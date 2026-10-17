@@ -28,11 +28,12 @@ describe 'Test file #include extraction (integration)' do
   end
 
   # Runs stages 2 through 4 for test/<test> in a project laid out from `tree`, and yields
-  # the harness and the Testable
-  def extract(tree, test, defines: [])
+  # the harness and the Testable. `directives_only: false` forces whole-run fallback, which
+  # every toolchain can run.
+  def extract(tree, test, defines: [], directives_only: @directives_only)
     with_source_tree( tree ) do |dir|
       Dir.chdir( dir ) do
-        harness  = IntegrationSpecHelpers::TestIncludesHarness.new( directives_only: @directives_only )
+        harness  = IntegrationSpecHelpers::TestIncludesHarness.new( directives_only: directives_only )
         testable = harness.run( "test/#{test}", defines: defines )
         yield harness, testable
       end
@@ -82,6 +83,12 @@ describe 'Test file #include extraction (integration)' do
     needs_directives_only
 
     expect { extract( CASE_SLIP_TREE, 'test_Case_01_legacy.c', defines: ['LEGACY_NAMES'] ) { nil } }
+      .to raise_error( CeedlingException, /different capitalization was found: 'src\/Gpt\.h'/ )
+  end
+
+  # GCC's bare list, which evaluated the branch, decides this before any reconciliation
+  it 'stops on a mis-cased mock in a branch that is on, in fallback' do
+    expect { extract( CASE_SLIP_TREE, 'test_Case_01_legacy.c', defines: ['LEGACY_NAMES'], directives_only: false ) { nil } }
       .to raise_error( CeedlingException, /different capitalization was found: 'src\/Gpt\.h'/ )
   end
 
@@ -191,6 +198,12 @@ describe 'Test file #include extraction (integration)' do
 
     it 'includes its real header, as the generated mock will' do
       extract( CASE_1_TREE, 'test_Case_01.c' ) do |_harness, _testable|
+        expect(File.read( standin )).to eq( "#{StandinHeaderinator::MARKER}\n#include \"Gpt.h\"\n" )
+      end
+    end
+
+    it 'is placed in fallback too' do
+      extract( CASE_1_TREE, 'test_Case_01.c', directives_only: false ) do |_harness, _testable|
         expect(File.read( standin )).to eq( "#{StandinHeaderinator::MARKER}\n#include \"Gpt.h\"\n" )
       end
     end
