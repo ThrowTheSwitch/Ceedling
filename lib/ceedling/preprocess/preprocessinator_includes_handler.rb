@@ -33,84 +33,18 @@ class PreprocessinatorIncludesHandler
     @line_marker_includes_extractor = @preprocessinator_line_marker_includes_extractor
   end
 
+  # GCC's make rule (-M -MG -MP) for an isolated copy of `filepath`, listing every header
+  # the file names. Only Ceedling's vendor paths are searched, which serves a Partials
+  # directive macro, and a header not found is taken as one to be generated. A macro
+  # another header defines is invisible here, so an #include it guards can drop out; the
+  # text scan and computed #includes make up for that.
   def extract_bare_includes(test:, filepath:, search_paths:, flags:, defines:)
-    filename = File.basename(filepath)
+    _log_extraction_progress( 'Extracting bare #includes via preprocessing from', test, filepath )
+    output = run_bare_includes_preprocessor( test, filepath, [defines, flags, search_paths] )
+    return log_bare_failure( filepath, output ) unless output.to_s.match?( PreprocessinatorBareIncludesExtractor::MAKE_RULE_MATCHER )
 
-    msg = @reportinator.generate_module_progress(
-      operation: "Extracting bare #includes via preprocessing from",
-      module_name: test,
-      filename: filename
-    )
-    @loginator.log( msg, Verbosity::OBNOXIOUS )
-
-    # Creation:
-    #  - This output is created with the -M -MG -MP command line options.
-    #  - Limited search paths are used towards shallow extracting of only the user #include statements of the file.
-    #    This preprocessor mode assumes any includes discovered outside of a search path will be generated.
-    #
-    # Notes:
-    #  - This approach can have gaps with advacnced user-level macros like `#include <MACRO>`.
-    #    By including Ceedling's vendor search path, we support Partials macros of this sort.
-    #  - Gaps can be minimized with proper defines in the project file. However, needed, complex macros
-    #    located in other header files could still gum up the works.
-    #  - Many errors can occur but may not necessarily prevent usable results.
-    #
-    # GCC's quoted #include resolution always checks the directory of the file it's currently
-    # processing, independent of search paths -- a real sibling header on disk is opened and
-    # recursed into regardless of the restricted search paths above. Staging an isolated,
-    # sibling-free copy of the file being scanned keeps this pass's output limited to genuine
-    # top-level #include statements only. The isolation directory is minted directly inside the
-    # test's own preprocess-files build directory (already created in an earlier build stage) --
-    # no dedicated subdirectory or filename-based naming, to keep the resulting path as short as
-    # possible for platforms with tight path length limits.
-    isolation_parent = @file_path_utils.form_test_preprocess_files_path( test )
-    shell_result = nil
-
-    @quote_include_isolator.within( parent: isolation_parent, files: [filepath] ) do |isolation|
-      isolated_filepath = isolation.copy_of( filepath )
-
-      msg = @reportinator.generate_module_progress(
-        operation: "Isolating a sibling-free copy for bare-includes extraction at",
-        module_name: test,
-        filename: isolated_filepath
-      )
-      @loginator.log( msg, Verbosity::OBNOXIOUS )
-
-      command =
-        @tool_executor.build_command_line(
-          @configurator.tools_test_bare_includes_preprocessor,
-          # No additional arguments
-          [],
-          # Argument replacement
-          isolated_filepath,
-          defines,
-          flags,
-          search_paths
-        )
-
-      # Assume possible errors so we have best shot at extracting results from preprocessing.
-      # Full code compilation will catch any breaking code errors
-      command[:options][:boom] = false
-      shell_result = @tool_executor.exec( command )
-    end
-
-    make_rules = shell_result[:output]
-
-    # Do not check exit code for success. In some error conditions we still get usable output.
-    # Look for the first line of the make rule output.
-    if not make_rules =~ PreprocessinatorBareIncludesExtractor::MAKE_RULE_MATCHER
-      @loginator.lazy( Verbosity::DEBUG ) do
-        "Preprocessor bare #include extraction failed: #{shell_result[:output]}"
-      end
-      return []
-    end
-
-    includes = PreprocessinatorBareIncludesExtractor.extract_includes( make_rules )
-    includes = clean_self_reference(filepath, includes)
-
-    header = "Extracted bare #includes from #{filepath}:"
-    @loginator.log_list( includes, header, Verbosity::DEBUG )
-
+    includes = clean_self_reference( filepath, PreprocessinatorBareIncludesExtractor.extract_includes( output ) )
+    @loginator.log_list( includes, "Extracted bare #includes from #{filepath}:", Verbosity::DEBUG )
     return includes
   end
 
@@ -248,6 +182,35 @@ class PreprocessinatorIncludesHandler
   ### Private ###
   private
 
+  # GCC's quoted #include resolution always checks the directory of the file it is
+  # processing, whatever the search paths say, so a real sibling header would be opened and
+  # followed. An isolated, sibling-free copy keeps the rule to the file's own #includes.
+  # The copy sits directly in the test's preprocess directory, with no name drawn from the
+  # file, to keep paths short where their length is limited.
+  def run_bare_includes_preprocessor(test, filepath, tool_args)
+    output = nil
+    @quote_include_isolator.within( parent: @file_path_utils.form_test_preprocess_files_path( test ), files: [filepath] ) do |isolation|
+      output = exec_bare_includes_tool( test, isolation.copy_of( filepath ), tool_args )
+    end
+    return output
+  end
+
+  # Errors in the file's own code still leave a usable rule, so a failing run's output is
+  # read all the same
+  def exec_bare_includes_tool(test, isolated_filepath, tool_args)
+    operation = 'Isolating a sibling-free copy for bare-includes extraction at'
+    @loginator.log( @reportinator.generate_module_progress( operation: operation, module_name: test, filename: isolated_filepath ), Verbosity::OBNOXIOUS )
+
+    command = @tool_executor.build_command_line( @configurator.tools_test_bare_includes_preprocessor, [], isolated_filepath, *tool_args )
+    command[:options][:boom] = false
+    return @tool_executor.exec( command )[:output]
+  end
+
+  def log_bare_failure(_filepath, output)
+    @loginator.lazy( Verbosity::DEBUG ) { "Preprocessor bare #include extraction failed: #{output}" }
+    return []
+  end
+
   # Practical max depth for the system-header line-marker walk (see
   # extract_system_includes_preprocess).
   SYSTEM_INCLUDE_MAX_DEPTH = 5 unless const_defined?(:SYSTEM_INCLUDE_MAX_DEPTH, false)
@@ -261,21 +224,23 @@ class PreprocessinatorIncludesHandler
       name, filepath, label: LogLabels::WARNING
     )
 
-    cond_tracker = CPreprocessorConditionals.new( defines )
-    includes = []
+    includes = active_includes_in_text( directive_method, filepath, CPreprocessorConditionals.new( defines ) )
+    clean_self_reference( filepath, includes )
+  end
 
-    # Binary read: code_lines runs clean_encoding over the whole buffer, but a text-mode
-    # read can raise on an invalid byte sequence before that ever happens.
+  # Binary read: code_lines runs clean_encoding over the whole buffer, but a text-mode
+  # read can raise on an invalid byte sequence before that ever happens.
+  def active_includes_in_text(directive_method, filepath, conditionals)
+    includes = []
     @file_wrapper.open( filepath, 'rb' ) do |input|
       @parsing_parcels.code_lines( input ) do |line|
-        cond_tracker.process_directive( line )
-        next unless cond_tracker.active?
-        _include = @include_factory.public_send( directive_method, line )
-        includes << _include.anchored( File.dirname( filepath ) ) unless _include.nil?
+        conditionals.process_directive( line )
+        next unless conditionals.active?
+        include = @include_factory.public_send( directive_method, line )
+        includes << include.anchored( File.dirname( filepath ) ) unless include.nil?
       end
     end
-
-    clean_self_reference( filepath, includes )
+    return includes
   end
 
   # An `#include` directive with an argument of some kind. `\S` after the whitespace
