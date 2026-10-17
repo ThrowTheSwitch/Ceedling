@@ -52,11 +52,22 @@ module IntegrationSpecHelpers
   end
   NULL = NullObject.new
 
+  # The bare-includes tool with an option no preprocessor knows. GCC and Clang both stop
+  # on it before writing a make rule, as a broken tool definition or a killed process would.
+  FAILING_BARE_TOOL = DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL.merge(
+    arguments: ['--ceedling-unrecognized-option'] + DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL[:arguments]
+  ).freeze
+
   # A Configurator with only what the includes path touches: the three preprocessor
   # tool definitions and the CMock mock naming. Everything else would be a bug to reach.
+  # `bare_tool:` replaces the bare-includes tool, so an example can make that pass fail.
   class StubConfigurator
+    def initialize(bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+      @bare_tool = bare_tool
+    end
+
     def tools_test_bare_includes_preprocessor
-      DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL
+      @bare_tool
     end
 
     def tools_test_file_directives_only_preprocessor
@@ -151,9 +162,9 @@ module IntegrationSpecHelpers
   # output, then hand it to `Preprocessinator#preprocess_file_includes_common` -- and
   # returns the reconciled, sanitized Include list. The spec renders those to Strings.
   class IncludesExtractionHarness
-    def initialize(_work_dir)
+    def initialize(_work_dir, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
       @root         = Dir.mktmpdir('ceedling-includes-harness-')
-      @cfg          = StubConfigurator.new
+      @cfg          = StubConfigurator.new( bare_tool: bare_tool )
       @tool_exec    = ShellingToolExecutor.new
       @fpu          = ScratchFilePathUtils.new(@root)
       @file_wrapper = FileWrapper.new(loginator: NULL, verbosinator: NULL)
@@ -257,8 +268,8 @@ module IntegrationSpecHelpers
 
   # Builds the real Preprocessinator graph wired to run GCC for real, and returns a
   # small facade over it. See IncludesExtractionHarness#reconcile.
-  def build_includes_harness(work_dir)
-    IncludesExtractionHarness.new(work_dir)
+  def build_includes_harness(work_dir, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+    IncludesExtractionHarness.new(work_dir, bare_tool: bare_tool)
   end
 end
 

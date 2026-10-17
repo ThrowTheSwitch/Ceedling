@@ -31,9 +31,9 @@ describe 'Includes extraction (integration)' do
   # Runs one fixture through the harness and returns the rendered `#include ...` lines.
   # `search_subdirs` adds further -I roots (each joined to the fixture dir);
   # `fallback: true` forces the text-scan path even where the accurate one is available.
-  def extracted(tree, entry, defines: [], fallback: false, search_subdirs: [])
+  def extracted(tree, entry, defines: [], fallback: false, search_subdirs: [], bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
     with_source_tree(tree) do |dir|
-      harness = build_includes_harness(dir)
+      harness = build_includes_harness(dir, bare_tool: bare_tool)
       list = harness.reconcile(
         file: File.join(dir, entry), defines: defines,
         search_paths: [dir, *search_subdirs.map { |s| File.join(dir, s) }],
@@ -585,6 +585,16 @@ describe 'Includes extraction (integration)' do
       'device_extra.h'  => %(#ifndef DEVICE_EXTRA_H\n#define DEVICE_EXTRA_H\n#define DEVICE_EXTRA_MACRO (42)\n#endif\n)
     }
     expect(extracted(tree, 'widget.c', fallback: true)).to eq(['#include "device_config.h"'])
+  end
+
+  # The text scan stands in for a failed gcc pass, and the accurate pass still decides
+  it 'gives the same list when the gcc bare pass fails' do
+    tree = {
+      'widget.c' => %(#include "widget.h"\n#ifdef NEVER_DEFINED\n#include "unused.h"\n#endif\nint w(void){return 0;}\n),
+      'widget.h' => %(#ifndef WIDGET_H\n#define WIDGET_H\nint w(void);\n#endif\n),
+      'unused.h' => %(#ifndef UNUSED_H\n#define UNUSED_H\n#endif\n)
+    }
+    expect(extracted(tree, 'widget.c', bare_tool: IntegrationSpecHelpers::FAILING_BARE_TOOL)).to eq( extracted(tree, 'widget.c') )
   end
 
   it 'falls back per file when the directives-only pass cannot resolve an include' do

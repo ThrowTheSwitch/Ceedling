@@ -14,7 +14,7 @@ One class is the entry point: `Preprocessinator` (`preprocessinator.rb`). Every 
 
 `Preprocessinator`'s public methods are the whole interface. The test pipeline calls them from `test_invoker/` build stages; this document explains their mechanics, not the stage order (documented alongside the pipeline).
 
-- `preprocess_bare_includes(filepath:, test:, search_paths:, flags:, defines:)` — the bare `#include` list only, for early stand-in generation. Returns `Array<Include>`.
+- `preprocess_bare_includes(filepath:, test:, search_paths:, flags:, defines:)` — the bare `#include` list only, for early stand-in generation. Returns `Array<Include>`, or `nil` if the preprocessor failed.
 - `generate_directives_only_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)` — runs the accurate pass, strips its comments, compacts it. Returns the raw output's path, or `nil` if the preprocessor failed.
 - `generate_fallback_expansion_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)` — runs a test file's plain expansion, fallback's best-effort stand-in for the accurate pass. Returns its path, or `nil` if the preprocessor failed.
 - `preprocess_file_includes_common(test:, filepath:, directives_only_filepath:, fallback:, flags:, include_paths:, vendor_paths:, defines:)` — the full extract-reconcile-cache path for a mockable header or a Partial header/source. Returns the reconciled `Array<Include>`.
@@ -34,13 +34,15 @@ The integer is a line number in the named file. The trailing integers are flags:
 
 `PreprocessinatorLineMarkerIncludesExtractor` (`preprocessinator_line_marker_includes_extractor.rb`) does that walking. `LINE_MARKER_REGEX` matches a marker; it tolerates leading whitespace (`^\s*`), because `-fdirectives-only` gives an indented `#include` an indented marker (GH #1268). The extractor reads in binary mode — GCC output under a non-C locale carries non-ASCII bytes, and Windows `\r\n` must survive to a per-line `chomp!`.
 
+Nearly everything below depends on line markers, and a preprocessor told to drop them still succeeds. Configuration validation therefore rejects `-P` and `--no-line-commands` wherever they would reach test preprocessing: the `:preprocess` and `:compile` flags of `:test` and plugin build contexts, and the arguments of the full and directives-only preprocessor tools. `LineMarkerSuppressors` (`config/line_marker_suppressors.rb`) finds them, and `ConfiguratorSetup#validate_line_markers` reports each by its configuration path.
+
 ## Finding Every Include, Accurately
 
 Knowing a file's includes, and whether each is a user or system header, is harder than it sounds. An include-guarded header reached a second time through another path never reappears in the stream. So a single line-marker pass cannot be trusted as a complete top-level list.
 
 Ceedling reconciles two things: a **bare list** of what the file depends on (undifferentiated), and an **accurate list** that categorizes each entry user or system but over-reports (it sees deep nesting). `PreprocessinatorIncludesHandler` (`preprocessinator_includes_handler.rb`) runs every pass and hands each pass's raw output to a parser built for it. `Includes.reconcile` (`includes/includes.rb`) then intersects them.
 
-The bare list has **three contributors**, unioned and deduplicated by filename. Each catches what the others structurally cannot.
+The bare list has **three contributors**, unioned and deduplicated by filepath. Each catches what the others structurally cannot.
 
 ### Bare contributor 1 — the isolated gcc dependency pass
 
@@ -57,7 +59,9 @@ test_module.o: test_module.c unity.h module.h \
   mock_dependency.h
 ```
 
-`PreprocessinatorBareIncludesExtractor.extract_includes(make_rules)` (`preprocessinator_bare_includes_extractor.rb`) turns each phony `header:` line into a plain `Include`. The handler gates on `MAKE_RULE_MATCHER` first — no rule means the pass produced nothing usable, and it returns `[]`.
+`PreprocessinatorBareIncludesExtractor.extract_includes(make_rules)` (`preprocessinator_bare_includes_extractor.rb`) turns each phony `header:` line into a plain `Include`. The handler gates on `MAKE_RULE_MATCHER` first. No rule means the tool itself failed, since errors in the file's own code still leave a rule. The handler then logs the tool's output at obnoxious verbosity and returns `nil`.
+
+Each caller handles a failure its own way. `preprocess_file_includes_common` treats `nil` as an empty list, so contributor 2's text scan stands in. Its caller caches that result as it caches any other, so a header's degraded list can persist until the header changes. That is a best-effort limit. Stage 4 skips caching a test file's failed run, so the next run tries again.
 
 Restricting search paths is not enough on its own. A preprocessor's quoted-`#include` resolution *always* also checks the directory of the file being processed. A same-directory sibling header gets opened and recursed into regardless. So `extract_bare_includes` stages a sibling-free copy of the file into a fresh temp directory for the duration of one gcc run (`QuoteIncludeIsolator#within`), which removes the copy afterward. The temp directory is minted inside the test's own `preprocess/files/<test>/` build directory and is not named after the file — both keep the path short for Windows' legacy `MAX_PATH`. Each call gets its own directory, so concurrent preprocessing of sibling files never cross-contaminates.
 

@@ -11,7 +11,9 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 
 # Stage 4's third pass. The second pass's #includes, checked against the first pass's
 # candidates and the #includes a macro names, replace each test file's stored text-scan
-# list, and its mock search paths narrow to the mocks that remain.
+# list, and its mock search paths narrow to the mocks that remain. An empty result never
+# replaces a text scan that found #includes, and with neither pass to go on, the text scan
+# stands as it is.
 #
 # In fallback the second pass's output is a plain expansion, so reconciling against it is
 # a best effort. No dependency-tracker gate: this pass parses the second pass's
@@ -44,15 +46,49 @@ class TestIncludesReconcilinator
 
   private
 
-  # A test file's own #include of a mock is deliberate, so mocked headers are kept
+  # Reconciling to nothing while the text names #includes means preprocessing found none it
+  # should have. Ingesting would replace the test's header and source #includes with that
+  # nothing, so stage 2's list stands instead.
   def ingest(testable)
-    user, system = accurate_includes( testable )
-    includes = @preprocessinator.reconcile_includes(
-      bare: bare( testable ), user: user, system: system, test_filepath: testable.filepath, drop_mocked: false
-    )
+    return keep_text_scan( testable ) if nothing_preprocessed?( testable )
+
+    includes = reconciled_includes( testable )
+    return warn_of_text_scan( testable ) if includes.empty? && text_scanned?( testable )
 
     @loginator.log_list( includes, "Extracted reconciled #include list from #{testable.filepath}:", Verbosity::OBNOXIOUS )
     @context_extractor.ingest_includes( testable.filepath, includes )
+  end
+
+  # A test file's own #include of a mock is deliberate, so mocked headers are kept
+  def reconciled_includes(testable)
+    user, system = accurate_includes( testable )
+    return @preprocessinator.reconcile_includes(
+      bare: bare( testable ), user: user, system: system, test_filepath: testable.filepath, drop_mocked: false
+    )
+  end
+
+  def text_scanned?(testable)
+    return [:lookup_all_header_includes_list, :lookup_source_includes_list].any? do |lookup|
+      !@context_extractor.public_send( lookup, testable.filepath ).empty?
+    end
+  end
+
+  def warn_of_text_scan(testable)
+    msg = "No #includes of #{testable.filepath} survived reconciliation, though its text names some. Using the text-scanned " \
+          "#includes as a best effort. Rerun with --verbosity=obnoxious to see why preprocessing found none."
+    @loginator.log( msg, Verbosity::COMPLAIN )
+  end
+
+  # GCC's list is empty and the second pass failed: GCC's run failed too, or every #include
+  # sits in a branch that is off. Either way nothing is left to check the text scan against.
+  def nothing_preprocessed?(testable)
+    return testable.preprocess[:includes].empty? && preprocessed_filepath( testable ).nil?
+  end
+
+  # Stage 2's text-scan list stands, the Partial headers its configuration added included.
+  # This is a best effort: mocks in branches that are off stay with it.
+  def keep_text_scan(testable)
+    log_module_progress( 'Using fallback text-only includes extracted for', testable, Verbosity::OBNOXIOUS, LogLabels::WARNING )
   end
 
   # The user and system #includes from the second pass's output, or from the text scan

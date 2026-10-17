@@ -40,8 +40,8 @@ module IntegrationSpecHelpers
   class TestIncludesConfigurator < StubConfigurator
     attr_reader :test_build_preprocess_directives_only_available
 
-    def initialize(directives_only:)
-      super()
+    def initialize(directives_only:, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+      super( bare_tool: bare_tool )
       @test_build_preprocess_directives_only_available = directives_only
     end
 
@@ -154,8 +154,8 @@ module IntegrationSpecHelpers
   class TestIncludesHarness
     attr_reader :context_extractor
 
-    def initialize(directives_only:)
-      @cfg          = TestIncludesConfigurator.new( directives_only: directives_only )
+    def initialize(directives_only:, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+      @cfg          = TestIncludesConfigurator.new( directives_only: directives_only, bare_tool: bare_tool )
       @file_wrapper = FileWrapper.new( loginator: NULL, verbosinator: NULL )
       @fpu          = TestIncludesFilePathUtils.new( 'build/scratch' )
       @headers      = OrderedHeaders.new
@@ -171,9 +171,10 @@ module IntegrationSpecHelpers
       @extractinator = build_extractinator
     end
 
-    # Stages 2 through 4 for `filepath`. Returns the Testable the later stages would read.
-    def run(filepath, defines: [])
-      testable = testable_for( filepath, defines )
+    # Stages 2 through 4 for `filepath`, preprocessing with `flags`. Returns the Testable
+    # the later stages would read.
+    def run(filepath, defines: [], flags: [])
+      testable = testable_for( filepath, defines, flags )
       @context_extractor.collect_simple_context_from_file( filepath, nil, TestContextExtractor::Context::INCLUDES )
 
       # Stage 2's tolerant mock search paths and stage 3's search paths
@@ -245,12 +246,12 @@ module IntegrationSpecHelpers
       )
     end
 
-    def testable_for(filepath, defines)
+    def testable_for(filepath, defines, flags)
       name = File.basename( filepath, '.c' )
       return TestInvokerTypes::Testable.new(
         name: name, filepath: filepath, paths: { mocks: File.join( 'build/mocks', name ) },
         preprocess: { includes: [], directives_only: { filepath: nil }, fallback_expansion: { filepath: nil } },
-        preprocess_flags: [], preprocess_defines: defines, search_paths: [], mock_search_paths: []
+        preprocess_flags: flags, preprocess_defines: defines, search_paths: [], mock_search_paths: []
       )
     end
   end

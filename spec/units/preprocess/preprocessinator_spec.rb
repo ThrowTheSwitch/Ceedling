@@ -130,6 +130,15 @@ RSpec.describe Preprocessinator do
       expect(result.map(&:filename)).not_to include('phantom.h')
     end
 
+    # A header's text scan stands in for a failed gcc pass
+    it "reconciles from the text-scan bare pass when the gcc bare pass failed" do
+      allow(@includes_handler).to receive(:extract_bare_includes).and_return( nil )
+      allow(@includes_handler).to receive(:extract_bare_includes_from_text).and_return( [ Include.new('Types.h') ] )
+      allow(@includes_handler).to receive(:extract_user_includes_preprocess).and_return( [ UserInclude.new('Types.h') ] )
+
+      expect(call_it().map(&:filename)).to eq( ['Types.h'] )
+    end
+
     # Both bare sources finding the same entry must not produce a duplicate
     # (the union is deduplicated by filepath before being handed to reconcile).
     it "does not duplicate an entry both bare passes agree on" do

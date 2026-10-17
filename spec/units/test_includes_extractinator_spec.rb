@@ -82,6 +82,7 @@ describe TestIncludesExtractinator do
     allow(@file_wrapper).to receive(:exist?).and_return( false )
     allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
     allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
+    allow(@test_context_extractor).to receive(:lookup_source_includes_list).and_return( [] )
     allow(@test_context_extractor).to receive(:ingest_includes)
 
     # Harmless default -- individual examples needing a specific ordered header
@@ -321,6 +322,21 @@ describe TestIncludesExtractinator do
       expect( @testable.preprocess[:includes] ).to eq( includes )
     end
 
+    # A failed run says nothing about the file, so nothing is cached and the next run
+    # tries again. The text scan alone makes the candidates meanwhile.
+    it "neither caches nor marks fresh a failed bare-includes pass, and gives it an empty list" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( nil )
+
+      expect(@preprocessinator).to_not receive(:store_includes_list)
+      expect(@dependinator).to_not receive(:mark_fresh).with( 'build/preprocess/includes/Foo.c.yml' )
+      expect(@preprocessinator).to receive(:supplement_with_text_includes).with( filepath: 'test/TestFoo.c', bare: [] ).and_return( [] )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+
+      expect( @testable.preprocess[:includes] ).to eq( [] )
+    end
+
     it "recalls the cached bare-includes list and skips extraction and caching when the dependency tracker reports it unchanged" do
       allow(@dependinator).to receive(:stale?).and_return( false )
       cached_includes = []
@@ -532,6 +548,41 @@ describe TestIncludesExtractinator do
 
       @extractinator.stage_collect_preprocessor_context( @state )
     end
+
+    # Reconciling to nothing while the text names #includes means preprocessing found none
+    # it should have, so stage 2's list stands and the user is told
+    it "keeps the text-scan #includes, and warns, when reconciliation empties them" do
+      allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).with( 'test/TestFoo.c' ).and_return( [ UserInclude.new('bar.h') ] )
+
+      expect(@test_context_extractor).to_not receive(:ingest_includes)
+      expect(@loginator).to receive(:log).with(
+        "No #includes of test/TestFoo.c survived reconciliation, though its text names some. Using the text-scanned " \
+        "#includes as a best effort. Rerun with --verbosity=obnoxious to see why preprocessing found none.",
+        Verbosity::COMPLAIN
+      )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
+    # Ingesting replaces a test's source #includes along with its headers
+    it "keeps the text-scan #includes when only a source #include was scanned" do
+      allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_source_includes_list).with( 'test/TestFoo.c' ).and_return( [ UserInclude.new('foo.c') ] )
+
+      expect(@test_context_extractor).to_not receive(:ingest_includes)
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
+    # A file with no #includes at all reconciles to nothing, and that is its true list
+    it "ingests an empty reconciled list when the text scan found no #includes either" do
+      allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )
+
+      expect(@test_context_extractor).to receive(:ingest_includes).with( 'test/TestFoo.c', [] )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
   end
 
   # A test's bare list is supplemented as a mockable header's is: with its literal
@@ -600,6 +651,20 @@ describe TestIncludesExtractinator do
       @extractinator.stage_collect_preprocessor_context( @state )
     end
 
+    # Nothing then checks the text scan, so stage 2's list stays as it is, the Partial
+    # headers its configuration added included
+    it "keeps the text-scan #includes when GCC's list is empty and the directives-only pass failed" do
+      allow(@file_finder).to receive(:resolve_mock).and_return( ['src/x.h', ''] )
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( nil )
+      allow(@dependinator).to receive(:stale?).with('build/preprocess/raw/Foo.txt').and_return( true )
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( nil )
+
+      expect(@preprocessinator).to_not receive(:reconcile_includes)
+      expect(@test_context_extractor).to_not receive(:ingest_includes)
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
     it "narrows the mock search paths to the reconciled list's mocks" do
       allow(@file_finder).to receive(:resolve_mock).with( 'MockConfig.h', collection: anything, complain: anything ).and_return( ['src/Config.h', ''] )
       allow(@file_finder).to receive(:resolve_mock).with( 'MockPart1.h', collection: anything, complain: anything ).and_return( ['src/hw/Part1.h', 'hw'] )
@@ -638,6 +703,17 @@ describe TestIncludesExtractinator do
         expect(@reportinator).to receive(:generate_module_progress)
           .with( hash_including( operation: 'Reconciling #includes from best-effort fallback preprocessing for' ) ).and_return( 'best effort' )
         expect(@loginator).to receive(:log).with( 'best effort', Verbosity::OBNOXIOUS, LogLabels::WARNING )
+
+        @extractinator.stage_collect_preprocessor_context( @state )
+      end
+
+      it "keeps the text-scan #includes when GCC's list is empty and the fallback expansion failed" do
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [] )
+        allow(@dependinator).to receive(:stale?).with('build/preprocess/fallback/Foo.txt').and_return( true )
+        allow(@preprocessinator).to receive(:generate_fallback_expansion_output).and_return( nil )
+
+        expect(@preprocessinator).to_not receive(:reconcile_includes)
+        expect(@test_context_extractor).to_not receive(:ingest_includes)
 
         @extractinator.stage_collect_preprocessor_context( @state )
       end
