@@ -37,7 +37,8 @@ class PreprocessinatorIncludesHandler
   # the file names. Only Ceedling's vendor paths are searched, which serves a Partials
   # directive macro, and a header not found is taken as one to be generated. A macro
   # another header defines is invisible here, so an #include it guards can drop out; the
-  # text scan and computed #includes make up for that.
+  # text scan and computed #includes make up for that. Nil when the run gives no rule at
+  # all: errors in the file's own code still give one, so the tool itself failed.
   def extract_bare_includes(test:, filepath:, search_paths:, flags:, defines:)
     _log_extraction_progress( 'Extracting bare #includes via preprocessing from', test, filepath )
     output = run_bare_includes_preprocessor( test, filepath, [defines, flags, search_paths] )
@@ -206,9 +207,10 @@ class PreprocessinatorIncludesHandler
     return @tool_executor.exec( command )[:output]
   end
 
-  def log_bare_failure(_filepath, output)
-    @loginator.lazy( Verbosity::DEBUG ) { "Preprocessor bare #include extraction failed: #{output}" }
-    return []
+  # The tool's own output, since the command line alone wouldn't say why it failed
+  def log_bare_failure(filepath, output)
+    @loginator.log( "Failed to extract bare #includes (text-scan #includes will stand in) for #{filepath}:\n#{output.to_s.strip}", Verbosity::OBNOXIOUS, LogLabels::ERROR )
+    return nil
   end
 
   # Practical max depth for the system-header line-marker walk (see

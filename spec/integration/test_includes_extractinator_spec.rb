@@ -229,6 +229,12 @@ describe 'Test file #include extraction (integration)' do
         end
       end
 
+      it 'writes no #include list cache when the first pass fails' do
+        extract_in_mode( CASE_1_TREE, 'test_Case_01.c', bare_tool: IntegrationSpecHelpers::FAILING_BARE_TOOL ) do |_harness, _testable|
+          expect(Dir.glob( 'build/scratch/includes/**/*.yml' )).to eq( [] )
+        end
+      end
+
       # When the second pass fails for a file, its scanned #includes are checked against
       # GCC's bare list, which still evaluated the #if branches
       it 'still drops mocks in branches that are off when the second pass fails' do

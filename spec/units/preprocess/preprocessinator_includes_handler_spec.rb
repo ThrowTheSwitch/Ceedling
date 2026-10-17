@@ -147,6 +147,18 @@ RSpec.describe PreprocessinatorIncludesHandler do
       expect(call_it()).to eq( [] )
     end
 
+    # Errors in the file's own code still leave a rule; its absence means the tool itself
+    # failed, which is not a file with no #includes
+    it 'returns nil, logging the tool\'s output, when the run gives no make rule' do
+      allow(@tool_executor).to receive(:exec).and_return(output: "gcc: error: unrecognized command-line option\n")
+
+      expect(call_it()).to be_nil
+      expect(@loginator).to have_received(:log).with(
+        "Failed to extract bare #includes (text-scan #includes will stand in) for #{filepath}:\ngcc: error: unrecognized command-line option",
+        Verbosity::OBNOXIOUS, LogLabels::ERROR
+      )
+    end
+
     it 'still cleans self-reference against the original filepath identity, not the staged copy' do
       self_ref_rules =
         "test_other.o: #{isolated_filepath} #{filepath} other.h\n\n#{filepath}:\n\nother.h:\n"

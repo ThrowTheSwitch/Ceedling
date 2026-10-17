@@ -268,8 +268,8 @@ module IntegrationSpecHelpers
 
   # Builds the real Preprocessinator graph wired to run GCC for real, and returns a
   # small facade over it. See IncludesExtractionHarness#reconcile.
-  def build_includes_harness(work_dir)
-    IncludesExtractionHarness.new(work_dir)
+  def build_includes_harness(work_dir, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+    IncludesExtractionHarness.new(work_dir, bare_tool: bare_tool)
   end
 end
 

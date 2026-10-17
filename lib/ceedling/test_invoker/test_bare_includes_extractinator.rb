@@ -64,6 +64,8 @@ class TestBareIncludesExtractinator
     return @dependinator.stale?( target( testable ) )
   end
 
+  # A failed run says nothing about the file, so its empty stand-in isn't cached and the
+  # next run tries again. Meanwhile the text scan alone makes the candidates.
   def extract(testable)
     log_module_progress( 'Extracting #includes from', testable )
 
@@ -71,10 +73,15 @@ class TestBareIncludesExtractinator
       test: testable.name, filepath: testable.filepath, search_paths: vendor_search_paths(),
       flags: testable.preprocess_flags, defines: testable.preprocess_defines
     )
+    return [] if includes.nil?
+
+    cache( testable, includes )
+    return includes
+  end
+
+  def cache(testable, includes)
     @preprocessinator.store_includes_list( test: testable.name, filepath: testable.filepath, includes: includes )
     @dependinator.mark_fresh( target( testable ) )
-
-    return includes
   end
 
   def recall(testable)

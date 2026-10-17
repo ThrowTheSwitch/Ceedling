@@ -322,6 +322,21 @@ describe TestIncludesExtractinator do
       expect( @testable.preprocess[:includes] ).to eq( includes )
     end
 
+    # A failed run says nothing about the file, so nothing is cached and the next run
+    # tries again. The text scan alone makes the candidates meanwhile.
+    it "neither caches nor marks fresh a failed bare-includes pass, and gives it an empty list" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( nil )
+
+      expect(@preprocessinator).to_not receive(:store_includes_list)
+      expect(@dependinator).to_not receive(:mark_fresh).with( 'build/preprocess/includes/Foo.c.yml' )
+      expect(@preprocessinator).to receive(:supplement_with_text_includes).with( filepath: 'test/TestFoo.c', bare: [] ).and_return( [] )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+
+      expect( @testable.preprocess[:includes] ).to eq( [] )
+    end
+
     it "recalls the cached bare-includes list and skips extraction and caching when the dependency tracker reports it unchanged" do
       allow(@dependinator).to receive(:stale?).and_return( false )
       cached_includes = []

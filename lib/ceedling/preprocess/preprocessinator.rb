@@ -37,8 +37,8 @@ class Preprocessinator
     @file_locks_mutex = Mutex.new
   end
 
-  # Extract bare includes (does not differentiate user/system) from a file.
-  # Called externally.
+  # Extract bare includes (does not differentiate user/system) from a file, or nil when
+  # the preprocessor failed. Called externally.
   def preprocess_bare_includes(filepath:, test:, search_paths:, flags:, defines:)
     # Pass-through
     return @includes_handler.extract_bare_includes(
@@ -552,14 +552,14 @@ class Preprocessinator
     )
     @loginator.log( msg, Verbosity::OBNOXIOUS )
 
-    # Extract bare includes
+    # Extract bare includes. The text scan below stands in for a failed run.
     bare_includes = @includes_handler.extract_bare_includes(
       filepath:      filepath,
       test:          test,
       flags:         flags,
       search_paths:  vendor_paths,
       defines:       defines
-    )
+    ) || []
 
     # Fallback has no directives-only output to resolve computed #includes from
     bare_includes = supplement_with_text_includes( filepath: filepath, bare: bare_includes )
