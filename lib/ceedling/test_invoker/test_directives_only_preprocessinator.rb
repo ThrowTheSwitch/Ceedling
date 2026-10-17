@@ -56,19 +56,9 @@ class TestDirectivesOnlyPreprocessinator
     )
 
     @dependinator.register( target, files: [testable.filepath], meta: meta )
-    register_dependencies( target ) if @file_wrapper.exist?( target )
+    register_preprocessed_dependencies( target, target ) if @file_wrapper.exist?( target )
 
     return target
-  end
-
-  # The project files an output entered. Files below the build root, such as stand-ins
-  # and the mocks that replace them, are generated from those project files and would
-  # only ever look changed.
-  def register_dependencies(target)
-    build_root = File.join( @configurator.project_build_root, '' )
-    files      = @preprocessinator.directives_only_dependencies( directives_only_filepath: target )
-
-    @dependinator.register( target, files: files.reject { |file| file.start_with?( build_root ) } )
   end
 
   def recall(testable, target)
@@ -94,7 +84,7 @@ class TestDirectivesOnlyPreprocessinator
   def mark_fresh(testable, target)
     compacted = @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( testable.filepath, testable.name )
     @dependinator.register( target, outputs: [compacted] )
-    register_dependencies( target )
+    register_preprocessed_dependencies( target, target )
     @dependinator.mark_fresh( target )
   end
 

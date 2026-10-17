@@ -181,9 +181,10 @@ class PreprocessinatorIncludesHandler
     clean_self_reference( filepath, includes )
   end
 
-  # The user files a directives-only output entered, from its line markers
-  def extract_directives_only_dependencies(directives_only_filepath:)
-    return @line_marker_includes_extractor.extract_entered_files_from_file( directives_only_filepath )
+  # The user files a preprocessor's output entered, from its line markers. Any output
+  # that keeps them serves: directives-only output, or a full -E expansion.
+  def extract_preprocessed_dependencies(preprocessed_filepath:)
+    return @line_marker_includes_extractor.extract_entered_files_from_file( preprocessed_filepath )
   end
 
   # Resolve every `#include` in the original file whose target is a macro invocation

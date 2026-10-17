@@ -22,21 +22,15 @@ class TestBuildExecutor
     :batchinator,
     :preprocessinator,
     :generator,
-    :test_context_extractor,
     :plugin_manager,
     :file_path_utils,
     :file_finder,
     :file_wrapper,
     :dependinator,
-    :test_source_file_directive_resolver,
     :gcc_dependency_parser,
     :quote_include_isolator,
     :generator_helper
   )
-
-  def setup()
-    @context_extractor = @test_context_extractor
-  end
 
   # Stage 9: Preprocess header files to be mocked.
   def stage_preprocess_mocks(state)
@@ -167,10 +161,10 @@ class TestBuildExecutor
       mock_header = File.join( output_path, details.name + EXTENSION_CORE_HEADER )
 
       # CMock writes `mock_header` in the same call as `target`, so the mock vouches for
-      # it as an output. Includes stand-in generation (test_build_setup.rb) writes a blank
-      # placeholder to this exact path whenever the test file's own bare-includes cache
-      # misses, independent of this mock's antecedents. The recorded hash catches that
-      # placeholder and regenerates the mock.
+      # it as an output. Stage 4 places a stand-in at this exact path when no file is
+      # there or an earlier stand-in is out of date (StandinHeaderinator), independent of
+      # this mock's antecedents. The recorded hash catches a stand-in in the mock's place
+      # and regenerates the mock.
       @dependinator.register( target, files: [details.input], meta: { cmock: cmock_meta }, outputs: [mock_header] )
 
       unless @dependinator.stale?( target )
@@ -205,195 +199,6 @@ class TestBuildExecutor
     end
 
     log_skip_summary( task: "mock generation", count: skipped, noun: "mocks" )
-  end
-
-  # Stage 11: Preprocess test files and extract source build directives.
-  #
-  # A test file's TEST_SOURCE_FILE() results depend on exactly the same file,
-  # flags, defines, and search paths already tracked for the preprocessing step
-  # itself, so the same staleness answer covers both: when the preprocessed
-  # output is already current, its build directive macros are recalled from a
-  # small cache instead of being scanned again. That cache is an output of the
-  # preprocessed target, so a damaged cache makes the target stale.
-  def stage_preprocess_test_files(state)
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-    skipped = 0
-
-    @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      filepath                 = testable.filepath
-      filename                 = File.basename( filepath )
-      name                     = testable.name
-      directives_only_filepath = testable.preprocess[:directives_only][:filepath]
-
-      fallback = directives_only_fallback?( directives_only, directives_only_filepath )
-
-      # form_preprocessed_file_filepath is deterministic (same call
-      # preprocess_test_file itself uses internally), so it can be registered
-      # and checked before deciding whether to actually preprocess.
-      target = @file_path_utils.form_preprocessed_file_filepath( filepath, name )
-      @dependinator.register(
-        target,
-        files: [filepath],
-        meta:  dependency_meta( flags: testable.preprocess_flags, defines: testable.preprocess_defines, search_paths: testable.search_paths )
-      )
-
-      stale = @dependinator.stale?( target )
-
-      if stale
-        arg_hash = {
-          test:                     name,
-          filepath:                 filepath,
-          directives_only_filepath: directives_only_filepath,
-          fallback:                 fallback,
-          includes:                 @context_extractor.lookup_all_header_includes_list( testable.filepath ),
-          flags:                    testable.preprocess_flags,
-          include_paths:            testable.search_paths,
-          vendor_paths:             vendor_search_paths(),
-          defines:                  testable.preprocess_defines
-        }
-
-        _filepath = @preprocessinator.preprocess_test_file( **arg_hash )
-      else
-        msg = @reportinator.generate_module_progress(
-          operation:   'Skipping test file preprocessing for',
-          module_name: name,
-          filename:    filename
-        )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-        state.lock.synchronize { skipped += 1 }
-
-        _filepath = target
-      end
-
-      state.lock.synchronize { testable.runner.input_filepath = _filepath }
-
-      source_files_cache = @file_path_utils.form_preprocessed_source_files_cache_filepath( filepath, name )
-
-      if stale
-        msg = @reportinator.generate_progress( "Parsing #{filename} for test source directive macros" )
-        @loginator.log( msg )
-
-        if fallback
-          _filepath = filepath
-        else
-          _filepath = @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, name )
-        end
-
-        @context_extractor.collect_simple_context_from_file(
-          _filepath,
-          filepath,
-          TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
-        )
-        @context_extractor.store_build_directives_cache( filepath: filepath, cache_filepath: source_files_cache )
-
-        # The cache is recalled whenever `target` is fresh, so `target` vouches for it.
-        # Marking fresh only now leaves `target` stale if directive parsing raises.
-        @dependinator.register( target, outputs: [source_files_cache] )
-        @dependinator.mark_fresh( target )
-      else
-        msg = @reportinator.generate_progress( "Recalling cached source directive macros for #{filename}" )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-        @context_extractor.load_build_directives_cache( filepath: filepath, cache_filepath: source_files_cache )
-      end
-
-      state.testables.each do |_, t|
-        @test_source_file_directive_resolver.validate!( test: name, filepath: t.filepath )
-      end
-    end
-
-    log_skip_summary( task: "test file preprocessing", count: skipped, noun: "test files" )
-  end
-
-  # Stage 12: Collect test runner details (test case names) from preprocessed test files.
-  #
-  # Test case names exist only to feed stage 13's runner generation, so this
-  # stage checks the same runner target stage 13 uses and does nothing when
-  # that target is already current -- there's nothing downstream left to feed.
-  # Registering the same target twice across the two stages is harmless:
-  # registration accumulates rather than overwrites, and only stage 13 ever
-  # marks it fresh, so both stages agree on the same answer.
-  def stage_collect_runner_details(state)
-    skipped = 0
-
-    @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      target = testable.runner.output_filepath
-
-      @dependinator.register( target, files: [testable.filepath], meta: runner_target_meta() )
-
-      unless @dependinator.stale?( target )
-        msg = @reportinator.generate_module_progress(
-          operation:   'Skipping test case name parsing for',
-          module_name: testable.name,
-          filename:    File.basename( testable.filepath )
-        )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-        state.lock.synchronize { skipped += 1 }
-        next
-      end
-
-      msg = @reportinator.generate_module_progress(
-        operation:   'Parsing test case names',
-        module_name: testable.name,
-        filename:    File.basename( testable.filepath )
-      )
-      @loginator.log( msg )
-
-      @context_extractor.collect_test_runner_details( testable.filepath, testable.runner.input_filepath )
-    end
-
-    log_skip_summary( task: "test case name parsing", count: skipped, noun: "test files" )
-  end
-
-  # Stage 13: Generate test runner files.
-  #
-  # Antecedent is the raw test file, not stage 11's preprocessed variant --
-  # correct because the runner's mock/include lists are parsed fresh from this
-  # same raw file every run (stage 2), never from the mock/header files' own
-  # content, so an unchanged test file guarantees unchanged lists regardless
-  # of what the preprocessed form of the file looks like.
-  #
-  # `test_preprocessor_tests` meta covers a different piece of runner content:
-  # test case names. Stage 12 (gated by this same flag at the pipeline level,
-  # test_invoker.rb) parses them from the preprocessed test file when this is
-  # true, but when false that stage doesn't run at all -- stage 2 parses raw
-  # test-file text for them instead. An unchanged raw test file says nothing
-  # about which of those two sources actually fed the last-generated runner,
-  # so toggling this flag between runs (with no other change) must still be
-  # able to invalidate the target.
-  def stage_generate_runners(state)
-    skipped = 0
-
-    @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      target = testable.runner.output_filepath
-
-      @dependinator.register( target, files: [testable.filepath], meta: runner_target_meta() )
-
-      unless @dependinator.stale?( target )
-        msg = @reportinator.generate_module_progress(
-          operation:   'Skipping test runner generation for',
-          module_name: testable.name,
-          filename:    File.basename( testable.filepath )
-        )
-        @loginator.log( msg, Verbosity::OBNOXIOUS )
-        state.lock.synchronize { skipped += 1 }
-        next
-      end
-
-      arg_hash = {
-        context:         state.context,
-        mocks:           @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
-        includes:        @context_extractor.lookup_nonmock_header_includes_list( testable.filepath ),
-        test_filepath:   testable.filepath,
-        input_filepath:  testable.runner.input_filepath,
-        runner_filepath: target
-      }
-
-      @generator.generate_test_runner( **arg_hash )
-
-      @dependinator.mark_fresh( target )
-    end
-
-    log_skip_summary( task: "test runner generation", count: skipped, noun: "test runners" )
   end
 
   # Stage 15: Compile all test build objects in parallel.
@@ -1205,22 +1010,6 @@ class TestBuildExecutor
     paths << PROJECT_BUILD_VENDOR_CMOCK_PATH      if @configurator.project_use_mocks
     paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
     paths
-  end
-
-  # A test runner's content comes from two configuration sections plus a flag
-  # governing where its test case names came from -- shared here so stages 12
-  # and 13 always register the exact same meta for the same target.
-  #
-  # `get_runner_config`/`get_unity_config`, not `project_config_hash[:test_runner]`/
-  # `[:unity]`: project_config_hash is flattened -- each nested section's fields
-  # become individual top-level keys like `:unity_use_param_tests` -- so it never
-  # holds a `:test_runner` or `:unity` section of its own to read back here.
-  def runner_target_meta()
-    {
-      test_runner:              @configurator.get_runner_config,
-      unity:                    @configurator.get_unity_config,
-      test_preprocessor_tests:  @configurator.project_use_test_preprocessor_tests
-    }
   end
 
 end

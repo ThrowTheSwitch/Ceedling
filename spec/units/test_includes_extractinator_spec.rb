@@ -74,7 +74,7 @@ describe TestIncludesExtractinator do
     allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )
     allow(@preprocessinator).to receive(:supplement_with_text_includes) { |bare:, **| bare }
     allow(@preprocessinator).to receive(:supplement_with_computed_includes) { |bare:, **| bare }
-    allow(@preprocessinator).to receive(:directives_only_dependencies).and_return( [] )
+    allow(@preprocessinator).to receive(:preprocessed_dependencies).and_return( [] )
     allow(@configurator).to receive(:project_build_root).and_return( 'build' )
     allow(@file_wrapper).to receive(:exist?).and_return( false )
     allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
@@ -550,7 +550,7 @@ describe TestIncludesExtractinator do
     before(:each) do
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
       allow(@dependinator).to receive(:stale?).with('build/preprocess/includes/Foo.c.yml').and_return( false )
-      allow(@preprocessinator).to receive(:directives_only_dependencies).with( directives_only_filepath: 'build/preprocess/raw/Foo.txt' )
+      allow(@preprocessinator).to receive(:preprocessed_dependencies).with( preprocessed_filepath: 'build/preprocess/raw/Foo.txt' )
         .and_return( ['test/TestFoo.c', 'build/test/mocks/a_test/mock_config.h', 'src/config.h'] )
     end
 

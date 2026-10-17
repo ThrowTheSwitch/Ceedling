@@ -404,11 +404,11 @@ RSpec.describe PreprocessinatorIncludesHandler do
 
 
   # ===========================================================================
-  describe '#extract_directives_only_dependencies' do
-    it 'gives the files a directives-only output entered, from its line markers' do
+  describe '#extract_preprocessed_dependencies' do
+    it "gives the files a preprocessor's output entered, from its line markers" do
       allow(@preprocessinator_line_marker_includes_extractor).to receive(:extract_entered_files_from_file).with( 'build/do/test_a.c' ).and_return( ['src/config.h'] )
 
-      expect(subject.extract_directives_only_dependencies( directives_only_filepath: 'build/do/test_a.c' )).to eq( ['src/config.h'] )
+      expect(subject.extract_preprocessed_dependencies( preprocessed_filepath: 'build/do/test_a.c' )).to eq( ['src/config.h'] )
     end
   end
 

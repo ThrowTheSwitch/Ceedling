@@ -14,6 +14,8 @@ describe TestPipelineManager do
   before(:each) do
     @test_build_setup     = double( "TestBuildSetup" )
     @test_includes_extractinator = double( "TestIncludesExtractinator" )
+    @test_file_preprocessinator  = double( "TestFilePreprocessinator" )
+    @test_runner_generatinator   = double( "TestRunnerGeneratinator" )
     @test_build_planner   = double( "TestBuildPlanner" )
     @partials_manager     = double( "PartialsManager" )
     @test_build_executor  = double( "TestBuildExecutor" )
@@ -48,9 +50,9 @@ describe TestPipelineManager do
     allow(@partials_manager).to receive(:stage_generate_partials)
     allow(@test_build_executor).to receive(:stage_preprocess_mocks)
     allow(@test_build_executor).to receive(:stage_generate_mocks)
-    allow(@test_build_executor).to receive(:stage_preprocess_test_files)
-    allow(@test_build_executor).to receive(:stage_collect_runner_details)
-    allow(@test_build_executor).to receive(:stage_generate_runners)
+    allow(@test_file_preprocessinator).to receive(:preprocess)
+    allow(@test_runner_generatinator).to receive(:collect_details)
+    allow(@test_runner_generatinator).to receive(:generate)
     allow(@test_build_executor).to receive(:stage_build_objects)
     allow(@test_build_executor).to receive(:stage_build_executables)
     allow(@test_build_executor).to receive(:stage_execute)
@@ -62,6 +64,8 @@ describe TestPipelineManager do
         :test_build_planner  => @test_build_planner,
         :partials_manager    => @partials_manager,
         :test_build_executor => @test_build_executor,
+        :test_file_preprocessinator => @test_file_preprocessinator,
+        :test_runner_generatinator  => @test_runner_generatinator,
         :configurator        => @configurator,
         :batchinator         => @batchinator,
         :loginator           => @loginator,
@@ -121,9 +125,9 @@ describe TestPipelineManager do
         expect(@test_build_executor).to receive(:stage_preprocess_mocks)
         expect(@test_build_executor).to receive(:stage_generate_mocks)
 
-        expect(@test_build_executor).to_not receive(:stage_preprocess_test_files)
-        expect(@test_build_executor).to_not receive(:stage_collect_runner_details)
-        expect(@test_build_executor).to_not receive(:stage_generate_runners)
+        expect(@test_file_preprocessinator).to_not receive(:preprocess)
+        expect(@test_runner_generatinator).to_not receive(:collect_details)
+        expect(@test_runner_generatinator).to_not receive(:generate)
         expect(@test_build_planner).to_not receive(:stage_determine_artifacts)
         expect(@test_build_planner).to_not receive(:stage_flatten_objects_list)
         expect(@test_build_executor).to_not receive(:stage_build_objects)
@@ -185,9 +189,9 @@ describe TestPipelineManager do
 
       it "runs every stage through Test Runners, including Mocking along the way, and stops before artifact determination onward" do
         expect(@test_build_executor).to receive(:stage_generate_mocks)
-        expect(@test_build_executor).to receive(:stage_preprocess_test_files)
-        expect(@test_build_executor).to receive(:stage_collect_runner_details)
-        expect(@test_build_executor).to receive(:stage_generate_runners)
+        expect(@test_file_preprocessinator).to receive(:preprocess)
+        expect(@test_runner_generatinator).to receive(:collect_details)
+        expect(@test_runner_generatinator).to receive(:generate)
 
         expect(@test_build_planner).to_not receive(:stage_determine_artifacts)
         expect(@test_build_planner).to_not receive(:stage_flatten_objects_list)
@@ -289,9 +293,9 @@ describe TestPipelineManager do
         expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
         expect(@test_build_executor).to receive(:stage_preprocess_mocks)
         expect(@test_build_executor).to receive(:stage_generate_mocks)
-        expect(@test_build_executor).to receive(:stage_preprocess_test_files)
-        expect(@test_build_executor).to receive(:stage_collect_runner_details)
-        expect(@test_build_executor).to receive(:stage_generate_runners)
+        expect(@test_file_preprocessinator).to receive(:preprocess)
+        expect(@test_runner_generatinator).to receive(:collect_details)
+        expect(@test_runner_generatinator).to receive(:generate)
         expect(@test_build_planner).to receive(:stage_determine_artifacts)
         expect(@test_build_planner).to receive(:stage_flatten_objects_list)
         expect(@test_build_executor).to receive(:stage_build_objects)
@@ -321,9 +325,9 @@ describe TestPipelineManager do
         allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
 
         expect(@test_includes_extractinator).to_not receive(:stage_collect_preprocessor_context)
-        expect(@test_build_executor).to_not receive(:stage_preprocess_test_files)
-        expect(@test_build_executor).to_not receive(:stage_collect_runner_details)
-        expect(@test_build_executor).to receive(:stage_generate_runners)
+        expect(@test_file_preprocessinator).to_not receive(:preprocess)
+        expect(@test_runner_generatinator).to_not receive(:collect_details)
+        expect(@test_runner_generatinator).to receive(:generate)
 
         @manager.run( state(options: []) )
       end
@@ -351,7 +355,7 @@ describe TestPipelineManager do
         expect(@test_build_planner).to_not receive(:stage_flatten_mocks_list)
         expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
         expect(@test_build_executor).to_not receive(:stage_generate_mocks)
-        expect(@test_build_executor).to receive(:stage_generate_runners)
+        expect(@test_runner_generatinator).to receive(:generate)
         expect(@loginator).to_not receive(:log)
 
         @manager.run( state(options: []) )

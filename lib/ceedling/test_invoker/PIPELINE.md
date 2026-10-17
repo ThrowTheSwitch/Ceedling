@@ -6,7 +6,7 @@ Each test file in a run gets its own `Testable` record, and every `Testable` tra
 
 ## The pipeline's shape
 
-Seven classes divide the stages, each owning one concern:
+Nine classes divide the stages, each owning one concern:
 
 - **`TestInvoker`** owns one test build run from start to finish. It opens the dependency cache before the run and flushes it afterward, and fires the `pre_test_build` and `post_test_build` plugin hooks around it. When anything in the pipeline raises, it catches the exception, logs it, and records the run as a failed build. Once a run finishes, it also answers narrow questions such as which sources a test pulled in, for callers that want dependency information rather than a real build.
 - **`TestPipelineManager`** owns the stage sequence: the fixed list of stages below, and the feature toggles and stop points that let a stage decline to run. It knows nothing of how a stage does its work, only whether it runs.
@@ -14,9 +14,11 @@ Seven classes divide the stages, each owning one concern:
 - **`TestIncludesExtractinator`** runs stage 4, which replaces the text scan's `#include`s with what the real preprocessor found. It sequences one class per pass: `TestBareIncludesExtractinator`, `TestDirectivesOnlyPreprocessinator`, and `TestIncludesReconcilinator`.
 - **`TestBuildPlanner`** decides what to generate and build: which mocks a test needs, what its runner and Partials will be, and, once everything upstream has run, the final sources, objects, and artifacts to compile and link.
 - **`PartialsManager`** preprocesses each Partial's header and source files and generates its implementation, interface, and, when needed, types header, calling on `Partializer` (`lib/ceedling/partials/`) for the C parsing and extraction.
-- **`TestBuildExecutor`** does the remaining work the planner decided on: generating mocks and runners, compiling objects, linking executables, and running the test fixtures.
+- **`TestFilePreprocessinator`** runs stage 11, which preprocesses each test file and extracts its `TEST_SOURCE_FILE()` directives.
+- **`TestRunnerGeneratinator`** runs stages 12 and 13, which parse test case names and generate each test's Unity runner.
+- **`TestBuildExecutor`** does the remaining work the planner decided on: generating mocks, compiling objects, linking executables, and running the test fixtures.
 
-The five stage classes never call each other. `TestPipelineManager` alone sequences them, calling each stage's method on the shared `PipelineState` in turn.
+The seven stage classes never call each other. `TestPipelineManager` alone sequences them, calling each stage's method on the shared `PipelineState` in turn.
 
 Three collaborators hold logic more than one stage needs, so the stages cannot drift apart:
 
@@ -65,6 +67,8 @@ Stages 2 and 3 run before stage 4, so anything they derive from the `#include`s 
 **Mocks (stages 9-10)** run only when the project uses mocks and this run has any. A transform flattens every test's planned mocks into one list, as the Partials transform does. Stage 9, with mock preprocessing on (`:mocks` or `:all`), preprocesses each header to be mocked. Stage 10 generates each mock's source and header with CMock, into a directory that mirrors its real header's location below the test's mock root. The `:mocking` stop point ends the run here.
 
 **Test file preprocessing and runners (stages 11-13)** work on the test file itself. Stages 11 and 12 run only with test preprocessing on. Stage 11 preprocesses the test file and extracts its `TEST_SOURCE_FILE()` directives from the result. Stage 12 parses test case names from that output. Stage 13 always runs and generates the Unity test runner, from the preprocessed test file when there is one and the original otherwise. The `:test_runner` stop point ends the run here.
+
+Each of these stages is skipped when nothing its output is built from has changed, which takes in more than the test file. Stage 11's full expansion reads every header the test reaches, so the project headers named in its line markers are among stage 11's dependencies, as they are for stage 4's second pass. Editing the macro in a header that enables a test case therefore reruns stage 11. When stage 11 is skipped, its `TEST_SOURCE_FILE()` directives are recalled from a cache. Stages 12 and 13 check one runner target. It depends on the test file, the file test case names are parsed from, the runner and Unity configuration, and the test's mock and include lists. With test preprocessing, those lists come from stage 4's reconciliation, so a header that changes which mocks a test has regenerates its runner although the test file is unchanged.
 
 **Artifacts, build, and execution (stages 14-17)** close out the run. Stage 14 resolves each test's final sources, objects, executable path, and results paths. A transform flattens every test's objects into one list so stage 15 can compile them all as a parallel batch. That batch runs in two sequential passes: each test's own file first, fully complete before any other object in that test starts. A test's own compile is where sibling-header isolation (see `HEADER_COLLISIONS.md`) may correct the test's search paths, and every other object must see the correction. Stage 16 links each test's executable, and stage 17 runs each test fixture and collects its results.
 
