@@ -15,7 +15,7 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 # With -fdirectives-only, the output also keeps macros, and a compacted copy serves stage
 # 11. Without it, in fallback, a plain expansion stands in. Its line markers carry the same
 # record, but fallback is best effort: a file that fails to expand in full is left to its
-# text-scan #includes.
+# text-scan #includes, checked against GCC's bare list.
 #
 # The output depends on every file it read, a mocked header through its stand-in among
 # them, so those files are registered as its dependencies, as a compile registers its .d
