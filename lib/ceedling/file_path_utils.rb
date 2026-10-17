@@ -433,6 +433,12 @@ class FilePathUtils
     )
   end
 
+  def form_preprocessed_file_fallback_expansion_filepath(filepath, subdir)
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_FALLBACK_EXPANSION_DIR, filepath
+    )
+  end
+
   def form_preprocessed_file_compacted_directives_only_filepath(filepath, subdir)
     return form_preprocessed_filepath(
       @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_DIRECTIVES_ONLY_DIR, filepath

@@ -80,8 +80,9 @@ class TestBuildSetup
       end
 
       if @configurator.project_use_test_preprocessor != :none
-        testable.preprocess[:includes]         = []
-        testable.preprocess[:directives_only]  = { filepath: nil }
+        testable.preprocess[:includes]           = []
+        testable.preprocess[:directives_only]    = { filepath: nil }
+        testable.preprocess[:fallback_expansion] = { filepath: nil }
 
         paths[:preprocess_includes]                   = @file_path_utils.form_test_preprocess_includes_path( name )
         paths[:preprocess_files]                      = @file_path_utils.form_test_preprocess_files_path( name )

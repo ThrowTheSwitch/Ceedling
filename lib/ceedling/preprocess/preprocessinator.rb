@@ -66,6 +66,21 @@ class Preprocessinator
     return raw
   end
 
+  # Fallback's best-effort stand-in for directives-only output, from a preprocessor without
+  # -fdirectives-only: a plain expansion whose line markers still name every file it
+  # entered. Only those markers are read, so the expansion is neither stripped nor
+  # compacted. Gives its path, or nil when the preprocessor fails.
+  def generate_fallback_expansion_output(filepath:, test:, **tool_args)
+    output = ensure_output_dir( @file_path_utils.form_preprocessed_file_fallback_expansion_filepath( filepath, test ) )
+    result = run_preprocessor( @configurator.tools_test_file_full_preprocessor, filepath, output, **tool_args )
+
+    if @tool_executor.failed?( result )
+      return log_failure( "Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for #{filepath}", Verbosity::OBNOXIOUS, LogLabels::ERROR )
+    end
+
+    return output
+  end
+
   # Extract user includes from a file using directives-only output (or text-only fallback).
   # Called externally and internally by `preprocess_file_includes_common`.
   def preprocess_user_includes(name:, filepath:, directives_only_filepath:, fallback: false, defines: [])

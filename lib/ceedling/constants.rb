@@ -215,6 +215,7 @@ PREPROCESS_STANDINS_DIR  = 'standins'
 PREPROCESS_FULL_EXPANSION_DIR  = 'full_expansion'
 PREPROCESS_DIRECTIVES_ONLY_DIR = 'directives_only'
 PREPROCESS_RAW_DIRECTIVES_ONLY_DIR = 'directives_only/raw'
+PREPROCESS_FALLBACK_EXPANSION_DIR = 'fallback_expansion'
 
 BUILD_OUT_DIR          = 'out'
 BUILD_RESULTS_DIR      = 'results'
