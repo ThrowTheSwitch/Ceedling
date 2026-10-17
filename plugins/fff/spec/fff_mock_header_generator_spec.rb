@@ -12,6 +12,21 @@ require 'header_generator.rb'
 # Test the contents of the .h file created for the mock.
 describe "FffMockGenerator.create_mock_header" do
 
+  # A fake named by the folder its #include names keeps its file's own name
+  context "when given a C name apart from the mock's file name," do
+    let(:mock_header) {
+      FffMockGenerator.create_mock_header("config", "mock_config", {}, c_name: "drivers_uart_mock_config")
+    }
+    it "then the include guard and control functions take the C name" do
+      expect(mock_header).to start_with("#ifndef drivers_uart_mock_config_H\n#define drivers_uart_mock_config_H")
+      expect(mock_header).to include("void drivers_uart_mock_config_Init(void);")
+      expect(mock_header).to end_with("#endif // drivers_uart_mock_config_H\n")
+    end
+    it "then the original header is still included by its own name" do
+      expect(mock_header).to include(%{#include "config.h"\n})
+    end
+  end
+
   context "when there is nothing to mock," do
     let(:mock_header) {
       parsed_header = {}

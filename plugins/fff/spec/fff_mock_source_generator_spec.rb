@@ -11,6 +11,20 @@ require 'fff_mock_generator.rb'
 # Test the contents of the .c file created for the mock.
 describe "FffMockGenerator.create_mock_source" do
 
+  # The source includes the fake's header by file name and defines the C-named functions
+  context "when given a C name apart from the mock's file name," do
+    let(:mock_source) {
+      FffMockGenerator.create_mock_source("mock_config", {}, c_name: "drivers_uart_mock_config")
+    }
+    it "then it includes the mock header by its file name" do
+      expect(mock_source).to include(%{#include "mock_config.h"\n})
+    end
+    it "then the control functions take the C name" do
+      expect(mock_source).to include("void drivers_uart_mock_config_Init(void)\n")
+      expect(mock_source).to include("void drivers_uart_mock_config_Destroy(void)\n")
+    end
+  end
+
   context "when there is nothing to mock," do
     let(:mock_source) {
       parsed_header = {}
