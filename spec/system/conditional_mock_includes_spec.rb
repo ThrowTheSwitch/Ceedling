@@ -125,6 +125,11 @@ ceedling_system_tests do
       output = build
       expect(@c.last_exit_status).to eq( 0 ), output
       expect(output).to match( /PASSED:\s+1/ )
+
+      # The runner initializes and verifies the newly enabled module's mock
+      in_project do
+        expect(File.read( 'build/test/runners/test_Case_02_runner.c' )).to include( 'mock_MyModulePart2' )
+      end
     end
 
     # Case 1 and Case 2 together, as the issue's project had them
@@ -135,6 +140,26 @@ ceedling_system_tests do
       output = build
       expect(@c.last_exit_status).to eq( 0 ), output
       expect(output).to match( /PASSED:\s+1/ )
+    end
+  end
+
+  # Test file preprocessing is skipped when nothing it read changed, so it must count
+  # the headers the test includes among what it read
+  describe "a test case a header's macro enables" do
+    it "runs after only the header enables it, with :all preprocessing" do
+      skip 'gcc ignores -fdirectives-only, so the scanned #includes are never reconciled' unless @directives_only
+      prepare( %w[src/FeatureConfig.h test/test_FeatureConfig.c], :all )
+
+      output = build
+      expect(output).to match( /TESTED:\s+1/ ), output
+
+      in_project do
+        File.write( 'src/FeatureConfig.h', File.read( 'src/FeatureConfig.h' ).sub( '//#define FEATURE_X', '#define FEATURE_X' ) )
+      end
+
+      output = build
+      expect(@c.last_exit_status).to eq( 0 ), output
+      expect(output).to match( /TESTED:\s+2/ )
     end
   end
 

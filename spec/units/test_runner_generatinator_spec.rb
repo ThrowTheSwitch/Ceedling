@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/test_invoker/test_runner_generatinator'
 require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/includes/includes'
 
 describe TestRunnerGeneratinator do
   before(:each) do
@@ -45,6 +46,8 @@ describe TestRunnerGeneratinator do
       allow(@configurator).to receive(:get_unity_config).and_return( {} )
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
       allow(@test_context_extractor).to receive(:collect_test_runner_details)
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( [] )
 
       @testable = TestInvokerTypes::Testable.new(
         :name     => 'a_test',
@@ -82,7 +85,7 @@ describe TestRunnerGeneratinator do
       expect(@dependinator).to receive(:register).with(
         'build/test/runners/TestFoo_runner.c',
         files: anything,
-        meta:  { test_runner: { mock_prefix: 'Custom' }, unity: { use_param_tests: true }, test_preprocessor_tests: true }
+        meta:  hash_including( test_runner: { mock_prefix: 'Custom' }, unity: { use_param_tests: true }, test_preprocessor_tests: true )
       )
 
       @runners.collect_details( @state )
@@ -93,8 +96,8 @@ describe TestRunnerGeneratinator do
 
       expect(@dependinator).to receive(:register).with(
         'build/test/runners/TestFoo_runner.c',
-        files: ['test/TestFoo.c'],
-        meta:  { test_runner: {}, unity: {}, test_preprocessor_tests: true }
+        files: ['test/TestFoo.c', 'build/preprocess/files/TestFoo.c'],
+        meta:  { test_runner: {}, unity: {}, test_preprocessor_tests: true, mocks: [], includes: [] }
       )
 
       @runners.collect_details( @state )
@@ -160,6 +163,51 @@ describe TestRunnerGeneratinator do
         files: ['test/TestFoo.c'],
         meta:  hash_including( test_preprocessor_tests: true )
       )
+
+      @runners.generate( @state )
+    end
+  end
+
+  # The runner is generated from the test's mock and include lists and from test case
+  # names in its input file. Any of them can change without the test file changing, as
+  # when a header's macro decides which mocks or test cases a test has.
+  context "runner target" do
+    before(:each) do
+      allow(@configurator).to receive(:get_runner_config).and_return( {} )
+      allow(@configurator).to receive(:get_unity_config).and_return( {} )
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).with( 'test/TestFoo.c' )
+        .and_return( [ MockInclude.new('mock_Config.h'), MockInclude.new('drivers/mock_Part1.h') ] )
+      allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).with( 'test/TestFoo.c' )
+        .and_return( [ UserInclude.new('Case_02.h') ] )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name => 'a_test', :filepath => 'test/TestFoo.c',
+        :runner => TestInvokerTypes::RunnerInfo.new( :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'build/preprocess/files/TestFoo.c' )
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
+    end
+
+    it "depends on the input file test case names are parsed from, as well as the test file" do
+      expect(@dependinator).to receive(:register).with( 'build/test/runners/TestFoo_runner.c', files: ['test/TestFoo.c', 'build/preprocess/files/TestFoo.c'], meta: anything )
+
+      @runners.generate( @state )
+    end
+
+    it "carries the mock and include lists it is generated from in its meta" do
+      expect(@dependinator).to receive(:register).with(
+        'build/test/runners/TestFoo_runner.c', files: anything,
+        meta: hash_including( mocks: ['mock_Config.h', 'drivers/mock_Part1.h'], includes: ['Case_02.h'] )
+      )
+
+      @runners.generate( @state )
+    end
+
+    it "depends on the test file once when the test file is its own input" do
+      @testable.runner.input_filepath = 'test/TestFoo.c'
+
+      expect(@dependinator).to receive(:register).with( 'build/test/runners/TestFoo_runner.c', files: ['test/TestFoo.c'], meta: anything )
 
       @runners.generate( @state )
     end

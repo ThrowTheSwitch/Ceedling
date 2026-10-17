@@ -15,6 +15,12 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 # Both stages check the one runner target, registered the same way. Test case names
 # exist only to feed the runner, so stage 12 does nothing when the runner is current.
 # Registration accumulates, and only stage 13 marks the target fresh.
+#
+# The runner depends on what it is generated from: the test file, the input file its
+# test case names are parsed from (the preprocessed test file, with test preprocessing),
+# and the test's mock and include lists. Those lists come from stage 4's reconciliation
+# with test preprocessing, so they can change while the test file doesn't, as when a
+# header's macro decides which mocks a test has.
 class TestRunnerGeneratinator
 
   include TestPipelineHelpers
@@ -65,7 +71,8 @@ class TestRunnerGeneratinator
   end
 
   def stale?(testable)
-    @dependinator.register( testable.runner.output_filepath, files: [testable.filepath], meta: runner_meta() )
+    files = [testable.filepath, testable.runner.input_filepath].uniq
+    @dependinator.register( testable.runner.output_filepath, files: files, meta: runner_meta( testable ) )
     return @dependinator.stale?( testable.runner.output_filepath )
   end
 
@@ -84,12 +91,14 @@ class TestRunnerGeneratinator
   # The real runner and Unity configuration, not project_config_hash's flattened
   # sections, which never hold :test_runner or :unity. Whether test files are
   # preprocessed decides where test case names come from, so toggling it alone must
-  # invalidate the runner.
-  def runner_meta()
+  # invalidate the runner. The mock and include lists are the runner's #includes.
+  def runner_meta(testable)
     return {
       test_runner:             @configurator.get_runner_config,
       unity:                   @configurator.get_unity_config,
-      test_preprocessor_tests: @configurator.project_use_test_preprocessor_tests
+      test_preprocessor_tests: @configurator.project_use_test_preprocessor_tests,
+      mocks:                   @context_extractor.lookup_mock_header_includes_list( testable.filepath ).map( &:filepath ),
+      includes:                @context_extractor.lookup_nonmock_header_includes_list( testable.filepath ).map( &:filepath )
     }
   end
 
