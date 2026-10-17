@@ -82,6 +82,7 @@ describe TestIncludesExtractinator do
     allow(@file_wrapper).to receive(:exist?).and_return( false )
     allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
     allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
+    allow(@test_context_extractor).to receive(:lookup_source_includes_list).and_return( [] )
     allow(@test_context_extractor).to receive(:ingest_includes)
 
     # Harmless default -- individual examples needing a specific ordered header
@@ -529,6 +530,15 @@ describe TestIncludesExtractinator do
       ).and_return( reconciled )
 
       expect(@test_context_extractor).to receive(:ingest_includes).with( 'test/TestFoo.c', reconciled )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
+    # A file with no #includes at all reconciles to nothing, and that is its true list
+    it "ingests an empty reconciled list when the text scan found no #includes either" do
+      allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )
+
+      expect(@test_context_extractor).to receive(:ingest_includes).with( 'test/TestFoo.c', [] )
 
       @extractinator.stage_collect_preprocessor_context( @state )
     end

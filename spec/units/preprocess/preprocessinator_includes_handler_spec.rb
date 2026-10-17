@@ -139,6 +139,14 @@ RSpec.describe PreprocessinatorIncludesHandler do
       expect(result.map(&:filename)).to contain_exactly('unity.h', 'mock_foo_func.h', 'other.h')
     end
 
+    # A rule naming only the object and the file itself is a file with no #includes, not a
+    # failed run
+    it 'returns an empty list when GCC\'s rule names no #includes' do
+      allow(@tool_executor).to receive(:exec).and_return(output: "test_other.o: #{isolated_filepath}\n")
+
+      expect(call_it()).to eq( [] )
+    end
+
     it 'still cleans self-reference against the original filepath identity, not the staged copy' do
       self_ref_rules =
         "test_other.o: #{isolated_filepath} #{filepath} other.h\n\n#{filepath}:\n\nother.h:\n"
