@@ -30,7 +30,7 @@ require 'ceedling/test_invoker/mock_locator'
 require 'ceedling/test_invoker/standin_headerinator'
 require 'ceedling/test_invoker/test_includes_extractinator'
 require 'ceedling/test_invoker/test_bare_includes_extractinator'
-require 'ceedling/test_invoker/test_directives_only_preprocessinator'
+require 'ceedling/test_invoker/test_includes_preprocessinator'
 require 'ceedling/test_invoker/test_includes_reconcilinator'
 
 module IntegrationSpecHelpers
@@ -237,7 +237,7 @@ module IntegrationSpecHelpers
         test_bare_includes_extractinator: TestBareIncludesExtractinator.new(
           **common, file_path_utils: @fpu, dependinator: StaleDependinator.new, test_search_paths: @search_paths, standin_headerinator: standins
         ),
-        test_directives_only_preprocessinator: TestDirectivesOnlyPreprocessinator.new(
+        test_includes_preprocessinator: TestIncludesPreprocessinator.new(
           **common, file_path_utils: @fpu, file_wrapper: @file_wrapper, dependinator: StaleDependinator.new
         ),
         test_includes_reconcilinator: TestIncludesReconcilinator.new(

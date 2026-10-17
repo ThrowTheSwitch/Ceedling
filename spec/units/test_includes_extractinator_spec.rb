@@ -8,7 +8,7 @@
 require 'spec_helper'
 require 'ceedling/test_invoker/test_includes_extractinator'
 require 'ceedling/test_invoker/test_bare_includes_extractinator'
-require 'ceedling/test_invoker/test_directives_only_preprocessinator'
+require 'ceedling/test_invoker/test_includes_preprocessinator'
 require 'ceedling/test_invoker/test_includes_reconcilinator'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_search_paths'
@@ -115,7 +115,7 @@ describe TestIncludesExtractinator do
       test_bare_includes_extractinator: TestBareIncludesExtractinator.new(
         **common, file_path_utils: @file_path_utils, dependinator: @dependinator, test_search_paths: search_paths, standin_headerinator: standins
       ),
-      test_directives_only_preprocessinator: TestDirectivesOnlyPreprocessinator.new(
+      test_includes_preprocessinator: TestIncludesPreprocessinator.new(
         **common, file_path_utils: @file_path_utils, file_wrapper: @file_wrapper, dependinator: @dependinator
       ),
       test_includes_reconcilinator: TestIncludesReconcilinator.new(

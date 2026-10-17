@@ -15,7 +15,7 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 # The output depends on every file it read, a mocked header through its stand-in among
 # them, so those files are registered as its dependencies, as a compile registers its .d
 # file. The pass runs only where the preprocessor supports -fdirectives-only.
-class TestDirectivesOnlyPreprocessinator
+class TestIncludesPreprocessinator
 
   include TestPipelineHelpers
 
