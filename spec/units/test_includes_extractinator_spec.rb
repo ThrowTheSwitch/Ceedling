@@ -549,6 +549,32 @@ describe TestIncludesExtractinator do
       @extractinator.stage_collect_preprocessor_context( @state )
     end
 
+    # Reconciling to nothing while the text names #includes means preprocessing found none
+    # it should have, so stage 2's list stands and the user is told
+    it "keeps the text-scan #includes, and warns, when reconciliation empties them" do
+      allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).with( 'test/TestFoo.c' ).and_return( [ UserInclude.new('bar.h') ] )
+
+      expect(@test_context_extractor).to_not receive(:ingest_includes)
+      expect(@loginator).to receive(:log).with(
+        "No #includes of test/TestFoo.c survived reconciliation, though its text names some. Using the text-scanned " \
+        "#includes as a best effort. Rerun with --verbosity=obnoxious to see why preprocessing found none.",
+        Verbosity::COMPLAIN
+      )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
+    # Ingesting replaces a test's source #includes along with its headers
+    it "keeps the text-scan #includes when only a source #include was scanned" do
+      allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_source_includes_list).with( 'test/TestFoo.c' ).and_return( [ UserInclude.new('foo.c') ] )
+
+      expect(@test_context_extractor).to_not receive(:ingest_includes)
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
     # A file with no #includes at all reconciles to nothing, and that is its true list
     it "ingests an empty reconciled list when the text scan found no #includes either" do
       allow(@preprocessinator).to receive(:reconcile_includes).and_return( [] )

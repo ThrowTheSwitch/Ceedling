@@ -243,6 +243,19 @@ describe 'Test file #include extraction (integration)' do
         end
       end
 
+      # -P drops the line markers the second pass is read through, so reconciliation finds
+      # nothing. Validation rejects it; this shows the last line of defense.
+      it 'keeps the text-scan #includes when the second pass\'s output has no line markers' do
+        tree = {
+          'src/Gpt.h'         => "void Gpt_StartTimer(void);\n",
+          'test/test_Mixed.c' => "#include \"Gpt.h\"\n#include \"mock_Gpt.h\"\n"
+        }
+
+        extract_in_mode( tree, 'test_Mixed.c', flags: ['-P'] ) do |harness, _testable|
+          expect(harness.includes( 'test/test_Mixed.c' )).to eq( ['Gpt.h', 'mock_Gpt.h'] )
+        end
+      end
+
       it 'writes no #include list cache when the first pass fails' do
         extract_in_mode( CASE_1_TREE, 'test_Case_01.c', bare_tool: IntegrationSpecHelpers::FAILING_BARE_TOOL ) do |_harness, _testable|
           expect(Dir.glob( 'build/scratch/includes/**/*.yml' )).to eq( [] )
