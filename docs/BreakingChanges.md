@@ -8,6 +8,23 @@ These breaking changes are complemented by three other documents:
 
 ---
 
+# [1.2.0] — Prerelease
+
+## `-P` and `--no-line-commands` rejected with test preprocessing
+
+Ceedling now refuses these preprocessor options at startup whenever test preprocessing is enabled. That is the case when `:project` ↳ `:use_test_preprocessor` is `:mocks`, `:tests`, or `:all`, or when Partials are enabled.
+
+Both options strip the line markers Ceedling reads in preprocessor output to find `#include`s, mockable functions, and test cases. A project that used either one with test preprocessing already lost some of these, often without a clear error.
+
+Remove the options from these places:
+
+1. `:flags` ↳ `:test` ↳ `:preprocess` and `:compile`, and the same operations in plugin build contexts such as `:gcov`. Preprocessing uses `:compile` flags wherever no `:preprocess` flags apply.
+1. The arguments of the `:test_file_full_preprocessor` and `:test_file_directives_only_preprocessor` tools.
+
+If you need an option in `:compile` flags only, give `:preprocess` flags of their own without it.
+
+---
+
 # [1.1.0] — 2026-07-16
 
 ## `--ruby-replacement` CLI flag to enable inline Ruby string expansion

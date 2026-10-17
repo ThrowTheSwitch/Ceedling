@@ -109,6 +109,13 @@ file matcher YAML key plus flag list. Both are documented below.
     flags, specify an empty list `[]` for the relevant matcher (or for the
     whole `:preprocess` section, if using the simple list format).
 
+!!! warning "Keep line markers in preprocessor output"
+    Ceedling reads the line markers in preprocessor output to find 
+    `#include`s, mockable functions, and test cases. With test preprocessing 
+    enabled, Ceedling refuses to start if `-P` or `--no-line-commands` 
+    appears in `:preprocess` flags. The same holds for `:compile` flags, 
+    which preprocessing uses wherever no `:preprocess` flags apply.
+
 **Default**: Same flags as that same file resolved to for `:compile`, unless specified
 
 ## `:flags` ↳ `:test` ↳ `:link`

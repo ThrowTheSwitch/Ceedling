@@ -247,6 +247,9 @@ Ceedling and CMock are interdependent but distinct tools. They each perform thei
 ### Smarter `:flags` and `:defines` matching for preprocessing overrides
 Preprocessing flags and defines matchers now pass through to test compilation flags and defines for any matchers that are not defined. Previously, any preprocessing flags and defines matchers entirely overrode the test compilation flags and defines matchers. Now, you can selectively override them. Note that preprocessing flags and defines matchers are fairly specialized features used in rare cases.
 
+### Options that suppress preprocessor line markers are rejected
+With test preprocessing enabled, Ceedling now stops at startup if `-P` or `--no-line-commands` appears in flags that reach preprocessing or in a preprocessing tool’s arguments. Test preprocessing reads the line markers these options remove to find `#include`s, mockable functions, and test cases. A preprocessor given either option still succeeds, so builds failed later with confusing errors or ran no tests at all. The error names each offending entry. Remember that `:compile` flags also apply to preprocessing wherever `:preprocess` flags do not.
+
 ### Inline Ruby string expansion evaluates only `#{…}`
 [#289](https://github.com/ThrowTheSwitch/Ceedling/issues/289) [Inline Ruby string expansion](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/project-file/#ruby-string-expansion-syntax) evaluates only the Ruby inside each `#{…}` and keeps all other text as written. Backslashes in Windows paths and quote marks around an expansion survive intact. Ruby escape sequences written outside `#{…}` (e.g. `\"` or `\n` in a single-quoted YAML string) are no longer interpreted.
 

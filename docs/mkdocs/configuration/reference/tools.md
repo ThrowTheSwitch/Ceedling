@@ -328,6 +328,11 @@ way needed. To use a literal `$`, escape it as `\\$`.
   features are quite dependent on the idiosyncrasies and features of the GCC
   toolchain.
 
+* Whatever the tool, preprocessor output must keep its line markers. With
+  test preprocessing enabled, Ceedling refuses to start if `-P` or
+  `--no-line-commands` appears in the arguments of
+  `:test_file_full_preprocessor` or `:test_file_directives_only_preprocessor`.
+
 ### Example Test Compiler Tooling
 
 Resulting compiler command line construction from preceding example `:tools`
