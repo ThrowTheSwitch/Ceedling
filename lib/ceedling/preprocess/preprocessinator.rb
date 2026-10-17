@@ -50,49 +50,20 @@ class Preprocessinator
       )
   end
 
-  def generate_directives_only_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
-    raw_preprocessed_filepath = ensure_output_dir(
-      @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, test )
-    )
+  # A file run with -fdirectives-only, which evaluates #if and follows #includes while
+  # keeping macros and line markers. Gives the raw output's path, or nil when the
+  # preprocessor fails so the caller falls back for this file alone. `tool_args` are the
+  # run's flags:, include_paths:, vendor_paths:, and defines:.
+  def generate_directives_only_output(filepath:, test:, **tool_args)
+    raw    = ensure_output_dir( @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, test ) )
+    result = run_preprocessor( @configurator.tools_test_file_directives_only_preprocessor, filepath, raw, **tool_args )
 
-    compacted_preprocessed_fileapth = ensure_output_dir(
-      @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, test )
-    )
-
-    # Run GCC with directives-only preprocessor expansion
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_directives_only_preprocessor,
-      # Additional arguments
-      flags,
-      # Argument replacement
-      filepath,
-      raw_preprocessed_filepath,
-      defines,
-      (include_paths + vendor_paths)
-    )
-    command[:options][:boom] = false
-    results = @tool_executor.exec( command )
-
-    # Preprocessor did not succeed
-    if @tool_executor.failed?( results )
-      msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
-      @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::ERROR )
-      return nil
+    if @tool_executor.failed?( result )
+      return log_failure( "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}", Verbosity::OBNOXIOUS, LogLabels::ERROR )
     end
 
-    # Remove comments from directives-only file in filesystem.
-    # Directives-only output keeps our most essential details (include directives & macros) and handles #ifdefs, etc.
-    # However, it does not strip out comments.
-    @comment_stripper.strip_file( raw_preprocessed_filepath )
-
-    # Collect all code from between line markers into a clean file
-    @reconstructor.compact_file_from_expansion(
-      input_filepath: raw_preprocessed_filepath,
-      source_filepath: filepath,
-      output_filepath: compacted_preprocessed_fileapth
-    )
-
-    return raw_preprocessed_filepath
+    strip_and_compact( filepath, test, raw )
+    return raw
   end
 
   # Extract user includes from a file using directives-only output (or text-only fallback).
@@ -115,7 +86,8 @@ class Preprocessinator
   # `load_includes_list` can recall it later. Independent callers share this
   # pair of methods against different `filepath`s, each already knowing its
   # target is stale before writing here:
-  #  - Stage 4 (test_build_setup.rb), for a test file's own bare-includes list.
+  #  - Stage 4's first pass (TestBareIncludesExtractinator), for a test file's own
+  #    bare-includes list.
   #  - `preprocess_file_includes_common` below, for a mocked header's or a
   #    Partial header/source file's includes -- called from stage 9 and
   #    stages 6/7 (test_build_executor.rb) respectively, both of which
@@ -456,26 +428,30 @@ class Preprocessinator
   ### Private ###
   private
 
-  # One Mutex per includes-cache file, so concurrent testables serialize on the exact
-  # file they touch and nothing more. The map itself is guarded by @file_locks_mutex.
-  # Runs the full preprocessor into `output`.
-  #
-  # `boom: false` is deliberate. ToolExecutor#exec's default raises ShellException on a
-  # nonzero exit code, which would crash the build before the caller's own graceful
-  # fallback to directives-only signatures could run.
-  def _run_full_preprocessor(filepath:, output:, flags:, include_paths:, vendor_paths:, defines:)
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_full_preprocessor,
-      flags,
-      filepath,
-      output,
-      defines,
-      (include_paths + vendor_paths)
-    )
-
+  # Runs a preprocessor `tool` over `filepath` into `output`. A file's own search paths
+  # come ahead of vendor paths, so a project header wins a name clash. `boom: false` keeps
+  # a failing run from raising: ToolExecutor#exec would otherwise stop the build before the
+  # caller could fall back in its own way.
+  def run_preprocessor(tool, filepath, output, flags:, include_paths:, vendor_paths:, defines:)
+    command = @tool_executor.build_command_line( tool, flags, filepath, output, defines, (include_paths + vendor_paths) )
     command[:options][:boom] = false
 
     return @tool_executor.exec( command )
+  end
+
+  # Logs why a preprocessor run failed and gives the nil its caller returns
+  def log_failure(msg, *log_args)
+    @loginator.log( msg, *log_args )
+    return nil
+  end
+
+  # Directives-only output keeps comments, so they are stripped before the code between
+  # line markers is collected into a compacted file
+  def strip_and_compact(filepath, test, raw)
+    compacted = ensure_output_dir( @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, test ) )
+
+    @comment_stripper.strip_file( raw )
+    @reconstructor.compact_file_from_expansion( input_filepath: raw, source_filepath: filepath, output_filepath: compacted )
   end
 
   # Creates a preprocessed artifact's own directory and hands the path back, so a caller
@@ -488,6 +464,8 @@ class Preprocessinator
     return filepath
   end
 
+  # One Mutex per includes-cache file, so concurrent testables serialize on the exact
+  # file they touch and nothing more. The map itself is guarded by @file_locks_mutex.
   def cache_file_lock(cache_filepath)
     @file_locks_mutex.synchronize { @file_locks[cache_filepath] ||= Mutex.new }
   end
@@ -513,44 +491,28 @@ class Preprocessinator
     includes
   end
 
-  def _preprocess_partial_expand_macros(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
-    msg = @reportinator.generate_module_progress(
-      operation: 'Full-preprocessing for expanded Partial signature extraction',
-      module_name: test,
-      filename: File.basename( filepath )
-    )
-    @loginator.log( msg )
+  # A Partial's file in full expansion, reassembled in place as plain code. Nil when the
+  # preprocessor fails, so its caller uses directives-only signatures instead.
+  def _preprocess_partial_expand_macros(filepath:, test:, **tool_args)
+    progress = { operation: 'Full-preprocessing for expanded Partial signature extraction', module_name: test, filename: File.basename( filepath ) }
+    @loginator.log( @reportinator.generate_module_progress( **progress ) )
 
-    full_expansion_filepath = ensure_output_dir(
-      @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
-    )
-
-    result = _run_full_preprocessor(
-      filepath:      filepath,
-      output:        full_expansion_filepath,
-      flags:         flags,
-      include_paths: include_paths,
-      vendor_paths:  vendor_paths,
-      defines:       defines
-    )
+    output = ensure_output_dir( @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test ) )
+    result = run_preprocessor( @configurator.tools_test_file_full_preprocessor, filepath, output, **tool_args )
 
     if @tool_executor.failed?( result )
-      msg = "Failed to generate full expansion for Partial signature extraction (directives-only signatures will be used) for #{filepath}"
-      @loginator.log( msg, Verbosity::COMPLAIN )
-      return nil
+      return log_failure( "Failed to generate full expansion for Partial signature extraction (directives-only signatures will be used) for #{filepath}", Verbosity::COMPLAIN )
     end
 
+    assemble_full_expansion( filepath, test, output )
+    return output
+  end
+
+  def assemble_full_expansion(filepath, test, output)
     contents = @file_assembler.collect_file_contents_from_full_expansion( source_filepath: filepath, test: test )
-
     @file_assembler.assemble_preprocessed_code_file(
-      filename:              File.basename( filepath ),
-      preprocessed_filepath: full_expansion_filepath,
-      contents:              contents,
-      extras:                [],
-      includes:              []
+      filename: File.basename( filepath ), preprocessed_filepath: output, contents: contents, extras: [], includes: []
     )
-
-    return full_expansion_filepath
   end
 
   # Extracts, reconciles, and persists a header or source file's user/system
@@ -649,9 +611,9 @@ class Preprocessinator
   # against the accurate user/system lists, log a NOTICE on any genuinely ambiguous
   # `#include` (more than one file on the search path satisfies it), and -- for the
   # mockable-header/Partial path -- drop a header whose mock is also present.
-  # `preprocess_file_includes_common` above and stage 4's test-file pass
-  # (test_build_setup.rb) build their own three lists and own their own caching; only
-  # this middle is common.
+  # `preprocess_file_includes_common` above and stage 4's third pass
+  # (TestIncludesReconcilinator) build their own three lists and own their own caching;
+  # only this middle is common.
   def reconcile_includes(bare:, user:, system:, test_filepath:, drop_mocked: true)
     includes = Includes.reconcile(
       bare: bare, user: user, system: system, test_filepath: test_filepath
@@ -672,12 +634,6 @@ class Preprocessinator
     includes
   end
 
-  # These two sit in the private section next to the `preprocess_*` orchestration they
-  # grew up beside, but both are self-contained and side-effect-scoped:
-  # `preprocess_file_includes_common` (its only writes are the YAML cache) is driven
-  # directly by the integration spec tier against real GCC output, and
-  # `reconcile_includes` is the merge step stage 4's test-file pass calls too.
-  # Re-publicized here rather than relocated to keep the diff small.
   # Deduplicated by filepath, not filename: two entries sharing only a basename, such as
   # "hw/config.h" and "app/config.h", are different files, and reconciliation tells them
   # apart by their resolved paths (Includes.reconcile)
@@ -685,6 +641,9 @@ class Preprocessinator
     return (bare + more).uniq( &:filepath )
   end
 
+  # These sit beside the orchestration that first used them, but each is self-contained.
+  # Stage 4's passes call the supplements, reconciliation, and dependency extraction, and
+  # the integration tier drives `preprocess_file_includes_common` against real GCC output.
   public :preprocess_file_includes_common, :reconcile_includes, :supplement_with_text_includes, :supplement_with_computed_includes, :preprocessed_dependencies
 
 end
