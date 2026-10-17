@@ -435,7 +435,6 @@ test_build_setup:
 
 test_includes_extractinator:
   compose:
-    - configurator
     - test_bare_includes_extractinator
     - test_includes_preprocessinator
     - test_includes_reconcilinator

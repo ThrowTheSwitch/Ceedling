@@ -233,7 +233,6 @@ module IntegrationSpecHelpers
 
       common = { configurator: @cfg, loginator: NULL, reportinator: NULL, batchinator: SequentialBatchinator.new, preprocessinator: preprocessinator }
       return TestIncludesExtractinator.new(
-        configurator: @cfg,
         test_bare_includes_extractinator: TestBareIncludesExtractinator.new(
           **common, file_path_utils: @fpu, dependinator: StaleDependinator.new, test_search_paths: @search_paths, standin_headerinator: standins
         ),
@@ -250,7 +249,7 @@ module IntegrationSpecHelpers
       name = File.basename( filepath, '.c' )
       return TestInvokerTypes::Testable.new(
         name: name, filepath: filepath, paths: { mocks: File.join( 'build/mocks', name ) },
-        preprocess: { includes: [], directives_only: { filepath: nil } },
+        preprocess: { includes: [], directives_only: { filepath: nil }, fallback_expansion: { filepath: nil } },
         preprocess_flags: [], preprocess_defines: defines, search_paths: [], mock_search_paths: []
       )
     end

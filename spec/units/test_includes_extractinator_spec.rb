@@ -44,9 +44,11 @@ describe TestIncludesExtractinator do
     allow(@configurator).to receive(:paths_test).and_return( [] )
     allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return( { name: 'fake bare includes preprocessor' } )
     allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( { name: 'fake directives-only preprocessor' } )
+    allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return( { name: 'fake full preprocessor' } )
     allow(@configurator).to receive(:test_build_preprocess_force_fallback).and_return( false )
     allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath).and_return( 'build/preprocess/raw/Foo.txt' )
     allow(@file_path_utils).to receive(:form_preprocessed_file_compacted_directives_only_filepath).and_return( 'build/preprocess/compacted/Foo.txt' )
+    allow(@file_path_utils).to receive(:form_preprocessed_file_fallback_expansion_filepath).and_return( 'build/preprocess/fallback/Foo.txt' )
     allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.c.yml' )
 
     # Default: dependency tracker reports every target fresh (not stale).
@@ -75,6 +77,7 @@ describe TestIncludesExtractinator do
     allow(@preprocessinator).to receive(:supplement_with_text_includes) { |bare:, **| bare }
     allow(@preprocessinator).to receive(:supplement_with_computed_includes) { |bare:, **| bare }
     allow(@preprocessinator).to receive(:preprocessed_dependencies).and_return( [] )
+    allow(@preprocessinator).to receive(:generate_fallback_expansion_output).and_return( nil )
     allow(@configurator).to receive(:project_build_root).and_return( 'build' )
     allow(@file_wrapper).to receive(:exist?).and_return( false )
     allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
@@ -111,7 +114,6 @@ describe TestIncludesExtractinator do
     common = { configurator: @configurator, loginator: @loginator, reportinator: @reportinator, batchinator: @batchinator, preprocessinator: @preprocessinator }
 
     @extractinator = described_class.new(
-      configurator: @configurator,
       test_bare_includes_extractinator: TestBareIncludesExtractinator.new(
         **common, file_path_utils: @file_path_utils, dependinator: @dependinator, test_search_paths: search_paths, standin_headerinator: standins
       ),
@@ -127,7 +129,7 @@ describe TestIncludesExtractinator do
       :name               => 'a_test',
       :filepath           => 'test/TestFoo.c',
       :paths              => {},
-      :preprocess         => { :includes => [], :directives_only => { :filepath => nil } },
+      :preprocess         => { :includes => [], :directives_only => { :filepath => nil }, :fallback_expansion => { :filepath => nil } },
       :preprocess_flags   => [],
       :preprocess_defines => [],
       :search_paths       => []
@@ -181,14 +183,6 @@ describe TestIncludesExtractinator do
       expect( @testable.preprocess[:directives_only][:filepath] ).to be_nil
     end
 
-    it "does nothing when directives-only preprocessing is unavailable for this toolchain" do
-      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
-      expect(@dependinator).to_not receive(:register).with('build/preprocess/raw/Foo.txt', anything)
-      expect(@preprocessinator).to_not receive(:generate_directives_only_output)
-
-      @extractinator.stage_collect_preprocessor_context( @state )
-    end
-
     it "logs a summary line stating how many test files' directives-only output was recalled from cache" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
@@ -231,9 +225,87 @@ describe TestIncludesExtractinator do
     end
   end
 
+  # Without -fdirectives-only, a plain expansion stands in for the second pass's output.
+  # Its line markers carry the same record of the files the test file entered.
+  context "#stage_collect_preprocessor_context (second pass, fallback)" do
+    before(:each) do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@configurator).to receive(:test_build_preprocess_force_fallback).and_return( true )
+    end
+
+    it "runs the full preprocessor into the fallback expansion when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      expect(@preprocessinator).to_not receive(:generate_directives_only_output)
+      expect(@preprocessinator).to receive(:generate_fallback_expansion_output).and_return( 'build/preprocess/fallback/Foo.txt' )
+      expect(@dependinator).to receive(:mark_fresh).with( 'build/preprocess/fallback/Foo.txt' )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+
+      expect( @testable.preprocess[:fallback_expansion][:filepath] ).to eq( 'build/preprocess/fallback/Foo.txt' )
+      expect( @testable.preprocess[:directives_only][:filepath] ).to be_nil
+    end
+
+    it "registers the test file as the sole antecedent, with the full preprocessor tool as meta" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/fallback/Foo.txt',
+        files: ['test/TestFoo.c'],
+        meta:  { flags: [], defines: [], search_paths: [], tools: [{ name: 'fake full preprocessor' }], preprocess_force_fallback: true }
+      )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
+    # Nothing reads a compacted copy in fallback, so the expansion vouches for no other file
+    it "registers no further output before marking the expansion fresh" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:generate_fallback_expansion_output).and_return( 'build/preprocess/fallback/Foo.txt' )
+
+      expect(@dependinator).to_not receive(:register).with( 'build/preprocess/fallback/Foo.txt', hash_including( :outputs ) )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
+    it "registers the project files its last expansion entered, before asking whether it is stale" do
+      allow(@file_wrapper).to receive(:exist?).with( 'build/preprocess/fallback/Foo.txt' ).and_return( true )
+      allow(@preprocessinator).to receive(:preprocessed_dependencies).with( preprocessed_filepath: 'build/preprocess/fallback/Foo.txt' )
+        .and_return( ['test/TestFoo.c', 'build/test/mocks/a_test/mock_config.h', 'src/config.h'] )
+
+      expect(@dependinator).to receive(:register).with( 'build/preprocess/fallback/Foo.txt', files: ['test/TestFoo.c', 'src/config.h'] ).ordered
+      expect(@dependinator).to receive(:stale?).with( 'build/preprocess/fallback/Foo.txt' ).ordered.and_return( false )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+    end
+
+    it "does not mark fresh when the full preprocessor fails" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:generate_fallback_expansion_output).and_return( nil )
+
+      expect(@dependinator).to_not receive(:mark_fresh).with( 'build/preprocess/fallback/Foo.txt' )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+
+      expect( @testable.preprocess[:fallback_expansion][:filepath] ).to be_nil
+    end
+
+    it "reuses the expansion's path, and summarizes the skip as fallback preprocessing, when unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      allow(@reportinator).to receive(:generate_skip_summary).with( hash_including( task: 'fallback preprocessing' ) ).and_return( 'fallback skip summary' )
+
+      expect(@preprocessinator).to_not receive(:generate_fallback_expansion_output)
+      expect(@loginator).to receive(:log).with( 'fallback skip summary' )
+
+      @extractinator.stage_collect_preprocessor_context( @state )
+
+      expect( @testable.preprocess[:fallback_expansion][:filepath] ).to eq( 'build/preprocess/fallback/Foo.txt' )
+    end
+  end
+
   context "#stage_collect_preprocessor_context (bare-includes pass)" do
     before(:each) do
-      # Keeps the second pass a no-op in these tests, which focus on the first.
+      # In fallback, the second pass's default stubs make no expansion, so these
+      # examples see the first pass alone
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
     end
 
