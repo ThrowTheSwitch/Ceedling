@@ -110,11 +110,11 @@ class Configurator
     return if config[:project][:use_test_preprocessor] == :none
 
     if config[:test_build][:preprocess_force_fallback]
-      return log_notice( "Forcing fallback text-based preprocessing in place of directives-only (:test_build ↳ :preprocess_force_fallback is enabled)." )
+      return log_notice( "Forcing best-effort fallback preprocessing in place of directives-only (:test_build ↳ :preprocess_force_fallback is enabled)." )
     end
 
     if !directives_only_supported?( config, tool_executor )
-      return log_notice( "Preprocessor lacks -fdirectives-only support ➡️ Ceedling will use text-based fallback for preprocessing." )
+      return log_notice( "Preprocessor lacks -fdirectives-only support ➡️ Ceedling will use best-effort fallback preprocessing." )
     end
 
     config[:test_build][:preprocess_directives_only_available] = true
