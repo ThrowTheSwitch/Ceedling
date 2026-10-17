@@ -11,7 +11,9 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 
 # Stage 4's third pass. The second pass's #includes, checked against the first pass's
 # candidates and the #includes a macro names, replace each test file's stored text-scan
-# list, and its mock search paths narrow to the mocks that remain.
+# list, and its mock search paths narrow to the mocks that remain. An empty result never
+# replaces a text scan that found #includes, and with neither pass to go on, the text scan
+# stands as it is.
 #
 # In fallback the second pass's output is a plain expansion, so reconciling against it is
 # a best effort. No dependency-tracker gate: this pass parses the second pass's
