@@ -35,6 +35,12 @@ describe TestFilePreprocessinator do
     @preprocessinator                    = double( "Preprocessinator" )
     @file_path_utils                     = double( "FilePathUtils" )
     @test_source_file_directive_resolver = double( "TestSourceFileDirectiveResolver" )
+    @file_wrapper                        = double( "FileWrapper" )
+
+    allow(@configurator).to receive(:project_build_root).and_return( 'build' )
+    allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return( 'build/preprocess/full/TestFoo.c' )
+    allow(@file_wrapper).to receive(:exist?).and_return( false )
+    allow(@preprocessinator).to receive(:preprocessed_dependencies).and_return( [] )
 
     allow(@file_path_utils).to receive(:form_preprocessed_source_files_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/TestFoo.c_source_files.yml' )
     allow(@test_context_extractor).to receive(:store_build_directives_cache)
@@ -43,7 +49,7 @@ describe TestFilePreprocessinator do
 
     @preprocessinator_stage = described_class.new(
       configurator: @configurator, loginator: @loginator, reportinator: @reportinator, batchinator: @batchinator,
-      preprocessinator: @preprocessinator, test_context_extractor: @test_context_extractor, file_path_utils: @file_path_utils,
+      preprocessinator: @preprocessinator, test_context_extractor: @test_context_extractor, file_path_utils: @file_path_utils, file_wrapper: @file_wrapper,
       dependinator: @dependinator, test_source_file_directive_resolver: @test_source_file_directive_resolver
     )
   end
@@ -151,6 +157,48 @@ describe TestFilePreprocessinator do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
       expect(@test_source_file_directive_resolver).to receive(:validate!).with( test: 'a_test', filepath: 'test/TestFoo.c' )
+
+      @preprocessinator_stage.preprocess( @state )
+    end
+  end
+
+  # The full expansion reads every header the test reaches, so a change to one of them
+  # reruns the step, as a compile's .d file makes a compile rerun
+  context "#preprocess (dependencies)" do
+    before(:each) do
+      allow(@batchinator).to receive(:exec) do |things:, **_options, &block|
+        things.each { |k, v| block.call(k, v) }
+      end
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/files/TestFoo.c' )
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
+      allow(@test_context_extractor).to receive(:collect_simple_context_from_file)
+      allow(@preprocessinator).to receive(:preprocessed_dependencies).with( preprocessed_filepath: 'build/preprocess/full/TestFoo.c' )
+        .and_return( ['test/TestFoo.c', 'build/test/mocks/a_test/mock_config.h', 'src/features.h'] )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name => 'a_test', :filepath => 'test/TestFoo.c', :preprocess => { :directives_only => { :filepath => nil } },
+        :preprocess_flags => [], :preprocess_defines => [], :search_paths => [],
+        :runner => TestInvokerTypes::RunnerInfo.new( :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => nil )
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
+    end
+
+    it "registers the project files its last expansion entered, before asking whether it is stale" do
+      allow(@file_wrapper).to receive(:exist?).with( 'build/preprocess/full/TestFoo.c' ).and_return( true )
+
+      expect(@dependinator).to receive(:register).with( 'build/preprocess/files/TestFoo.c', files: ['test/TestFoo.c', 'src/features.h'] ).ordered
+      expect(@dependinator).to receive(:stale?).with( 'build/preprocess/files/TestFoo.c' ).ordered.and_return( false )
+
+      @preprocessinator_stage.preprocess( @state )
+    end
+
+    it "registers the project files its new expansion entered before marking it fresh" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@preprocessinator).to receive(:preprocess_test_file).and_return( 'build/preprocess/files/TestFoo.c' )
+
+      expect(@dependinator).to receive(:register).with( 'build/preprocess/files/TestFoo.c', files: ['test/TestFoo.c', 'src/features.h'] ).ordered
+      expect(@dependinator).to receive(:mark_fresh).with( 'build/preprocess/files/TestFoo.c' ).ordered
 
       @preprocessinator_stage.preprocess( @state )
     end

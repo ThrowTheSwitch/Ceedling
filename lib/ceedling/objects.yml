@@ -528,6 +528,7 @@ test_file_preprocessinator:
     - preprocessinator
     - test_context_extractor
     - file_path_utils
+    - file_wrapper
     - dependinator
     - test_source_file_directive_resolver
 

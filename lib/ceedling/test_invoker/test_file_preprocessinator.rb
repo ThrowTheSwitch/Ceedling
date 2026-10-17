@@ -16,6 +16,11 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 # When the preprocessed file is already current, its directives are recalled from a
 # small cache instead of being scanned again. That cache is an output of the
 # preprocessed target, so a damaged cache makes the target stale.
+#
+# The preprocessed file comes from a full expansion that reads every header the test
+# reaches, so the project files that expansion entered are registered as its
+# dependencies, as a compile registers its .d file. Editing a header that enables a test
+# case then reruns this stage and, through the runner's own dependencies, stage 13.
 class TestFilePreprocessinator
 
   include TestPipelineHelpers
@@ -28,6 +33,7 @@ class TestFilePreprocessinator
     :preprocessinator,
     :test_context_extractor,
     :file_path_utils,
+    :file_wrapper,
     :dependinator,
     :test_source_file_directive_resolver
   )
@@ -57,6 +63,7 @@ class TestFilePreprocessinator
   def preprocess_test_file(state, testable)
     target = target( testable )
     @dependinator.register( target, files: [testable.filepath], meta: preprocess_meta( testable ) )
+    register_preprocessed_dependencies( target, expansion( testable ) ) if @file_wrapper.exist?( expansion( testable ) )
     stale = @dependinator.stale?( target )
 
     input = stale ? preprocess_now( testable ) : recall( testable, target )
@@ -67,6 +74,10 @@ class TestFilePreprocessinator
 
   def target(testable)
     return @file_path_utils.form_preprocessed_file_filepath( testable.filepath, testable.name )
+  end
+
+  def expansion(testable)
+    return @file_path_utils.form_preprocessed_file_full_expansion_filepath( testable.filepath, testable.name )
   end
 
   def preprocess_meta(testable)
@@ -109,7 +120,14 @@ class TestFilePreprocessinator
     @context_extractor.collect_simple_context_from_file( directives_source( testable ), testable.filepath, TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES )
     @context_extractor.store_build_directives_cache( filepath: testable.filepath, cache_filepath: source_files_cache( testable ) )
 
+    mark_fresh( testable )
+  end
+
+  # The preprocessed file vouches for the directive cache and depends on what its
+  # expansion read
+  def mark_fresh(testable)
     @dependinator.register( target( testable ), outputs: [source_files_cache( testable )] )
+    register_preprocessed_dependencies( target( testable ), expansion( testable ) )
     @dependinator.mark_fresh( target( testable ) )
   end
 
