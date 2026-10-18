@@ -87,4 +87,49 @@ describe 'ReportTestsIdeStdout' do
     plugin = ReportTestsIdeStdout.allocate
     expect(plugin.send(:load_template)).to eq(DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE)
   end
+
+  # The golden fixtures hold the report as ERB rendered it, so the plugin's own report,
+  # rendered through the plugin, must match them byte for byte
+  describe 'report against the captured ERB output' do
+    require 'template_render_cases'
+
+    before(:each) do
+      @loginator = double('loginator')
+      allow(@loginator).to receive(:decorate) { |str, _label| str }
+      allow(@loginator).to receive(:log) { |output, *_| @captured = output }
+
+      @reportinator = PluginReportinator.new(
+        { plugin_reportinator_helper: nil, plugin_manager: nil, reportinator: Reportinator.new,
+          loginator: @loginator, templateinator: Templateinator.new }
+      )
+
+      file_wrapper = double('file_wrapper')
+      allow(file_wrapper).to receive(:exist?) { |path| File.exist?( path ) }
+      allow(file_wrapper).to receive(:read) { |path| File.read( path ) }
+
+      @system_objects = { plugin_reportinator: @reportinator, file_wrapper: file_wrapper, configurator: nil,
+                          file_path_utils: nil, rake_invocation_tracker: nil }
+      @reportinator.set_system_objects( @system_objects )
+    end
+
+    def plugin
+      root = File.join( TemplateRenderCases::ROOT, 'plugins', 'report_tests_ide_stdout' )
+      return @system_objects[:report_tests_ide_stdout] = ReportTestsIdeStdout.new( @system_objects, 'report_tests_ide_stdout', root )
+    end
+
+    # Newlines normalized as the golden spec does, so a checkout's line endings don't matter
+    def render(hash)
+      template = TemplateRenderCases.normalize_newlines( plugin.send(:load_template) )
+      @reportinator.run_report( template, hash )
+      return @captured
+    end
+
+    TemplateRenderCases.cases.each_pair do |case_name, hash|
+      it "renders #{case_name} exactly as ERB did" do
+        fixture = File.join( TemplateRenderCases::FIXTURES_PATH, "ide__#{case_name}.txt" )
+
+        expect(render( Marshal.load( Marshal.dump( hash ) ) ).b).to eq( File.binread( fixture ) )
+      end
+    end
+  end
 end
