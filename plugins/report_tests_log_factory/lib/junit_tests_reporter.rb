@@ -9,8 +9,11 @@ require 'tests_reporter'
 
 class JunitTestsReporter < TestsReporter
 
+  # :file_line_anchor writes a located test's file attribute as path#line, a form some
+  # tools follow to the line
   def setup()
     super( default_filename: 'junit_tests_report.xml' )
+    @file_line_anchor = fetch_config_value( :file_line_anchor ) == true
   end
 
   # Each results category and the outcome its tests carry in a suite
@@ -62,7 +65,7 @@ class JunitTestsReporter < TestsReporter
     # Skip nil and empty entries a results file may carry
     tests = result[:collection].reject { |test| test.nil? or test.empty? }
 
-    suite[:collection] += tests.map { |test| test.merge( result: outcome ) }
+    suite[:collection] += tests.map { |test| test.merge( result: outcome, source: source ) }
     suite[:time] = times[source]
   end
 
@@ -102,7 +105,7 @@ class JunitTestsReporter < TestsReporter
 
   # A passing test is an empty element. Any other test holds an element for its outcome.
   def write_test(test, stream)
-    opening = '    <testcase name="%s" time="%.3f"' % [ xml_escape( test[:test] ), test[:unity_test_time] ]
+    opening = "    <testcase #{attributes( testcase_attributes( test ) )}"
     outcome = outcome_element( test )
 
     return stream.puts( opening + '/>' ) if outcome.nil?
@@ -112,11 +115,40 @@ class JunitTestsReporter < TestsReporter
     stream.puts( '    </testcase>' )
   end
 
+  # A test's class is its suite, path kept, so same-named test files in different folders,
+  # and their same-named test cases, stay distinct where CI tools group results by class.
+  # A test carries the line Unity reported for it, when its results name one.
+  def testcase_attributes(test)
+    attributes = { name: test[:test], classname: suite_name( test[:source] ), file: test_file( test ) }
+    attributes[:line] = test[:line] unless test[:line].nil?
+    attributes[:time] = format( '%.3f', test[:unity_test_time] )
+    return attributes
+  end
+
+  def test_file(test)
+    return test[:source] unless @file_line_anchor && test[:line]
+
+    return "#{test[:source]}##{test[:line]}"
+  end
+
+  # A failure's message starts with its file and line in the form compilers use, which
+  # readers and tools recognize
+  def located_message(test)
+    return test[:message] if test[:line].nil?
+
+    return "#{test[:source]}:#{test[:line]}: #{test[:message]}"
+  end
+
+  # Each attribute's value escaped, in the order given
+  def attributes(pairs)
+    return pairs.map { |key, value| %(#{key}="#{xml_escape( value )}") }.join( ' ' )
+  end
+
   def outcome_element(test)
     case test[:result]
     when :failed
       return '<failure />' if test[:message].to_s.empty?
-      return '<failure message="%s" />' % xml_escape( test[:message] )
+      return '<failure message="%s" />' % xml_escape( located_message( test ) )
     when :ignored
       return '<skipped />'
     end
