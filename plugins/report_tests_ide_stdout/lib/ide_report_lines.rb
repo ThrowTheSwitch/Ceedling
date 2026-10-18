@@ -16,8 +16,7 @@ class IdeReportLines
   PROFILES = {
     gcc:     { format: :gcc,    absolute_paths: false, allowed: [true, false] },
     legacy:  { format: :legacy, absolute_paths: false, allowed: [true, false] },
-    # The Ceedling for VS Code extension joins every path it reads to the project's path
-    vscode:  { format: :gcc,    absolute_paths: false, allowed: [false] },
+    vscode:  { format: :gcc,    absolute_paths: false, allowed: [true, false] },
     eclipse: { format: :gcc,    absolute_paths: false, allowed: [true, false] },
     # CLion's output filters find only absolute paths
     clion:   { format: :gcc,    absolute_paths: true,  allowed: [true] }

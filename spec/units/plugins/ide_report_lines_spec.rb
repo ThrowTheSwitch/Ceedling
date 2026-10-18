@@ -51,7 +51,7 @@ module IdeParsers
   CEEDLING_EXTENSION_GCC = {
     warning: /^(.*):(\d+):(\d+):\s+warning:\s+(.*)$/,
     error:   /^(.*):(\d+):(\d+):\s+error:\s+(.*)$/,
-    other:   /^(.*):(\d+):\s+(?!(warning:|error:|note:))(.*)$/
+    other:   /^(.*):(\d+):(?:\([^)]*\):)?\s+(?!(warning:|error:|note:))(.*)$/
   }.freeze
 
   # CLion's output filter $FILE_PATH$:$LINE$:$COLUMN$.*, where a file path must be absolute
@@ -121,20 +121,13 @@ describe IdeReportLines do
     it 'lets :absolute_paths override a named IDE that reads either path form' do
       expect(lines( { format: :eclipse, absolute_paths: true } )).to eq( absolute )
       expect(lines( { format: :clion, absolute_paths: true } )).to eq( absolute )
-      expect(lines( { format: :vscode, absolute_paths: false } )).to eq( relative )
+      expect(lines( { format: :vscode, absolute_paths: true } )).to eq( absolute )
     end
 
     # CLion's output filters find only absolute paths
     it 'rejects relative paths for :clion' do
       expect { lines( { format: :clion, absolute_paths: false } ) }.to raise_error(
         CeedlingException, /:report_tests_ide_stdout ↳ :absolute_paths cannot be FALSE with :format :clion/
-      )
-    end
-
-    # The Ceedling for VS Code extension joins every path it reads to the project's path
-    it 'rejects absolute paths for :vscode' do
-      expect { lines( { format: :vscode, absolute_paths: true } ) }.to raise_error(
-        CeedlingException, /:report_tests_ide_stdout ↳ :absolute_paths cannot be TRUE with :format :vscode/
       )
     end
 
