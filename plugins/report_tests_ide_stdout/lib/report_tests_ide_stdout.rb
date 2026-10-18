@@ -15,7 +15,7 @@ class ReportTestsIdeStdout < ReportTestsStdoutPlugin
   def setup
     super
 
-    @report_lines = IdeReportLines.new
+    @report_lines = IdeReportLines.load( @ceedling[:setupinator].config_hash[:report_tests_ide_stdout] )
   end
 
   # The lines for one failed or ignored test. The plugin's template calls this through its

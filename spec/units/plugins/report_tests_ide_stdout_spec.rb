@@ -7,11 +7,13 @@
 
 require 'spec_helper'
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 require 'ceedling/reportinator'
 require 'ceedling/plugins/plugin'
 require 'ceedling/plugins/plugin_reportinator'
 require 'ceedling/templateinator'
 require 'template_render_cases'
+require 'yaml'
 
 $: << File.expand_path('../../../../plugins/report_tests_ide_stdout/lib', __FILE__)
 $: << File.expand_path('../../../../lib/ceedling/plugins', __FILE__)
@@ -34,12 +36,20 @@ describe ReportTestsIdeStdout do
     allow(file_wrapper).to receive(:exist?) { |path| File.exist?( path ) }
     allow(file_wrapper).to receive(:read) { |path| File.read( path ) }
 
-    @system_objects = { plugin_reportinator: @reportinator, file_wrapper: file_wrapper, configurator: nil,
-                        file_path_utils: nil, rake_invocation_tracker: nil }
+    setupinator = double( 'setupinator', config_hash: { report_tests_ide_stdout: config } )
+
+    @system_objects = { plugin_reportinator: @reportinator, file_wrapper: file_wrapper, setupinator: setupinator,
+                        configurator: nil, file_path_utils: nil, rake_invocation_tracker: nil }
     @reportinator.set_system_objects( @system_objects )
   end
 
   let(:root_path) { File.join( TemplateRenderCases::ROOT, 'plugins', 'report_tests_ide_stdout' ) }
+
+  # The plugin's own defaults, as a project that sets nothing gets them
+  let(:config) do
+    defaults = YAML.load_file( File.join( root_path, 'config', 'defaults.yml' ), permitted_classes: [Symbol] )
+    defaults[:report_tests_ide_stdout]
+  end
 
   def plugin
     return @system_objects[:report_tests_ide_stdout] ||= described_class.new( @system_objects, 'report_tests_ide_stdout', root_path )
@@ -64,8 +74,8 @@ describe ReportTestsIdeStdout do
     }
   end
 
-  def report(results)
-    return render( { context: TEST_SYM, results: results } )
+  def report(results, context: TEST_SYM)
+    return render( { context: context, results: results } )
   end
 
   it 'registers the template in its own assets directory' do
@@ -82,11 +92,24 @@ describe ReportTestsIdeStdout do
     expect(report(empty)).to include('No tests executed.')
   end
 
-  # Every line of a multi-line message stays a link an IDE can follow
-  it 'reindents a multi-line failure message, prefixing every continuation line with file:line:test:' do
+  it 'reports gcc lines by default' do
     expect(report(results)).to include(
-      "test/TestFoo.c:30:test_c: \"Expected 1\ntest/TestFoo.c:30:test_c: Was 2\""
+      "test/TestFoo.c:40:1: warning: test_d\n",
+      "test/TestFoo.c:30:1: error: test_c: Expected 1\n    Was 2\n"
     )
+  end
+
+  # Coverage plugins render their results through this plugin's template
+  it 'gives a coverage context its banners and the same lines' do
+    output = report(results, context: :gcov)
+
+    expect(output).to include( 'GCOV: FAILED TEST SUMMARY' )
+    expect(output).to include( "\ntest/TestFoo.c:30:1: error: test_c: Expected 1\n" )
+  end
+
+  it 'rejects a configuration it cannot report with' do
+    config[:format] = :msvc
+    expect { plugin }.to raise_error( CeedlingException, /:report_tests_ide_stdout ↳ :format/ )
   end
 
   it "decorates the summary banner the same way the pretty report does" do
@@ -94,9 +117,18 @@ describe ReportTestsIdeStdout do
     expect(@loginator).to have_received(:decorate).with('OVERALL TEST SUMMARY', LogLabels::FAIL)
   end
 
-  # The golden fixtures hold the report as ERB rendered it, so the plugin's own report
-  # must match them byte for byte
-  describe 'report against the captured ERB output' do
+  context 'with :format :legacy' do
+    let(:config) { { format: :legacy } }
+
+    # Every line of a multi-line message stays a link an IDE can follow
+    it 'reindents a multi-line failure message, prefixing every continuation line with file:line:test:' do
+      expect(report(results)).to include(
+        "test/TestFoo.c:30:test_c: \"Expected 1\ntest/TestFoo.c:30:test_c: Was 2\""
+      )
+    end
+
+    # The golden fixtures hold the report as ERB rendered it, so the plugin's own report
+    # must match them byte for byte
     TemplateRenderCases.cases.each_pair do |case_name, hash|
       it "renders #{case_name} exactly as ERB did" do
         fixture = File.join( TemplateRenderCases::FIXTURES_PATH, "ide__#{case_name}.txt" )
