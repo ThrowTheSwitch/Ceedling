@@ -61,7 +61,8 @@ describe 'ReportTestsLogFactory reports (integration)' do
 
       expect(root.attributes['name']).to eq(name)
       expect(root.elements['testsuite'].attributes['name']).to eq('test/T&"x"')
-      expect(root.elements['testsuite/testcase/failure'].attributes['message']).to eq('Expected "<a>" & more')
+      expect(root.elements['testsuite/testcase/failure'].attributes['message']).to eq('test/T&"x".c:2: Expected "<a>" & more')
+      expect(root.elements['testsuite/testcase'].attributes['file']).to eq('test/T&"x".c')
       expect(root.elements['testsuite/system-out'].text).to include('printed <out> & more')
     end
   end
