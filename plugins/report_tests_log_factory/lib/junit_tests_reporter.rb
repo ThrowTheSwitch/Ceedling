@@ -102,7 +102,7 @@ class JunitTestsReporter < TestsReporter
 
   # A passing test is an empty element. Any other test holds an element for its outcome.
   def write_test(test, stream)
-    opening = '    <testcase name="%s" time="%.3f"' % [ xml_escape( test[:test] ), test[:unity_test_time] ]
+    opening = "    <testcase #{attributes( testcase_attributes( test ) )}"
     outcome = outcome_element( test )
 
     return stream.puts( opening + '/>' ) if outcome.nil?
@@ -110,6 +110,15 @@ class JunitTestsReporter < TestsReporter
     stream.puts( opening + '>' )
     stream.puts( '      ' + outcome )
     stream.puts( '    </testcase>' )
+  end
+
+  def testcase_attributes(test)
+    return { name: test[:test], time: format( '%.3f', test[:unity_test_time] ) }
+  end
+
+  # Each attribute's value escaped, in the order given
+  def attributes(pairs)
+    return pairs.map { |key, value| %(#{key}="#{xml_escape( value )}") }.join( ' ' )
   end
 
   def outcome_element(test)
