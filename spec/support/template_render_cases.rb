@@ -25,8 +25,10 @@ module TemplateRenderCases
 
   FIXTURES_PATH = File.join( ROOT, 'spec', 'support', 'fixtures', 'templates' )
 
-  # Name => template string. The ide template is a constant rather than an asset
-  # file, which is why it is read differently from the other two.
+  # Name => template string. The ide template is Ceedling's default results template,
+  # a constant rather than an asset file, which is why it is read differently from the
+  # other two. The IDE plugin's own template, set to :legacy, must match the same ide
+  # fixtures, as its spec checks.
   #
   # Every template is normalized to line feeds. The fixtures record what ERB
   # produced from the canonical template content, so the comparison has to be about

@@ -6,14 +6,22 @@
 # =========================================================================
 
 require 'report_tests_stdout_plugin'
+require 'ide_report_lines'
 
+# Parent class loads template from plugin assets directory and runs the reporting hooks
 class ReportTestsIdeStdout < ReportTestsStdoutPlugin
 
-  private
+  # `Plugin` setup()
+  def setup
+    super
 
-  # Use the Ceedling default template instead of a plugin-local template file
-  def load_template
-    return DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE
+    @report_lines = IdeReportLines.new
+  end
+
+  # The lines for one failed or ignored test. The plugin's template calls this through its
+  # system object, so every context rendering results here gets the same lines.
+  def problem(file, item, outcome)
+    return @report_lines.lines( file, item, outcome )
   end
 
 end
