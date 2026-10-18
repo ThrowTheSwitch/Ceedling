@@ -83,9 +83,9 @@ not because of the file itself.
 
     ---
 
-    Formats test results for the console such that an IDE executing Ceedling
-    tasks can recognize file paths and line numbers in test failures and link
-    them for direct file navigation.
+    Lists failed and ignored tests in the shape of GCC diagnostics, which
+    Eclipse CDT, VS Code, CLion, and other IDEs read as problems that link to
+    each test.
 
 -   :material-monitor-screenshot: **[`report_tests_gtestlike_stdout`](report-tests-gtestlike-stdout.md)**
 

@@ -27,6 +27,29 @@ Remove the options from these places:
 
 If you need an option in `:compile` flags only, give `:preprocess` flags of their own without it.
 
+## IDE console report lines are GCC diagnostics by default
+
+`report_tests_ide_stdout` now lists each failed and ignored test the way GCC reports a problem. IDEs read these lines as errors and warnings without extra configuration.
+
+```
+test/TestModel.c:21:1: error: testInit: Expected 5 Was 4
+```
+
+The earlier lines looked like this:
+
+```
+test/TestModel.c:21:testInit: "Expected 5 Was 4"
+```
+
+A multi-line message no longer repeats the file, line, and test on every line. Its first line stays with the test’s location, and the rest follow indented. The Gcov, Bullseye, and Valgrind plugins print their test results through this plugin when it is enabled, so their lines change too.
+
+A script, tool, or IDE configuration that matches the earlier lines must be updated. To keep the earlier lines, set the format to `:legacy`:
+
+```YAML
+:report_tests_ide_stdout:
+  :format: :legacy
+```
+
 ---
 
 # [1.1.0] — 2026-07-16

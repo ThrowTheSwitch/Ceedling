@@ -49,18 +49,93 @@ Ceedling 1.2.0 has had no Ruby 4.0 compatibility work, but users have reported s
 The following is not a complete project configuration. But, for those already familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling through the lens of a project configuration. To be clear, more has changed than what is referenced in this YAML blurb (see the Changelog).
 
 ```yaml
+:extension:
+  # Each file type now accepts a single extension or a list of extensions.
+  # Ceedling collects files under any extension in a list.
+  :source:
+    - .c
+    - .C
+    - .cc
+  :header: .h
+
+:unity:
+  # When TRUE, Unity's test runner shuffles the order of test cases within each test executable.
+  # Useful for surfacing tests that depend on execution order or on state left by an earlier test.
+  # Delta builds always rerun test executables when shuffling is enabled so each run is shuffled.
+  :shuffle_tests: FALSE
+
+:test_runner:
+  # Seed for :shuffle_tests. The default of 0 seeds from the current time for a new order
+  # on every run. A fixed, nonzero value repeats one shuffled order (e.g. for debugging).
+  :rng_seed: 0
+
 :plugins:
   :enabled:
     # (See config blurbs below)
     - gcov
+    - bullseye
     - valgrind
     - cppcheck
+    - module_generator
+    - dependencies
+    - report_build_warnings_log
+    - report_tests_log_factory
+
+    # Enable only one console test report plugin
+    - report_tests_ide_stdout
+    # - report_tests_gtestlike_stdout
 
 :gcov:
+  # gcovr now also generates JaCoCo XML and LCOV reports (requires gcovr 7.0+).
+  # ReportGenerator continues to generate lcov as well.
+  :reports:
+    - JaCoCo
+    - lcov
+
   :gcovr:
     # Optional list of raw command line arguments passed to gcovr as-is (e.g. limiting
     # its search paths). These are passed even when :config_file is set.
     :custom_args: []
+
+    # Optional JaCoCo and LCOV report settings
+    :jacoco_pretty: FALSE
+    :jacoco_artifact_filename: GcovCoverageJaCoCo.xml
+    :lcov_comment: "Q-36 Space Modulator"
+    :lcov_test_name: unit_tests
+    :lcov_artifact_filename: GcovCoverage.lcov
+
+  :report_generator:
+    # Optional coverage thresholds (1–100) that break the build, mirroring the gcovr
+    # :fail_under_* options already available.
+    :fail_under_line: 80
+    :fail_under_branch: 70
+    :fail_under_method: 90
+    :fail_under_full_method: 75
+
+# The Bullseye code coverage plugin is enabled again (disabled since 1.0.0) and modernized.
+:bullseye:
+  # Coverage totals and per-source function coverage printed to the console after tests
+  :summaries: TRUE
+
+  # Untested sources are logged by default.
+  # - :list (default) logs sources missing from coverage results.
+  # - :ignore entirely omits any handling of untested sources.
+  # - :compile compiles all untested sources for 0% coverage entries.
+  :untested_sources: :list
+
+  # Optional annotated listing of branches: :none (default), :uncovered, or :all
+  :branch_detail: :none
+
+  # Optional machine-readable coverage report: :none (default), :native, or :cobertura
+  :xml_report: :none
+
+  # Optional coverage thresholds that break the build. 0 (default) disables each check.
+  :fail_under:
+    :functions: 0
+    :branches: 0
+
+  # Path to a floating-license manager file. Not needed for node-locked licenses.
+  :license_manager_file: ~
 
 :valgrind:
   # When TRUE, writes a machine-readable XML report per test binary alongside the text log.
@@ -85,6 +160,78 @@ The following is not a complete project configuration. But, for those already fa
   # The default XML report schema version is now 2, which every Cppcheck release accepts.
   # Older Cppcheck releases reject version 3 and fail the build.
   :xml_report_version: 2
+
+:module_generator:
+  # :naming now takes effect (bug fix). Without it, generated file names keep the case
+  # typed at the command line (it no longer defaults to :snake).
+  # Options: :bumpy, :camel, :snake, or :caps.
+  :naming: :snake
+
+  # Wrap each generated test file in #if rather than the default #ifdef.
+  # Options: :ifdef (default) or :if.
+  :test_guard: :if
+
+:dependencies:
+  :deps:
+    - :name: Packer
+      :paths:
+        :fetch: third_party/packer
+        :build: third_party/packer/build
+
+        # New optional folder where `dependencies:deploy` copies executables and
+        # dynamic libraries. Defaults to beside the release executable.
+        :deploy: tools/bin
+      :fetch:
+        :method: :git
+        :source: https://github.com/example/firmware-packer.git
+        :tag: v1.3.0
+      :build:
+        - make all BUILD=build
+      :artifacts:
+        # New list of programs a dependency builds as tools rather than libraries.
+        # They are built for a release, never linked, and copied by `dependencies:deploy`.
+        :executables:
+          - packer
+
+:report_build_warnings_log:
+  # Now a base name. Each report adds its own extension (e.g. warnings.log, warnings.sarif).
+  :filename: warnings
+
+  # Any of :text, :sarif, and :json. No listing is the original text log alone (default).
+  :reports:
+    - :text
+    - :sarif
+
+  # Optional regular expressions replacing the default match of any line mentioning "warning"
+  :patterns: []
+
+  # Optional regular expressions dropping matched warnings, along with their context
+  :excludes:
+    - 'third_party/'
+
+:report_tests_log_factory:
+  :reports:
+    - junit
+  :junit:
+    # Each JUnit <testcase> now carries classname, file, and line attributes.
+    # When TRUE, the file attribute is written as path#line for tools that follow that form.
+    :file_line_anchor: FALSE
+
+:report_tests_ide_stdout:
+  # Failed and ignored tests now print as GCC diagnostics by default, which IDEs read as problems.
+  # - :gcc (default) works with any tool that reads GCC output.
+  # - :legacy restores the lines printed before 1.2.0.
+  # - :vscode, :eclipse, and :clion are shortcuts for the :gcc settings each IDE needs.
+  :format: :gcc
+
+  # Optional full paths in place of project-relative paths. Unset, each format's own
+  # path form applies. :clion requires TRUE and automatically sets this value.
+  :absolute_paths: FALSE
+
+:report_tests_gtestlike_stdout:
+  # Unity ignored tests are now reported as GoogleTest skipped tests.
+  # Set FALSE to leave ignored tests out of the report.
+  :ignored_as_skipped: TRUE
 
 ```
 
