@@ -203,8 +203,19 @@ ceedling_system_tests do
         end
       end
 
-      it "lists a failure as filepath, line, test name, and message" do
+      it "lists a failure as an error and an ignored test as a warning, located as GCC locates them" do
         in_project do
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(output).to match(%r{^test/test_adder\.c:\d+:1: error: test_adder_fails: Expected 5 Was 4$})
+          expect(output).to match(%r{^test/test_adder\.c:\d+:1: warning: test_adder_waits})
+          expect(output).to match(/TESTED:\s+3/)
+        end
+      end
+
+      it "lists a failure as filepath, line, test name, and message in the legacy format" do
+        in_project do
+          @c.merge_project_yml_for_test( :report_tests_ide_stdout => { :format => :legacy } )
           output = @c.ceedling_build_exec("test:all")
 
           expect(output).to match(%r{test/test_adder\.c:\d+:test_adder_fails: "Expected 5 Was 4"})
