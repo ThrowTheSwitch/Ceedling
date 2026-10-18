@@ -979,10 +979,12 @@ class TestBuildExecutor
   # gcc's `-MMD -MF` discovered on the *previous* successful compile, if any)
   # and reports whether it needs (re)building. The previous run's `.d` file is
   # the only header list available before this run's compile has happened --
-  # if headers changed, that's exactly what makes this stale.
+  # if headers changed, that's exactly what makes this stale. Nothing has just
+  # written that file, so one look suffices: a clean build has none, and a missed
+  # one leaves the object stale, forcing a recompile.
   def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:)
     @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths, tools: [tool] ) )
-    @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist_with_retry?( dependencies )
+    @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.stale?( object )
   end
 
