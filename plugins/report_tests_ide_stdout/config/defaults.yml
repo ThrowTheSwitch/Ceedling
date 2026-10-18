@@ -1,0 +1,13 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+:report_tests_ide_stdout:
+  # The shape of each failed and ignored test's line. :absolute_paths has no default, so
+  # each format's own path form applies unless a project sets it.
+  :format: :gcc
+...

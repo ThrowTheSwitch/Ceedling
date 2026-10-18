@@ -623,10 +623,16 @@ The default `load_template` reads `assets/test_results.template` from the plugin
 own root path. It falls back to the historical `assets/template.erb` name when only
 that older file exists. A plugin shipping the old filename therefore keeps working.
 
-Two stock plugins demonstrate both approaches. `report_tests_pretty_stdout` has an
-empty subclass body and inherits the asset file default.
-`report_tests_ide_stdout` overrides `load_template` and returns the
-`DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE` constant from `lib/ceedling/defaults.rb`.
+Every stock stdout report plugin uses the asset file default.
+`report_tests_pretty_stdout` has an empty subclass body.
+
+A template can also call its own plugin object. Ceedling's system objects include
+each loaded plugin, named for it, so a template reaches its plugin as
+`@ceedling[:<plugin name>]`. `report_tests_gtestlike_stdout` and
+`report_tests_ide_stdout` work this way. Their templates hand results to plugin
+methods that build lines in Ruby. That keeps formatting logic testable and
+configurable. Gcov, Bullseye, and Valgrind render test results through whichever
+template is registered, so they get the same lines.
 
 A plugin can also render a template directly. `@ceedling[:plugin_reportinator]`
 exposes `run_report(template, hash)` for this. The Bullseye plugin uses it to

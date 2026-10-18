@@ -116,6 +116,9 @@ The [Build Warnings Log plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/p
 ### GTest-like report plugin skipped tests
 The [GTest-like console report](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/) (`report_tests_gtestlike_stdout`) now reports a Unity test ignored with `TEST_IGNORE()` or `TEST_IGNORE_MESSAGE()` as a GoogleTest skipped test. A skipped test is listed with its location and message, counted in the run, and summarized between passed and failed tests, the way GoogleTest 1.10.0 and later reports `GTEST_SKIP()`. A test file whose every test is ignored now gets its own section. The new `:report_tests_gtestlike_stdout` ↳ `:ignored_as_skipped:` setting defaults to `TRUE`. Set it to `FALSE` to leave ignored tests out of the report for tools that do not understand skipped tests (see the related _Changed_ entry below).
 
+### IDE report plugin formats
+[#633](https://github.com/ThrowTheSwitch/Ceedling/issues/633) The [IDE console report](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-ide-stdout/) (`report_tests_ide_stdout`) now lists failed and ignored tests in the shape of GCC diagnostics (e.g. `test/TestModel.c:21:1: error: testInit: Expected 5 Was 4`). Eclipse CDT, VS Code, CLion, and other tools that read GCC output show each failure as an error and each ignored test as a warning, linked to the test. The new `:report_tests_ide_stdout` ↳ `:format` setting defaults to `:gcc`. `:legacy` restores the earlier, simpler lines. `:vscode`, `:eclipse`, and `:clion` name the settings each IDE needs. The plugin documentation now covers set up for each of these IDEs (see the related _Changed_ entry below).
+
 ### Filepath limit checks
 Platform filepath limits (especially on Windows) can lead to mysterious build failures, especially in CI where deep project subdirectories can occur. To help track down funny business, filepaths are intercepted and their lengths logged if they are nearing or exceed the platform limit.
 
@@ -276,6 +279,9 @@ Ceedling writes `#include` guards into the headers it generates for test builds 
 
 ### GTest-like report plugin output matches GoogleTest
 The GTest-like console report’s output now better matches GoogleTest’s own console format. Counts read in the singular for one (`1 test`, ` 1 FAILED TEST`), test files are named test suites, and the run’s total time appears on its closing line. The failure list and its trailer appear only when a test fails. By default, ignored tests now appear in the report and its counts as skipped tests (see the related _Added_ entry above). A tool that checks this report’s totals will see ignored tests counted unless `:report_tests_gtestlike_stdout` ↳ `:ignored_as_skipped:` is set to `FALSE`.
+
+### IDE report plugin lines default to the GCC output format
+The IDE console report’s failed and ignored tests now print as GCC diagnostics by default (see the related _Added_ entry above). A multi-line message keeps its first line with the test’s location and indents the rest. The Gcov, Bullseye, and Valgrind plugins’ test results change the same way when this plugin is enabled. A script or tool that reads the earlier format needs `:report_tests_ide_stdout` ↳ `:format: :legacy` (see [Breaking Changes](BreakingChanges.md)).
 
 ## 👋 Removed
 
