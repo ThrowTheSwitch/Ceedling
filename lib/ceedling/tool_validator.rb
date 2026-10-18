@@ -77,9 +77,9 @@ class ToolValidator
     command    = tool[:executable]
     executable = ToolValidator.executable_from( command )
 
-    return fail_validation( "Tool #{name} is missing :executable in its configuration!", boom ) if executable.nil?
-
     return true if tool[:optional] and respect_optional
+    
+    return fail_validation( "Tool #{name} is missing :executable in its configuration!", boom ) if executable.nil?
 
     return run_time_executable_valid?( command, name, boom ) if run_time_executable?( command )
 

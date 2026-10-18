@@ -15,6 +15,7 @@ plugins/dependencies/example/supervisor/build/
 
 # Logs / test output
 specout/
+systests/
 
 # Coverage report output (CEEDLING_TEST_COVERAGE test runs)
 /coverage/
