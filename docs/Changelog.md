@@ -33,7 +33,10 @@ In Ceedling’s early history simplicity won out with the assumption that every 
 
 Previously, Partial directive macros took only a bare module name with no means to provide path information to distinguish modules of the same name. Every Partials `_MODULE` and `_CONFIG` macro now has an `_AT` variant taking that module’s directory as a separate first argument (e.g. `TEST_PARTIAL_PRIVATE_MODULE_AT(sensors/soil, Calibration)`). As with `#include` directives elsewhere, the directory is matched against the trailing end of a real file’s path. Supply only as much of it as it takes to name the module you mean. A bare module name in the original macros continues to work unchanged.
 
-A test file can now **test** two same-named modules together. It cannot **mock** both of them because of a CMock limitation not yet resolved.Mocking either module on its own continues to work unaffected. See [Known Issues](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md).
+A test file can now **test** two same-named modules together, and it can **mock** both of them too (see the next section).
+
+### Mocking same-named headers by directory
+A test file can now mock two headers that share a filename, such as `drivers/uart/config.h` and `drivers/spi/config.h`, by including each mock through its folder (`#include "drivers/uart/mock_config.h"`). This works for traditional mocks, `MOCK_PARTIAL_*_MODULE_AT()` Partials, and the FFF plugin’s fakes. The new [`:cmock` ↳ `:mock_name_include_folder`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/cmock/#mock_name_include_folder) setting, enabled by default, names each mock’s internals by that folder so the two mocks no longer collide. It relies on matching features in CMock and Unity, which Ceedling’s vendored copies include.
 
 ### Multiple file extensions per file type
 Added support for multiple [file extensions](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/extension/) per type (e.g. `:extension` ↳ `:source` ⇒ `['.c', '.C']`) such as requested in [#947](https://github.com/ThrowTheSwitch/Ceedling/issues/947).

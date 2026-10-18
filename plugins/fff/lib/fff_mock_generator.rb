@@ -22,10 +22,12 @@ class FffMockGenerator
   # `def self.` definitions it did nothing at all.
   class << self
 
+    # `c_name` names the include guard and control functions. It differs from the file's
+    # `mock_name` when the mock is named by the folder its #include names.
     def create_mock_header(module_name, mock_name, parsed_header, pre_includes=nil,
-      post_includes=nil)
+      post_includes=nil, c_name: mock_name)
       output = StringIO.new
-      write_opening_include_guard(mock_name, output)
+      write_opening_include_guard(c_name, output)
       output.puts
       write_extra_includes(pre_includes, output)
       write_header_includes(module_name, output)
@@ -35,14 +37,14 @@ class FffMockGenerator
       output.puts
       write_function_declarations(parsed_header, output)
       output.puts
-      write_control_function_prototypes(mock_name, output)
+      write_control_function_prototypes(c_name, output)
       output.puts
-      write_closing_include_guard(mock_name, output)
+      write_closing_include_guard(c_name, output)
       output.string
     end
 
     def create_mock_source (mock_name, parsed_header, pre_includes=nil,
-      post_includes=nil)
+      post_includes=nil, c_name: mock_name)
       output = StringIO.new
       write_extra_includes(pre_includes, output)
       write_source_includes(mock_name, output)
@@ -50,7 +52,7 @@ class FffMockGenerator
       output.puts
       write_function_definitions(parsed_header, output)
       output.puts
-      write_control_function_definitions(mock_name, parsed_header, output)
+      write_control_function_definitions(c_name, parsed_header, output)
       output.string
     end
 

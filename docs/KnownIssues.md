@@ -26,7 +26,6 @@ Ceedling 1.2.0 requires Ruby 3+ but only unoficially supports Ruby 4.
 
 ### Partials
 
-1. A single test file cannot **mock** two same-named modules using Partials or traditional mocking, even now that it can name each of them by directory. A temporary CMock limitation causes duplicate symbols and missing definitions. A future CMock release will lift the limitation without a change to your test files.
 1. A module whose header protects itself with `#pragma once` instead of a traditional `#ifndef` include guard can still hit a `redefinition` or `conflicting types` error, if any other header your module uses reaches that header in turn. Ceedling suppresses the real header by defining its include guard, and `#pragma once` provides no guard to define. Converting the module’s header to a traditional include guard works around it.
 1. A type created by a macro invocation rather than written out — the list and queue building macros in `sys/queue.h`, for instance — is not recognized as a type, and a Partial using one fails to compile with an `unknown type name` error.
 1. A `struct`, `union`, or `enum` written directly on a variable, as in `static struct { int depth; } slot;`, is treated as a variable alone. The generated Partial states the type twice and fails to compile.

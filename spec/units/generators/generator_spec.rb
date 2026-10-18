@@ -9,7 +9,8 @@ require 'spec_helper'
 require 'ceedling/generators/generator'
 require 'ceedling/constants'
 
-# Scoped to Generator#generate_object_file_c's choice of which file the compiler receives.
+# Scoped to Generator#generate_object_file_c's choice of which file the compiler receives,
+# and to where Generator#generate_mock has CMock write a mock.
 describe Generator do
   before(:each) do
     @tool_executor  = double('tool_executor')
@@ -26,8 +27,15 @@ describe Generator do
       :file_finder, :file_path_utils, :reportinator, :loginator, :test_runner_manager
     ].to_h { |name| [name, double( name.to_s ).as_null_object] }
 
+    @generator_mocks = double('generator_mocks')
+    @cmock           = double('cmock', setup_mocks: nil)
+    allow(@generator_mocks).to receive(:build_configuration).and_return( {} )
+    allow(@generator_mocks).to receive(:manufacture).and_return( @cmock )
+    allow(@plugin_manager).to receive(:pre_mock_generate)
+    allow(@plugin_manager).to receive(:post_mock_generate)
+
     @generator = described_class.new(
-      collaborators.merge( tool_executor: @tool_executor, plugin_manager: @plugin_manager )
+      collaborators.merge( tool_executor: @tool_executor, plugin_manager: @plugin_manager, generator_mocks: @generator_mocks )
     )
   end
 
@@ -52,6 +60,36 @@ describe Generator do
       expect(@tool_executor).to have_received(:build_command_line).with( :compiler, [], 'build/tmp1/gpio.c', any_args )
       expect(@plugin_manager).to have_received(:pre_compile_execute).with( hash_including( source: 'src/gpio.c' ) )
       expect(@plugin_manager).to have_received(:post_compile_execute).with( hash_including( source: 'src/gpio.c' ) )
+    end
+  end
+
+  describe '#generate_mock' do
+    def generate(**extra)
+      @generator.generate_mock(
+        context: :test, mock: :mock_config, test: 'test_both', input_filepath: 'src/drivers/uart/config.h',
+        output_path: 'build/test/mocks/test_both/drivers/uart', **extra
+      )
+    end
+
+    it 'has CMock write straight into the mock\'s directory without a folder' do
+      generate()
+
+      expect(@generator_mocks).to have_received(:build_configuration).with( 'build/test/mocks/test_both/drivers/uart', overrides: {} )
+      expect(@cmock).to have_received(:setup_mocks).with( 'src/drivers/uart/config.h', nil )
+    end
+
+    # CMock writes below its root at the folder, so the root is the directory less the folder
+    it 'roots CMock above the folder and hands it the folder, which names the mock' do
+      generate( folder: 'drivers/uart' )
+
+      expect(@generator_mocks).to have_received(:build_configuration).with( 'build/test/mocks/test_both', overrides: {} )
+      expect(@cmock).to have_received(:setup_mocks).with( 'src/drivers/uart/config.h', 'drivers/uart' )
+    end
+
+    it 'still reports the mock\'s own directory to plugins' do
+      generate( folder: 'drivers/uart' )
+
+      expect(@plugin_manager).to have_received(:pre_mock_generate).with( hash_including( output_path: 'build/test/mocks/test_both/drivers/uart' ) )
     end
   end
 end
