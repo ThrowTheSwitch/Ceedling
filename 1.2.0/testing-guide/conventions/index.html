@@ -5094,12 +5094,12 @@ meant.</p>
   to provide a path to distinguish source files of the same name to be 
   compiled and linked with a test executable.</li>
 </ul>
-<div class="admonition warning">
-<p class="admonition-title">One test file cannot mock two same-named headers</p>
-<p>Path information distinguishes which header a mock is generated <em>from</em>, but a
-single test file cannot presently mock two headers that share a filename 
-because of a (temporary) CMock limitation. See
-<a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md">Known Issues</a>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Mocking two same-named headers in one test file</p>
+<p>Include each mock through its folder, as in <code>#include "drivers/uart/mock_config.h"</code>
+and <code>#include "drivers/spi/mock_config.h"</code>. With
+<a href="../../configuration/reference/cmock/#mock_name_include_folder"><code>:cmock</code> ↳ <code>:mock_name_include_folder</code></a>,
+on by default, each mock is named by that folder, and the two do not collide.</p>
 </div>
 <p><code>TEST_SOURCE_FILE()</code> also takes precedence over the header/source correspondence
 convention above. If a test both <code>#include</code>s a header and separately names a
@@ -5248,9 +5248,9 @@ test file and optional test directive macros.</p>
 </ol>
 <p>A mock is generated into the directory mirroring the header it came from, so two
 same-named headers in different directories produce two mocks in different
-directories. Even so, a single test file cannot mock both because of a temporary
-CMock limitation that will cause duplicated symbol names and missing defintions.
-Mock either header alone, or split the two across separate test files.</p>
+directories. A single test file can mock both when it includes each mock through
+its folder (e.g. <code>#include "folder/mock_foo.h"</code>), since each mock is then named 
+by that folder.</p>
 <p>Sometimes the source file you need to add to your test executable has
 no corresponding header file — e.g. <code>file_abc.h</code> contains symbols 
 present in <code>file_xyz.c</code>. In these cases, you can use the test 
@@ -5311,6 +5311,10 @@ be done with simple text scanning.</p>
 directives or include directives with macros as targets, preprocessing is required.
 Ceedling uses various passes of preprocessor modes to successfully extract
 <code>#include</code> directives.</p>
+<p>A test file’s <code>#include</code> directives are extracted with the preprocessor only when
+test files are preprocessed, with <code>:use_test_preprocessor</code> set to <code>:tests</code> or <code>:all</code>.
+With <code>:mocks</code>, only mockable headers are preprocessed, and a test file’s
+<code>#include</code> directives come from text scanning.</p>
 <h3 id="preprocessing-for-tests-and-mocks">Preprocessing for tests and mocks</h3>
 <p>If your test files rely on macros and <code>#ifdef</code> conditionals used in certain
 ways (see examples below), there’s a chance that Ceedling will break on trying
@@ -5343,17 +5347,18 @@ your configuration setting and logs the setting update.</p>
 features (such as in the preceding sections).</p>
 <p>Older versions of <code>gcc</code> or <code>clang</code> standins may not support certain preprocessing
 features Ceedling requires. Ceedling probes for those features; if they are not 
-found then Ceedling falls back to a simpler, internal 
-<a href="../../configuration/reference/test-build/#preprocess_force_fallback">text-scanning fallback preprocessing</a>.</p>
-<p>This simpler preprocessing mode within Ceedling is simply not as capable as full 
-preprocessing, but it can often handle the most common preprocessing needs (i.e. 
-condition compilation). Ceedling does what it can to find and log issues related
-to inadequate preprocessing before you get to mysterious compilation errors.</p>
+found then Ceedling falls back to a simpler, best-effort
+<a href="../../configuration/reference/test-build/#preprocess_force_fallback">fallback preprocessing</a>.</p>
+<p>Fallback preprocessing is a best effort with no guarantees. It is not as capable 
+as full preprocessing, but it can usually handle the most common preprocessing 
+needs (i.e. conditional compilation). Ceedling does what it can to find and log 
+issues related to inadequate preprocessing before you get to mysterious 
+compilation errors.</p>
 <div class="admonition tip">
 <p class="admonition-title">Fallback preprocessing for faster test builds</p>
 <p>Ceedling’s internal <a href="../../configuration/reference/test-build/#preprocess_force_fallback">fallback preprocessing mode can be forced</a>,
 and, for <strong><em>some</em></strong> projects this can be a shortcut to running advanced 
-Ceedling features such as Partials with much faster builds.</p>
+Ceedling features such as Partials with faster builds.</p>
 <p><strong><em>If using Partials, there’s a good chance your code is too complex for fallback preprocessing.</em></strong></p>
 </div>
 <h3 id="limitations-gotchas">Limitations &amp; gotchas</h3>

@@ -3445,6 +3445,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="CMock configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fakes-of-same-named-headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fakes of same-named headers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4569,6 +4586,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="CMock configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fakes-of-same-named-headers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fakes of same-named headers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4846,6 +4880,16 @@ Each example uses fakes for a "display" module, created from a display.h file wi
 <a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
 <a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">        </span><span class="nt">:includes_c_post_header</span><span class="p">:</span>
 </code></pre></div>
+<h3 id="fakes-of-same-named-headers">Fakes of same-named headers</h3>
+<p>With <code>:cmock</code> ↳ <code>:mock_name_include_folder</code> enabled, Ceedling’s default, a fake
+included through a folder is named by that folder, as a CMock mock is. A fake
+included as <code>drivers/uart/mock_config.h</code> (<code>#include "drivers/uart/mock_config.h"</code>) 
+is written to that folder below the test’s mock directory, and its <code>Init()</code>, 
+<code>Verify()</code>, and <code>Destroy()</code> functions become <code>drivers_uart_mock_config_Init()</code> 
+and so on. One test file can then fake two headers sharing a filename by 
+including each through its own folder.</p>
+<p>The fakes of the functions themselves keep the functions’ own names, so the 
+two headers must not declare the same function.</p>
 <h2 id="fff-examples">FFF examples</h2>
 <p>See the <a href="https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff/examples/fff_example">FFF example project</a>. This project illustrates how to use the plugin with full-size examples.</p>
 <div class="admonition warning">

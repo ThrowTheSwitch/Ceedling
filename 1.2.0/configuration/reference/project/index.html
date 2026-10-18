@@ -4822,6 +4822,11 @@ accessible system search path.</p>
 <li><code>:mocks</code> enables only preprocessing of header files that are to be mocked.</li>
 <li><code>:tests</code> enables only preprocessing of your test files.</li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Enabling Partials (<code>:project</code> ↳ <code>:use_partials</code>) sets this option to <code>:all</code>,
+whatever value you give it, since Partials require preprocessing.</p>
+</div>
 <p><strong>Default</strong>: <code>:none</code></p>
 <h2 id="test_file_prefix"><code>:test_file_prefix</code></h2>
 <p>Ceedling collects test files by convention from within the test file search

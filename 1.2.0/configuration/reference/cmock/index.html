@@ -2403,6 +2403,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mock_name_include_folder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :mock_name_include_folder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#verbosity" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4377,6 +4388,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mock_name_include_folder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :mock_name_include_folder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#verbosity" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4543,6 +4565,17 @@ fashion are documented below. See <a href="https://github.com/ThrowTheSwitch/CMo
 </code></pre></div>
 <h2 id="enforce_strict_ordering"><code>:enforce_strict_ordering</code></h2>
 <p>Tests fail if expected call order is not same as source order</p>
+<p><strong>Default</strong>: TRUE</p>
+<h2 id="mock_name_include_folder"><code>:mock_name_include_folder</code></h2>
+<p>Names each mock’s include guard and <code>Init()</code>, <code>Verify()</code>, and <code>Destroy()</code>
+functions by the folder its <code>#include</code> names. A mock included as
+<code>drivers/uart/mock_config.h</code> (<code>#include "drivers/uart/mock_config.h"</code>) gets 
+functions such as <code>drivers_uart_mock_config_Init()</code>. A mock included without
+a folder keeps its plain name.</p>
+<p>This is what lets one test file mock two headers sharing a filename, such as
+<code>drivers/uart/config.h</code> and <code>drivers/spi/config.h</code>. Include each mock through
+its own folder. Ceedling copies this setting into the test runner
+configuration, so runners always call the names the mocks define.</p>
 <p><strong>Default</strong>: TRUE</p>
 <h2 id="verbosity"><code>:verbosity</code></h2>
 <p>If not set, defaults to Ceedling’s verbosity level</p>

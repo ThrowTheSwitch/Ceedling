@@ -4732,6 +4732,14 @@ want no additional flags for preprocessing regardless of test compilation
 flags, specify an empty list <code>[]</code> for the relevant matcher (or for the
 whole <code>:preprocess</code> section, if using the simple list format).</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">Keep line markers in preprocessor output</p>
+<p>Ceedling reads the line markers in preprocessor output to find 
+<code>#include</code>s, mockable functions, and test cases. With test preprocessing 
+enabled, Ceedling refuses to start if <code>-P</code> or <code>--no-line-commands</code> 
+appears in <code>:preprocess</code> flags. The same holds for <code>:compile</code> flags, 
+which preprocessing uses wherever no <code>:preprocess</code> flags apply.</p>
+</div>
 <p><strong>Default</strong>: Same flags as that same file resolved to for <code>:compile</code>, unless specified</p>
 <h2 id="flags-test-link"><code>:flags</code> ↳ <code>:test</code> ↳ <code>:link</code></h2>
 <p>This project configuration entry adds the specified items as flags to the link

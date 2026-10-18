@@ -5226,6 +5226,12 @@ way needed. To use a literal <code>$</code>, escape it as <code>\\$</code>.</p>
   features are quite dependent on the idiosyncrasies and features of the GCC
   toolchain.</p>
 </li>
+<li>
+<p>Whatever the tool, preprocessor output must keep its line markers. With
+  test preprocessing enabled, Ceedling refuses to start if <code>-P</code> or
+  <code>--no-line-commands</code> appears in the arguments of
+  <code>:test_file_full_preprocessor</code> or <code>:test_file_directives_only_preprocessor</code>.</p>
+</li>
 </ul>
 <h3 id="example-test-compiler-tooling">Example Test Compiler Tooling</h3>
 <p>Resulting compiler command line construction from preceding example <code>:tools</code>

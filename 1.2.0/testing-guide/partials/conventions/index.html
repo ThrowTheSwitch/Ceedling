@@ -4545,10 +4545,8 @@ module argument of a bare macro instead does not work, for reasons covered in
 sufficient when no duplicate modules exist. And, when multiple modules are 
 present, it continues to resolve the way a compiler's own header search does — 
 the first match among the ordered search paths wins.</p>
-<p>Naming two same-named modules by directory lets one test file <strong>test</strong> both. It
-cannot <strong>mock</strong> both — a limitation of how CMock names a mock's contents, covered
-under <a href="../directives/#naming-a-module-by-directory">Naming a module by
-directory</a>.</p>
+<p>Naming two same-named modules by directory lets one test file <strong>test</strong> both, and
+<strong>mock</strong> both, as covered under <a href="../directives/#naming-a-module-by-directory">Naming a module by directory</a>.</p>
 <div class="admonition tip">
 <p class="admonition-title">When Ceedling cannot tell two modules apart</p>
 <p>A bare module name matching more than one module is reported with the

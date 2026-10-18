@@ -4453,11 +4453,11 @@ inject assembly code into the build of a test executable:</p>
 to fully understand how this setting relates to your Ceedling 
 feature selection and overall test build.</p>
 </div>
-<p>This setting forces Ceedling to use text-scanning fallback preprocessing 
-mechanisms regardless of your toolchain’s preprocessor capabilities.</p>
+<p>This setting forces Ceedling to use best-effort fallback preprocessing 
+regardless of your toolchain’s preprocessor capabilities.</p>
 <p>Forcing fallback preprocessing is useful in a handful of scenarios:</p>
 <ol>
-<li>As a much faster alternative to full preprocessing in test projects
+<li>As a faster alternative to full preprocessing in test projects
    with relatively simple conditional compilation preprocessing needs
    (e.g. <code>#ifdef</code>). Ceedling’s advanced features require preprocessing;
    forcing fallback preprocessing can be a shortcut for faster test
@@ -4470,11 +4470,26 @@ mechanisms regardless of your toolchain’s preprocessor capabilities.</p>
 your toolchain’s C preprocessor tool for indications that it supports
 directives-only mode. Some toolchains, particularly older variations, 
 may not support this mode. If directives-only mode is not available,
-Ceedling uses less capable text-only scanning of C files instead 
-attempting to accomplish as much as possible for a given test build.</p>
+Ceedling uses less capable fallback preprocessing instead, attempting 
+to accomplish as much as possible for a given test build.</p>
+<p>Fallback preprocessing is a best effort with no guarantees. Its handling of 
+conditional compilation is limited. Ceedling may not choose the same 
+active code your compiler would, especially where conditions depend on 
+values from other files. Macro expansion is not supported at all. Code 
+that relies on macros to name files, shape function signatures, or 
+define test cases may not be recognized.</p>
+<div class="admonition warning">
+<p class="admonition-title">When fallback preprocessing falls short in your test build</p>
+<p>Fallback preprocessing may allow mocks of something you did not 
+intend, miss a mock or source file a test build needs, or fail with 
+compilation or linking errors that are hard to trace back to 
+preprocessing. Ceedling reports problems it can detect.</p>
+<p>If a test build behaves unexpectedly, try it without forced fallback 
+preprocessing or with a toolchain that supports full preprocessing.</p>
+</div>
 <p>When <code>:preprocess_force_fallback</code> is enabled, the start up probe of 
 your toolchain’s preprocessor is entirely skipped, and Ceedling 
-uses its internal text-scanning preprocessing instead.</p>
+uses fallback preprocessing instead.</p>
 <p><strong>Default</strong>: FALSE</p>
 <p><br/><br/></p>
 

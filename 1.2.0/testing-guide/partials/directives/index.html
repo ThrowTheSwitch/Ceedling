@@ -4782,15 +4782,12 @@ therefore generate two distinct files rather than overwriting one another.</p>
 </tr>
 </tbody>
 </table>
-<div class="admonition warning">
-<p class="admonition-title">Two same-named modules cannot both be mocked in one test file</p>
-<p><code>TEST_PARTIAL_*_MODULE_AT()</code> works for two modules sharing a basename where each
-is tested through its own Partial. <code>MOCK_PARTIAL_*_MODULE_AT()</code> does not because
-of a temporary limitation of CMock that causes duplicate symbols and missing
-definitions.</p>
-<p>Mocking either module on its own works, and so does Partials testing both 
-together. To mock both Partials, split them across separate test files.
-See <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md">Known Issues</a>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Two same-named modules in one test file</p>
+<p><code>TEST_PARTIAL_*_MODULE_AT()</code> and <code>MOCK_PARTIAL_*_MODULE_AT()</code> both work for two
+modules sharing a basename. Each mock Partial is named by its directory through
+<a href="../../../configuration/reference/cmock/#mock_name_include_folder"><code>:cmock</code> ↳ <code>:mock_name_include_folder</code></a>,
+enabled by default, so the two mocks do not collide.</p>
 </div>
 <p>A <code>_CONFIG_AT</code> macro must name the same directory as the <code>_MODULE_AT</code> macro it
 refines. The directory and module together identify which Partial a function
