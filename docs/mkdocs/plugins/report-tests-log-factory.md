@@ -183,11 +183,32 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
 :report_tests_log_factory:
   :reports:
     - junit
-  # Default filename shown for completeness
-  # `:junit` block only needed to override default
+  # Defaults shown for completeness
+  # `:junit` block only needed to override defaults
   :junit:
     :filename: junit_tests_report.xml
+    :file_line_anchor: FALSE
 ```
+
+#### JUnit test locations
+
+Each `<testcase>` names where its test lives, so CI tools can group results and
+link to the code.
+
+* **`classname`** is the test file’s path without its extension, the same as the
+  enclosing `<testsuite>` name. Keeping the path matters because Ceedling can build
+  two test files of the same name in different folders, each with a test case of
+  the same name. CI tools identify a test case by its class and name together, and
+  the path keeps the two apart.
+* **`file`** is the test file’s path.
+* **`line`** is the line Unity reported for the test, when it reports one.
+* A failure’s message starts with the file and line in the form compilers use,
+  such as `test/TestUsartModel.c:62: Expected 8 Was 9`.
+
+Some tools follow a `file` attribute written as `path#line` to the line itself.
+Set `:file_line_anchor` to `TRUE` to write `file` that way for each test case that
+has a line, such as `test/TestUsartModel.c#62`. It defaults to `FALSE`, which
+writes the plain path that tools such as GitLab turn into a link.
 
 #### Example JUnit test report
 
@@ -203,12 +224,12 @@ In mapping a Ceedling test suite to JUnit conventions, a Ceedling _test file_ be
 <?xml version="1.0" encoding="utf-8" ?>
 <testsuites name="Ceedling Test Suite" tests="4" failures="1" time="0.331">
   <testsuite name="test/TestUsartModel" tests="4" failures="1" skipped="1" errors="0" time="0.331">
-    <testcase name="testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting" time="0.000"/>
-    <testcase name="testShouldReturnErrorMessageUponInvalidTemperatureValue" time="0.000"/>
-    <testcase name="testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately" time="0.000">
-      <failure message="Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected." />
+    <testcase name="testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting" classname="test/TestUsartModel" file="test/TestUsartModel.c" line="25" time="0.000"/>
+    <testcase name="testShouldReturnErrorMessageUponInvalidTemperatureValue" classname="test/TestUsartModel" file="test/TestUsartModel.c" line="33" time="0.000"/>
+    <testcase name="testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately" classname="test/TestUsartModel" file="test/TestUsartModel.c" line="44" time="0.000">
+      <failure message="test/TestUsartModel.c:44: Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected." />
     </testcase>
-    <testcase name="testShouldReturnWakeupMessage" time="0.000">
+    <testcase name="testShouldReturnWakeupMessage" classname="test/TestUsartModel" file="test/TestUsartModel.c" line="51" time="0.000">
       <skipped />
     </testcase>
   </testsuite>
