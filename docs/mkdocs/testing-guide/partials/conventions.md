@@ -56,10 +56,8 @@ sufficient when no duplicate modules exist. And, when multiple modules are
 present, it continues to resolve the way a compiler's own header search does — 
 the first match among the ordered search paths wins.
 
-Naming two same-named modules by directory lets one test file **test** both. It
-cannot **mock** both — a limitation of how CMock names a mock's contents, covered
-under [Naming a module by
-directory](directives.md#naming-a-module-by-directory).
+Naming two same-named modules by directory lets one test file **test** both, and
+**mock** both, as covered under [Naming a module by directory](directives.md#naming-a-module-by-directory).
 
 !!! tip "When Ceedling cannot tell two modules apart"
     A bare module name matching more than one module is reported with the

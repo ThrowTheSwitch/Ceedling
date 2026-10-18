@@ -49,11 +49,11 @@ meant.
   to provide a path to distinguish source files of the same name to be 
   compiled and linked with a test executable.
 
-!!! warning "One test file cannot mock two same-named headers"
-    Path information distinguishes which header a mock is generated _from_, but a
-    single test file cannot presently mock two headers that share a filename 
-    because of a (temporary) CMock limitation. See
-    [Known Issues](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md).
+!!! tip "Mocking two same-named headers in one test file"
+    Include each mock through its folder, as in `#include "drivers/uart/mock_config.h"`
+    and `#include "drivers/spi/mock_config.h"`. With
+    [`:cmock` ↳ `:mock_name_include_folder`](../configuration/reference/cmock.md#mock_name_include_folder),
+    on by default, each mock is named by that folder, and the two do not collide.
 
 `TEST_SOURCE_FILE()` also takes precedence over the header/source correspondence
 convention above. If a test both `#include`s a header and separately names a
@@ -224,9 +224,9 @@ The `#include` list directs Ceedling in two ways:
 
 A mock is generated into the directory mirroring the header it came from, so two
 same-named headers in different directories produce two mocks in different
-directories. Even so, a single test file cannot mock both because of a temporary
-CMock limitation that will cause duplicated symbol names and missing defintions.
-Mock either header alone, or split the two across separate test files.
+directories. A single test file can mock both when it includes each mock through
+its folder (e.g. `#include "folder/mock_foo.h"`), since each mock is then named 
+by that folder.
 
 Sometimes the source file you need to add to your test executable has
 no corresponding header file — e.g. `file_abc.h` contains symbols 

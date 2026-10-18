@@ -10,6 +10,10 @@ These breaking changes are complemented by three other documents:
 
 # [1.2.0] — Prerelease
 
+## Mocks included through a folder are named by that folder
+
+`:cmock` ↳ `:mock_name_include_folder` is on by default. A mock included through a folder, such as `#include "drivers/uart/mock_config.h"`, now gets an include guard and `Init()`, `Verify()`, and `Destroy()` functions named by that folder (e.g. `drivers_uart_mock_config_Init()`). This lets one test file mock two same-named headers. The runner Ceedling generates calls the new names, so most projects need no change. A test or support file that calls a mock’s lifecycle functions directly, or references its include guard, must use the new names or set `:mock_name_include_folder` to `FALSE`.
+
 ## `-P` and `--no-line-commands` rejected with test preprocessing
 
 Ceedling now refuses these preprocessor options at startup whenever test preprocessing is enabled. That is the case when `:project` ↳ `:use_test_preprocessor` is `:mocks`, `:tests`, or `:all`, or when Partials are enabled.
