@@ -13,7 +13,7 @@ require 'ceedling/plugins/plugin'
 require 'ceedling/plugins/plugin_reportinator'
 require 'ceedling/templateinator'
 require 'template_render_cases'
-require 'yaml'
+require 'ceedling/yaml_wrapper'
 
 $: << File.expand_path('../../../../plugins/report_tests_ide_stdout/lib', __FILE__)
 $: << File.expand_path('../../../../lib/ceedling/plugins', __FILE__)
@@ -45,9 +45,9 @@ describe ReportTestsIdeStdout do
 
   let(:root_path) { File.join( TemplateRenderCases::ROOT, 'plugins', 'report_tests_ide_stdout' ) }
 
-  # The plugin's own defaults, as a project that sets nothing gets them
+  # The plugin's own defaults, read as Ceedling reads them, as a project that sets nothing gets them
   let(:config) do
-    defaults = YAML.load_file( File.join( root_path, 'config', 'defaults.yml' ), permitted_classes: [Symbol] )
+    defaults = YamlWrapper.new( { file_wrapper: nil } ).load_string( File.read( File.join( root_path, 'config', 'defaults.yml' ) ) )
     defaults[:report_tests_ide_stdout]
   end
 
