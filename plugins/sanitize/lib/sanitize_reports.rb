@@ -16,10 +16,12 @@ module SanitizeReports
 
   LABELS = { address: 'AddressSanitizer', undefined: 'UndefinedBehaviorSanitizer', leak: 'LeakSanitizer' }.freeze
 
-  # A finding's sanitizer, kind, and location in one line
+  # A finding's sanitizer, kind, and location in one line. UBSan names every finding
+  # undefined behavior, so its message says what happened instead.
   def self.headline(finding)
     location = finding.file ? " at #{finding.file}:#{finding.line}" : ''
-    return "#{LABELS[finding.sanitizer]} #{finding.kind}#{location}"
+    what     = finding.sanitizer == :undefined ? finding.message : finding.kind
+    return "#{LABELS[finding.sanitizer]} #{what}#{location}"
   end
 
   # Each report as the sanitizer printed it, under its test. A context without findings has

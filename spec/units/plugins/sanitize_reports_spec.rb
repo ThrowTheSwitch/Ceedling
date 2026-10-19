@@ -49,6 +49,13 @@ describe SanitizeReports do
     expect(text).to include( '==13==ERROR: AddressSanitizer: heap-buffer-overflow' )
   end
 
+  # UBSan names every finding undefined behavior, so its message says what happened
+  it 'heads a UBSan finding with its runtime error' do
+    ub = SanitizeFindings::Finding.new( sanitizer: :undefined, kind: 'undefined-behavior', file: 'src/shift.c', line: 3, column: 67,
+                                        message: 'left shift of 128 by 24 places cannot be represented in type \'int\'', text: '' )
+    expect(described_class.headline( ub )).to eq( "UndefinedBehaviorSanitizer left shift of 128 by 24 places cannot be represented in type 'int' at src/shift.c:3" )
+  end
+
   it 'writes each finding\'s fields as JSON, with the build context' do
     json = JSON.parse( report( :json ).render( :sanitize, records ) )
 
