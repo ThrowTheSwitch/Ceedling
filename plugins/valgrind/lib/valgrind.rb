@@ -82,6 +82,17 @@ class Valgrind < Plugin
   # own dependency-tracker meta capture, so a change to :valgrind ↳ :arguments (or
   # :tools ↳ :valgrind itself) is what actually forces a rerun -- not the plain test
   # fixture tool this replaces.
+  # A sanitizer-instrumented executable can't run under Valgrind, so a valgrind: build whose
+  # flags carry -fsanitize stops. The flags often come from :flags ↳ :test, which a valgrind
+  # build uses for any operation it gives no flags of its own.
+  def pre_test_compile_register(arg_hash)
+    refuse_sanitizer_flags( arg_hash, 'compile' ) if arg_hash[:context] == VALGRIND_SYM
+  end
+
+  def pre_test_link_register(arg_hash)
+    refuse_sanitizer_flags( arg_hash, 'link' ) if arg_hash[:context] == VALGRIND_SYM
+  end
+
   def pre_test_fixture_register(arg_hash)
     return unless arg_hash[:context] == VALGRIND_SYM
 
@@ -171,6 +182,18 @@ class Valgrind < Plugin
   end
 
   private
+
+  def refuse_sanitizer_flags(arg_hash, operation)
+    sanitizing = Array( arg_hash[:flags] ).grep( /\A-fsanitize/ )
+    return if sanitizing.empty?
+
+    raise CeedlingException.new(
+      "Valgrind cannot run a test executable built with sanitizers, but this valgrind: build's " \
+      "#{operation} flags include #{sanitizing.map { |flag| "`#{flag}`" }.join( ', ' )}. " \
+      "Give the valgrind build #{operation} flags of its own under :flags ↳ :valgrind, or move the " \
+      "sanitizer flags out of :flags ↳ :test."
+    )
+  end
 
   def xml_report_enabled?
     return @configurator.project_config_hash[:valgrind_xml_report] == true

@@ -180,6 +180,31 @@ describe Valgrind do
   ## Fixture tool substitution
   ##
 
+  # A sanitizer-instrumented executable can't run under Valgrind
+  describe 'sanitizer flags in a valgrind build' do
+    let(:valgrind) { build_valgrind }
+
+    it 'stops a compile whose flags carry -fsanitize, naming them' do
+      expect {
+        valgrind.pre_test_compile_register( { context: VALGRIND_SYM, flags: ['-g', '-fsanitize=address,undefined'], source: 'src/a.c' } )
+      }.to raise_error( CeedlingException, /-fsanitize=address,undefined/ )
+    end
+
+    it 'stops a link whose flags carry -fsanitize' do
+      expect {
+        valgrind.pre_test_link_register( { context: VALGRIND_SYM, flags: ['-fsanitize=leak'], executable: 'build/a.out' } )
+      }.to raise_error( CeedlingException, /-fsanitize=leak/ )
+    end
+
+    it 'leaves a valgrind build without sanitizer flags alone' do
+      expect { valgrind.pre_test_compile_register( { context: VALGRIND_SYM, flags: ['-g'], source: 'src/a.c' } ) }.to_not raise_error
+    end
+
+    it 'leaves other build contexts alone' do
+      expect { valgrind.pre_test_compile_register( { context: :test, flags: ['-fsanitize=address'], source: 'src/a.c' } ) }.to_not raise_error
+    end
+  end
+
   describe '#pre_test_fixture_register' do
     def register(project_config, context: VALGRIND_SYM)
       valgrind = build_valgrind(project_config)
