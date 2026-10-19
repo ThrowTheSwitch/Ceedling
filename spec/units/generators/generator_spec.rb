@@ -82,6 +82,53 @@ describe Generator do
     end
   end
 
+  describe '#generate_test_results with a crash' do
+    let(:backtrace) { @collaborators[:generator_test_results_backtrace] }
+    let(:results)   { @collaborators[:generator_test_results] }
+
+    def run(tool: :fixture, use_backtrace: :none, explanation: nil)
+      allow(@collaborators[:configurator]).to receive(:project_config_hash).and_return( { project_use_backtrace: use_backtrace } )
+      allow(@plugin_manager).to receive(:explain_test_crash) { |arg_hash| arg_hash[:explanation] = explanation }
+
+      @generator.generate_test_results(
+        tool: tool, context: :test, test_name: 'test_a', test_filepath: 'test/test_a.c',
+        executable: 'build/test_a.out', result: 'build/test_a.pass'
+      )
+    end
+
+    before(:each) do
+      allow(@collaborators[:generator_helper]).to receive(:test_crash?).and_return( true )
+      allow(@collaborators[:test_context_extractor]).to receive(:lookup_test_cases).and_return( [] )
+      allow(results).to receive(:filter_test_cases) { |cases| cases }
+      allow(@plugin_manager).to receive(:pre_test_fixture_execute)
+      allow(@plugin_manager).to receive(:post_test_fixture_execute)
+    end
+
+    it 'fails a crashed test with the cause a plugin names for it' do
+      run( explanation: 'ASan heap-buffer-overflow at src/a.c:9' )
+      expect(results).to have_received(:create_crash_failure).with( 'test_a.c', anything, [], message: 'ASan heap-buffer-overflow at src/a.c:9' )
+    end
+
+    it 'fails a crashed test as a crash when no plugin names a cause' do
+      run()
+      expect(results).to have_received(:create_crash_failure).with( 'test_a.c', anything, [], message: 'Test executable crashed' )
+    end
+
+    it 'has each simple backtrace rerun explained by the plugins' do
+      run( use_backtrace: :simple )
+      expect(backtrace).to have_received(:do_simple).with( 'test_a.c', 'build/test_a.out', anything, [], context: :test, tool: :fixture, explain: kind_of(Proc) )
+    end
+
+    # A tool that runs the reruns itself can't run under gdb
+    it 'falls back to simple backtraces, with a notice, for a fixture tool that runs its own reruns' do
+      run( tool: { name: 'wrapper', backtrace_rerun: true }, use_backtrace: :gdb )
+
+      expect(backtrace).to have_received(:do_simple)
+      expect(backtrace).not_to have_received(:do_gdb)
+      expect(@collaborators[:loginator]).to have_received(:log).with( /:use_backtrace .*:gdb.*:simple/, Verbosity::NORMAL )
+    end
+  end
+
   describe '#generate_mock' do
     def generate(**extra)
       @generator.generate_mock(

@@ -449,7 +449,7 @@ class Generator
   # Lists the crashed test's cases, filtered by any matchers the build task specified, and
   # learns what it can about the crash as :project ↳ :use_backtrace allows
   def handle_test_crash(arg_hash, shell_result)
-    backtrace = @configurator.project_config_hash[:project_use_backtrace]
+    backtrace = backtrace_for( arg_hash[:tool] )
     @helper.log_test_results_crash( arg_hash[:executable], shell_result, backtrace )
 
     test_cases = @test_context_extractor.lookup_test_cases( arg_hash[:test_filepath] )
@@ -458,15 +458,32 @@ class Generator
     return crash_results( backtrace, arg_hash, shell_result, test_cases )
   end
 
+  # A fixture tool that runs its own backtrace reruns can't run them under gdb
+  def backtrace_for(tool)
+    backtrace = @configurator.project_config_hash[:project_use_backtrace]
+    return backtrace unless backtrace == :gdb && tool.is_a?( Hash ) && tool[:backtrace_rerun]
+
+    @loginator.log( "Fixture tool `#{tool[:name]}` runs its own reruns, so :use_backtrace ➡️ :gdb falls back to :simple", Verbosity::NORMAL )
+    return :simple
+  end
+
   def crash_results(backtrace, arg_hash, shell_result, test_cases)
     filename, executable, context = File.basename( arg_hash[:test_filepath] ), arg_hash[:executable], arg_hash[:context]
+    explain = ->(result) { crash_explanation( arg_hash, result ) }
 
     case backtrace
     when :gdb    then @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: context )
-    when :simple then @backtrace.do_simple( filename, executable, shell_result, test_cases, context: context, tool: arg_hash[:tool] )
+    when :simple then @backtrace.do_simple( filename, executable, shell_result, test_cases, context: context, tool: arg_hash[:tool], explain: explain )
     # A crash is otherwise reported as a single failure
-    else @generator_test_results.create_crash_failure( filename, shell_result, test_cases )
+    else @generator_test_results.create_crash_failure( filename, shell_result, test_cases, message: explain.call( shell_result ) || 'Test executable crashed' )
     end
+  end
+
+  # The cause of a crash, if a plugin recognizes it (e.g. a sanitizer's finding)
+  def crash_explanation(arg_hash, shell_result)
+    explaining = arg_hash.merge( shell_result: shell_result, explanation: nil )
+    @plugin_manager.explain_test_crash( explaining )
+    return explaining[:explanation]
   end
 
   # The caller already knows which test this run belongs to. Rediscovering it from the

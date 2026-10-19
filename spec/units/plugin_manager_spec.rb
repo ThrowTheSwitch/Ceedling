@@ -93,4 +93,21 @@ describe PluginManager do
       expect { @pm.pre_test_fixture_register({}) }.to_not raise_error
     end
   end
+
+  describe '#explain_test_crash' do
+    before(:each) { allow(@loginator).to receive(:lazy) }
+
+    it 'lets a plugin implementing it name the cause of a crash' do
+      plugin = double('plugin', :name => 'fake')
+      allow(plugin).to receive(:respond_to?).and_return(false)
+      allow(plugin).to receive(:respond_to?).with(:explain_test_crash).and_return(true)
+      allow(plugin).to receive(:explain_test_crash) { |arg_hash| arg_hash[:explanation] = 'ASan heap-buffer-overflow' }
+      @pm.instance_variable_set(:@plugin_objects, [plugin])
+
+      arg_hash = { explanation: nil }
+      @pm.explain_test_crash( arg_hash )
+
+      expect(arg_hash[:explanation]).to eq( 'ASan heap-buffer-overflow' )
+    end
+  end
 end

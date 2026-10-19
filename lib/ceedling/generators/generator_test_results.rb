@@ -226,12 +226,12 @@ class GeneratorTestResults
     return _test_cases
   end
 
-  def create_crash_failure(source, shell_result, test_cases)
+  def create_crash_failure(source, shell_result, test_cases, message: 'Test executable crashed')
     count = test_cases.size()
 
     output = []
     test_cases.each do |test_case|
-      output << "#{source}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test executable crashed"
+      output << "#{source}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: #{message}"
     end
 
     shell_result[:output] = 

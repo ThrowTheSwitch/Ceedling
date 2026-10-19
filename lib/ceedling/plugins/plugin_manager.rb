@@ -120,6 +120,9 @@ class PluginManager
   def post_link_execute(arg_hash); execute_plugins(:post_link_execute, arg_hash); end
 
   def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
+
+  # A plugin that recognizes why a test executable crashed sets `arg_hash[:explanation]`
+  def explain_test_crash(arg_hash); execute_plugins(:explain_test_crash, arg_hash); end
   def post_test_fixture_execute(arg_hash)
     # Special arbitration: Raw test results are printed or taken over by plugins handling the job
     @loginator.log( arg_hash[:shell_result][:output] ) if @configurator.plugins_display_raw_test_results

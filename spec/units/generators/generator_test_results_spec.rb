@@ -368,6 +368,21 @@ describe GeneratorTestResults do
     end
   end
 
+  describe '#create_crash_failure' do
+    let(:test_cases) { [{ test: 'test_x', line_number: 4 }] }
+
+    it 'fails each test case as a crash of the test executable' do
+      result = @generate_test_results.create_crash_failure( 'test_a.c', { output: '' }, test_cases )
+      expect(result[:output]).to include( 'test_a.c:4:test_x:FAIL: Test executable crashed' )
+    end
+
+    # A plugin that recognized the crash names its cause in place of the generic message
+    it 'fails each test case with a given message' do
+      result = @generate_test_results.create_crash_failure( 'test_a.c', { output: '' }, test_cases, message: 'ASan heap-buffer-overflow at src/a.c:9' )
+      expect(result[:output]).to include( 'test_a.c:4:test_x:FAIL: ASan heap-buffer-overflow at src/a.c:9' )
+    end
+  end
+
   describe '#filter_test_cases' do
     let(:test_cases) do
       [

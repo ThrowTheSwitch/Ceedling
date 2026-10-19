@@ -294,13 +294,15 @@ class GeneratorTestResultsBacktrace
   # (e.g. one setting a sanitizer's runtime options) runs the reruns too. Otherwise reruns
   # go through the dedicated backtrace tool, so a wrapper that writes one report per test,
   # such as Valgrind's, keeps the main run's report.
-  def do_simple(filename, executable, shell_result, test_cases, context:, tool: nil)
+  #
+  # `explain` names the cause of a rerun's crash, if a plugin recognizes it.
+  def do_simple(filename, executable, shell_result, test_cases, context:, tool: nil, explain: nil)
     results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
     shell_result[:time] = 0 # Summed over the per-group sub-process runs
     any_crashed = false
 
     group_test_cases( test_cases ).each do |group|
-      group_results, crashed = simple_group_results( filename, executable, group, shell_result, tool )
+      group_results, crashed = simple_group_results( filename, executable, group, shell_result, { tool: tool, explain: explain } )
       any_crashed ||= crashed
       merge_results( results, group_results )
     end
@@ -316,12 +318,14 @@ class GeneratorTestResultsBacktrace
   # One sub-process run for a group. Its results are buffered apart from the file's, since
   # the status check can still discard every match in favor of a crash attribution once the
   # whole group has been seen.
-  def simple_group_results(filename, executable, group, shell_result, tool)
-    crash_result = run_simple_group( executable, group, tool )
+  # `rerun` holds the fixture tool and crash explainer do_simple was given
+  def simple_group_results(filename, executable, group, shell_result, rerun)
+    crash_result = run_simple_group( executable, group, rerun[:tool] )
     # Running tests separately increases total execution time
     shell_result[:time] += crash_result[:time].to_f()
 
-    group_results, crashed = attribute_group_results( filename, group, crash_result[:output] )
+    explanation = rerun[:explain]&.call( crash_result )
+    group_results, crashed = attribute_group_results( filename, group, crash_result[:output], explanation )
     return [group_results, crashed] if crashed
 
     # Every member matched a result line, but a retry through its own separately configured
@@ -353,13 +357,13 @@ class GeneratorTestResultsBacktrace
 
   # Gives each group member its own real result line, if Unity printed one. The first member
   # with none is the crash; any after it never ran because that earlier member crashed.
-  def attribute_group_results(filename, group, output)
+  def attribute_group_results(filename, group, output, explanation)
     group_results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
     crashed = false
 
     group.each do |test_case|
       outcome, line = simple_result_line( filename, test_case, output )
-      outcome, line = unresolved_case( filename, test_case, output, crashed ) if outcome.nil?
+      outcome, line = unresolved_case( filename, test_case, output, crashed, explanation ) if outcome.nil?
       crashed = true if outcome == :crashed
 
       group_results[outcome == :crashed ? :failed : outcome] += 1
@@ -384,13 +388,13 @@ class GeneratorTestResultsBacktrace
     return [nil, nil]
   end
 
-  def unresolved_case(filename, test_case, output, crashed)
+  def unresolved_case(filename, test_case, output, crashed, explanation)
     location = "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: "
     return [:failed, location + "Test case not run -- an earlier case in this parameterized test group crashed"] if crashed
 
     # Any non-result, non-blank lines (e.g. assertion messages on stderr)
     extra = extract_simple_crash_output( output, filename )
-    line  = location + "Test case crashed"
+    line  = location + (explanation || "Test case crashed")
     line += " >> #{extra.join(NEWLINE_TOKEN)}" unless extra.empty?
 
     return [:crashed, line]
