@@ -47,6 +47,7 @@ Ceedling 1.2.0 requires Ruby 3+ but only unoficially supports Ruby 4.
 
 ### Partials
 
+1. Enabling Partials blanket overrides your project `:cmock` ↳ `:treat_inlines` setting to prevent duplicated file generation work. This override prevents this feature from being used with traditional mocks as you might desire. This will be addressed in 1.2.0.
 1. User includes (`#include "path/user.h"`) from source C files lose their relative path when Partial and mock header files are generated from source. Compilation failures can result from certain uncommon cases involving headers of the same names in different directories and a source file including both such headers.
 1. Partial directive macros accept only a bare module name — a filename stem with no path. A project holding two modules of the same name in different directories cannot say which of them a Partial is for, and Ceedling resolves the name the way a compiler resolves a header, selecting the first match among the ordered search paths. Path-qualified Partial macros will arrive in 1.2.0.
 1. A module whose header protects itself with `#pragma once` instead of a traditional `#ifndef` include guard can still hit a `redefinition` or `conflicting types` error, if any other header your module uses reaches that header in turn. Ceedling suppresses the real header by defining its include guard, and `#pragma once` provides no guard to define. Converting the module’s header to a traditional include guard works around it.

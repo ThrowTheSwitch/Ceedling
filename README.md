@@ -11,14 +11,15 @@ See [🚀 Getting Started](#-getting-started) for installation and new
 project set up.
 
 **New goodies in 1.2.0:**
-* **Delta builds** have been restored after a temporary hiatus following a major refactoring for 1.0.0. A delta build is simply a build run that only performs regeneration, compilation, or linking as needed because of changed files. Delta builds are automatic with no configuration needed and complement parallel builds introduced in 1.0.0 for build time speedups.
-* **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully supports relative paths in `#include` directives and `TEST_SOURCE_FILE()` build directive macros. Ceedling is now also able to distinguish files of the same name using paths in the preceding and at the command line to distinguish test files of the same name (e.g. `ceedling test:foo/file` vs. `ceedling test:bar/file`).
-* **Multiple file extensions per file type.** You may now provide a list of file types via `:extensions` to gather files into your project’s build. For instance, the extensions `.c` and `.cc` can now both be used together to collect all source file in your project.
+* **[Delta builds][delta-builds]** have been restored after a temporary hiatus following a major refactoring for 1.0.0. A [delta build][delta-build-overview] is simply a build run that only performs regeneration, compilation, or linking as needed because of changed files. [Delta builds][delta-builds] are automatic with no configuration and complement [parallel builds][parallel-builds] introduced in 1.0.0 for build time speedups.
+* **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully supports [relative paths in `#include` directives][same-named-files] and [`TEST_SOURCE_FILE()` build directive macros][test-source-file]. Ceedling is now also able to distinguish files of the same name using paths in the preceding and [at the command line][test-path-task] to distinguish test files of the same name (e.g. `ceedling test:foo/file` vs. `ceedling test:bar/file`).
+* **Multiple file extensions per file type.** You may now provide a list of file types via [`:extensions`][extension-config] to gather files into your project’s build. For instance, the extensions `.c` and `.cc` can now both be used together to collect all source file in your project.
+* **Shuffled test order.** Ceedling now supports [Unity’s][unity-framework] randomized test case ordering (via a [`:unity` configuration setting][shuffle-tests]). [Delta builds][delta-builds] automatically adjust to always rerun test executables so test case ordering is shuffled.
+* The [`TEST_SOURCE_FILE()` build directive macro][test-source-file-subtractive] can now be used to remove source files from a test executable build. This can be handy in overriding [Ceedling’s conventions][header-source-convention] for associating source files with a test executable if your project structure does not match up with [Ceedling’s conventions][header-source-convention].
+* The [build warnings], [JUnit report], [IDE integration], [GoogleTest report], [module generator], and [dependencies] plugins all received numerous bug fixes and feature expansions.
+* [Bullseye code coverage plugin][bullseye-plugin] re-enabled and modernized (disabled since 1.0.0).
 * **Dedicated mocks and test runner generation build tasks.** It is now possible to run the test build pipeline only up through generating mocks or test runners without running the rest of a build using `ceedling gen:mocks:<test>` and `ceedling gen:test_runner:<test>` mirroring the convention of `test:` tasks.
-* **Shuffled test order.** Ceedling now supports Unity’s randomized test case ordering (via a `:unity` configuration setting). Delta builds automatically adjust to always rerun test executables so test case ordering is shuffled.
-* The `TEST_SOURCE_FILE()` build directive macro can now be used to remove source files from a test executable build. This can be handy in overriding Ceedling’s conventions for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
-* [Bullseye code coverage plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) re-enabled and modernized (disabled since 1.0.0).
-* Ceedling prerelease and release builds now automatically [generate Software Bills of Material](https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/) (SBOMs) and attach them to GitHub pre/releases along with the final Ruby gem.
+* Ceedling prerelease and release builds now automatically [generate Software Bills of Material][sbom-docs] (SBOMs) and attach them to GitHub pre/releases along with the final Ruby gem.
 
 **Goodness introduced in 1.1.0:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
@@ -27,8 +28,30 @@ from the same source module in a single test file and enables testing of
 * Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site]
   available both online and as a local bundle exported from Ceedling’s 
   command line.
-* A new [Discourse community forum](https://throwtheswitch.discourse.group) to 
+* A new [Discourse community forum][forums] to 
   supersede the old, spammy Google Group and handful of disparate support channels.
+
+[delta-builds]: https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/builds/
+[delta-build-overview]: https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/builds/#delta-build-overview
+[parallel-builds]: https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/parallel-builds/
+[same-named-files]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#distinguishing-same-named-files
+[test-source-file]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file
+[test-path-task]: https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/command-line/#ceedling-testpath
+[extension-config]: https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/extension/
+[unity-framework]: https://docs.throwtheswitch.org/Ceedling/1.2.0/overview/tools-and-frameworks/#unity
+[shuffle-tests]: https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/unity/#shuffle_tests
+[test-source-file-subtractive]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file-subtractive-notation
+[header-source-convention]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file-the-headersource-convention
+[build warnings]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-build-warnings-log/
+[JUnit report]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-log-factory/#junit-xml-format
+[IDE integration]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-ide-stdout/
+[GoogleTest report]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/
+[module generator]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/
+[dependencies]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/dependencies/
+[bullseye-plugin]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/
+[sbom-docs]: https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/
+[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
+[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
