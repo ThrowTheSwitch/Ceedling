@@ -387,99 +387,21 @@ class Generator
   # fixture target stale first, since stage_execute records it as an output. If
   # none exists here anyway, this falls back to a real run.
   def generate_test_results(tool:, context:, test_name:, test_filepath:, executable:, result:, skipped: false)
-    arg_hash = {
-      :tool => tool,
-      :context => context,
-      :test_name => test_name,
-      :test_filepath => test_filepath,
-      :executable => executable,
-      :result_file => result,
-      :msg => @reportinator.generate_progress( "Running #{File.basename(executable)}" )
-    }
+    arg_hash = fixture_arg_hash(
+      tool: tool, context: context, test_name: test_name, test_filepath: test_filepath, executable: executable, result_file: result
+    )
 
     @plugin_manager.pre_test_fixture_execute( arg_hash )
 
     cached = skipped ? @generator_test_results.read_cached_results( result ) : nil
-
-    if cached
-      arg_hash[:result_file]  = cached[:result_file]
-      arg_hash[:results]      = cached[:results]
-      arg_hash[:shell_result] = nil
-
-      @plugin_manager.post_test_fixture_execute( arg_hash )
-      return nil
-    end
+    return report_cached_results( arg_hash, cached ) if cached
 
     @loginator.log( arg_hash[:msg] )
 
-    # Unity's exit code is equivalent to the number of failed tests.
-    # We tell @tool_executor not to fail out if there are failures
-    # so that we can run all tests and collect all results.
-    command = 
-      @tool_executor.build_command_line(
-        arg_hash[:tool],
-        # Extra arguments: Additional test case filters 
-        @test_runner_manager.collect_cmdline_args(),
-        # Argument replacement
-        arg_hash[:executable]
-      )
+    shell_result = run_test_fixture( arg_hash )
+    shell_result = handle_test_crash( arg_hash, shell_result ) if test_crash?( arg_hash, shell_result )
 
-    # Run the test executable itself
-    # We allow it to fail without an exception.
-    # We'll analyze its results apart from tool_executor
-    command[:options][:boom] = false
-    shell_result = @tool_executor.exec( command )
-    filename = File.basename( test_filepath )
-
-    # Handle crashes
-    if @helper.test_crash?( filename, executable, shell_result )
-      @helper.log_test_results_crash(
-        executable,
-        shell_result,
-        @configurator.project_config_hash[:project_use_backtrace]
-      )
-
-      # Lookup test cases and filter based on any matchers specified for the build task
-      test_cases = @test_context_extractor.lookup_test_cases( test_filepath )
-      test_cases = @generator_test_results.filter_test_cases( test_cases )
-
-      case @configurator.project_config_hash[:project_use_backtrace]
-      # If we have the options and tools to learn more, dig into the details
-      when :gdb
-        shell_result =
-          @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: context )
-
-      # Simple test-case-by-test-case exercise
-      when :simple
-        shell_result =
-          @backtrace.do_simple( filename, executable, shell_result, test_cases, context: context )
-
-      else # :none
-        # Otherwise, call a crash a single failure so it shows up in the report
-        shell_result = @generator_test_results.create_crash_failure(
-          filename,
-          shell_result,
-          test_cases
-        )
-      end
-    end
-    
-    shell_result[:executable] = executable
-    shell_result[:result_file] = arg_hash[:result_file]
-    # The caller already knows exactly which test this run belongs to -- rediscovering it by
-    # searching the whole project's test collection for the executable's bare basename would
-    # only ever be a wasteful, ambiguity-prone way of re-deriving something already in hand.
-    shell_result[:test_file] = test_filepath
-    processed = @generator_test_results.process_and_write_results( shell_result )
-
-    arg_hash[:result_file]  = processed[:result_file]
-    arg_hash[:results]      = processed[:results]
-    # For raw output display if no plugins enabled for nice display
-    arg_hash[:shell_result] = shell_result
-
-    @plugin_manager.post_test_fixture_execute( arg_hash )
-
-    shell_result
+    return write_test_results( arg_hash, shell_result )
   end
 
   # Flushes the whole-suite gdb health check accumulated across every crashing test
@@ -489,6 +411,82 @@ class Generator
   # `:simple` backtraces, or no crashes at all) never accumulates anything here.
   def report_gdb_attach_health()
     @backtrace.report_gdb_attach_health()
+  end
+
+  ### Private ###
+
+  private
+
+  def fixture_arg_hash(**fields)
+    return fields.merge( msg: @reportinator.generate_progress( "Running #{File.basename( fields[:executable] )}" ) )
+  end
+
+  def report_cached_results(arg_hash, cached)
+    arg_hash[:result_file]  = cached[:result_file]
+    arg_hash[:results]      = cached[:results]
+    arg_hash[:shell_result] = nil
+
+    @plugin_manager.post_test_fixture_execute( arg_hash )
+    return nil
+  end
+
+  # Unity's exit code is the number of failed tests, so the run is allowed to fail without
+  # an exception, and its results are analyzed apart from tool_executor
+  def run_test_fixture(arg_hash)
+    command = @tool_executor.build_command_line(
+      arg_hash[:tool],
+      # Extra arguments: additional test case filters
+      @test_runner_manager.collect_cmdline_args(),
+      # Argument replacement
+      arg_hash[:executable]
+    )
+
+    command[:options][:boom] = false
+    return @tool_executor.exec( command )
+  end
+
+  def test_crash?(arg_hash, shell_result)
+    return @helper.test_crash?( File.basename( arg_hash[:test_filepath] ), arg_hash[:executable], shell_result )
+  end
+
+  # Lists the crashed test's cases, filtered by any matchers the build task specified, and
+  # learns what it can about the crash as :project ↳ :use_backtrace allows
+  def handle_test_crash(arg_hash, shell_result)
+    backtrace = @configurator.project_config_hash[:project_use_backtrace]
+    @helper.log_test_results_crash( arg_hash[:executable], shell_result, backtrace )
+
+    test_cases = @test_context_extractor.lookup_test_cases( arg_hash[:test_filepath] )
+    test_cases = @generator_test_results.filter_test_cases( test_cases )
+
+    return crash_results( backtrace, arg_hash, shell_result, test_cases )
+  end
+
+  def crash_results(backtrace, arg_hash, shell_result, test_cases)
+    filename, executable, context = File.basename( arg_hash[:test_filepath] ), arg_hash[:executable], arg_hash[:context]
+
+    case backtrace
+    when :gdb    then @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: context )
+    when :simple then @backtrace.do_simple( filename, executable, shell_result, test_cases, context: context )
+    # A crash is otherwise reported as a single failure
+    else @generator_test_results.create_crash_failure( filename, shell_result, test_cases )
+    end
+  end
+
+  # The caller already knows which test this run belongs to. Rediscovering it from the
+  # executable's bare basename would be wasteful and open to ambiguity.
+  def write_test_results(arg_hash, shell_result)
+    shell_result[:executable]  = arg_hash[:executable]
+    shell_result[:result_file] = arg_hash[:result_file]
+    shell_result[:test_file]   = arg_hash[:test_filepath]
+    processed = @generator_test_results.process_and_write_results( shell_result )
+
+    arg_hash[:result_file]  = processed[:result_file]
+    arg_hash[:results]      = processed[:results]
+    # For raw output display if no plugins enabled for nice display
+    arg_hash[:shell_result] = shell_result
+
+    @plugin_manager.post_test_fixture_execute( arg_hash )
+    return shell_result
   end
 
 end
