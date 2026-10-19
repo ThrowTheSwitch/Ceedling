@@ -392,9 +392,12 @@ class GeneratorTestResultsBacktrace
     location = "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: "
     return [:failed, location + "Test case not run -- an earlier case in this parameterized test group crashed"] if crashed
 
+    # A named cause is where the crash's full report lives
+    return [:crashed, location + explanation] if explanation
+
     # Any non-result, non-blank lines (e.g. assertion messages on stderr)
     extra = extract_simple_crash_output( output, filename )
-    line  = location + (explanation || "Test case crashed")
+    line  = location + "Test case crashed"
     line += " >> #{extra.join(NEWLINE_TOKEN)}" unless extra.empty?
 
     return [:crashed, line]

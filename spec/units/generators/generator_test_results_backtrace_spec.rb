@@ -778,6 +778,12 @@ describe GeneratorTestResultsBacktrace do
       expect(lines.first).to start_with( 'test_lib.c:20:test_crashes:FAIL: ASan heap-buffer-overflow at src/lib.c:5' )
     end
 
+    # The named cause is where its full report lives, so the rerun's raw output is left out
+    it 'leaves a crashed case\'s raw output out of the message when a cause is named' do
+      lines = crashed_lines( ->(_crash_result) { 'ASan heap-buffer-overflow at src/lib.c:5' } )
+      expect(lines.first).to eq( 'test_lib.c:20:test_crashes:FAIL: ASan heap-buffer-overflow at src/lib.c:5' )
+    end
+
     it 'fails a crashed case as a crash when nothing names a cause' do
       lines = crashed_lines( ->(_crash_result) { nil } )
       expect(lines.first).to start_with( 'test_lib.c:20:test_crashes:FAIL: Test case crashed' )
