@@ -124,16 +124,7 @@ class Valgrind < Plugin
   def post_test_fixture_execute(arg_hash)
     return unless arg_hash[:context] == VALGRIND_SYM
 
-    result_file = arg_hash[:result_file]
-
-    @mutex.synchronize do
-      # `[`/`]` are legal filename characters but regex character-class syntax, so the path
-      # is escaped. A literal bracket in it (e.g. in :build_root:) would otherwise break the
-      # match, and the test would go uncounted.
-      if (result_file =~ /#{Regexp.escape(VALGRIND_RESULTS_PATH)}/) && !@result_list.include?(result_file)
-        @result_list << arg_hash[:result_file]
-      end
-    end
+    collect_result( arg_hash[:result_file] )
 
     test_name = arg_hash[:test_name]
     errors    = count_errors( test_name )
@@ -182,6 +173,15 @@ class Valgrind < Plugin
   end
 
   private
+
+  # `[`/`]` are legal filename characters but regex character-class syntax, so the path is
+  # escaped. A literal bracket in it (e.g. in :build_root:) would otherwise break the match,
+  # and the test would go uncounted.
+  def collect_result(result_file)
+    @mutex.synchronize do
+      @result_list << result_file if result_file =~ /#{Regexp.escape(VALGRIND_RESULTS_PATH)}/ && !@result_list.include?( result_file )
+    end
+  end
 
   def refuse_sanitizer_flags(arg_hash, operation)
     sanitizing = Array( arg_hash[:flags] ).grep( /\A-fsanitize/ )
