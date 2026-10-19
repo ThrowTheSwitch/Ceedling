@@ -289,13 +289,18 @@ class GeneratorTestResultsBacktrace
   # `any_crashed` turns true once some retry group shows crash evidence of its own. If it
   # stays false across every group, the diagnostic never reproduced or attributed the crash
   # the main run already detected, and none of it can be trusted.
-  def do_simple(filename, executable, shell_result, test_cases, context:)
+  #
+  # `tool` is the fixture tool the main run used. A swapped tool marked `:backtrace_rerun`
+  # (e.g. one setting a sanitizer's runtime options) runs the reruns too. Otherwise reruns
+  # go through the dedicated backtrace tool, so a wrapper that writes one report per test,
+  # such as Valgrind's, keeps the main run's report.
+  def do_simple(filename, executable, shell_result, test_cases, context:, tool: nil)
     results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
     shell_result[:time] = 0 # Summed over the per-group sub-process runs
     any_crashed = false
 
     group_test_cases( test_cases ).each do |group|
-      group_results, crashed = simple_group_results( filename, executable, group, shell_result )
+      group_results, crashed = simple_group_results( filename, executable, group, shell_result, tool )
       any_crashed ||= crashed
       merge_results( results, group_results )
     end
@@ -311,8 +316,8 @@ class GeneratorTestResultsBacktrace
   # One sub-process run for a group. Its results are buffered apart from the file's, since
   # the status check can still discard every match in favor of a crash attribution once the
   # whole group has been seen.
-  def simple_group_results(filename, executable, group, shell_result)
-    crash_result = run_simple_group( executable, group )
+  def simple_group_results(filename, executable, group, shell_result, tool)
+    crash_result = run_simple_group( executable, group, tool )
     # Running tests separately increases total execution time
     shell_result[:time] += crash_result[:time].to_f()
 
@@ -328,16 +333,22 @@ class GeneratorTestResultsBacktrace
     return [contradicted_group_results( filename, group ), true]
   end
 
-  def run_simple_group(executable, group)
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_fixture_simple_backtrace, [],
-      executable,
-      unity_filter_arg( group )
-    )
+  def run_simple_group(executable, group, tool)
+    command = simple_rerun_command( executable, unity_filter_arg( group ), tool )
     # Things are gonna go boom, so ignore booms to get output
     command[:options][:boom] = false
 
     return @tool_executor.exec( command )
+  end
+
+  # The dedicated backtrace tool places the filter as its own argument. A fixture tool runs
+  # the executable itself, so the filter follows its arguments.
+  def simple_rerun_command(executable, filter, tool)
+    unless tool&.dig( :backtrace_rerun )
+      return @tool_executor.build_command_line( @configurator.tools_test_fixture_simple_backtrace, [], executable, filter )
+    end
+
+    return @tool_executor.build_command_line( tool, [], executable, trailing: [filter] )
   end
 
   # Gives each group member its own real result line, if Unity printed one. The first member
