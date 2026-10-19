@@ -21,7 +21,8 @@ class ToolExecutor
   # build up a command line from yaml provided config
 
   # @param extra_params is an array of parameters to append to executable (prepend to rest of command line)
-  def build_command_line(tool_config, extra_params, *args)
+  # @param trailing is an array of parameters to append after the tool's own arguments
+  def build_command_line(tool_config, extra_params, *args, trailing: [])
     command = {}
 
     command[:name] = tool_config[:name]
@@ -40,6 +41,7 @@ class ToolExecutor
       executable,
       extra_params.join(' ').strip,
       build_arguments(tool_config[:name], tool_config[:arguments], *args),
+      trailing.join(' ').strip,
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     # Log command as is

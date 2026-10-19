@@ -431,14 +431,11 @@ class Generator
   end
 
   # Unity's exit code is the number of failed tests, so the run is allowed to fail without
-  # an exception, and its results are analyzed apart from tool_executor
+  # an exception, and its results are analyzed apart from tool_executor. Test case filters
+  # follow the tool's own arguments, where a wrapping fixture tool runs the executable.
   def run_test_fixture(arg_hash)
     command = @tool_executor.build_command_line(
-      arg_hash[:tool],
-      # Extra arguments: additional test case filters
-      @test_runner_manager.collect_cmdline_args(),
-      # Argument replacement
-      arg_hash[:executable]
+      arg_hash[:tool], [], arg_hash[:executable], trailing: @test_runner_manager.collect_cmdline_args()
     )
 
     command[:options][:boom] = false

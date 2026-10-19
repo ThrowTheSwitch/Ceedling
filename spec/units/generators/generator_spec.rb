@@ -21,7 +21,7 @@ describe Generator do
     allow(@plugin_manager).to receive(:pre_compile_execute)
     allow(@plugin_manager).to receive(:post_compile_execute)
 
-    collaborators = [
+    @collaborators = collaborators = [
       :configurator, :generator_helper, :generator_mocks, :generator_test_results,
       :generator_test_results_backtrace, :generator_partials, :test_context_extractor,
       :file_finder, :file_path_utils, :reportinator, :loginator, :test_runner_manager
@@ -60,6 +60,25 @@ describe Generator do
       expect(@tool_executor).to have_received(:build_command_line).with( :compiler, [], 'build/tmp1/gpio.c', any_args )
       expect(@plugin_manager).to have_received(:pre_compile_execute).with( hash_including( source: 'src/gpio.c' ) )
       expect(@plugin_manager).to have_received(:post_compile_execute).with( hash_including( source: 'src/gpio.c' ) )
+    end
+  end
+
+  describe '#generate_test_results' do
+    before(:each) do
+      allow(@collaborators[:generator_helper]).to receive(:test_crash?).and_return( false )
+      allow(@collaborators[:test_runner_manager]).to receive(:collect_cmdline_args).and_return( ['-n test_a'] )
+      allow(@plugin_manager).to receive(:pre_test_fixture_execute)
+      allow(@plugin_manager).to receive(:post_test_fixture_execute)
+    end
+
+    # A fixture tool that wraps the test executable runs it as its own last argument
+    it 'hands the fixture tool Unity\'s test case filters after its own arguments' do
+      @generator.generate_test_results(
+        tool: :fixture, context: :test, test_name: 'test_a', test_filepath: 'test/test_a.c',
+        executable: 'build/test_a.out', result: 'build/test_a.pass'
+      )
+
+      expect(@tool_executor).to have_received(:build_command_line).with( :fixture, [], 'build/test_a.out', trailing: ['-n test_a'] )
     end
   end
 

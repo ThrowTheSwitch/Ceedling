@@ -85,6 +85,22 @@ describe ToolExecutor do
 
   # A command run with :boom false always reports an :exit_code of 0, so a caller handling
   # its own failures has to read the process status. These pin that rule.
+  # A wrapper fixture such as `env NAME=value ${1}` runs the test executable as its last
+  # argument, so Unity's test case filters belong after the tool's own arguments
+  describe '#build_command_line — trailing parameters' do
+    let(:wrapper) { { name: 'wrapper', executable: 'env', arguments: ['A=1', '${1}'] } }
+
+    it 'places trailing parameters after the tool\'s own arguments' do
+      command = @tool_executor.build_command_line( wrapper, [], 'build/test_a.out', trailing: ['-n test_x'] )
+      expect(command[:line]).to eq( 'env A=1 build/test_a.out -n test_x' )
+    end
+
+    it 'leaves the command line as it was without trailing parameters' do
+      command = @tool_executor.build_command_line( wrapper, ['-v'], 'build/test_a.out' )
+      expect(command[:line]).to eq( 'env -v A=1 build/test_a.out' )
+    end
+  end
+
   describe '#failed?' do
     def status(success)
       instance_double(Process::Status, success?: success)
