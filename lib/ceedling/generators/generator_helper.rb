@@ -13,89 +13,28 @@ class GeneratorHelper
 
   constructor :loginator
 
+  # Every rule is checked, rather than stopping at the first, so each one that applies
+  # leaves its own debug log line
   def test_crash?(test_filename, executable, shell_result)
-    runner = File.basename(executable)
-
-    crash = false
-
-    # Any signal death is unconditionally a crash, whatever text made it out beforehand.
-    # Broadened from a SIGSEGV(11)-only check: a sanitizer's halt_on_error (UBSan, ASan)
-    # raises SIGABRT, not SIGSEGV, and there's no reason to trust a process that a
-    # signal actually killed regardless of which one. Applies to Unix-like systems
-    # including MSYS on Windows -- native (non-MSYS) Windows Ruby never reports
-    # `signaled?` true at all, so this check is inert there rather than wrong; the
-    # stats-footer and stderr checks below already carry Windows crash detection.
-    if shell_result[:status] && shell_result[:status].signaled?
-      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do
-        "#{runner} process terminated by signal #{shell_result[:status].termsig}"
-      end
-      crash = true
-    end
-
-    # No test results found in test executable output
+    runner      = File.basename(executable)
     stats_match = shell_result[:output].match( PATTERNS::TEST_STDOUT_STATISTICS )
-    if stats_match.nil?
-      # No debug logging here because we log this condition in the error log handling below
-      crash = true
-    end
 
-    # A clean summary (0 failures) is not trustworthy if the real process still exited
-    # nonzero afterward -- e.g. LeakSanitizer detecting a leak during teardown, after
-    # every test case already printed and Unity's own summary already looked clean.
-    # A nonzero exit consistent with Unity's own reported failures (its exit code
-    # convention is one per failed test case) is an ordinary failing run, not a crash.
-    if stats_match && shell_result[:status] && !shell_result[:status].success? &&
-       !shell_result[:status].signaled? && stats_match[2].to_i == 0
-      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do
-        "#{runner} reported a clean summary but exited with real status #{shell_result[:status].exitstatus}"
-      end
-      crash = true
-    end
-
-    # Scan STDERR line by line for a segfault variant that is not attributed to the test file.
-    # A line starting with test_filename is a Unity-reported test-case result, not an OS crash.
-    # Checking each line individually avoids false negatives when attributed and bare segfault
-    # lines coexist in the same stderr output.
-    segfault_pattern = /Seg.*fault/i
-    bare_segfault = shell_result[:stderr].each_line.any? do |line|
-      line.match?(segfault_pattern) && !line.start_with?(test_filename)
-    end
-
-    if bare_segfault
-      @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do
-        "#{runner} STDERR reports segmentation fault"
-      end
-      crash = true
-    end
-
-    return crash
+    return [
+      signal_death?( runner, shell_result[:status] ),
+      # Logged with the crash report itself, not here
+      stats_match.nil?,
+      clean_summary_contradicted?( runner, shell_result[:status], stats_match ),
+      bare_segfault?( runner, test_filename, shell_result[:stderr] )
+    ].any?
   end
 
   def log_test_results_crash(executable, shell_result, backtrace)
     runner = File.basename(executable)
 
-    notice = "Test executable `#{runner}` seems to have crashed -- likely terminating early due to a bad code reference.\n"
-
-    # Check for empty output
-    if (shell_result[:output].nil? or shell_result[:output].strip.empty?)
-      # Mirror style of generic tool_executor failure output
-      notice += "> Produced no output (including no final test result counts).\n"
-
-    # Check for no test results
-    elsif ((shell_result[:output] =~ PATTERNS::TEST_STDOUT_STATISTICS).nil?)
-      # Mirror style of generic tool_executor failure output
-      notice += "> Produced some output but contains no final test result counts.\n"
-    end
-    
+    notice  = "Test executable `#{runner}` seems to have crashed -- likely terminating early due to a bad code reference.\n"
+    notice += crash_output_notice( shell_result[:output] )
     notice += "> Causes can include: bad memory access, stack overflow, heap error, or bad branch in source or test code.\n"
-
-    # Incorporate knowledge of the backtrace setting into a recommendation
-    case backtrace
-    when :simple
-      notice += "> Consider configuring :project ↳ :use_backtrace to use the :gdb option to find the cause (see documentation).\n"
-    when :none
-      notice += "> Consider configuring :project ↳ :use_backtrace to help find the cause (see documentation).\n"
-    end
+    notice += backtrace_advice( backtrace )
 
     @loginator.log( notice, Verbosity::ERRORS, LogLabels::CRASH )
   end
@@ -127,8 +66,66 @@ class GeneratorHelper
     end
     return nil if culprit.nil?
 
-    basename, real_path = culprit
+    return collision_notice( *culprit )
+  end
 
+  ### Private ###
+
+  private
+
+  # Any signal death is unconditionally a crash, whatever text made it out beforehand. A
+  # sanitizer that aborts raises SIGABRT, not SIGSEGV, and a process a signal killed is not
+  # to be trusted whichever signal it was. Native Windows Ruby never reports `signaled?`, so
+  # the check is inert there; the statistics and stderr checks carry Windows detection.
+  def signal_death?(runner, status)
+    return false unless status&.signaled?
+
+    @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) { "#{runner} process terminated by signal #{status.termsig}" }
+    return true
+  end
+
+  # A clean summary (0 failures) is not trustworthy if the process still exited nonzero
+  # afterward, e.g. a leak check at exit after every test case printed. A nonzero exit
+  # consistent with Unity's reported failures (its exit code is one per failed test case)
+  # is an ordinary failing run, not a crash.
+  def clean_summary_contradicted?(runner, status, stats_match)
+    return false if stats_match.nil? || status.nil? || status.success? || status.signaled?
+    return false unless stats_match[2].to_i == 0
+
+    @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) do
+      "#{runner} reported a clean summary but exited with real status #{status.exitstatus}"
+    end
+    return true
+  end
+
+  # A segfault line not starting with the test filename is an OS crash. A line starting
+  # with it is a Unity test-case result. Each line is checked on its own, so an attributed
+  # line beside a bare one still finds the bare one.
+  def bare_segfault?(runner, test_filename, stderr)
+    bare = stderr.each_line.any? { |line| line.match?( /Seg.*fault/i ) && !line.start_with?( test_filename ) }
+    return false unless bare
+
+    @loginator.lazy( Verbosity::DEBUG, LogLabels::CRASH ) { "#{runner} STDERR reports segmentation fault" }
+    return true
+  end
+
+  # Mirrors the style of the generic tool_executor failure output
+  def crash_output_notice(output)
+    return "> Produced no output (including no final test result counts).\n" if output.nil? || output.strip.empty?
+    return "> Produced some output but contains no final test result counts.\n" if (output =~ PATTERNS::TEST_STDOUT_STATISTICS).nil?
+
+    return ''
+  end
+
+  def backtrace_advice(backtrace)
+    case backtrace
+    when :simple then "> Consider configuring :project ↳ :use_backtrace to use the :gdb option to find the cause (see documentation).\n"
+    when :none   then "> Consider configuring :project ↳ :use_backtrace to help find the cause (see documentation).\n"
+    else ''
+    end
+  end
+
+  def collision_notice(basename, real_path)
     notice  = "This looks like '#{basename}' is mocked or Partialized for this test, but its " \
               "real content ('#{real_path}') is also reaching compilation through a second " \
               "unmocked #include chain.\n"
@@ -138,7 +135,7 @@ class GeneratorHelper
               "Partializing/mocking the problematic header (without necessarily using it) to " \
               "break the transitive #include chain.\n"
 
-    notice
+    return notice
   end
 
 end
