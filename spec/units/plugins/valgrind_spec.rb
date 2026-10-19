@@ -34,7 +34,7 @@ require 'valgrind'
 #
 # No test here invokes a real Valgrind binary or touches the filesystem. All file
 # access goes through a stubbed file_wrapper. Real-tool behavior is covered by
-# spec/integration/valgrind_log_parsing_spec.rb and the system tier.
+# spec/integration/analysis_tool_output_spec.rb and the system tier.
 describe Valgrind do
   let(:loginator)           { double('loginator', log: nil) }
   let(:reportinator_obj)    { double('reportinator', generate_progress: 'PROGRESS') }
@@ -283,7 +283,7 @@ describe Valgrind do
   ##
 
   describe '#post_test_fixture_execute' do
-    def execute(project_config, log_contents, exists: true, result_file: File.join(PROJECT_TEST_RESULTS_PATH, 'test_thing.pass'))
+    def execute(project_config, log_contents, exists: true, result_file: File.join('build', 'valgrind', 'results', 'test_thing.pass'))
       wrapper  = double('file_wrapper', exist?: exists, read: log_contents)
       valgrind = build_valgrind(project_config, file_wrapper: wrapper)
       valgrind.post_test_fixture_execute(
@@ -299,10 +299,17 @@ describe Valgrind do
       expect(valgrind.instance_variable_get(:@reports_read)).to eq(0)
     end
 
-    it 'accumulates a result file inside the results path' do
+    # A valgrind: build writes its results apart from an ordinary test build's
+    it 'accumulates a result file inside the valgrind build\'s results path' do
       valgrind = execute({}, 'ERROR SUMMARY: 0 errors from 0 contexts')
 
       expect(valgrind.instance_variable_get(:@result_list).length).to eq(1)
+    end
+
+    it 'ignores a result file in an ordinary test build\'s results path' do
+      valgrind = execute({}, 'ERROR SUMMARY: 0 errors', result_file: File.join(PROJECT_TEST_RESULTS_PATH, 'test_thing.pass'))
+
+      expect(valgrind.instance_variable_get(:@result_list)).to be_empty
     end
 
     it 'ignores a result file outside the results path' do

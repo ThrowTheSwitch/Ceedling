@@ -116,11 +116,10 @@ class Valgrind < Plugin
     result_file = arg_hash[:result_file]
 
     @mutex.synchronize do
-      # #104 -- `[`/`]` are legal filename characters, but also regex character-class
-      # syntax; interpolating PROJECT_TEST_RESULTS_PATH into this regex unescaped means
-      # a literal bracket anywhere in it (e.g. a bracket-containing :build_root:) silently
-      # breaks this match, and the test never gets counted here.
-      if (result_file =~ /#{Regexp.escape(PROJECT_TEST_RESULTS_PATH)}/) && !@result_list.include?(result_file)
+      # `[`/`]` are legal filename characters but regex character-class syntax, so the path
+      # is escaped. A literal bracket in it (e.g. in :build_root:) would otherwise break the
+      # match, and the test would go uncounted.
+      if (result_file =~ /#{Regexp.escape(VALGRIND_RESULTS_PATH)}/) && !@result_list.include?(result_file)
         @result_list << arg_hash[:result_file]
       end
     end

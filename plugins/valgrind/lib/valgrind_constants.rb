@@ -11,3 +11,6 @@ VALGRIND_TASK_ROOT              = VALGRIND_ROOT_NAME + ':'
 VALGRIND_SYM                    = VALGRIND_ROOT_NAME.to_sym unless defined?(VALGRIND_SYM)
 
 VALGRIND_ARTIFACTS_PATH         = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, VALGRIND_ROOT_NAME)
+
+# A valgrind: build writes its test results apart from an ordinary test build's
+VALGRIND_RESULTS_PATH           = File.join(PROJECT_BUILD_ROOT, VALGRIND_ROOT_NAME, BUILD_RESULTS_DIR)
