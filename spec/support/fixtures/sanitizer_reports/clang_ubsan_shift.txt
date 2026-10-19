@@ -1,0 +1,5 @@
+ub.c:3:67: runtime error: left shift of 128 by 24 places cannot be represented in type 'int'
+    #0 0x108be9ba9 in main ub.c:3
+    #1 0x7ff80b4ac344 in start+0x774 (dyld:x86_64+0xfffffffffff5c344)
+
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior ub.c:3:67 in 
