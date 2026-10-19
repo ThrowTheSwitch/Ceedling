@@ -29,9 +29,14 @@ Ceedling 1.2.0 includes:
 * [**Delta builds**](getting-started/builds.md) have been restored so that file regeneration and build actions only occur because of changed files or configuration.
 * **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully [supports relative paths everywhere](testing-guide/conventions.md#distinguishing-same-named-files) and offers options to distinguish files of the same name.
 * **Multiple file extensions per file type.** You may now provide a list of file types (e.g. `.c` and `.cc`) via [`:extension`](configuration/reference/extension.md) to gather files into your project’s build.
+* **Shuffled test order.** Ceedling now supports [Unity’s](overview/tools-and-frameworks.md#unity) randomized test case ordering (via a [`:unity` configuration setting](configuration/reference/unity.md#shuffle_tests)). [Delta builds](getting-started/builds.md) automatically adjust to always rerun test executables so test case ordering is shuffled.
+* The [`TEST_SOURCE_FILE()` build directive macro](testing-guide/build-directives.md#test_source_file-subtractive-notation) can now be used to remove source files from a test executable build. This can be handy in overriding [Ceedling’s conventions](testing-guide/build-directives.md#test_source_file-the-headersource-convention) for associating source files with a test executable if your project structure does not match up with [Ceedling’s conventions](testing-guide/build-directives.md#test_source_file-the-headersource-convention).
+* The [build warnings](plugins/report-build-warnings-log.md), [JUnit report](plugins/report-tests-log-factory.md#junit-xml-format), [IDE integration](plugins/report-tests-ide-stdout.md), [GoogleTest report](plugins/report-tests-gtestlike-stdout.md), [module generator](plugins/module-generator.md), and [dependencies](plugins/dependencies.md) plugins all received numerous bug fixes and feature expansions.
+* [Bullseye code coverage plugin](plugins/bullseye/index.md) re-enabled and modernized (disabled since 1.0.0).
 * **Dedicated mocks and test runner generation [build tasks](getting-started/command-line.md#build-plugin-tasks).** You may now run the test build pipeline only up through generating mocks or test runners with no compilation or test runs.
+* Ceedling prerelease and release builds now automatically [generate Software Bills of Material](project/sbom.md) (SBOMs) and attach them to GitHub pre/releases along with the final Ruby gem.
 
-And, the headlining feature of Ceedling 1.1.0 was [_Partias_](testing-guide/partials/index.md). A Partial is your C code sliced and diced to expose functional elements for testing that you could not otherwise access without rewriting your source code. Think of Partials as a scalpel for testing your code.
+And, the headlining feature of Ceedling 1.1.0 was [_Partials_](testing-guide/partials/index.md). A Partial is your C code sliced and diced to expose functional elements for testing that you could not otherwise access without rewriting your source code. Think of Partials as a scalpel for testing your code.
 
 ---
 
