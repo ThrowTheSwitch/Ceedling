@@ -21,6 +21,7 @@ class SanitizeRecords
     @reports      = reports
     @records      = []
     @logged_tests = []
+    @written      = []
     @mutex        = Mutex.new
   end
 
@@ -58,18 +59,21 @@ class SanitizeRecords
     @reports.each do |report|
       next if records.empty? && !report.write_empty?
 
+      filepath = File.join( directory, "#{SANITIZE_ROOT_NAME}.#{report.extension}" )
       @file_wrapper.mkdir( directory )
-      @file_wrapper.write( File.join( directory, "#{SANITIZE_ROOT_NAME}.#{report.extension}" ), report.render( context, records ) )
+      @file_wrapper.write( filepath, report.render( context, records ) )
+      @written << filepath
     end
   end
 
-  # Counts by sanitizer and kind
+  # Counts by sanitizer and kind, then names the reports written
   def log_tally
-    return if empty?
+    unless empty?
+      tally = @records.map { |record| "#{SanitizeReports::LABELS[record[:finding].sanitizer]} #{record[:finding].kind}" }.tally
+      @loginator.log( "Sanitizer findings:\n#{list( tally.map { |kind, count| "#{kind}: #{count}" } )}", Verbosity::NORMAL )
+    end
 
-    tally = @records.map { |record| "#{SanitizeReports::LABELS[record[:finding].sanitizer]} #{record[:finding].kind}" }.tally
-    lines = tally.map { |kind, count| " - #{kind}: #{count}" }
-    @loginator.log( "Sanitizer findings:\n#{lines.join( "\n" )}", Verbosity::NORMAL )
+    @loginator.log( "Sanitizer reports:\n#{list( @written )}", Verbosity::NORMAL ) unless @written.empty?
   end
 
   def failure_message
@@ -78,6 +82,8 @@ class SanitizeRecords
   end
 
   private
+
+  def list(items) = items.map { |item| " - #{item}" }.join( "\n" )
 
   # The findings not yet recorded for this test, now recorded
   def add_new(context, test, findings)

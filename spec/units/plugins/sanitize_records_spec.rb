@@ -57,4 +57,39 @@ describe SanitizeRecords do
       expect(file_wrapper).to have_received(:write).once
     end
   end
+  # CI reads the JSON and SARIF reports even from a build without findings
+  describe '#log_tally' do
+    let(:reports) { [report( 'log', false ), report( 'json', true ), report( 'sarif', true )] }
+    let(:records) { described_class.new( file_wrapper: file_wrapper, loginator: loginator, reports: reports ) }
+    let(:dir)     { File.join( SANITIZE_ARTIFACTS_PATH, 'sanitize' ) }
+
+    def report(extension, write_empty)
+      return double( extension, extension: extension, write_empty?: write_empty, render: '' )
+    end
+
+    def tally
+      logged = []
+      allow(loginator).to receive(:log) { |message, *_| logged << message }
+      records.write_reports( :sanitize )
+      records.log_tally
+      return logged.join( "\n" )
+    end
+
+    it 'names each report written after the findings' do
+      records.record( :sanitize, 'test_a', [finding( 9 )] )
+      paths = %w[log json sarif].map { |extension| " - #{File.join( dir, "sanitize.#{extension}" )}" }
+      expect(tally).to end_with( "Sanitizer findings:\n - AddressSanitizer heap-buffer-overflow: 1\nSanitizer reports:\n#{paths.join( "\n" )}" )
+    end
+
+    it 'names the reports written for a build without findings' do
+      expect(tally).to eq( "Sanitizer reports:\n - #{File.join( dir, 'sanitize.json' )}\n - #{File.join( dir, 'sanitize.sarif' )}" )
+    end
+
+    it 'names no reports when none are written' do
+      records = described_class.new( file_wrapper: file_wrapper, loginator: loginator, reports: [report( 'log', false )] )
+      records.write_reports( :sanitize )
+      records.log_tally
+      expect(loginator).not_to have_received(:log)
+    end
+  end
 end
