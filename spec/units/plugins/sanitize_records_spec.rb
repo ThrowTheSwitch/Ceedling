@@ -26,6 +26,16 @@ describe SanitizeRecords do
 
   # A crashed test's reruns reproduce the main run's finding, and reach findings it never did
   describe '#record' do
+    # A crash's notice names its finding already
+    it 'logs all but the finding a crash explanation names' do
+      records.record( :sanitize, 'test_a', [finding( 9 ), finding( 14 )], explained: finding( 9 ) )
+
+      expect(loginator).to have_received(:log).once
+      expect(loginator).to have_received(:log).with( /line 14|test_a\.c:14/, anything, anything )
+      expect(file_wrapper).to have_received(:write).once
+      expect(records.failure_message).to eq( 'Sanitizers found 2 problems in 1 test' )
+    end
+
     it 'counts a finding recorded again only once' do
       records.record( :sanitize, 'test_a', [finding( 9 )] )
       records.record( :sanitize, 'test_a', [finding( 9 )] )

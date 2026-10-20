@@ -40,14 +40,16 @@ class SanitizeRecords
     }
   end
 
-  # Adds a test's new findings to its own log and logs each
-  def record(context, test, findings)
+  # Adds a test's new findings to its own log and logs each, except one a crash's notice names
+  def record(context, test, findings, explained: nil)
     added = @mutex.synchronize { add_new( context, test, findings ) }
     return if added.empty?
 
     log = SanitizeRecords.log_filepath( context, test )
     write_log( log, added )
     added.each do |finding|
+      next if explained && key( finding ) == key( explained )
+
       @loginator.log( "#{test}: #{SanitizeReports.headline( finding )} ➡️ see #{log}", Verbosity::ERRORS, LogLabels::ERROR )
     end
   end

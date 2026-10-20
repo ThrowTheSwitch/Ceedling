@@ -233,6 +233,12 @@ describe Sanitize do
       expect(plugin_manager).to have_received(:register_build_failure).with( SANITIZE_SYM, /Sanitizers found 1 problem in 1 test/ )
     end
 
+    it 'logs no separate line for the finding a crash names' do
+      sanitize = build
+      sanitize.explain_test_crash( { context: SANITIZE_SYM, test_name: 'test_a', shell_result: { stderr: report( 'gcc_heap' ) }, explanation: nil } )
+      expect(loginator).not_to have_received(:log).with( /test_a: AddressSanitizer/, anything, anything )
+    end
+
     it 'counts a finding once when both the main run and its explanation report it' do
       sanitize = build
       sanitize.explain_test_crash( { context: SANITIZE_SYM, test_name: 'test_a', shell_result: { stderr: report( 'gcc_heap' ) }, explanation: nil } )
