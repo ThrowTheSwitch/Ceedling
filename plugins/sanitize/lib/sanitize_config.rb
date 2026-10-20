@@ -10,7 +10,7 @@ require 'ceedling/exceptions'
 # The compile and link flags and the runtime environment a project's :sanitize settings
 # call for on a platform, checked as they are read
 class SanitizeConfig
-  attr_reader :sanitizers, :compile_flags, :link_flags, :environment, :notices
+  attr_reader :sanitizers, :compile_flags, :link_flags, :environment, :notices, :test_builds, :fail_build
 
   NAMES = %i[address undefined leak].freeze
 
@@ -24,9 +24,8 @@ class SanitizeConfig
     @platform = platform
     @notices  = []
 
-    @recover      = boolean( :recover )
-    @detect_leaks = boolean( :detect_leaks )
-    @sanitizers   = sanitizer_list
+    read_switches
+    @sanitizers = sanitizer_list
 
     @compile_flags = compile_flags_list
     @link_flags    = ["-fsanitize=#{instrumented.join( ',' )}"] + Array( flags[:link] )
@@ -34,6 +33,13 @@ class SanitizeConfig
   end
 
   private
+
+  def read_switches
+    @recover      = boolean( :recover )
+    @detect_leaks = boolean( :detect_leaks )
+    @test_builds  = boolean( :test_builds )
+    @fail_build   = boolean( :fail_build )
+  end
 
   def flags
     return @config[:flags] || {}

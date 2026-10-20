@@ -51,6 +51,12 @@ class Sanitize < Plugin
     @environment_validated = true
   end
 
+  # An instrumented test: build runs through no sanitize: task, so it checks here, once,
+  # before any test builds
+  def pre_test_build(context, _timestamp_s)
+    validate_environment! if instrumented?( context )
+  end
+
   def pre_test_compile_register(arg_hash)
     return unless instrumented?( arg_hash[:context] )
     return if EXTENSION_ASSEMBLY.match?( arg_hash[:source] )
@@ -115,7 +121,7 @@ class Sanitize < Plugin
     contexts.each { |context| @records.write_reports( context ) }
     @records.log_tally
 
-    @ceedling[:plugin_manager].register_build_failure( SANITIZE_SYM, @records.failure_message ) if @fail_build && !@records.empty?
+    @ceedling[:plugin_manager].register_build_failure( SANITIZE_SYM, @records.failure_message ) if @settings.fail_build && !@records.empty?
   end
 
   ### Private ###
@@ -123,10 +129,8 @@ class Sanitize < Plugin
   private
 
   def read_settings(config)
-    @config      = config
-    @settings    = SanitizeConfig.new( config, platform: platform )
-    @test_builds = boolean( :test_builds )
-    @fail_build  = boolean( :fail_build )
+    @config   = config
+    @settings = SanitizeConfig.new( config, platform: platform )
 
     reports  = SanitizeReports.load( config[:reports], version: Ceedling::Version::TAG )
     @records = SanitizeRecords.new( file_wrapper: @ceedling[:file_wrapper], loginator: @loginator, reports: reports )
@@ -139,16 +143,8 @@ class Sanitize < Plugin
     return :linux
   end
 
-  # A quoted 'false' would otherwise read as true
-  def boolean(key)
-    value = @config[key]
-    return value if [true, false].include?( value )
-
-    raise CeedlingException.new( ":sanitize ↳ :#{key} must be TRUE or FALSE, not `#{value.inspect}`." )
-  end
-
   def instrumented?(context)
-    return context == SANITIZE_SYM || (@test_builds && context == TEST_SYM)
+    return context == SANITIZE_SYM || (@settings.test_builds && context == TEST_SYM)
   end
 
   # A sanitize: build reports its own test results, apart from an ordinary test build's
@@ -162,7 +158,7 @@ class Sanitize < Plugin
   def reported_contexts
     contexts = []
     contexts << SANITIZE_SYM if @ceedling[:rake_invocation_tracker].invoked?( /^#{SANITIZE_ROOT_NAME}(:|$)/ )
-    contexts << TEST_SYM if @test_builds && @ceedling[:rake_invocation_tracker].invoked?( /^test(:|$)/ )
+    contexts << TEST_SYM if @settings.test_builds && @ceedling[:rake_invocation_tracker].invoked?( /^test(:|$)/ )
     return contexts
   end
 

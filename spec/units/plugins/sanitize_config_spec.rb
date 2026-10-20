@@ -12,7 +12,9 @@ $: << File.expand_path('../../../../plugins/sanitize/lib', __FILE__)
 require 'sanitize_config'
 
 describe SanitizeConfig do
-  let(:defaults) { { sanitizers: ['address', 'undefined'], recover: false, detect_leaks: true, runtime_options: {}, flags: {} } }
+  let(:defaults) do
+    { sanitizers: ['address', 'undefined'], recover: false, detect_leaks: true, test_builds: false, fail_build: true, runtime_options: {}, flags: {} }
+  end
 
   def resolve(platform: :linux, **overrides)
     return described_class.new( defaults.merge( overrides ), platform: platform )

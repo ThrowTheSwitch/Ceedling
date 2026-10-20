@@ -78,6 +78,27 @@ describe Sanitize do
     end
   end
 
+  # An instrumented test: build runs through no sanitize: task, so the build itself checks
+  describe '#pre_test_build' do
+    it 'checks the platform and tools for an instrumented test: build' do
+      allow(system_wrapper).to receive(:windows?).and_return( true )
+      expect { build( test_builds: true ).pre_test_build( TEST_SYM, 0 ) }.to raise_error( CeedlingException, /not supported on Windows/ )
+    end
+
+    it 'leaves an uninstrumented test: build unchecked' do
+      allow(system_wrapper).to receive(:windows?).and_return( true )
+      expect { build.pre_test_build( TEST_SYM, 0 ) }.to_not raise_error
+    end
+
+    it 'checks only once' do
+      sanitize = build( test_builds: true )
+      sanitize.pre_test_build( TEST_SYM, 0 )
+      sanitize.pre_test_build( SANITIZE_SYM, 0 )
+
+      expect(tool_validator).to have_received(:validate).once
+    end
+  end
+
   # Flags go only where the plugin instruments, so other plugins' builds stay clean
   describe 'compile and link flags' do
     def compile(sanitize, context, source: 'src/buffer.c')
