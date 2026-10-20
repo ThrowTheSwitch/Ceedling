@@ -337,6 +337,13 @@ describe Valgrind do
       expect(arg_hash[:explanation_details]).to eq( ["Boom log: #{File.join( VALGRIND_ARTIFACTS_PATH, 'test_thing.xml' )}"] )
     end
 
+    it 'decodes the XML report\'s character references' do
+      xml = "<error><what>Mismatched free() / delete &#x27;Foo&amp;&#39;</what></error>"
+      arg_hash, _ = explain( xml, project_config: { valgrind_xml_report: true } )
+
+      expect(arg_hash[:explanation]).to eq( "Mismatched free() / delete 'Foo&'" )
+    end
+
     it 'names an error without a source location by its description alone' do
       log = "==1== Conditional jump or move depends on uninitialised value(s)\n==1==    at 0x4: helper (in /lib/libx.so)\n==1== ERROR SUMMARY: 1 errors from 1 contexts\n"
       arg_hash, _ = explain( log )

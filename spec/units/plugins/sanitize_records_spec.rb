@@ -96,6 +96,13 @@ describe SanitizeRecords do
       )
     end
 
+    it 'names a report rewritten for the same build once' do
+      records.record( :sanitize, 'test_a', [finding( 9 )] )
+      2.times { records.write_reports( :sanitize ) }
+
+      expect(records.failure_message).to eq( "Sanitizers found 1 problem in 1 test. See the reports in #{dir}: sanitize.log, sanitize.json." )
+    end
+
     it 'names no reports when none are written' do
       records = described_class.new( file_wrapper: file_wrapper, loginator: loginator, reports: [] )
       records.record( :sanitize, 'test_a', [finding( 9 )] )

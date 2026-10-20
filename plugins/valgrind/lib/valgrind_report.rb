@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'cgi'
+
 # The first memory error in a Valgrind report, named by its description and the first
 # stack frame that has a source location
 module ValgrindReport
@@ -33,7 +35,7 @@ module ValgrindReport
 
     what  = error[%r{<what>(.*?)</what>}m, 1] || error[%r{<xwhat>\s*<text>(.*?)</text>}m, 1]
     frame = error.scan( %r{<frame>(.*?)</frame>}m ).flatten.map { |body| xml_location( body ) }.compact.first
-    return what && describe( unescape( what ), frame )
+    return what && describe( CGI.unescapeHTML( what ), frame )
   end
 
   def self.xml_location(frame)
@@ -46,9 +48,5 @@ module ValgrindReport
     return location ? "#{what} at #{location}" : what
   end
 
-  def self.unescape(text)
-    return text.gsub( '&lt;', '<' ).gsub( '&gt;', '>' ).gsub( '&quot;', '"' ).gsub( '&apos;', "'" ).gsub( '&amp;', '&' )
-  end
-
-  private_class_method :from_text, :from_xml, :xml_location, :describe, :unescape
+  private_class_method :from_text, :from_xml, :xml_location, :describe
 end

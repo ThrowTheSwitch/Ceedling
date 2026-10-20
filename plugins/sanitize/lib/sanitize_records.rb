@@ -80,7 +80,7 @@ class SanitizeRecords
   private
 
   def written_by_directory
-    groups = @written.group_by { |path| File.dirname( path ) }
+    groups = @written.uniq.group_by { |path| File.dirname( path ) }
     return groups.map { |dir, paths| "#{dir}: #{paths.map { |path| File.basename( path ) }.join( ', ' )}" }.join( '; ' )
   end
 
