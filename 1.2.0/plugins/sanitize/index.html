@@ -5124,10 +5124,16 @@ test file:</p>
 <ul>
 <li><strong>A halted test</strong> fails, named by its finding. When a sanitizer stops a test,
   the test executable ends before Unity prints its summary, and Ceedling treats
-  that as a crash. The failure message names the sanitizer, the kind of
-  finding, its location, and the test’s log:</li>
+  that as a crash. The crash notice names the sanitizer, the kind of finding,
+  its location, and the test’s log. It replaces Ceedling’s generic crash notice
+  and its backtrace advice:</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>AddressSanitizer heap-buffer-overflow at test/test_buffer.c:21 (log: build/artifacts/sanitize/sanitize/test_buffer.log)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>☠️ ERROR: Test executable `test_buffer.out` was stopped by a sanitizer finding.
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>&gt; AddressSanitizer heap-buffer-overflow at test/test_buffer.c:21
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>&gt; Boom log: build/artifacts/sanitize/sanitize/test_buffer.log
+</code></pre></div>
+<p>The test’s failure message carries the same on one line:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>AddressSanitizer heap-buffer-overflow at test/test_buffer.c:21 (Boom log: build/artifacts/sanitize/sanitize/test_buffer.log)
 </code></pre></div>
 <ul>
 <li>
@@ -5139,8 +5145,17 @@ test file:</p>
 <p><strong>A crash no sanitizer reported</strong> keeps Ceedling’s usual crash message.</p>
 </li>
 </ul>
-<p>Each finding is also logged as the test runs. After the build, a summary counts
-the findings by sanitizer and kind.</p>
+<p>Each finding is also logged as the test runs, except one a crash notice
+names. After the build, a summary counts the findings by sanitizer and kind.
+It then lists each report written:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>Sanitizer findings:
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a> - AddressSanitizer heap-buffer-overflow: 1
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>Sanitizer reports:
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a> - build/artifacts/sanitize/sanitize/sanitize.json
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a> - build/artifacts/sanitize/sanitize/sanitize.sarif
+</code></pre></div>
+<p>A build without findings lists only its JSON and SARIF reports. Those are
+written even then.</p>
 <h3 id="backtraces">Backtraces</h3>
 <p>With <a href="../../configuration/reference/project/#use_backtrace"><code>:use_backtrace</code></a>
 set to <code>:simple</code>, each crashed test executable reruns one test case at a time.
@@ -5151,12 +5166,12 @@ The leak sanitizer cannot run under a debugger, and a sanitizer’s own report
 already includes the stack.</p>
 <h2 id="artifacts">Artifacts</h2>
 <p>Each test with findings has a log of its sanitizer reports:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>build/artifacts/sanitize/sanitize/&lt;test_name&gt;.log
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>build/artifacts/sanitize/sanitize/&lt;test_name&gt;.log
 </code></pre></div>
 <p>The configured reports are written beside the logs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>build/artifacts/sanitize/sanitize/sanitize.log
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>build/artifacts/sanitize/sanitize/sanitize.json
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>build/artifacts/sanitize/sanitize/sanitize.sarif
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>build/artifacts/sanitize/sanitize/sanitize.log
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>build/artifacts/sanitize/sanitize/sanitize.json
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>build/artifacts/sanitize/sanitize/sanitize.sarif
 </code></pre></div>
 <p>With <code>:test_builds</code> enabled, an ordinary <code>test:</code> build writes its logs and
 reports to <code>build/artifacts/sanitize/test/</code>.</p>

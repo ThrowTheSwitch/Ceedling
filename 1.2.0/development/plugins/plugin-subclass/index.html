@@ -5486,7 +5486,16 @@ test executable).</p>
 <p>Called when a test executable crashed, before Ceedling writes the crash as test
 failures. A plugin that recognizes the cause, such as a sanitizer’s report in the
 run’s output, sets <code>arg_hash[:explanation]</code> to a short message. That message
-replaces the generic crash message in the test’s failure.</p>
+replaces the generic crash message in the test’s failure, except with <code>:gdb</code>
+backtraces, whose failures carry gdb’s own trace. It also replaces Ceedling’s
+generic crash notice and its backtrace advice.</p>
+<p>Two optional keys shape the notice:</p>
+<ul>
+<li><code>:explanation_heading</code> completes its first line, “Test executable <code>x</code> …”.
+  Without it, the line ends “crashed.”</li>
+<li><code>:explanation_details</code> lists lines that follow the cause, such as where a
+  log is. The failure message adds them in parentheses.</li>
+</ul>
 <p>With <code>:use_backtrace</code> set to <code>:simple</code>, it is called again for each rerun that
 crashes, with that rerun’s own shell result, so each crashed test case can be
 explained on its own.</p>
@@ -5497,8 +5506,14 @@ plus:</p>
 <a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span><span class="c1"># The crashed run’s shell result -- see Command line tool shell results</span>
 <a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">  </span><span class="ss">:shell_result</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="o">...</span><span class="w"> </span><span class="p">},</span>
 <a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">  </span><span class="c1"># Set by a plugin that recognizes the cause; nil otherwise</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">  </span><span class="ss">:explanation</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">nil</span>
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="p">}</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">  </span><span class="ss">:explanation</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">nil</span><span class="p">,</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="w">  </span><span class="c1"># True for the crash&#39;s main run, whose explanation reaches the crash notice;</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="w">  </span><span class="c1"># false for a backtrace rerun</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="w">  </span><span class="ss">:crash_notice</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">true</span><span class="p">,</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="w">  </span><span class="c1"># Optional, set alongside :explanation</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="w">  </span><span class="ss">:explanation_details</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">nil</span><span class="p">,</span>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="w">  </span><span class="ss">:explanation_heading</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">nil</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="p">}</span>
 </code></pre></div>
 <h2 id="plugin-hook-methods-pre_testtest-and-post_testtest"><code>Plugin</code> hook methods <code>pre_test(test)</code> and <code>post_test(test)</code></h2>
 <p>These methods are called before and after performing all steps needed to run a
