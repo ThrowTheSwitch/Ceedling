@@ -266,11 +266,20 @@ A sanitizer’s finding is reported where you would look for a test failure.
 
 - **A halted test** fails, named by its finding. When a sanitizer stops a test,
   the test executable ends before Unity prints its summary, and Ceedling treats
-  that as a crash. The failure message names the sanitizer, the kind of
-  finding, its location, and the test’s log:
+  that as a crash. The crash notice names the sanitizer, the kind of finding,
+  its location, and the test’s log. It replaces Ceedling’s generic crash notice
+  and its backtrace advice:
 
   ```
-  AddressSanitizer heap-buffer-overflow at test/test_buffer.c:21 (log: build/artifacts/sanitize/sanitize/test_buffer.log)
+  ☠️ ERROR: Test executable `test_buffer.out` was stopped by a sanitizer finding.
+  > AddressSanitizer heap-buffer-overflow at test/test_buffer.c:21
+  > Boom log: build/artifacts/sanitize/sanitize/test_buffer.log
+  ```
+
+  The test’s failure message carries the same on one line:
+
+  ```
+  AddressSanitizer heap-buffer-overflow at test/test_buffer.c:21 (Boom log: build/artifacts/sanitize/sanitize/test_buffer.log)
   ```
 
 - **A leak** is a finding, not a test failure. Leaks are found as a test
@@ -279,8 +288,20 @@ A sanitizer’s finding is reported where you would look for a test failure.
 
 - **A crash no sanitizer reported** keeps Ceedling’s usual crash message.
 
-Each finding is also logged as the test runs. After the build, a summary counts
-the findings by sanitizer and kind.
+Each finding is also logged as the test runs, except one a crash notice
+names. After the build, a summary counts the findings by sanitizer and kind.
+It then lists each report written:
+
+```
+Sanitizer findings:
+ - AddressSanitizer heap-buffer-overflow: 1
+Sanitizer reports:
+ - build/artifacts/sanitize/sanitize/sanitize.json
+ - build/artifacts/sanitize/sanitize/sanitize.sarif
+```
+
+A build without findings lists only its JSON and SARIF reports. Those are
+written even then.
 
 ### Backtraces
 

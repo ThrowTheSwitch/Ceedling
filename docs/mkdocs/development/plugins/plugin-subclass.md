@@ -441,7 +441,16 @@ arg_hash = {
 Called when a test executable crashed, before Ceedling writes the crash as test
 failures. A plugin that recognizes the cause, such as a sanitizer’s report in the
 run’s output, sets `arg_hash[:explanation]` to a short message. That message
-replaces the generic crash message in the test’s failure.
+replaces the generic crash message in the test’s failure, except with `:gdb`
+backtraces, whose failures carry gdb’s own trace. It also replaces Ceedling’s
+generic crash notice and its backtrace advice.
+
+Two optional keys shape the notice:
+
+- `:explanation_heading` completes its first line, “Test executable `x` …”.
+  Without it, the line ends “crashed.”
+- `:explanation_details` lists lines that follow the cause, such as where a
+  log is. The failure message adds them in parentheses.
 
 With `:use_backtrace` set to `:simple`, it is called again for each rerun that
 crashes, with that rerun’s own shell result, so each crashed test case can be
@@ -456,7 +465,13 @@ arg_hash = {
   # The crashed run’s shell result -- see Command line tool shell results
   :shell_result => { ... },
   # Set by a plugin that recognizes the cause; nil otherwise
-  :explanation => nil
+  :explanation => nil,
+  # True for the crash's main run, whose explanation reaches the crash notice;
+  # false for a backtrace rerun
+  :crash_notice => true,
+  # Optional, set alongside :explanation
+  :explanation_details => nil,
+  :explanation_heading => nil
 }
 ```
 
