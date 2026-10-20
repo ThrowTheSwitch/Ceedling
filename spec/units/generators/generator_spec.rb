@@ -129,6 +129,34 @@ describe Generator do
     end
   end
 
+  # Test fixtures crash independently, but the fallback is the same for all of them
+  describe 'the :gdb fallback notice' do
+    before(:each) do
+      allow(@collaborators[:generator_helper]).to receive(:test_crash?).and_return( true )
+      allow(@collaborators[:test_context_extractor]).to receive(:lookup_test_cases).and_return( [] )
+      allow(@collaborators[:generator_test_results]).to receive(:filter_test_cases) { |cases| cases }
+      allow(@collaborators[:configurator]).to receive(:project_config_hash).and_return( { project_use_backtrace: :gdb } )
+      allow(@plugin_manager).to receive(:pre_test_fixture_execute)
+      allow(@plugin_manager).to receive(:post_test_fixture_execute)
+      allow(@plugin_manager).to receive(:explain_test_crash)
+    end
+
+    def crash(test)
+      @generator.generate_test_results(
+        tool: { name: 'wrapper', backtrace_rerun: true }, context: :sanitize, test_name: test, test_filepath: "test/#{test}.c",
+        executable: "build/#{test}.out", result: "build/#{test}.pass"
+      )
+    end
+
+    it 'is logged once for a build with several crashes, though each falls back' do
+      crash( 'test_a' )
+      crash( 'test_b' )
+
+      expect(@collaborators[:generator_test_results_backtrace]).to have_received(:do_simple).twice
+      expect(@collaborators[:loginator]).to have_received(:log).with( /:use_backtrace .*:gdb.*:simple/, Verbosity::NORMAL ).once
+    end
+  end
+
   describe '#generate_mock' do
     def generate(**extra)
       @generator.generate_mock(

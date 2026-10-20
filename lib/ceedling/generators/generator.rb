@@ -33,6 +33,10 @@ class Generator
     # Aliases
     @helper = @generator_helper
     @backtrace = @generator_test_results_backtrace
+
+    # Test fixtures run in parallel, and the :gdb fallback is noted once per build
+    @mutex = Mutex.new
+    @gdb_fallback_noted = false
   end
 
   # A module's typedefs and aggregate definitions are identical regardless of whether a test
@@ -463,8 +467,18 @@ class Generator
     backtrace = @configurator.project_config_hash[:project_use_backtrace]
     return backtrace unless backtrace == :gdb && tool.is_a?( Hash ) && tool[:backtrace_rerun]
 
-    @loginator.log( "Fixture tool `#{tool[:name]}` runs its own reruns, so :use_backtrace ➡️ :gdb falls back to :simple", Verbosity::NORMAL )
+    note_gdb_fallback( tool )
     return :simple
+  end
+
+  def note_gdb_fallback(tool)
+    @mutex.synchronize do
+      return if @gdb_fallback_noted
+
+      @gdb_fallback_noted = true
+    end
+
+    @loginator.log( "Fixture tool `#{tool[:name]}` runs its own reruns, so :use_backtrace ➡️ :gdb falls back to :simple", Verbosity::NORMAL )
   end
 
   def crash_results(backtrace, arg_hash, shell_result, test_cases)
