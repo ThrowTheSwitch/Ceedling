@@ -45,7 +45,8 @@ describe 'Sanitizer exclusion convention (integration)' do
     'test_nosanitize_ub_shift_overflow.c',
     'test_nosanitize_boom.c',
     'test_nosanitize_heap_buffer_overflow.c',
-    'test_nosanitize_leak.c'
+    'test_nosanitize_leak.c',
+    'test_nosanitize_two_findings.c'
   ].freeze
 
   # The sentence each excluded fixture carries in a header comment. Short enough

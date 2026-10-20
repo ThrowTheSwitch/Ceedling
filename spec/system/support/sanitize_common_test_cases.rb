@@ -68,6 +68,29 @@ module SanitizeCommonTestCases
   end
 
   # A crash no sanitizer reported keeps its own message, with no finding made up for it
+  # The first finding halts the main run, so only the second test case's backtrace rerun
+  # reaches the second finding. Both are counted and reported.
+  def run_sanitize_counts_a_finding_only_a_rerun_reaches
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_sanitize
+        @c.merge_project_yml_for_test({ :sanitize => { :reports => [:sarif] } })
+        FileUtils.cp test_asset_path("test_nosanitize_two_findings.c"), 'test/'
+
+        output = @c.ceedling_build_exec("sanitize:all")
+        expect(@c.last_exit_status).to eq(1)
+        expect(output).to match(/AddressSanitizer heap-buffer-overflow: 1/)
+        expect(output).to match(/UndefinedBehaviorSanitizer undefined-behavior: 1/)
+        expect(output).to match(/Sanitizers found 2 problems in 1 test/)
+
+        sarif = JSON.parse(read_spec_file('build/artifacts/sanitize/sanitize/sanitize.sarif'))
+        expect(sarif['runs'].first['results'].map { |result| result['ruleId'] }).to contain_exactly(
+          'address/heap-buffer-overflow', 'undefined/undefined-behavior'
+        )
+      end
+    end
+  end
+
   def run_sanitize_leaves_a_plain_crash_alone
     @c.with_context do
       Dir.chdir @proj_name do

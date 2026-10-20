@@ -93,14 +93,16 @@ class Sanitize < Plugin
     @records.record( arg_hash[:context], arg_hash[:test_name], findings )
   end
 
-  # A crash a sanitizer stopped is named by its first finding
+  # A crash a sanitizer stopped is named by its first finding. A backtrace rerun can reach a
+  # finding the main run never did, so the findings it explains are recorded too.
   def explain_test_crash(arg_hash)
     return unless instrumented?( arg_hash[:context] )
 
-    finding = SanitizeFindings.parse( arg_hash[:shell_result][:stderr] ).first
-    return if finding.nil?
+    findings = SanitizeFindings.parse( arg_hash[:shell_result][:stderr] )
+    return if findings.empty?
 
-    arg_hash[:explanation] = "#{SanitizeReports.headline( finding )} (log: #{SanitizeRecords.log_filepath( arg_hash[:context], arg_hash[:test_name] )})"
+    @records.record( arg_hash[:context], arg_hash[:test_name], findings )
+    arg_hash[:explanation] = "#{SanitizeReports.headline( findings.first )} (log: #{SanitizeRecords.log_filepath( arg_hash[:context], arg_hash[:test_name] )})"
   end
 
   def post_build(_timestamp_s)

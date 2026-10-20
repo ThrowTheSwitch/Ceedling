@@ -40,6 +40,7 @@ ceedling_system_tests do
       test_case :run_sanitize_on_clean_tests
       test_case :run_sanitize_names_an_asan_finding
       test_case :run_sanitize_names_a_ubsan_finding
+      test_case :run_sanitize_counts_a_finding_only_a_rerun_reaches
       test_case :run_sanitize_leaves_a_plain_crash_alone
       test_case :run_sanitize_writes_structured_reports
       test_case :run_sanitize_instruments_test_builds_when_asked

@@ -10,7 +10,9 @@ require 'sanitize_constants'
 require 'sanitize_reports'
 
 # The findings a run's instrumented builds turn up, each with its build context and test.
-# Tests run in parallel, so recording is synchronized.
+# Tests run in parallel, so recording is synchronized. A crashed test's backtrace reruns
+# reproduce the main run's finding and can reach findings it never did, so a finding
+# recorded again is counted once.
 class SanitizeRecords
 
   def initialize(file_wrapper:, loginator:, reports:)
@@ -18,6 +20,7 @@ class SanitizeRecords
     @loginator    = loginator
     @reports      = reports
     @records      = []
+    @logged_tests = []
     @mutex        = Mutex.new
   end
 
@@ -27,15 +30,14 @@ class SanitizeRecords
     return File.join( SANITIZE_ARTIFACTS_PATH, context.to_s, "#{test}.log" )
   end
 
-  # Writes a test's sanitizer reports to its own log and logs each finding
+  # Adds a test's new findings to its own log and logs each
   def record(context, test, findings)
+    added = @mutex.synchronize { add_new( context, test, findings ) }
+    return if added.empty?
+
     log = SanitizeRecords.log_filepath( context, test )
-
-    @file_wrapper.mkdir( File.dirname( log ) )
-    @file_wrapper.write( log, findings.map( &:text ).join( "\n" ) )
-
-    @mutex.synchronize { findings.each { |finding| @records << { context: context, test: test, finding: finding } } }
-    findings.each do |finding|
+    write_log( log, added )
+    added.each do |finding|
       @loginator.log( "#{test}: #{SanitizeReports.headline( finding )} ➡️ see #{log}", Verbosity::ERRORS, LogLabels::ERROR )
     end
   end
@@ -67,6 +69,30 @@ class SanitizeRecords
   end
 
   private
+
+  # The findings not yet recorded for this test, now recorded
+  def add_new(context, test, findings)
+    added = findings.reject { |finding| @records.any? { |record| same?( record, context, test, finding ) } }.uniq { |finding| key( finding ) }
+    added.each { |finding| @records << { context: context, test: test, finding: finding } }
+    return added
+  end
+
+  def same?(record, context, test, finding)
+    return record[:context] == context && record[:test] == test && key( record[:finding] ) == key( finding )
+  end
+
+  def key(finding)
+    return [finding.sanitizer, finding.kind, finding.file, finding.line]
+  end
+
+  # A build's first report for a test replaces the last build's log, and later ones follow it
+  def write_log(log, findings)
+    first = @mutex.synchronize { !@logged_tests.include?( log ) && @logged_tests << log }
+    text  = findings.map( &:text ).join( "\n" )
+
+    @file_wrapper.mkdir( File.dirname( log ) )
+    @file_wrapper.write( log, first ? text : "\n#{text}", first ? 'w' : 'a' )
+  end
 
   def pluralize(count, word)
     return "#{count} #{word}#{count == 1 ? '' : 's'}"

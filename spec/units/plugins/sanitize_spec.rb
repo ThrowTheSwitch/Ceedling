@@ -158,7 +158,7 @@ describe Sanitize do
     it 'writes a test\'s sanitizer report to its own log and logs each finding' do
       execute( build, report( 'gcc_heap' ) )
 
-      expect(file_wrapper).to have_received(:write).with( File.join( SANITIZE_ARTIFACTS_PATH, 'sanitize', 'test_a.log' ), /heap-buffer-overflow/ )
+      expect(file_wrapper).to have_received(:write).with( File.join( SANITIZE_ARTIFACTS_PATH, 'sanitize', 'test_a.log' ), /heap-buffer-overflow/, 'w' )
       expect(loginator).to have_received(:log).with( /test_a: AddressSanitizer heap-buffer-overflow at \/x\/heap\.c:3/, Verbosity::ERRORS, LogLabels::ERROR )
     end
 
@@ -180,6 +180,24 @@ describe Sanitize do
 
       log = File.join( SANITIZE_ARTIFACTS_PATH, 'sanitize', 'test_a.log' )
       expect(arg_hash[:explanation]).to eq( "AddressSanitizer heap-buffer-overflow at /x/heap.c:3 (log: #{log})" )
+    end
+
+    # A test case after the one that halted the main run runs only in its rerun
+    it 'counts the finding it names, so a rerun-only finding fails the build' do
+      sanitize = build
+      sanitize.explain_test_crash( { context: SANITIZE_SYM, test_name: 'test_a', shell_result: { stderr: report( 'gcc_heap' ) }, explanation: nil } )
+      sanitize.post_build( 0 )
+
+      expect(plugin_manager).to have_received(:register_build_failure).with( SANITIZE_SYM, /Sanitizers found 1 problem in 1 test/ )
+    end
+
+    it 'counts a finding once when both the main run and its explanation report it' do
+      sanitize = build
+      sanitize.explain_test_crash( { context: SANITIZE_SYM, test_name: 'test_a', shell_result: { stderr: report( 'gcc_heap' ) }, explanation: nil } )
+      sanitize.post_test_fixture_execute( { context: SANITIZE_SYM, test_name: 'test_a', result_file: 'x.pass', shell_result: { stderr: report( 'gcc_heap' ) } } )
+      sanitize.post_build( 0 )
+
+      expect(plugin_manager).to have_received(:register_build_failure).with( SANITIZE_SYM, /Sanitizers found 1 problem in 1 test/ )
     end
 
     it 'names nothing for a crash without a sanitizer report' do
