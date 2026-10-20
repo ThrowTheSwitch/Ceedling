@@ -286,14 +286,15 @@ describe Sanitize do
       expect(plugin_manager).not_to have_received(:register_build_failure)
     end
 
+    # The build failure summary names the reports, so the findings aren't logged again
+    it 'logs no tally after the build' do
+      build_after( report( 'gcc_leak' ), reports: [:json] )
+      expect(loginator).not_to have_received(:log).with( /Sanitizer (findings|reports):/, anything )
+    end
+
     it 'writes each configured report for each instrumented build' do
       build_after( report( 'gcc_leak' ), reports: [:json] )
       expect(file_wrapper).to have_received(:write).with( File.join( SANITIZE_ARTIFACTS_PATH, 'sanitize', 'sanitize.json' ), /"memory-leak"/ )
-    end
-
-    it 'tallies the findings by sanitizer and kind' do
-      build_after( report( 'gcc_leak' ) )
-      expect(loginator).to have_received(:log).with( /LeakSanitizer memory-leak: 1/, anything )
     end
   end
 end

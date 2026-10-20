@@ -67,39 +67,41 @@ describe SanitizeRecords do
       expect(file_wrapper).to have_received(:write).once
     end
   end
-  # CI reads the JSON and SARIF reports even from a build without findings
-  describe '#log_tally' do
-    let(:reports) { [report( 'log', false ), report( 'json', true ), report( 'sarif', true )] }
-    let(:records) { described_class.new( file_wrapper: file_wrapper, loginator: loginator, reports: reports ) }
-    let(:dir)     { File.join( SANITIZE_ARTIFACTS_PATH, 'sanitize' ) }
-
+  # The build failure names the reports written, as other plugins' failures do
+  describe '#failure_message' do
     def report(extension, write_empty)
       return double( extension, extension: extension, write_empty?: write_empty, render: '' )
     end
 
-    def tally
-      logged = []
-      allow(loginator).to receive(:log) { |message, *_| logged << message }
-      records.write_reports( :sanitize )
-      records.log_tally
-      return logged.join( "\n" )
-    end
+    let(:reports) { [report( 'log', false ), report( 'json', true )] }
+    let(:records) { described_class.new( file_wrapper: file_wrapper, loginator: loginator, reports: reports ) }
+    let(:dir)     { File.join( SANITIZE_ARTIFACTS_PATH, 'sanitize' ) }
 
-    it 'names each report written after the findings' do
+    it 'names the reports written in their directory' do
       records.record( :sanitize, 'test_a', [finding( 9 )] )
-      paths = %w[log json sarif].map { |extension| " - #{File.join( dir, "sanitize.#{extension}" )}" }
-      expect(tally).to end_with( "Sanitizer findings:\n - AddressSanitizer heap-buffer-overflow: 1\nSanitizer reports:\n#{paths.join( "\n" )}" )
+      records.write_reports( :sanitize )
+
+      expect(records.failure_message).to eq( "Sanitizers found 1 problem in 1 test. See the reports in #{dir}: sanitize.log, sanitize.json." )
     end
 
-    it 'names the reports written for a build without findings' do
-      expect(tally).to eq( "Sanitizer reports:\n - #{File.join( dir, 'sanitize.json' )}\n - #{File.join( dir, 'sanitize.sarif' )}" )
+    it 'names each directory\'s reports for each instrumented build' do
+      records.record( :sanitize, 'test_a', [finding( 9 )] )
+      records.record( :test, 'test_a', [finding( 9 )] )
+      records.write_reports( :sanitize )
+      records.write_reports( :test )
+
+      test_dir = File.join( SANITIZE_ARTIFACTS_PATH, 'test' )
+      expect(records.failure_message).to eq(
+        "Sanitizers found 2 problems in 1 test. See the reports in #{dir}: sanitize.log, sanitize.json; #{test_dir}: sanitize.log, sanitize.json."
+      )
     end
 
     it 'names no reports when none are written' do
-      records = described_class.new( file_wrapper: file_wrapper, loginator: loginator, reports: [report( 'log', false )] )
+      records = described_class.new( file_wrapper: file_wrapper, loginator: loginator, reports: [] )
+      records.record( :sanitize, 'test_a', [finding( 9 )] )
       records.write_reports( :sanitize )
-      records.log_tally
-      expect(loginator).not_to have_received(:log)
+
+      expect(records.failure_message).to eq( 'Sanitizers found 1 problem in 1 test' )
     end
   end
 end

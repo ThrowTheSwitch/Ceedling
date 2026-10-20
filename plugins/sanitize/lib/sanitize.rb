@@ -119,7 +119,6 @@ class Sanitize < Plugin
 
     report_test_results if contexts.include?( SANITIZE_SYM )
     contexts.each { |context| @records.write_reports( context ) }
-    @records.log_tally
 
     @ceedling[:plugin_manager].register_build_failure( SANITIZE_SYM, @records.failure_message ) if @settings.fail_build && !@records.empty?
   end

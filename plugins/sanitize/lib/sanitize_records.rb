@@ -68,24 +68,21 @@ class SanitizeRecords
     end
   end
 
-  # Counts by sanitizer and kind, then names the reports written
-  def log_tally
-    unless empty?
-      tally = @records.map { |record| "#{SanitizeReports::LABELS[record[:finding].sanitizer]} #{record[:finding].kind}" }.tally
-      @loginator.log( "Sanitizer findings:\n#{list( tally.map { |kind, count| "#{kind}: #{count}" } )}", Verbosity::NORMAL )
-    end
-
-    @loginator.log( "Sanitizer reports:\n#{list( @written )}", Verbosity::NORMAL ) unless @written.empty?
-  end
-
+  # Names the reports written, grouped by build context directory
   def failure_message
-    tests = @records.map { |record| record[:test] }.uniq.size
-    return "Sanitizers found #{pluralize( @records.size, 'problem' )} in #{pluralize( tests, 'test' )}"
+    tests   = @records.map { |record| record[:test] }.uniq.size
+    message = "Sanitizers found #{pluralize( @records.size, 'problem' )} in #{pluralize( tests, 'test' )}"
+    return message if @written.empty?
+
+    return "#{message}. See the reports in #{written_by_directory}."
   end
 
   private
 
-  def list(items) = items.map { |item| " - #{item}" }.join( "\n" )
+  def written_by_directory
+    groups = @written.group_by { |path| File.dirname( path ) }
+    return groups.map { |dir, paths| "#{dir}: #{paths.map { |path| File.basename( path ) }.join( ', ' )}" }.join( '; ' )
+  end
 
   # The findings not yet recorded for this test, now recorded
   def add_new(context, test, findings)

@@ -32,7 +32,7 @@ module SanitizeCommonTestCases
         output = @c.ceedling_build_exec("sanitize:all")
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/SANITIZE: .*OVERALL TEST SUMMARY/)
-        expect(output).not_to match(/Sanitizer findings/)
+        expect(output).not_to match(/Sanitizers found/)
         expect(Dir.glob('build/artifacts/sanitize/sanitize/*.log')).to be_empty
       end
     end
@@ -119,7 +119,7 @@ module SanitizeCommonTestCases
         output = @c.ceedling_build_exec("sanitize:all")
         expect(@c.last_exit_status).to eq(1)
         expect(output).to match(/Test case crashed/)
-        expect(output).not_to match(/Sanitizer findings/)
+        expect(output).not_to match(/Sanitizers found/)
       end
     end
   end
