@@ -3348,6 +3348,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#console-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Console output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#interpreting-results" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4653,6 +4664,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#console-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Console output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#interpreting-results" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4895,9 +4917,52 @@ beside it:</p>
 detected memory errors, leak summaries, and (with <code>--track-origins=yes</code>)
 the origin of uninitialized values.</p>
 <p>The log files are included in <code>ceedling clean</code> targets.</p>
+<h2 id="console-output">Console output</h2>
+<p>These excerpts come from real runs. Build progress lines are left out.</p>
+<p>A clean run adds one notice after the test summary:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>VALGRIND: ✅ OVERALL TEST SUMMARY
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>TESTED:  2
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>PASSED:  1
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>FAILED:  0
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>IGNORED: 1
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>ℹ️ NOTICE: Wrote 1 Valgrind report to build/artifacts/valgrind/
+</code></pre></div>
+<p>A test that a memory error ends gets a notice naming the first error and its
+report. It replaces Ceedling’s generic crash notice:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>☠️ ERROR: Test executable `test_nosanitize_crash_sigsegv.out` terminated with Valgrind memory errors.
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>&gt; Invalid read of size 4 at test_nosanitize_crash_sigsegv.c:32
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>&gt; Boom log: build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>VALGRIND: FAILED TEST SUMMARY
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>[test/test_nosanitize_crash_sigsegv.c]
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>  Test: test_add_numbers_will_fail
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>  At line (28): &quot;Test case crashed &gt;&gt; Segmentation fault&quot;
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>VALGRIND: ❌ OVERALL TEST SUMMARY
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>TESTED:  2
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>PASSED:  1
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>FAILED:  1
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>IGNORED: 0
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>ℹ️ NOTICE: Wrote 1 Valgrind report to build/artifacts/valgrind/
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>❌ BUILD FAILURE SUMMARY
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a> • [VALGRIND] Unit test failures
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a> • [VALGRIND] Valgrind detected 2 memory errors across 1 test
+</code></pre></div>
+<p>With <a href="#fail_build"><code>:fail_build:</code></a> set to <code>false</code>, the same run omits the last
+line. Only the test failure fails the build.</p>
+<p>A test that completes despite memory errors logs one line as it runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>🪲 ERROR: Valgrind detected 2 memory errors in test_example ➡️ see build/artifacts/valgrind/test_example.log
+</code></pre></div>
+<p>A test whose report is missing logs a warning, since its memory error status
+is unknown:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>⚠️ WARNING: Valgrind wrote no report for test_example at build/artifacts/valgrind/test_example.log. Memory error status is unknown.
+</code></pre></div>
 <h2 id="interpreting-results">Interpreting results</h2>
 <p>To review the log for a specific test:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>cat<span class="w"> </span>build/artifacts/valgrind/test_my_module.log
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>cat<span class="w"> </span>build/artifacts/valgrind/test_my_module.log
 </code></pre></div>
 <p>Common Valgrind findings include:</p>
 <table>
