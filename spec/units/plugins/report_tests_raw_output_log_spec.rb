@@ -32,6 +32,14 @@ describe ReportTestsRawOutputLog do
     @plugin.instance_variable_set(:@reportinator, @reportinator)
   end
 
+  # A delta build reports a skipped test's results from the last build, without running it
+  describe '#post_test_fixture_execute' do
+    it 'collects nothing for a test reported from cached results' do
+      @plugin.post_test_fixture_execute( { context: :test, test_name: 'test_a', shell_result: nil } )
+      expect(@plugin.instance_variable_get(:@raw_output)).to be_empty
+    end
+  end
+
   # Raw output is whatever a test executable printed besides its results. The scan skips
   # blank lines and test-result lines, and stops at the summary footer.
   describe '#extract_output' do
