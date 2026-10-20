@@ -64,6 +64,11 @@ class Configurator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are gigantic and produce a flood of output.
+  # What startup learned of gdb backtraces (see ConfiguratorSetup#gdb_backtrace_state)
+  def gdb_backtrace_state
+    return @configurator_setup.gdb_backtrace_state
+  end
+
   def inspect
     return self.class.name
   end

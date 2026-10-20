@@ -162,6 +162,36 @@ describe Generator do
     end
   end
 
+  # On macOS, startup can find gdb unable to attach and fall back to :simple backtraces
+  describe 'crash advice after startup ruled out :gdb' do
+    before(:each) do
+      allow(@collaborators[:generator_helper]).to receive(:test_crash?).and_return( true )
+      allow(@collaborators[:test_context_extractor]).to receive(:lookup_test_cases).and_return( [] )
+      allow(@collaborators[:generator_test_results]).to receive(:filter_test_cases) { |cases| cases }
+      allow(@collaborators[:configurator]).to receive(:project_config_hash).and_return( { project_use_backtrace: :simple } )
+      allow(@plugin_manager).to receive(:pre_test_fixture_execute)
+      allow(@plugin_manager).to receive(:post_test_fixture_execute)
+      allow(@plugin_manager).to receive(:explain_test_crash)
+    end
+
+    def crash(state)
+      allow(@collaborators[:configurator]).to receive(:gdb_backtrace_state).and_return( state )
+      @generator.generate_test_results(
+        tool: :fixture, context: :test, test_name: 'test_a', test_filepath: 'test/test_a.c', executable: 'build/test_a.out', result: 'build/test_a.pass'
+      )
+    end
+
+    it 'tells the crash notice that :gdb can\'t be used' do
+      crash( :fell_back )
+      expect(@collaborators[:generator_helper]).to have_received(:log_test_results_crash).with( 'build/test_a.out', anything, :simple, gdb_unavailable: true )
+    end
+
+    it 'leaves the advice to the crash notice when startup never asked about gdb' do
+      crash( :unknown )
+      expect(@collaborators[:generator_helper]).to have_received(:log_test_results_crash).with( 'build/test_a.out', anything, :simple, gdb_unavailable: false )
+    end
+  end
+
   describe '#generate_mock' do
     def generate(**extra)
       @generator.generate_mock(

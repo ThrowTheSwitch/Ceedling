@@ -454,7 +454,9 @@ class Generator
   # learns what it can about the crash as :project ↳ :use_backtrace allows
   def handle_test_crash(arg_hash, shell_result)
     backtrace = backtrace_for( arg_hash[:tool] )
-    gdb_unavailable = backtrace != @configurator.project_config_hash[:project_use_backtrace]
+    # Either the fixture tool fell back from :gdb here, or startup found gdb unable to attach
+    gdb_unavailable = backtrace != @configurator.project_config_hash[:project_use_backtrace] ||
+                      @configurator.gdb_backtrace_state == :fell_back
     @helper.log_test_results_crash( arg_hash[:executable], shell_result, backtrace, gdb_unavailable: gdb_unavailable )
 
     test_cases = @test_context_extractor.lookup_test_cases( arg_hash[:test_filepath] )

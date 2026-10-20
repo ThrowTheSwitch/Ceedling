@@ -43,6 +43,36 @@ describe ConfiguratorSetup do
     expect(@setup.inspect).to eq('ConfiguratorSetup')
   end
 
+  # The crash notice advises :gdb backtraces only where startup didn't already rule them out
+  context "#gdb_backtrace_state" do
+    def validate(use_backtrace, macos: true, attaches: true)
+      allow(@system_wrapper).to receive(:macos?).and_return( macos )
+      allow(@configurator_validator).to receive(:validate_tool).and_return( true )
+      allow(@tool_executor).to receive(:exec).and_return( { status: double( 'status', success?: attaches ), output: '' } )
+      allow(@loginator).to receive(:log)
+
+      @setup.validate_tools( { tools: {}, project: { use_backtrace: use_backtrace } } )
+      return @setup.gdb_backtrace_state
+    end
+
+    it "is unknown when :gdb backtraces were never asked for" do
+      expect(validate( :simple )).to eq( :unknown )
+    end
+
+    it "is usable when gdb attaches" do
+      expect(validate( :gdb )).to eq( :usable )
+    end
+
+    # Validating the gdb tool already proved it is present
+    it "is usable where no attach probe runs" do
+      expect(validate( :gdb, macos: false )).to eq( :usable )
+    end
+
+    it "has fallen back when gdb can't attach" do
+      expect(validate( :gdb, attaches: false )).to eq( :fell_back )
+    end
+  end
+
   context "#validate_partials" do
     it "accepts an integer at the minimum" do
       config = { partials: { max_extraction_length: 10 } }
