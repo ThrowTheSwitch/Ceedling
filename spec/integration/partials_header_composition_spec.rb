@@ -514,6 +514,21 @@ describe 'Partial header composition' do
       compile = compile_partial( @result )
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
     end
+
+    # Issue #1352. The module header's <stdint.h> returns at the header's line 3, the same
+    # number as the source's second #define.
+    it 'keeps adjacent source macros apart when a header line number matches' do
+      @result = generate_partial(
+        module_name: 'repro',
+        header: "#ifndef REPRO_H\n#define REPRO_H\n#include <stdint.h>\nuint32_t repro_sum(void);\n#endif\n",
+        source: "#include \"repro.h\"\n#define REPRO_FIRST (1U)\n#define REPRO_SECOND (2U)\n",
+        header_includes: ['<stdint.h>'],
+        source_includes: ['repro.h']
+      )
+
+      expect( @result.defines( :impl_h ) ).to include('REPRO_FIRST', 'REPRO_SECOND')
+      expect( @result.impl_h.lines.grep(/#\s*define.*#\s*define/) ).to be_empty
+    end
   end
 
   # ---------------------------------------------------------------------------

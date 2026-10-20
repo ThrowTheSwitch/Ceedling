@@ -372,13 +372,14 @@ class PreprocessinatorReconstructor
         extract = false
       end
 
-      # Enter extract mode if the line is a preprocessor line marker with filepath of interest
+      # Enter extract mode if the line is a preprocessor line marker with filepath of interest.
+      # Only its own markers move the line counts. Another file's line number carried back
+      # would make the next line here read as a continuation of the one before it.
       matches = line.match( line_marker )
-      if matches and matches.size() > 2
+      if matches and matches.size() > 2 and extraction_filepath == File.expand_path( matches[2].strip() )
         last_line_num = line_num
         line_num = (matches[1].to_i - 1)
-        fp = File.expand_path( matches[2].strip() )
-        extract = true if extraction_filepath == fp
+        extract = true
       end
     end
 
