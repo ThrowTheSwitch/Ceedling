@@ -23,6 +23,8 @@ CLOBBER.include(File.join(PROJECT_BUILD_TESTS_ROOT, '**/*'))
 CLOBBER.include(File.join(PROJECT_BUILD_RELEASE_ROOT, '**/*'))
 CLOBBER.include(File.join(PROJECT_LOG_PATH, '**/*'))
 CLOBBER.include(File.join(PROJECT_BUILD_DEPENDENCIES_CACHE_PATH, '**/*'))
+# Rake's globs never match dotfiles, and each dependency cache is one
+CLOBBER.include(File.join(PROJECT_BUILD_DEPENDENCIES_CACHE_PATH, ".*.#{Dependinator::CACHE_FILENAME}"))
 
 # just in case they're using git, let's make sure we allow them to preserved the build directory if desired.
 CLOBBER.exclude(File.join(TESTS_BASE_PATH), '**/.gitkeep')

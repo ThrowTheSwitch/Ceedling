@@ -52,6 +52,7 @@ module SanitizeCommonTestCases
         expect(@c.last_exit_status).to eq(0)
         expect(Dir.glob('build/sanitize/**/*').select { |path| File.file?( path ) }).to be_empty
         expect(Dir.glob('build/artifacts/sanitize/**/*').select { |path| File.file?( path ) }).to be_empty
+        expect(Dir.glob('build/cache/.*.dep_cache.json')).to be_empty
       end
     end
   end
