@@ -296,6 +296,35 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
     end
 
+    # GH #1352: the marker returning from a header's own include must not make the next
+    # source line read as a continuation of the line before it
+    it "keeps source lines apart whose numbers match a line of an included header" do
+      filepath = "path/a.c"
+
+      file_contents = [
+        '# 1 "path/a.c"',
+        '# 1 "path/a.h" 1',
+        '',
+        '',
+        '# 1 "/usr/include/stdint.h" 1 3 4',
+        'typedef unsigned int uint32_t;',
+        '# 4 "path/a.h" 2',
+        'uint32_t a_sum(void);',
+        '# 2 "path/a.c" 2',
+        '#define A_FIRST (1U)',
+        '#define A_SECOND (2U)',
+      ]
+
+      expected = [
+        '#define A_FIRST (1U)',
+        '#define A_SECOND (2U)',
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
     it "should extract text of original file from staggered system include expansions" do
       filepath = "path/system_header_expansion.c"
       

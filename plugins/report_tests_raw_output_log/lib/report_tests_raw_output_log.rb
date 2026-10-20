@@ -19,6 +19,9 @@ class ReportTestsRawOutputLog < ReportLogWriterPlugin
 
   # `Plugin` build step hook
   def post_test_fixture_execute(arg_hash)
+    # A test reported from cached results was not run, so it printed nothing
+    return if arg_hash[:shell_result].nil?
+
     output = extract_output( arg_hash[:shell_result][:output] )
 
     # Bail out early
