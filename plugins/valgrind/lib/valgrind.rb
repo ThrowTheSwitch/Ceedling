@@ -9,6 +9,7 @@ require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'valgrind_constants'
+require 'valgrind_report'
 
 class Valgrind < Plugin
 
@@ -16,6 +17,7 @@ class Valgrind < Plugin
     @memory_errors   = 0
     @tests_processed = 0
     @reports_read    = 0
+    @explained       = []
     @mutex = Mutex.new()
 
     @result_list = []
@@ -137,10 +139,26 @@ class Valgrind < Plugin
       @memory_errors += errors
     end
 
-    return if errors == 0
+    # A crash Valgrind explained has its errors named in the crash notice
+    return if errors == 0 || @mutex.synchronize { @explained.include?( test_name ) }
 
     msg = "Valgrind detected #{pluralize(errors, 'memory error')} in #{test_name} ➡️ see #{report_filepath(test_name)}"
     @loginator.log( msg, Verbosity::ERRORS, LogLabels::ERROR )
+  end
+
+  # Only the main run ran under Valgrind. A backtrace rerun runs the bare executable.
+  def explain_test_crash(arg_hash)
+    return unless arg_hash[:context] == VALGRIND_SYM && arg_hash[:crash_notice]
+
+    test_name = arg_hash[:test_name]
+    path      = report_filepath( test_name )
+    return unless @file_wrapper.exist?( path )
+
+    cause = ValgrindReport.first_error( @file_wrapper.read( path ), xml: xml_report_enabled? )
+    return if cause.nil?
+
+    @mutex.synchronize { @explained << test_name }
+    arg_hash.merge!( explanation_heading: 'terminated with Valgrind memory errors', explanation: cause, explanation_details: ["Boom log: #{path}"] )
   end
 
   def post_build(_timestamp_s)

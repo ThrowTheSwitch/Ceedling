@@ -70,6 +70,7 @@ describe Valgrind do
       memory_errors:       0,
       tests_processed:     0,
       reports_read:        0,
+      explained:           [],
       environment_validated: false
     }
     defaults.merge(ivars).each { |key, value| instance.instance_variable_set(:"@#{key}", value) }
@@ -306,6 +307,73 @@ describe Valgrind do
   ##
   ## Error counting
   ##
+
+  # Running under Valgrind is a controlled termination, named by the first memory error
+  describe '#explain_test_crash' do
+    def fixture(name)
+      File.read( File.expand_path( "../../../support/fixtures/valgrind_reports/#{name}", __FILE__ ) )
+    end
+
+    def explain(report, project_config: {}, context: VALGRIND_SYM, crash_notice: true, exists: true)
+      wrapper  = double('file_wrapper', exist?: exists, read: report)
+      valgrind = build_valgrind(project_config, file_wrapper: wrapper)
+      arg_hash = { context: context, test_name: 'test_thing', crash_notice: crash_notice, explanation: nil }
+      valgrind.explain_test_crash( arg_hash )
+      [arg_hash, valgrind]
+    end
+
+    it 'names the first memory error from the text log' do
+      arg_hash, _ = explain( fixture( 'sigsegv.log' ) )
+
+      expect(arg_hash[:explanation_heading]).to eq( 'terminated with Valgrind memory errors' )
+      expect(arg_hash[:explanation]).to eq( 'Invalid read of size 4 at test_nosanitize_crash_sigsegv.c:32' )
+      expect(arg_hash[:explanation_details]).to eq( ["Boom log: #{File.join( VALGRIND_ARTIFACTS_PATH, 'test_thing.log' )}"] )
+    end
+
+    it 'names the first memory error from the XML report' do
+      arg_hash, _ = explain( fixture( 'sigsegv.xml' ), project_config: { valgrind_xml_report: true } )
+
+      expect(arg_hash[:explanation]).to eq( 'Invalid read of size 4 at test_nosanitize_crash_sigsegv.c:32' )
+      expect(arg_hash[:explanation_details]).to eq( ["Boom log: #{File.join( VALGRIND_ARTIFACTS_PATH, 'test_thing.xml' )}"] )
+    end
+
+    it 'names an error without a source location by its description alone' do
+      log = "==1== Conditional jump or move depends on uninitialised value(s)\n==1==    at 0x4: helper (in /lib/libx.so)\n==1== ERROR SUMMARY: 1 errors from 1 contexts\n"
+      arg_hash, _ = explain( log )
+
+      expect(arg_hash[:explanation]).to eq( 'Conditional jump or move depends on uninitialised value(s)' )
+    end
+
+    it 'names nothing for a crash without memory errors' do
+      arg_hash, _ = explain( "==1== Memcheck, a memory error detector\n==1== ERROR SUMMARY: 0 errors from 0 contexts\n" )
+      expect(arg_hash[:explanation]).to be_nil
+    end
+
+    it 'names nothing without a report' do
+      arg_hash, _ = explain( '', exists: false )
+      expect(arg_hash[:explanation]).to be_nil
+    end
+
+    # A backtrace rerun runs the bare executable and writes no report of its own
+    it 'names nothing for a backtrace rerun' do
+      arg_hash, _ = explain( fixture( 'sigsegv.log' ), crash_notice: false )
+      expect(arg_hash[:explanation]).to be_nil
+    end
+
+    it 'names nothing outside a valgrind build' do
+      arg_hash, _ = explain( fixture( 'sigsegv.log' ), context: :test )
+      expect(arg_hash[:explanation]).to be_nil
+    end
+
+    # The crash notice names the errors already
+    it 'leaves the explained test without a separate memory error line' do
+      _, valgrind = explain( fixture( 'sigsegv.log' ) )
+      valgrind.post_test_fixture_execute( { context: VALGRIND_SYM, test_name: 'test_thing', result_file: 'build/valgrind/results/test_thing.pass' } )
+
+      expect(loginator).not_to have_received(:log).with( /Valgrind detected/, anything, anything )
+      expect(valgrind.instance_variable_get(:@memory_errors)).to eq( 2 )
+    end
+  end
 
   describe '#post_test_fixture_execute' do
     def execute(project_config, log_contents, exists: true, result_file: File.join('build', 'valgrind', 'results', 'test_thing.pass'))

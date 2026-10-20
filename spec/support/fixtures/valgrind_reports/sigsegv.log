@@ -1,0 +1,51 @@
+==319== Memcheck, a memory error detector
+==319== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.
+==319== Using Valgrind-3.24.0 and LibVEX; rerun with -h for copyright info
+==319== Command: build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out
+==319== Parent PID: 315
+==319== 
+==319== Invalid read of size 4
+==319==    at 0x1091B0: test_add_numbers_will_fail (test_nosanitize_crash_sigsegv.c:32)
+==319==    by 0x1092E9: run_test (test_nosanitize_crash_sigsegv_runner.c:76)
+==319==    by 0x10945A: main (test_nosanitize_crash_sigsegv_runner.c:123)
+==319==  Address 0x0 is not stack'd, malloc'd or (recently) free'd
+==319== 
+==319== 
+==319== Process terminating with default action of signal 11 (SIGSEGV)
+==319==  Access not within mapped region at address 0x0
+==319==    at 0x1091B0: test_add_numbers_will_fail (test_nosanitize_crash_sigsegv.c:32)
+==319==    by 0x1092E9: run_test (test_nosanitize_crash_sigsegv_runner.c:76)
+==319==    by 0x10945A: main (test_nosanitize_crash_sigsegv_runner.c:123)
+==319==  If you believe this happened as a result of a stack
+==319==  overflow in your program's main thread (unlikely but
+==319==  possible), you can try to increase the size of the
+==319==  main thread stack using the --main-stacksize= flag.
+==319==  The main thread stack size used in this run was 8388608.
+==319== 
+==319== HEAP SUMMARY:
+==319==     in use at exit: 4,096 bytes in 1 blocks
+==319==   total heap usage: 1 allocs, 0 frees, 4,096 bytes allocated
+==319== 
+==319== 4,096 bytes in 1 blocks are still reachable in loss record 1 of 1
+==319==    at 0x4844818: malloc (vg_replace_malloc.c:446)
+==319==    by 0x48DCDB2: _IO_file_doallocate (filedoalloc.c:101)
+==319==    by 0x48EBB48: _IO_doallocbuf (genops.c:373)
+==319==    by 0x48EBB48: _IO_doallocbuf (genops.c:368)
+==319==    by 0x48E9CC7: _IO_file_overflow@@GLIBC_2.2.5 (fileops.c:746)
+==319==    by 0x48E153D: putchar (putchar.c:28)
+==319==    by 0x1094B3: UnityPrintChar (unity.c:102)
+==319==    by 0x10954F: UnityPrint (unity.c:163)
+==319==    by 0x109991: UnityTestResultsBegin (unity.c:567)
+==319==    by 0x109A54: UnityConcludeTest (unity.c:595)
+==319==    by 0x109310: run_test (test_nosanitize_crash_sigsegv_runner.c:85)
+==319==    by 0x10945A: main (test_nosanitize_crash_sigsegv_runner.c:123)
+==319== 
+==319== LEAK SUMMARY:
+==319==    definitely lost: 0 bytes in 0 blocks
+==319==    indirectly lost: 0 bytes in 0 blocks
+==319==      possibly lost: 0 bytes in 0 blocks
+==319==    still reachable: 4,096 bytes in 1 blocks
+==319==         suppressed: 0 bytes in 0 blocks
+==319== 
+==319== For lists of detected and suppressed errors, rerun with: -s
+==319== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
