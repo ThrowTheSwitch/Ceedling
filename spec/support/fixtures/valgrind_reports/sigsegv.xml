@@ -1,0 +1,182 @@
+<?xml version="1.0"?>
+
+<valgrindoutput>
+
+<protocolversion>4</protocolversion>
+<protocoltool>memcheck</protocoltool>
+
+<preamble>
+  <line>Memcheck, a memory error detector</line>
+  <line>Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.</line>
+  <line>Using Valgrind-3.24.0 and LibVEX; rerun with -h for copyright info</line>
+  <line>Command: build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</line>
+</preamble>
+
+<pid>393</pid>
+<ppid>389</ppid>
+<tool>memcheck</tool>
+
+<args>
+  <vargv>
+    <exe>/usr/bin/valgrind.bin</exe>
+    <arg>--log-file=build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log</arg>
+    <arg>--xml=yes</arg>
+    <arg>--xml-file=build/artifacts/valgrind/test_nosanitize_crash_sigsegv.xml</arg>
+    <arg>--leak-check=full</arg>
+    <arg>--show-leak-kinds=all</arg>
+    <arg>--track-origins=yes</arg>
+    <arg>--errors-for-leak-kinds=all</arg>
+  </vargv>
+  <argv>
+    <exe>build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</exe>
+  </argv>
+</args>
+
+<status>
+  <state>RUNNING</state>
+  <time>00:00:00:00.066 </time>
+</status>
+
+<error>
+  <unique>0x0</unique>
+  <tid>1</tid>
+  <kind>InvalidRead</kind>
+  <what>Invalid read of size 4</what>
+  <stack>
+    <frame>
+      <ip>0x1091B0</ip>
+      <obj>/project/build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</obj>
+      <fn>test_add_numbers_will_fail</fn>
+      <dir>/project/test</dir>
+      <file>test_nosanitize_crash_sigsegv.c</file>
+      <line>32</line>
+    </frame>
+    <frame>
+      <ip>0x1092E9</ip>
+      <obj>/project/build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</obj>
+      <fn>run_test</fn>
+      <dir>/project/build/test/runners</dir>
+      <file>test_nosanitize_crash_sigsegv_runner.c</file>
+      <line>76</line>
+    </frame>
+    <frame>
+      <ip>0x10945A</ip>
+      <obj>/project/build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</obj>
+      <fn>main</fn>
+      <dir>/project/build/test/runners</dir>
+      <file>test_nosanitize_crash_sigsegv_runner.c</file>
+      <line>123</line>
+    </frame>
+  </stack>
+  <auxwhat>Address 0x0 is not stack'd, malloc'd or (recently) free'd</auxwhat>
+</error>
+<error>
+  <unique>0x1</unique>
+  <tid>1</tid>
+  <kind>Leak_StillReachable</kind>
+  <xwhat>
+    <text>4,096 bytes in 1 blocks are still reachable in loss record 1 of 1</text>
+    <leakedbytes>4096</leakedbytes>
+    <leakedblocks>1</leakedblocks>
+  </xwhat>
+  <stack>
+    <frame>
+      <ip>0x4844818</ip>
+      <obj>/usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so</obj>
+      <fn>malloc</fn>
+      <dir>./coregrind/m_replacemalloc</dir>
+      <file>vg_replace_malloc.c</file>
+      <line>446</line>
+    </frame>
+    <frame>
+      <ip>0x48DCDB2</ip>
+      <obj>/usr/lib/x86_64-linux-gnu/libc.so.6</obj>
+      <fn>_IO_file_doallocate</fn>
+      <dir>./libio/./libio</dir>
+      <file>filedoalloc.c</file>
+      <line>101</line>
+    </frame>
+    <frame>
+      <ip>0x48EBB48</ip>
+      <obj>/usr/lib/x86_64-linux-gnu/libc.so.6</obj>
+      <fn>_IO_doallocbuf</fn>
+      <dir>./libio/./libio</dir>
+      <file>genops.c</file>
+      <line>373</line>
+    </frame>
+    <frame>
+      <ip>0x48EBB48</ip>
+      <obj>/usr/lib/x86_64-linux-gnu/libc.so.6</obj>
+      <fn>_IO_doallocbuf</fn>
+      <dir>./libio/./libio</dir>
+      <file>genops.c</file>
+      <line>368</line>
+    </frame>
+    <frame>
+      <ip>0x48E9CC7</ip>
+      <obj>/usr/lib/x86_64-linux-gnu/libc.so.6</obj>
+      <fn>_IO_file_overflow@@GLIBC_2.2.5</fn>
+      <dir>./libio/./libio</dir>
+      <file>fileops.c</file>
+      <line>746</line>
+    </frame>
+    <frame>
+      <ip>0x48E153D</ip>
+      <obj>/usr/lib/x86_64-linux-gnu/libc.so.6</obj>
+      <fn>putchar</fn>
+      <dir>./libio/./libio</dir>
+      <file>putchar.c</file>
+      <line>28</line>
+    </frame>
+    <frame>
+      <ip>0x1094B3</ip>
+      <obj>/project/build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</obj>
+      <fn>UnityPrintChar</fn>
+      <dir>/project/build/vendor/unity/src</dir>
+      <file>unity.c</file>
+      <line>102</line>
+    </frame>
+    <frame>
+      <ip>0x10954F</ip>
+      <obj>/project/build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</obj>
+      <fn>UnityPrint</fn>
+      <dir>/project/build/vendor/unity/src</dir>
+      <file>unity.c</file>
+      <line>163</line>
+    </frame>
+    <frame>
+      <ip>0x109991</ip>
+      <obj>/project/build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</obj>
+      <fn>UnityTestResultsBegin</fn>
+      <dir>/project/build/vendor/unity/src</dir>
+      <file>unity.c</file>
+      <line>567</line>
+    </frame>
+    <frame>
+      <ip>0x109A54</ip>
+      <obj>/project/build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</obj>
+      <fn>UnityConcludeTest</fn>
+      <dir>/project/build/vendor/unity/src</dir>
+      <file>unity.c</file>
+      <line>595</line>
+    </frame>
+    <frame>
+      <ip>0x109310</ip>
+      <obj>/project/build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</obj>
+      <fn>run_test</fn>
+      <dir>/project/build/test/runners</dir>
+      <file>test_nosanitize_crash_sigsegv_runner.c</file>
+      <line>85</line>
+    </frame>
+    <frame>
+      <ip>0x10945A</ip>
+      <obj>/project/build/valgrind/out/test_nosanitize_crash_sigsegv/test_nosanitize_crash_sigsegv.out</obj>
+      <fn>main</fn>
+      <dir>/project/build/test/runners</dir>
+      <file>test_nosanitize_crash_sigsegv_runner.c</file>
+      <line>123</line>
+    </frame>
+  </stack>
+</error>
+
+</valgrindoutput>

@@ -99,9 +99,7 @@ therefore generate two distinct files rather than overwriting one another.
 
 !!! tip "Two same-named modules in one test file"
     `TEST_PARTIAL_*_MODULE_AT()` and `MOCK_PARTIAL_*_MODULE_AT()` both work for two
-    modules sharing a basename. Each mock Partial is named by its directory through
-    [`:cmock` ↳ `:mock_name_include_folder`](../../configuration/reference/cmock.md#mock_name_include_folder),
-    enabled by default, so the two mocks do not collide.
+    modules sharing a basename.
 
 A `_CONFIG_AT` macro must name the same directory as the `_MODULE_AT` macro it
 refines. The directory and module together identify which Partial a function

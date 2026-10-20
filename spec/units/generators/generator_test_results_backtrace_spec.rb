@@ -713,6 +713,83 @@ describe GeneratorTestResultsBacktrace do
 
   # ── private #format_signal_label ───────────────────────────────────────────
 
+  # A plugin that swaps the fixture tool, such as one setting a sanitizer's runtime options,
+  # can have its reruns run the same way the main run was
+  describe '#do_simple rerun tool' do
+    let(:filename)     { 'test_lib.c' }
+    let(:executable)   { 'build/test/out/test_lib/test_lib.out' }
+    let(:test_cases)   { [{ test: 'test_empty', line_number: 3 }] }
+    let(:fixture)      { { name: 'default_test_fixture', executable: '${1}', arguments: [] } }
+    let(:rerun_tool)   { { name: 'default_test_fixture_simple_backtrace', executable: '${1}', arguments: ['${2}'] } }
+    let(:wrapper)      { { name: 'wrapper', executable: 'env', arguments: ['A=1', '${1}'], backtrace_rerun: true } }
+    let(:valgrind)     { { name: 'valgrind', executable: 'valgrind', arguments: ['--log-file=test_lib.log', '${1}'] } }
+
+    before(:each) do
+      allow(@configurator).to receive(:tools_test_fixture).and_return( fixture )
+      allow(@configurator).to receive(:tools_test_fixture_simple_backtrace).and_return( rerun_tool )
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status }
+      )
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout).and_return( 'regenerated' )
+    end
+
+    def rerun(tool)
+      @backtrace.do_simple( filename, executable, { exit_code: 1, output: '', time: 0.0 }, test_cases, context: :test, tool: tool )
+    end
+
+    it 'reruns through the dedicated backtrace tool when the fixture tool is the configured one' do
+      rerun( fixture )
+      expect(@tool_executor).to have_received(:build_command_line).with( rerun_tool, [], executable, '-n "test_empty"' )
+    end
+
+    # Valgrind writes one report per test, which a rerun through it would overwrite
+    it 'reruns through the dedicated backtrace tool when a swapped fixture tool does not ask for reruns' do
+      rerun( valgrind )
+      expect(@tool_executor).to have_received(:build_command_line).with( rerun_tool, [], executable, '-n "test_empty"' )
+    end
+
+    it 'reruns through a swapped fixture tool that asks for reruns, with the test case filter after its arguments' do
+      rerun( wrapper )
+      expect(@tool_executor).to have_received(:build_command_line).with( wrapper, [], executable, trailing: ['-n "test_empty"'] )
+    end
+  end
+
+  describe '#do_simple crash explanations' do
+    let(:filename)   { 'test_lib.c' }
+    let(:executable) { 'build/test/out/test_lib/test_lib.out' }
+    let(:test_cases) { [{ test: 'test_crashes', line_number: 20 }] }
+
+    before(:each) do
+      allow(@configurator).to receive(:tools_test_fixture_simple_backtrace).and_return( {} )
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status }
+      )
+    end
+
+    def crashed_lines(explain)
+      lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) { |**kwargs| lines = kwargs[:output]; 'regenerated' }
+      @backtrace.do_simple( filename, executable, { exit_code: 1, output: '', time: 0.0 }, test_cases, context: :test, explain: explain )
+      return lines
+    end
+
+    it 'fails a crashed case with the cause named for its own rerun' do
+      lines = crashed_lines( ->(_crash_result) { 'ASan heap-buffer-overflow at src/lib.c:5' } )
+      expect(lines.first).to start_with( 'test_lib.c:20:test_crashes:FAIL: ASan heap-buffer-overflow at src/lib.c:5' )
+    end
+
+    # The named cause is where its full report lives, so the rerun's raw output is left out
+    it 'leaves a crashed case\'s raw output out of the message when a cause is named' do
+      lines = crashed_lines( ->(_crash_result) { 'ASan heap-buffer-overflow at src/lib.c:5' } )
+      expect(lines.first).to eq( 'test_lib.c:20:test_crashes:FAIL: ASan heap-buffer-overflow at src/lib.c:5' )
+    end
+
+    it 'fails a crashed case as a crash when nothing names a cause' do
+      lines = crashed_lines( ->(_crash_result) { nil } )
+      expect(lines.first).to start_with( 'test_lib.c:20:test_crashes:FAIL: Test case crashed' )
+    end
+  end
+
   describe '#format_signal_label (private)' do
     subject { |ex| @backtrace.send(:format_signal_label, ex.metadata[:output]) }
 

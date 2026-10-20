@@ -9,6 +9,7 @@ require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'valgrind_constants'
+require 'valgrind_report'
 
 class Valgrind < Plugin
 
@@ -16,6 +17,7 @@ class Valgrind < Plugin
     @memory_errors   = 0
     @tests_processed = 0
     @reports_read    = 0
+    @explained       = []
     @mutex = Mutex.new()
 
     @result_list = []
@@ -82,6 +84,17 @@ class Valgrind < Plugin
   # own dependency-tracker meta capture, so a change to :valgrind ↳ :arguments (or
   # :tools ↳ :valgrind itself) is what actually forces a rerun -- not the plain test
   # fixture tool this replaces.
+  # A sanitizer-instrumented executable can't run under Valgrind, so a valgrind: build whose
+  # flags carry -fsanitize stops. The flags often come from :flags ↳ :test, which a valgrind
+  # build uses for any operation it gives no flags of its own.
+  def pre_test_compile_register(arg_hash)
+    refuse_sanitizer_flags( arg_hash, 'compile' ) if arg_hash[:context] == VALGRIND_SYM
+  end
+
+  def pre_test_link_register(arg_hash)
+    refuse_sanitizer_flags( arg_hash, 'link' ) if arg_hash[:context] == VALGRIND_SYM
+  end
+
   def pre_test_fixture_register(arg_hash)
     return unless arg_hash[:context] == VALGRIND_SYM
 
@@ -113,17 +126,7 @@ class Valgrind < Plugin
   def post_test_fixture_execute(arg_hash)
     return unless arg_hash[:context] == VALGRIND_SYM
 
-    result_file = arg_hash[:result_file]
-
-    @mutex.synchronize do
-      # #104 -- `[`/`]` are legal filename characters, but also regex character-class
-      # syntax; interpolating PROJECT_TEST_RESULTS_PATH into this regex unescaped means
-      # a literal bracket anywhere in it (e.g. a bracket-containing :build_root:) silently
-      # breaks this match, and the test never gets counted here.
-      if (result_file =~ /#{Regexp.escape(PROJECT_TEST_RESULTS_PATH)}/) && !@result_list.include?(result_file)
-        @result_list << arg_hash[:result_file]
-      end
-    end
+    collect_result( arg_hash[:result_file] )
 
     test_name = arg_hash[:test_name]
     errors    = count_errors( test_name )
@@ -136,10 +139,26 @@ class Valgrind < Plugin
       @memory_errors += errors
     end
 
-    return if errors == 0
+    # A crash Valgrind explained has its errors named in the crash notice
+    return if errors == 0 || @mutex.synchronize { @explained.include?( test_name ) }
 
     msg = "Valgrind detected #{pluralize(errors, 'memory error')} in #{test_name} ➡️ see #{report_filepath(test_name)}"
     @loginator.log( msg, Verbosity::ERRORS, LogLabels::ERROR )
+  end
+
+  # Only the main run ran under Valgrind. A backtrace rerun runs the bare executable.
+  def explain_test_crash(arg_hash)
+    return unless arg_hash[:context] == VALGRIND_SYM && arg_hash[:crash_notice]
+
+    test_name = arg_hash[:test_name]
+    path      = report_filepath( test_name )
+    return unless @file_wrapper.exist?( path )
+
+    cause = ValgrindReport.first_error( @file_wrapper.read( path ), xml: xml_report_enabled? )
+    return if cause.nil?
+
+    @mutex.synchronize { @explained << test_name }
+    arg_hash.merge!( explanation_heading: 'terminated with Valgrind memory errors', explanation: cause, explanation_details: ["Boom log: #{path}"] )
   end
 
   def post_build(_timestamp_s)
@@ -172,6 +191,27 @@ class Valgrind < Plugin
   end
 
   private
+
+  # `[`/`]` are legal filename characters but regex character-class syntax, so the path is
+  # escaped. A literal bracket in it (e.g. in :build_root:) would otherwise break the match,
+  # and the test would go uncounted.
+  def collect_result(result_file)
+    @mutex.synchronize do
+      @result_list << result_file if result_file =~ /#{Regexp.escape(VALGRIND_RESULTS_PATH)}/ && !@result_list.include?( result_file )
+    end
+  end
+
+  def refuse_sanitizer_flags(arg_hash, operation)
+    sanitizing = Array( arg_hash[:flags] ).grep( /\A-fsanitize/ )
+    return if sanitizing.empty?
+
+    raise CeedlingException.new(
+      "Valgrind cannot run a test executable built with sanitizers, but this valgrind: build's " \
+      "#{operation} flags include #{sanitizing.map { |flag| "`#{flag}`" }.join( ', ' )}. " \
+      "Give the valgrind build #{operation} flags of its own under :flags ↳ :valgrind, or move the " \
+      "sanitizer flags out of :flags ↳ :test."
+    )
+  end
 
   def xml_report_enabled?
     return @configurator.project_config_hash[:valgrind_xml_report] == true

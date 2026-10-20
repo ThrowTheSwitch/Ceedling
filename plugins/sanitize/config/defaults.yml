@@ -1,0 +1,44 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+---
+:plugins:
+  :test_build_contexts:
+    - :sanitize   # Its :defines and :flags work as :test's do, matchers included
+
+:sanitize:
+  # Any of :address, :undefined, and :leak. ASan's runtime checks leaks too.
+  :sanitizers:
+    - :address
+    - :undefined
+
+  # Keep running after a finding rather than halting the test at the first one
+  :recover: FALSE
+
+  # Check for leaks at exit where the platform supports it (Linux)
+  :detect_leaks: TRUE
+
+  # Also instrument ordinary test: builds, not only sanitize: builds
+  :test_builds: FALSE
+
+  # Register a build failure when any sanitizer reports a finding
+  :fail_build: TRUE
+
+  # Any of :text, :json, and :sarif; none is the text log alone
+  :reports: []
+
+  # Extra runtime options for each sanitizer, e.g. :asan: [strict_string_checks=1]
+  :runtime_options:
+    :asan: []
+    :ubsan: []
+    :lsan: []
+
+  # Extra compile and link flags for instrumented builds
+  :flags:
+    :compile: []
+    :link: []
+...

@@ -36,6 +36,12 @@ class ConfiguratorSetup
   ].freeze
 
 
+  # What startup learned of gdb backtraces: :usable, :fell_back to :simple, or :unknown
+  # when :gdb was never asked for
+  def gdb_backtrace_state
+    return @gdb_backtrace_state || :unknown
+  end
+
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are gigantic and produce a flood of output.
   def inspect
@@ -145,7 +151,8 @@ class ConfiguratorSetup
       valid &= @configurator_validator.validate_tool( config:config, key:tool )
     end
 
-    validate_gdb_attach_capability( config )
+    # A gdb that failed validation needs no probe and no fallback warning
+    validate_gdb_attach_capability( config ) if valid
 
     return valid
   end
@@ -154,8 +161,12 @@ class ConfiguratorSetup
   # revokes a Homebrew gdb's debugger entitlement, after a Homebrew upgrade, a macOS update,
   # or a Gatekeeper or taskgated cache reset. A project using `:use_backtrace: :gdb` on such
   # a machine falls back to `:simple` backtraces with a warning, rather than failing validation.
+  #
+  # Validating the gdb tool already proved gdb present, so where no probe runs it is usable.
   def validate_gdb_attach_capability(config)
     return unless config[:project][:use_backtrace] == :gdb
+
+    @gdb_backtrace_state = :usable
     return unless @system_wrapper.macos?
 
     # The probe runs with :boom false, so its :exit_code is not the real exit code.
@@ -163,6 +174,7 @@ class ConfiguratorSetup
     result = probe_gdb_attach()
     return if result[:status]&.success?
 
+    @gdb_backtrace_state = :fell_back
     config[:project][:use_backtrace] = :simple
 
     walk = @reportinator.generate_config_walk( [:project, :use_backtrace] )

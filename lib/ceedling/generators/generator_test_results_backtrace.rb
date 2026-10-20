@@ -285,137 +285,167 @@ class GeneratorTestResultsBacktrace
   # For crash cases, captures any extra output from the test binary (e.g.
   # assertion messages on stderr) and includes it in the failure report.
   # Returns a modified shell_result with regenerated output.
-  def do_simple(filename, executable, shell_result, test_cases, context:)
-    # Clean stats tracker
-    test_case_results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
+  #
+  # `any_crashed` turns true once some retry group shows crash evidence of its own. If it
+  # stays false across every group, the diagnostic never reproduced or attributed the crash
+  # the main run already detected, and none of it can be trusted.
+  #
+  # `tool` is the fixture tool the main run used. A swapped tool marked `:backtrace_rerun`
+  # (e.g. one setting a sanitizer's runtime options) runs the reruns too. Otherwise reruns
+  # go through the dedicated backtrace tool, so a wrapper that writes one report per test,
+  # such as Valgrind's, keeps the main run's report.
+  #
+  # `explain` names the cause of a rerun's crash, if a plugin recognizes it.
+  def do_simple(filename, executable, shell_result, test_cases, context:, tool: nil, explain: nil)
+    results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
+    shell_result[:time] = 0 # Summed over the per-group sub-process runs
+    any_crashed = false
 
-    # Reset time
-    shell_result[:time] = 0
-
-    # True once some retry group has actually shown crash evidence of its own -- a
-    # member with no result line, or (below) a group whose real status contradicts a
-    # fully clean set of matches. If this stays false across every group, the whole
-    # diagnostic never reproduced or attributed the crash the main run already
-    # detected, and none of it can be trusted -- see the fallback after the loop.
-    any_group_crashed = false
-
-    # Iterate on test cases, one sub-process run per group (see `group_test_cases`)
     group_test_cases( test_cases ).each do |group|
-      # Build the test fixture to run with our test case (or parameterized group) of interest
-      command = @tool_executor.build_command_line(
-        @configurator.tools_test_fixture_simple_backtrace, [],
-        executable,
-        unity_filter_arg( group )
-      )
-      # Things are gonna go boom, so ignore booms to get output
-      command[:options][:boom] = false
-
-      crash_result = @tool_executor.exec( command )
-
-      # Sum execution time for each sub-process run
-      # Note: Running tests separately increases total execution time
-      shell_result[:time] += crash_result[:time].to_f()
-
-      # Buffered separately from test_case_results and only merged in afterward, since
-      # the status check below can still discard every match here in favor of a crash
-      # attribution, once the whole group has been seen.
-      group_results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
-      crashed = false # Has the actual crash in this group already been attributed?
-
-      # Attribute each group member its own real result line, if Unity printed one
-      group.each do |test_case|
-        case crash_result[:output]
-        # Success test case -- tolerates a trailing duration suffix (e.g. `PASS (12 ms)`,
-        # UNITY_INCLUDE_EXEC_TIME), matching the real format generator_test_results.rb's
-        # own parser already recognizes for it.
-        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:PASS(\s\(.*ms\))?\s*$)/
-          group_results[:passed]  += 1
-          group_results[:output] << $1
-
-        # Ignored test case -- tolerates a trailing message (TEST_IGNORE_MESSAGE), same as
-        # FAIL below. Before this fix, a message-carrying ignore fell through to "unresolved"
-        # and was misreported as crash evidence -- IGNORE was only recognized bare.
-        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:IGNORE(:.+)?\s*$)/
-          group_results[:ignored] += 1
-          group_results[:output] << $1
-
-        when /(^#{Regexp.escape(filename)}:\d+:#{Regexp.escape(test_case[:test])}:FAIL(:.+)?\s*$)/
-          group_results[:failed]  += 1
-          group_results[:output] << $1
-
-        # No result line for this member -- either it crashed, or it never got to run
-        # because an earlier member in this same group crashed.
-        else
-          group_results[:failed] += 1
-
-          if crashed
-            group_results[:output] <<
-              "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: " \
-              "Test case not run -- an earlier case in this parameterized test group crashed"
-          else
-            crashed = true
-            # Collect any non-result, non-blank lines (e.g. assertion messages on stderr)
-            extra = extract_simple_crash_output( crash_result[:output], filename )
-            test_output = "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed"
-            test_output += " >> #{extra.join(NEWLINE_TOKEN)}" unless extra.empty?
-            group_results[:output] << test_output
-          end
-        end
-      end
-
-      # Every member in this group resolved via a matched result line -- but a diagnostic
-      # retry running through its own, separately-configured tool (e.g. without the main
-      # :test_fixture's sanitizer options) can complete cleanly and print a legitimate-
-      # looking PASS even when it isn't a trustworthy stand-in for what actually happened.
-      # The same real-status check the main run itself relies on applies here too.
-      if !crashed && @helper.test_crash?( filename, executable, crash_result )
-        crashed = true
-        group_results = @RESULTS_COLLECTOR.new(
-          passed: 0, ignored: 0, failed: group.size,
-          output: group.map { |test_case|
-            "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed" \
-            " >> diagnostic retry's own exit status contradicts its reported clean result"
-          }
-        )
-      end
-
-      any_group_crashed ||= crashed
-
-      test_case_results[:passed]  += group_results[:passed]
-      test_case_results[:ignored] += group_results[:ignored]
-      test_case_results[:failed]  += group_results[:failed]
-      test_case_results[:output].concat( group_results[:output] )
+      group_results, crashed = simple_group_results( filename, executable, group, shell_result, { tool: tool, explain: explain } )
+      any_crashed ||= crashed
+      merge_results( results, group_results )
     end
 
-    # No retry group, across the entire file, ever showed real crash evidence, yet this
-    # method only runs because the main run was already established as a crash. An
-    # all-clean diagnostic must never be allowed to overrule that -- fall back to the
-    # same whole-file crash-as-failure construction the :none backtrace setting uses.
-    unless any_group_crashed
-      @loginator.log(
-        "Diagnostic retry for `#{File.basename(executable)}` could not reproduce the crash " \
-        "already detected on the main run -- reporting the original crash rather than trusting " \
-        "an all-clear diagnostic that contradicts it.",
-        Verbosity::ERRORS, LogLabels::CRASH
-      )
-      return @generator_test_results.create_crash_failure( filename, shell_result, test_cases )
+    return simple_crash_not_reproduced( filename, executable, shell_result, test_cases ) unless any_crashed
+
+    return regenerate_simple_results( shell_result, test_cases, results )
+  end
+
+  ### Private ###
+  private
+
+  # One sub-process run for a group. Its results are buffered apart from the file's, since
+  # the status check can still discard every match in favor of a crash attribution once the
+  # whole group has been seen.
+  # `rerun` holds the fixture tool and crash explainer do_simple was given
+  def simple_group_results(filename, executable, group, shell_result, rerun)
+    crash_result = run_simple_group( executable, group, rerun[:tool] )
+    # Running tests separately increases total execution time
+    shell_result[:time] += crash_result[:time].to_f()
+
+    explanation = rerun[:explain]&.call( crash_result )
+    group_results, crashed = attribute_group_results( filename, group, crash_result[:output], explanation )
+    return [group_results, crashed] if crashed
+
+    # Every member matched a result line, but a retry through its own separately configured
+    # tool can complete cleanly and print a legitimate-looking PASS even when it is no
+    # trustworthy stand-in for what happened. The real-status check the main run relies on
+    # applies here too.
+    return [group_results, false] unless @helper.test_crash?( filename, executable, crash_result )
+
+    return [contradicted_group_results( filename, group ), true]
+  end
+
+  def run_simple_group(executable, group, tool)
+    command = simple_rerun_command( executable, unity_filter_arg( group ), tool )
+    # Things are gonna go boom, so ignore booms to get output
+    command[:options][:boom] = false
+
+    return @tool_executor.exec( command )
+  end
+
+  # The dedicated backtrace tool places the filter as its own argument. A fixture tool runs
+  # the executable itself, so the filter follows its arguments.
+  def simple_rerun_command(executable, filter, tool)
+    unless tool&.dig( :backtrace_rerun )
+      return @tool_executor.build_command_line( @configurator.tools_test_fixture_simple_backtrace, [], executable, filter )
     end
 
-    # Reset shell result exit code and output
-    shell_result[:exit_code] = test_case_results[:failed]
+    return @tool_executor.build_command_line( tool, [], executable, trailing: [filter] )
+  end
+
+  # Gives each group member its own real result line, if Unity printed one. The first member
+  # with none is the crash; any after it never ran because that earlier member crashed.
+  def attribute_group_results(filename, group, output, explanation)
+    group_results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
+    crashed = false
+
+    group.each do |test_case|
+      outcome, line = simple_result_line( filename, test_case, output )
+      outcome, line = unresolved_case( filename, test_case, output, crashed, explanation ) if outcome.nil?
+      crashed = true if outcome == :crashed
+
+      group_results[outcome == :crashed ? :failed : outcome] += 1
+      group_results[:output] << line
+    end
+
+    return [group_results, crashed]
+  end
+
+  # A PASS tolerates a trailing duration suffix (e.g. `PASS (12 ms)`, UNITY_INCLUDE_EXEC_TIME),
+  # matching what generator_test_results.rb's parser recognizes. IGNORE and FAIL tolerate a
+  # trailing message (TEST_IGNORE_MESSAGE).
+  def simple_result_line(filename, test_case, output)
+    prefix = "^#{Regexp.escape(filename)}:\\d+:#{Regexp.escape(test_case[:test])}"
+
+    case output
+    when /(#{prefix}:PASS(\s\(.*ms\))?\s*$)/ then return [:passed, $1]
+    when /(#{prefix}:IGNORE(:.+)?\s*$)/      then return [:ignored, $1]
+    when /(#{prefix}:FAIL(:.+)?\s*$)/        then return [:failed, $1]
+    end
+
+    return [nil, nil]
+  end
+
+  def unresolved_case(filename, test_case, output, crashed, explanation)
+    location = "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: "
+    return [:failed, location + "Test case not run -- an earlier case in this parameterized test group crashed"] if crashed
+
+    # A named cause is where the crash's full report lives
+    return [:crashed, location + explanation] if explanation
+
+    # Any non-result, non-blank lines (e.g. assertion messages on stderr)
+    extra = extract_simple_crash_output( output, filename )
+    line  = location + "Test case crashed"
+    line += " >> #{extra.join(NEWLINE_TOKEN)}" unless extra.empty?
+
+    return [:crashed, line]
+  end
+
+  def contradicted_group_results(filename, group)
+    return @RESULTS_COLLECTOR.new(
+      passed: 0, ignored: 0, failed: group.size,
+      output: group.map { |test_case|
+        "#{filename}:#{test_case[:line_number]}:#{test_case[:test]}:FAIL: Test case crashed" \
+        " >> diagnostic retry's own exit status contradicts its reported clean result"
+      }
+    )
+  end
+
+  def merge_results(results, group_results)
+    results[:passed]  += group_results[:passed]
+    results[:ignored] += group_results[:ignored]
+    results[:failed]  += group_results[:failed]
+    results[:output].concat( group_results[:output] )
+  end
+
+  # This method only runs because the main run was established as a crash, so an all-clean
+  # diagnostic must never overrule it. The fallback is the same whole-file crash-as-failure
+  # construction the :none backtrace setting uses.
+  def simple_crash_not_reproduced(filename, executable, shell_result, test_cases)
+    @loginator.log(
+      "Diagnostic retry for `#{File.basename(executable)}` could not reproduce the crash " \
+      "already detected on the main run -- reporting the original crash rather than trusting " \
+      "an all-clear diagnostic that contradicts it.",
+      Verbosity::ERRORS, LogLabels::CRASH
+    )
+    return @generator_test_results.create_crash_failure( filename, shell_result, test_cases )
+  end
+
+  def regenerate_simple_results(shell_result, test_cases, results)
+    shell_result[:exit_code] = results[:failed]
     shell_result[:output] =
       @generator_test_results.regenerate_test_executable_stdout(
         total:   test_cases.size(),
-        ignored: test_case_results[:ignored],
-        failed:  test_case_results[:failed],
-        output:  test_case_results[:output]
+        ignored: results[:ignored],
+        failed:  results[:failed],
+        output:  results[:output]
       )
 
     return shell_result
   end
 
-  ### Private ###
-  private
 
   # Groups test cases so each parameterized test's cases are isolated together as one
   # sub-process run instead of one run per case. Unity's `-n`/`-f` command-line filter

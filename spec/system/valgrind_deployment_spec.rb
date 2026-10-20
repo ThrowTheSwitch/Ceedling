@@ -39,6 +39,7 @@ ceedling_system_tests do
 
       test_case :project_build_tasks_plugins_help_for_valgrind
       test_case :run_valgrind_on_all_tests
+      test_case :run_valgrind_build_removed_by_clobber
       test_case :run_valgrind_on_single_test
     end
 

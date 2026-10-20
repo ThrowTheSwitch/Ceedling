@@ -39,6 +39,26 @@ module ValgrindCommonTestCases
     end
   end
 
+  # The plugin builds in its own context, apart from test builds
+  def run_valgrind_build_removed_by_clobber
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_valgrind
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        @c.ceedling_build_exec("valgrind:all")
+        expect(Dir.glob('build/valgrind/**/*').select { |path| File.file?( path ) }).not_to be_empty
+
+        @c.ceedling_build_exec("clobber")
+        expect(@c.last_exit_status).to eq(0)
+        expect(Dir.glob('build/valgrind/**/*').select { |path| File.file?( path ) }).to be_empty
+        expect(Dir.glob('build/artifacts/valgrind/**/*').select { |path| File.file?( path ) }).to be_empty
+      end
+    end
+  end
+
   def run_valgrind_on_single_test
     @c.with_context do
       Dir.chdir @proj_name do
@@ -71,10 +91,9 @@ module ValgrindCommonTestCases
         output = @c.ceedling_build_exec("valgrind:all")
 
         expect(@c.last_exit_status).to eq(1) # Crash + Valgrind build failure
-        # Ceedling crash detection
-        expect(output).to match(/test_nosanitize_crash_sigsegv.+crashed/i)
-        # Per-test Valgrind memory error log (always fires when errors found)
-        expect(output).to match(/Valgrind detected.*memory error/i)
+        # The crash notice names the first memory error in place of the generic notice
+        expect(output).to match(/test_nosanitize_crash_sigsegv\.out` terminated with Valgrind memory errors\.\n> Invalid read of size \d+ at test_nosanitize_crash_sigsegv\.c:\d+\n> Boom log: /)
+        expect(output).not_to match(/seems to have crashed/)
         # Aggregate build failure registered by Valgrind plugin
         expect(output).to match(/Valgrind detected.*memory error.*across/i)
         expect(output).to match(/Wrote 1 Valgrind report/i)
@@ -102,10 +121,9 @@ module ValgrindCommonTestCases
         output = @c.ceedling_build_exec("valgrind:all")
 
         expect(@c.last_exit_status).to eq(1) # Crash causes failure even without Valgrind build failure
-        # Ceedling crash detection
-        expect(output).to match(/test_nosanitize_crash_sigsegv.+crashed/i)
-        # Per-test Valgrind error log still fires (independent of :fail_build)
-        expect(output).to match(/Valgrind detected.*memory error/i)
+        # The crash notice names the first memory error in place of the generic notice
+        expect(output).to match(/test_nosanitize_crash_sigsegv\.out` terminated with Valgrind memory errors\.\n> Invalid read of size \d+ at test_nosanitize_crash_sigsegv\.c:\d+\n> Boom log: /)
+        expect(output).not_to match(/seems to have crashed/)
         # No aggregate Valgrind build failure registered
         expect(output).not_to match(/Valgrind detected.*memory error.*across/i)
         expect(output).to match(/Wrote 1 Valgrind report/i)

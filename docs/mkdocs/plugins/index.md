@@ -23,11 +23,11 @@ for how to enable built-in plugins and load custom plugins in your project.
 !!! warning
     Build-related plugins intentionally execute duplicated builds.
 
-Plugins including [Gcov](gcov/index.md), [Bullseye](bullseye/index.md), and [Valgrind](valgrind.md)
-recreate test build tasks. That is, the command line build task `test:foo` also exists 
-as `gcov:foo`, `bullseye:foo`, and/or `valgrind:foo` if these plugins are enabled.
-Each of these triggers a full rebuild of the named test with instrumentation 
-activated. **This duplication is intentional and very necessary.**
+Plugins including [Gcov](gcov/index.md), [Bullseye](bullseye/index.md), [Valgrind](valgrind.md),
+and [Sanitize](sanitize.md) recreate test build tasks. That is, the command line build task
+`test:foo` also exists as `gcov:foo`, `bullseye:foo`, `valgrind:foo`, and/or `sanitize:foo`
+if these plugins are enabled. Each of these triggers a full rebuild of the named test with 
+instrumentation activated. **This duplication is intentional and very necessary.**
 
 These plugins modify executable code or the environment in which a test suite 
 executable runs. Duplicating and segregating the build tasks addresses several 
@@ -37,7 +37,8 @@ important issues:
    duplicated tasks (i.e. integrated build tasks) can bring about conflicts and
    undefined behavior. For instance, Gcov’s instrumentation does not
    necessarily play nice with Valgrind’s memory-instrumented emulation
-   runtime, and the two should be kept entirely segregated.
+   runtime, and the two should be kept entirely segregated. Likewise, a
+   sanitizer-instrumented test executable cannot run under Valgrind at all.
 2. **Unforeseen effects**. These plugins can directly alter the functioning of
    the code under test. For instance, coverage instrumentation inserted into
    your compiled code can alter its function or timing. As such, it is vital
@@ -54,8 +55,8 @@ important issues:
 
 !!! note
     A duplicated build task is a [delta build](../getting-started/builds.md).
-    Ceedling skips work in a `gcov:`, `bullseye:`, or `valgrind:` build in the same
-    way it does in a standard `test:` build.
+    Ceedling skips unneeded work in a `gcov:`, `bullseye:`, `valgrind:`, or
+    `sanitize:` build in the same way it does in a standard `test:` build.
 
 Each of these plugins maintains its own separate delta build cache, apart from
 plain test builds and from each other. A file with no role specific to a
@@ -159,6 +160,15 @@ not because of the file itself.
     Adds Ceedling tasks to run test executables under [Valgrind] memory error
     detection. Valgrind catches memory leaks, invalid accesses, and use-after-free
     bugs. The plugin produces per-test log files in the build artifacts directory.
+
+-   :material-shield-bug: **[`sanitize`](sanitize.md)**
+
+    ---
+
+    Adds Ceedling tasks to build and run test executables with the compiler’s
+    sanitizers. ASan, UBSan, and LeakSanitizer find memory errors, undefined
+    behavior, and leaks as tests run. Findings fail the build and can be written
+    as text, JSON, and SARIF reports.
 
 </div>
 

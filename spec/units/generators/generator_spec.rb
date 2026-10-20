@@ -21,7 +21,7 @@ describe Generator do
     allow(@plugin_manager).to receive(:pre_compile_execute)
     allow(@plugin_manager).to receive(:post_compile_execute)
 
-    collaborators = [
+    @collaborators = collaborators = [
       :configurator, :generator_helper, :generator_mocks, :generator_test_results,
       :generator_test_results_backtrace, :generator_partials, :test_context_extractor,
       :file_finder, :file_path_utils, :reportinator, :loginator, :test_runner_manager
@@ -60,6 +60,173 @@ describe Generator do
       expect(@tool_executor).to have_received(:build_command_line).with( :compiler, [], 'build/tmp1/gpio.c', any_args )
       expect(@plugin_manager).to have_received(:pre_compile_execute).with( hash_including( source: 'src/gpio.c' ) )
       expect(@plugin_manager).to have_received(:post_compile_execute).with( hash_including( source: 'src/gpio.c' ) )
+    end
+  end
+
+  describe '#generate_test_results' do
+    before(:each) do
+      allow(@collaborators[:generator_helper]).to receive(:test_crash?).and_return( false )
+      allow(@collaborators[:test_runner_manager]).to receive(:collect_cmdline_args).and_return( ['-n test_a'] )
+      allow(@plugin_manager).to receive(:pre_test_fixture_execute)
+      allow(@plugin_manager).to receive(:post_test_fixture_execute)
+    end
+
+    # A fixture tool that wraps the test executable runs it as its own last argument
+    it 'hands the fixture tool Unity\'s test case filters after its own arguments' do
+      @generator.generate_test_results(
+        tool: :fixture, context: :test, test_name: 'test_a', test_filepath: 'test/test_a.c',
+        executable: 'build/test_a.out', result: 'build/test_a.pass'
+      )
+
+      expect(@tool_executor).to have_received(:build_command_line).with( :fixture, [], 'build/test_a.out', trailing: ['-n test_a'] )
+    end
+  end
+
+  describe '#generate_test_results with a crash' do
+    let(:backtrace) { @collaborators[:generator_test_results_backtrace] }
+    let(:results)   { @collaborators[:generator_test_results] }
+
+    def run(tool: :fixture, use_backtrace: :none, explanation: nil, details: nil, heading: nil)
+      allow(@collaborators[:configurator]).to receive(:project_config_hash).and_return( { project_use_backtrace: use_backtrace } )
+      allow(@plugin_manager).to receive(:explain_test_crash) do |arg_hash|
+        arg_hash[:explanation] = explanation
+        arg_hash[:explanation_details] = details
+        arg_hash[:explanation_heading] = heading
+      end
+
+      @generator.generate_test_results(
+        tool: tool, context: :test, test_name: 'test_a', test_filepath: 'test/test_a.c',
+        executable: 'build/test_a.out', result: 'build/test_a.pass'
+      )
+    end
+
+    before(:each) do
+      allow(@collaborators[:generator_helper]).to receive(:test_crash?).and_return( true )
+      allow(@collaborators[:test_context_extractor]).to receive(:lookup_test_cases).and_return( [] )
+      allow(results).to receive(:filter_test_cases) { |cases| cases }
+      allow(@plugin_manager).to receive(:pre_test_fixture_execute)
+      allow(@plugin_manager).to receive(:post_test_fixture_execute)
+    end
+
+    it 'fails a crashed test with the cause a plugin names for it' do
+      run( explanation: 'ASan heap-buffer-overflow at src/a.c:9' )
+      expect(results).to have_received(:create_crash_failure).with( 'test_a.c', anything, [], message: 'ASan heap-buffer-overflow at src/a.c:9' )
+    end
+
+    it 'fails a crashed test with the cause\'s details alongside it' do
+      run( explanation: 'ASan heap-buffer-overflow at src/a.c:9', details: ['Boom log: x.log'] )
+      expect(results).to have_received(:create_crash_failure).with( 'test_a.c', anything, [], message: 'ASan heap-buffer-overflow at src/a.c:9 (Boom log: x.log)' )
+    end
+
+    it 'logs a plugin\'s explanation in place of the generic crash notice' do
+      run( explanation: 'ASan heap-buffer-overflow at src/a.c:9', details: ['Boom log: x.log'], heading: 'was stopped by a sanitizer finding' )
+
+      explanation = { heading: 'was stopped by a sanitizer finding', cause: 'ASan heap-buffer-overflow at src/a.c:9', details: ['Boom log: x.log'] }
+      expect(@collaborators[:generator_helper]).to have_received(:log_explained_crash).with( 'build/test_a.out', explanation )
+      expect(@collaborators[:generator_helper]).not_to have_received(:log_test_results_crash)
+    end
+
+    it 'logs the generic crash notice when no plugin names a cause' do
+      run()
+      expect(@collaborators[:generator_helper]).to have_received(:log_test_results_crash)
+      expect(@collaborators[:generator_helper]).not_to have_received(:log_explained_crash)
+    end
+
+    it 'tells the plugins which explanation reaches the crash notice' do
+      notices = []
+      allow(@collaborators[:configurator]).to receive(:project_config_hash).and_return( { project_use_backtrace: :none } )
+      allow(@plugin_manager).to receive(:explain_test_crash) { |arg_hash| notices << arg_hash[:crash_notice] }
+      @generator.generate_test_results(
+        tool: :fixture, context: :test, test_name: 'test_a', test_filepath: 'test/test_a.c', executable: 'build/test_a.out', result: 'build/test_a.pass'
+      )
+      expect(notices).to eq( [true] )
+    end
+
+    it 'asks the plugins once for a crash without backtraces' do
+      run( explanation: 'ASan heap-buffer-overflow at src/a.c:9' )
+      expect(@plugin_manager).to have_received(:explain_test_crash).once
+    end
+
+    it 'fails a crashed test as a crash when no plugin names a cause' do
+      run()
+      expect(results).to have_received(:create_crash_failure).with( 'test_a.c', anything, [], message: 'Test executable crashed' )
+    end
+
+    it 'has each simple backtrace rerun explained by the plugins' do
+      run( use_backtrace: :simple )
+      expect(backtrace).to have_received(:do_simple).with( 'test_a.c', 'build/test_a.out', anything, [], context: :test, tool: :fixture, explain: kind_of(Proc) )
+    end
+
+    # A tool that runs the reruns itself can't run under gdb
+    it 'falls back to simple backtraces, with a notice, for a fixture tool that runs its own reruns' do
+      run( tool: { name: 'wrapper', backtrace_rerun: true }, use_backtrace: :gdb )
+
+      expect(backtrace).to have_received(:do_simple)
+      expect(backtrace).not_to have_received(:do_gdb)
+      expect(@collaborators[:loginator]).to have_received(:log).with( /:use_backtrace .*:gdb.*:simple/, Verbosity::NORMAL )
+    end
+  end
+
+  # Test fixtures crash independently, but the fallback is the same for all of them
+  describe 'the :gdb fallback notice' do
+    before(:each) do
+      allow(@collaborators[:generator_helper]).to receive(:test_crash?).and_return( true )
+      allow(@collaborators[:test_context_extractor]).to receive(:lookup_test_cases).and_return( [] )
+      allow(@collaborators[:generator_test_results]).to receive(:filter_test_cases) { |cases| cases }
+      allow(@collaborators[:configurator]).to receive(:project_config_hash).and_return( { project_use_backtrace: :gdb } )
+      allow(@plugin_manager).to receive(:pre_test_fixture_execute)
+      allow(@plugin_manager).to receive(:post_test_fixture_execute)
+      allow(@plugin_manager).to receive(:explain_test_crash)
+    end
+
+    def crash(test)
+      @generator.generate_test_results(
+        tool: { name: 'wrapper', backtrace_rerun: true }, context: :sanitize, test_name: test, test_filepath: "test/#{test}.c",
+        executable: "build/#{test}.out", result: "build/#{test}.pass"
+      )
+    end
+
+    it 'is logged once for a build with several crashes, though each falls back' do
+      crash( 'test_a' )
+      crash( 'test_b' )
+
+      expect(@collaborators[:generator_test_results_backtrace]).to have_received(:do_simple).twice
+      expect(@collaborators[:loginator]).to have_received(:log).with( /:use_backtrace .*:gdb.*:simple/, Verbosity::NORMAL ).once
+    end
+
+    it 'tells the crash notice that :gdb can\'t be used' do
+      crash( 'test_a' )
+      expect(@collaborators[:generator_helper]).to have_received(:log_test_results_crash).with( 'build/test_a.out', anything, :simple, gdb_unavailable: true )
+    end
+  end
+
+  # On macOS, startup can find gdb unable to attach and fall back to :simple backtraces
+  describe 'crash advice after startup ruled out :gdb' do
+    before(:each) do
+      allow(@collaborators[:generator_helper]).to receive(:test_crash?).and_return( true )
+      allow(@collaborators[:test_context_extractor]).to receive(:lookup_test_cases).and_return( [] )
+      allow(@collaborators[:generator_test_results]).to receive(:filter_test_cases) { |cases| cases }
+      allow(@collaborators[:configurator]).to receive(:project_config_hash).and_return( { project_use_backtrace: :simple } )
+      allow(@plugin_manager).to receive(:pre_test_fixture_execute)
+      allow(@plugin_manager).to receive(:post_test_fixture_execute)
+      allow(@plugin_manager).to receive(:explain_test_crash)
+    end
+
+    def crash(state)
+      allow(@collaborators[:configurator]).to receive(:gdb_backtrace_state).and_return( state )
+      @generator.generate_test_results(
+        tool: :fixture, context: :test, test_name: 'test_a', test_filepath: 'test/test_a.c', executable: 'build/test_a.out', result: 'build/test_a.pass'
+      )
+    end
+
+    it 'tells the crash notice that :gdb can\'t be used' do
+      crash( :fell_back )
+      expect(@collaborators[:generator_helper]).to have_received(:log_test_results_crash).with( 'build/test_a.out', anything, :simple, gdb_unavailable: true )
+    end
+
+    it 'leaves the advice to the crash notice when startup never asked about gdb' do
+      crash( :unknown )
+      expect(@collaborators[:generator_helper]).to have_received(:log_test_results_crash).with( 'build/test_a.out', anything, :simple, gdb_unavailable: false )
     end
   end
 

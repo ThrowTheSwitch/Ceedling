@@ -225,8 +225,10 @@ ceedling_system_tests do
         Dir.chdir "temp_sensor" do
           @c.ceedling_build_exec("test:all")
 
+          expect(Dir.glob('build/cache/.*.dep_cache.json')).not_to be_empty
           clobber = @c.ceedling_build_exec("clobber")
           expect(clobber).to_not match(/ERROR/)
+          expect(Dir.glob('build/cache/.*.dep_cache.json')).to be_empty
 
           rebuild = @c.ceedling_build_exec("test:all")
           expect(rebuild).to match(/^Compiling /)

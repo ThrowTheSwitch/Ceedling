@@ -417,6 +417,25 @@ def ubsan_available?
   end
 end
 
+# The sanitize plugin runs where the compiler builds and links ASan and UBSan programs
+# that then run: Linux with GCC or Clang, and macOS with Apple Clang. The program is run
+# as well as built, since a runtime missing at load time only shows then.
+def sanitizers_available?
+  return false if RUBY_PLATFORM.downcase.match?( /mswin|mingw|msys|cygwin/ )
+
+  Dir.mktmpdir do |dir|
+    source = File.join(dir, 'sanitizers_check.c')
+    binary = File.join(dir, 'sanitizers_check')
+    File.write(source, "int main(void) { return 0; }\n")
+    tool_available?(%(gcc -fsanitize=address,undefined -o "#{binary}" "#{source}" 2>&1 && "#{binary}"))
+  end
+end
+
+# LeakSanitizer is not supported on macOS
+def leak_detection_available?
+  return RUBY_PLATFORM.downcase.include?('linux') && sanitizers_available?
+end
+
 # Collapses the before(:all)/after(:all) SystemContext setup/teardown pair plus the
 # `ceedling new` scaffold call -- identical across every "Deployed as a gem" spec in
 # the path/name disambiguation cluster -- into one `include_context` line. `proj_prefix`
@@ -539,6 +558,26 @@ RSpec.shared_context "requires gcc with UBSan" do
 
   before do
     skip "gcc UBSan support not available (Linux + gcc -fsanitize=undefined required)" unless @ubsan_available
+  end
+end
+
+RSpec.shared_context "requires sanitizers" do
+  before :all do
+    @sanitizers_available = sanitizers_available?
+  end
+
+  before do
+    skip "ASan and UBSan not available (Linux or macOS with gcc -fsanitize=address,undefined required)" unless @sanitizers_available
+  end
+end
+
+RSpec.shared_context "requires leak detection" do
+  before :all do
+    @leak_detection_available = leak_detection_available?
+  end
+
+  before do
+    skip "LeakSanitizer not available (Linux with gcc -fsanitize=address required)" unless @leak_detection_available
   end
 end
 

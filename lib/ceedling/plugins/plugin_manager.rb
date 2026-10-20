@@ -120,6 +120,11 @@ class PluginManager
   def post_link_execute(arg_hash); execute_plugins(:post_link_execute, arg_hash); end
 
   def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
+
+  # A plugin that recognizes why a test executable crashed sets `arg_hash[:explanation]` and,
+  # optionally, `:explanation_details` lines and an `:explanation_heading`. `:crash_notice` says
+  # whether the explanation will appear in a crash notice or only in a test failure.
+  def explain_test_crash(arg_hash); execute_plugins(:explain_test_crash, arg_hash); end
   def post_test_fixture_execute(arg_hash)
     # Special arbitration: Raw test results are printed or taken over by plugins handling the job
     @loginator.log( arg_hash[:shell_result][:output] ) if @configurator.plugins_display_raw_test_results
@@ -152,19 +157,17 @@ class PluginManager
   end
 
   def execute_plugins(method, *args)
-    @plugin_objects.each do |plugin|
-      begin
-        if plugin.respond_to?(method)
-          @loginator.lazy( Verbosity::OBNOXIOUS ) do 
-            @reportinator.generate_progress( "Plugin | #{camelize( plugin.name )} > :#{method}" )
-          end
-          plugin.send(method, *args)
-        end
-      rescue
-        @loginator.log( "Exception raised in plugin `#{plugin.name}` within build hook :#{method}", Verbosity::ERRORS )
-        raise # Raise again for backtrace, etc.
-      end
+    @plugin_objects.each { |plugin| execute_plugin( plugin, method, *args ) if plugin.respond_to?( method ) }
+  end
+
+  def execute_plugin(plugin, method, *args)
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( "Plugin | #{camelize( plugin.name )} > :#{method}" )
     end
+    plugin.send(method, *args)
+  rescue
+    @loginator.log( "Exception raised in plugin `#{plugin.name}` within build hook :#{method}", Verbosity::ERRORS )
+    raise # Raise again for backtrace, etc.
   end
 
 end

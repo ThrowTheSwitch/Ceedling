@@ -53,7 +53,7 @@ meant.
     Include each mock through its folder, as in `#include "drivers/uart/mock_config.h"`
     and `#include "drivers/spi/mock_config.h"`. With
     [`:cmock` ↳ `:mock_name_include_folder`](../configuration/reference/cmock.md#mock_name_include_folder),
-    on by default, each mock is named by that folder, and the two do not collide.
+    enabled by default, each mock is named by that folder, and the two do not collide.
 
 `TEST_SOURCE_FILE()` also takes precedence over the header/source correspondence
 convention above. If a test both `#include`s a header and separately names a

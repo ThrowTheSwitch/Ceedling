@@ -34,7 +34,7 @@ require 'valgrind'
 #
 # No test here invokes a real Valgrind binary or touches the filesystem. All file
 # access goes through a stubbed file_wrapper. Real-tool behavior is covered by
-# spec/integration/valgrind_log_parsing_spec.rb and the system tier.
+# spec/integration/analysis_tool_output_spec.rb and the system tier.
 describe Valgrind do
   let(:loginator)           { double('loginator', log: nil) }
   let(:reportinator_obj)    { double('reportinator', generate_progress: 'PROGRESS') }
@@ -70,6 +70,7 @@ describe Valgrind do
       memory_errors:       0,
       tests_processed:     0,
       reports_read:        0,
+      explained:           [],
       environment_validated: false
     }
     defaults.merge(ivars).each { |key, value| instance.instance_variable_set(:"@#{key}", value) }
@@ -180,6 +181,31 @@ describe Valgrind do
   ## Fixture tool substitution
   ##
 
+  # A sanitizer-instrumented executable can't run under Valgrind
+  describe 'sanitizer flags in a valgrind build' do
+    let(:valgrind) { build_valgrind }
+
+    it 'stops a compile whose flags carry -fsanitize, naming them' do
+      expect {
+        valgrind.pre_test_compile_register( { context: VALGRIND_SYM, flags: ['-g', '-fsanitize=address,undefined'], source: 'src/a.c' } )
+      }.to raise_error( CeedlingException, /-fsanitize=address,undefined/ )
+    end
+
+    it 'stops a link whose flags carry -fsanitize' do
+      expect {
+        valgrind.pre_test_link_register( { context: VALGRIND_SYM, flags: ['-fsanitize=leak'], executable: 'build/a.out' } )
+      }.to raise_error( CeedlingException, /-fsanitize=leak/ )
+    end
+
+    it 'leaves a valgrind build without sanitizer flags alone' do
+      expect { valgrind.pre_test_compile_register( { context: VALGRIND_SYM, flags: ['-g'], source: 'src/a.c' } ) }.to_not raise_error
+    end
+
+    it 'leaves other build contexts alone' do
+      expect { valgrind.pre_test_compile_register( { context: :test, flags: ['-fsanitize=address'], source: 'src/a.c' } ) }.to_not raise_error
+    end
+  end
+
   describe '#pre_test_fixture_register' do
     def register(project_config, context: VALGRIND_SYM)
       valgrind = build_valgrind(project_config)
@@ -282,8 +308,82 @@ describe Valgrind do
   ## Error counting
   ##
 
+  # Running under Valgrind is a controlled termination, named by the first memory error
+  describe '#explain_test_crash' do
+    def fixture(name)
+      File.read( File.expand_path( "../../../support/fixtures/valgrind_reports/#{name}", __FILE__ ) )
+    end
+
+    def explain(report, project_config: {}, context: VALGRIND_SYM, crash_notice: true, exists: true)
+      wrapper  = double('file_wrapper', exist?: exists, read: report)
+      valgrind = build_valgrind(project_config, file_wrapper: wrapper)
+      arg_hash = { context: context, test_name: 'test_thing', crash_notice: crash_notice, explanation: nil }
+      valgrind.explain_test_crash( arg_hash )
+      [arg_hash, valgrind]
+    end
+
+    it 'names the first memory error from the text log' do
+      arg_hash, _ = explain( fixture( 'sigsegv.log' ) )
+
+      expect(arg_hash[:explanation_heading]).to eq( 'terminated with Valgrind memory errors' )
+      expect(arg_hash[:explanation]).to eq( 'Invalid read of size 4 at test_nosanitize_crash_sigsegv.c:32' )
+      expect(arg_hash[:explanation_details]).to eq( ["Boom log: #{File.join( VALGRIND_ARTIFACTS_PATH, 'test_thing.log' )}"] )
+    end
+
+    it 'names the first memory error from the XML report' do
+      arg_hash, _ = explain( fixture( 'sigsegv.xml' ), project_config: { valgrind_xml_report: true } )
+
+      expect(arg_hash[:explanation]).to eq( 'Invalid read of size 4 at test_nosanitize_crash_sigsegv.c:32' )
+      expect(arg_hash[:explanation_details]).to eq( ["Boom log: #{File.join( VALGRIND_ARTIFACTS_PATH, 'test_thing.xml' )}"] )
+    end
+
+    it 'decodes the XML report\'s character references' do
+      xml = "<error><what>Mismatched free() / delete &#x27;Foo&amp;&#39;</what></error>"
+      arg_hash, _ = explain( xml, project_config: { valgrind_xml_report: true } )
+
+      expect(arg_hash[:explanation]).to eq( "Mismatched free() / delete 'Foo&'" )
+    end
+
+    it 'names an error without a source location by its description alone' do
+      log = "==1== Conditional jump or move depends on uninitialised value(s)\n==1==    at 0x4: helper (in /lib/libx.so)\n==1== ERROR SUMMARY: 1 errors from 1 contexts\n"
+      arg_hash, _ = explain( log )
+
+      expect(arg_hash[:explanation]).to eq( 'Conditional jump or move depends on uninitialised value(s)' )
+    end
+
+    it 'names nothing for a crash without memory errors' do
+      arg_hash, _ = explain( "==1== Memcheck, a memory error detector\n==1== ERROR SUMMARY: 0 errors from 0 contexts\n" )
+      expect(arg_hash[:explanation]).to be_nil
+    end
+
+    it 'names nothing without a report' do
+      arg_hash, _ = explain( '', exists: false )
+      expect(arg_hash[:explanation]).to be_nil
+    end
+
+    # A backtrace rerun runs the bare executable and writes no report of its own
+    it 'names nothing for a backtrace rerun' do
+      arg_hash, _ = explain( fixture( 'sigsegv.log' ), crash_notice: false )
+      expect(arg_hash[:explanation]).to be_nil
+    end
+
+    it 'names nothing outside a valgrind build' do
+      arg_hash, _ = explain( fixture( 'sigsegv.log' ), context: :test )
+      expect(arg_hash[:explanation]).to be_nil
+    end
+
+    # The crash notice names the errors already
+    it 'leaves the explained test without a separate memory error line' do
+      _, valgrind = explain( fixture( 'sigsegv.log' ) )
+      valgrind.post_test_fixture_execute( { context: VALGRIND_SYM, test_name: 'test_thing', result_file: 'build/valgrind/results/test_thing.pass' } )
+
+      expect(loginator).not_to have_received(:log).with( /Valgrind detected/, anything, anything )
+      expect(valgrind.instance_variable_get(:@memory_errors)).to eq( 2 )
+    end
+  end
+
   describe '#post_test_fixture_execute' do
-    def execute(project_config, log_contents, exists: true, result_file: File.join(PROJECT_TEST_RESULTS_PATH, 'test_thing.pass'))
+    def execute(project_config, log_contents, exists: true, result_file: File.join('build', 'valgrind', 'results', 'test_thing.pass'))
       wrapper  = double('file_wrapper', exist?: exists, read: log_contents)
       valgrind = build_valgrind(project_config, file_wrapper: wrapper)
       valgrind.post_test_fixture_execute(
@@ -299,10 +399,17 @@ describe Valgrind do
       expect(valgrind.instance_variable_get(:@reports_read)).to eq(0)
     end
 
-    it 'accumulates a result file inside the results path' do
+    # A valgrind: build writes its results apart from an ordinary test build's
+    it 'accumulates a result file inside the valgrind build\'s results path' do
       valgrind = execute({}, 'ERROR SUMMARY: 0 errors from 0 contexts')
 
       expect(valgrind.instance_variable_get(:@result_list).length).to eq(1)
+    end
+
+    it 'ignores a result file in an ordinary test build\'s results path' do
+      valgrind = execute({}, 'ERROR SUMMARY: 0 errors', result_file: File.join(PROJECT_TEST_RESULTS_PATH, 'test_thing.pass'))
+
+      expect(valgrind.instance_variable_get(:@result_list)).to be_empty
     end
 
     it 'ignores a result file outside the results path' do
