@@ -102,7 +102,7 @@ describe SanitizeConfig do
 
     it 'rejects an unknown sanitizer, listing the choices' do
       expect { resolve( sanitizers: ['thread'] ) }.to raise_error(
-        CeedlingException, /:sanitize ↳ :sanitizers entry `thread` is not a sanitizer. Choose from :address, :undefined, :leak./
+        CeedlingException, /:sanitize ↳ :sanitizers entry `thread` is not a supported sanitizer. Choose from :address, :undefined, :leak./
       )
     end
 

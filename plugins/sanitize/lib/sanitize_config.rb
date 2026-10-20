@@ -17,7 +17,7 @@ class SanitizeConfig
   # Each sanitizer's runtime options variable, keyed as :runtime_options names them
   OPTION_VARIABLES = { asan: 'ASAN_OPTIONS', ubsan: 'UBSAN_OPTIONS', lsan: 'LSAN_OPTIONS' }.freeze
 
-  LEAKS_UNSUPPORTED = 'Leak detection is not supported on macOS, so :sanitize leaves it off there.'.freeze
+  LEAKS_UNSUPPORTED = 'Leak detection is not supported on macOS and has been disabled.'.freeze
 
   def initialize(config, platform:)
     @config   = config
@@ -54,7 +54,7 @@ class SanitizeConfig
     return sanitizer if (entry.is_a?( String ) || entry.is_a?( Symbol )) && NAMES.include?( sanitizer )
 
     choices = NAMES.map( &:inspect ).join( ', ' )
-    raise CeedlingException.new( ":sanitize ↳ :sanitizers entry `#{entry}` is not a sanitizer. Choose from #{choices}." )
+    raise CeedlingException.new( ":sanitize ↳ :sanitizers entry `#{entry}` is not a supported sanitizer. Choose from #{choices}." )
   end
 
   # ASan's runtime includes leak detection, so leaks need their own sanitizer only alone
