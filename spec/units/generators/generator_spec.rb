@@ -155,6 +155,11 @@ describe Generator do
       expect(@collaborators[:generator_test_results_backtrace]).to have_received(:do_simple).twice
       expect(@collaborators[:loginator]).to have_received(:log).with( /:use_backtrace .*:gdb.*:simple/, Verbosity::NORMAL ).once
     end
+
+    it 'tells the crash notice that :gdb can\'t be used' do
+      crash( 'test_a' )
+      expect(@collaborators[:generator_helper]).to have_received(:log_test_results_crash).with( 'build/test_a.out', anything, :simple, gdb_unavailable: true )
+    end
   end
 
   describe '#generate_mock' do

@@ -454,7 +454,8 @@ class Generator
   # learns what it can about the crash as :project ↳ :use_backtrace allows
   def handle_test_crash(arg_hash, shell_result)
     backtrace = backtrace_for( arg_hash[:tool] )
-    @helper.log_test_results_crash( arg_hash[:executable], shell_result, backtrace )
+    gdb_unavailable = backtrace != @configurator.project_config_hash[:project_use_backtrace]
+    @helper.log_test_results_crash( arg_hash[:executable], shell_result, backtrace, gdb_unavailable: gdb_unavailable )
 
     test_cases = @test_context_extractor.lookup_test_cases( arg_hash[:test_filepath] )
     test_cases = @generator_test_results.filter_test_cases( test_cases )

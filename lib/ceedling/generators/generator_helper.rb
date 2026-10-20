@@ -28,13 +28,13 @@ class GeneratorHelper
     ].any?
   end
 
-  def log_test_results_crash(executable, shell_result, backtrace)
+  def log_test_results_crash(executable, shell_result, backtrace, gdb_unavailable: false)
     runner = File.basename(executable)
 
     notice  = "Test executable `#{runner}` seems to have crashed -- likely terminating early due to a bad code reference.\n"
     notice += crash_output_notice( shell_result[:output] )
     notice += "> Causes can include: bad memory access, stack overflow, heap error, or bad branch in source or test code.\n"
-    notice += backtrace_advice( backtrace )
+    notice += backtrace_advice( backtrace, gdb_unavailable )
 
     @loginator.log( notice, Verbosity::ERRORS, LogLabels::CRASH )
   end
@@ -117,13 +117,14 @@ class GeneratorHelper
     return ''
   end
 
-  def backtrace_advice(backtrace)
-    case backtrace
-    when :simple then "> Consider configuring :project ↳ :use_backtrace to use the :gdb option to find the cause (see documentation).\n"
-    when :none   then "> Consider configuring :project ↳ :use_backtrace to help find the cause (see documentation).\n"
-    else ''
-    end
+  # No :gdb advice where :gdb can't be used
+  def backtrace_advice(backtrace, gdb_unavailable)
+    return "> Consider configuring :project ↳ :use_backtrace to help find the cause (see documentation).\n" if backtrace == :none
+    return '' unless backtrace == :simple && !gdb_unavailable
+
+    return "> Consider configuring :project ↳ :use_backtrace to use the :gdb option to find the cause (see documentation).\n"
   end
+
 
   def collision_notice(basename, real_path)
     notice  = "This looks like '#{basename}' is mocked or Partialized for this test, but its " \

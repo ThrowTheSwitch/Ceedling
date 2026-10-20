@@ -137,6 +137,34 @@ describe GeneratorHelper do
   end
 
 
+  describe '#log_test_results_crash' do
+    let(:shell_result) { { output: '' } }
+
+    def notice(backtrace, **options)
+      logged = nil
+      allow(@loginator).to receive(:log) { |message, *_| logged = message }
+      @helper.log_test_results_crash( 'build/test_a.out', shell_result, backtrace, **options )
+      return logged
+    end
+
+    it 'suggests backtraces when there are none' do
+      expect(notice( :none )).to include( 'Consider configuring :project ↳ :use_backtrace to help find the cause' )
+    end
+
+    it 'suggests :gdb backtraces over :simple ones' do
+      expect(notice( :simple )).to include( 'to use the :gdb option' )
+    end
+
+    it 'suggests nothing more for :gdb backtraces' do
+      expect(notice( :gdb )).not_to include( 'Consider configuring' )
+    end
+
+    # A fixture tool that runs its own reruns falls back from :gdb to :simple
+    it 'suggests nothing more for :simple backtraces when :gdb can\'t be used' do
+      expect(notice( :simple, gdb_unavailable: true )).not_to include( 'Consider configuring' )
+    end
+  end
+
   describe '#explain_possible_mock_partial_collision' do
     let(:mocked_headers) { { 'gpio.h' => '/project/library/gpio.h' } }
 
