@@ -39,6 +39,26 @@ module ValgrindCommonTestCases
     end
   end
 
+  # The plugin builds in its own context, apart from test builds
+  def run_valgrind_build_removed_by_clobber
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_valgrind
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        @c.ceedling_build_exec("valgrind:all")
+        expect(Dir.glob('build/valgrind/**/*').select { |path| File.file?( path ) }).not_to be_empty
+
+        @c.ceedling_build_exec("clobber")
+        expect(@c.last_exit_status).to eq(0)
+        expect(Dir.glob('build/valgrind/**/*').select { |path| File.file?( path ) }).to be_empty
+        expect(Dir.glob('build/artifacts/valgrind/**/*').select { |path| File.file?( path ) }).to be_empty
+      end
+    end
+  end
+
   def run_valgrind_on_single_test
     @c.with_context do
       Dir.chdir @proj_name do

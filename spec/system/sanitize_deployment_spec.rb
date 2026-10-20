@@ -38,6 +38,7 @@ ceedling_system_tests do
       include_context "requires sanitizers"
 
       test_case :run_sanitize_on_clean_tests
+      test_case :run_sanitize_build_removed_by_clobber
       test_case :run_sanitize_names_an_asan_finding
       test_case :run_sanitize_names_a_ubsan_finding
       test_case :run_sanitize_counts_a_finding_only_a_rerun_reaches

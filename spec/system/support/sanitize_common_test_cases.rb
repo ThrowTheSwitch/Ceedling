@@ -38,6 +38,24 @@ module SanitizeCommonTestCases
     end
   end
 
+  # The plugin builds in its own context, apart from test builds
+  def run_sanitize_build_removed_by_clobber
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_sanitize
+        prep_sanitize_sources("test_example_file_success.c")
+
+        @c.ceedling_build_exec("sanitize:all")
+        expect(Dir.glob('build/sanitize/**/*').select { |path| File.file?( path ) }).not_to be_empty
+
+        @c.ceedling_build_exec("clobber")
+        expect(@c.last_exit_status).to eq(0)
+        expect(Dir.glob('build/sanitize/**/*').select { |path| File.file?( path ) }).to be_empty
+        expect(Dir.glob('build/artifacts/sanitize/**/*').select { |path| File.file?( path ) }).to be_empty
+      end
+    end
+  end
+
   # A halt is a crash, named by its finding, with the sanitizer's report kept in a log
   def run_sanitize_names_an_asan_finding
     @c.with_context do

@@ -11,7 +11,13 @@
 ## to avoid marking test: tasks as invoked.
 ##
 
-CLEAN.include(File.join(SANITIZE_ARTIFACTS_PATH, '*'))
+# The plugin's own build context, kept apart from test builds
+CLEAN.include(File.join(SANITIZE_BUILD_PATH, BUILD_OUT_DIR, '*'))
+CLEAN.include(File.join(SANITIZE_BUILD_PATH, BUILD_RESULTS_DIR, '*'))
+CLEAN.include(File.join(SANITIZE_BUILD_PATH, BUILD_DEPENDENCIES_DIR, '*'))
+CLEAN.include(File.join(SANITIZE_ARTIFACTS_PATH, '**/*'))
+
+CLOBBER.include(File.join(SANITIZE_BUILD_PATH, '**/*'))
 
 # The artifacts path as a Rake directory task, so the `directories` prerequisite below
 # can resolve it
