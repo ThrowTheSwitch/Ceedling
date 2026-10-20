@@ -455,7 +455,7 @@ class Generator
   # explains needs no generic notice or backtrace advice.
   def handle_test_crash(arg_hash, shell_result)
     backtrace = backtrace_for( arg_hash[:tool] )
-    explanation = crash_explanation( arg_hash, shell_result )
+    explanation = crash_explanation( arg_hash, shell_result, crash_notice: true )
     log_crash( arg_hash[:executable], shell_result, backtrace, explanation )
 
     test_cases = @test_context_extractor.lookup_test_cases( arg_hash[:test_filepath] )
@@ -505,9 +505,12 @@ class Generator
     end
   end
 
-  # The cause of a crash, if a plugin recognizes it (e.g. a sanitizer's finding)
-  def crash_explanation(arg_hash, shell_result)
-    explaining = arg_hash.merge( shell_result: shell_result, explanation: nil, explanation_details: nil, explanation_heading: nil )
+  # The cause of a crash, if a plugin recognizes it (e.g. a sanitizer's finding). Only the
+  # main run's explanation reaches a crash notice; a backtrace rerun's reaches its failure.
+  def crash_explanation(arg_hash, shell_result, crash_notice: false)
+    explaining = arg_hash.merge(
+      shell_result: shell_result, crash_notice: crash_notice, explanation: nil, explanation_details: nil, explanation_heading: nil
+    )
     @plugin_manager.explain_test_crash( explaining )
     return nil unless explaining[:explanation]
 

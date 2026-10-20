@@ -132,6 +132,16 @@ describe Generator do
       expect(@collaborators[:generator_helper]).not_to have_received(:log_explained_crash)
     end
 
+    it 'tells the plugins which explanation reaches the crash notice' do
+      notices = []
+      allow(@collaborators[:configurator]).to receive(:project_config_hash).and_return( { project_use_backtrace: :none } )
+      allow(@plugin_manager).to receive(:explain_test_crash) { |arg_hash| notices << arg_hash[:crash_notice] }
+      @generator.generate_test_results(
+        tool: :fixture, context: :test, test_name: 'test_a', test_filepath: 'test/test_a.c', executable: 'build/test_a.out', result: 'build/test_a.pass'
+      )
+      expect(notices).to eq( [true] )
+    end
+
     it 'asks the plugins once for a crash without backtraces' do
       run( explanation: 'ASan heap-buffer-overflow at src/a.c:9' )
       expect(@plugin_manager).to have_received(:explain_test_crash).once

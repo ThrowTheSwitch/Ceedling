@@ -122,7 +122,8 @@ class PluginManager
   def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
 
   # A plugin that recognizes why a test executable crashed sets `arg_hash[:explanation]` and,
-  # optionally, `:explanation_details` lines and an `:explanation_heading`
+  # optionally, `:explanation_details` lines and an `:explanation_heading`. `:crash_notice` says
+  # whether the explanation will appear in a crash notice or only in a test failure.
   def explain_test_crash(arg_hash); execute_plugins(:explain_test_crash, arg_hash); end
   def post_test_fixture_execute(arg_hash)
     # Special arbitration: Raw test results are printed or taken over by plugins handling the job

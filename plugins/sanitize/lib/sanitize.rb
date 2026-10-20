@@ -109,7 +109,7 @@ class Sanitize < Plugin
     findings = SanitizeFindings.parse( arg_hash[:shell_result][:stderr] )
     return if findings.empty?
 
-    @records.record( arg_hash[:context], arg_hash[:test_name], findings, explained: findings.first )
+    @records.record( arg_hash[:context], arg_hash[:test_name], findings, explained: (findings.first if arg_hash[:crash_notice]) )
     arg_hash.merge!( SanitizeRecords.explanation( arg_hash[:context], arg_hash[:test_name], findings.first ) )
   end
 
