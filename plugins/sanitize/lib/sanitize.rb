@@ -72,7 +72,9 @@ class Sanitize < Plugin
     return unless instrumented?( arg_hash[:context] )
 
     fixture = arg_hash[:tool]
-    options = @settings.environment.map { |variable, value| %(#{variable}="#{value}") }
+    # Single-quoted, so the shell running the fixture command passes each value through as
+    # written. A single quote within a value ends the quoting, is escaped, and resumes it.
+    options = @settings.environment.map { |variable, value| "#{variable}='#{value.gsub( "'" ) { %q('\\'') }}'" }
     arguments = options + [fixture[:executable]] + Array( fixture[:arguments] )
 
     arg_hash[:tool] = TOOLS_SANITIZE_FIXTURE.merge( arguments: arguments, backtrace_rerun: true )

@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'shellwords'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/plugins/plugin'
@@ -126,10 +127,18 @@ describe Sanitize do
 
       expect(tool[:executable]).to eq( 'env' )
       expect(tool[:arguments]).to eq( [
-        'ASAN_OPTIONS="halt_on_error=1:exitcode=0:detect_leaks=1"',
-        'UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1:exitcode=0"',
+        "ASAN_OPTIONS='halt_on_error=1:exitcode=0:detect_leaks=1'",
+        "UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:exitcode=0'",
         '${1}'
       ] )
+    end
+
+    # The fixture command runs in a shell, which must pass an option value through intact
+    it 'quotes each option so a shell passes its value through as written' do
+      tool  = register( build( runtime_options: { asan: ["suppressions=/my dir/$HOME/it's \"ok\"`date`"] } ) )
+      value = `sh -c #{Shellwords.escape( "env #{tool[:arguments].first} sh -c 'printf %s \"$ASAN_OPTIONS\"'" )}`
+
+      expect(value).to end_with( ":suppressions=/my dir/$HOME/it's \"ok\"`date`" )
     end
 
     # A backtrace rerun then runs with the same options as the main run
