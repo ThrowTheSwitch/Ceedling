@@ -36,14 +36,14 @@ class ConfiguratorSetup
   ].freeze
 
 
-  # Override to prevent exception handling from walking & stringifying the object variables.
-  # Object variables are gigantic and produce a flood of output.
   # What startup learned of gdb backtraces: :usable, :fell_back to :simple, or :unknown
   # when :gdb was never asked for
   def gdb_backtrace_state
     return @gdb_backtrace_state || :unknown
   end
 
+  # Override to prevent exception handling from walking & stringifying the object variables.
+  # Object variables are gigantic and produce a flood of output.
   def inspect
     return self.class.name
   end
@@ -151,7 +151,8 @@ class ConfiguratorSetup
       valid &= @configurator_validator.validate_tool( config:config, key:tool )
     end
 
-    validate_gdb_attach_capability( config )
+    # A gdb that failed validation needs no probe and no fallback warning
+    validate_gdb_attach_capability( config ) if valid
 
     return valid
   end

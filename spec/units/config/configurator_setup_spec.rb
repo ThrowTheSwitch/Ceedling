@@ -45,14 +45,20 @@ describe ConfiguratorSetup do
 
   # The crash notice advises :gdb backtraces only where startup didn't already rule them out
   context "#gdb_backtrace_state" do
-    def validate(use_backtrace, macos: true, attaches: true)
+    def validate(use_backtrace, macos: true, attaches: true, tools_valid: true)
       allow(@system_wrapper).to receive(:macos?).and_return( macos )
-      allow(@configurator_validator).to receive(:validate_tool).and_return( true )
+      allow(@configurator_validator).to receive(:validate_tool).and_return( tools_valid )
       allow(@tool_executor).to receive(:exec).and_return( { status: double( 'status', success?: attaches ), output: '' } )
       allow(@loginator).to receive(:log)
 
-      @setup.validate_tools( { tools: {}, project: { use_backtrace: use_backtrace } } )
+      @setup.validate_tools( { tools: { test_backtrace_gdb: {} }, project: { use_backtrace: use_backtrace } } )
       return @setup.gdb_backtrace_state
+    end
+
+    # A missing gdb already fails validation, so a fallback warning would only mislead
+    it "is unknown, with no attach probe, when the tools fail validation" do
+      expect(validate( :gdb, attaches: false, tools_valid: false )).to eq( :unknown )
+      expect(@tool_executor).not_to have_received(:exec)
     end
 
     it "is unknown when :gdb backtraces were never asked for" do
