@@ -62,14 +62,14 @@ class Sanitize < Plugin
     return if EXTENSION_ASSEMBLY.match?( arg_hash[:source] )
 
     arg_hash[:flags] += @settings.compile_flags
-    @dependinator.register( arg_hash[:object], meta: { sanitize: @config } )
+    @dependinator.register( arg_hash[:object], meta: { sanitize: @build_settings } )
   end
 
   def pre_test_link_register(arg_hash)
     return unless instrumented?( arg_hash[:context] )
 
     arg_hash[:flags] += @settings.link_flags
-    @dependinator.register( arg_hash[:executable], meta: { sanitize: @config } )
+    @dependinator.register( arg_hash[:executable], meta: { sanitize: @build_settings } )
   end
 
   # Runs the fixture tool, the project's own or Ceedling's, with each sanitizer's runtime
@@ -84,7 +84,7 @@ class Sanitize < Plugin
     arguments = options + [fixture[:executable]] + Array( fixture[:arguments] )
 
     arg_hash[:tool] = TOOLS_SANITIZE_FIXTURE.merge( arguments: arguments, backtrace_rerun: true )
-    @dependinator.register( arg_hash[:target], meta: { sanitize: @config } )
+    @dependinator.register( arg_hash[:target], meta: { sanitize: @build_settings } )
   end
 
   # Findings come from the fixture's stderr, where every sanitizer reports. A test reported
@@ -128,8 +128,10 @@ class Sanitize < Plugin
 
   private
 
+  # Only the settings that change what a build or test run produces are dependency meta, so
+  # changing how findings are reported rebuilds nothing
   def read_settings(config)
-    @config   = config
+    @build_settings = config.slice( :sanitizers, :recover, :detect_leaks, :runtime_options, :flags )
     @settings = SanitizeConfig.new( config, platform: platform )
 
     reports  = SanitizeReports.load( config[:reports], version: Ceedling::Version::TAG )

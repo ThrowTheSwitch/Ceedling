@@ -134,6 +134,14 @@ describe Sanitize do
       compile( build, SANITIZE_SYM )
       expect(dependinator).to have_received(:register).with( 'build/buffer.o', meta: { sanitize: hash_including( sanitizers: ['address', 'undefined'] ) } )
     end
+
+    # Reporting and failing the build change nothing a build or test run produces
+    it 'leaves out the settings that change only reporting' do
+      compile( build( reports: [:sarif], fail_build: false ), SANITIZE_SYM )
+      expect(dependinator).to have_received(:register).with(
+        'build/buffer.o', meta: { sanitize: { sanitizers: ['address', 'undefined'], recover: false, detect_leaks: true, runtime_options: {}, flags: {} } }
+      )
+    end
   end
 
   describe '#pre_test_fixture_register' do
