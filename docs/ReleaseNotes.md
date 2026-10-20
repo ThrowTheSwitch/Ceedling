@@ -24,6 +24,7 @@ The incomplete list of goodies:
 * Plugins:
    * The [Gcov plugin][gcov-plugin-1.2.0] adds raw `gcovr` arguments and `ReportGenerator` coverage thresholds.
    * The [Valgrind][valgrind-plugin-1.2.0] and [Cppcheck][cppcheck-plugin-1.2.0] plugins have expanded features including failing a build on analysis findings.
+   * The new [Sanitize plugin][sanitize-plugin-1.2.0] builds and runs tests with ASan, UBSan, and LeakSanitizer, naming each finding where a test fails and writing text, JSON, and SARIF reports.
    * The [Bullseye code coverage plugin][bullseye-plugin-1.2.0] is re-enabled and modernized (disabled since 1.0.0), adding branch coverage detail, XML reports, and a coverage threshold.
 * Performance improvements yield a 5–10% faster build even before delta builds speed up successive runs.
 * `ceedling.yml` is accepted as an alternate default project filename alongside `project.yml`.
@@ -32,6 +33,7 @@ The incomplete list of goodies:
 
 [partials-directory-docs-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/partials/directives/#naming-a-module-by-directory
 [bullseye-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/
+[sanitize-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/sanitize/
 [gcov-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/gcov/
 [valgrind-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/valgrind/
 [cppcheck-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/cppcheck/
@@ -75,6 +77,7 @@ The following is not a complete project configuration. But, for those already fa
     - gcov
     - bullseye
     - valgrind
+    - sanitize
     - cppcheck
     - module_generator
     - dependencies
@@ -146,6 +149,35 @@ The following is not a complete project configuration. But, for those already fa
   # Valgrind suppression files, each passed as one --suppressions= argument ahead of
   # any entries in :arguments.
   :suppressions: []
+
+# New plugin: builds and runs tests with sanitizers in sanitize: builds of their own.
+# Its flags never reach another plugin's build, such as gcov: or valgrind:.
+:sanitize:
+  # Any of :address, :undefined, and :leak. ASan's runtime checks leaks too.
+  :sanitizers:
+    - :address
+    - :undefined
+
+  # Halt each test at its first finding (default), or keep running after each
+  :recover: FALSE
+
+  # Check for leaks at exit (Linux only; left off on macOS)
+  :detect_leaks: TRUE
+
+  # Also instrument ordinary test: builds
+  :test_builds: FALSE
+
+  # Fail the build on any finding
+  :fail_build: TRUE
+
+  # Any of :text, :json, and :sarif. None listed is the text report alone.
+  :reports:
+    - :sarif
+
+  # Optional extra runtime options for each sanitizer
+  :runtime_options:
+    :asan:
+      - strict_string_checks=1
 
 :cppcheck:
   # When TRUE, findings matching :fail_build_severities fail the build.

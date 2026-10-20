@@ -175,6 +175,7 @@ nav:
       - Advanced & Troubleshooting: plugins/gcov/troubleshooting.md
     - Cppcheck (Static Analysis): plugins/cppcheck.md
     - Valgrind (Memory Analysis): plugins/valgrind.md
+    - Sanitize (ASan, UBSan & Leaks): plugins/sanitize.md
     - Bullseye (Coverage):
       - plugins/bullseye/index.md
       - Licensing: plugins/bullseye/licensing.md

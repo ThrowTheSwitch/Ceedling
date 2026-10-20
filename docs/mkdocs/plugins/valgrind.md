@@ -82,6 +82,11 @@ project configuration:
     - valgrind
 ```
 
+!!! warning "Sanitizer flags"
+    A test executable built with sanitizers (`-fsanitize`) cannot run under
+    Valgrind. A `valgrind:` build whose flags carry `-fsanitize` stops with 
+    a message naming them.
+
 ## Configuration
 
 The plugin ships with sensible defaults that enable full leak checking. By
