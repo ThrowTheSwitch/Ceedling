@@ -2508,6 +2508,8 @@
       
         
       
+        
+      
     
     
     
@@ -3141,6 +3143,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="sanitize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize (ASan, UBSan & Leaks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3166,7 +3196,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3188,14 +3218,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4416,11 +4446,11 @@ for how to enable built-in plugins and load custom plugins in your project.</p>
 <p class="admonition-title">Warning</p>
 <p>Build-related plugins intentionally execute duplicated builds.</p>
 </div>
-<p>Plugins including <a href="gcov/">Gcov</a>, <a href="bullseye/">Bullseye</a>, and <a href="valgrind/">Valgrind</a>
-recreate test build tasks. That is, the command line build task <code>test:foo</code> also exists 
-as <code>gcov:foo</code>, <code>bullseye:foo</code>, and/or <code>valgrind:foo</code> if these plugins are enabled.
-Each of these triggers a full rebuild of the named test with instrumentation 
-activated. <strong>This duplication is intentional and very necessary.</strong></p>
+<p>Plugins including <a href="gcov/">Gcov</a>, <a href="bullseye/">Bullseye</a>, <a href="valgrind/">Valgrind</a>,
+and <a href="sanitize/">Sanitize</a> recreate test build tasks. That is, the command line build task
+<code>test:foo</code> also exists as <code>gcov:foo</code>, <code>bullseye:foo</code>, <code>valgrind:foo</code>, and/or <code>sanitize:foo</code>
+if these plugins are enabled. Each of these triggers a full rebuild of the named test with 
+instrumentation activated. <strong>This duplication is intentional and very necessary.</strong></p>
 <p>These plugins modify executable code or the environment in which a test suite 
 executable runs. Duplicating and segregating the build tasks addresses several 
 important issues:</p>
@@ -4429,7 +4459,8 @@ important issues:</p>
    duplicated tasks (i.e. integrated build tasks) can bring about conflicts and
    undefined behavior. For instance, Gcov’s instrumentation does not
    necessarily play nice with Valgrind’s memory-instrumented emulation
-   runtime, and the two should be kept entirely segregated.</li>
+   runtime, and the two should be kept entirely segregated. Likewise, a
+   sanitizer-instrumented test executable cannot run under Valgrind at all.</li>
 <li><strong>Unforeseen effects</strong>. These plugins can directly alter the functioning of
    the code under test. For instance, coverage instrumentation inserted into
    your compiled code can alter its function or timing. As such, it is vital
@@ -4447,8 +4478,8 @@ important issues:</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>A duplicated build task is a <a href="../getting-started/builds/">delta build</a>.
-Ceedling skips work in a <code>gcov:</code>, <code>bullseye:</code>, or <code>valgrind:</code> build in the same
-way it does in a standard <code>test:</code> build.</p>
+Ceedling skips unneeded work in a <code>gcov:</code>, <code>bullseye:</code>, <code>valgrind:</code>, or
+<code>sanitize:</code> build in the same way it does in a standard <code>test:</code> build.</p>
 </div>
 <p>Each of these plugins maintains its own separate delta build cache, apart from
 plain test builds and from each other. A file with no role specific to a
@@ -4538,6 +4569,14 @@ as is common in embedded projects. The plugin can produce various reports.</p>
 <p>Adds Ceedling tasks to run test executables under <a href="https://valgrind.org">Valgrind</a> memory error
 detection. Valgrind catches memory leaks, invalid accesses, and use-after-free
 bugs. The plugin produces per-test log files in the build artifacts directory.</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 13h2v1h-2zm10-8v6c0 5.5-3.8 10.7-9 12-5.2-1.3-9-6.5-9-12V5l9-4zm-4 5h-2.2c-.2-.6-.6-1.1-1.1-1.5l1.2-1.2-.7-.7L12.8 8H12c-.2 0-.5 0-.7.1L9.9 6.6l-.8.8 1.2 1.2c-.5.3-.9.8-1.1 1.4H7v1h2v1H7v1h2v1H7v1h2.2c.4 1.2 1.5 2 2.8 2s2.4-.8 2.8-2H17v-1h-2v-1h2v-1h-2v-1h2zm-6 2h2v-1h-2z"/></svg></span> <strong><a href="sanitize/"><code>sanitize</code></a></strong></p>
+<hr />
+<p>Adds Ceedling tasks to build and run test executables with the compiler’s
+sanitizers. ASan, UBSan, and LeakSanitizer find memory errors, undefined
+behavior, and leaks as tests run. Findings fail the build and can be written
+as text, JSON, and SARIF reports.</p>
 </li>
 </ul>
 </div>

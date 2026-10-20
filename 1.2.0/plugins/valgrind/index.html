@@ -16,7 +16,7 @@
         <link rel="prev" href="../cppcheck/">
       
       
-        <link rel="next" href="../bullseye/">
+        <link rel="next" href="../sanitize/">
       
       
         
@@ -2508,6 +2508,8 @@
       
         
       
+        
+      
     
     
     
@@ -3371,6 +3373,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../sanitize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize (ASan, UBSan & Leaks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3396,7 +3426,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3418,14 +3448,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4761,6 +4791,12 @@ project configuration:</p>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">valgrind</span>
 </code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Sanitizer flags</p>
+<p>A test executable built with sanitizers (<code>-fsanitize</code>) cannot run under
+Valgrind. A <code>valgrind:</code> build whose flags carry <code>-fsanitize</code> stops with 
+a message naming them.</p>
+</div>
 <h2 id="configuration">Configuration</h2>
 <p>The plugin ships with sensible defaults that enable full leak checking. By
 default the build runs all test binaries to completion and is marked as failed
