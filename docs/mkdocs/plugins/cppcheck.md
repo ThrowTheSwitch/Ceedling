@@ -546,14 +546,39 @@ Filenames other than the HTML directory are configurable. See the
 
 These artifacts are included in `ceedling clean` targets.
 
+## Console output
+
+These excerpts come from real runs. Build progress lines are left out.
+
+Each report logs a line as it is created. With an XML report, which
+[`:fail_build:`](#fail_build) also implies, a tally of findings by severity
+follows:
+
+```
+Creating Cppcheck text report...
+Creating Cppcheck xml report...
+Cppcheck findings: 1 error, 2 information, 1 style
+```
+
+A run without findings logs `Cppcheck found no issues.` in place of the tally.
+
+With `:fail_build:` enabled, findings of a listed severity fail the build:
+
+```
+❌ BUILD FAILURE SUMMARY
+ • [CPPCHECK] Cppcheck found 1 finding matching :cppcheck ↳ :fail_build_severities (1 error). See the report in build/artifacts/cppcheck.
+```
+
+With no report configured, Cppcheck does not run:
+
+```
+⚠️ WARNING: No Cppcheck reports are configured, so no analysis ran.
+Add a report to :cppcheck ↳ :reports, or enable :cppcheck ↳ :fail_build.
+```
+
 ## Interpreting results
 
-Whole project analysis prints a per-severity tally after it runs:
-
-```
-Cppcheck findings: 1 error, 2 information, 2 style
-```
-
+The tally in the [console output](#console-output) counts findings by severity.
 Cppcheck assigns every finding one of six severities.
 
 | Severity | Meaning |
