@@ -98,9 +98,9 @@ module SanitizeCommonTestCases
 
         output = @c.ceedling_build_exec("sanitize:all")
         expect(@c.last_exit_status).to eq(1)
-        expect(output).to match(/AddressSanitizer heap-buffer-overflow: 1/)
-        expect(output).to match(/UndefinedBehaviorSanitizer undefined-behavior: 1/)
-        expect(output).to match(/Sanitizers found 2 problems in 1 test/)
+        expect(output).to match(/AddressSanitizer heap-buffer-overflow at /)
+        expect(output).to match(/UndefinedBehaviorSanitizer .* at /)
+        expect(output).to match(%r{Sanitizers found 2 problems in 1 test\. See the reports in build/artifacts/sanitize/sanitize: sanitize\.sarif\.})
 
         sarif = JSON.parse(read_spec_file('build/artifacts/sanitize/sanitize/sanitize.sarif'))
         expect(sarif['runs'].first['results'].map { |result| result['ruleId'] }).to contain_exactly(
@@ -135,7 +135,7 @@ module SanitizeCommonTestCases
         expect(@c.last_exit_status).to eq(1)
         expect(output).not_to match(/crashed/i)
         expect(output).to match(/PASSED:\s+2/)
-        expect(output).to match(/LeakSanitizer memory-leak: 1/)
+        expect(output).to match(/test_nosanitize_leak: LeakSanitizer memory-leak at /)
         expect(output).to match(/Sanitizers found 1 problem in 1 test/)
       end
     end
@@ -150,7 +150,7 @@ module SanitizeCommonTestCases
 
         output = @c.ceedling_build_exec("sanitize:all")
         expect(@c.last_exit_status).to eq(0)
-        expect(output).to match(/LeakSanitizer memory-leak: 1/)
+        expect(output).to match(/test_nosanitize_leak: LeakSanitizer memory-leak at /)
         expect(output).not_to match(/Sanitizers found/)
       end
     end
