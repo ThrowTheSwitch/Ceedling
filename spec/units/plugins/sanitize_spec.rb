@@ -162,8 +162,10 @@ describe Sanitize do
       ] )
     end
 
-    # The fixture command runs in a shell, which must pass an option value through intact
-    it 'quotes each option so a shell passes its value through as written' do
+    # The fixture command runs in a shell, which must pass an option value through intact. The
+    # plugin, like this example, needs a POSIX shell, which Windows lacks.
+    it 'quotes each option so a shell passes its value through as written',
+       skip: (RUBY_PLATFORM.match?( /mswin|mingw/ ) ? 'needs a POSIX shell, as the plugin does' : false) do
       tool  = register( build( runtime_options: { asan: ["suppressions=/my dir/$HOME/it's \"ok\"`date`"] } ) )
       value = `sh -c #{Shellwords.escape( "env #{tool[:arguments].first} sh -c 'printf %s \"$ASAN_OPTIONS\"'" )}`
 
