@@ -11,10 +11,10 @@
     - :sanitize   # Its :defines and :flags work as :test's do, matchers included
 
 :sanitize:
-  # Any of address, undefined, and leak. ASan's runtime checks leaks too.
+  # Any of :address, :undefined, and :leak. ASan's runtime checks leaks too.
   :sanitizers:
-    - address
-    - undefined
+    - :address
+    - :undefined
 
   # Keep running after a finding rather than halting the test at the first one
   :recover: FALSE
