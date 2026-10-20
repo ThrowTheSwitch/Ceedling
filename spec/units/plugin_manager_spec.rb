@@ -39,6 +39,18 @@ describe PluginManager do
       expect(@pm.plugins_failed?).to be(false)
     end
 
+    # A delta build reports a skipped test's results from the last build, without running it
+    it 'prints no raw output for a test reported from cached results' do
+      allow(@configurator).to receive(:plugins_display_raw_test_results).and_return(true)
+      allow(@loginator).to receive(:log)
+
+      arg_hash = { :context => TEST_SYM, :shell_result => nil, :results => { :counts => { :failed => 1 } } }
+      @pm.post_test_fixture_execute(arg_hash)
+
+      expect(@loginator).not_to have_received(:log)
+      expect(@pm.plugins_failed?).to be(true)
+    end
+
     it 'does not register a build failure when result counts are absent' do
       arg_hash = { :context => TEST_SYM, :shell_result => { :output => '' }, :results => {} }
       @pm.post_test_fixture_execute(arg_hash)
