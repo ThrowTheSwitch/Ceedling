@@ -39,6 +39,14 @@ class GeneratorHelper
     @loginator.log( notice, Verbosity::ERRORS, LogLabels::CRASH )
   end
 
+  # A plugin's explanation names the cause, so no generic guidance follows it
+  def log_explained_crash(executable, explanation)
+    notice  = "Test executable `#{File.basename( executable )}` #{explanation[:heading] || 'crashed'}.\n"
+    notice += ([explanation[:cause]] + explanation[:details]).map { |line| "> #{line}\n" }.join
+
+    @loginator.log( notice, Verbosity::ERRORS, LogLabels::CRASH )
+  end
+
   # A "redeclaration"/"redefinition"/"conflicting types"/"previous definition" family
   # of compiler errors mentioning a header this test also mocks or Partializes is a
   # strong signal that the real header's own content reached this compile a second,

@@ -165,6 +165,30 @@ describe GeneratorHelper do
     end
   end
 
+
+  describe '#log_explained_crash' do
+    def notice(explanation)
+      logged = nil
+      allow(@loginator).to receive(:log) { |message, *_| logged = message }
+      @helper.log_explained_crash( 'build/test_a.out', explanation )
+      return logged
+    end
+
+    it 'states the cause and its details on their own lines' do
+      explanation = { heading: 'was stopped by a sanitizer finding', cause: 'ASan heap-buffer-overflow at a.c:8', details: ['Boom log: x.log'] }
+      expect(notice( explanation )).to eq( "Test executable `test_a.out` was stopped by a sanitizer finding.\n> ASan heap-buffer-overflow at a.c:8\n> Boom log: x.log\n" )
+    end
+
+    it 'says the executable crashed when the plugin gives no heading' do
+      expect(notice( { heading: nil, cause: 'Bad thing', details: [] } )).to eq( "Test executable `test_a.out` crashed.\n> Bad thing\n" )
+    end
+
+    it 'logs as a crash error' do
+      notice( { heading: nil, cause: 'Bad thing', details: [] } )
+      expect(@loginator).to have_received(:log).with( anything, Verbosity::ERRORS, LogLabels::CRASH )
+    end
+  end
+
   describe '#explain_possible_mock_partial_collision' do
     let(:mocked_headers) { { 'gpio.h' => '/project/library/gpio.h' } }
 

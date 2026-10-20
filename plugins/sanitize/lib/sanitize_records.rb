@@ -30,6 +30,15 @@ class SanitizeRecords
     return File.join( SANITIZE_ARTIFACTS_PATH, context.to_s, "#{test}.log" )
   end
 
+  # A crash's explanation, in the keys of the explain_test_crash hook
+  def self.explanation(context, test, finding)
+    return {
+      explanation_heading: 'was stopped by a sanitizer finding',
+      explanation:         SanitizeReports.headline( finding ),
+      explanation_details: ["Boom log: #{log_filepath( context, test )}"]
+    }
+  end
+
   # Adds a test's new findings to its own log and logs each
   def record(context, test, findings)
     added = @mutex.synchronize { add_new( context, test, findings ) }

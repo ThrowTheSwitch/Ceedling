@@ -451,18 +451,26 @@ class Generator
   end
 
   # Lists the crashed test's cases, filtered by any matchers the build task specified, and
-  # learns what it can about the crash as :project ↳ :use_backtrace allows
+  # learns what it can about the crash as :project ↳ :use_backtrace allows. A crash a plugin
+  # explains needs no generic notice or backtrace advice.
   def handle_test_crash(arg_hash, shell_result)
     backtrace = backtrace_for( arg_hash[:tool] )
-    # Either the fixture tool fell back from :gdb here, or startup found gdb unable to attach
-    gdb_unavailable = backtrace != @configurator.project_config_hash[:project_use_backtrace] ||
-                      @configurator.gdb_backtrace_state == :fell_back
-    @helper.log_test_results_crash( arg_hash[:executable], shell_result, backtrace, gdb_unavailable: gdb_unavailable )
+    explanation = crash_explanation( arg_hash, shell_result )
+    log_crash( arg_hash[:executable], shell_result, backtrace, explanation )
 
     test_cases = @test_context_extractor.lookup_test_cases( arg_hash[:test_filepath] )
     test_cases = @generator_test_results.filter_test_cases( test_cases )
 
-    return crash_results( backtrace, arg_hash, shell_result, test_cases )
+    return crash_results( backtrace, arg_hash, shell_result, test_cases, explanation )
+  end
+
+  def log_crash(executable, shell_result, backtrace, explanation)
+    return @helper.log_explained_crash( executable, explanation ) if explanation
+
+    # Either the fixture tool fell back from :gdb here, or startup found gdb unable to attach
+    gdb_unavailable = backtrace != @configurator.project_config_hash[:project_use_backtrace] ||
+                      @configurator.gdb_backtrace_state == :fell_back
+    @helper.log_test_results_crash( executable, shell_result, backtrace, gdb_unavailable: gdb_unavailable )
   end
 
   # A fixture tool that runs its own backtrace reruns can't run them under gdb
@@ -484,23 +492,34 @@ class Generator
     @loginator.log( "Fixture tool `#{tool[:name]}` runs its own reruns, so :use_backtrace ➡️ :gdb falls back to :simple", Verbosity::NORMAL )
   end
 
-  def crash_results(backtrace, arg_hash, shell_result, test_cases)
+  # The main run's explanation serves without backtraces; each :simple rerun has its own
+  def crash_results(backtrace, arg_hash, shell_result, test_cases, explanation)
     filename, executable, context = File.basename( arg_hash[:test_filepath] ), arg_hash[:executable], arg_hash[:context]
-    explain = ->(result) { crash_explanation( arg_hash, result ) }
+    explain = ->(result) { crash_message( crash_explanation( arg_hash, result ) ) }
 
     case backtrace
     when :gdb    then @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: context )
     when :simple then @backtrace.do_simple( filename, executable, shell_result, test_cases, context: context, tool: arg_hash[:tool], explain: explain )
     # A crash is otherwise reported as a single failure
-    else @generator_test_results.create_crash_failure( filename, shell_result, test_cases, message: explain.call( shell_result ) || 'Test executable crashed' )
+    else @generator_test_results.create_crash_failure( filename, shell_result, test_cases, message: crash_message( explanation ) || 'Test executable crashed' )
     end
   end
 
   # The cause of a crash, if a plugin recognizes it (e.g. a sanitizer's finding)
   def crash_explanation(arg_hash, shell_result)
-    explaining = arg_hash.merge( shell_result: shell_result, explanation: nil )
+    explaining = arg_hash.merge( shell_result: shell_result, explanation: nil, explanation_details: nil, explanation_heading: nil )
     @plugin_manager.explain_test_crash( explaining )
-    return explaining[:explanation]
+    return nil unless explaining[:explanation]
+
+    return { heading: explaining[:explanation_heading], cause: explaining[:explanation], details: Array( explaining[:explanation_details] ) }
+  end
+
+  # A test failure's message is a single line
+  def crash_message(explanation)
+    return nil unless explanation
+    return explanation[:cause] if explanation[:details].empty?
+
+    return "#{explanation[:cause]} (#{explanation[:details].join( '; ' )})"
   end
 
   # The caller already knows which test this run belongs to. Rediscovering it from the

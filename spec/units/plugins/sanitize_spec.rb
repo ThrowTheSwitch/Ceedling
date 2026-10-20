@@ -219,7 +219,9 @@ describe Sanitize do
       sanitize.explain_test_crash( arg_hash )
 
       log = File.join( SANITIZE_ARTIFACTS_PATH, 'sanitize', 'test_a.log' )
-      expect(arg_hash[:explanation]).to eq( "AddressSanitizer heap-buffer-overflow at /x/heap.c:3 (log: #{log})" )
+      expect(arg_hash[:explanation_heading]).to eq( 'was stopped by a sanitizer finding' )
+      expect(arg_hash[:explanation]).to eq( 'AddressSanitizer heap-buffer-overflow at /x/heap.c:3' )
+      expect(arg_hash[:explanation_details]).to eq( ["Boom log: #{log}"] )
     end
 
     # A test case after the one that halted the main run runs only in its rerun

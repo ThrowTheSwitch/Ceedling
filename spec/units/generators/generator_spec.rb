@@ -86,9 +86,13 @@ describe Generator do
     let(:backtrace) { @collaborators[:generator_test_results_backtrace] }
     let(:results)   { @collaborators[:generator_test_results] }
 
-    def run(tool: :fixture, use_backtrace: :none, explanation: nil)
+    def run(tool: :fixture, use_backtrace: :none, explanation: nil, details: nil, heading: nil)
       allow(@collaborators[:configurator]).to receive(:project_config_hash).and_return( { project_use_backtrace: use_backtrace } )
-      allow(@plugin_manager).to receive(:explain_test_crash) { |arg_hash| arg_hash[:explanation] = explanation }
+      allow(@plugin_manager).to receive(:explain_test_crash) do |arg_hash|
+        arg_hash[:explanation] = explanation
+        arg_hash[:explanation_details] = details
+        arg_hash[:explanation_heading] = heading
+      end
 
       @generator.generate_test_results(
         tool: tool, context: :test, test_name: 'test_a', test_filepath: 'test/test_a.c',
@@ -107,6 +111,30 @@ describe Generator do
     it 'fails a crashed test with the cause a plugin names for it' do
       run( explanation: 'ASan heap-buffer-overflow at src/a.c:9' )
       expect(results).to have_received(:create_crash_failure).with( 'test_a.c', anything, [], message: 'ASan heap-buffer-overflow at src/a.c:9' )
+    end
+
+    it 'fails a crashed test with the cause\'s details alongside it' do
+      run( explanation: 'ASan heap-buffer-overflow at src/a.c:9', details: ['Boom log: x.log'] )
+      expect(results).to have_received(:create_crash_failure).with( 'test_a.c', anything, [], message: 'ASan heap-buffer-overflow at src/a.c:9 (Boom log: x.log)' )
+    end
+
+    it 'logs a plugin\'s explanation in place of the generic crash notice' do
+      run( explanation: 'ASan heap-buffer-overflow at src/a.c:9', details: ['Boom log: x.log'], heading: 'was stopped by a sanitizer finding' )
+
+      explanation = { heading: 'was stopped by a sanitizer finding', cause: 'ASan heap-buffer-overflow at src/a.c:9', details: ['Boom log: x.log'] }
+      expect(@collaborators[:generator_helper]).to have_received(:log_explained_crash).with( 'build/test_a.out', explanation )
+      expect(@collaborators[:generator_helper]).not_to have_received(:log_test_results_crash)
+    end
+
+    it 'logs the generic crash notice when no plugin names a cause' do
+      run()
+      expect(@collaborators[:generator_helper]).to have_received(:log_test_results_crash)
+      expect(@collaborators[:generator_helper]).not_to have_received(:log_explained_crash)
+    end
+
+    it 'asks the plugins once for a crash without backtraces' do
+      run( explanation: 'ASan heap-buffer-overflow at src/a.c:9' )
+      expect(@plugin_manager).to have_received(:explain_test_crash).once
     end
 
     it 'fails a crashed test as a crash when no plugin names a cause' do

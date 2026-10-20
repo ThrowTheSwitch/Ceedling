@@ -110,7 +110,7 @@ class Sanitize < Plugin
     return if findings.empty?
 
     @records.record( arg_hash[:context], arg_hash[:test_name], findings )
-    arg_hash[:explanation] = "#{SanitizeReports.headline( findings.first )} (log: #{SanitizeRecords.log_filepath( arg_hash[:context], arg_hash[:test_name] )})"
+    arg_hash.merge!( SanitizeRecords.explanation( arg_hash[:context], arg_hash[:test_name], findings.first ) )
   end
 
   def post_build(_timestamp_s)
