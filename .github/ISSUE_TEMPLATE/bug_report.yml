@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for taking the time to report a problem.
-  - type: input
+  - type: textarea
     id: version
     attributes:
       label: Ceedling version
