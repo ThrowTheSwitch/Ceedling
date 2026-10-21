@@ -298,7 +298,8 @@ describe Generator do
       generate( test_filepath: 'test/test_SetUp_parser.c' )
       expect(loginator).to have_received(:log).with(
         'Test filename `test_SetUp_parser.c` includes a keyword Windows recognizes as an installer (install, setup, update, patch) ' \
-        'when built as a test executable. Ceedling generated a manifest beside the test executable to run without administrator privileges.',
+        'when built as a test executable. As a defensive measure, Ceedling generated a manifest beside the test executable to run without ' \
+        'administrator privileges. Your toolchain may already embed a manifest that does the same.',
         Verbosity::COMPLAIN
       )
     end
