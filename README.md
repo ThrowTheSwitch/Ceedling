@@ -50,8 +50,8 @@ from the same source module in a single test file and enables testing of
 [dependencies]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/dependencies/
 [bullseye-plugin]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/
 [sbom-docs]: https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/
-[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
-[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
+[partials-docs]: https://docs.throwtheswitch.org/Ceedling/1.1.0/testing-guide/partials/
+[ceedling-docs-site]: https://docs.throwtheswitch.org/Ceedling/
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
