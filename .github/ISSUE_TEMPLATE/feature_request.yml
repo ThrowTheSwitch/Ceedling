@@ -1,0 +1,31 @@
+name: Feature request
+description: Propose a new feature or a change to an existing one.
+type: Feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests are welcome.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that Ceedling makes difficult or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: How to make it better?
+      description: What is the result you want? Include implementation ideas if you have them.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Anything else?
+      description: |
+        Links? References? Example project attachment?
+
+        Tip: You can attach images, log files, or zip archives by clicking this area to highlight it and then dragging files in.
+    validations:
+      required: false

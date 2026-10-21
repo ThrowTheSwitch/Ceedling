@@ -1,0 +1,47 @@
+name: Bug report
+description: Report something in Ceedling that does not work.
+type: Bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a problem.
+  - type: textarea
+    id: version
+    attributes:
+      label: Ceedling version
+      description: Paste the output of `ceedling version` from the command line.
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What went wrong?
+      description: Describe the problem, what you expected instead, and the steps to reproduce it.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Ruby version, and compiler or toolchain.
+      placeholder: e.g. Ubuntu 24.04, Ruby 3.3.6, GCC 13.2
+    validations:
+      required: false
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Project configuration
+      description: The relevant parts of your project file. `ceedling dumpconfig` at the command line may help here.
+      render: yaml
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Anything else?
+      description: |
+        Links? References? Reproducible project attachment?
+
+        Tip: You can attach images, log files, or zip archives by clicking this area to highlight it and then dragging files in.
+    validations:
+      required: false
