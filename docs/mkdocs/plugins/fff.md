@@ -241,7 +241,7 @@ These tests are run with the default `rake` task packaged in the [FFF plugin][ff
 The integration test runs the FFF-based unit tests within the [example project][fff-example-project].
 That is, the FFF examples are executed as part of Ceedling continuous integration.
 
-[fff-example-project]: https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff/examples/fff_example
-[fff-plugin]:          https://github.com/ThrowTheSwitch/Ceedling/tree/master/plugins/fff
+[fff-example-project]: https://github.com/ThrowTheSwitch/Ceedling/tree/v1.1.10/plugins/fff/examples/fff_example
+[fff-plugin]:          https://github.com/ThrowTheSwitch/Ceedling/tree/v1.1.10/plugins/fff
 
 <br/><br/>

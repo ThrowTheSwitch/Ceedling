@@ -53,9 +53,9 @@ maintained standalone rather than versioned with this documentation.
 
 </div>
 
-[release-notes]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md
-[breaking-changes]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/BreakingChanges.md
-[changelog]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/Changelog.md
-[known-issues]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md
+[release-notes]: https://github.com/ThrowTheSwitch/Ceedling/blob/v1.1.10/docs/ReleaseNotes.md
+[breaking-changes]: https://github.com/ThrowTheSwitch/Ceedling/blob/v1.1.10/docs/BreakingChanges.md
+[changelog]: https://github.com/ThrowTheSwitch/Ceedling/blob/v1.1.10/docs/Changelog.md
+[known-issues]: https://github.com/ThrowTheSwitch/Ceedling/blob/v1.1.10/docs/KnownIssues.md
 
 <br/><br/>
