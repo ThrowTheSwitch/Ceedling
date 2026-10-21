@@ -25,7 +25,7 @@ body:
     id: test_results
     attributes:
       label: Were any C test suite results wrong?
-      description: A test that passes when it should fail, a test that silently does not run, or wrong totals or coverage are especially serious for a test tool. Note: This refers to the test suite Ceedling generates, not its own self-tests.
+      description: "A test that passes when it should fail, a test that silently does not run, or wrong totals or coverage are especially serious for a test tool. Note: This refers to the test suite Ceedling generates, not its own self-tests."
       options:
         - "Not applicable"
         - "No"
