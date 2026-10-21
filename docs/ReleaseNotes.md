@@ -8,7 +8,7 @@ These release notes are complemented by three other documents:
 
 ---
 
-# 1.2.0 — Prelease
+# 1.2.0 — October 21, 2026
 
 ## 👀 Highlights
 
@@ -29,7 +29,7 @@ The incomplete list of goodies:
 * Performance improvements yield a 5–10% faster build even before delta builds speed up successive runs.
 * `ceedling.yml` is accepted as an alternate default project filename alongside `project.yml`.
 * `ceedling dumpconfig --stdout` writes the fully resolved project configuration to the console (useful for scripting and agentic tools).
-* Some 40 fixes and refinements for robustness across test preprocessing, Partials, mocking, backtraces, mixins, filepath handling, and plugin reports.
+* Some 40+ fixes and refinements for robustness across test preprocessing, Partials, mocking, backtraces, mixins, filepath handling, and plugin reports.
 
 [partials-directory-docs-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/partials/directives/#naming-a-module-by-directory
 [bullseye-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/

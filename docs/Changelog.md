@@ -10,7 +10,7 @@ This changelog is complemented by three other documents:
 
 ---
 
-# [1.2.0] — Prerelease
+# [1.2.0] — 2026-10-21
 
 ## 🌟 Added
 

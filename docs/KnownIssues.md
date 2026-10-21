@@ -14,7 +14,7 @@ Known issues are complemented by three other documents:
 
 ---
 
-## 1.2.0 — Prerelease
+## 1.2.0 — 2026-10-21
 
 Ceedling 1.2.0 requires Ruby 3+ but only unoficially supports Ruby 4.
 
@@ -34,7 +34,7 @@ Ceedling 1.2.0 requires Ruby 3+ but only unoficially supports Ruby 4.
 1. Exposing a module’s file-scope variables and functions removes what kept their names private to that module. Two Partialized modules in one test file that each use the same name for a file-scope variable collide at link time.
 1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
 
-## 1.1.0 — 2026-07-16
+## 1.1.x — 2026-07-16
 
 1. The new internal pipeline as of 1.0.0 that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. The speed gains due to parallelization help make up for this. Future releases will concentrate on optimizing away duplication of build steps.
 1. While header file search paths are now customizable per executable, this currently only applies to the search paths the compiler uses. Distinguishing test files or header files of the same name in different directories for test runner and mock generation respectively continues to rely on educated guesses in Ceedling code.
