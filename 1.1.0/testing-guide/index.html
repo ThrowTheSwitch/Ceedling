@@ -4107,12 +4107,13 @@
 
 
 <h1 id="testing-guide">Testing Guide</h1>
-<div class="admonition danger">
+<div class="admonition warning">
 <p class="admonition-title">Test file naming in Windows</p>
-<p><strong><em>Test filenames should not include “patch” or “setup”</em></strong>.
-Test filenames become test executables. Windows Installer Detection 
-Technology (part of UAC) requires administrator privileges to run 
-executables with this naming.</p>
+<p>Test filenames become test executables. Windows can require
+administrator privileges to run an executable whose name contains
+<em>install</em>, <em>setup</em>, <em>update</em>, or <em>patch</em>. Most modern Windows toolchains
+embed a manifest that avoids this. See
+<a href="conventions/#installer-like-test-filenames-on-windows">installer-like test filenames on Windows</a>.</p>
 </div>
 <h2 id="test-cases-test-suites">Test Cases &amp; Test Suites</h2>
 <div class="grid cards">

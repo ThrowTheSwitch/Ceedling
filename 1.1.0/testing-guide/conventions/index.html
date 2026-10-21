@@ -4930,6 +4930,28 @@ For example, <code>test_some_super_functionality.c</code>, <code>TestYourSourceF
 or <code>testing_MyAwesomeCode.C</code> could each be valid test file
 names. Note, however, that Ceedling can recognize only one test
 file naming convention per project.</p>
+<h4 id="installer-like-test-filenames-on-windows">Installer-like test filenames on Windows</h4>
+<p>A test executable is named after its test file. Windows treats an executable
+whose name contains <em>install</em>, <em>setup</em>, <em>update</em>, or <em>patch</em> as an installer.
+The Installer Detection feature of User Account Control (UAC) then demands
+administrator privileges to run it. A test file such as <code>test_setup_parser.c</code>
+can build a test executable Windows will not run.</p>
+<p>Most modern Windows toolchains avoid this. They embed a manifest in each
+executable that asks Windows to run it with your own privileges, which turns
+Installer Detection off for it.</p>
+<ul>
+<li><strong>MinGW-w64 GCC from <a href="https://www.msys2.org">MSYS2</a></strong> links a default manifest into every executable
+  when its <code>windows-default-manifest</code> package is installed. That manifest
+  requests your own privileges, so these names cause no trouble. This GCC is
+  also the one RubyInstaller’s DevKit provides.</li>
+<li><strong>Other MinGW-w64 distributions</strong> may or may not include that default
+  manifest. GCC links it only when it finds <code>default-manifest.o</code> among its
+  libraries.</li>
+<li><strong>The original MinGW</strong> (mingw.org) is believed to embed no manifest.</li>
+</ul>
+<p>To see whether an executable embeds a manifest, search it for the text
+<code>requestedExecutionLevel</code>. If your toolchain embeds none, avoid these words in
+your test filenames.</p>
 <h3 id="source-mock-files-to-compile-and-link">Source &amp; mock files to compile and link</h3>
 <p>Ceedling knows what files to compile and link into each individual
 test executable by way of the <code>#include</code> list contained in each
