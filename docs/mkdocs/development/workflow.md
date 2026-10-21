@@ -1,5 +1,23 @@
 # Ceedling development
 
+## Code organization
+
+There are two top-level code directories:
+
+1. `bin/` This is the “bootloader” that encompasses the command line 
+   handler and loading the project configuration including merging
+   Mixins. All applications commands are executed from within this
+   code ([application commands are distinct from build/plugin tasks](../getting-started/command-line.md)).
+2. `lib/` This is the application itself. Major subsystems are
+   organized in subdirectories. Configuration processing happens in
+   the main application.
+
+The handoff from (1) to (2) involves:
+
+1. Triggering the loaded and merged configuration to undergo
+   processing, validation, and plugin loading.
+2. Triggering the build/plugin task named at the command line.
+
 ## Installation options
 
 ### Local installation
@@ -192,7 +210,7 @@ managed environment so the exact versions recorded in `Gemfile.lock` are
 what actually get loaded, rather than whatever happens to be installed
 globally on your system.
 
-`rake specs:all` and other Rake tasks in this repo already do this 
+`rake spec` and other Rake tasks in this repo already do this 
 automatically; if you ever invoke an RSpec or Ruby command directly 
 instead of through a Rake task, prefix it with `bundle exec`:
 
@@ -262,76 +280,22 @@ kind upstream, and its lineage is recorded as constants in
 
 ## Running self-tests
 
-Ceedling tests itself with [RSpec] in three tiers: unit, integration, and system.
-Each tier trades speed for realism, and Rake tasks run a single spec, a whole tier,
-or everything. Run them from the root of your local Ceedling repository.
+Ceedling uses [RSpec] for its tests.
 
-### Test tiers
-
-| Tier | Location | Exercises | Speed |
-|---|---|---|---|
-| Unit | `spec/units/` | One class in isolation, with collaborators replaced by test doubles | Seconds |
-| Integration | `spec/integration/` | Several real objects together, often with real tools such as `gcc` in temporary directories | Minutes |
-| System | `spec/system/` | A deployed Ceedling installation running real builds of real projects | Longest |
-
-**Unit specs** never touch the filesystem or run a shell command. A unit spec
-that needs a file or a tool belongs in a higher tier. This keeps the tier fast
-enough to run after every change.
-
-**Integration specs** check the interfaces between components, using real
-collaborators where a test double would hide the behavior under test. A spec that
-needs a tool such as `gcc` is skipped and reported as pending when that tool
-is not available.
-
-**System specs** run Ceedling end to end. Each spec deploys Ceedling into a temporary
-directory, creates or copies a project, runs `ceedling` commands, and checks the
-output and artifacts of the build. When one fails, see
-[Troubleshooting system tests](#troubleshooting-system-tests).
-
-### Running specs
-
-Each spec file has its own task named after it, with the `_spec.rb` suffix
-dropped. The tier is part of the name.
+To execute tests you may run the following from the root of your local 
+Ceedling repository. This test suite build option balances test coverage
+with suite execution time.
 
 ```shell
- > rake spec:unit:warning_collector
- > rake spec:integration:report_build_warnings_log
- > rake spec:system:command_hooks
+ > rake spec
 ```
 
-Each tier also runs as a whole.
+To run individual test files (Ceedling’s Ruby-based tests, that is) and 
+perform other tasks, use the available Rake tasks. From the root of your 
+local Ceedling repo, list those task like this:
 
 ```shell
- > rake specs:units
- > rake specs:integration
- > rake specs:system
-```
-
-`specs:all` runs every tier in order: units, then integration, then system. It is
-also the default task, so a bare `rake` does the same. This order is intentional
-towards failing fast before more expensive tests run.
-
-```shell
- > rake specs:all
-```
-
-Three filter tasks select specs across all tiers. Quote each task name so your
-shell does not interpret the brackets.
-
-| Task | Runs |
-|---|---|
-| `rake "spec:filter:filename[<substring>]"` | Spec files whose name contains the substring |
-| `rake "spec:filter:example[<description>]"` | Examples whose description contains the text |
-| `rake "spec:filter:match[<regex>]"` | Examples whose description matches the regular expression |
-
-!!! tip
-    `rake -T spec` lists every spec task. `rake -T specs` lists the tier tasks,
-    including the system test variants that retain artifacts or add sanitizers.
-
-To run a spec file outside Rake, prefix RSpec with `bundle exec`:
-
-```shell
- > bundle exec rspec spec/units/plugins/warning_collector_spec.rb
+ > rake -T
 ```
 
 [RSpec]: https://rspec.info
@@ -614,7 +578,17 @@ that rather than failing on a missing file. The `specs:*` tasks and
 
 ## Documentation
 
-Ceedling’s documentation is built with [MkDocs] + [Material theme] and versioned
+### Developer documentation
+
+The Ceedling codebase is [organized in directories](#code-organization).
+
+Major subsystems are organized in directories. Most directories include detailed
+Markdown documents that provide both high-level overviews and detailed breakdowns
+of the subsystem.
+
+### User documentation
+
+Ceedling’s user documentation is built with [MkDocs] + [Material theme] and versioned
 with [mike]. All Markdown source lives under `docs/mkdocs/`. The public site 
 configuration is in `mkdocs.yml` while the local site bundle configuration is in
 `mkdocs.local.yml`.
