@@ -2630,8 +2630,6 @@
       
         
       
-        
-      
     
     
     
@@ -3259,34 +3257,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../../plugins/sanitize/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sanitize (ASan, UBSan & Leaks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -3309,7 +3279,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3331,14 +3301,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4575,8 +4545,10 @@ module argument of a bare macro instead does not work, for reasons covered in
 sufficient when no duplicate modules exist. And, when multiple modules are 
 present, it continues to resolve the way a compiler's own header search does — 
 the first match among the ordered search paths wins.</p>
-<p>Naming two same-named modules by directory lets one test file <strong>test</strong> both, and
-<strong>mock</strong> both, as covered under <a href="../directives/#naming-a-module-by-directory">Naming a module by directory</a>.</p>
+<p>Naming two same-named modules by directory lets one test file <strong>test</strong> both. It
+cannot <strong>mock</strong> both — a limitation of how CMock names a mock's contents, covered
+under <a href="../directives/#naming-a-module-by-directory">Naming a module by
+directory</a>.</p>
 <div class="admonition tip">
 <p class="admonition-title">When Ceedling cannot tell two modules apart</p>
 <p>A bare module name matching more than one module is reported with the

@@ -2506,8 +2506,6 @@
       
         
       
-        
-      
     
     
     
@@ -3135,34 +3133,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../plugins/sanitize/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sanitize (ASan, UBSan & Leaks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -3185,7 +3155,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3207,14 +3177,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4057,6 +4027,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#code-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code organization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#installation-options" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4197,34 +4178,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Running self-tests">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#test-tiers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Test tiers
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#running-specs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Running specs
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -4392,6 +4345,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#developer-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Developer documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4645,6 +4626,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#code-organization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code organization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#installation-options" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4785,34 +4777,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Running self-tests">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#test-tiers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Test tiers
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#running-specs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Running specs
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -4981,6 +4945,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#developer-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Developer documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#user-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -5063,6 +5055,23 @@
 
 
 <h1 id="ceedling-development">Ceedling development</h1>
+<h2 id="code-organization">Code organization</h2>
+<p>There are two top-level code directories:</p>
+<ol>
+<li><code>bin/</code> This is the “bootloader” that encompasses the command line 
+   handler and loading the project configuration including merging
+   Mixins. All applications commands are executed from within this
+   code (<a href="../../getting-started/command-line/">application commands are distinct from build/plugin tasks</a>).</li>
+<li><code>lib/</code> This is the application itself. Major subsystems are
+   organized in subdirectories. Configuration processing happens in
+   the main application.</li>
+</ol>
+<p>The handoff from (1) to (2) involves:</p>
+<ol>
+<li>Triggering the loaded and merged configuration to undergo
+   processing, validation, and plugin loading.</li>
+<li>Triggering the build/plugin task named at the command line.</li>
+</ol>
 <h2 id="installation-options">Installation options</h2>
 <h3 id="local-installation">Local installation</h3>
 <p>After installing Ruby…</p>
@@ -5216,7 +5225,7 @@ e.g. in <code>~/.bashrc</code> / <code>~/.zshrc</code>:</p>
 managed environment so the exact versions recorded in <code>Gemfile.lock</code> are
 what actually get loaded, rather than whatever happens to be installed
 globally on your system.</p>
-<p><code>rake specs:all</code> and other Rake tasks in this repo already do this 
+<p><code>rake spec</code> and other Rake tasks in this repo already do this 
 automatically; if you ever invoke an RSpec or Ruby command directly 
 instead of through a Rake task, prefix it with <code>bundle exec</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="w"> </span>&gt;<span class="w"> </span>bundle<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>rspec<span class="w"> </span>spec/some_spec.rb
@@ -5267,99 +5276,16 @@ submodules. DIY’s version is read from its source. fff has no version of any
 kind upstream, and its lineage is recorded as constants in
 <code>tools/sbom/inventory.rb</code>. Changing either means updating those.</p>
 <h2 id="running-self-tests">Running self-tests</h2>
-<p>Ceedling tests itself with <a href="https://rspec.info">RSpec</a> in three tiers: unit, integration, and system.
-Each tier trades speed for realism, and Rake tasks run a single spec, a whole tier,
-or everything. Run them from the root of your local Ceedling repository.</p>
-<h3 id="test-tiers">Test tiers</h3>
-<table>
-<thead>
-<tr>
-<th>Tier</th>
-<th>Location</th>
-<th>Exercises</th>
-<th>Speed</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Unit</td>
-<td><code>spec/units/</code></td>
-<td>One class in isolation, with collaborators replaced by test doubles</td>
-<td>Seconds</td>
-</tr>
-<tr>
-<td>Integration</td>
-<td><code>spec/integration/</code></td>
-<td>Several real objects together, often with real tools such as <code>gcc</code> in temporary directories</td>
-<td>Minutes</td>
-</tr>
-<tr>
-<td>System</td>
-<td><code>spec/system/</code></td>
-<td>A deployed Ceedling installation running real builds of real projects</td>
-<td>Longest</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Unit specs</strong> never touch the filesystem or run a shell command. A unit spec
-that needs a file or a tool belongs in a higher tier. This keeps the tier fast
-enough to run after every change.</p>
-<p><strong>Integration specs</strong> check the interfaces between components, using real
-collaborators where a test double would hide the behavior under test. A spec that
-needs a tool such as <code>gcc</code> is skipped and reported as pending when that tool
-is not available.</p>
-<p><strong>System specs</strong> run Ceedling end to end. Each spec deploys Ceedling into a temporary
-directory, creates or copies a project, runs <code>ceedling</code> commands, and checks the
-output and artifacts of the build. When one fails, see
-<a href="#troubleshooting-system-tests">Troubleshooting system tests</a>.</p>
-<h3 id="running-specs">Running specs</h3>
-<p>Each spec file has its own task named after it, with the <code>_spec.rb</code> suffix
-dropped. The tier is part of the name.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>spec:unit:warning_collector
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>spec:integration:report_build_warnings_log
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>spec:system:command_hooks
+<p>Ceedling uses <a href="https://rspec.info">RSpec</a> for its tests.</p>
+<p>To execute tests you may run the following from the root of your local 
+Ceedling repository. This test suite build option balances test coverage
+with suite execution time.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>spec
 </code></pre></div>
-<p>Each tier also runs as a whole.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>specs:units
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>specs:integration
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>specs:system
-</code></pre></div>
-<p><code>specs:all</code> runs every tier in order: units, then integration, then system. It is
-also the default task, so a bare <code>rake</code> does the same. This order is intentional
-towards failing fast before more expensive tests run.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>specs:all
-</code></pre></div>
-<p>Three filter tasks select specs across all tiers. Quote each task name so your
-shell does not interpret the brackets.</p>
-<table>
-<thead>
-<tr>
-<th>Task</th>
-<th>Runs</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>rake "spec:filter:filename[&lt;substring&gt;]"</code></td>
-<td>Spec files whose name contains the substring</td>
-</tr>
-<tr>
-<td><code>rake "spec:filter:example[&lt;description&gt;]"</code></td>
-<td>Examples whose description contains the text</td>
-</tr>
-<tr>
-<td><code>rake "spec:filter:match[&lt;regex&gt;]"</code></td>
-<td>Examples whose description matches the regular expression</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p><code>rake -T spec</code> lists every spec task. <code>rake -T specs</code> lists the tier tasks,
-including the system test variants that retain artifacts or add sanitizers.</p>
-</div>
-<p>To run a spec file outside Rake, prefix RSpec with <code>bundle exec</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="w"> </span>&gt;<span class="w"> </span>bundle<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>rspec<span class="w"> </span>spec/units/plugins/warning_collector_spec.rb
+<p>To run individual test files (Ceedling’s Ruby-based tests, that is) and 
+perform other tasks, use the available Rake tasks. From the root of your 
+local Ceedling repo, list those task like this:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>-T
 </code></pre></div>
 <h2 id="troubleshooting-system-tests">Troubleshooting system tests</h2>
 <p>System test failures are diagnosed from retained artifacts rather than from spec
@@ -5369,8 +5295,8 @@ expectation failed. It does not report what the build under test actually did.</
 <p>Nothing is retained by default. A normal run deletes every temporary directory as
 it finishes, so a failure leaves no evidence behind.</p>
 <p>Two Rake tasks turn retention on.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>specs:system:debug
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>spec:system:debug:cli_surface
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>specs:system:debug
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>spec:system:debug:cli_surface
 </code></pre></div>
 <p><code>specs:system:debug</code> runs the whole suite and keeps failures only. Passing project
 directories are deleted as they finish, and passing logs are never written. This
@@ -5444,12 +5370,12 @@ decision in that file is commented, including the cops deliberately turned down
 and the reasoning for each.</p>
 <p>The linting gems are not installed by an ordinary <code>bundle install</code>. Install them
 once with the setup task.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint:setup
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint:setup
 </code></pre></div>
 <p>Then lint the whole project, or only the files your branch changed.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint:changed
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span><span class="s2">&quot;lint:changed[master]&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint:changed
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span><span class="s2">&quot;lint:changed[master]&quot;</span>
 </code></pre></div>
 <p><code>lint:changed</code> is the faster loop while working on a branch. It compares against
 <code>next_version</code> unless you name another branch or revision. Quote the task name so
@@ -5459,7 +5385,7 @@ tree. Naming a branch that does not exist is an error rather than an empty
 result.</p>
 <p>RuboCop can correct some offenses itself. Only safe corrections are applied.
 Review the resulting diff before keeping it.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint:fix
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint:fix
 </code></pre></div>
 <p>Metrics offenses are never autocorrectable, so this task mostly touches
 Performance cops.</p>
@@ -5471,7 +5397,7 @@ newly introduced.</p>
 <p>The file is generated, and it is meant to shrink. Removing records as the
 underlying code improves is the entire point of baselining. Regenerate the file
 after an improvement rather than editing it by hand.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint:todo
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>lint:todo
 </code></pre></div>
 <p>A decision to live with a cop permanently does not belong in the backlog. Those
 belong in <code>.rubocop.yml</code>, with a comment explaining why the cop is wrong for this
@@ -5489,11 +5415,11 @@ that any finding is a genuine surprise.</p>
 of a real example project with <a href="https://github.com/tmm1/stackprof">StackProf</a> and renders a flame graph.</p>
 <p>The profiling gem is not installed by an ordinary <code>bundle install</code>. Install it
 once with the setup task.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>profile:setup
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>profile:setup
 </code></pre></div>
 <p>Then profile any example project against any Ceedling build task.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span><span class="s2">&quot;profile:run[temp_sensor,test:all]&quot;</span>
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span><span class="s2">&quot;profile:run[temp_sensor,clobber test:all]&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span><span class="s2">&quot;profile:run[temp_sensor,test:all]&quot;</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span><span class="s2">&quot;profile:run[temp_sensor,clobber test:all]&quot;</span>
 </code></pre></div>
 <p>The first argument names a project under <code>examples/</code>. The choices are
 <code>cipher_quest</code>, <code>temp_sensor</code>, and <code>wondrous_forest</code>. The second argument is
@@ -5548,8 +5474,8 @@ attempting it.</p>
 <p>Building the gem locally shows what a release would actually contain. The gemspec
 assembles its file list by sweeping the working tree, so a local build reflects
 whatever happens to be lying around.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>gem:build
-<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>gem:clean
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>gem:build
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>gem:clean
 </code></pre></div>
 <p><code>gem:build</code> runs the same <code>gem build ceedling.gemspec</code> that CI runs and leaves
 <code>ceedling-&lt;version&gt;.gem</code> in the repository root. <code>gem:clean</code> removes built gems.</p>
@@ -5569,8 +5495,8 @@ match it.</p>
 <h3 id="generating-the-bill-of-materials">Generating the Bill of Materials</h3>
 <p><code>rake sbom:build</code> writes both <a href="../../project/sbom/">Software Bill of Materials</a> documents into
 the repository root. A release generates them the same way.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>sbom:build
-<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>sbom:specs
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>sbom:build
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>sbom:specs
 </code></pre></div>
 <p>The documents are never committed, and two mechanisms keep them out. <code>.gitignore</code>
 covers them, and the gemspec rejects them so a local build cannot package one
@@ -5578,7 +5504,7 @@ into the gem it describes.</p>
 <p>A local document names a development version, for the same reason a locally built
 gem does. The release version is stamped during the release build.</p>
 <p>Unpack the result to inspect it.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="w"> </span>&gt;<span class="w"> </span>gem<span class="w"> </span>unpack<span class="w"> </span>ceedling-1.2.0.gem
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="w"> </span>&gt;<span class="w"> </span>gem<span class="w"> </span>unpack<span class="w"> </span>ceedling-1.2.0.gem
 </code></pre></div>
 <p>The packaged gem deliberately carries <code>spec/</code>, <code>Gemfile</code>, <code>Gemfile.lock</code>, and
 <code>.rspec</code>. External tooling runs Ceedling's own suites against the released gem
@@ -5589,12 +5515,18 @@ the gem tasks each need repository files the gem does not carry, so they report
 that rather than failing on a missing file. The <code>specs:*</code> tasks and
 <code>coverage:report</code> work as normal.</p>
 <h2 id="documentation">Documentation</h2>
-<p>Ceedling’s documentation is built with <a href="https://www.mkdocs.org">MkDocs</a> + <a href="https://squidfunk.github.io/mkdocs-material/">Material theme</a> and versioned
+<h3 id="developer-documentation">Developer documentation</h3>
+<p>The Ceedling codebase is <a href="#code-organization">organized in directories</a>.</p>
+<p>Major subsystems are organized in directories. Most directories include detailed
+Markdown documents that provide both high-level overviews and detailed breakdowns
+of the subsystem.</p>
+<h3 id="user-documentation">User documentation</h3>
+<p>Ceedling’s user documentation is built with <a href="https://www.mkdocs.org">MkDocs</a> + <a href="https://squidfunk.github.io/mkdocs-material/">Material theme</a> and versioned
 with <a href="https://github.com/jimporter/mike">mike</a>. All Markdown source lives under <code>docs/mkdocs/</code>. The public site 
 configuration is in <code>mkdocs.yml</code> while the local site bundle configuration is in
 <code>mkdocs.local.yml</code>.</p>
 <p><strong>First-time setup</strong> (installs MkDocs, Material, and mike into the container):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>docs:install
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="w"> </span>&gt;<span class="w"> </span>rake<span class="w"> </span>docs:install
 </code></pre></div>
 <p><strong>Available Rake tasks:</strong></p>
 <table>

@@ -2506,8 +2506,6 @@
       
         
       
-        
-      
     
     
     
@@ -3135,34 +3133,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../plugins/sanitize/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sanitize (ASan, UBSan & Leaks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -3185,7 +3155,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3207,14 +3177,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4568,8 +4538,13 @@ work from depends on whether you are fixing a released version or building the n
 one. The tag you push determines whether a release is a pre-release or a full
 release.</p>
 <h2 id="branches">Branches</h2>
-<p><code>master</code> holds the latest release and subsequent patch releases. <code>next_version</code> 
-holds the next minor or major release.</p>
+<ul>
+<li><code>master</code> holds the latest release and subsequent patch releases.</li>
+<li><code>next_version</code> holds the next minor or major release.</li>
+</ul>
+<p>Both branches are protected. Changes reach them only through pull requests, and
+only a maintainer merges a pull request, once CI passes. Direct pushes,
+force-pushes, and branch deletion are blocked.</p>
 <h3 id="patch-work">Patch work</h3>
 <p>Branch from <code>master</code> for a patch fix. Open the pull request against <code>master</code>.</p>
 <p>Short-lived topic branches are the norm. Delete the branch once the pull request

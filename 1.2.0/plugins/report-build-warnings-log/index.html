@@ -2508,8 +2508,6 @@
       
         
       
-        
-      
     
     
     
@@ -2831,56 +2829,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#filename" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Filename
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reports" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reports
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#patterns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Patterns
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#excludes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excludes
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -3273,34 +3221,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../sanitize/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sanitize (ASan, UBSan & Leaks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -3326,7 +3246,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3348,14 +3268,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4411,56 +4331,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#filename" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Filename
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reports" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reports
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#patterns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Patterns
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#excludes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excludes
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
     </ul>
@@ -4532,239 +4402,31 @@
 
 
 <h1 id="build-warnings-log">Build Warnings Log</h1>
-<p>Capture build process warnings from command line tools to a plain text log file and to
-optional SARIF and JSON reports.</p>
+<p>Capture build process warnings from command tools to a plain text log file.</p>
 <h2 id="overview">Overview</h2>
-<p>This plugin collects the warnings that command line tools print as a build preprocesses,
-compiles, and links, and writes them to a plain text log file when the build ends. Each
-build context — <code>test</code>, <code>release</code>, or a plugin’s build such as <code>gcov</code> — gets its own log
-in <code>&lt;build root&gt;/artifacts/&lt;context&gt;/</code>, written even when the build ends in an error.</p>
-<p>Warnings from Ceedling itself or from code generation do not appear in these logs; only
-the output of the preprocessing, compilation, and linking tools is collected.</p>
-<p>Each warning keeps the lines that explain it. GCC and Clang print a warning with its
-source line and a caret marking the spot, often after an <code>In function</code> or
-<code>In file included from</code> line, and the log holds all of it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>a.c: In function &#39;a&#39;:
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>a.c:2:21: warning: unused variable ’spare&#39; [-Wunused-variable]
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    2 | int a( void ) { int spare; return 0; }
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>      |                     ^~~~~
-</code></pre></div>
-<p>Each distinct warning is logged once per build context. A warning in a header that many
-files include appears once, with the include chain of the first file that reported it.</p>
-<p>Output from other toolchains, whose warnings do not follow GCC’s format, is collected a
-line at a time.</p>
-<p>The same warnings can also be written as <a href="#sarif-report">SARIF</a> and/or <a href="#json-report">JSON</a>
-reports for other tools to read, such as a CI service that marks each warning on the line
-of code it concerns.</p>
+<p>This plugin captures warning messages output by command line tools throughout a
+build. At the end of a build, any collected warning messages are written to one 
+or more plain text log files.</p>
+<p>Warning messages are collected for all compilation-related builds and
+differentiated by build context — <code>test</code>, <code>release</code>, or plugin-modified build 
+(e.g. <code>gcov</code>).</p>
+<p>Ceedling warning messages or warning messages from code generation will not
+appear in log files; warnings are only collected from build step command line
+tools for the predefined build steps of preprocessing, compilation, and
+linking.</p>
+<p>Log files are written to <code>&lt;build root&gt;/artifacts/&lt;context&gt;/</code>.</p>
 <h2 id="setup">Setup</h2>
 <p>Enable the plugin in your Ceedling project file:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:plugins</span><span class="p">:</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_build_warnings_log</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:plugins</span><span class="p">:</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_build_warnings_log</span>
 </code></pre></div>
 <h2 id="configuration">Configuration</h2>
-<p>All settings are optional and live under <code>:report_build_warnings_log</code>.</p>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Purpose</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>:filename</code></td>
-<td>Base name of each report file</td>
-<td><code>warnings</code></td>
-</tr>
-<tr>
-<td><code>:reports</code></td>
-<td>Reports to write: any of <code>:text</code>, <code>:sarif</code>, <code>:json</code></td>
-<td><code>:text</code></td>
-</tr>
-<tr>
-<td><code>:patterns</code></td>
-<td>Regular expressions that find warnings, replacing the default</td>
-<td>any line mentioning “warning”</td>
-</tr>
-<tr>
-<td><code>:excludes</code></td>
-<td>Regular expressions that drop collected warnings</td>
-<td>none</td>
-</tr>
-</tbody>
-</table>
-<h3 id="filename">Filename</h3>
-<p><code>:filename</code> names each report file, and each report adds its own extension: <code>.log</code> for
-the text log, <code>.sarif</code> for SARIF, and <code>.json</code> for JSON. An extension given here is
-replaced by the report’s own.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:report_build_warnings_log</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">more_better_filename</span>
+<p>To change the default filename of <code>warnings.log</code>, add your desired filename to
+your configuration file using <code>:report_build_warnings_log:</code> ↳ <code>:filename</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:report_build_warnings_log</span><span class="p">:</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:filename</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">more_better_filename.ext</span>
 </code></pre></div>
-<p>This writes <code>more_better_filename.log</code> and, if configured, <code>more_better_filename.sarif</code>
-and/or <code>more_better_filename.json</code>.</p>
-<h3 id="reports">Reports</h3>
-<p><code>:reports</code> lists the reports to write for each build context. Entries may be symbols or
-strings in any letter case. With no <code>:reports</code> setting, or an empty list, the plugin writes
-the text log alone.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:report_build_warnings_log</span><span class="p">:</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:reports</span><span class="p">:</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:text</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:sarif</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:json</span>
-</code></pre></div>
-<p>The text log is written only for a build context with warnings. The SARIF and JSON
-reports are written for every build context that compiled, linked, or preprocessed
-anything, even without warnings. A CI step that reads one therefore always finds it, and
-an empty report tells a code scanning service that earlier warnings are gone.</p>
-<p>An entry that is not one of these reports stops the build with an error naming it.</p>
-<h4 id="text-report">Text report</h4>
-<p>The text log, <code>warnings.log</code>, holds each warning as the tools printed it, as shown in the
-<a href="#overview">overview</a>.</p>
-<h4 id="sarif-report">SARIF report</h4>
-<p><a href="https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html">SARIF</a>, the Static
-Analysis Results Interchange Format, is the OASIS standard JSON format for the findings
-of compilers, linters, and other analysis tools. Many services and editors read it,
-showing each finding on the line of code it concerns:</p>
-<ul>
-<li>GitHub <a href="https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning">code scanning</a>
-  shows SARIF results as alerts and as annotations on pull requests.</li>
-<li>Azure DevOps, SonarQube, and Jenkins’ Warnings Next Generation plugin import SARIF files.</li>
-<li>Microsoft’s <a href="https://marketplace.visualstudio.com/items?itemName=MS-SarifVSCode.sarif-viewer">SARIF Viewer</a>
-  for VS Code opens a SARIF file and steps through its results in your editor.</li>
-</ul>
-<p>Microsoft’s <a href="https://github.com/microsoft/sarif-tutorials">SARIF tutorials</a> introduce the
-format in more depth.</p>
-<p><code>warnings.sarif</code> is a SARIF 2.1.0 log with one run by Ceedling for its build context.
-Each warning is a result:</p>
-<ul>
-<li>Its <code>ruleId</code> is the warning’s flag, such as <code>-Wunused-variable</code>. The run’s rules list
-  each flag.</li>
-<li>Its <code>level</code> is the diagnostic’s severity: <code>warning</code>, <code>error</code>, or <code>note</code>, which also
-  covers a <code>remark</code>.</li>
-<li>Its <code>message</code> is the diagnostic’s text.</li>
-<li>Its location is the file, line, and column. A relative path is relative to your
-  project, which SARIF calls <code>%SRCROOT%</code>, and an absolute path is a <code>file:</code> URI.</li>
-<li>Its <code>properties</code> hold the warning’s context lines and its full text as printed.</li>
-</ul>
-<p>The run’s <code>automationDetails</code> <code>id</code> names the build context, such as <code>test/</code>, so a service
-can tell the reports of different contexts apart.</p>
-<p>The warning in the <a href="#overview">overview</a> becomes this SARIF report:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">&quot;$schema&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://json.schemastore.org/sarif-2.1.0.json&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2.1.0&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">&quot;runs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="nt">&quot;driver&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">          </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Ceedling&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">          </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.2.0&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">          </span><span class="nt">&quot;informationUri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://www.throwtheswitch.org/ceedling&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">          </span><span class="nt">&quot;rules&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">            </span><span class="p">{</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">              </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;-Wunused-variable&quot;</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">            </span><span class="p">}</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">          </span><span class="p">]</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">        </span><span class="p">}</span>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">      </span><span class="p">},</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">      </span><span class="nt">&quot;automationDetails&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">        </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;test/&quot;</span>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">      </span><span class="p">},</span>
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">      </span><span class="nt">&quot;results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">        </span><span class="p">{</span>
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">          </span><span class="nt">&quot;ruleId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;-Wunused-variable&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">          </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;warning&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">          </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="w">            </span><span class="nt">&quot;text&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unused variable ’spare&#39;&quot;</span>
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="w">          </span><span class="p">},</span>
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a><span class="w">          </span><span class="nt">&quot;locations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a><span class="w">            </span><span class="p">{</span>
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a><span class="w">              </span><span class="nt">&quot;physicalLocation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a><span class="w">                </span><span class="nt">&quot;artifactLocation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="w">                  </span><span class="nt">&quot;uri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a.c&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a><span class="w">                  </span><span class="nt">&quot;uriBaseId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;%SRCROOT%&quot;</span>
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a><span class="w">                </span><span class="p">},</span>
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="w">                </span><span class="nt">&quot;region&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="w">                  </span><span class="nt">&quot;startLine&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a><span class="w">                  </span><span class="nt">&quot;startColumn&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">21</span>
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a><span class="w">                </span><span class="p">}</span>
-<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a><span class="w">              </span><span class="p">}</span>
-<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a><span class="w">            </span><span class="p">}</span>
-<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a><span class="w">          </span><span class="p">],</span>
-<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a><span class="w">          </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a><span class="w">            </span><span class="nt">&quot;context&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a><span class="w">              </span><span class="s2">&quot;a.c: In function &#39;a&#39;:&quot;</span>
-<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a><span class="w">            </span><span class="p">],</span>
-<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a><span class="w">            </span><span class="nt">&quot;text&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a.c: In function &#39;a&#39;:\na.c:2:21: warning: unused variable ’spare&#39; [-Wunused-variable]\n    2 | int a( void ) { int spare; return 0; }\n      |                     ^~~~~\n&quot;</span>
-<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a><span class="w">          </span><span class="p">}</span>
-<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a><span class="w">        </span><span class="p">}</span>
-<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a><span class="w">      </span><span class="p">]</span>
-<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a><span class="w">  </span><span class="p">]</span>
-<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a><span class="p">}</span>
-</code></pre></div>
-<p>A warning from output that does not follow GCC’s format has no file or line, so its result
-is a message alone. Code scanning services that require a location, as GitHub does, do not
-show such a result.</p>
-<p>This GitHub Actions step uploads a test build’s SARIF report to code scanning. The upload
-needs the workflow’s <code>security-events: write</code> permission.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Upload build warnings</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always()</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github/codeql-action/upload-sarif@v4</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">with</span><span class="p">:</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="nt">sarif_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">build/artifacts/test/warnings.sarif</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ceedling-test</span>
-</code></pre></div>
-<h4 id="json-report">JSON report</h4>
-<p><code>warnings.json</code> is a simple JSON layout for scripts, such as one that fails a CI job when
-a build has warnings or tracks their count over time. It names the build context and
-lists each warning’s file, line, column, severity, flag, message, context lines, and full
-text. A field the warning’s output does not provide, such as the file of a warning not in
-GCC’s format, is <code>null</code>.</p>
-<p>The warning in the <a href="#overview">overview</a> becomes this JSON report:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">&quot;context&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">&quot;warnings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">      </span><span class="nt">&quot;file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a.c&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">      </span><span class="nt">&quot;line&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">      </span><span class="nt">&quot;column&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">21</span><span class="p">,</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">      </span><span class="nt">&quot;severity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;warning&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">      </span><span class="nt">&quot;flag&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;-Wunused-variable&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">      </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unused variable ’spare&#39;&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">      </span><span class="nt">&quot;context&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">        </span><span class="s2">&quot;a.c: In function &#39;a&#39;:&quot;</span>
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">      </span><span class="p">],</span>
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">      </span><span class="nt">&quot;text&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a.c: In function &#39;a&#39;:\na.c:2:21: warning: unused variable ’spare&#39; [-Wunused-variable]\n    2 | int a( void ) { int spare; return 0; }\n      |                     ^~~~~\n&quot;</span>
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">  </span><span class="p">]</span>
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="p">}</span>
-</code></pre></div>
-<h3 id="patterns">Patterns</h3>
-<p>By default, any diagnostic or line mentioning “warning”, in any letter case, is collected.
-<code>:patterns</code> replaces that with your own regular expressions, matched against each
-diagnostic line. A warning is collected when any pattern matches. This suits a toolchain
-whose warnings take a particular form, or collecting remarks as well as warnings:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">:report_build_warnings_log</span><span class="p">:</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">:patterns</span><span class="p">:</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;:</span><span class="nv"> </span><span class="s">warning:&#39;</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;:</span><span class="nv"> </span><span class="s">remark:&#39;</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;Warning\[Pe\d+\]&#39;</span>
-</code></pre></div>
-<p>Patterns are case sensitive. Begin one with <code>(?i)</code> to ignore case.</p>
-<h3 id="excludes">Excludes</h3>
-<p><code>:excludes</code> drops any collected warning that one of its regular expressions matches,
-anywhere in the warning’s text, context lines included. Use it to quiet warnings you have
-already accepted, such as those from third-party code, or to prevent false positive
-matches.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">:report_build_warnings_log</span><span class="p">:</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">:excludes</span><span class="p">:</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;third_party/&#39;</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;-Wunused-function&#39;</span>
-</code></pre></div>
-<p>An entry under <code>:patterns</code> or <code>:excludes</code> that is not a valid regular expression stops the
-build with an error naming it.</p>
 <p><br/><br/></p>
 
 

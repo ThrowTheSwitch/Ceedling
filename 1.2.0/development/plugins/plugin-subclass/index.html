@@ -2506,8 +2506,6 @@
       
         
       
-        
-      
     
     
     
@@ -3135,34 +3133,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../../plugins/sanitize/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sanitize (ASan, UBSan & Leaks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -3185,7 +3155,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3207,14 +3177,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4423,17 +4393,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#plugin-hook-method-explain_test_crasharg_hash" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plugin hook method explain_test_crash(arg_hash)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#plugin-hook-methods-pre_testtest-and-post_testtest" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4503,7 +4462,7 @@
   <a href="#validating-a-plugins-tools" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validating a plugin’s tools
+        Validating a plugin's tools
       
     </span>
   </a>
@@ -4876,17 +4835,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#plugin-hook-method-explain_test_crasharg_hash" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plugin hook method explain_test_crash(arg_hash)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#plugin-hook-methods-pre_testtest-and-post_testtest" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4956,7 +4904,7 @@
   <a href="#validating-a-plugins-tools" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validating a plugin’s tools
+        Validating a plugin's tools
       
     </span>
   </a>
@@ -5136,13 +5084,13 @@
 <p>Naming and location conventions:</p>
 <ul>
 <li><code>&lt;plugin_name&gt;/lib/&lt;plugin_name&gt;.rb</code></li>
-<li>The plugin’s class name must be the camelized version (a.k.a. "bumpy case")
+<li>The plugin's class name must be the camelized version (a.k.a. "bumpy case")
   of the plugin filename — <code>whiz_bang.rb</code> ➡️ <code>WhizBang</code>.</li>
 </ul>
 <p>This plugin option allows full programmatic ability connected to any of a number
 of predefined Ceedling build steps.</p>
 <p>The contents of <code>&lt;plugin_name&gt;.rb</code> must implement a class that subclasses
-<code>Plugin</code>, Ceedling’s plugin base class.</p>
+<code>Plugin</code>, Ceedling's plugin base class.</p>
 <h2 id="example-plugin-subclass">Example <code>Plugin</code> subclass</h2>
 <p>An incomplete <code>Plugin</code> subclass follows to illustrate the basics.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># whiz_bang/lib/whiz_bang.rb</span>
@@ -5235,7 +5183,7 @@ whose associated value is itself a hash with the following contents:</p>
 <p class="admonition-title">Preprocessing Hook Limitations</p>
 <p>Test preprocessing steps are quite sophisticated and involve various combinations
 of tool executions. The <code>post_</code> preprocessing hooks do not include shell results.
-Future updates to Ceedling’s plugin system will create a more robust means of
+Future updates to Ceedling's plugin system will create a more robust means of
 attaching custom behaviors to test preprocessing or connecting your own
 preprocessing pipeline with toolchains other than GCC.</p>
 </div>
@@ -5327,8 +5275,8 @@ See <a href="../../../getting-started/builds/">Delta Builds</a> for the full pic
 target. Each one always runs, for every target, whether or not that target
 turns out to need rebuilding. A plugin uses one of these hooks to swap in
 its own tool for its own build context. Doing the swap here, not only in
-the matching <code>pre_*_execute</code> hook below, makes sure Ceedling’s delta build
-check sees the real tool. Otherwise a change to that tool’s own settings
+the matching <code>pre_*_execute</code> hook below, makes sure Ceedling's delta build
+check sees the real tool. Otherwise a change to that tool's own settings
 will not force a rebuild.</p>
 <h2 id="plugin-hook-method-pre_test_compile_registerarg_hash"><code>Plugin</code> hook method <code>pre_test_compile_register(arg_hash)</code></h2>
 <p>Test builds only, not release builds. Runs once per C file in a test build.
@@ -5433,19 +5381,8 @@ as a delta build target. See <a href="#delta-build-hooks">Delta build hooks</a> 
 for why this hook exists and when it runs.</p>
 <p>A plugin swapping in its own wrapper tool to run the test executable (as
 Valgrind does) should do so here, for the same reason described under
-<code>pre_test_compile_register</code> above. Otherwise a change to that wrapper tool’s own
+<code>pre_test_compile_register</code> above. Otherwise a change to that wrapper tool's own
 settings will not force a rerun.</p>
-<p>A wrapper tool runs the test executable as one of its own arguments. Ceedling
-places Unity’s test case filters (from <code>--test-case</code>, <code>--exclude_test_case</code>, and
-backtrace reruns) after the tool’s arguments, where the executable is.</p>
-<p>A crashed test executable reruns one test case at a time when
-<code>:use_backtrace</code> is <code>:simple</code>. By default the reruns go through Ceedling’s own
-backtrace tool, not a swapped wrapper. A wrapper the reruns should run through
-too (as the Sanitize plugin’s does, to keep its runtime options) sets
-<code>:backtrace_rerun =&gt; true</code> in its tool hash. Such a tool can't run under gdb, so
-<code>:gdb</code> backtraces fall back to <code>:simple</code> for it, with a notice. Leave the key out
-for a wrapper that writes one report per test, as Valgrind’s does, since each
-rerun would overwrite it.</p>
 <p>The argument <code>arg_hash</code> follows the structure below:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">arg_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span><span class="ss">:tool</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
@@ -5482,39 +5419,6 @@ test executable).</p>
 <a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="w">  </span><span class="ss">:result_file</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;&lt;filepath&gt;&quot;</span>
 <a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a><span class="p">}</span>
 </code></pre></div>
-<h2 id="plugin-hook-method-explain_test_crasharg_hash"><code>Plugin</code> hook method <code>explain_test_crash(arg_hash)</code></h2>
-<p>Called when a test executable crashed, before Ceedling writes the crash as test
-failures. A plugin that recognizes the cause, such as a sanitizer’s report in the
-run’s output, sets <code>arg_hash[:explanation]</code> to a short message. That message
-replaces the generic crash message in the test’s failure, except with <code>:gdb</code>
-backtraces, whose failures carry gdb’s own trace. It also replaces Ceedling’s
-generic crash notice and its backtrace advice.</p>
-<p>Two optional keys shape the notice:</p>
-<ul>
-<li><code>:explanation_heading</code> completes its first line, “Test executable <code>x</code> …”.
-  Without it, the line ends “crashed.”</li>
-<li><code>:explanation_details</code> lists lines that follow the cause, such as where a
-  log is. The failure message adds them in parentheses.</li>
-</ul>
-<p>With <code>:use_backtrace</code> set to <code>:simple</code>, it is called again for each rerun that
-crashes, with that rerun’s own shell result, so each crashed test case can be
-explained on its own.</p>
-<p>The argument <code>arg_hash</code> holds the same keys as <code>pre_test_fixture_execute</code> above,
-plus:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">arg_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span><span class="c1"># ...the keys above...</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span><span class="c1"># The crashed run’s shell result -- see Command line tool shell results</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">  </span><span class="ss">:shell_result</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="o">...</span><span class="w"> </span><span class="p">},</span>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">  </span><span class="c1"># Set by a plugin that recognizes the cause; nil otherwise</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">  </span><span class="ss">:explanation</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">nil</span><span class="p">,</span>
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="w">  </span><span class="c1"># True for the crash&#39;s main run, whose explanation reaches the crash notice;</span>
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="w">  </span><span class="c1"># false for a backtrace rerun</span>
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="w">  </span><span class="ss">:crash_notice</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">true</span><span class="p">,</span>
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="w">  </span><span class="c1"># Optional, set alongside :explanation</span>
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="w">  </span><span class="ss">:explanation_details</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">nil</span><span class="p">,</span>
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="w">  </span><span class="ss">:explanation_heading</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">nil</span>
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="p">}</span>
-</code></pre></div>
 <h2 id="plugin-hook-methods-pre_testtest-and-post_testtest"><code>Plugin</code> hook methods <code>pre_test(test)</code> and <code>post_test(test)</code></h2>
 <p>These methods are called before and after performing all steps needed to run a
 test file — i.e. configure, preprocess, compile, link, run, get results, etc.
@@ -5529,8 +5433,8 @@ termination points, including early exit due to a build error.</p>
 was passed to <code>TestInvoker#setup_and_invoke</code>. This lets a plugin respond
 differently depending on which kind of build triggered the pipeline.</p>
 <p>Each context also gets its own separate delta build cache. A plugin that
-runs its own build under a distinct context symbol keeps that build’s
-tracked state apart from ordinary test builds and from any other plugin’s
+runs its own build under a distinct context symbol keeps that build's
+tracked state apart from ordinary test builds and from any other plugin's
 builds. See <a href="../../../getting-started/builds/">Delta Builds</a> for more.</p>
 <p>The argument <code>timestamp_s</code> is a floating-point stopwatch value in seconds
 (from <code>SystemWrapper.time_stopwatch_s</code>). Compare the <code>pre_test_build</code> and
@@ -5561,27 +5465,27 @@ cases is not a build error.</p>
 <p>This method is called when invoking the summary task, <code>ceedling summary</code>. This
 method facilitates logging the results of the last build without running the
 previous build again.</p>
-<h2 id="validating-a-plugins-tools">Validating a plugin’s tools</h2>
+<h2 id="validating-a-plugins-tools">Validating a plugin's tools</h2>
 <p>By default, Ceedling validates configured tools at startup according to a 
 simple setting within the tool definition. This works just fine for default
 core tools and options. However, in the case of plugins, tools may not be even 
-relevant to a plugin’s operation depending on its configurable options. It’s
+relevant to a plugin's operation depending on its configurable options. It's
 a bit silly for a tool not needed by your project to fail validation if 
-Ceedling can't find it in your <code>$PATH</code>. Similarly, it’s irresponsible to skip
+Ceedling can't find it in your <code>$PATH</code>. Similarly, it's irresponsible to skip
 validating a tool just because it may not be needed.</p>
 <p>Ceedling provides optional, programmatic tool validation for these cases.
-<code>@ceedling[:tool_validator].validate()</code> can be forced to ignore a tool’s 
+<code>@ceedling[:tool_validator].validate()</code> can be forced to ignore a tool's 
 <code>required:</code> setting to validate it. In such a scenario, a plugin should 
 configure its own tools as <code>:optional =&gt; true</code> but forcibly validate them at 
-plugin startup if the plugin’s configuration options require said tool.</p>
+plugin startup if the plugin's configuration options require said tool.</p>
 <p>An example from the <code>gcov</code> plugin illustrates this.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Validate gcov summary tool if coverage summaries are enabled (summaries rely on the `gcov` tool)</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">if</span><span class="w"> </span><span class="n">summaries_enabled?</span><span class="p">(</span><span class="w"> </span><span class="vi">@project_config</span><span class="w"> </span><span class="p">)</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span><span class="vi">@ceedling</span><span class="o">[</span><span class="ss">:tool_validator</span><span class="o">].</span><span class="n">validate</span><span class="p">(</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span><span class="ss">tool</span><span class="p">:</span><span class="w"> </span><span class="no">TOOLS_GCOV_SUMMARY</span><span class="p">,</span><span class="w"> </span><span class="c1"># Tool defintion as Ruby hash</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">    </span><span class="ss">boom</span><span class="p">:</span><span class="w"> </span><span class="kp">true</span><span class="w">                </span><span class="c1"># Ignore optional status (raise exception if invalid)</span>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="w">  </span><span class="p">)</span>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="k">end</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Validate gcov summary tool if coverage summaries are enabled (summaries rely on the `gcov` tool)</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="k">if</span><span class="w"> </span><span class="n">summaries_enabled?</span><span class="p">(</span><span class="w"> </span><span class="vi">@project_config</span><span class="w"> </span><span class="p">)</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span><span class="vi">@ceedling</span><span class="o">[</span><span class="ss">:tool_validator</span><span class="o">].</span><span class="n">validate</span><span class="p">(</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">    </span><span class="ss">tool</span><span class="p">:</span><span class="w"> </span><span class="no">TOOLS_GCOV_SUMMARY</span><span class="p">,</span><span class="w"> </span><span class="c1"># Tool defintion as Ruby hash</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">    </span><span class="ss">boom</span><span class="p">:</span><span class="w"> </span><span class="kp">true</span><span class="w">                </span><span class="c1"># Ignore optional status (raise exception if invalid)</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">  </span><span class="p">)</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="k">end</span>
 </code></pre></div>
 <p>The tool <code>TOOLS_GCOV_SUMMARY</code> is defined with a Ruby hash in the plugin code.
 It is configured with <code>:optional =&gt; true</code>. At plugin startup, configuration
@@ -5593,72 +5497,72 @@ utility method is available for this purpose.</p>
 <p><code>@ceedling[:plugin_reportinator].assemble_test_results()</code></p>
 <p>This method takes as an argument a list of results filepaths. These typically
 correspond directly to the collection of test files Ceedling processed in a
-given test build. It’s common for this list of filepaths to be assembled from
+given test build. It's common for this list of filepaths to be assembled from
 the <code>post_test_fixture_execute</code> build step execution hook.</p>
 <p>The data that <code>assemble_test_results()</code> returns has a structure as follows. In 
 this example, actual results from a single, real test file are presented as 
 hash/array Ruby code with comments and with some edits to reduce line length.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="p">{</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span><span class="c1"># Associates each test executable (i.e. test file) with an execution run time</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span><span class="ss">:times</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">21196400001645088</span>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">  </span><span class="p">},</span>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">  </span><span class="c1"># List of succeeding test cases, grouped by test file.</span>
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="w">  </span><span class="ss">:successes</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="w">      </span><span class="ss">:source</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="ss">:file</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:dirname</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:basename</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;TestUsartModel.c&quot;</span><span class="p">},</span>
-<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="w">      </span><span class="ss">:collection</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="w">        </span><span class="c1"># If Unity is configured to do so, it will output execution run time for each test case.</span>
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a><span class="w">        </span><span class="c1"># Ceedling creates a zero entry if the Unity option is not enabled.</span>
-<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a><span class="w">        </span><span class="p">{</span><span class="ss">:test</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;testCase1&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:line</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">17</span><span class="p">,</span><span class="w"> </span><span class="ss">:message</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:unity_test_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">},</span>
-<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a><span class="w">        </span><span class="p">{</span><span class="ss">:test</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;testCase2&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:line</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">31</span><span class="p">,</span><span class="w"> </span><span class="ss">:message</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:unity_test_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">}</span>
-<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a><span class="w">      </span><span class="o">]</span>
-<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a><span class="w">  </span><span class="o">]</span><span class="p">,</span>
-<a id="__codelineno-16-19" name="__codelineno-16-19" href="#__codelineno-16-19"></a>
-<a id="__codelineno-16-20" name="__codelineno-16-20" href="#__codelineno-16-20"></a><span class="w">  </span><span class="c1"># List of failing test cases, grouped by test file.</span>
-<a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a><span class="w">  </span><span class="ss">:failures</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
-<a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a><span class="w">      </span><span class="ss">:source</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="ss">:file</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:dirname</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:basename</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;TestUsartModel.c&quot;</span><span class="p">},</span>
-<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a><span class="w">      </span><span class="ss">:collection</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
-<a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a><span class="w">        </span><span class="p">{</span><span class="ss">:test</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;testCase3&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:line</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">25</span><span class="p">,</span><span class="w"> </span><span class="ss">:message</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;&lt;failure message&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:unity_test_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">}</span>
-<a id="__codelineno-16-26" name="__codelineno-16-26" href="#__codelineno-16-26"></a><span class="w">      </span><span class="o">]</span>
-<a id="__codelineno-16-27" name="__codelineno-16-27" href="#__codelineno-16-27"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-16-28" name="__codelineno-16-28" href="#__codelineno-16-28"></a><span class="w">  </span><span class="o">]</span><span class="p">,</span>
-<a id="__codelineno-16-29" name="__codelineno-16-29" href="#__codelineno-16-29"></a>
-<a id="__codelineno-16-30" name="__codelineno-16-30" href="#__codelineno-16-30"></a><span class="w">  </span><span class="c1"># List of ignored test cases, grouped by test file.</span>
-<a id="__codelineno-16-31" name="__codelineno-16-31" href="#__codelineno-16-31"></a><span class="w">  </span><span class="ss">:ignores</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
-<a id="__codelineno-16-32" name="__codelineno-16-32" href="#__codelineno-16-32"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-16-33" name="__codelineno-16-33" href="#__codelineno-16-33"></a><span class="w">      </span><span class="ss">:source</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="ss">:file</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:dirname</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:basename</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;TestUsartModel.c&quot;</span><span class="p">},</span>
-<a id="__codelineno-16-34" name="__codelineno-16-34" href="#__codelineno-16-34"></a><span class="w">      </span><span class="ss">:collection</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
-<a id="__codelineno-16-35" name="__codelineno-16-35" href="#__codelineno-16-35"></a><span class="w">        </span><span class="p">{</span><span class="ss">:test</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;testCase4&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:line</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">39</span><span class="p">,</span><span class="w"> </span><span class="ss">:message</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:unity_test_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">}</span>
-<a id="__codelineno-16-36" name="__codelineno-16-36" href="#__codelineno-16-36"></a><span class="w">      </span><span class="o">]</span>
-<a id="__codelineno-16-37" name="__codelineno-16-37" href="#__codelineno-16-37"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-16-38" name="__codelineno-16-38" href="#__codelineno-16-38"></a><span class="w">  </span><span class="o">]</span><span class="p">,</span>
-<a id="__codelineno-16-39" name="__codelineno-16-39" href="#__codelineno-16-39"></a>
-<a id="__codelineno-16-40" name="__codelineno-16-40" href="#__codelineno-16-40"></a><span class="w">  </span><span class="c1"># List of strings printed to $stdout, grouped by test file.</span>
-<a id="__codelineno-16-41" name="__codelineno-16-41" href="#__codelineno-16-41"></a><span class="w">  </span><span class="ss">:stdout</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
-<a id="__codelineno-16-42" name="__codelineno-16-42" href="#__codelineno-16-42"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-16-43" name="__codelineno-16-43" href="#__codelineno-16-43"></a><span class="w">      </span><span class="ss">:source</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="ss">:file</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:dirname</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:basename</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;TestUsartModel.c&quot;</span><span class="p">},</span>
-<a id="__codelineno-16-44" name="__codelineno-16-44" href="#__codelineno-16-44"></a><span class="w">      </span><span class="c1"># Calls to print to $stdout are outside Unity’s scope, preventing attaching test file line numbers</span>
-<a id="__codelineno-16-45" name="__codelineno-16-45" href="#__codelineno-16-45"></a><span class="w">      </span><span class="ss">:collection</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
-<a id="__codelineno-16-46" name="__codelineno-16-46" href="#__codelineno-16-46"></a><span class="w">        </span><span class="s2">&quot;&lt;$stdout string (e.g. printf() call)&gt;&quot;</span>
-<a id="__codelineno-16-47" name="__codelineno-16-47" href="#__codelineno-16-47"></a><span class="w">      </span><span class="o">]</span>
-<a id="__codelineno-16-48" name="__codelineno-16-48" href="#__codelineno-16-48"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-16-49" name="__codelineno-16-49" href="#__codelineno-16-49"></a><span class="w">  </span><span class="o">]</span><span class="p">,</span>
-<a id="__codelineno-16-50" name="__codelineno-16-50" href="#__codelineno-16-50"></a>
-<a id="__codelineno-16-51" name="__codelineno-16-51" href="#__codelineno-16-51"></a><span class="w">  </span><span class="c1"># Test suite run stats</span>
-<a id="__codelineno-16-52" name="__codelineno-16-52" href="#__codelineno-16-52"></a><span class="w">  </span><span class="ss">:counts</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-16-53" name="__codelineno-16-53" href="#__codelineno-16-53"></a><span class="w">    </span><span class="ss">:total</span><span class="w">   </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
-<a id="__codelineno-16-54" name="__codelineno-16-54" href="#__codelineno-16-54"></a><span class="w">    </span><span class="ss">:passed</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-16-55" name="__codelineno-16-55" href="#__codelineno-16-55"></a><span class="w">    </span><span class="ss">:failed</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-16-56" name="__codelineno-16-56" href="#__codelineno-16-56"></a><span class="w">    </span><span class="ss">:ignored</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-16-57" name="__codelineno-16-57" href="#__codelineno-16-57"></a><span class="w">    </span><span class="ss">:stdout</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">},</span>
-<a id="__codelineno-16-58" name="__codelineno-16-58" href="#__codelineno-16-58"></a>
-<a id="__codelineno-16-59" name="__codelineno-16-59" href="#__codelineno-16-59"></a><span class="w">  </span><span class="c1"># The sum of all test file execution run times</span>
-<a id="__codelineno-16-60" name="__codelineno-16-60" href="#__codelineno-16-60"></a><span class="w">  </span><span class="ss">:total_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">21196400001645088</span>
-<a id="__codelineno-16-61" name="__codelineno-16-61" href="#__codelineno-16-61"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="p">{</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span><span class="c1"># Associates each test executable (i.e. test file) with an execution run time</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span><span class="ss">:times</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">    </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">21196400001645088</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="w">  </span><span class="c1"># List of succeeding test cases, grouped by test file.</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="w">  </span><span class="ss">:successes</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="w">      </span><span class="ss">:source</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="ss">:file</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:dirname</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:basename</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;TestUsartModel.c&quot;</span><span class="p">},</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="w">      </span><span class="ss">:collection</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="w">        </span><span class="c1"># If Unity is configured to do so, it will output execution run time for each test case.</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="w">        </span><span class="c1"># Ceedling creates a zero entry if the Unity option is not enabled.</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="w">        </span><span class="p">{</span><span class="ss">:test</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;testCase1&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:line</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">17</span><span class="p">,</span><span class="w"> </span><span class="ss">:message</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:unity_test_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">},</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="w">        </span><span class="p">{</span><span class="ss">:test</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;testCase2&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:line</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">31</span><span class="p">,</span><span class="w"> </span><span class="ss">:message</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:unity_test_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">}</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a><span class="w">      </span><span class="o">]</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="w">  </span><span class="o">]</span><span class="p">,</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a><span class="w">  </span><span class="c1"># List of failing test cases, grouped by test file.</span>
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a><span class="w">  </span><span class="ss">:failures</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a><span class="w">      </span><span class="ss">:source</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="ss">:file</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:dirname</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:basename</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;TestUsartModel.c&quot;</span><span class="p">},</span>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a><span class="w">      </span><span class="ss">:collection</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a><span class="w">        </span><span class="p">{</span><span class="ss">:test</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;testCase3&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:line</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">25</span><span class="p">,</span><span class="w"> </span><span class="ss">:message</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;&lt;failure message&gt;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:unity_test_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">}</span>
+<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a><span class="w">      </span><span class="o">]</span>
+<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a><span class="w">  </span><span class="o">]</span><span class="p">,</span>
+<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a>
+<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a><span class="w">  </span><span class="c1"># List of ignored test cases, grouped by test file.</span>
+<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a><span class="w">  </span><span class="ss">:ignores</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
+<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a><span class="w">      </span><span class="ss">:source</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="ss">:file</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:dirname</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:basename</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;TestUsartModel.c&quot;</span><span class="p">},</span>
+<a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a><span class="w">      </span><span class="ss">:collection</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
+<a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a><span class="w">        </span><span class="p">{</span><span class="ss">:test</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;testCase4&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:line</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">39</span><span class="p">,</span><span class="w"> </span><span class="ss">:message</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:unity_test_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">}</span>
+<a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a><span class="w">      </span><span class="o">]</span>
+<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a><span class="w">  </span><span class="o">]</span><span class="p">,</span>
+<a id="__codelineno-15-39" name="__codelineno-15-39" href="#__codelineno-15-39"></a>
+<a id="__codelineno-15-40" name="__codelineno-15-40" href="#__codelineno-15-40"></a><span class="w">  </span><span class="c1"># List of strings printed to $stdout, grouped by test file.</span>
+<a id="__codelineno-15-41" name="__codelineno-15-41" href="#__codelineno-15-41"></a><span class="w">  </span><span class="ss">:stdout</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
+<a id="__codelineno-15-42" name="__codelineno-15-42" href="#__codelineno-15-42"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-15-43" name="__codelineno-15-43" href="#__codelineno-15-43"></a><span class="w">      </span><span class="ss">:source</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="ss">:file</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test/TestUsartModel.c&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:dirname</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;test&quot;</span><span class="p">,</span><span class="w"> </span><span class="ss">:basename</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s2">&quot;TestUsartModel.c&quot;</span><span class="p">},</span>
+<a id="__codelineno-15-44" name="__codelineno-15-44" href="#__codelineno-15-44"></a><span class="w">      </span><span class="c1"># Calls to print to $stdout are outside Unity&#39;s scope, preventing attaching test file line numbers</span>
+<a id="__codelineno-15-45" name="__codelineno-15-45" href="#__codelineno-15-45"></a><span class="w">      </span><span class="ss">:collection</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="o">[</span>
+<a id="__codelineno-15-46" name="__codelineno-15-46" href="#__codelineno-15-46"></a><span class="w">        </span><span class="s2">&quot;&lt;$stdout string (e.g. printf() call)&gt;&quot;</span>
+<a id="__codelineno-15-47" name="__codelineno-15-47" href="#__codelineno-15-47"></a><span class="w">      </span><span class="o">]</span>
+<a id="__codelineno-15-48" name="__codelineno-15-48" href="#__codelineno-15-48"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-15-49" name="__codelineno-15-49" href="#__codelineno-15-49"></a><span class="w">  </span><span class="o">]</span><span class="p">,</span>
+<a id="__codelineno-15-50" name="__codelineno-15-50" href="#__codelineno-15-50"></a>
+<a id="__codelineno-15-51" name="__codelineno-15-51" href="#__codelineno-15-51"></a><span class="w">  </span><span class="c1"># Test suite run stats</span>
+<a id="__codelineno-15-52" name="__codelineno-15-52" href="#__codelineno-15-52"></a><span class="w">  </span><span class="ss">:counts</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-15-53" name="__codelineno-15-53" href="#__codelineno-15-53"></a><span class="w">    </span><span class="ss">:total</span><span class="w">   </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span>
+<a id="__codelineno-15-54" name="__codelineno-15-54" href="#__codelineno-15-54"></a><span class="w">    </span><span class="ss">:passed</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-15-55" name="__codelineno-15-55" href="#__codelineno-15-55"></a><span class="w">    </span><span class="ss">:failed</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-15-56" name="__codelineno-15-56" href="#__codelineno-15-56"></a><span class="w">    </span><span class="ss">:ignored</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-15-57" name="__codelineno-15-57" href="#__codelineno-15-57"></a><span class="w">    </span><span class="ss">:stdout</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">},</span>
+<a id="__codelineno-15-58" name="__codelineno-15-58" href="#__codelineno-15-58"></a>
+<a id="__codelineno-15-59" name="__codelineno-15-59" href="#__codelineno-15-59"></a><span class="w">  </span><span class="c1"># The sum of all test file execution run times</span>
+<a id="__codelineno-15-60" name="__codelineno-15-60" href="#__codelineno-15-60"></a><span class="w">  </span><span class="ss">:total_time</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="mi">0</span><span class="o">.</span><span class="mi">21196400001645088</span>
+<a id="__codelineno-15-61" name="__codelineno-15-61" href="#__codelineno-15-61"></a><span class="p">}</span>
 </code></pre></div>
 <h2 id="test-results-report-templates">Test results report templates</h2>
 <p>Ceedling renders test results reports from templates. A plugin that prints test
@@ -5673,25 +5577,20 @@ unchanged if it does the same.</p>
 <code>load_template</code> method. That method returns the template as a String. The base
 class registers the template during <code>setup()</code> and owns every build step hook, so a
 subclass needs nothing else.</p>
-<p>The default <code>load_template</code> reads <code>assets/test_results.template</code> from the plugin’s
+<p>The default <code>load_template</code> reads <code>assets/test_results.template</code> from the plugin's
 own root path. It falls back to the historical <code>assets/template.erb</code> name when only
 that older file exists. A plugin shipping the old filename therefore keeps working.</p>
-<p>Every stock stdout report plugin uses the asset file default.
-<code>report_tests_pretty_stdout</code> has an empty subclass body.</p>
-<p>A template can also call its own plugin object. Ceedling’s system objects include
-each loaded plugin, named for it, so a template reaches its plugin as
-<code>@ceedling[:&lt;plugin name&gt;]</code>. <code>report_tests_gtestlike_stdout</code> and
-<code>report_tests_ide_stdout</code> work this way. Their templates hand results to plugin
-methods that build lines in Ruby. That keeps formatting logic testable and
-configurable. Gcov, Bullseye, and Valgrind render test results through whichever
-template is registered, so they get the same lines.</p>
+<p>Two stock plugins demonstrate both approaches. <code>report_tests_pretty_stdout</code> has an
+empty subclass body and inherits the asset file default.
+<code>report_tests_ide_stdout</code> overrides <code>load_template</code> and returns the
+<code>DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE</code> constant from <code>lib/ceedling/defaults.rb</code>.</p>
 <p>A plugin can also render a template directly. <code>@ceedling[:plugin_reportinator]</code>
 exposes <code>run_report(template, hash)</code> for this. The Bullseye plugin uses it to
 render its coverage summary from <code>assets/coverage.template</code>.</p>
 <h3 id="supported-syntax">Supported syntax</h3>
 <p>Five constructs are available, and two of them carry nearly every template. A
 percent sign in column zero introduces a line of Ruby. A <code>&lt;%= expression %&gt;</code> tag
-inserts that expression’s value into the output.</p>
+inserts that expression's value into the output.</p>
 <table>
 <thead>
 <tr>
@@ -5730,10 +5629,10 @@ visible to every later line and tag, including across block boundaries.</p>
 <h3 id="newline-trimming">Newline trimming</h3>
 <p>A line whose first tag opens it and whose last tag closes it contributes no newline
 of its own. Text between those two tags does not change that. Every other line
-keeps its newline. Ceedling’s own templates depend on this behavior to control
+keeps its newline. Ceedling's own templates depend on this behavior to control
 blank lines in report output.</p>
 <h3 id="what-a-template-can-reference">What a template can reference</h3>
-<p>Templates render against <code>PluginReportinator</code>’s own binding. The report data
+<p>Templates render against <code>PluginReportinator</code>'s own binding. The report data
 arrives as a local named <code>hash</code>. Global constants such as <code>TEST_SYM</code> resolve
 normally.</p>
 <p><code>@ceedling[:plugin_reportinator]</code> exposes several helpers intended for templates.</p>
@@ -5802,11 +5701,11 @@ garbled output rather than an error. Naming the offending line is more useful to
 template author than either behavior.</p>
 <div class="admonition warning">
 <p class="admonition-title">Porting a template written for ERB</p>
-<p>Ceedling’s own templates never used the unsupported constructs above, and
+<p>Ceedling's own templates never used the unsupported constructs above, and
 neither did any template this project has seen. Check a template against the
 table before assuming it needs no changes. A Ruby error inside a template
 reports its location as <code>(ceedling template):&lt;line&gt;</code>, where the line number is
-the template’s own.</p>
+the template's own.</p>
 </div>
 <p><br/><br/></p>
 

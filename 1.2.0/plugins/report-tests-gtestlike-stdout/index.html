@@ -2508,8 +2508,6 @@
       
         
       
-        
-      
     
     
     
@@ -2723,28 +2721,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#googletest-and-ceedling-concepts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GoogleTest and Ceedling concepts
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#googletest-skip-support-and-its-consumers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GoogleTest skip support and its consumers
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#plugin-output" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2757,10 +2733,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#example-output" class="md-nav__link">
+  <a href="#ceedling-mapped-to-googletest-reporting-elements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example output
+        Ceedling mapped to GoogleTest reporting elements
       
     </span>
   </a>
@@ -2768,10 +2744,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#example-output-with-ignored-tests-left-out" class="md-nav__link">
+  <a href="#example-output-snippet" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example output with ignored tests left out
+        Example output (snippet)
       
     </span>
   </a>
@@ -3284,34 +3260,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../sanitize/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sanitize (ASan, UBSan & Leaks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -3337,7 +3285,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3359,14 +3307,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4425,28 +4373,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#googletest-and-ceedling-concepts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GoogleTest and Ceedling concepts
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#googletest-skip-support-and-its-consumers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GoogleTest skip support and its consumers
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#plugin-output" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4459,10 +4385,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#example-output" class="md-nav__link">
+  <a href="#ceedling-mapped-to-googletest-reporting-elements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example output
+        Ceedling mapped to GoogleTest reporting elements
       
     </span>
   </a>
@@ -4470,10 +4396,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#example-output-with-ignored-tests-left-out" class="md-nav__link">
+  <a href="#example-output-snippet" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example output with ignored tests left out
+        Example output (snippet)
       
     </span>
   </a>
@@ -4554,15 +4480,14 @@
 
 
 <h1 id="gtest-like-console-report">GTest-like Console Report</h1>
-<p>Prints to the console (<code>$stdout</code>) test suite results in GoogleTest’s console format.</p>
+<p>Prints to the console ($stdout) test suite results in a GTest-like format.</p>
 <h2 id="plugin-overview">Plugin Overview</h2>
-<p>This plugin reports test results the way GoogleTest prints them. It is intended
-to be used in place of the more commonly used "pretty" test report plugin. Like
-its sibling, it collects raw test results from the individual test executables
-of your test suite and presents them in summary form.</p>
-<p>This plugin is most useful with an IDE or CI system that understands GoogleTest’s
-console output. Its line formats follow GoogleTest’s own console printer, down to
-singular and plural counts and the ordering of its summary.</p>
+<p>This plugin is intended to be used in place of the more commonly used "pretty" 
+test report plugin. Like its sibling, this plugin collects raw test results from
+the individual test executables of your test suite and presents them in a more 
+readable summary form — specifically the GoogleTest format.</p>
+<p>This plugin is most useful when using an IDE or working with a CI system that
+understands the GTest console logging format.</p>
 <h2 id="setup">Setup</h2>
 <p>Enable the plugin in your Ceedling project by adding 
 <code>report_tests_gtestlike_stdout</code> to the list of enabled plugins instead of any 
@@ -4572,164 +4497,69 @@ other <code>report_tests_*_stdout</code> plugin.</p>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">report_tests_gtestlike_stdout</span>
 </code></pre></div>
 <h2 id="configuration">Configuration</h2>
-<p>One setting controls how the report treats ignored tests. By default, a test
-ignored with Unity’s <code>TEST_IGNORE()</code> or <code>TEST_IGNORE_MESSAGE()</code> is reported as a
-GoogleTest skipped test.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">:report_tests_gtestlike_stdout</span><span class="p">:</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">:ignored_as_skipped</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TRUE</span><span class="w">    </span><span class="c1"># Default</span>
-</code></pre></div>
-<p>Set it to <code>FALSE</code> to leave ignored tests out of the report. Ignored tests are
-then neither listed nor counted, and a test file whose every test is ignored has
-no section at all. The rest of the report is unchanged.</p>
-<h2 id="googletest-and-ceedling-concepts">GoogleTest and Ceedling concepts</h2>
-<p>GoogleTest and Ceedling describe a test suite in different terms. This table maps
-each GoogleTest concept to its Ceedling and Unity counterpart and to this plugin’s
-console output.</p>
-<table>
-<thead>
-<tr>
-<th>GoogleTest</th>
-<th>Ceedling &amp; Unity</th>
-<th>In this report</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Test suite</td>
-<td>A test file, built into one test executable</td>
-<td>A <code>[----------] N tests from &lt;test file&gt;</code> section</td>
-</tr>
-<tr>
-<td>Test</td>
-<td>A Unity test case in that test file</td>
-<td><code>&lt;test file&gt;.&lt;test case&gt;</code></td>
-</tr>
-<tr>
-<td>Passed test (<code>[       OK ]</code>)</td>
-<td>A passing test case</td>
-<td>Listed and counted as passed</td>
-</tr>
-<tr>
-<td>Failed test (<code>[  FAILED  ]</code>)</td>
-<td>A failing test case</td>
-<td>Listed with its <code>file(line)</code> location and counted as failed</td>
-</tr>
-<tr>
-<td>Skipped test (<code>GTEST_SKIP()</code>, <code>[  SKIPPED ]</code>)</td>
-<td><code>TEST_IGNORE()</code> or <code>TEST_IGNORE_MESSAGE()</code></td>
-<td>Listed and counted as skipped, or left out with <code>:ignored_as_skipped: FALSE</code></td>
-</tr>
-<tr>
-<td>Disabled test (<code>DISABLED_</code> prefix)</td>
-<td>No equivalent</td>
-<td>Never reported</td>
-</tr>
-<tr>
-<td>Per-test time</td>
-<td>Not measured; Ceedling times each test executable</td>
-<td>Each test reports <code>0 ms</code>; each section reports its file’s time</td>
-</tr>
-<tr>
-<td>Incremental output</td>
-<td>Results are collected at the end of a build</td>
-<td>The full report prints once the build ends</td>
-</tr>
-</tbody>
-</table>
-<p>An ignored Unity test is a skipped GoogleTest test, not a disabled one. Unity
-decides to ignore a test at runtime. <code>setUp()</code> runs, the test body begins,
-<code>TEST_IGNORE()</code> ends it, and <code>tearDown()</code> runs. That is what <code>GTEST_SKIP()</code> does.
-A GoogleTest <code>DISABLED_</code> test never runs at all.</p>
-<p>Tests that never run never reach Ceedling’s results. Test cases excluded by the
-<code>--test-case</code> or <code>--exclude-test-case</code> command line filters, or hidden by the
-preprocessor, therefore never appear in this report. They are not reported as
-disabled tests.</p>
-<p>Each section lists its tests in source order. Skipped tests count toward the
-run’s total and its suite count. The summary reports passed, then skipped, then
-failed tests, as GoogleTest does. It lists skipped and failed tests only when
-there are any.</p>
-<h2 id="googletest-skip-support-and-its-consumers">GoogleTest skip support and its consumers</h2>
-<p>GoogleTest added skipped tests in version 1.10.0, released in October 2019.
-That release introduced <code>GTEST_SKIP()</code> along with the <code>[  SKIPPED ]</code> lines in
-its console output. Earlier versions have no skipped outcome.</p>
-<p>Tools that read GoogleTest output may not understand skipped tests. Some predate
-GoogleTest 1.10.0, and others added support only later. LLVM’s <code>lit</code> test runner,
-for example, added explicit handling for skipped GoogleTest tests in 2021. A tool
-written for older output may treat a <code>[  SKIPPED ]</code> line as unknown or may report
-a skipped test as passed.</p>
-<p>Which tools parse this plugin’s output is unknown. If yours misreads skipped
-tests, set <code>:ignored_as_skipped: FALSE</code> to restore a report without them.</p>
+<p>No additional configuration is needed once the plugin is enabled.</p>
 <h2 id="plugin-output">Plugin Output</h2>
-<p>The GoogleTest format is verbose. It lists every test with its result, then
-summarizes the run.</p>
-<h3 id="example-output">Example output</h3>
-<p>The example below reports a suite of 5 tests in 3 test files. One test passes
-alongside a skipped test in its file, and one test fails.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>test:all
+<h3 id="ceedling-mapped-to-googletest-reporting-elements">Ceedling mapped to GoogleTest reporting elements</h3>
+<p>Ceedling’s conventions and output map to GTest format as the following:</p>
+<ul>
+<li>A Ceedling test file — ultimately an individual test executable — is a GTest 
+  <em>test case</em>.</li>
+<li>A Ceedling test case (a.k.a. unit test) is a GTest <em>test</em>.</li>
+<li>Execution time is collected for each Ceedling test executable, not each 
+  Ceedling test case. As such, the test report includes only execution time for
+  each GTest <em>test case</em>. Individual test execution times are reported as 0 ms.</li>
+</ul>
+<p>GoogleTest generates reporting output incrementally. Ceedling produces test 
+results incrementally as well, but its plugin reporting structure does not 
+collect and format statistics until the end of a build. This plugin duplicates
+the tense of the wording in a GTest report, but it is unintentionally somewhat 
+misleading.</p>
+<p>GTest has no native concept of an ignored (a.k.a. skipped) test case. A
+Ceedling test case marked <code>TEST_IGNORE()</code> is therefore left out of this
+report entirely — it is not listed as <code>OK</code> or <code>FAILED</code>, and it is not
+counted in the running total header or the passed/failed footer. A test
+file whose every test case is ignored produces no section for that file at
+all.</p>
+<h3 id="example-output-snippet">Example output (snippet)</h3>
+<p>The GTest format is verbose. It lists all tests with success and failure results.</p>
+<p>The example output below shows the header and footer of test results for a suite 
+of 49 Ceedling tests in 18 test files but only includes logging for 6 tests.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>test:all
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>[==========] Running 5 tests from 3 test suites.
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>[----------] Global test environment set-up.
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>[----------] 2 tests from test/TestUsartModel.c
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>[ RUN      ] test/TestUsartModel.c.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>[       OK ] test/TestUsartModel.c.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting (0 ms)
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>[ RUN      ] test/TestUsartModel.c.testShouldReturnWakeupMessage
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>[       OK ] test/TestUsartModel.c.testShouldReturnWakeupMessage (0 ms)
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>[----------] 2 tests from test/TestUsartModel.c (1277 ms total)
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>[----------] 2 tests from test/TestTimerConductor.c
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>[ RUN      ] test/TestTimerConductor.c.testInitShouldCallHardwareAndInterruptInit
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>[       OK ] test/TestTimerConductor.c.testInitShouldCallHardwareAndInterruptInit (0 ms)
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>[ RUN      ] test/TestTimerConductor.c.testRunShouldHandleTimerOverflow
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>test/TestTimerConductor.c(34): Skipped
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>Waiting on driver rewrite
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>[  SKIPPED ] test/TestTimerConductor.c.testRunShouldHandleTimerOverflow (0 ms)
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>[----------] 2 tests from test/TestTimerConductor.c (402 ms total)
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>
-<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>[----------] 1 test from test/TestModel.c
-<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>[ RUN      ] test/TestModel.c.testInitShouldCallSchedulerAndTemperatureFilterInit
-<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>test/TestModel.c(21): error: Function TaskScheduler_Init() called more times than expected.
-<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a> Actual:   FALSE
-<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a> Expected: TRUE
-<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>[  FAILED  ] test/TestModel.c.testInitShouldCallSchedulerAndTemperatureFilterInit (0 ms)
-<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>[----------] 1 test from test/TestModel.c (581 ms total)
-<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>
-<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>[----------] Global test environment tear-down
-<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>[==========] 5 tests from 3 test suites ran. (2260 ms total)
-<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>[  PASSED  ] 3 tests.
-<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>[  SKIPPED ] 1 test, listed below:
-<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>[  SKIPPED ] test/TestTimerConductor.c.testRunShouldHandleTimerOverflow
-<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>[  FAILED  ] 1 test, listed below:
-<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>[  FAILED  ] test/TestModel.c.testInitShouldCallSchedulerAndTemperatureFilterInit
-<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>
-<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a> 1 FAILED TEST
-</code></pre></div>
-<p>A skipped test prints its location and its <code>TEST_IGNORE_MESSAGE()</code> text, then a
-blank line and its result. A test ignored with <code>TEST_IGNORE()</code> has no message,
-so its message line is absent.</p>
-<p>A run in which every test passes ends at its <code>[  PASSED  ]</code> line. The failure
-list and its trailer appear only when a test fails.</p>
-<h3 id="example-output-with-ignored-tests-left-out">Example output with ignored tests left out</h3>
-<p>The same suite with <code>:ignored_as_skipped: FALSE</code> reports 4 tests. The ignored
-test is gone from its section, from the counts, and from the summary.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>[==========] Running 4 tests from 3 test suites.
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a> ...
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>[----------] 1 test from test/TestTimerConductor.c
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>[ RUN      ] test/TestTimerConductor.c.testInitShouldCallHardwareAndInterruptInit
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>[       OK ] test/TestTimerConductor.c.testInitShouldCallHardwareAndInterruptInit (0 ms)
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>[----------] 1 test from test/TestTimerConductor.c (402 ms total)
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a> ...
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>[----------] Global test environment tear-down
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>[==========] 4 tests from 3 test suites ran. (2260 ms total)
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>[  PASSED  ] 3 tests.
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>[  FAILED  ] 1 test, listed below:
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>[  FAILED  ] test/TestModel.c.testInitShouldCallSchedulerAndTemperatureFilterInit
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a> 1 FAILED TEST
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>[==========] Running 49 tests from 18 test cases.
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>[----------] Global test environment set-up.
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a> ...
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>[----------] 4 tests from test/TestUsartModel.c
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>[ RUN      ] test/TestUsartModel.c.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>[       OK ] test/TestUsartModel.c.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting (0 ms)
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>[ RUN      ] test/TestUsartModel.c.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>[       OK ] test/TestUsartModel.c.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately (0 ms)
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>[ RUN      ] test/TestUsartModel.c.testShouldReturnErrorMessageUponInvalidTemperatureValue
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>[       OK ] test/TestUsartModel.c.testShouldReturnErrorMessageUponInvalidTemperatureValue (0 ms)
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>[ RUN      ] test/TestUsartModel.c.testShouldReturnWakeupMessage
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>[       OK ] test/TestUsartModel.c.testShouldReturnWakeupMessage (0 ms)
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>[----------] 4 tests from test/TestUsartModel.c (1277 ms total)
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>[----------] 1 tests from test/TestMain.c
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>[ RUN      ] test/TestMain.c.testMainShouldCallExecutorInitAndContinueToCallExecutorRunUntilHalted
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>[       OK ] test/TestMain.c.testMainShouldCallExecutorInitAndContinueToCallExecutorRunUntilHalted (0 ms)
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>[----------] 1 tests from test/TestMain.c (1351 ms total)
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>[----------] 1 tests from test/TestModel.c
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>[ RUN      ] test/TestModel.c.testInitShouldCallSchedulerAndTemperatureFilterInit
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>test/TestModel.c(21): error: Function TaskScheduler_Init() called more times than expected.
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a> Actual:   FALSE
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a> Expected: TRUE
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>[  FAILED  ] test/TestModel.c.testInitShouldCallSchedulerAndTemperatureFilterInit (0 ms)
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>[----------] 1 tests from test/TestModel.c (581 ms total)
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>[----------] Global test environment tear-down.
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>[==========] 49 tests from 18 test cases ran.
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>[  PASSED  ] 48 tests.
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>[  FAILED  ] 1 tests, listed below:
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>[  FAILED  ] test/TestModel.c.testInitShouldCallSchedulerAndTemperatureFilterInit
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a> 1 FAILED TESTS
 </code></pre></div>
 <p><br/><br/></p>
 

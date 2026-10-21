@@ -2661,8 +2661,6 @@
       
         
       
-        
-      
     
     
     
@@ -3290,34 +3288,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../plugins/sanitize/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sanitize (ASan, UBSan & Leaks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -3340,7 +3310,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3362,14 +3332,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4680,7 +4650,7 @@ for much more on these powerful but finicky features.</p>
   of Ceedling itself is skewed towards supporting testing, though
   Ceedling can, of course, build your binary release artifact
   as well. Note that some complex binary release builds are beyond
-  Ceedling’s abilities. See the <a href="../../plugins/dependencies/"><code>dependencies</code></a>
+  Ceedling's abilities. See the <a href="../../plugins/dependencies/"><code>dependencies</code></a>
   plugin for extending release build abilities.</p>
 </li>
 </ul>
@@ -4689,7 +4659,7 @@ for much more on these powerful but finicky features.</p>
 <div class="admonition warning">
 <p class="admonition-title">Disabled by default for security</p>
 <p>Inline Ruby string expansion executes arbitrary Ruby code from a
-project configuration, Mixins, and/or plugin config — so it’s
+project configuration, Mixins, and/or plugin config — so it's
 <strong>disabled by default</strong>.</p>
 <p>Enable it with <code>--ruby-replacement</code> for any <a href="../../getting-started/command-line/#application-commands">application command</a> 
 that loads project configuration (<code>build</code>, <code>check</code>, <code>dumpconfig</code>,
@@ -4719,18 +4689,11 @@ wrap the Ruby code in the substitution pattern <code>#{…}</code>.</p>
 <p>Inline Ruby string expansion may constitute the entirety of a configuration 
 value string, may be embedded within a string, or may be used multiple times
 within a string.</p>
-<p>Only the Ruby inside each <code>#{…}</code> is evaluated. Text outside it is kept exactly
-as written, so backslashes in Windows paths and any quote marks or <code>#</code>
-characters stay literal. A <code>#{</code> with no closing <code>}</code> stops the build. To keep a
-literal <code>#{</code>, write <code>\#{</code> in a single-quoted or unquoted YAML string.</p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>Because of the <code>#</code> it’s a good idea to wrap any string values in your YAML
-that rely on Ruby string expansion with quotation marks. Quotation marks for YAML 
-strings are optional. However, the <code>#</code> can cause a YAML parser to see a 
-comment. Explicitly indicating a string to the YAML parser with enclosing 
-quotation marks alleviates this problem.</p>
-</div>
+<p>Because of the <code>#</code> it's a good idea to wrap any string values in your YAML that
+rely on this feature with quotation marks. Quotation marks for YAML strings are
+optional. However, the <code>#</code> can cause a YAML parser to see a comment. As such,
+explicitly indicating a string to the YAML parser with enclosing quotation 
+marks alleviates this problem.</p>
 <h4 id="ruby-string-expansion-example">Ruby string expansion example</h4>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:some_config_section</span><span class="p">:</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">:some_key</span><span class="p">:</span>
@@ -4740,9 +4703,9 @@ quotation marks alleviates this problem.</p>
 <p>In the example above, the two YAML strings will include the strings returned by
 the Ruby code within <code>#{…}</code>:</p>
 <ol>
-<li>The first string uses Ruby’s environment variable lookup <code>ENV[…]</code> to fetch 
+<li>The first string uses Ruby's environment variable lookup <code>ENV[…]</code> to fetch 
 the value assigned to variable <code>VAR1</code>.</li>
-<li>The second string uses Ruby’s backtick shell execution <code>…</code> to insert the 
+<li>The second string uses Ruby's backtick shell execution <code>…</code> to insert the 
 string generated by a command line utility.</li>
 </ol>
 <h4 id="project-file-sections-that-offer-inline-ruby-string-expansion">Project file sections that offer inline Ruby string expansion</h4>
@@ -4759,7 +4722,7 @@ string generated by a command line utility.</li>
 <li><code>:tools</code></li>
 <li><code>:release_build</code> ↳ <code>:artifacts</code></li>
 </ul>
-<p>See each section’s documentation for details.</p>
+<p>See each section's documentation for details.</p>
 <h3 id="path-handling">Path handling</h3>
 <p>Any second tier setting keys anywhere in YAML whose names end in <code>_path</code> or
 <code>_paths</code> are automagically processed like all Ceedling-specific paths in the

@@ -2734,8 +2734,6 @@
       
         
       
-        
-      
     
     
     
@@ -3363,34 +3361,6 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../../plugins/sanitize/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sanitize (ASan, UBSan & Leaks)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
     
     
       
@@ -3413,7 +3383,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3435,14 +3405,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_13">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4936,20 +4906,6 @@ collection.</p>
 <p>By default, paths are additive. For pretty alignment in your YAML, you may also
 use <code>+:</code>, but strictly speaking, it’s not necessary.</p>
 <p>Subtractive paths may be simple paths or globs just like any other path entry.</p>
-<div class="admonition warning">
-<p class="admonition-title">Quote the whole entry, decoration included</p>
-<p>YAML keeps quote marks that begin partway through a value as part of the
-value. Quoting only the path leaves quote marks in the path, and
-Ceedling rejects the entry. Quote an entry whenever it holds <code>#{…}</code>
-<a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>, because YAML
-otherwise reads the <code>#</code> as the start of a comment.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Correct</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;-:#{ENV[&#39;SRC_ROOT&#39;]}/vendor/legacy&quot;</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Incorrect -- the quote marks become part of the path</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-:&quot;#{ENV[&#39;SRC_ROOT&#39;]}/vendor/legacy&quot;</span>
-</code></pre></div>
-</div>
 <div class="admonition note">
 <p class="admonition-title">Subtractive paths resolve after all mixins merge</p>
 <p>The resolution of subtractive paths happens after your full paths lists are
