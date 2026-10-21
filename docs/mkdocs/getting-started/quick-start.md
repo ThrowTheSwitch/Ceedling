@@ -39,7 +39,9 @@ listed immediately below.
 !!! warning "C toolchain requirement"
     Ceedling requires a command line C toolchain be available in your path and is
     flexible enough to work with most anything. By default, Ceedling is ready to 
-    work with [GCC] out of the box (we recommend [MinGW] on Windows).
+    work with [GCC] out of the box. On Windows, we recommend [MinGW-w64], GCC
+    built for native Windows executables, installed through [MSYS2], a Windows
+    package manager that provides it.
 
 1. [Install Ceedling](installation.md)
 1. Create a project
@@ -60,7 +62,8 @@ without Ceedling—but rely on Ceedling + GCC for test builds (more on this
     [Ceedling extension](https://marketplace.visualstudio.com/items?itemName=throw-the-switch.vscode-ceedling).
 
 [GCC]: https://gcc.gnu.org
-[MinGW]: http://www.mingw.org/
+[MinGW-w64]: https://www.mingw-w64.org
+[MSYS2]: https://www.msys2.org
 [overview]: ../overview/index.md
 
 ## Command Line & Build Tasks
