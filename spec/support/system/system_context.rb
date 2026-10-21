@@ -314,6 +314,18 @@ class SystemContext
     yaml_wrapper.dump('project.yml', project_hash)
   end
 
+  # Deletes one setting, e.g. [:extension, :executable], so Ceedling's default applies
+  def remove_project_yml_option_for_test(*keys)
+    file_wrapper = FileWrapper.new({
+      :loginator    => NullLoginator.new,
+      :verbosinator => Verbosinator.new
+    })
+    yaml_wrapper = YamlWrapper.new({ file_wrapper: file_wrapper })
+    project_hash = yaml_wrapper.load('project.yml')
+    project_hash.dig( *keys[0...-1] )&.delete( keys.last )
+    yaml_wrapper.dump('project.yml', project_hash)
+  end
+
   def append_project_yml_for_test(new_args)
     fake_prj_yml= "#{read_spec_file('project.yml')}\n#{new_args}"
     File.write('project.yml', fake_prj_yml, mode: 'w')

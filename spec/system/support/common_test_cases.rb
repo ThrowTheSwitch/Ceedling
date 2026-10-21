@@ -168,11 +168,16 @@ module CommonSystemTestCases
   end
 
   def test_project_success
+    windows = /mingw|win32/.match?(RUBY_PLATFORM.downcase)
+
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        # The starter project names test executables `.out`. Without it, Windows' own `.exe` applies.
+        @c.remove_project_yml_option_for_test( :extension, :executable ) if windows
 
         output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
@@ -182,8 +187,9 @@ module CommonSystemTestCases
         expect(output).to match(/IGNORED:\s+\d/)
 
         # Windows' Installer Detection reads a manifest beside each test executable
-        if /mingw|win32/.match?(RUBY_PLATFORM.downcase)
-          expect(File.exist?('build/test/out/test_example_file_success/test_example_file_success.exe.manifest')).to be(true)
+        if windows
+          manifests = Dir.glob('build/test/out/test_example_file_success/*.manifest')
+          expect(manifests).to eq(['build/test/out/test_example_file_success/test_example_file_success.exe.manifest'])
         end
       end
     end
