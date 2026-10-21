@@ -8,9 +8,9 @@ There are two top-level code directories:
    handler and loading the project configuration including merging
    Mixins. All applications commands are executed from within this
    code ([application commands are distinct from build/plugin tasks](../getting-started/command-line.md)).
-2. `lib/` This is the application itself. Major subsystems are
-   organized in subdirectories. Configuration processing happens in
-   the main application.
+2. `lib/ceedling/` This is the application itself. Major subsystems
+   are organized in subdirectories. Configuration processing happens
+   in the main application.
 
 The handoff from (1) to (2) involves:
 
