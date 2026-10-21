@@ -180,6 +180,11 @@ module CommonSystemTestCases
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
         expect(output).to match(/IGNORED:\s+\d/)
+
+        # Windows' Installer Detection reads a manifest beside each test executable
+        if /mingw|win32/.match?(RUBY_PLATFORM.downcase)
+          expect(File.exist?('build/test/out/test_example_file_success/test_example_file_success.exe.manifest')).to be(true)
+        end
       end
     end
   end

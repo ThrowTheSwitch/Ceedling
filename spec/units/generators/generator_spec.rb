@@ -24,7 +24,8 @@ describe Generator do
     @collaborators = collaborators = [
       :configurator, :generator_helper, :generator_mocks, :generator_test_results,
       :generator_test_results_backtrace, :generator_partials, :test_context_extractor,
-      :file_finder, :file_path_utils, :reportinator, :loginator, :test_runner_manager
+      :file_finder, :file_path_utils, :reportinator, :loginator, :test_runner_manager,
+      :system_wrapper, :file_wrapper
     ].to_h { |name| [name, double( name.to_s ).as_null_object] }
 
     @generator_mocks = double('generator_mocks')
@@ -257,6 +258,59 @@ describe Generator do
       generate( folder: 'drivers/uart' )
 
       expect(@plugin_manager).to have_received(:pre_mock_generate).with( hash_including( output_path: 'build/test/mocks/test_both/drivers/uart' ) )
+    end
+  end
+  # Windows' Installer Detection would otherwise demand administrator rights for some names
+  describe '#generate_test_executable_manifest' do
+    let(:file_wrapper) { @collaborators[:file_wrapper] }
+    let(:loginator)    { @collaborators[:loginator] }
+
+    def generate(test_filepath: 'test/test_a.c', windows: true, existing: nil)
+      allow(@collaborators[:system_wrapper]).to receive(:windows?).and_return( windows )
+      allow(file_wrapper).to receive(:exist?).and_return( !existing.nil? )
+      allow(file_wrapper).to receive(:read).and_return( existing )
+      allow(file_wrapper).to receive(:write)
+      allow(loginator).to receive(:log)
+      @generator.generate_test_executable_manifest( executable: 'build/test_a.exe', test_filepath: test_filepath )
+    end
+
+    it 'writes the manifest beside the executable on Windows' do
+      generate()
+      expect(file_wrapper).to have_received(:write).with( 'build/test_a.exe.manifest', TEST_EXECUTABLE_MANIFEST )
+    end
+
+    it 'writes nothing elsewhere' do
+      generate( windows: false )
+      expect(file_wrapper).not_to have_received(:write)
+    end
+
+    it 'leaves an identical manifest alone' do
+      generate( existing: TEST_EXECUTABLE_MANIFEST )
+      expect(file_wrapper).not_to have_received(:write)
+    end
+
+    it 'replaces a manifest that differs' do
+      generate( existing: '<assembly/>' )
+      expect(file_wrapper).to have_received(:write).with( 'build/test_a.exe.manifest', TEST_EXECUTABLE_MANIFEST )
+    end
+
+    it 'notes a test filename Windows recognizes as an installer' do
+      generate( test_filepath: 'test/test_SetUp_parser.c' )
+      expect(loginator).to have_received(:log).with(
+        'Test filename `test_SetUp_parser.c` includes a keyword Windows recognizes as an installer (install, setup, update, patch) ' \
+        'when built as a test executable. Ceedling generated a manifest beside the test executable to run without administrator privileges.',
+        Verbosity::COMPLAIN
+      )
+    end
+
+    it 'notes nothing for an ordinary test filename' do
+      generate()
+      expect(loginator).not_to have_received(:log).with( anything, Verbosity::COMPLAIN )
+    end
+
+    it 'notes nothing off Windows' do
+      generate( test_filepath: 'test/test_patch.c', windows: false )
+      expect(loginator).not_to have_received(:log)
     end
   end
 end
