@@ -986,8 +986,11 @@ describe TestBuildExecutor do
       allow(@configurator).to receive(:project_config_hash).and_return( {} )
       allow(@file_path_utils).to receive(:form_test_build_map_filepath).and_return( 'build/map' )
 
+      allow(@generator).to receive(:generate_test_executable_manifest)
+
       @testable = TestInvokerTypes::Testable.new(
         :name       => 'a_test',
+        :filepath   => 'test/a_test.c',
         :objects    => ['build/foo.o'],
         :executable => 'build/a_test.out',
         :link_flags => [],
@@ -1014,6 +1017,18 @@ describe TestBuildExecutor do
       @executor.stage_build_executables( @state )
 
       expect( @testable.executable_rebuilt ).to be(false)
+    end
+
+    # An executable linked by an earlier build still needs its manifest
+    it "provides each executable its manifest, whether linked or skipped" do
+      allow(@generator).to receive(:generate_executable_file)
+
+      [true, false].each do |stale|
+        allow(@dependinator).to receive(:stale?).and_return( stale )
+        expect(@generator).to receive(:generate_test_executable_manifest).with( executable: 'build/a_test.out', test_filepath: 'test/a_test.c' )
+
+        @executor.stage_build_executables( @state )
+      end
     end
 
     it "resolves the link tool/flags through pre_test_link_register before registering staleness meta, and uses the resolved values for the real link" do

@@ -237,6 +237,19 @@ UNITY_TEST_RESULTS_TEMPLATE = <<~UNITY_TEST_RESULTS
   %{result}
 UNITY_TEST_RESULTS
 
+# Names Windows' Installer Detection treats as an installer's, requiring administrator rights
+WINDOWS_INSTALLER_KEYWORDS = /install|setup|update|patch/i
 
-
-
+# Requests the invoker's own rights, which turns Installer Detection off for a test executable
+TEST_EXECUTABLE_MANIFEST = <<~XML.freeze
+  <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+    <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+      <security>
+        <requestedPrivileges>
+          <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+        </requestedPrivileges>
+      </security>
+    </trustInfo>
+  </assembly>
+XML

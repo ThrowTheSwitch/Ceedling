@@ -128,6 +128,10 @@ Platform filepath limits (especially on Windows) can lead to mysterious build fa
 ### Retry handling for child process generated file dependencies
 In certain intervening circumstances, particularly on Windows, a child process may successfully generate a file that Ceedling expects to be present but OS-related issues (e.g. virus software, security checks, cloud storage syncing) delay from actually appearing in the file system. A new application-wide retry mechanism deals with the situations and fails properly if the delay exceeds the retry limit.
 
+### Windows test executable manifests
+[#146](https://github.com/ThrowTheSwitch/Ceedling/issues/146) [#116](https://github.com/ThrowTheSwitch/Ceedling/issues/116) On Windows, Ceedling now writes a manifest beside each test executable to help ensure that [any test filename can be run](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#installer-like-test-filenames-on-windows). The Installer Detection feature of User Account Control (UAC) otherwise demands administrator privileges for an executable whose name contains _install_, _setup_, _update_, or _patch_. A test filename containing one of these words is noted with a warning. Note that modern Windows compiler toolchains tend to
+embed a manifest that prevents the privilege limitation; Ceedling’s external manifest is further insurance.
+
 ## 💪 Fixed
 
 Note: 1.2.0 includes all bug fixes for 1.1.x.

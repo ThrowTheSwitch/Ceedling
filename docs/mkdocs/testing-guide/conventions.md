@@ -205,6 +205,44 @@ or `testing_MyAwesomeCode.C` could each be valid test file
 names. Note, however, that Ceedling can recognize only one test
 file naming convention per project.
 
+#### Installer-like test filenames on Windows
+
+On Windows, Ceedling writes a manifest beside each test executable. It lets a
+test executable run whatever its name.
+
+A test executable is named after its test file. Windows treats an executable
+whose name contains _install_, _setup_, _update_, or _patch_ as an installer.
+The Installer Detection feature of User Account Control (UAC) then demands
+administrator privileges to run it. A test file such as `test_setup_parser.c`
+would otherwise build a test executable Windows will not run.
+
+The manifest, `<test executable>.manifest`, asks Windows to run the executable
+with your own privileges. That turns Installer Detection off for it. When a
+test filename contains one of these words, Ceedling logs a warning noting that
+it generated the manifest.
+
+Windows ignores a manifest file when the executable already embeds a manifest
+of its own. Whether yours does depends on your toolchain.
+
+- **MinGW-w64 GCC from [MSYS2]** links a default manifest into every executable
+  when its `windows-default-manifest` package is installed. That manifest
+  already asks Windows to run the executable with your own privileges, so
+  these names cause no trouble, and the manifest file is unused. This GCC is
+  also the one RubyInstaller’s DevKit provides.
+- **Other MinGW-w64 distributions** may or may not include that default
+  manifest. GCC links it only when it finds `default-manifest.o` among its
+  libraries. Without it, the manifest file Ceedling writes is what lets these
+  test executables run.
+- **The original MinGW** (mingw.org) is believed to embed no manifest, so it
+  relies on the manifest file.
+
+To see whether an executable embeds a manifest, search it for the text
+`requestedExecutionLevel`. A match means Windows uses the embedded manifest.
+
+Before 1.2.0, Ceedling wrote no manifest. With a toolchain that embeds none,
+test files with these words in their names could not be run on Windows without
+administrator privileges.
+
 ### Source & mock files to compile and link
 
 Ceedling knows what files to compile and link into each individual
@@ -769,5 +807,6 @@ much simpler exit code convention than Unity: `0` = 🙂 while `1` = ☹️.
 
 [CMock]: http://github.com/ThrowTheSwitch/CMock
 [Unity]: http://github.com/ThrowTheSwitch/Unity
+[MSYS2]: https://www.msys2.org
 
 <br/><br/>

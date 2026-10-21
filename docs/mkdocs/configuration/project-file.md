@@ -90,14 +90,15 @@ for much more on these powerful but finicky features.
   is parsed. This is usually accompanied by a complaint with
   line and column number pointing into the project file.
 
-* Certain advanced features rely on `gcc` and `cpp` as preprocessing
-  tools. In most Linux systems, these tools are already available.
-  For Windows environments, we recommend the [MinGW] project
-  (Minimalist GNU for Windows).
+* Certain advanced features rely on `gcc` as a preprocessing tool.
+  In most Linux systems, the GNU Compiler Collection is already 
+  available. For Windows environments, we recommend [MinGW-w64], 
+  GCC built for native Windows executables, installed through 
+  [MSYS2], a Windows package manager that provides it.
 
 * Ceedling is primarily meant as a build tool to support automated
   unit testing. All the heavy lifting is involved there. Creating
-  a simple binary release build artifact is quite trivial in
+  a simple binary release build artifact is simpler in
   comparison. Consequently, most default options and the construction
   of Ceedling itself is skewed towards supporting testing, though
   Ceedling can, of course, build your binary release artifact
@@ -105,7 +106,8 @@ for much more on these powerful but finicky features.
   Ceedling’s abilities. See the [`dependencies`](../plugins/dependencies.md)
   plugin for extending release build abilities.
 
-[MinGW]: http://www.mingw.org/
+[MinGW-w64]: https://www.mingw-w64.org
+[MSYS2]: https://www.msys2.org
 
 ## Ceedling YAML Handling & Conventions
 

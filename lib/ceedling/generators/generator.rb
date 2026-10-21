@@ -26,7 +26,9 @@ class Generator
               :reportinator,
               :loginator,
               :plugin_manager,
-              :test_runner_manager
+              :test_runner_manager,
+              :system_wrapper,
+              :file_wrapper
 
 
   def setup()
@@ -340,6 +342,20 @@ class Generator
     end
   end
 
+  # Windows' Installer Detection, part of User Account Control, demands administrator rights
+  # to run an executable whose name looks like an installer's. A manifest requesting the
+  # invoker's own rights turns it off, and is written only when missing or different.
+  def generate_test_executable_manifest(executable:, test_filepath:)
+    return unless @system_wrapper.windows?
+
+    manifest = "#{executable}.manifest"
+    unless @file_wrapper.exist?( manifest ) && @file_wrapper.read( manifest ) == TEST_EXECUTABLE_MANIFEST
+      @file_wrapper.write( manifest, TEST_EXECUTABLE_MANIFEST )
+    end
+
+    note_installer_name( File.basename( test_filepath ) )
+  end
+
   def generate_executable_file(tool, context, objects, flags, executable, map='', libraries=[], libpaths=[])
     shell_result = {}
     arg_hash = { :tool => tool,
@@ -503,6 +519,15 @@ class Generator
     # A crash is otherwise reported as a single failure
     else @generator_test_results.create_crash_failure( filename, shell_result, test_cases, message: crash_message( explanation ) || 'Test executable crashed' )
     end
+  end
+
+  def note_installer_name(filename)
+    return unless filename.match?( WINDOWS_INSTALLER_KEYWORDS )
+
+    msg = "Test filename `#{filename}` includes a keyword Windows recognizes as an installer (install, setup, update, patch) " \
+          'when built as a test executable. As a defensive measure, Ceedling generated a manifest beside the test executable to run without ' \
+          'administrator privileges. Your toolchain may already embed a manifest that does the same.'
+    @loginator.log( msg, Verbosity::COMPLAIN )
   end
 
   # The cause of a crash, if a plugin recognizes it (e.g. a sanitizer's finding). Only the

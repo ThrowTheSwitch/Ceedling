@@ -224,6 +224,8 @@ generator:
     - plugin_manager
     - test_runner_manager
     - generator_test_results_backtrace
+    - system_wrapper
+    - file_wrapper
 
 generator_helper:
   compose:

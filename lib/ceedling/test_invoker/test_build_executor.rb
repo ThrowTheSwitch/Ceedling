@@ -319,6 +319,8 @@ class TestBuildExecutor
         state.lock.synchronize { skipped += 1 }
       end
 
+      @generator.generate_test_executable_manifest( executable: testable.executable, test_filepath: testable.filepath )
+
       # Stage 17 relies on this rather than a second `stale?` call -- by the
       # time it runs, `mark_fresh` above (when `stale` was true) has already
       # updated the cache entry to match the executable's current state, so a
