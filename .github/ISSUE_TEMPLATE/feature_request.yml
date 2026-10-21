@@ -1,11 +1,11 @@
 name: Feature request
 description: Propose a new feature or a change to an existing one.
-labels: ["feature request"]
+type: Feature
 body:
   - type: markdown
     attributes:
       value: |
-        Feature requests are welcome. Please search existing issues first and comment on an existing request rather than opening a duplicate.
+        Feature requests are welcome.
   - type: textarea
     id: problem
     attributes:
@@ -16,19 +16,16 @@ body:
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed outcome
-      description: Be precise about the result you want and how it relates to existing features. Include implementation ideas if you have them.
+      label: How to make it better?
+      description: What is the result you want? Include implementation ideas if you have them.
     validations:
       required: true
   - type: textarea
-    id: alternatives
     attributes:
-      label: Alternatives considered
-      description: Workarounds you use today or other approaches you have considered.
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Before submitting
-      options:
-        - label: I searched existing issues and did not find this request.
-          required: true
+      label: Anything else?
+      description: |
+        Links? References? Example project attachment?
+
+        Tip: You can attach images, log files, or zip archives by clicking this area to highlight it and then dragging files in.
+    validations:
+      required: false

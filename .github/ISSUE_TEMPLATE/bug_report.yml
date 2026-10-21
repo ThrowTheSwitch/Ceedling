@@ -1,16 +1,23 @@
 name: Bug report
-description: Report something in Ceedling that does not work as documented.
-labels: ["bug"]
+description: Report something in Ceedling that does not work.
+type: Bug
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a problem. Please check that you are using the latest release and search existing issues first.
+        Thanks for taking the time to report a problem.
   - type: input
     id: version
     attributes:
       label: Ceedling version
       description: Paste the output of `ceedling version` from the command line.
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What went wrong?
+      description: Describe the problem, what you expected instead, and the steps to reproduce it.
     validations:
       required: true
   - type: input
@@ -20,46 +27,21 @@ body:
       description: Operating system, Ruby version, and compiler or toolchain.
       placeholder: e.g. Ubuntu 24.04, Ruby 3.3.6, GCC 13.2
     validations:
-      required: true
-  - type: dropdown
-    id: test_results
-    attributes:
-      label: Were any C test suite results wrong?
-      description: "A test that passes when it should fail, a test that silently does not run, or wrong totals or coverage are especially serious for a test tool. Note: This refers to the test suite Ceedling generates, not its own self-tests."
-      options:
-        - "Not applicable"
-        - "No"
-        - "Yes: a test passed that should have failed"
-        - "Yes: a test did not run or was not reported"
-        - "Yes: totals, reports, or coverage were wrong"
-        - "Not sure"
-    validations:
-      required: true
-  - type: textarea
-    id: description
-    attributes:
-      label: What happened?
-      description: Describe the problem, what you expected instead, and the steps to reproduce it.
-    validations:
-      required: true
+      required: false
   - type: textarea
     id: configuration
     attributes:
       label: Project configuration
-      description: The relevant parts of your project file. `ceedling dumpconfig` at the command line may help here. Please use a markdown code block (triple backticks) to format your configuration excerpt.
+      description: The relevant parts of your project file. `ceedling dumpconfig` at the command line may help here.
       render: yaml
+    validations:
+      required: false
   - type: textarea
-    id: output
     attributes:
-      label: Console output
-      description: Run with `--verbosity=obnoxious` or `--verbosity=debug` and paste the relevant output excerpt.
-      render: shell
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Before submitting
-      options:
-        - label: I searched existing issues and did not find this problem.
-          required: true
-        - label: I reviewed the documentation.
-          required: true
+      label: Anything else?
+      description: |
+        Links? References? Reproducible project attachment?
+
+        Tip: You can attach images, log files, or zip archives by clicking this area to highlight it and then dragging files in.
+    validations:
+      required: false
