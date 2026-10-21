@@ -1,10 +1,11 @@
 # Testing Guide
 
-!!! danger "Test file naming in Windows"
-    **_Test filenames should not include “patch” or “setup”_**.
-    Test filenames become test executables. Windows Installer Detection 
-    Technology (part of UAC) requires administrator privileges to run 
-    executables with this naming.
+!!! warning "Test file naming in Windows"
+    Test filenames become test executables. Windows can require
+    administrator privileges to run an executable whose name contains
+    _install_, _setup_, _update_, or _patch_. Most modern Windows toolchains
+    embed a manifest that avoids this. See
+    [installer-like test filenames on Windows][installer-names].
 
 ## Test Cases & Test Suites
 
@@ -76,5 +77,6 @@
 [frameworks]:         frameworks.md
 [build-directives]:   build-directives.md
 [partials]:           partials/index.md
+[installer-names]:    conventions.md#installer-like-test-filenames-on-windows
 
 <br/><br/>

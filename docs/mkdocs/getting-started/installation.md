@@ -154,14 +154,16 @@ In this usage, the container starts, executes Ceedling, and then ends.
 
 ## Getting Started after installation
 
-1. Certain advanced features of Ceedling rely on `gcc` and `cpp` as
-   preprocessing tools. In most Linux systems, these tools are already available.
-   For Windows environments, we recommend the 
-   [MinGW project](http://www.mingw.org/) (Minimalist GNU for Windows). This 
-   represents an optional, additional setup / installation step to complement 
-   the list above. Upon installing MinGW ensure your system path is updated or 
-   set `:environment` ↳ `:path` in your project configuration (see `:environment`
-   section).
+1. Certain advanced features of Ceedling rely on `gcc` as a preprocessing tool.
+   In most Linux systems, GNU Compiler Collection is already available.
+   For Windows environments, we recommend [MinGW-w64](https://www.mingw-w64.org).
+   MinGW-w64 is GCC and its tools built to produce native Windows executables.
+   The easiest way to install it is through [MSYS2](https://www.msys2.org), a
+   software distribution and package manager for Windows that provides current
+   MinGW-w64 toolchains. This represents an optional, additional setup /
+   installation step to complement the list above. Upon installing MinGW-w64
+   ensure your system path is updated or set `:environment` ↳ `:path` in your
+   project configuration (see `:environment` section).
 
 1. Once Ceedling is installed, you'll want to start to integrate it with new
    and old projects alike. If you wanted to start to work on a new project
