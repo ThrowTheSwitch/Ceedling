@@ -94,8 +94,6 @@
             
             
   
-    This is prerelease documentation for an upcoming Ceedling release.
-  
 
           </div>
           
@@ -108,6 +106,11 @@
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
+  
+    You are not viewing the latest version.
+    <a href="../../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
   
 
             </div>
@@ -2756,6 +2759,8 @@
       
         
       
+        
+      
     
     
     
@@ -3383,6 +3388,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../plugins/sanitize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize (ASan, UBSan & Leaks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3405,7 +3438,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3427,14 +3460,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4822,6 +4855,11 @@ accessible system search path.</p>
 <li><code>:mocks</code> enables only preprocessing of header files that are to be mocked.</li>
 <li><code>:tests</code> enables only preprocessing of your test files.</li>
 </ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Enabling Partials (<code>:project</code> ↳ <code>:use_partials</code>) sets this option to <code>:all</code>,
+whatever value you give it, since Partials require preprocessing.</p>
+</div>
 <p><strong>Default</strong>: <code>:none</code></p>
 <h2 id="test_file_prefix"><code>:test_file_prefix</code></h2>
 <p>Ceedling collects test files by convention from within the test file search

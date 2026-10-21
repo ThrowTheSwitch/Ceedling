@@ -94,8 +94,6 @@
             
             
   
-    This is prerelease documentation for an upcoming Ceedling release.
-  
 
           </div>
           
@@ -108,6 +106,11 @@
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
   
 
             </div>
@@ -2508,6 +2511,8 @@
       
         
       
+        
+      
     
     
     
@@ -3549,6 +3554,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#console-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Console output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#interpreting-results" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3602,6 +3618,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../sanitize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize (ASan, UBSan & Leaks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3627,7 +3671,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3649,14 +3693,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="">
+              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5085,6 +5129,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#console-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Console output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#interpreting-results" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5546,11 +5601,27 @@ files:</p>
 <p>Filenames other than the HTML directory are configurable. See the
 <code>*_artifact_filename</code> settings above.</p>
 <p>These artifacts are included in <code>ceedling clean</code> targets.</p>
-<h2 id="interpreting-results">Interpreting results</h2>
-<p>Whole project analysis prints a per-severity tally after it runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>Cppcheck findings: 1 error, 2 information, 2 style
+<h2 id="console-output">Console output</h2>
+<p>These excerpts come from real runs. Build progress lines are left out.</p>
+<p>Each report logs a line as it is created. With an XML report, which
+<a href="#fail_build"><code>:fail_build:</code></a> also implies, a tally of findings by severity
+follows:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>Creating Cppcheck text report...
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>Creating Cppcheck xml report...
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>Cppcheck findings: 1 error, 2 information, 1 style
 </code></pre></div>
-<p>Cppcheck assigns every finding one of six severities.</p>
+<p>A run without findings logs <code>Cppcheck found no issues.</code> in place of the tally.</p>
+<p>With <code>:fail_build:</code> enabled, findings of a listed severity fail the build:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>❌ BUILD FAILURE SUMMARY
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a> • [CPPCHECK] Cppcheck found 1 finding matching :cppcheck ↳ :fail_build_severities (1 error). See the report in build/artifacts/cppcheck.
+</code></pre></div>
+<p>With no report configured, Cppcheck does not run:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>⚠️ WARNING: No Cppcheck reports are configured, so no analysis ran.
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>Add a report to :cppcheck ↳ :reports, or enable :cppcheck ↳ :fail_build.
+</code></pre></div>
+<h2 id="interpreting-results">Interpreting results</h2>
+<p>The tally in the <a href="#console-output">console output</a> counts findings by severity.
+Cppcheck assigns every finding one of six severities.</p>
 <table>
 <thead>
 <tr>
@@ -5589,7 +5660,7 @@ files:</p>
 <a href="#fail_build_severities"><code>:fail_build_severities:</code></a>.</p>
 <p>For finding-by-finding detail, open a configured report. The text report is
 easiest to read at the terminal:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>$<span class="w"> </span>cat<span class="w"> </span>build/artifacts/cppcheck/CppcheckReport.txt
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>$<span class="w"> </span>cat<span class="w"> </span>build/artifacts/cppcheck/CppcheckReport.txt
 </code></pre></div>
 <p>See <a href="https://cppcheck.sourceforge.io/manual.pdf">Cppcheck's manual</a> for what each check means and how to
 suppress findings you have reviewed.</p>

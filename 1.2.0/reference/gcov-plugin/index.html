@@ -94,8 +94,6 @@
             
             
   
-    This is prerelease documentation for an upcoming Ceedling release.
-  
 
           </div>
           
@@ -108,6 +106,11 @@
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
   
 
             </div>
@@ -2506,6 +2509,8 @@
       
         
       
+        
+      
     
     
     
@@ -3133,6 +3138,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../plugins/sanitize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize (ASan, UBSan & Leaks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3155,7 +3188,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3177,14 +3210,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4217,6 +4250,61 @@
     <span class="md-ellipsis">
       
         :json_artifact_filename
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jacoco_pretty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :jacoco_pretty
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jacoco_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :jacoco_artifact_filename
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lcov_comment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :lcov_comment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lcov_test_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :lcov_test_name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lcov_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :lcov_artifact_filename
       
     </span>
   </a>
@@ -5497,6 +5585,61 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#jacoco_pretty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :jacoco_pretty
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jacoco_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :jacoco_artifact_filename
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lcov_comment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :lcov_comment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lcov_test_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :lcov_test_name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lcov_artifact_filename" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :lcov_artifact_filename
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#text_artifact_filename" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6145,6 +6288,25 @@ HTML report. Must be ≥ <code>:html_medium_threshold</code>. (<code>gcovr --htm
 <hr />
 <h3 id="json_artifact_filename"><code>:json_artifact_filename</code></h3>
 <p>Override the default JSON report output filename.</p>
+<hr />
+<h3 id="jacoco_pretty"><code>:jacoco_pretty</code></h3>
+<p>Pretty-print the JaCoCo XML report. Requires <code>gcovr</code> 7.0 or higher. (<code>gcovr --jacoco-pretty</code>)</p>
+<p><strong>Default:</strong> <code>FALSE</code></p>
+<hr />
+<h3 id="jacoco_artifact_filename"><code>:jacoco_artifact_filename</code></h3>
+<p>Override the default JaCoCo XML report output filename. Requires <code>gcovr</code> 7.0 or higher.</p>
+<p><strong>Default:</strong> <code>GcovCoverageJaCoCo.xml</code></p>
+<hr />
+<h3 id="lcov_comment"><code>:lcov_comment</code></h3>
+<p>Set a comment in the LCOV report. Requires <code>gcovr</code> 7.0 or higher. (<code>gcovr --lcov-comment</code>)</p>
+<hr />
+<h3 id="lcov_test_name"><code>:lcov_test_name</code></h3>
+<p>Set the test name recorded in the LCOV report. Requires <code>gcovr</code> 7.0 or higher.
+(<code>gcovr --lcov-test-name</code>)</p>
+<hr />
+<h3 id="lcov_artifact_filename"><code>:lcov_artifact_filename</code></h3>
+<p>Override the default LCOV report output filename. Requires <code>gcovr</code> 7.0 or higher.</p>
+<p><strong>Default:</strong> <code>GcovCoverage.lcov</code></p>
 <hr />
 <h3 id="text_artifact_filename"><code>:text_artifact_filename</code></h3>
 <p>Override the default text report output filename.</p>

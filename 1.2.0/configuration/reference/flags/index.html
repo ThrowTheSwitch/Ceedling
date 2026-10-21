@@ -94,8 +94,6 @@
             
             
   
-    This is prerelease documentation for an upcoming Ceedling release.
-  
 
           </div>
           
@@ -108,6 +106,11 @@
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
+  
+    You are not viewing the latest version.
+    <a href="../../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
   
 
             </div>
@@ -2712,6 +2715,8 @@
       
         
       
+        
+      
     
     
     
@@ -3339,6 +3344,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../plugins/sanitize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize (ASan, UBSan & Leaks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3361,7 +3394,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3383,14 +3416,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4731,6 +4764,14 @@ to flags resolved under <code>:compile</code>.</p>
 want no additional flags for preprocessing regardless of test compilation
 flags, specify an empty list <code>[]</code> for the relevant matcher (or for the
 whole <code>:preprocess</code> section, if using the simple list format).</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Keep line markers in preprocessor output</p>
+<p>Ceedling reads the line markers in preprocessor output to find 
+<code>#include</code>s, mockable functions, and test cases. With test preprocessing 
+enabled, Ceedling refuses to start if <code>-P</code> or <code>--no-line-commands</code> 
+appears in <code>:preprocess</code> flags. The same holds for <code>:compile</code> flags, 
+which preprocessing uses wherever no <code>:preprocess</code> flags apply.</p>
 </div>
 <p><strong>Default</strong>: Same flags as that same file resolved to for <code>:compile</code>, unless specified</p>
 <h2 id="flags-test-link"><code>:flags</code> ↳ <code>:test</code> ↳ <code>:link</code></h2>

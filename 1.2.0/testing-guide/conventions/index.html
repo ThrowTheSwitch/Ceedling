@@ -94,8 +94,6 @@
             
             
   
-    This is prerelease documentation for an upcoming Ceedling release.
-  
 
           </div>
           
@@ -108,6 +106,11 @@
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
   
 
             </div>
@@ -2921,6 +2924,8 @@
       
         
       
+        
+      
     
     
     
@@ -3548,6 +3553,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../plugins/sanitize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize (ASan, UBSan & Leaks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3570,7 +3603,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3592,14 +3625,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5094,12 +5127,12 @@ meant.</p>
   to provide a path to distinguish source files of the same name to be 
   compiled and linked with a test executable.</li>
 </ul>
-<div class="admonition warning">
-<p class="admonition-title">One test file cannot mock two same-named headers</p>
-<p>Path information distinguishes which header a mock is generated <em>from</em>, but a
-single test file cannot presently mock two headers that share a filename 
-because of a (temporary) CMock limitation. See
-<a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md">Known Issues</a>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Mocking two same-named headers in one test file</p>
+<p>Include each mock through its folder, as in <code>#include "drivers/uart/mock_config.h"</code>
+and <code>#include "drivers/spi/mock_config.h"</code>. With
+<a href="../../configuration/reference/cmock/#mock_name_include_folder"><code>:cmock</code> ↳ <code>:mock_name_include_folder</code></a>,
+enabled by default, each mock is named by that folder, and the two do not collide.</p>
 </div>
 <p><code>TEST_SOURCE_FILE()</code> also takes precedence over the header/source correspondence
 convention above. If a test both <code>#include</code>s a header and separately names a
@@ -5231,6 +5264,38 @@ For example, <code>test_some_super_functionality.c</code>, <code>TestYourSourceF
 or <code>testing_MyAwesomeCode.C</code> could each be valid test file
 names. Note, however, that Ceedling can recognize only one test
 file naming convention per project.</p>
+<h4 id="installer-like-test-filenames-on-windows">Installer-like test filenames on Windows</h4>
+<p>On Windows, Ceedling writes a manifest beside each test executable. It lets a
+test executable run whatever its name.</p>
+<p>A test executable is named after its test file. Windows treats an executable
+whose name contains <em>install</em>, <em>setup</em>, <em>update</em>, or <em>patch</em> as an installer.
+The Installer Detection feature of User Account Control (UAC) then demands
+administrator privileges to run it. A test file such as <code>test_setup_parser.c</code>
+would otherwise build a test executable Windows will not run.</p>
+<p>The manifest, <code>&lt;test executable&gt;.manifest</code>, asks Windows to run the executable
+with your own privileges. That turns Installer Detection off for it. When a
+test filename contains one of these words, Ceedling logs a warning noting that
+it generated the manifest.</p>
+<p>Windows ignores a manifest file when the executable already embeds a manifest
+of its own. Whether yours does depends on your toolchain.</p>
+<ul>
+<li><strong>MinGW-w64 GCC from <a href="https://www.msys2.org">MSYS2</a></strong> links a default manifest into every executable
+  when its <code>windows-default-manifest</code> package is installed. That manifest
+  already asks Windows to run the executable with your own privileges, so
+  these names cause no trouble, and the manifest file is unused. This GCC is
+  also the one RubyInstaller’s DevKit provides.</li>
+<li><strong>Other MinGW-w64 distributions</strong> may or may not include that default
+  manifest. GCC links it only when it finds <code>default-manifest.o</code> among its
+  libraries. Without it, the manifest file Ceedling writes is what lets these
+  test executables run.</li>
+<li><strong>The original MinGW</strong> (mingw.org) is believed to embed no manifest, so it
+  relies on the manifest file.</li>
+</ul>
+<p>To see whether an executable embeds a manifest, search it for the text
+<code>requestedExecutionLevel</code>. A match means Windows uses the embedded manifest.</p>
+<p>Before 1.2.0, Ceedling wrote no manifest. With a toolchain that embeds none,
+test files with these words in their names could not be run on Windows without
+administrator privileges.</p>
 <h3 id="source-mock-files-to-compile-and-link">Source &amp; mock files to compile and link</h3>
 <p>Ceedling knows what files to compile and link into each individual
 test executable by way of the <code>#include</code> list contained in each
@@ -5248,9 +5313,9 @@ test file and optional test directive macros.</p>
 </ol>
 <p>A mock is generated into the directory mirroring the header it came from, so two
 same-named headers in different directories produce two mocks in different
-directories. Even so, a single test file cannot mock both because of a temporary
-CMock limitation that will cause duplicated symbol names and missing defintions.
-Mock either header alone, or split the two across separate test files.</p>
+directories. A single test file can mock both when it includes each mock through
+its folder (e.g. <code>#include "folder/mock_foo.h"</code>), since each mock is then named 
+by that folder.</p>
 <p>Sometimes the source file you need to add to your test executable has
 no corresponding header file — e.g. <code>file_abc.h</code> contains symbols 
 present in <code>file_xyz.c</code>. In these cases, you can use the test 
@@ -5311,6 +5376,10 @@ be done with simple text scanning.</p>
 directives or include directives with macros as targets, preprocessing is required.
 Ceedling uses various passes of preprocessor modes to successfully extract
 <code>#include</code> directives.</p>
+<p>A test file’s <code>#include</code> directives are extracted with the preprocessor only when
+test files are preprocessed, with <code>:use_test_preprocessor</code> set to <code>:tests</code> or <code>:all</code>.
+With <code>:mocks</code>, only mockable headers are preprocessed, and a test file’s
+<code>#include</code> directives come from text scanning.</p>
 <h3 id="preprocessing-for-tests-and-mocks">Preprocessing for tests and mocks</h3>
 <p>If your test files rely on macros and <code>#ifdef</code> conditionals used in certain
 ways (see examples below), there’s a chance that Ceedling will break on trying
@@ -5343,17 +5412,18 @@ your configuration setting and logs the setting update.</p>
 features (such as in the preceding sections).</p>
 <p>Older versions of <code>gcc</code> or <code>clang</code> standins may not support certain preprocessing
 features Ceedling requires. Ceedling probes for those features; if they are not 
-found then Ceedling falls back to a simpler, internal 
-<a href="../../configuration/reference/test-build/#preprocess_force_fallback">text-scanning fallback preprocessing</a>.</p>
-<p>This simpler preprocessing mode within Ceedling is simply not as capable as full 
-preprocessing, but it can often handle the most common preprocessing needs (i.e. 
-condition compilation). Ceedling does what it can to find and log issues related
-to inadequate preprocessing before you get to mysterious compilation errors.</p>
+found then Ceedling falls back to a simpler, best-effort
+<a href="../../configuration/reference/test-build/#preprocess_force_fallback">fallback preprocessing</a>.</p>
+<p>Fallback preprocessing is a best effort with no guarantees. It is not as capable 
+as full preprocessing, but it can usually handle the most common preprocessing 
+needs (i.e. conditional compilation). Ceedling does what it can to find and log 
+issues related to inadequate preprocessing before you get to mysterious 
+compilation errors.</p>
 <div class="admonition tip">
 <p class="admonition-title">Fallback preprocessing for faster test builds</p>
 <p>Ceedling’s internal <a href="../../configuration/reference/test-build/#preprocess_force_fallback">fallback preprocessing mode can be forced</a>,
 and, for <strong><em>some</em></strong> projects this can be a shortcut to running advanced 
-Ceedling features such as Partials with much faster builds.</p>
+Ceedling features such as Partials with faster builds.</p>
 <p><strong><em>If using Partials, there’s a good chance your code is too complex for fallback preprocessing.</em></strong></p>
 </div>
 <h3 id="limitations-gotchas">Limitations &amp; gotchas</h3>
@@ -5455,18 +5525,46 @@ Ceedling’s preprocessing abilities provide that expansion.</p>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">   </span><span class="n">TEST_ASSERT_EQUALS</span><span class="p">(...);</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">}</span>
 </code></pre></div></p>
+<h4 id="where-the-macros-deciding-an-include-come-from">Where the macros deciding an <code>#include</code> come from</h4>
+<p>With test preprocessing, a conditional <code>#include</code> (item 2 above) is decided by the same
+macros your compiler will see, wherever they are defined. A macro may come from your
+project’s <code>:defines</code>, from the test file itself, or from a header the test file includes.
+That header can even be one the test file mocks, since a mock includes its real header.</p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// config.h</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="cp">#define FEATURE_X_ENABLED</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// test_feature.c</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;mock_config.h&quot;</span><span class="c1">     // The mock includes config.h, defining FEATURE_X_ENABLED</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="cp">#ifdef FEATURE_X_ENABLED</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;mock_feature_x.h&quot;</span><span class="c1">  // Ceedling finds and generates this mock</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="cp">#endif</span>
+</code></pre></div></p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>One combination is out of reach. An <code>#include</code> whose target is a macro (item 1
+above) cannot name a mock when only a header defines that macro. Define the macro
+under <code>:defines</code> ↳ <code>:test</code> instead, so the test file sees it directly.</p>
+</div>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// config.h</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="cp">#define FEATURE_MOCK &quot;mock_feature_x.h&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// test_feature.c</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;config.h&quot;</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="cp">#include FEATURE_MOCK  </span><span class="c1">// Ceedling cannot find this mock</span>
+</code></pre></div></p>
 <h4 id="examples-of-when-test-preprocessing-is-not-needed-for-test-files">Examples of when test preprocessing is <strong><em>not</em></strong> needed for test files</h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// Code inside a test case is simply code that your toolchain will expand and build as you desire</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1">// You can manage your compile time symbols with the :defines section of your project configuration file</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kt">void</span><span class="w"> </span><span class="nf">test_some_test_case</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="cp">#ifdef BUILD_VARIANT_A</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">   </span><span class="n">TEST_ASSERT_EQUALS</span><span class="p">(...);</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="cp">#endif</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="cp">#ifdef BUILD_VARIANT_B</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">   </span><span class="n">TEST_ASSERT_EQUALS</span><span class="p">(...);</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="cp">#endif</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1">// Code inside a test case is simply code that your toolchain will expand and build as you desire</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1">// You can manage your compile time symbols with the :defines section of your project configuration file</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kt">void</span><span class="w"> </span><span class="nf">test_some_test_case</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="cp">#ifdef BUILD_VARIANT_A</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">   </span><span class="n">TEST_ASSERT_EQUALS</span><span class="p">(...);</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="cp">#endif</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="cp">#ifdef BUILD_VARIANT_B</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="w">   </span><span class="n">TEST_ASSERT_EQUALS</span><span class="p">(...);</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="cp">#endif</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="p">}</span>
 </code></pre></div>
 <h3 id="header-file-preprocessing">Header file preprocessing</h3>
 <p>When preprocessing is enabled for mocking, Ceedling will expand preprocessor 
@@ -5512,16 +5610,16 @@ files so CMock can parse them.</p>
   in a header file that is only available in your test build search paths
   and include it in your test file.
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Header file scanning will see this function signature but mistakenly mock the name of the macro</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kt">void</span><span class="w"> </span><span class="nf">FUNCTION_SIGNATURE_MAGIC</span><span class="p">(...);</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1">// Header file scanning will see this function signature but mistakenly mock the name of the macro</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kt">void</span><span class="w"> </span><span class="nf">FUNCTION_SIGNATURE_MAGIC</span><span class="p">(...);</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// Header file scanning will always see this function signature</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="cp">#ifdef BUILD_VARIANT_A</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">someFunction</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="cp">#endif</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1">// Header file scanning will always see this function signature</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="cp">#ifdef BUILD_VARIANT_A</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">someFunction</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="cp">#endif</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1">// Header file scanning will either fail for this function signature or extract erroneous type names</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">INLINE_MAGIC</span><span class="w"> </span><span class="n">RETURN_TYPE_MAGIC</span><span class="w"> </span><span class="n">someFunction</span><span class="p">(</span><span class="n">PARAMETER_MAGIC</span><span class="p">);</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1">// Header file scanning will either fail for this function signature or extract erroneous type names</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">INLINE_MAGIC</span><span class="w"> </span><span class="n">RETURN_TYPE_MAGIC</span><span class="w"> </span><span class="n">someFunction</span><span class="p">(</span><span class="n">PARAMETER_MAGIC</span><span class="p">);</span>
 </code></pre></div>
 <h2 id="duration-reporting">Duration reporting</h2>
 <h3 id="logged-run-times">Logged run times</h3>
@@ -5529,11 +5627,11 @@ files so CMock can parse them.</p>
 <p>It first logs the set up time necessary to process your project file, parse code
 files, build an internal representation of your project, etc. This duration does
 not capture the time necessary to load the Ruby runtime itself.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Ceedling set up completed in 223 milliseconds
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>Ceedling set up completed in 223 milliseconds
 </code></pre></div>
 <p>Secondly, each Ceedling run also logs the time necessary to run all the tasks 
 you specify at the command line.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Ceedling operations completed in 1.03 seconds
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Ceedling operations completed in 1.03 seconds
 </code></pre></div>
 <h3 id="test-suite-executable-durations">Test suite &amp; executable durations</h3>
 <p>A test suite comprises one or more Unity test executables (see 
@@ -5565,9 +5663,9 @@ compilation option. Add <code>UNITY_INCLUDE_EXEC_TIME</code> to Unity’s compil
 symbols (<code>:unity</code> ↳ <code>:defines</code>) in your Ceedling project file (see example
 below). Unity test case durations as reported by Ceedling default to 0 if the
 compilation option is not set.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nt">:unity</span><span class="p">:</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nt">:defines</span><span class="p">:</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">UNITY_INCLUDE_EXEC_TIME</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="nt">:unity</span><span class="p">:</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span><span class="nt">:defines</span><span class="p">:</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">UNITY_INCLUDE_EXEC_TIME</span>
 </code></pre></div>
 <p><em>NOTE:</em> Most test cases are quite short, and most computers are quite fast. As
  such, Unity test case execution time is often reported as 0 milliseconds as
@@ -5636,9 +5734,9 @@ no problem-o. You may be of the mind that running a test suite to
 completion should yield a successful exit code (even if tests failed).
 Add the following to your project file to force Ceedling to finish a 
 build with an exit code of 0 even upon test case failures.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Ceedling terminates with happy `exit(0)` even if test cases fail</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nt">:test_build</span><span class="p">:</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">   </span><span class="nt">:graceful_fail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Ceedling terminates with happy `exit(0)` even if test cases fail</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nt">:test_build</span><span class="p">:</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">   </span><span class="nt">:graceful_fail</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
 <p>If you use the option for graceful failures in CI, you'll want to
 rig up some kind of logging monitor that scans Ceedling’s test

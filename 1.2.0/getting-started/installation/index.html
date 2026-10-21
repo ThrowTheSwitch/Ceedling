@@ -94,8 +94,6 @@
             
             
   
-    This is prerelease documentation for an upcoming Ceedling release.
-  
 
           </div>
           
@@ -108,6 +106,11 @@
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
+  
+    You are not viewing the latest version.
+    <a href="../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
   
 
             </div>
@@ -2650,6 +2653,8 @@
       
         
       
+        
+      
     
     
     
@@ -3277,6 +3282,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../plugins/sanitize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize (ASan, UBSan & Leaks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3299,7 +3332,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3321,14 +3354,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4630,14 +4663,16 @@ No problem.</p>
 <h2 id="getting-started-after-installation">Getting Started after installation</h2>
 <ol>
 <li>
-<p>Certain advanced features of Ceedling rely on <code>gcc</code> and <code>cpp</code> as
-   preprocessing tools. In most Linux systems, these tools are already available.
-   For Windows environments, we recommend the 
-   <a href="http://www.mingw.org/">MinGW project</a> (Minimalist GNU for Windows). This 
-   represents an optional, additional setup / installation step to complement 
-   the list above. Upon installing MinGW ensure your system path is updated or 
-   set <code>:environment</code> ↳ <code>:path</code> in your project configuration (see <code>:environment</code>
-   section).</p>
+<p>Certain advanced features of Ceedling rely on <code>gcc</code> as a preprocessing tool.
+   In most Linux systems, the GNU Compiler Collection is already available.
+   For Windows environments, we recommend <a href="https://www.mingw-w64.org">MinGW-w64</a>.
+   MinGW-w64 is GCC and its tools built to produce native Windows executables.
+   The easiest way to install it is through <a href="https://www.msys2.org">MSYS2</a>, a
+   software distribution and package manager for Windows that provides current
+   MinGW-w64 toolchains. This represents an optional, additional setup /
+   installation step to complement the list above. Upon installing MinGW-w64
+   ensure your system path is updated or set <code>:environment</code> ↳ <code>:path</code> in your
+   project configuration (see <code>:environment</code> section).</p>
 </li>
 <li>
 <p>Once Ceedling is installed, you'll want to start to integrate it with new

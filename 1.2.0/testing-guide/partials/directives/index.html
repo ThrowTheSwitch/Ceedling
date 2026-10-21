@@ -94,8 +94,6 @@
             
             
   
-    This is prerelease documentation for an upcoming Ceedling release.
-  
 
           </div>
           
@@ -108,6 +106,11 @@
           <aside class="md-banner md-banner--warning">
             <div class="md-banner__inner md-grid md-typeset">
               
+  
+    You are not viewing the latest version.
+    <a href="../../../..">
+      <strong>Click here to go to latest.</strong>
+    </a>
   
 
             </div>
@@ -2724,6 +2727,8 @@
       
         
       
+        
+      
     
     
     
@@ -3351,6 +3356,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../plugins/sanitize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sanitize (ASan, UBSan & Leaks)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -3373,7 +3406,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_13" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -3395,14 +3428,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6_12" id="__nav_6_12_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6_13" id="__nav_6_13_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6_12">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4782,15 +4815,10 @@ therefore generate two distinct files rather than overwriting one another.</p>
 </tr>
 </tbody>
 </table>
-<div class="admonition warning">
-<p class="admonition-title">Two same-named modules cannot both be mocked in one test file</p>
-<p><code>TEST_PARTIAL_*_MODULE_AT()</code> works for two modules sharing a basename where each
-is tested through its own Partial. <code>MOCK_PARTIAL_*_MODULE_AT()</code> does not because
-of a temporary limitation of CMock that causes duplicate symbols and missing
-definitions.</p>
-<p>Mocking either module on its own works, and so does Partials testing both 
-together. To mock both Partials, split them across separate test files.
-See <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/KnownIssues.md">Known Issues</a>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Two same-named modules in one test file</p>
+<p><code>TEST_PARTIAL_*_MODULE_AT()</code> and <code>MOCK_PARTIAL_*_MODULE_AT()</code> both work for two
+modules sharing a basename.</p>
 </div>
 <p>A <code>_CONFIG_AT</code> macro must name the same directory as the <code>_MODULE_AT</code> macro it
 refines. The directory and module together identify which Partial a function
