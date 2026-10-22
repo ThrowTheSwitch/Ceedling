@@ -20,6 +20,29 @@ The workflows call one another in two chains.
 
 Feature branches get CI only through their pull request. `ci.yml` deliberately triggers on push only for `master` and `next_version`, the branches that are never themselves the source of a pull request. This avoids two identical runs for one commit. A `concurrency` group keyed on the commit SHA cancels any duplicate run that still occurs. Draft pull requests skip every job until they are marked ready for review.
 
+## Required check and documentation-only changes
+
+The branch ruleset on `master` and `next_version` requires one status check, **CI Gate**. It is the last job in `ci.yml`, and it reduces every other job’s result to one verdict.
+
+A change that touches only documentation skips the test suites, lint, and the gem build. **Classify Changes**, the first job, compares the change with its base: the pull request’s base commit, or the previous head for a push. It counts a change as documentation-only when every changed path is one of these:
+
+- anything under `docs/`;
+- anything under `.github/ISSUE_TEMPLATE/`;
+- Markdown directly under `.github/`, such as the pull request template and this file;
+- Markdown at the repository root, such as `README.md`.
+
+Anything else counts as code, including workflows. A manual run, or a push whose previous head is unknown, also counts as code.
+
+The heavy jobs skip through their `if:` conditions, never by skipping the workflow. GitHub reports a job skipped by its condition as successful. A workflow skipped by a `paths:` filter or `[skip ci]` never reports at all, which leaves the required check pending and blocks the merge. That is why a documentation-only commit should not carry `[skip ci]`.
+
+CI Gate runs after everything else, whatever happened before it.
+
+- It fails if any job failed or was cancelled.
+- It fails if a code change skipped a test or build job. Without this, a skipped job would count as a pass.
+- It passes a documentation-only change with those jobs skipped.
+
+The documentation bundle still builds for a documentation-only change, because the gem ships it.
+
 ## CI summary and pull request comment
 
 Every CI run renders one markdown summary in its GitHub page. On a pull request that summary becomes a single comment, updated in place on every later run. It reads top down.
@@ -39,6 +62,10 @@ Posting takes two workflows because of fork permissions. A pull request from a f
 ## `ci.yml` jobs
 
 All test jobs run with `fail-fast: false`, so one failing leg never hides another.
+
+### Classify Changes
+
+Decides whether the change touches code. See [Required check and documentation-only changes](#required-check-and-documentation-only-changes). Every test, lint, and gem build job waits on it.
 
 ### Generate Local Docs Bundle
 
@@ -97,7 +124,7 @@ This job runs once every test job passes. It builds the gem with the documentati
 
 ### CI Summary
 
-This job runs after every other job, including failed ones, but not in a cancelled run (`!cancelled()`).
+This job runs after every other job, including failed ones, but not in a cancelled run (`!cancelled()`). It runs only for code changes.
 
 1. Download every leg’s results.
 2. Fetch the run’s job list from the GitHub API.
@@ -107,6 +134,10 @@ This job runs after every other job, including failed ones, but not in a cancell
 6. On a push, upload `ci-baseline`.
 
 It needs `actions: read` and nothing more.
+
+### CI Gate
+
+The required status check. It runs last, even after failures, and fails the run for any failed or cancelled job, or for a code change that skipped a test or build job. CI Summary is not among its inputs, because the summary reports results rather than producing them.
 
 ## Special matrix legs
 
