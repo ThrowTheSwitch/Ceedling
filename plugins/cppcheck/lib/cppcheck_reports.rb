@@ -61,8 +61,12 @@ class CppcheckHtmlReport < CppcheckReport
   def initialize(system_objects, config, xml_artifact_filepath)
     super(system_objects, config)
 
+    # respect_optional honors this tool's own `:optional => true` default. Validating
+    # without it contradicted that default and turned a missing cppcheck-htmlreport
+    # into a hard failure.
     @tool_validator.validate(
       tool: TOOLS_CPPCHECK_HTMLREPORT,
+      respect_optional: true,
       boom: true
     )
 
@@ -136,7 +140,7 @@ class CppcheckXmlReport < CppcheckReport
       '.xml'
     )
 
-    @xml_version = @config[:xml_report_version] || 3
+    @xml_version = @config[:xml_report_version] || 2
     validate_version(@xml_version)
   end
 

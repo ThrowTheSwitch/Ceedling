@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'unicode/display_width'
+require 'ceedling/constants'
 
 ##
 # Pretifies reports
@@ -128,9 +129,24 @@ class Reportinator
     # Sanitze -- ensure it's a string and strip any filename extension
     _module_name = module_name.to_s().ext('')
 
-    # If filename is the module name, don't add the module label
-    label = (File.basename(filename).ext('') == _module_name) ? '' : "#{_module_name}::"
+    # If filename is the module name, don't add the module label. A module name
+    # mirroring its file's path below a configured root (e.g. `adc/TestFoo`) is
+    # still the same module as far as this comparison is concerned, so only its
+    # own last segment is weighed against filename's bare basename.
+    label = (File.basename(filename).ext('') == File.basename(_module_name)) ? '' : "#{_module_name}::"
     return generate_progress("#{operation} #{label}#{filename}")
+  end
+
+  # States, in one line, how many targets a build step left untouched because
+  # nothing about them needed attention this run -- shared by every build stage
+  # that skips individual targets (test and release alike), so this wording and
+  # its singular/plural handling live in exactly one place. Returns nil when
+  # nothing was skipped, so a full rebuild's output isn't cluttered with zero
+  # counts; callers only log when a message comes back.
+  def generate_skip_summary(task:, count:, noun:, reason: "nothing changed")
+    return nil if count == 0
+    singular_noun = noun.sub(/s$/, '')
+    generate_progress( "Skipping #{task} for #{count} #{count == 1 ? singular_noun : noun} (#{reason})" )
   end
 
   def generate_config_walk(keys, depth=0)

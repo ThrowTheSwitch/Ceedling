@@ -23,6 +23,12 @@
 # The extracted section does NOT include the version header line itself —
 # only the body content beneath it is written to <output_path>.
 #
+# Trailing blank lines and trailing separator tokens (e.g. "---", "<br/>")
+# left over at the end of a section (from the horizontal rule that
+# separates sections in the changelog) are trimmed from the tail of the
+# extracted content. Such tokens are left untouched if they appear earlier
+# in the body, followed by more content.
+#
 # Local testing examples:
 #   bash extract_changelog.sh 1.0.1 ../../docs/Changelog.md /tmp/out.md && cat /tmp/out.md
 #   bash extract_changelog.sh 9.9.9 ../../docs/Changelog.md /tmp/out.md; echo "exit: $?"
@@ -48,6 +54,37 @@ awk -v ver="${SEMVER}" '
   found && /^# \[/  { exit }
   found             { print }
 ' "$CHANGELOG" > "$OUTPUT_FILE"
+
+# Phase 2: Trim trailing blank lines and separator tokens (---, <br/>, etc.)
+# left over at the tail of the extracted section, e.g. the blank-line +
+# "---" + blank-line horizontal rule that precedes the next version header
+# in the changelog. Separators that appear mid-section (followed by more
+# content) are left untouched.
+#
+# Add new trailing tokens to this pattern as needed.
+TRAILING_TOKEN_PATTERN='^[[:space:]]*(---|<br/?>)[[:space:]]*$'
+
+lines=()
+while IFS= read -r line || [ -n "$line" ]; do
+  lines+=("$line")
+done < "$OUTPUT_FILE"
+
+last=$(( ${#lines[@]} - 1 ))
+while [ "$last" -ge 0 ]; do
+  line="${lines[$last]}"
+  blank="${line//[[:space:]]/}"
+  if [ -z "$blank" ] || [[ "$line" =~ $TRAILING_TOKEN_PATTERN ]]; then
+    last=$(( last - 1 ))
+  else
+    break
+  fi
+done
+
+if [ "$last" -ge 0 ]; then
+  printf '%s\n' "${lines[@]:0:$((last + 1))}" > "$OUTPUT_FILE"
+else
+  : > "$OUTPUT_FILE"
+fi
 
 # -s: file exists AND is non-empty
 # (handles the edge case where the version header is present but has no content beneath it)

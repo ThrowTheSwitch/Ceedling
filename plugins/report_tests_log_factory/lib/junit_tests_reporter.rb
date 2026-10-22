@@ -9,29 +9,33 @@ require 'tests_reporter'
 
 class JunitTestsReporter < TestsReporter
 
+  # :file_line_anchor writes a located test's file attribute as path#line, a form some
+  # tools follow to the line
   def setup()
     super( default_filename: 'junit_tests_report.xml' )
+    @file_line_anchor = fetch_config_value( :file_line_anchor ) == true
   end
 
-  def header(stream:, name:, results:, duration_s:)
+  # Each results category and the outcome its tests carry in a suite
+  CATEGORIES = { successes: :success, failures: :failed, ignores: :ignored }.freeze
+
+  def header(stream:, name:, results:, **)
     stream.puts( '<?xml version="1.0" encoding="utf-8" ?>' )
     stream.puts(
-      '<testsuites name="%s" '     % name +
+      '<testsuites name="%s" '     % xml_escape( name ) +
                   'tests="%d" '    % results[:counts][:total] +
                   'failures="%d" ' % results[:counts][:failed] +
                   'time="%.3f">'   % results[:total_time]
     )
   end
 
-  def body(stream:, name:, results:, duration_s:)
-    suites = reorganize_results( results )
-
-    suites.each do |suite|
+  def body(stream:, results:, **)
+    reorganize_results( results ).each do |suite|
       write_suite( suite, stream )
     end
   end
 
-  def footer(stream:, name:, results:, duration_s:)
+  def footer(stream:, **)
     stream.puts( '</testsuites>' )
   end
 
@@ -39,160 +43,114 @@ class JunitTestsReporter < TestsReporter
 
   private
 
-  # Reorganize test results by test executable instead of by result category
-  # Original success structure: successeses { file => test_cases[] }
-  # Reorganized test results:   file => test_cases[{... result: :success}]
-  def reorganize_results( results )
-    # Create structure of hash with default values
-    suites = Hash.new() do |h,k|
-      h[k] = {
-        collection: [],
-        total:   0,
-        success: 0,
-        failed:  0,
-        ignored: 0,
-        errors:  0,
-        time:    0,
-        stdout:  []
-      }
+  # Regroups results by test file, the unit a JUnit testsuite describes, instead of by
+  # outcome. Every test carries its outcome, and a suite's counts come from its tests.
+  # Results are read, never altered, since every configured reporter shares them.
+  def reorganize_results(results)
+    suites = Hash.new { |hash, name| hash[name] = { name: name, collection: [], time: 0, stdout: [] } }
+
+    CATEGORIES.each do |category, outcome|
+      results[category].each { |result| add_tests( suites, result, results[:times], outcome ) }
     end
 
-    results[:successes].each do |result|
-      # Extract filepath
-      source = result[:source][:file]
+    results[:stdout].each { |result| add_stdout( suites, result ) }
 
-      # Filepath minus file extension
-      name = source.sub( /#{File.extname(source)}$/, '' )
-
-      # Sanitize: Ensure no nil elements
-      result[:collection].compact!
-
-      # Sanitize: Ensure no empty test result hashes
-      result[:collection].select! {|test| !test.empty?() }
-
-      # Add success test cases to full test case collection and update statistics
-      suites[name][:collection] += result[:collection].map{|test| test.merge(result: :success)}
-      suites[name][:total] += result[:collection].length
-      suites[name][:success] += result[:collection].length
-      suites[name][:time] = results[:times][source]
-    end
-
-    results[:failures].each do |result|
-      # Extract filepath
-      source = result[:source][:file]
-
-      # Filepath minus file extension
-      name = source.sub( /#{File.extname(source)}$/, '' )
-
-      # Sanitize: Ensure no nil elements
-      result[:collection].compact!
-
-      # Sanitize: Ensure no empty test result hashes
-      result[:collection].select! {|test| !test.empty?() }
-
-      # Add failure test cases to full test case collection and update statistics
-      suites[name][:collection] += result[:collection].map{|test| test.merge(result: :failed)}
-      suites[name][:total] += result[:collection].length
-      suites[name][:failed] += result[:collection].length
-      suites[name][:time] = results[:times][source]
-    end
-
-    results[:ignores].each do |result|
-      # Extract filepath
-      source = result[:source][:file]
-
-      # Filepath minus file extension
-      name = source.sub( /#{File.extname(source)}$/, '' )
-
-      # Sanitize: Ensure no nil elements
-      result[:collection].compact!
-
-      # Sanitize: Ensure no empty test result hashes
-      result[:collection].select! {|test| !test.empty?() }
-
-      # Add ignored test cases to full test case collection and update statistics
-      suites[name][:collection] += result[:collection].map{|test| test.merge(result: :ignored)}
-      suites[name][:total] += result[:collection].length
-      suites[name][:ignored] += result[:collection].length
-      suites[name][:time] = results[:times][source]
-    end
-
-    results[:stdout].each do |result|
-      # Extract filepath
-      source = result[:source][:file]
-      # Filepath minus file extension
-      name = source.sub( /#{File.extname(source)}$/, '' )
-
-      # Add $stdout messages to collection
-      suites[name][:stdout] += result[:collection]
-    end
-
-    # Add name to suite hashes (duplicating the key for suites)
-    suites.map{|name, data| data.merge(name: name) }
+    return suites.values
   end
 
-  def write_suite( suite, stream )
-    stream.puts(
-      '  <testsuite name="%s" '     % suite[:name] +
-                   'tests="%d" '    % suite[:total] +
-                   'failures="%d" ' % suite[:failed] +
-                   'skipped="%d" '  % suite[:ignored] +
-                   'errors="%d" '   % suite[:errors] +
-                   'time="%.3f">'   % suite[:time]
-    )
+  def add_tests(suites, result, times, outcome)
+    source = result[:source][:file]
+    suite  = suites[suite_name( source )]
 
-    suite[:collection].each do |test|
-      write_test( test, stream )
-    end
+    # Skip nil and empty entries a results file may carry
+    tests = result[:collection].reject { |test| test.nil? or test.empty? }
 
-    unless suite[:stdout].empty?
-      stream.puts('    <system-out>')
-      suite[:stdout].each do |line|
-        line.gsub!(/&/, '&amp;')
-        line.gsub!(/</, '&lt;')
-        line.gsub!(/>/, '&gt;')
-        line.gsub!(/"/, '&quot;')
-        line.gsub!(/'/, '&apos;')
-        stream.puts( line )
-      end
-      stream.puts('    </system-out>')
-    end
-
-    stream.puts('  </testsuite>')
+    suite[:collection] += tests.map { |test| test.merge( result: outcome, source: source ) }
+    suite[:time] = times[source]
   end
 
-  def write_test( test, stream )
-    test[:test].gsub!(/&/, '&amp;')
-    test[:test].gsub!(/</, '&lt;')
-    test[:test].gsub!(/>/, '&gt;')
-    test[:test].gsub!(/"/, '&quot;')
-    test[:test].gsub!(/'/, '&apos;')
+  def add_stdout(suites, result)
+    suites[suite_name( result[:source][:file] )][:stdout] += result[:collection]
+  end
 
+  # A suite is named for its test file without the file's extension
+  def suite_name(source)
+    return source.delete_suffix( File.extname( source ) )
+  end
+
+  def write_suite(suite, stream)
+    stream.puts( suite_tag( suite ) )
+    suite[:collection].each { |test| write_test( test, stream ) }
+    write_stdout( suite[:stdout], stream )
+    stream.puts( '  </testsuite>' )
+  end
+
+  # Ceedling has no notion of a test error distinct from a failure, so errors is always 0
+  def suite_tag(suite)
+    tests   = suite[:collection]
+    failed  = tests.count { |test| test[:result] == :failed }
+    ignored = tests.count { |test| test[:result] == :ignored }
+
+    return '  <testsuite name="%s" tests="%d" failures="%d" skipped="%d" errors="0" time="%.3f">' %
+      [ xml_escape( suite[:name] ), tests.length, failed, ignored, suite[:time] ]
+  end
+
+  def write_stdout(lines, stream)
+    return if lines.empty?
+
+    stream.puts( '    <system-out>' )
+    lines.each { |line| stream.puts( xml_escape( line ) ) }
+    stream.puts( '    </system-out>' )
+  end
+
+  # A passing test is an empty element. Any other test holds an element for its outcome.
+  def write_test(test, stream)
+    opening = "    <testcase #{attributes( testcase_attributes( test ) )}"
+    outcome = outcome_element( test )
+
+    return stream.puts( opening + '/>' ) if outcome.nil?
+
+    stream.puts( opening + '>' )
+    stream.puts( '      ' + outcome )
+    stream.puts( '    </testcase>' )
+  end
+
+  # A test's class is its suite, path kept, so same-named test files in different folders,
+  # and their same-named test cases, stay distinct where CI tools group results by class.
+  # A test carries the line Unity reported for it, when its results name one.
+  def testcase_attributes(test)
+    attributes = { name: test[:test], classname: suite_name( test[:source] ), file: test_file( test ) }
+    attributes[:line] = test[:line] unless test[:line].nil?
+    attributes[:time] = format( '%.3f', test[:unity_test_time] )
+    return attributes
+  end
+
+  def test_file(test)
+    return test[:source] unless @file_line_anchor && test[:line]
+
+    return "#{test[:source]}##{test[:line]}"
+  end
+
+  # A failure's message starts with its file and line in the form compilers use, which
+  # readers and tools recognize
+  def located_message(test)
+    return test[:message] if test[:line].nil?
+
+    return "#{test[:source]}:#{test[:line]}: #{test[:message]}"
+  end
+
+  # Each attribute's value escaped, in the order given
+  def attributes(pairs)
+    return pairs.map { |key, value| %(#{key}="#{xml_escape( value )}") }.join( ' ' )
+  end
+
+  def outcome_element(test)
     case test[:result]
-    when :success
-      stream.puts(
-        '    <testcase name="%<test>s" '               % test +
-                      'time="%<unity_test_time>.3f"/>' % test
-      )
-
     when :failed
-      stream.puts(
-        '    <testcase name="%<test>s" '              % test +
-                      'time="%<unity_test_time>.3f">' % test
-      )
-
-      if test[:message].empty?
-        stream.puts( '      <failure />' )
-      else
-        stream.puts( '      <failure message="%s" />' % test[:message] )
-      end
-      
-      stream.puts( '    </testcase>' )
-
+      return '<failure />' if test[:message].to_s.empty?
+      return '<failure message="%s" />' % xml_escape( located_message( test ) )
     when :ignored
-      stream.puts( '    <testcase name="%<test>s" time="%<unity_test_time>.3f">' % test )
-      stream.puts( '      <skipped />' )
-      stream.puts( '    </testcase>' )
+      return '<skipped />'
     end
   end
 end

@@ -4,11 +4,20 @@
 
 Ceedling uses path lists and wildcard matching against filename extensions to collect file lists.
 
+Each file type below accepts either a single extension or a list of extensions. A single
+extension is written as a plain string. A list is useful when a project mixes conventions for
+a given file type (e.g. source files named with both `.c` and `.C`).
+
+Ceedling searches for and collects files under any extension in the list.
+
 ## Example `:extension` YAML
 
 ```yaml
 :extension:
-  :source: .cc
+  :source: .cc       # A single extension
+  :header:           # A list of extensions
+    - .h
+    - .H
   :executable: .bin
 ```
 
@@ -59,5 +68,34 @@ Test results file (not likely to ever need a redefined value)
 File containing make-style dependency rules created by the `gcc` preprocessor
 
 **Default**: .d
+
+## `:libraries`
+
+Library files, recognized among a release build's link inputs
+
+**Default**: [.a, .so]
+
+## `:map`
+
+Linker map file, named after the test executable or release build it describes
+
+**Default**: .map
+
+## `:list`
+
+Listing file a compiler tool may write beside each object file
+
+**Default**: .lst
+
+## `:yaml`
+
+Mixin files (see [Mixins](../mixins.md))
+
+Ceedling uses this setting only to find a mixin given by name, as _<name>_ plus
+each extension, in each mixin load path. It reads the setting from your project
+file before processing configuration, so it cannot come from a mixin. Ceedling's
+own YAML files always use _.yml_.
+
+**Default**: .yml
 
 <br/><br/>

@@ -18,9 +18,85 @@ class GcovrReportinator < GcovReportinator
 
   attr_reader :artifacts_path
 
-  GCOVR_SETTING_PREFIX = "gcov_gcovr"
+  GCOVR_SETTING_PREFIX = :gcov_gcovr
 
-  def initialize(system_objects)
+  # Version floors for options whose behavior depends on the installed gcovr.
+  # Checked upfront in initialize, once, rather than left to surface as gcovr's
+  # own opaque CLI error or silently dropped -- either of which would leave a
+  # configured feature quietly never actually active. :mcdc's value comes from
+  # the top-level :gcov config (see initialize), not the :gcovr sub-namespace
+  # the other two live under -- enforce_version_gates! doesn't care where its
+  # opts hash came from, so both are checked together in one call.
+  VERSION_GATES = {
+    :mcdc => {
+      min: [8, 0],
+      message: ":gcov ↳ :mcdc ➡️ Modified condition/decision coverage reporting requires gcovr %{req} " \
+                "or higher (found %{found})"
+    },
+    # A distinct, later addition than :decisions -- confirmed directly against real gcovr
+    # 6.0, which rejects --fail-under-decision outright as an unrecognized argument.
+    :fail_under_decision => {
+      min: [7, 0],
+      message: ":gcov ↳ :gcovr ↳ :fail_under_decision ➡️ requires gcovr %{req} or higher (found %{found})"
+    },
+    :decisions => {
+      min: [5, 1],
+      message: ":gcov ↳ :gcovr ↳ :decisions ➡️ requires gcovr %{req} or higher (found %{found})"
+    },
+    # Report formats gate on whether :gcov ↳ :reports names them
+    :jacoco => {
+      min: [7, 0],
+      message: ":gcov ↳ :reports ➡️ JaCoCo reports require gcovr %{req} or higher (found %{found})"
+    },
+    # ReportGenerator also writes lcov, so this gate applies only when gcovr is lcov's sole utility
+    :lcov => {
+      min: [7, 0],
+      message: ":gcov ↳ :reports ➡️ LCOV reports require gcovr %{req} or higher (found %{found})"
+    },
+  }.freeze
+
+  # Declarative map of :gcov ↳ :gcovr options handled identically regardless of report
+  # type (HTML/XML/JSON/text all share these) -- built once per generate_reports() call
+  # and passed down rather than re-collected inside every args_builder_* method.
+  # :branches/:sort_uncovered/:sort_percentage swap to their gcovr 7.0+ replacement flag
+  # names (the pre-7.0 names still work but are deprecated) -- one row each documents both
+  # the old and new mapping instead of a separate version-conditional code block.
+  GCOVR_COMMON_ARGS = {
+    :report_include        => { type: :value,   flag: '--filter' },
+    :gcov_filter            => { type: :value,   flag: '--gcov-filter' },
+    :gcov_exclude            => { type: :value,   flag: '--gcov-exclude' },
+    :exclude_directories     => { type: :value,   flag: '--exclude-directories' },
+    :branches                => { type: :boolean, flag: ->(v) { ToolVersionGating.min_version?(v, 7, 0) ? '--txt-metric branch' : '--branches' } },
+    :sort_uncovered          => { type: :boolean, flag: ->(v) { ToolVersionGating.min_version?(v, 7, 0) ? '--sort uncovered-number' : '--sort-uncovered' } },
+    :sort_percentage         => { type: :boolean, flag: ->(v) { ToolVersionGating.min_version?(v, 7, 0) ? '--sort uncovered-percent' : '--sort-percentage' } },
+    :print_summary           => { type: :boolean, flag: '--print-summary' },
+    :gcov_executable         => { type: :value,   flag: '--gcov-executable' },
+    :exclude_unreachable_branches => { type: :boolean, flag: '--exclude-unreachable-branches' },
+    :exclude_throw_branches  => { type: :boolean, flag: '--exclude-throw-branches' },
+    :use_gcov_files          => { type: :boolean, flag: '--use-gcov-files' },
+    :gcov_ignore_parse_errors => { type: :boolean, flag: '--gcov-ignore-parse-errors' },
+    :keep                    => { type: :boolean, flag: '--keep' },
+    :delete                  => { type: :boolean, flag: '--delete' },
+    :threads                 => { type: :integer, flag: '-j' },
+    # Merge mode is only available and relevant as of gcovr 6.0; silently omitted (not
+    # raised) below that -- unlike VERSION_GATES above, an older gcovr simply never
+    # merges function variants rather than the plugin blocking the whole build over it.
+    :merge_mode_function     => { type: :value,   flag: '--merge-mode-functions', min_version: [6, 0] },
+    # :decisions here is a derived value (see args_builder_common) -- gcovr treats
+    # --fail-under-decision as a no-op without --decisions also present, so
+    # :fail_under_decision being set implies this flag automatically.
+    :decisions               => { type: :boolean, flag: '--decisions' },
+    :fail_under_line         => { type: :integer_percent, flag: '--fail-under-line' },
+    :fail_under_branch       => { type: :integer_percent, flag: '--fail-under-branch' },
+    :fail_under_decision     => { type: :integer_percent, flag: '--fail-under-decision' },
+    :fail_under_function     => { type: :integer_percent, flag: '--fail-under-function' },
+    :source_encoding         => { type: :value, flag: '--source-encoding' },
+    :object_directory        => { type: :value, flag: '--object-directory' },
+  }.freeze
+
+  def initialize(system_objects, config)
+    super(config)
+
     @artifacts_path = GCOV_GCOVR_ARTIFACTS_PATH
     @summary        = ''
     @ceedling = system_objects
@@ -37,15 +113,25 @@ class GcovrReportinator < GcovReportinator
     @tool_executor = @ceedling[:tool_executor]
     @configurator = @ceedling[:configurator]
 
+    check_config_options()
+
     @gcovr_version = get_gcovr_version()
 
-    # MC/DC reporting requires gcovr 8+
-    if @configurator.gcov_mcdc && !min_version?( @gcovr_version, 8, 0 )
-      raise CeedlingException.new(
-        ":gcov ↳ :mcdc ➡️ Modified condition/decision coverage reporting requires gcovr 8 or higher " \
-        "(found #{@gcovr_version.major}.#{@gcovr_version.minor})"
-      )
-    end
+    gcovr_opts = @config[GCOVR_SETTING_PREFIX] || {}
+
+    enforce_version_gates!(
+      {
+        :mcdc                 => @configurator.gcov_mcdc,
+        :fail_under_decision  => gcovr_opts[:fail_under_decision],
+        :decisions            => gcovr_opts[:decisions],
+        :jacoco               => report_enabled?( @config, ReportTypes::JACOCO ),
+        :lcov                 => report_enabled?( @config, ReportTypes::LCOV ) && !report_generator_enabled?,
+      },
+      @gcovr_version,
+      VERSION_GATES
+    )
+
+    @lcov_supported = lcov_supported?()
   end
 
   # Generate the gcovr report(s) specified in the options.
@@ -60,13 +146,13 @@ class GcovrReportinator < GcovReportinator
     # gcovr 4.2+ can produce all report formats in one invocation;
     # earlier versions require a separate call for each format.
     if min_version?(@gcovr_version, 4, 2)
-      generate_reports_modern(gcovr_opts, args_common, exception_on_fail, opts)
+      generate_reports_modern(gcovr_opts, args_common, exception_on_fail)
     else
-      generate_reports_legacy(gcovr_opts, args_common, exception_on_fail, opts)
+      generate_reports_legacy(gcovr_opts, args_common, exception_on_fail)
     end
 
     # Text report is always a standalone gcovr invocation regardless of version.
-    generate_text_report(opts, args_common, exception_on_fail) if report_enabled?(opts, ReportTypes::TEXT)
+    generate_text_report(gcovr_opts, args_common, exception_on_fail) if report_enabled?(gcovr_opts, ReportTypes::TEXT)
   end
 
   ### Private ###
@@ -78,78 +164,47 @@ class GcovrReportinator < GcovReportinator
   # and are not included in the string returned by this method.
   def args_builder_common(gcovr_opts, gcovr_version)
     args = ""
-    args += "--config \"#{gcovr_opts[:config_file]}\" " unless gcovr_opts[:config_file].nil?
+    args += "--config \"#{gcovr_opts[:config_file]}\" " if config_file_in_use?(gcovr_opts)
+
+    # #1159 -- applied even with a :config_file: in use (unlike every other option below):
+    # this is the escape hatch for whatever gcovr flag Ceedling has no named option for (e.g.
+    # limiting gcovr's search root), so it needs to keep working right alongside a config file,
+    # not be deferred to it. Mirrors ReportGeneratorReportinator#build_optional_args' identical
+    # :custom_args: handling for the ReportGenerator side (both call the shared base-class
+    # build_custom_args).
+    args += build_custom_args(gcovr_opts[:custom_args])
 
     # When a config file is provided, defer all other options to it.
     # This prevents Ceedling from overriding config file values with its CLI arguments.
     # --root (${1}) is always passed; --exclude (${2}) is nil when a config file is present,
     # so the tool executor omits those flags and the config file governs exclusions.
-    return args if gcovr_opts[:config_file]
+    return args if config_file_in_use?(gcovr_opts)
 
-    args += "--filter \"#{gcovr_opts[:report_include]}\" " unless gcovr_opts[:report_include].nil?
-    args += "--gcov-filter \"#{gcovr_opts[:gcov_filter]}\" " unless gcovr_opts[:gcov_filter].nil?
-    args += "--gcov-exclude \"#{gcovr_opts[:gcov_exclude]}\" " unless gcovr_opts[:gcov_exclude].nil?
-    args += "--exclude-directories \"#{gcovr_opts[:exclude_directories]}\" " unless gcovr_opts[:exclude_directories].nil?
-    args += "--branches " if gcovr_opts[:branches]
-    args += "--sort-uncovered " if gcovr_opts[:sort_uncovered]
-    args += "--sort-percentage " if gcovr_opts[:sort_percentage]
-    args += "--print-summary " if gcovr_opts[:print_summary]
-    args += "--gcov-executable \"#{gcovr_opts[:gcov_executable]}\" " unless gcovr_opts[:gcov_executable].nil?
-    args += "--exclude-unreachable-branches " if gcovr_opts[:exclude_unreachable_branches]
-    args += "--exclude-throw-branches " if gcovr_opts[:exclude_throw_branches]
-    args += "--use-gcov-files " if gcovr_opts[:use_gcov_files]
-    args += "--gcov-ignore-parse-errors " if gcovr_opts[:gcov_ignore_parse_errors]
-    args += "--keep " if gcovr_opts[:keep]
-    args += "--delete " if gcovr_opts[:delete]
-    args += "-j #{gcovr_opts[:threads]} " if !(gcovr_opts[:threads].nil?) && (gcovr_opts[:threads].is_a? Integer)
+    # --fail-under-decision is a no-op to gcovr without --decisions also present (that's
+    # what actually turns decision-coverage analysis on) -- :fail_under_decision implies
+    # it automatically so the threshold option can never be configured into silently
+    # failing outright. initialize already guarantees the gcovr version needed for
+    # whichever of the two triggered this.
+    gcovr_opts[:decisions] = true if gcovr_opts[:decisions] || !gcovr_opts[:fail_under_decision].nil?
 
-    # Version check -- merge mode is only available and relevant as of gcovr 6.0
-    if min_version?( gcovr_version, 6, 0 )
-      args += "--merge-mode-functions \"#{gcovr_opts[:merge_mode_function]}\" " unless gcovr_opts[:merge_mode_function].nil?
-    end
-
-    [:fail_under_line,
-     :fail_under_branch,
-     :fail_under_decision,
-     :fail_under_function,
-     :source_encoding,
-     :object_directory
-    ].each do |opt|
-      next if gcovr_opts[opt].nil?
-
-      value = gcovr_opts[opt]
-      
-      # Value sanity checks for :fail_under_* settings
-      if opt.to_s =~ /fail_/
-        if not value.is_a? Integer
-          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} ➡️ '#{value}' must be an integer")
-        elsif (value < 0) || (value > 100)
-          raise CeedlingException.new(":gcov ↳ :gcovr ↳ :#{opt} ➡️ '#{value}' must be an integer percentage 0 – 100")
-        end
-      end
-      
-      # If the YAML key has a value, trasnform key into command line argument with value and concatenate
-      args += "--#{opt.to_s.gsub('_','-')} #{value} " unless value.nil?
-    end
+    args += build_args_from_table(
+      gcovr_opts, GCOVR_COMMON_ARGS,
+      version: gcovr_version, component_prefix: ":gcov ↳ :gcovr"
+    )
 
     return args
   end
 
 
   # Build the gcovr Cobertura XML report generation arguments.
-  def args_builder_cobertura(opts, use_output_option=false)
-    gcovr_opts = collect_gcovr_opts(opts)
+  def args_builder_cobertura(gcovr_opts, use_output_option=false)
     args = ""
 
     # Determine if the Cobertura XML report is enabled. Defaults to disabled.
-    if report_enabled?(opts, ReportTypes::COBERTURA)
-      # Determine the Cobertura XML report file name.
-      artifacts_file_cobertura = GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA
-      if !(gcovr_opts[:cobertura_artifact_filename].nil?)
-        artifacts_file_cobertura = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:cobertura_artifact_filename])
-      end
+    if report_enabled?(gcovr_opts, ReportTypes::COBERTURA)
+      artifacts_file_cobertura = artifact_file(gcovr_opts, :cobertura_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA)
 
-      args += "--xml-pretty " if gcovr_opts[:cobertura_pretty]
+      args += "--xml-pretty " if gcovr_opts[:cobertura_pretty] && !config_file_in_use?(gcovr_opts)
       args += "--xml #{use_output_option ? "--output " : ""} \"#{artifacts_file_cobertura}\" "
     end
 
@@ -158,17 +213,12 @@ class GcovrReportinator < GcovReportinator
 
 
   # Build the gcovr SonarQube report generation arguments.
-  def args_builder_sonarqube(opts, use_output_option=false)
-    gcovr_opts = collect_gcovr_opts(opts)
+  def args_builder_sonarqube(gcovr_opts, use_output_option=false)
     args = ""
 
     # Determine if the gcovr SonarQube XML report is enabled. Defaults to disabled.
-    if report_enabled?(opts, ReportTypes::SONARQUBE)
-      # Determine the SonarQube XML report file name.
-      artifacts_file_sonarqube = GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE
-      if !(gcovr_opts[:sonarqube_artifact_filename].nil?)
-        artifacts_file_sonarqube = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:sonarqube_artifact_filename])
-      end
+    if report_enabled?(gcovr_opts, ReportTypes::SONARQUBE)
+      artifacts_file_sonarqube = artifact_file(gcovr_opts, :sonarqube_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE)
 
       args += "--sonarqube #{use_output_option ? "--output " : ""} \"#{artifacts_file_sonarqube}\" "
     end
@@ -178,19 +228,14 @@ class GcovrReportinator < GcovReportinator
 
 
   # Build the gcovr JSON report generation arguments.
-  def args_builder_json(opts, use_output_option=false)
-    gcovr_opts = collect_gcovr_opts( opts )
+  def args_builder_json(gcovr_opts, use_output_option=false)
     args = ""
 
     # Determine if the gcovr JSON report is enabled. Defaults to disabled.
-    if report_enabled?( opts, ReportTypes::JSON )
-      # Determine the JSON report file name.
-      artifacts_file_json = GCOV_GCOVR_ARTIFACTS_FILE_JSON
-      if !(gcovr_opts[:json_artifact_filename].nil?)
-        artifacts_file_json = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:json_artifact_filename])
-      end
+    if report_enabled?( gcovr_opts, ReportTypes::JSON )
+      artifacts_file_json = artifact_file(gcovr_opts, :json_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_JSON)
 
-      args += "--json-pretty " if gcovr_opts[:json_pretty]
+      args += "--json-pretty " if gcovr_opts[:json_pretty] && !config_file_in_use?(gcovr_opts)
       # Note: In gcovr 4.2, the JSON report is output only when the --output option is specified.
       # Hopefully we can remove --output after a future gcovr release.
       args += "--json #{use_output_option ? "--output " : ""} \"#{artifacts_file_json}\" "
@@ -200,31 +245,84 @@ class GcovrReportinator < GcovReportinator
   end
 
 
+  # Build the gcovr JaCoCo XML report generation arguments.
+  # gcovr's --jacoco-pretty implies --jacoco, but both are given so the artifact path is explicit.
+  def args_builder_jacoco(gcovr_opts)
+    return '' unless report_enabled?( gcovr_opts, ReportTypes::JACOCO )
+
+    artifacts_file_jacoco = artifact_file( gcovr_opts, :jacoco_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_JACOCO )
+
+    args = ''
+    args += '--jacoco-pretty ' if gcovr_opts[:jacoco_pretty] && !config_file_in_use?( gcovr_opts )
+
+    return args + "--jacoco \"#{artifacts_file_jacoco}\" "
+  end
+
+
+  # Build the gcovr LCOV report generation arguments.
+  # The comment and test name are withheld with a config file, which then supplies them.
+  def args_builder_lcov(gcovr_opts)
+    return '' unless @lcov_supported && report_enabled?( gcovr_opts, ReportTypes::LCOV )
+
+    artifacts_file_lcov = artifact_file( gcovr_opts, :lcov_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_LCOV )
+
+    args = ''
+    if !config_file_in_use?( gcovr_opts )
+      args += "--lcov-comment \"#{gcovr_opts[:lcov_comment]}\" " unless gcovr_opts[:lcov_comment].nil?
+      args += "--lcov-test-name \"#{gcovr_opts[:lcov_test_name]}\" " unless gcovr_opts[:lcov_test_name].nil?
+    end
+
+    return args + "--lcov \"#{artifacts_file_lcov}\" "
+  end
+
+
+  # gcovr writes LCOV from 7.0. With ReportGenerator also enabled, an older gcovr leaves lcov
+  # to ReportGenerator rather than stopping the build, and says so. The gate above covers
+  # gcovr as lcov's sole utility.
+  def lcov_supported?
+    return true if min_version?( @gcovr_version, 7, 0 )
+    return false unless report_enabled?( @config, ReportTypes::LCOV )
+
+    @loginator.log(
+      ":gcov ↳ :reports ➡️ Gcovr LCOV reports require gcovr 7.0 or higher (found " \
+      "#{@gcovr_version.major}.#{@gcovr_version.minor}). Only ReportGenerator generates lcov.",
+      Verbosity::COMPLAIN
+    )
+
+    return false
+  end
+
+
+  def report_generator_enabled?
+    return Array( @config[:gcov_utilities] ).any? { |utility| utility.casecmp?( GCOV_UTILITY_NAME_REPORT_GENERATOR ) }
+  end
+
+
   # Build the gcovr HTML report generation arguments.
-  def args_builder_html(opts, use_output_option=false)
-    gcovr_opts = collect_gcovr_opts(opts)
+  def args_builder_html(gcovr_opts, use_output_option=false)
     args = ""
 
     # Determine if the gcovr HTML report is enabled.
-    html_enabled = report_enabled?(opts, ReportTypes::HTML_BASIC) ||
-                   report_enabled?(opts, ReportTypes::HTML_DETAILED)
+    html_enabled = report_enabled?(gcovr_opts, ReportTypes::HTML_BASIC) ||
+                   report_enabled?(gcovr_opts, ReportTypes::HTML_DETAILED)
 
     if html_enabled
-      # Determine the HTML report file name.
-      artifacts_file_html = GCOV_GCOVR_ARTIFACTS_FILE_HTML
-      if !(gcovr_opts[:html_artifact_filename].nil?)
-        artifacts_file_html = File.join(GCOV_GCOVR_ARTIFACTS_PATH, gcovr_opts[:html_artifact_filename])
-      end
+      artifacts_file_html = artifact_file(gcovr_opts, :html_artifact_filename, GCOV_GCOVR_ARTIFACTS_FILE_HTML)
 
-      is_html_report_type_detailed = (opts[:gcov_html_report_type].is_a? String) && (opts[:gcov_html_report_type].casecmp("detailed") == 0)
+      is_html_report_type_detailed = (gcovr_opts[:gcov_html_report_type].is_a? String) && (gcovr_opts[:gcov_html_report_type].casecmp("detailed") == 0)
 
-      args += "--html-details " if is_html_report_type_detailed || report_enabled?(opts, ReportTypes::HTML_DETAILED)
-      args += "--html-title \"#{gcovr_opts[:html_title]}\" " unless gcovr_opts[:html_title].nil?
-      args += "--html-absolute-paths " if !(gcovr_opts[:html_absolute_paths].nil?) && gcovr_opts[:html_absolute_paths]
-      args += "--html-encoding \"#{gcovr_opts[:html_encoding]}\" " unless gcovr_opts[:html_encoding].nil?
+      args += "--html-details " if is_html_report_type_detailed || report_enabled?(gcovr_opts, ReportTypes::HTML_DETAILED)
 
-      [:html_medium_threshold, :html_high_threshold].each do |opt|
-        args += "--#{opt.to_s.gsub('_','-')} #{gcovr_opts[opt]} " unless gcovr_opts[opt].nil?
+      # These options duplicate settings a gcovr configuration file would provide, so they're
+      # withheld when :config_file is set to avoid silently overriding the file's values.
+      if !config_file_in_use?(gcovr_opts)
+        args += "--html-title \"#{gcovr_opts[:html_title]}\" " unless gcovr_opts[:html_title].nil?
+        args += "--html-absolute-paths " if gcovr_opts[:html_absolute_paths]
+        args += "--html-encoding \"#{gcovr_opts[:html_encoding]}\" " unless gcovr_opts[:html_encoding].nil?
+
+        [:html_medium_threshold, :html_high_threshold].each do |opt|
+          args += "--#{opt.to_s.tr('_','-')} #{gcovr_opts[opt]} " unless gcovr_opts[opt].nil?
+        end
       end
 
       # The following option must be appended last for gcovr version <= 4.2 to properly work.
@@ -237,14 +335,12 @@ class GcovrReportinator < GcovReportinator
 
   # Generate a gcovr text report.
   # @summary is set by run_gcovr when :print_summary is enabled.
-  def generate_text_report(opts, args_common, boom)
-    gcovr_opts = collect_gcovr_opts(opts)
+  def generate_text_report(gcovr_opts, args_common, boom)
     args_text = ""
     message_text = "Generating a text coverage report"
 
-    filename = gcovr_opts[:text_artifact_filename] || 'coverage.txt'
-
-    artifacts_file_txt = File.join(GCOV_GCOVR_ARTIFACTS_PATH, filename)
+    default_txt = File.join(GCOV_GCOVR_ARTIFACTS_PATH, GCOV_GCOVR_DEFAULT_TEXT_ARTIFACT_FILENAME)
+    artifacts_file_txt = artifact_file(gcovr_opts, :text_artifact_filename, default_txt)
     args_text += "--output \"#{artifacts_file_txt}\" "
     message_text += " in '#{GCOV_GCOVR_ARTIFACTS_PATH}'"
 
@@ -259,21 +355,27 @@ class GcovrReportinator < GcovReportinator
   # Accumulate per-format args and track which formats are active for progress logging.
   # As required by gcovr 4.2, --html arguments must be appended last.
   # @summary is set by run_gcovr when :print_summary is enabled.
-  def generate_reports_modern(gcovr_opts, args_common, exception_on_fail, opts)
+  def generate_reports_modern(gcovr_opts, args_common, exception_on_fail)
     reports = []
     args    = args_common
 
-    args += (_args = args_builder_cobertura(opts, false))
+    args += (_args = args_builder_cobertura(gcovr_opts, false))
     reports << "Cobertura XML" unless _args.empty?
 
-    args += (_args = args_builder_sonarqube(opts, false))
+    args += (_args = args_builder_sonarqube(gcovr_opts, false))
     reports << "SonarQube" unless _args.empty?
 
-    args += (_args = args_builder_json(opts, true))
+    args += (_args = args_builder_json(gcovr_opts, true))
     reports << "JSON" unless _args.empty?
 
+    args += (_args = args_builder_jacoco(gcovr_opts))
+    reports << "JaCoCo XML" unless _args.empty?
+
+    args += (_args = args_builder_lcov(gcovr_opts))
+    reports << "LCOV" unless _args.empty?
+
     # --html must be last (gcovr 4.2 requirement)
-    args += (_args = args_builder_html(opts, false))
+    args += (_args = args_builder_html(gcovr_opts, false))
     reports << "HTML" unless _args.empty?
 
     reports.each do |report|
@@ -293,9 +395,9 @@ class GcovrReportinator < GcovReportinator
   # gcovr 4.1 and earlier support only HTML and Cobertura XML, and each must be
   # generated with a separate gcovr call. SonarQube and JSON are unavailable.
   # @summary is set by run_gcovr when :print_summary is enabled.
-  def generate_reports_legacy(gcovr_opts, args_common, exception_on_fail, opts)
-    args_html      = args_builder_html(opts, true)
-    args_cobertura = args_builder_cobertura(opts, true)
+  def generate_reports_legacy(gcovr_opts, args_common, exception_on_fail)
+    args_html      = args_builder_html(gcovr_opts, true)
+    args_cobertura = args_builder_cobertura(gcovr_opts, true)
 
     if args_html.length > 0
       @loginator.log(
@@ -313,17 +415,67 @@ class GcovrReportinator < GcovReportinator
   end
 
 
-  # Get the gcovr options from the project options.
+  # gcovr options silently ignored whenever :config_file is set (dropped by args_builder_common's
+  # early return, or gated in args_builder_cobertura/json/jacoco/lcov/html) -- in that case all such
+  # configuration must come from the gcovr configuration file itself.
+  IGNORED_WHEN_CONFIG_FILE_SET = [
+    :report_include, :report_exclude, :gcov_filter, :gcov_exclude, :exclude_directories,
+    :branches, :decisions, :sort_uncovered, :sort_percentage, :print_summary, :gcov_executable,
+    :exclude_unreachable_branches, :exclude_throw_branches, :use_gcov_files, :gcov_ignore_parse_errors,
+    :keep, :delete, :threads, :merge_mode_function,
+    :fail_under_line, :fail_under_branch, :fail_under_decision, :fail_under_function,
+    :source_encoding, :object_directory,
+    :cobertura_pretty, :json_pretty, :jacoco_pretty, :lcov_comment, :lcov_test_name,
+    :html_title, :html_absolute_paths, :html_encoding, :html_medium_threshold, :html_high_threshold
+  ].freeze
+
+  # A report writes to its default artifact file unless its :*_artifact_filename option names
+  # another. Either way the file lands beneath the gcovr artifacts path.
+  def artifact_file(gcovr_opts, key, default)
+    filename = gcovr_opts[key]
+
+    return filename.nil? ? default : File.join(GCOV_GCOVR_ARTIFACTS_PATH, filename)
+  end
+
+
+  # True when a gcovr configuration file is in use, meaning Ceedling must defer to it and
+  # withhold any option that would silently override its settings.
+  def config_file_in_use?(gcovr_opts)
+    !gcovr_opts[:config_file].nil?
+  end
+
+
+  # Validate the gcovr plugin configuration for known-bad combinations.
+  def check_config_options
+    gcovr_opts = @config[GCOVR_SETTING_PREFIX] || {}
+    return unless config_file_in_use?(gcovr_opts)
+
+    ignored = IGNORED_WHEN_CONFIG_FILE_SET.select { |key| !gcovr_opts[key].nil? }
+    return if ignored.empty?
+
+    list = ignored.map { |key| ":#{key}" }.join(', ')
+    msg = ":gcov ↳ :gcovr ↳ :config_file is set, so the following options are ignored: #{list}. " \
+          "Provide equivalent settings directly in your gcovr configuration file instead."
+    @loginator.log( msg, Verbosity::COMPLAIN )
+  end
+
+
+  # Get the gcovr options from the project options, plus the raw project options needed
+  # for report-type/HTML-detail lookups that don't live under the :gcovr sub-namespace --
+  # merged into one hash so every args_builder_* method needs only this single argument.
   def collect_gcovr_opts(opts)
     # dup prevents repeated calls from accumulating mutations on the shared opts hash.
-    # Each args_builder_* method calls this independently, so without dup every call
-    # would see the already-mutated :report_exclude from the previous call and nest it.
-    _opts = opts[GCOVR_SETTING_PREFIX.to_sym].dup
+    # This is computed once per generate_reports() call and threaded through, so this
+    # guards against generate_reports() itself being called more than once, not (as
+    # before) against each args_builder_* method re-deriving and re-mutating its own copy.
+    _opts = opts[GCOVR_SETTING_PREFIX].dup
 
-    # Only auto-generate --exclude patterns when no config file is specified.
-    # A gcovr config file is authoritative; CLI args override it, so injecting
-    # auto-excludes would silently defeat the config file.
-    unless _opts[:config_file]
+    if config_file_in_use?(_opts)
+      # A gcovr config file is authoritative; CLI args override it, so injecting
+      # auto-excludes would silently defeat the config file. Force an empty array
+      # (not nil) so the tool executor omits the --exclude flag entirely.
+      _opts[:report_exclude] = []
+    else
       # Build array of --exclude patterns: user-provided value (if any) + internally-generated per-file patterns.
       # Splat via *Array() handles both a user-supplied string and a user-supplied array
       # without introducing a nested element into the exclusions list.
@@ -332,7 +484,14 @@ class GcovrReportinator < GcovReportinator
       _opts[:report_exclude] = excludes unless excludes.empty?
     end
 
-    _opts[:mcdc] = true if opts[:gcov_mcdc]
+    # No :mcdc-specific gcovr flag to set here -- GCC's own condition/MC-DC data flows
+    # into gcovr's reports unconditionally, in every format, regardless of --decisions
+    # (confirmed directly: gcovr's Condition-labeled HTML/JSON content is byte-identical
+    # with and without --decisions; that flag only adds its own separate, additive
+    # Decision data alongside it). :mcdc's own gcovr-version floor is still enforced in
+    # initialize -- there's just nothing more for gcovr's own CLI args to do here.
+    _opts[:gcov_reports] = opts[:gcov_reports]
+    _opts[:gcov_html_report_type] = opts[:gcov_html_report_type]
 
     return _opts
   end
@@ -340,22 +499,44 @@ class GcovrReportinator < GcovReportinator
 
   # Build a combined Python regex for gcovr's `--exclude` flag covering all
   # non-production file categories: test files, support files, and generated/framework files.
+  # Path/prefix values are config-driven, so they're Regexp-escaped -- the same treatment
+  # already given the source-extension alternation -- rather than interpolated raw, which
+  # would let a metacharacter (e.g. a literal '.') in a project's own path silently
+  # over- or under-match.
   def build_report_exclusions
     data = build_exclusion_data
     patterns = []
 
+    # A source extension can be configured as more than one string, so its escaped forms
+    # are joined into one alternation rather than assuming there's only ever one to match.
+    src_extension_alternation = data[:src_extension].to_a.map { |ext| Regexp.escape(ext) }.join('|')
+    test_prefix = Regexp.escape(data[:test_prefix].to_s)
+    build_root = Regexp.escape(strip_leading_dot_slash(data[:build_root].to_s))
+
     data[:test_paths].each do |path|
-      # Test files (e.g. test_foo.c)
-      patterns << ".*#{path}.*/#{data[:test_prefix]}.+\\#{data[:src_extension]}$"
+      # Test files (e.g. test_foo.c). '(?:^|/)path/' requires the configured path to
+      # appear as a real path segment -- preceded by string-start or '/', never mid-word,
+      # so a path merely containing the configured directory name as a substring (e.g.
+      # 'latest' containing 'test') isn't treated as that directory. '(?:.*/)?' still
+      # allows an arbitrary nested subdirectory before the basename, but the required
+      # 'test_prefix[^/]+' can never itself cross a '/', so a same-named subdirectory
+      # (e.g. test/test_helpers/) never stands in for the file's own basename.
+      patterns << ".*(?:^|/)#{Regexp.escape(strip_leading_dot_slash(path))}/(?:.*/)?#{test_prefix}[^/]+(?:#{src_extension_alternation})$"
     end
 
-    # Support files (e.g. helpers, stubs, fixtures) — never production source
+    # Support files (e.g. helpers, stubs, fixtures) — never production source.
+    # Same path-segment anchoring as above; the trailing '.+' is intentionally left
+    # unrestricted (unlike the test-file pattern) since every file anywhere under a
+    # configured support path is non-production, not just ones with a particular basename.
     data[:support_paths].each do |path|
-      patterns << ".*#{path}/.+\\#{data[:src_extension]}$"
+      patterns << ".*(?:^|/)#{Regexp.escape(strip_leading_dot_slash(path))}/.+(?:#{src_extension_alternation})$"
     end
 
-    # Any generated files for tests or vendored framework C source files below the root of the build directory
-    patterns << ".*#{data[:build_root]}/.+\\#{EXTENSION_CORE_SOURCE}$"
+    # Any generated files for tests or vendored framework C source files below the root
+    # of the build directory. Same path-segment anchoring as above, so a directory that
+    # merely contains the build root's name as a substring (e.g. 'unbuild') is not
+    # treated as the build root.
+    patterns << ".*(?:^|/)#{build_root}/.+\\#{EXTENSION_CORE_SOURCE}$"
 
     return patterns
   end
@@ -429,88 +610,40 @@ class GcovrReportinator < GcovReportinator
   end
 
 
-  # Get the gcovr version number as GcovToolVersion struct
+  # Get the gcovr version number as a ToolVersion struct.
   def get_gcovr_version()
-    command = @tool_executor.build_command_line( TOOLS_GCOV_GCOVR_VERSION, [] )
-
     @loginator.lazy( Verbosity::OBNOXIOUS ) do
       @reportinator.generate_progress("Collecting gcovr version for conditional feature handling")
     end
 
-    shell_result = @tool_executor.exec( command )
-    version_match = shell_result[:output].match(/gcovr (\d+)\.(\d+)/)
-
-    if version_match.nil? || version_match[1].nil? || version_match[2].nil?
-      raise CeedlingException.new( "Could not collect `gcovr` version from its command line" )
-    end
-
-    return GcovToolVersion.new( version_match[1].to_i, version_match[2].to_i )
-  end
-
-
-  # Process GcovToolVersion struct from `get_gcovr_version()`
-  def min_version?(version, major, minor)
-    return true if version.major > major
-    return true if version.major == major && version.minor >= minor
-    return false
+    detect_tool_version( TOOLS_GCOV_GCOVR_VERSION, /gcovr (\d+)\.(\d+)/, tool_label: 'gcovr' )
   end
 
 
   # Output to console a human-friendly message on certain coverage failure exit codes.
   # Prefers the actual gcovr error text from stderr; falls back to descriptive strings.
-  # Perform the logic on whether to raise an exception
+  # gcovr's composite exit code bit-ORs every violated :fail_under_* threshold together --
+  # every violated bit is collected and reported, not just whichever is checked first.
   def gcovr_exec_exception?(opts, exitcode, boom, shell_result=nil)
+    violations = []
 
-    # Special handling of exit code 2 with --fail-under-line
-    if ((exitcode & 2) == 2) and !opts[:fail_under_line].nil?
-      fallback = "Line coverage is less than the configured minimum of #{opts[:fail_under_line]}%"
-      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
-      if boom
-        raise CeedlingException.new(msg)
-      else
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        # Clear bit in exit code
-        exitcode &= ~2
-      end
+    {
+      2  => [:fail_under_line,     'Line'],
+      4  => [:fail_under_branch,   'Branch'],
+      8  => [:fail_under_decision, 'Decision'],
+      16 => [:fail_under_function, 'Function'],
+    }.each do |bit, (option, label)|
+      next unless ((exitcode & bit) == bit) && !opts[option].nil?
+
+      fallback = "#{label} coverage is less than the configured minimum of #{opts[option]}%"
+      violations << "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
+      exitcode &= ~bit
     end
 
-    # Special handling of exit code 4 with --fail-under-branch
-    if ((exitcode & 4) == 4) and !opts[:fail_under_branch].nil?
-      fallback = "Branch coverage is less than the configured minimum of #{opts[:fail_under_branch]}%"
-      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
-      if boom
-        raise CeedlingException.new(msg)
-      else
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        # Clear bit in exit code
-        exitcode &= ~4
-      end
-    end
-
-    # Special handling of exit code 8 with --fail-under-decision
-    if ((exitcode & 8) == 8) and !opts[:fail_under_decision].nil?
-      fallback = "Decision coverage is less than the configured minimum of #{opts[:fail_under_decision]}%"
-      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
-      if boom
-        raise CeedlingException.new(msg)
-      else
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        # Clear bit in exit code
-        exitcode &= ~8
-      end
-    end
-
-    # Special handling of exit code 16 with --fail-under-function
-    if ((exitcode & 16) == 16) and !opts[:fail_under_function].nil?
-      fallback = "Function coverage is less than the configured minimum of #{opts[:fail_under_function]}%"
-      msg = "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
-      if boom
-        raise CeedlingException.new(msg)
-      else
-        @loginator.log( msg, Verbosity::COMPLAIN )
-        # Clear bit in exit code
-        exitcode &= ~16
-      end
+    if boom
+      raise CeedlingException.new( violations.join("\n") ) unless violations.empty?
+    else
+      violations.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN ) }
     end
 
     # A non-zero exit code is a problem
@@ -519,8 +652,8 @@ class GcovrReportinator < GcovReportinator
 
 
   # Returns true if the given report type is enabled, otherwise returns false.
-  def report_enabled?(opts, report_type)
-    return opts[:gcov_reports].map(&:upcase).include?( report_type.upcase )
+  def report_enabled?(gcovr_opts, report_type)
+    return Array( gcovr_opts[:gcov_reports] ).map( &:upcase ).include?( report_type.upcase )
   end
 
 end

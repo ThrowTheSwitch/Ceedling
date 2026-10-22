@@ -7,10 +7,15 @@
 
 require 'ceedling/constants'
 require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/test_invoker/test_pipeline_helpers'
+require 'ceedling/test_invoker/test_build_validations'
+require 'ceedling/includes/includes'
 
 class TestBuildPlanner
 
   include TestInvokerTypes
+  include TestPipelineHelpers
+  include TestBuildValidations
 
   constructor(
     :configurator,
@@ -18,11 +23,14 @@ class TestBuildPlanner
     :reportinator,
     :batchinator,
     :test_context_extractor,
+    :include_pathinator,
     :partializer,
     :file_finder,
     :file_path_utils,
     :file_wrapper,
-    :plugin_manager
+    :plugin_manager,
+    :test_source_file_directive_resolver,
+    :mock_locator
   )
 
   def setup()
@@ -35,49 +43,70 @@ class TestBuildPlanner
       test     = testable.name
       filepath = testable.filepath
 
-      runner_filepath = @file_path_utils.form_runner_filepath_from_test( filepath )
+      runner_filepath = @file_path_utils.form_runner_filepath_from_test( filepath, name: test )
 
       mocks   = {}
       _mocks  = @context_extractor.lookup_mock_header_includes_list( filepath )
 
       _mocks.each do |include|
-        name   = File.basename( include.filename ).ext()
-        source = nil
-        input  = nil
+        name    = File.basename( include.filename ).ext()
+        source  = nil
+        input   = nil
+        subdir  = ''
+        partial = mock_partial?( include )
 
-        if is_mock_partial?( include )
-          source = gnerate_header_input_for_mock_partial( include, test )
+        if partial
+          source = generate_header_input_for_mock_partial( include, test )
           input  = source
+          subdir = partial_mock_subdir( include )
         else
-          source            = find_header_input_for_mock( include )
+          source, subdir     = @mock_locator.locate( include, collection: ordered_mock_header_collection( testable ) )
           preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, test )
           input             = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
         end
 
-        mocks[name.to_sym] = {
+        # `path` mirrors the subdirectory the mock's own content sits in -- for a real
+        # header, its directory below whichever configured root contains it; for a Partial
+        # mock, the directory its generated #include names. Either way it is the same
+        # directory this test's own search paths already carry (MockLocator#directories), so
+        # the mock stays findable by the compiler regardless
+        # of how much path the #include itself happened to spell out.
+        #
+        # Keyed by that directory alongside the name. Two modules sharing a basename are
+        # two modules, each needing its own mock, and a key of the name alone lets the
+        # second displace the first. `name` stays bare: it is the filename the mock is
+        # written under, joined with `path` at generation.
+        mocks[mock_key( name, subdir )] = MockDetails.new(
           name:     name,
-          filepath: include.filepath,
-          path:     include.path,
+          filepath: source,
+          path:     subdir,
           source:   source,
-          input:    input
-        }
+          input:    input,
+          partial:  partial,
+          include_path: include.filepath
+        )
       end
+
+      validate_header_includes( test_filepath: filepath, testable: testable )
 
       partials_configs = {}
       if @configurator.project_use_partials
-        partials_configs = assemble_partials_config( filepath: filepath )
+        partials_configs = assemble_partials_config( filepath: filepath, testable: testable )
       end
 
+      # `pre_test` runs outside the lock -- it's a plugin hook, not a write into
+      # shared state, and holding the shared mutex around arbitrary plugin code
+      # would serialize every test's hook invocation behind one global lock.
       state.lock.synchronize do
-        testable.runner = {
+        testable.runner = RunnerInfo.new(
           output_filepath: runner_filepath,
           input_filepath:  filepath
-        }
+        )
         testable.mocks    = mocks
         testable.partials.configs = partials_configs
-
-        @plugin_manager.pre_test( filepath )
       end
+
+      @plugin_manager.pre_test( filepath )
     end
   end
 
@@ -85,17 +114,17 @@ class TestBuildPlanner
   def stage_flatten_partials_lists(state)
     state.testables.each do |_, testable|
       testable.partials.configs.each do |_, config|
-        state.partials_headers << {
+        state.partials_headers << PartialWork.new(
           config:                   config.header,
           testable:                 testable,
           directives_only_filepath: nil
-        } if config.header.filepath
+        ) if config.header.filepath
 
-        state.partials_sources << {
+        state.partials_sources << PartialWork.new(
           config:                   config.source,
           testable:                 testable,
           directives_only_filepath: nil
-        } if config.source.filepath
+        ) if config.source.filepath
       end
     end
   end
@@ -103,13 +132,15 @@ class TestBuildPlanner
   # Transform T2: Flatten mocks into a parallel-processing-friendly list.
   def stage_flatten_mocks_list(state)
     state.testables.each do |_, testable|
-      testable.mocks.each do |name, elems|
-        state.mocks_list << {
-          name:                     name,
+      testable.mocks.each_value do |elems|
+        state.mocks_list << MockWork.new(
+          # The mock's own name, not its collection key -- the key disambiguates
+          # same-named mocks within a test, while this is the mock's own identity.
+          name:                     elems.name.to_sym,
           details:                  elems,
           testable:                 testable,
           directives_only_filepath: nil
-        }
+        )
       end
     end
   end
@@ -120,9 +151,8 @@ class TestBuildPlanner
       filepath  = testable.filepath
       mock_list = @context_extractor.lookup_mock_header_includes_list( filepath )
 
-      test_sources = extract_sources( state.context, filepath, testable.partials )
-      test_core    = test_sources +
-                     mock_list.map { |mock| mock.filename.ext( EXTENSION_CORE_SOURCE ) }
+      test_sources = extract_sources( state.context, filepath, testable.partials, testable.name )
+      test_core    = test_sources + mock_sources( testable )
 
       remove_mock_original_headers(
         test_core,
@@ -135,20 +165,28 @@ class TestBuildPlanner
       compilations  = []
       compilations << filepath
       compilations += test_core
-      compilations << testable.runner[:output_filepath]
+      compilations << testable.runner.output_filepath
       compilations += test_frameworks
       compilations += test_support
       compilations.uniq!
 
-      test_objects     = @file_path_utils.form_test_build_objects_filelist( testable.paths[:build], compilations )
+      # A mock and a generated Partial each sit below one of this test's own generated
+      # roots rather than a configured source root, so nothing in the standard roots
+      # mirrors them. Without these, two same-named mocks or modules collapse onto one
+      # object filename. Known here rather than in the project's configuration.
+      generated_roots = [testable.paths[:partials], testable.paths[:mocks]].compact
+
+      test_objects     = @file_path_utils.form_test_build_objects_filelist(
+        testable.paths[:build], compilations, extra_roots: generated_roots
+      )
       test_executable  = @file_path_utils.form_test_executable_filepath( testable.paths[:build], filepath )
       test_pass        = @file_path_utils.form_pass_results_filepath( testable.paths[:results], filepath )
-      test_fail        = @file_path_utils.form_fail_results_filepath( testable.paths[:results], filepath )
 
       test_no_link_objects =
         @file_path_utils.form_test_build_objects_filelist(
           testable.paths[:build],
-          fetch_shallow_source_includes( filepath )
+          fetch_shallow_source_includes( filepath ),
+          extra_roots: generated_roots
         )
 
       test_objects = (test_objects.uniq - test_no_link_objects)
@@ -159,34 +197,37 @@ class TestBuildPlanner
         testable.core            = test_core
         testable.objects         = test_objects
         testable.executable      = test_executable
-        testable.no_link_objects = test_no_link_objects
         testable.results_pass    = test_pass
-        testable.results_fail    = test_fail
-        testable.tool            = TOOLS_TEST_COMPILER
       end
     end
   end
 
   # Transform T3: Flatten testable objects into a parallel-processing-friendly list.
   def stage_flatten_objects_list(state)
-    state.objects_list = state.testables.map do |_, testable|
+    state.objects_list = state.testables.flat_map do |_, testable|
       testable.objects.map do |obj|
-        {
-          tool: testable.tool,
-          test: testable.name,
-          obj:  obj
-        }
+        ObjectWork.new( test: testable.name, obj: obj )
       end
-    end.flatten
+    end
   end
 
   # -----------------------------------------------------------------------
   # Helper methods
   # -----------------------------------------------------------------------
 
-  def assemble_partials_config(filepath:)
+  # Each Partial module resolves against the project's headers ordered by this one
+  # test's own search paths, so a TEST_INCLUDE_PATH() in the test decides which module
+  # it gets. A module can be named by path and sit at any depth below a search path,
+  # which is why this is the prioritized whole collection rather than the immediate
+  # contents a compiler's own -I search would list.
+  def assemble_partials_config(filepath:, testable:)
     configs = @test_context_extractor.lookup_partials_config( filepath )
-    return @partializer.populate_filepaths( configs )
+
+    return @partializer.populate_filepaths(
+      configs,
+      collection:    @include_pathinator.prioritized_header_files( testable.search_paths ),
+      test_filepath: filepath
+    )
   end
 
   def collect_test_framework_sources(mocks)
@@ -197,7 +238,7 @@ class TestBuildPlanner
 
     if @configurator.project_use_mocks
       @configurator.cmock_unity_helper_path.each do |helper|
-        if @file_wrapper.exist?( helper.ext( EXTENSION_SOURCE ) )
+        if @file_wrapper.exist?( helper.ext( EXTENSION_SOURCE.primary ) )
           sources << helper
         end
       end
@@ -206,15 +247,24 @@ class TestBuildPlanner
     return sources
   end
 
-  def extract_sources(context, test_filepath, partials)
+  def extract_sources(context, test_filepath, partials, test_name)
     sources = []
 
-    _sources = @test_context_extractor.lookup_build_directive_sources_list( test_filepath )
-    _sources.each do |source|
-      sources << @file_finder.find_build_input_file( filepath: source, complain: :ignore, context: context )
+    additive_directive_sources, subtractive_directive_sources =
+      @test_source_file_directive_resolver.resolve( test_filepath, context )
+    sources.concat( additive_directive_sources )
+
+    # TEST_SOURCE_FILE() is authoritative: a directive-resolved source's own basename
+    # (extension-agnostic) takes precedence over whatever the implicit #include
+    # convention would separately resolve for a same-named header, so the two
+    # conventions never compile two different files for one logical module. Keyed
+    # by stem rather than a bare list so the override, when it applies, can name
+    # which directive-resolved file actually won.
+    directive_by_stem = additive_directive_sources.each_with_object({}) do |path, hash|
+      hash[File.basename(path).ext('')] = path
     end
 
-    _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename( filepath ).ext( EXTENSION_HEADER ) }
+    _support_headers = COLLECTION_ALL_SUPPORT.map { |filepath| File.basename( filepath ).ext( EXTENSION_HEADER.primary ) }
 
     includes = @test_context_extractor.lookup_all_header_includes_list( test_filepath )
     includes.each do |include|
@@ -223,54 +273,107 @@ class TestBuildPlanner
       next if _basename.start_with?( CMOCK_MOCK_PREFIX )
       next if _support_headers.include?( _basename )
 
-      sources << @file_finder.find_build_input_file( filepath: include.filename, complain: :ignore, context: context )
+      stem = File.basename(_basename).ext('')
+      if directive_by_stem.key?( stem )
+        msg = "TEST_SOURCE_FILE() '#{directive_by_stem[stem]}' overrides the source " \
+              "otherwise implicitly matched to '#{include.filepath}' in #{test_filepath}."
+        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        next
+      end
+
+      # `test: test_name` pins this lookup to this testable's own generated-file
+      # subdirectories (mocks, runners, Partials) rather than letting FileFinder
+      # infer a test identity from `include.filepath` itself -- inference only works
+      # when a query's own path already sits under the test build-output root, which
+      # a bare module name or an unresolved include never does. Without it, a
+      # Partial-prefixed basename here would fall back to an unscoped, build-wide
+      # search and could collide with another, unrelated test's own same-named
+      # Partial output (see the Partials loop below, where this same gap was real).
+      sources << @file_finder.find_build_input_file( filepath: include.filepath, complain: :ignore, context: context, test: test_name )
     end
 
     # Add to the source list any testable Partials (no mock Partials)
+    #
+    # `_module` is a bare module name, not a path -- FileFinder has no directory
+    # structure to infer a test identity from, so without `test: test_name` here
+    # explicitly (the same identity TestBuildExecutor already passes when resolving
+    # this test's own objects, see its own `test: obj.test` call), the generated
+    # Partial search falls back to scanning every test's Partials directory at once.
+    # Two different tests each Partializing a module that happens to produce the
+    # same generated basename would then collide as "ambiguous," even though each
+    # unambiguously belongs to its own test.
     partials.tests.each do |_module|
-      sources << @file_finder.find_build_input_file( filepath: _module, complain: :ignore, context: context )
+      sources << @file_finder.find_build_input_file( filepath: _module, complain: :ignore, context: context, test: test_name )
     end
 
-    return sources.compact.uniq
+    sources = sources.compact.uniq
+
+    return @test_source_file_directive_resolver.remove_subtracted(
+      sources, subtractive: subtractive_directive_sources, test_filepath: test_filepath
+    )
   end
 
   def fetch_shallow_source_includes(test_filepath)
     return @test_context_extractor.lookup_source_includes_list( test_filepath )
   end
 
-  def fetch_include_search_paths_for_test_file(test_filepath)
-    return @test_context_extractor.lookup_include_paths_list( test_filepath )
+  # Every stage resolving a mock's real header must agree on the same winner, or a
+  # stand-in, a mock search path, and the real mock would land in different directories
+  def ordered_mock_header_collection(testable)
+    @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
   end
 
-  def find_header_input_for_mock(mock)
-    return @file_finder.find_header_input_for_mock( mock.filename )
+  # One mock's identity within its test. A mock directly in the mock root keeps the bare
+  # name it has always had, so nothing changes for a project without same-named mocks.
+  def mock_key(name, subdir)
+    return name.to_sym if subdir.nil? || subdir.empty?
+
+    return File.join( subdir, name ).to_sym
   end
 
-  def is_mock_partial?(mock)
-    return mock.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
+  # Each mock's own generated source, below this test's mock root in the subdirectory
+  # mirroring whatever it mocks -- the same place mock generation writes it.
+  #
+  # Named by its own path rather than its basename so two same-named mocks in one test
+  # stay distinct, and so each one's object mirrors that subdirectory too.
+  def mock_sources(testable)
+    root = testable.paths[:mocks]
+
+    return [] if root.nil?
+
+    testable.mocks.each_value.map do |details|
+      File.join(
+        @file_path_utils.form_mock_output_path( root, details.path ),
+        details.name + EXTENSION_CORE_SOURCE
+      )
+    end
   end
 
-  def gnerate_header_input_for_mock_partial(mock, test)
+  # A Partial mock's interface header is generated content with no real header to
+  # resolve against, so its directory comes from the generated #include itself rather
+  # than from a mirrored source location.
+  def generate_header_input_for_mock_partial(mock, test)
+    subdir   = partial_mock_subdir( mock )
+    filename = mock.filename.delete_prefix( @configurator.cmock_mock_prefix )
+
     return @file_path_utils.form_partial_header_filepath(
       test,
-      mock.filename.delete_prefix( @configurator.cmock_mock_prefix )
+      subdir.empty? ? filename : File.join( subdir, filename )
     )
   end
 
-  def form_partials_filenames(partials)
-    return partials.map { |partial| @file_path_utils.form_partial_implementation_source_filename( partial ) }
+  # The directory a Partial mock's own generated #include names, empty when it names
+  # none. This is what the real mock's placement has to match, since that #include is
+  # what the compiler resolves.
+  def partial_mock_subdir(mock)
+    dir = File.dirname( mock.filepath )
+
+    return dir == '.' ? '' : dir
   end
 
   def remove_mock_original_headers(filelist, mocklist)
     filelist.delete_if do |filepath|
       mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ).ext( EXTENSION_CORE_HEADER ) )
-    end
-  end
-
-  def remove_partials_source_objects(objects, configs)
-    modules = configs.keys
-    objects.delete_if do |filepath|
-      modules.include?( File.basename( filepath ).ext() )
     end
   end
 

@@ -32,6 +32,12 @@ require 'ceedling/encodinator'
 ##   #endif                 → pops the innermost stack frame
 ##   Complex #if expression → treated as active (conservative: include the block)
 ##
+## The `defined(MACRO)`/`!defined(MACRO)` rules above match only that exact,
+## single-macro directive. Anything else on the same line -- a compound
+## expression like `#if defined(A) && defined(B)`, for instance -- falls
+## through to the conservative "complex expression" treatment rather than
+## being evaluated against just the one captured macro name.
+##
 ## Expects lines pre-cleaned by `code_lines` / `clean_encoding` (comments
 ## stripped, continuations joined). Does not raise on multi-byte characters.
 ##
@@ -65,20 +71,20 @@ class CPreprocessorConditionals
     when /^#\s*if\s+1\b/
       push( true )
 
-    when /^#\s*if\s+!\s*defined\s*\(\s*(\w+)\s*\)/
+    when /^#\s*if\s+!\s*defined\s*\(\s*(\w+)\s*\)\s*$/
       push( !macro_defined?($1) )
 
-    when /^#\s*if\s+defined\s*\(\s*(\w+)\s*\)/
+    when /^#\s*if\s+defined\s*\(\s*(\w+)\s*\)\s*$/
       push( macro_defined?($1) )
 
     when /^#\s*if\b/
       # Complex or unrecognized #if expression — treat as active (conservative)
-      push( true )
+      push( true, unevaluated: true )
 
-    when /^#\s*elif\s+!\s*defined\s*\(\s*(\w+)\s*\)/
+    when /^#\s*elif\s+!\s*defined\s*\(\s*(\w+)\s*\)\s*$/
       handle_elif( !macro_defined?($1) )
 
-    when /^#\s*elif\s+defined\s*\(\s*(\w+)\s*\)/
+    when /^#\s*elif\s+defined\s*\(\s*(\w+)\s*\)\s*$/
       handle_elif( macro_defined?($1) )
 
     when /^#\s*elif\s+0\b/
@@ -89,7 +95,7 @@ class CPreprocessorConditionals
 
     when /^#\s*elif\b/
       # Complex or unrecognized #elif expression — treat as active (conservative)
-      handle_elif( true )
+      handle_elif( true, unevaluated: true )
 
     when /^#\s*else\b/
       handle_else
@@ -108,6 +114,16 @@ class CPreprocessorConditionals
     @stack.last[:active]
   end
 
+  # True when the current position sits inside a block this tracker kept without evaluating
+  # its condition -- a compound or otherwise unrecognized expression.
+  #
+  # `active?` cannot distinguish a decision from a guess, and the difference matters to a
+  # caller that must not relocate code chosen by one. A guess is the right default for
+  # skipping text; it is the wrong basis for copying a type definition out of a module.
+  def unevaluated?
+    @stack.any? { |frame| frame[:unevaluated] }
+  end
+
   # Reset state for reuse (e.g. across multiple files)
   def reset
     @stack.clear
@@ -121,7 +137,7 @@ class CPreprocessorConditionals
     return [] if defines.nil?
     defines.map do |d|
       # Strip leading -D if present, then strip =value suffix
-      name = d.to_s.sub(/\A-D/, '')
+      name = d.to_s.delete_prefix('-D')
       name.split('=').first.strip
     end.reject(&:empty?).uniq
   end
@@ -133,10 +149,10 @@ class CPreprocessorConditionals
   # When pushing a new frame, "outer" is the frame we're currently inside
   # (the last frame before the push). If the stack is empty we are at the
   # top level, which is always active.
-  def push(condition)
+  def push(condition, unevaluated: false)
     enclosing_active = @stack.empty? ? true : @stack.last[:active]
     active = enclosing_active && condition
-    @stack.push( {active: active, seen_true_branch: active} )
+    @stack.push( {active: active, seen_true_branch: active, unevaluated: unevaluated} )
   end
 
   # For #elif/#else, "outer" is the frame ENCLOSING the current block —
@@ -146,9 +162,10 @@ class CPreprocessorConditionals
     @stack.size <= 1 ? true : @stack[-2][:active]
   end
 
-  def handle_elif(condition)
+  def handle_elif(condition, unevaluated: false)
     return if @stack.empty?
     frame = @stack.last
+    frame[:unevaluated] = true if unevaluated
     # An elif branch activates only if: no prior true branch was seen, the
     # enclosing block is active, and this branch's condition is true.
     if !frame[:seen_true_branch] && enclosing_active? && condition

@@ -14,9 +14,14 @@ plugins/dependencies/example/boss/third_party/
 plugins/dependencies/example/supervisor/build/
 
 # Logs / test output
-systest.pass.*
-systest.fail.*
+specout/
 systests/
+
+# Coverage report output (CEEDLING_TEST_COVERAGE test runs)
+/coverage/
+
+# Profiling reports/artifacts (rake profile:* tasks)
+/tmp/
 
 # Generated documentation site builds
 site-web/
@@ -40,3 +45,8 @@ ceedling.sublime-workspace
 .ruby-version
 ceedling-*.gem
 Gemfile.lock
+
+# Generated SBOMs -- attached to releases, never committed. The gemspec also rejects
+# these so a local `rake sbom:build` cannot leak one into a gem built afterward.
+ceedling-*.cdx.json
+ceedling-*.spdx.json

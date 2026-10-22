@@ -43,13 +43,13 @@
 class RakeTaskRegistry
 
   # Semantic tag constants — used as keys in the namespace_tags registry
-  TAG_TEST    = :test
-  TAG_RELEASE = :release
-  TAG_BUILD   = :build
+  TAG_TEST    = :test    unless const_defined?(:TAG_TEST, false)
+  TAG_RELEASE = :release unless const_defined?(:TAG_RELEASE, false)
+  TAG_BUILD   = :build   unless const_defined?(:TAG_BUILD, false)
 
   # Composite tag sets — applied as a group when registering a domain
-  TAGS_TEST    = [TAG_TEST,    TAG_BUILD].freeze
-  TAGS_RELEASE = [TAG_RELEASE, TAG_BUILD].freeze
+  TAGS_TEST    = [TAG_TEST,    TAG_BUILD].freeze unless const_defined?(:TAGS_TEST, false)
+  TAGS_RELEASE = [TAG_RELEASE, TAG_BUILD].freeze unless const_defined?(:TAGS_RELEASE, false)
 
   # Marker regexes — a line matching any marker signals the enclosing namespace
   # belongs to the associated domain.
@@ -58,10 +58,10 @@ class RakeTaskRegistry
   #   @ceedling[:test_invoker].setup_and_invoke(
   #
   # MARKER_RELEASE_TASKS matches any call of the form:
-  #   @ceedling[:release_invoker].setup_and_invoke_objects(
+  #   @ceedling[:release_invoker].setup_and_invoke(
 
-  MARKER_TEST_TASKS_SETUP_AND_INVOKE = /\[\s*:test_invoker\s*\]\.setup_and_invoke/
-  MARKER_RELEASE_TASKS               = /\[\s*:release_invoker\s*\]\.setup_and_invoke_objects/
+  MARKER_TEST_TASKS_SETUP_AND_INVOKE = /\[\s*:test_invoker\s*\]\.setup_and_invoke/ unless const_defined?(:MARKER_TEST_TASKS_SETUP_AND_INVOKE, false)
+  MARKER_RELEASE_TASKS               = /\[\s*:release_invoker\s*\]\.setup_and_invoke/ unless const_defined?(:MARKER_RELEASE_TASKS, false)
 
   def initialize
     # Maps root namespace string → Array<Symbol> of semantic tags
@@ -189,7 +189,7 @@ class RakeTaskRegistry
         namespace_name =
           if raw.start_with?( ':' )
             raw[1..]                        # :symbol → 'symbol'
-          elsif raw =~ /^[A-Z_]+$/
+          elsif raw.match?(/^[A-Z_]+$/)
             begin
               Object.const_get( raw ).to_s  # CONSTANT → resolve at runtime
             rescue NameError

@@ -12,9 +12,11 @@
 # Run `rake docs:snapshot` (or `rake docs:build`) to refresh.
 
 files:
-  - assets/project.yml
+  - assets/features/project.yml
   - plugins/gcov/config/defaults_gcov.rb
   - plugins/gcov/config/defaults.yml
+  - plugins/bullseye/config/defaults_bullseye.rb
+  - plugins/bullseye/config/defaults.yml
   - examples/temp_sensor/README.md
   - examples/wondrous_forest/README.md
   - examples/cipher_quest/README.md

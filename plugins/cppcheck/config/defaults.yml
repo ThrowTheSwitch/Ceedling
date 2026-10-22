@@ -8,10 +8,15 @@
 ---
 :cppcheck:
   :reports: []
+  # Register a build failure when findings match :fail_build_severities (implies an XML report)
+  :fail_build: false
+  :fail_build_severities:
+    - error
   :sarif_artifact_filename: null
   :text_artifact_filename: null
   :xml_artifact_filename: null
-  :xml_report_version: 3
+  # Version 2 is accepted by every Cppcheck. Version 3 requires a newer Cppcheck.
+  :xml_report_version: 2
   :template: null
   :html_title: null
   :platform: null

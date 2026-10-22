@@ -1,11 +1,11 @@
 # Conventions & Behaviors
 
-**How to get things done and understand what's happening during builds**
+**How to get things done and understand what’s happening during builds**
 
 ## Directory structure & filenames
 
-Much of Ceedling's functionality is driven by collecting files
-matching certain patterns inside the paths it's configured
+Much of Ceedling’s functionality is driven by collecting files
+matching certain patterns inside the paths it’s configured
 to search. See the documentation for the `:extension` section
 of your configuration file (found in the [configuration reference](../configuration/index.md)) to
 configure the file extensions Ceedling uses to match and collect
@@ -14,8 +14,75 @@ files. Test file naming is covered later in this section.
 Test files and source files must be segregated by directories.
 Any directory structure will do. Tests can be held in subdirectories
 within source directories, or tests and source directories
-can be wholly separated at the top of your project's directory
+can be wholly separated at the top of your project’s directory
 tree.
+
+## Distinguishing same-named files
+
+### Header / source files
+
+Ceedling distinguishes files by their full relative path, not just their
+filename. A project may have, for example, both `src/drivers/uart.c` and
+`src/sensors/uart.c` without one hiding or colliding with the other.
+
+Distinguishing files is mostly an issue in test builds. If two files share
+a name without enough path to distinguish them, Ceedling resolves the reference 
+to the first match among the file collection. File collections are ordered per
+your project configuration (`:paths`). The ordering of collected files is
+identical to the search path ordering provided to the compiler from the same
+`:paths` configuration plus any use of
+[`TEST_INCLUDE_PATH()`](build-directives.md#test_include_path) directives in
+a test file. When Ceedling finds more than one reference, it uses the first
+in the ordered file list but logs an informational notice naming multi-file 
+matches, so the choice is not silent.
+
+If Ceedling uses the wrong match for lack of path information, your test build 
+fails downstream with an ordinary compilation error indirectly revealing the
+issue. Add enough path at the point of reference to select the file you actually 
+meant.
+
+* Use paths in `#include` directives in your test files to distinguish header 
+  files of the same name (mocks are distiguished by the same filepath as the 
+  headers from which they are generated). Examples: `#include "foo/bar/file.h"`
+  and/or `#include "foo/bar/mock_file.h"`.
+* Use the [`TEST_SOURCE_FILE()` build directive macro][build-directive-macros]
+  to provide a path to distinguish source files of the same name to be 
+  compiled and linked with a test executable.
+
+!!! tip "Mocking two same-named headers in one test file"
+    Include each mock through its folder, as in `#include "drivers/uart/mock_config.h"`
+    and `#include "drivers/spi/mock_config.h"`. With
+    [`:cmock` ↳ `:mock_name_include_folder`](../configuration/reference/cmock.md#mock_name_include_folder),
+    enabled by default, each mock is named by that folder, and the two do not collide.
+
+`TEST_SOURCE_FILE()` also takes precedence over the header/source correspondence
+convention above. If a test both `#include`s a header and separately names a
+same-named source via `TEST_SOURCE_FILE()`, the directive’s own path wins outright
+— its source is the one compiled, and the header/source convention does not also
+compile whatever it would otherwise have found on its own for that same name. This
+holds even when the header’s own `#include` was already unambiguous; a
+`TEST_SOURCE_FILE()` entry sharing that basename is always authoritative. (The
+header itself is still validated/resolved as usual — only which *source* file gets
+compiled for a shared basename is affected.) Like the search-path resolution
+above, this override is logged with an informational notice naming the winning
+`TEST_SOURCE_FILE()` entry and the `#include` it overrode, so the substitution
+is not silent either.
+
+### Test files (CLI test tasks)
+
+Execute [`ceedling test:` tasks][ceedling-test] at the command line with an
+optional partial path to distinguish test executables (e.g. `test:foo/bar.c`),
+recalling that multiple conventions exist for finding/executing a test
+executable via `test:` task.
+
+Unlike the cases above, a same-named test file given at the command line is 
+**not** auto-resolved. You must supply enough path yourself in the task
+name. Ceedling will complain about colliding task names and provide a list
+of matching candidates to help you provide path to disambiguate test files.
+
+[build-directive-macros]: build-directives.md
+[ceedling-test]: ../getting-started/command-line.md
+[test-source-file-subtractive]: build-directives.md#test_source_file-subtractive-notation
 
 ## Test build search paths
 
@@ -23,7 +90,7 @@ Test builds in C are fairly complex. Each test file becomes a test
 executable. Each test executable needs generated runner code and 
 optionally generated mocks. Slicing and dicing what files are 
 compiled and linked and how search paths are assembled is tricky
-business. That's why Ceedling exists in the first place. Because
+business. That’s why Ceedling exists in the first place. Because
 of these issues, search paths, in particular, require quite a bit
 of special handling.
 
@@ -63,8 +130,8 @@ it is assembled from a variety of sources. In order:
 1. `:paths` ↳ `:support` list from your project configuration
 1. `:paths` ↳ `:include` list from your project configuration
 1. `:paths` ↳ `:libraries` list from your project configuration
-1. Internal path for Unity's unit test framework C code
-1. Internal paths for CMock's C code (if respective feature enabled)
+1. Internal path for Unity’s unit test framework C code
+1. Internal paths for CMock’s C code (if respective feature enabled)
 1. `:paths` ↳ `:test_toolchain_include` list from your project 
    configuration
 
@@ -106,7 +173,7 @@ A Ceedling release build may optionally compile and link in CException
 and can handle linking in libraries as well.
 
 Search paths for release builds are configured with `:paths` ↳ `:include` 
-in your project configuration. That's about all there is to it.
+in your project configuration. That’s about all there is to it.
 
 ## Source files & release artifacts
 
@@ -138,6 +205,44 @@ or `testing_MyAwesomeCode.C` could each be valid test file
 names. Note, however, that Ceedling can recognize only one test
 file naming convention per project.
 
+#### Installer-like test filenames on Windows
+
+On Windows, Ceedling writes a manifest beside each test executable. It lets a
+test executable run whatever its name.
+
+A test executable is named after its test file. Windows treats an executable
+whose name contains _install_, _setup_, _update_, or _patch_ as an installer.
+The Installer Detection feature of User Account Control (UAC) then demands
+administrator privileges to run it. A test file such as `test_setup_parser.c`
+would otherwise build a test executable Windows will not run.
+
+The manifest, `<test executable>.manifest`, asks Windows to run the executable
+with your own privileges. That turns Installer Detection off for it. When a
+test filename contains one of these words, Ceedling logs a warning noting that
+it generated the manifest.
+
+Windows ignores a manifest file when the executable already embeds a manifest
+of its own. Whether yours does depends on your toolchain.
+
+- **MinGW-w64 GCC from [MSYS2]** links a default manifest into every executable
+  when its `windows-default-manifest` package is installed. That manifest
+  already asks Windows to run the executable with your own privileges, so
+  these names cause no trouble, and the manifest file is unused. This GCC is
+  also the one RubyInstaller’s DevKit provides.
+- **Other MinGW-w64 distributions** may or may not include that default
+  manifest. GCC links it only when it finds `default-manifest.o` among its
+  libraries. Without it, the manifest file Ceedling writes is what lets these
+  test executables run.
+- **The original MinGW** (mingw.org) is believed to embed no manifest, so it
+  relies on the manifest file.
+
+To see whether an executable embeds a manifest, search it for the text
+`requestedExecutionLevel`. A match means Windows uses the embedded manifest.
+
+Before 1.2.0, Ceedling wrote no manifest. With a toolchain that embeds none,
+test files with these words in their names could not be run on Windows without
+administrator privileges.
+
 ### Source & mock files to compile and link
 
 Ceedling knows what files to compile and link into each individual
@@ -155,12 +260,25 @@ The `#include` list directs Ceedling in two ways:
    compile & link that generated code into into the test executable 
    as well.
 
+A mock is generated into the directory mirroring the header it came from, so two
+same-named headers in different directories produce two mocks in different
+directories. A single test file can mock both when it includes each mock through
+its folder (e.g. `#include "folder/mock_foo.h"`), since each mock is then named 
+by that folder.
+
 Sometimes the source file you need to add to your test executable has
 no corresponding header file — e.g. `file_abc.h` contains symbols 
 present in `file_xyz.c`. In these cases, you can use the test 
 directive macro `TEST_SOURCE_FILE(...)` to tell Ceedling to compile 
 and link the desired source file into the test executable (see 
 [macro documentation](build-directives.md)).
+
+Conversely, sometimes you may need to remove from a test executable 
+build a source file that corresponds to an `#include` directive in your
+test file. A `TEST_SOURCE_FILE()` entry prefixed with a `-:` decorator 
+removes a named file from a test‘s compile/link list. See 
+[`TEST_SOURCE_FILE()` Subtractive Notation][test-source-file-subtractive]
+for the full discussion.
 
 That was a lot of information and many clauses in a very few 
 sentences; the commented example test file code that follows in a 
@@ -196,15 +314,47 @@ Ceedling and CMock are advanced tools that both perform fairly sophisticated
 parsing.
 
 However, neither of these tools fully understands the entire C language,
-especially C's preprocessing statements.
+especially C’s preprocessing statements.
+
+Ceedling’s preprocessing features rely on `gcc`’s preprocessing mode to strip 
+down / expand test files and headers to their raw code content that can then 
+be parsed as text by Ceedling and CMock. These tools must be in your search 
+path if Ceedling’s preprocessing is enabled.
+
+See the [`:project` ↳ `:use_test_preprocessor`][project-settings] project 
+configuration setting.
+
+!!! warning
+    Ceedling’s test preprocessing abilities are directly tied to the features and 
+    output of `gcc`. The default tool definitions for these should not be 
+    redefined for other toolchains. Future Ceedling improvements will allow for a 
+    plugin-style ability to use your own tools in this highly specialized capacity.
+
+### Preprocessing for include directives
+
+In order for Ceedling to do its job, it needs an accurate picture of `#include`
+directives used by mockable headers and test files. For simple projects, this can
+be done with simple text scanning.
+
+For projects with conditional compilation (e.g. `#ifdef`) around include 
+directives or include directives with macros as targets, preprocessing is required.
+Ceedling uses various passes of preprocessor modes to successfully extract
+`#include` directives.
+
+A test file’s `#include` directives are extracted with the preprocessor only when
+test files are preprocessed, with `:use_test_preprocessor` set to `:tests` or `:all`.
+With `:mocks`, only mockable headers are preprocessed, and a test file’s
+`#include` directives come from text scanning.
+
+### Preprocessing for tests and mocks
 
 If your test files rely on macros and `#ifdef` conditionals used in certain
-ways (see examples below), there's a chance that Ceedling will break on trying
+ways (see examples below), there’s a chance that Ceedling will break on trying
 to process your test files, or, alternatively, your test suite will build but 
 not execute as expected.
 
 Similarly, generating mocks of header files with macros and `#ifdef`
-conditionals around or in function signatures can get weird. Of course, it's 
+conditionals around or in function signatures can get weird. Of course, it’s 
 often in sophisticated projects with complex header files that mocking is most 
 desired in the first place.
 
@@ -215,47 +365,71 @@ then extracting test cases and functions to be mocked with text parsing.
 1. Mockable header files, or
 1. Both of the above 
 
-See the [`:project` ↳ `:use_test_preprocessor`][project-settings] project 
-configuration setting.
+### Preprocessing for Partials
 
-This Ceedling feature uses `gcc`'s preprocessing mode and the `cpp` preprocessor 
-tool to strip down / expand test files and headers to their raw code content 
-that can then be parsed as text by Ceedling and CMock. These tools must be in 
-your search path if Ceedling's preprocessing is enabled.
+When [Partials][partials] are enabled, Ceedling expands the use of preprocessing
+beyond only include directives, mockable headers, and test files to partialized
+source files as well. In order to extract and surgically alter your source code
+to become a generated Partial, your source code must be run through various passes
+of preprocessig to resolve conditional compilation, expand macros, etc.
 
-**Ceedling's test preprocessing abilities are directly tied to the features and 
-output of `gcc` and `cpp`. The default Ceedling tool definitions for these should 
-not be redefined for other toolchains. It is highly unlikely to work for you. 
-Future Ceedling improvements will allow for a plugin-style ability to use your 
-own tools in this highly specialized capacity.**
+!!! note
+    The use of Partials automatically enables test preprocessing regardless of 
+    your configuration setting and logs the setting update.
+
+### Fallback test build preprocessing
+
+Ceedling depends on the GNU Compiler Collection (`gcc`) for many of its advanced 
+features (such as in the preceding sections).
+
+Older versions of `gcc` or `clang` standins may not support certain preprocessing
+features Ceedling requires. Ceedling probes for those features; if they are not 
+found then Ceedling falls back to a simpler, best-effort
+[fallback preprocessing][fallback-preprocessing].
+
+Fallback preprocessing is a best effort with no guarantees. It is not as capable 
+as full preprocessing, but it can usually handle the most common preprocessing 
+needs (i.e. conditional compilation). Ceedling does what it can to find and log 
+issues related to inadequate preprocessing before you get to mysterious 
+compilation errors.
+
+!!! tip "Fallback preprocessing for faster test builds"
+    Ceedling’s internal [fallback preprocessing mode can be forced][fallback-preprocessing],
+    and, for **_some_** projects this can be a shortcut to running advanced 
+    Ceedling features such as Partials with faster builds.
+
+    **_If using Partials, there’s a good chance your code is too complex for fallback preprocessing._**
 
 [project-settings]: ../configuration/reference/project.md
+[partials]: partials/index.md
+[fallback-preprocessing]: ../configuration/reference/test-build.md#preprocess_force_fallback
 
 ### Limitations & gotchas
 
 #### Preprocessing limitations cheatsheet
 
-Ceedling's preprocessing abilities are generally quite useful — especially in 
+Ceedling’s preprocessing abilities are generally quite useful — especially in 
 projects with multiple build configurations for different feature sets or 
 multiple targets, legacy code that cannot be refactored, and complex header 
 files provided by vendors.
 
-However, best applying Ceedling's preprocessing abilities requires understanding 
+However, best applying Ceedling’s preprocessing abilities requires understanding 
 how the feature works, when to use it, and its limitations.
 
-At a high level, Ceedling's preprocessing is applicable for cases where macros 
+At a high level, Ceedling’s preprocessing is applicable for cases where macros 
 or conditional compilation preprocessing statements (e.g. `#ifdef`):
 
 * Generate or hide/reveal your test files' `#include` statements.
 * Generate or hide/reveal your test files' test case function signatures 
-  (e.g. `void test_foo()`.
+  (e.g. `void test_foo()`).
 * Generate or hide/reveal mockable header files' `#include` statements.
 * Generate or hide/reveal header files' mockable function signatures.
 
-**_NOTE:_ You do not necessarily need to enable Ceedling's preprocessing only
-because you have preprocessing statements in your test files or mockable header 
-files. The feature is only truly needed if your project meets the conditions 
-above.**
+!!! note
+    You do not necessarily need to enable Ceedling’s preprocessing only
+    because you have preprocessing statements in your test files or mockable
+    header files. The feature is only truly needed if your project meets the 
+    conditions above.
 
 The sections that follow flesh out the details of the bulleted list above.
 
@@ -274,7 +448,7 @@ for advanced abilities discovered by Ceedling parsing a test file as plain text.
 Whether or not Ceedling preprocessing is enabled, Ceedling will always discover 
 this marker macro in the plain text of a test file.
 
-Why is `TEST_INCLUDE_PATH()` incompatible with `#ifdef`? Well, it's because of
+Why is `TEST_INCLUDE_PATH()` incompatible with `#ifdef`? Well, it’s because of
 a cyclical dependency that cannot be resolved. In order to perform test 
 preprocessing, we need a full complement of `#include` search paths. These 
 could be provided, in part, by `TEST_INCLUDE_PATH()`. But, if we allow 
@@ -287,7 +461,7 @@ plain text looking for this macro at the beginning of a test build.
 
 * `TEST_SOURCE_FILE()` _can_ be placed within conditional compilation
   C preprocessing statements.
-* `TEST_INCLUDE_PATH()` & `TEST_SOURCE_FILE()` can be “hidden” from Ceedling's
+* `TEST_INCLUDE_PATH()` & `TEST_SOURCE_FILE()` can be “hidden” from Ceedling’s
   text scanning with traditional C comments.
 
 ### Test file preprocessing
@@ -297,9 +471,9 @@ statements in test files before extracting `#include` conventions and test case
 signatures. That is, preprocessing output is used to generate test runners 
 and assemble the components of a test executable build.
 
-!!! tip "Preprocessing Not Needed Inside Test Functions"
+!!! tip "Preprocessing not needed inside test functions"
     Conditional directives _inside_ test case functions generally do not require
-    Ceedling's test preprocessing ability. Assuming your code is correct, the C
+    Ceedling’s test preprocessing ability. Assuming your code is correct, the C
     preprocessor within your toolchain will do the right thing for you in your
     test build. Read on for more details and the other cases of interest.
 
@@ -308,20 +482,20 @@ preprocessor directives generate the `#include` statements for your test file
 and/or generate or enclose full test case functions. Ceedling will not be able 
 to properly discover your `#include` statements or test case functions unless 
 they are plainly available in an expanded, raw code version of your test file. 
-Ceedling's preprocessing abilities provide that expansion.
+Ceedling’s preprocessing abilities provide that expansion.
 
 #### Examples of when Ceedling preprocessing **_is_** needed for test files
 
 Generally, Ceedling preprocessing is needed when:
 
-1. `#include` statements are generated by macros
+1. `#include` directives targets are macros
 1. `#include` statements are conditionally present due to `#ifdef` statements
 1. Test case function signatures are generated by macros
 1. Test case function signatures are conditionaly present due to `#ifdef` statements
 
 ```c
-// #include conventions are not recognized for anything except #include "..." statements
-INCLUDE_STATEMENT_MAGIC("header_file")
+// #include directive targeting a macor
+#include INCLUDE_STATEMENT_MAGIC("header_file")
 ```
 ```c
 // Test file scanning will always see this #include statement
@@ -342,6 +516,41 @@ void test_some_test_case(void) {
 void TEST_CASE_MAGIC("foo_bar_case") {
    TEST_ASSERT_EQUALS(...);
 }
+```
+
+#### Where the macros deciding an `#include` come from
+
+With test preprocessing, a conditional `#include` (item 2 above) is decided by the same
+macros your compiler will see, wherever they are defined. A macro may come from your
+project’s `:defines`, from the test file itself, or from a header the test file includes.
+That header can even be one the test file mocks, since a mock includes its real header.
+
+```c
+// config.h
+#define FEATURE_X_ENABLED
+```
+```c
+// test_feature.c
+#include "mock_config.h"     // The mock includes config.h, defining FEATURE_X_ENABLED
+
+#ifdef FEATURE_X_ENABLED
+#include "mock_feature_x.h"  // Ceedling finds and generates this mock
+#endif
+```
+
+!!! warning
+    One combination is out of reach. An `#include` whose target is a macro (item 1
+    above) cannot name a mock when only a header defines that macro. Define the macro
+    under `:defines` ↳ `:test` instead, so the test file sees it directly.
+
+```c
+// config.h
+#define FEATURE_MOCK "mock_feature_x.h"
+```
+```c
+// test_feature.c
+#include "config.h"
+#include FEATURE_MOCK  // Ceedling cannot find this mock
 ```
 
 #### Examples of when test preprocessing is **_not_** needed for test files
@@ -367,12 +576,12 @@ statements in header files before generating mocks from them. CMock requires
 a clear look at function definitions and types in order to do its work.
 
 Header files with preprocessor directives and conditional macros can easily
-obscure details from CMock's limited C parser. Advanced C projects tend
+obscure details from CMock’s limited C parser. Advanced C projects tend
 to rely on preprocessing directives and macros to accomplish everything from
 build variants to OS calls to register access to managing proprietary language
 extensions.
 
-Mocking is often most useful in complicated codebases. As such Ceedling's 
+Mocking is often most useful in complicated codebases. As such Ceedling’s 
 preprocessing abilities tend to be quite necessary to properly expand header
 files so CMock can parse them.
 
@@ -387,14 +596,14 @@ Generally, Ceedling preprocessing is needed when:
 
 **_Important Notes:_**
 
-* Sometimes CMock's parsing features can be configured to handle scenarios
+* Sometimes CMock’s parsing features can be configured to handle scenarios
   that fall within (3) above. CMock can match and remove most text strings,
   match and replace certain text strings, map custom types to mockable 
   alternatives, and be extended with a Unity helper to handle complex and 
-  compound types. See [CMock]'s documentation for more.
+  compound types. See [CMock]’s documentation for more.
 
 * Test preprocessing causes any macros or symbols in a mockable header to 
-  "disappear" in the generated mock. It's quite common to have needed symbols
+  "disappear" in the generated mock. It’s quite common to have needed symbols
   or macros in a header file that do not directly impact the function 
   signatures to be mocked. This can break compilation of your test suite.
 
@@ -402,7 +611,7 @@ Generally, Ceedling preprocessing is needed when:
 
     1. Move symbols and macros in your header file that do not impact function 
       signatures to another source header file that will not be filtered
-      by Ceedling's header file preprocessing.
+      by Ceedling’s header file preprocessing.
     1. If (1) is not possible, you may duplicate the needed symbols and macros
       in a header file that is only available in your test build search paths
       and include it in your test file.
@@ -459,9 +668,9 @@ suite abstraction within a given test report format.
 
 Because Ceedling can execute builds with multiple threads, care must be taken
 to interpret test suite duration values — particularly in relation to 
-Ceedling's logged run times.
+Ceedling’s logged run times.
 
-In a multi-threaded build it's quite common for the logged Ceedling project run
+In a multi-threaded build it’s quite common for the logged Ceedling project run
 time to be less than the total suite time in a test report. In multi-threaded 
 builds on multi-core machines, test executables are run on different processors
 simultaneously. As such, the total on-processor time in a test report can 
@@ -478,7 +687,7 @@ supports the time mechanism Unity relies on, Ceedling will automatically
 collect test case time values — generally made use of by test report plugins.
 
 To enable test case duration measurements, they must be enabled as a Unity
-compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation
+compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity’s compilation
 symbols (`:unity` ↳ `:defines`) in your Ceedling project file (see example
 below). Unity test case durations as reported by Ceedling default to 0 if the
 compilation option is not set.
@@ -497,48 +706,34 @@ _NOTE:_ Most test cases are quite short, and most computers are quite fast. As
 
 ## Dependency tracking
 
-Previous versions of Ceedling used features of Rake to offer
-various kinds of smart rebuilds — that is, only regenerating files, 
-recompiling code files, or relinking executables when changes within 
-the project had occurred since the last build. Optional Ceedling 
-features discovered “deep dependencies” such that, for example, a 
-change in a header file several nested layers deep in `#include` 
-statements would cause all the correct test executables to be 
-updated and run.
+Ceedling only regenerates, compiles, links, or runs an element of the build
+pipeline if a change in the dependency tree requires it. This includes “deep
+dependencies” wherein a change in a header file several nested layers deep in
+`#include` statements correctly triggers a rebuild of every test executable
+that depends on it, directly or indirectly.
 
-These features have been temporarily disabled and/or removed for 
-test suites and remain in limited form for release build while
-Ceedling undergoes a major overhaul.
-
-Please see the [Release Notes](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ReleaseNotes.md).
-
-### (Not so) smart rebuilds
-
-* New features that are a part of the Ceedling overhaul can 
-  significantly speed up test suite execution and release builds 
-  despite the present behavior of brute force running all build 
-  steps. See the discussion of enabling multi-threaded builds in 
-  later sections.
-
-* When smart rebuilds return, they will further speed up builds as
-  will other planned optimizations.
+This is called a delta build. Delta builds are automatic, need no
+configuration, and complement Ceedling’s parallel build steps for further
+build time speedups. See [Delta Builds](../getting-started/builds.md) for the
+full picture, including how test result caching works and the
+`--force-test-rerun` flag.
 
 ## Build output
 
 Ceedling requires a top-level build directory for all the stuff
 that it, the accompanying test tools, and your toolchain generate.
-That build directory's location is configured in the top-level 
+That build directory’s location is configured in the top-level 
 `:project` section of your configuration file (discussed in the
 [configuration reference](../configuration/index.md)). There
 can be a ton of generated files. By and large, you can live a full
 and meaningful life knowing absolutely nothing at all about
 the files and directories generated below the root build directory.
 
-As noted already, it's good practice to add your top-level build
+As noted already, it’s good practice to add your top-level build
 directory to source control but nothing generated beneath it.
 you'll spare yourself headache if you let Ceedling delete and
 regenerate files and directories in a non-versioned corner
-of your project's filesystem beneath the top-level build directory.
+of your project’s filesystem beneath the top-level build directory.
 
 The `artifacts/` directory is the one and only directory you may
 want to know about beneath the top-level build directory. The
@@ -592,7 +787,7 @@ build with an exit code of 0 even upon test case failures.
 ```
 
 If you use the option for graceful failures in CI, you'll want to
-rig up some kind of logging monitor that scans Ceedling's test
+rig up some kind of logging monitor that scans Ceedling’s test
 summary report sent to `$stdout` and/or a log file. Otherwise, you
 could have a successful build but failing tests.
 
@@ -601,7 +796,7 @@ could have a successful build but failing tests.
 Ceedling works by collecting multiple Unity test executables together 
 into a test suite (more here: [Anatomy of a Test Suite](test-suite-anatomy.md)).
 
-A Unity test executable's exit code is the number of failed tests. An
+A Unity test executable’s exit code is the number of failed tests. An
 exit code of `0` means all tests passed while anything larger than zero
 is the number of test failures.
 
@@ -612,5 +807,6 @@ much simpler exit code convention than Unity: `0` = 🙂 while `1` = ☹️.
 
 [CMock]: http://github.com/ThrowTheSwitch/CMock
 [Unity]: http://github.com/ThrowTheSwitch/Unity
+[MSYS2]: https://www.msys2.org
 
 <br/><br/>

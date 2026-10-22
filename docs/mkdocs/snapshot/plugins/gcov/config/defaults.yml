@@ -6,6 +6,10 @@
 # =========================================================================
 
 ---
+:plugins:
+  :test_build_contexts:
+    - :gcov   # Its :defines and :flags work as :test's do, matchers included
+
 :gcov:
   :summaries: TRUE                # Enable simple coverage summaries to console after tests
   :report_task: FALSE             # Disabled dedicated report generation task (this enables automatic report generation)
@@ -20,6 +24,7 @@
   :gcovr:
     :report_root: "."             # Gcovr defaults to scanning for results starting in working directory
     :config_file: ~               # Specify the location of the GCOVR configuration file to use instead of settings config here
+    :custom_args: []              # Optional list of one or more command line arguments to pass to gcovr (e.g. search-path limiting). Explicitly defined as default empty array to simplify option validation code
 
                                   # For v6.0+ merge coverage results for same function tested multiple times
                                   # The default behavior is 'strict' which will cause a gcovr exception for many users
@@ -27,7 +32,6 @@
 
   :report_generator:
     :verbosity: Warning           # Default verbosity
-    :collection_paths_source: []  # Explicitly defined as default empty array to simplify option validation code
     :custom_args: []              # Explicitly defined as default empty array to simplify option validation code
     :gcov_exclude: []             # Explicitly defined as default empty array to simplify option validation code
 ...

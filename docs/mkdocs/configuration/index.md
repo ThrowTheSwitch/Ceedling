@@ -1,7 +1,7 @@
 # Configuration
 
 !!! tip "Annotated Sample Configuration"
-    See the [annotated sample project configuration file](../snapshot/assets/project.yml)
+    See the [annotated sample project configuration file](../snapshot/assets/features/project.yml)
     for a commented example of available settings.
 
 ## Project File

@@ -31,7 +31,7 @@ require 'spec_system_helper'
 ##   :project    => { :use_partials => true }   — triggers source/header partial preprocessing
 ##   :test_build => { :preprocess_force_fallback => true }  — forces text-only fallback
 ##
-## Test assets: assets/tests_with_fallback_conditionals/
+## Test assets: assets/fixtures/tests_with_fallback_conditionals/
 ##   - conditional_module.h: declares ConditionalModule_Init()
 ##   - conditional_module.c: conditionally includes optional_dep.h and
 ##     calls OptionalDep_DoWork() when CONDITIONAL_FEATURE is defined
@@ -39,6 +39,15 @@ require 'spec_system_helper'
 ##   - test_conditionals.c: uses TEST_PARTIAL_ALL_MODULE to pull in the
 ##     partial; conditionally includes mock_optional_dep.h and selects
 ##     test cases based on CONDITIONAL_FEATURE
+##   - conditional_module.c's ConditionalModule_Init() also has a second,
+##     compound-guarded `#if defined(NEVER_DEFINED_FEATURE) && defined(CONDITIONAL_FEATURE)`
+##     call to OptionalDep_DoWork() nested inside the plain `#ifdef
+##     CONDITIONAL_FEATURE` block -- regression coverage for a misparse that
+##     evaluated only the first macro name (always false here, since
+##     NEVER_DEFINED_FEATURE is never defined by any test config) instead of
+##     conservatively treating the whole compound expression as active. The
+##     "with CONDITIONAL_FEATURE" scenario below expects two calls for this
+##     reason, not one.
 ##   - Files contain UTF-8 multi-byte characters in comments to exercise
 ##     encoding safety of the conditional-tracking path
 ##
@@ -113,7 +122,11 @@ ceedling_system_tests do
       # so OptionalDep_DoWork() is included in the partial. The test file's
       # corresponding #ifdef generates the mock. The #ifdef test case runs and
       # passes (ConditionalModule_Init() calls OptionalDep_DoWork() in the
-      # partial; the mock satisfies the expectation).
+      # partial; the mock satisfies the expectation). Two calls, not one: the
+      # nested compound-guarded call must also be conservatively included (see
+      # header comment above) -- a misparse of that compound condition would
+      # leave only one real call, one short of the two expectations, failing
+      # the test via an unmet CMock expectation rather than a raw crash.
       # -----------------------------------------------------------------------
       it "should include active #ifdef block and run #ifdef test case" do
         @c.with_context do
@@ -135,29 +148,10 @@ ceedling_system_tests do
         end
       end
 
-
-      # -----------------------------------------------------------------------
-      # Encoding safety: UTF-8 multi-byte characters in comments near #ifdef
-      # directives in source/header files must not cause encoding errors when
-      # the fallback partial preprocessor processes them.
-      # (The test assets already contain non-ASCII UTF-8 in comments.)
-      # -----------------------------------------------------------------------
-      it "should not raise errors for UTF-8 in comments near #ifdef" do
-        @c.with_context do
-          Dir.chdir @proj_name do
-            settings = {
-              :project    => { :use_partials => true },
-              :test_build => { :preprocess_force_fallback => true }
-            }
-            @c.merge_project_yml_for_test(settings)
-
-            output = @c.ceedling_build_exec("test:conditionals")
-            expect(@c.last_exit_status).to eq(0)
-            expect(output).to match(/using fallback method/i)
-            expect(output).to match(/PASSED:\s+1/)
-          end
-        end
-      end
+      # (The dedicated no-CONDITIONAL_FEATURE + UTF-8-in-comments example was folded
+      # away: the assets already carry non-ASCII UTF-8, so the two examples above
+      # exercise the encoding-safety path already, and preprocessing_encoding_spec
+      # plus the unit encoding tests cover it directly.)
 
     end
 

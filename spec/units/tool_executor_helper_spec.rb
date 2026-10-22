@@ -19,7 +19,7 @@ describe ToolExecutorHelper do
     # these will always be mocked
     @sys_wrapper = SystemWrapper.new
     @sys_utils = SystemUtils.new({:system_wrapper => @sys_wrapper})
-    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
+    @loginator = Loginator.new({:verbosinator => nil, :system_wrapper => nil})
     @verbosinator = Verbosinator.new()
     
     @tool_exe_helper = described_class.new(

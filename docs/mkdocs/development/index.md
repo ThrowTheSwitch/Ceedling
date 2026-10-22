@@ -18,6 +18,14 @@
     Guidelines for contributing to this project — be it code, reviews,
     documentation, or issue reports.
 
+-   :material-shield-lock: **[Security][security]**
+
+    ---
+
+    See the [policy][security-policy] for disclosure details and
+    guidance on issues that vulnerability inspection tools may surface.
+    Report a vulnerability through a [private advisory][security-report].
+
 </div>
 
 ## Projects
@@ -30,6 +38,13 @@
 
     Install Ceedling for development, run the self-test suite, work with
     the documentation tooling, and understand code layout.
+
+-   :material-source-branch: **[Branching & Releases][releases]**
+
+    ---
+
+    Which branch to work from, and how pushing a Git tag publishes a
+    release or a pre-release.
 
 -   :material-puzzle-edit: **[Plugin Development Guide][plugin-dev]**
 
@@ -46,5 +61,9 @@
 [code-of-conduct]:  https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CODE_OF_CONDUCT.md
 [contributing]:     https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CONTRIBUTING.md
 [dev-workflow]:     workflow.md
+[releases]:         releases.md
+[security]:         https://github.com/ThrowTheSwitch/Ceedling?tab=security-ov-file
+[security-policy]:  https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/SECURITY.md
+[security-report]:  https://github.com/ThrowTheSwitch/Ceedling/security/advisories/new
 
 <br/><br/>

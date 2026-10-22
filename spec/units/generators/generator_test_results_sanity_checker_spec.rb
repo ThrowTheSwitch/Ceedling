@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/filename_extension'
 require 'ceedling/generators/generator_test_results_sanity_checker'
 require 'ceedling/constants'
 require 'ceedling/loginator'
@@ -14,7 +15,7 @@ require 'ceedling/config/configurator'
 describe GeneratorTestResultsSanityChecker do
   before(:each) do
     # These will always be mocked
-    @loginator = Loginator.new({:verbosinator => nil, :file_wrapper => nil, :system_wrapper => nil})
+    @loginator = Loginator.new({:verbosinator => nil, :system_wrapper => nil})
     @configurator = Configurator.new({
       :configurator_setup => nil,
       :configurator_builder => nil,
@@ -26,6 +27,13 @@ describe GeneratorTestResultsSanityChecker do
       :reportinator => nil,
       :ruby_expandinator => nil
     })
+
+    # Configurator generates its `extension_*` accessors at runtime from flattened
+    # project config (:extension ↳ :executable). These examples never run
+    # Configurator#build, so the method does not exist for partial-double verification
+    # to find, even though it is perfectly real in a running build. Declared on this
+    # instance so the stubs below stay verified rather than silently unchecked.
+    def @configurator.extension_executable; end
 
     @sanity_checker = described_class.new({:configurator => @configurator, :loginator => @loginator})
   
@@ -62,7 +70,7 @@ describe GeneratorTestResultsSanityChecker do
     it 'rasies error if basic check fails for ignore' do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:ignored] = 0
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
@@ -70,7 +78,7 @@ describe GeneratorTestResultsSanityChecker do
     it 'rasies error if basic check fails for failed' do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:failed] = 0
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
@@ -78,21 +86,21 @@ describe GeneratorTestResultsSanityChecker do
     it 'rasies error if basic check fails for total' do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:total] = 0
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
 
     it 'rasies error if thorough check fails for error code not 255 not equal' do
       @configurator.sanity_checks = TestResultsSanityChecks::THOROUGH
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 2)}.to raise_error(RuntimeError)
     end
 
     it 'rasies error if thorough check fails for error code 255 less than 255' do
       @configurator.sanity_checks = TestResultsSanityChecks::THOROUGH
-      allow(@configurator).to receive(:extension_executable).and_return('')
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new(''))
       allow(@loginator).to receive(:log)
       expect{@sanity_checker.verify(@results, 255)}.to raise_error(RuntimeError)
     end

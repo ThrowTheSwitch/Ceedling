@@ -16,12 +16,9 @@ class CExtractorDeclarations
 
   constructor :c_extractor_code_text
 
-  attr_writer :max_line_length
-
   def setup()
     # Aliases
-    @code_text       = @c_extractor_code_text
-    @max_line_length = DEFAULT_MAX_LINE_LENGTH
+    @code_text = @c_extractor_code_text
   end
 
   # Attempts to extract a complete variable declaration from the scanner
@@ -58,11 +55,14 @@ class CExtractorDeclarations
   #   On failure: Resets scanner position to starting position
   #
   # Safety:
-  #   Enforces max_line_length limit to prevent infinite loops on malformed input
+  #   A declaration with no terminating semicolon runs the scan to the end of
+  #   whatever buffer the caller (CExtractor#extract_next_feature) has grown so
+  #   far; that caller is the one place enforcing an overall length ceiling,
+  #   since only it knows how much more of the file remains to try growing into.
   def try_extract_variable(scanner)
     start_pos = scanner.pos
 
-    # Tracks paren, bracket, and brace depth simultaneously with inline string state machine and max_line_length guard — not suitable for collect_balanced()
+    # Tracks paren, bracket, and brace depth simultaneously with an inline string state machine — not suitable for collect_balanced()
     paren_depth = 0
     bracket_depth = 0
     brace_depth = 0
@@ -73,12 +73,6 @@ class CExtractorDeclarations
     # If we reach the end of string scanner, we failed to find something.
     until scanner.eos?
       char = scanner.peek(1)
-
-      # Safety check -- prevent infinite loops on malformed input
-      if (scanner.pos - start_pos) > @max_line_length
-        scanner.pos = start_pos
-        return [false, nil]
-      end
 
       # Handle string literals
       if in_string
@@ -103,18 +97,16 @@ class CExtractorDeclarations
         string_char = char
         scanner.getch
       when '/'
-        # Handle comments
-        if scanner.peek(2) =~ %r{^(/[/*])}
-          if scanner.peek(2) == '//'
-            # Line comment -- skip to end of line
-            scanner.scan_until(/\n/) || scanner.terminate
-          elsif scanner.peek(2) == '/*'
-            # Block comment -- skip to closing */
-            scanner.pos += 2
-            scanner.scan_until(%r{\*/})
-          else
-            scanner.getch
-          end
+        # Handle comments -- peek(2) starting with '/' is only ever exactly '//' or '/*'
+        # when it's a comment opener at all; anything else (a lone '/' or '/' followed by
+        # some other character) falls through to the plain-character else below.
+        if scanner.peek(2) == '//'
+          # Line comment -- skip to end of line
+          scanner.scan_until(/\n/) || scanner.terminate
+        elsif scanner.peek(2) == '/*'
+          # Block comment -- skip to closing */
+          scanner.pos += 2
+          scanner.scan_until(%r{\*/})
         else
           scanner.getch
         end
@@ -167,7 +159,9 @@ class CExtractorDeclarations
           # Verify this looks like a valid declaration
           # Must have at least a type and identifier
           # Can end with: word character, ], ), }, or " (for string initializers)
-          if declaration =~ /\w+.*[\w\]\)\}"']\s*;$/
+          # `/m` flag: declaration may span multiple lines (e.g. a multiline brace
+          # initializer), so '.' must match embedded newlines too
+          if declaration.match?(/\w+.*[\w\]\)\}"']\s*;$/m)
             return [true, expand_and_parse(declaration)]
           else
             scanner.pos = start_pos
@@ -300,8 +294,8 @@ class CExtractorDeclarations
   #
   # Returns: CVariableDeclaration
   def parse_declaration(individual_text, original_text)
-    decorators      = extract_decorators(individual_text)
-    clean_text      = strip_decorators(individual_text, decorators)
+    decorators, remaining = extract_decorators(individual_text)
+    clean_text      = normalize_declaration_whitespace(remaining)
     # Strip compiler extensions for name/type/array_suffix extraction only;
     # clean_text (stored as .text) retains attributes for correct compilation.
     extraction_text = @code_text.strip_compiler_extensions(clean_text)
@@ -319,9 +313,17 @@ class CExtractorDeclarations
     )
   end
 
-  # Scan leading whole-word tokens against DECORATOR_KEYWORDS
+  # Storage-class specifiers and base-type qualifiers precede a C declaration's type as a
+  # contiguous run of keywords -- `static`, `extern`, and a `const`/`volatile` that qualifies
+  # the type itself all appear here (e.g. `static const int MAX;`). A qualifier bound to a
+  # pointer level instead, such as the second `const` in `char * const p;`, sits after the
+  # type and its `*` tokens rather than in this leading run, so it is grammatically part of
+  # the declarator, not a decorator. Peeling keywords off one at a time from the front, and
+  # stopping at the first non-keyword token, naturally separates the two: the same keyword
+  # (e.g. `const`) can appear once here and again later in the declarator without the two
+  # occurrences being confused with each other, since only the leading run is ever consumed.
   #
-  # Returns: Array<String> ordered decorator keywords found at start of text
+  # Returns: [Array<String> ordered decorator keywords found at start of text, String remaining text after that run]
   def extract_decorators(text)
     decorators = []
     remaining = text.strip
@@ -337,18 +339,17 @@ class CExtractorDeclarations
       end
       break unless matched
     end
-    decorators
+    [decorators, remaining]
   end
 
-  # Remove decorator keywords from text and normalize whitespace
+  # A declaration with its leading decorator run already removed (see extract_decorators)
+  # still carries whatever whitespace and line breaks appeared in the source between its
+  # remaining tokens. This collapses that whitespace to single spaces and guarantees a
+  # trailing semicolon, so `.text` is stable, single-line C ready to compile.
   #
-  # Returns: String with decorators removed, whitespace normalized, semicolon retained
-  def strip_decorators(text, decorators)
-    result = text.dup
-    decorators.each do |kw|
-      result.gsub!(/\b#{Regexp.escape(kw)}\b\s*/, '')
-    end
-    # Normalize whitespace but preserve semicolon
+  # Returns: String with whitespace normalized, semicolon retained
+  def normalize_declaration_whitespace(remaining)
+    result = remaining.dup
     result.gsub!(/\r\n|\r|\n|\t/, ' ')
     result.gsub!(/\s+/, ' ')
     result.strip!
@@ -380,7 +381,9 @@ class CExtractorDeclarations
   # Returns the complete subscript string (e.g., "[8]", "[M][N]") or "" for scalars.
   def extract_array_suffix(clean_text)
     text = clean_text.sub(/\s*;\s*$/, '').sub(/\s*=.*/, '')
-    return '' if text =~ /\(\s*\*/                       # function pointer -- no array suffix
+    # `match?` leaves $~ alone, which is safe because the line below sets it
+    # with its own match before reading $1.
+    return '' if text.match?(/\(\s*\*/)                    # function pointer -- no array suffix
     text =~ /\w+(\s*(?:\[[^\]]*\])+)\s*$/ ? $1.strip : ''
   end
 
@@ -399,16 +402,17 @@ class CExtractorDeclarations
       return $1.strip
     end
 
-    # Find the name in the text and take everything before it (including pointer specifiers)
-    idx = text.rindex(name)
-    return nil if idx.nil?
+    # Find the name in the text and take everything before it (including pointer specifiers).
+    # A plain rindex(name) would find the last substring occurrence of `name` anywhere in
+    # text, even inside an unrelated longer identifier that merely ends with it (e.g. `name`
+    # "count" inside a type-side identifier like "recount") -- \b anchors this to a whole
+    # identifier occurrence. Greedy `.*` in a single match (not scan) naturally finds the
+    # rightmost such occurrence, since it consumes as much as possible before backtracking
+    # just enough to let the trailing \bname\b still match.
+    match = text.match(/\A(.*)\b#{Regexp.escape(name)}\b/m)
+    return nil if match.nil?
 
-    type_part = text[0...idx]
-    # Include any pointer specifiers attached to the name
-    if text[idx..] =~ /^#{Regexp.escape(name)}/
-      # Look for * immediately before name (with optional space)
-      type_part = type_part.rstrip
-    end
+    type_part = match[1]
     type_part.strip
   end
 

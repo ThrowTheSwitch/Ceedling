@@ -1,0 +1,285 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# Shared rigging for the integration spec tier.
+#
+# Integration specs compose the real `lib/ceedling/preprocess/` object graph and run
+# the real GCC preprocessor, but exercise one subsystem -- includes extraction --
+# rather than a whole `ceedling` build. `gcc` is the only external dependency.
+#
+# The graph is real except for two thin stand-ins that keep the heavyweight framework
+# objects out: a Configurator stub that just returns the `DEFAULT_*_PREPROCESSOR_TOOL`
+# definitions and the mock prefix, and a ToolExecutor stub whose `exec` actually shells
+# the command it was handed through Open3. GCC genuinely runs; nothing else is faked.
+#
+# Written to plain `def ... end` throughout -- no endless method definitions, no
+# anonymous parameter forwarding -- so it loads on every Ruby in the CI matrix (3.0+).
+
+require 'open3'
+require 'tmpdir'
+require 'fileutils'
+
+require 'ceedling/constants'
+require 'ceedling/defaults'
+require 'ceedling/file_wrapper'
+require 'ceedling/yaml_wrapper'
+require 'ceedling/parsing_parcels'
+require 'ceedling/includes/includes'
+require 'ceedling/includes/include_factory'
+require 'ceedling/preprocess/preprocessinator'
+require 'ceedling/tool_executor'
+require 'ceedling/quote_include_isolator'
+require 'ceedling/preprocess/preprocessinator_includes_handler'
+require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
+require 'ceedling/preprocess/preprocessinator_line_marker_includes_extractor'
+
+module IntegrationSpecHelpers
+  # Absorbs any message (and any block) and returns itself. Stands in for the graph's
+  # logging/assembly collaborators that the includes path either never reaches or only
+  # calls for their side effects.
+  class NullObject
+    def method_missing(*_args, **_kwargs)
+      self
+    end
+
+    def respond_to_missing?(*)
+      true
+    end
+  end
+  NULL = NullObject.new
+
+  # The bare-includes tool with an option no preprocessor knows. GCC and Clang both stop
+  # on it before writing a make rule, as a broken tool definition or a killed process would.
+  FAILING_BARE_TOOL = DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL.merge(
+    arguments: ['--ceedling-unrecognized-option'] + DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL[:arguments]
+  ).freeze
+
+  # A Configurator with only what the includes path touches: the three preprocessor
+  # tool definitions and the CMock mock naming. Everything else would be a bug to reach.
+  # `bare_tool:` replaces the bare-includes tool, so an example can make that pass fail.
+  class StubConfigurator
+    def initialize(bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+      @bare_tool = bare_tool
+    end
+
+    def tools_test_bare_includes_preprocessor
+      @bare_tool
+    end
+
+    def tools_test_file_directives_only_preprocessor
+      DEFAULT_TEST_FILE_DIRECTIVES_ONLY_PREPROCESSOR_TOOL
+    end
+
+    def tools_test_file_full_preprocessor
+      DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL
+    end
+
+    def cmock_mock_prefix
+      'mock_'
+    end
+
+    def cmock_mock_path
+      'mocks'
+    end
+  end
+
+  # A ToolExecutor that assembles the command from the tool definition the same way the
+  # real one's `${n}` slot substitution does (an Array slot fans its argument out into
+  # one repeated flag per element), then runs it for real. Return shape matches what
+  # PreprocessinatorIncludesHandler and Preprocessinator read: `:output`, `:exit_code`,
+  # `:status`. Like SystemWrapper#shell_capture3, a command run with `:boom` false reports
+  # an exit code of 0 whatever happened, so failure handling meets the real contract.
+  class ShellingToolExecutor
+    def build_command_line(tool, extra_params, *args)
+      slots = {}
+      args.each_with_index { |value, i| slots[(i + 1).to_s] = value }
+
+      argv = [tool[:executable]] + Array(extra_params)
+      tool[:arguments].each do |arg|
+        slot = arg[/\$\{(\d+)\}/, 1]
+        if slot
+          Array(slots[slot]).each { |value| argv << arg.gsub("${#{slot}}", value.to_s) }
+        else
+          argv << arg
+        end
+      end
+
+      { line: argv.join(' '), options: { boom: true } }
+    end
+
+    def exec(command, _args = [])
+      stdout, stderr, status = Open3.capture3(command[:line])
+      exit_code = command[:options][:boom] ? status.exitstatus : 0
+      { output: stdout + stderr, exit_code: exit_code, status: status }
+    end
+
+    def failed?(shell_result)
+      ToolExecutor.allocate.failed?(shell_result)
+    end
+  end
+
+  # Minimal FilePathUtils: the includes path only asks it for a handful of scratch
+  # locations. Every returned directory is created on demand.
+  class ScratchFilePathUtils
+    def initialize(root)
+      @root = root
+    end
+
+    def form_test_preprocess_files_path(_test)
+      ensure_dir(File.join(@root, 'preprocess'))
+    end
+
+    def form_preprocessed_includes_list_filepath(filepath, test)
+      File.join(ensure_dir(File.join(@root, 'includes', test.to_s)), File.basename(filepath) + '.yml')
+    end
+
+    def form_preprocessed_file_raw_directives_only_filepath(filepath, test)
+      File.join(ensure_dir(File.join(@root, 'donly', 'raw', test.to_s)), File.basename(filepath))
+    end
+
+    def form_preprocessed_file_compacted_directives_only_filepath(filepath, test)
+      File.join(ensure_dir(File.join(@root, 'donly', test.to_s)), File.basename(filepath))
+    end
+
+    def form_preprocessed_file_fallback_expansion_filepath(filepath, test)
+      File.join(ensure_dir(File.join(@root, 'fallback_expansion', test.to_s)), File.basename(filepath))
+    end
+
+    private
+
+    def ensure_dir(dir)
+      FileUtils.mkdir_p(dir)
+      dir
+    end
+  end
+
+  # Facade: `reconcile` lays out the same call sequence a real build's
+  # `stage_preprocess_*` does for one file -- optionally generate the directives-only
+  # output, then hand it to `Preprocessinator#preprocess_file_includes_common` -- and
+  # returns the reconciled, sanitized Include list. The spec renders those to Strings.
+  class IncludesExtractionHarness
+    def initialize(_work_dir, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+      @root         = Dir.mktmpdir('ceedling-includes-harness-')
+      @cfg          = StubConfigurator.new( bare_tool: bare_tool )
+      @tool_exec    = ShellingToolExecutor.new
+      @fpu          = ScratchFilePathUtils.new(@root)
+      @file_wrapper = FileWrapper.new(loginator: NULL, verbosinator: NULL)
+      factory       = IncludeFactory.new(configurator: @cfg)
+      line_marker   = PreprocessinatorLineMarkerIncludesExtractor.new(
+        include_factory: factory, file_wrapper: @file_wrapper
+      )
+
+      @handler = PreprocessinatorIncludesHandler.new(
+        configurator:                                    @cfg,
+        preprocessinator_line_marker_includes_extractor: line_marker,
+        include_factory:                                 factory,
+        tool_executor:                                   @tool_exec,
+        file_wrapper:                                    @file_wrapper,
+        file_path_utils:                                 @fpu,
+        yaml_wrapper:                                    NULL,
+        parsing_parcels:                                 ParsingParcels.new,
+        quote_include_isolator:                          QuoteIncludeIsolator.new(file_wrapper: @file_wrapper, loginator: NULL),
+        loginator:                                       NULL,
+        reportinator:                                    NULL
+      )
+      @handler.setup
+
+      @preprocessinator = Preprocessinator.new(
+        preprocessinator_includes_handler: @handler,
+        preprocessinator_comment_stripper: NULL,
+        preprocessinator_file_assembler:   NULL,
+        preprocessinator_reconstructor:    NULL,
+        file_path_utils:                   @fpu,
+        file_wrapper:                      @file_wrapper,
+        tool_executor:                     @tool_exec,
+        plugin_manager:                    NULL,
+        configurator:                      @cfg,
+        loginator:                         NULL,
+        reportinator:                      NULL
+      )
+      @preprocessinator.setup
+    end
+
+    # `fallback: true` forces the text-scan path (skips directives-only generation).
+    def reconcile(file:, search_paths:, test: 'itest', defines: [], fallback: false)
+      donly = nil
+      unless fallback
+        donly = @preprocessinator.generate_directives_only_output(
+          filepath: file, test: test, flags: [],
+          include_paths: search_paths, vendor_paths: [], defines: defines
+        )
+      end
+
+      @preprocessinator.preprocess_file_includes_common(
+        test: test,
+        filepath: file,
+        directives_only_filepath: donly,
+        fallback: (fallback || donly.nil?),
+        flags: [],
+        include_paths: search_paths,
+        vendor_paths: [],
+        defines: defines
+      )
+    end
+  end
+
+  # --- Toolchain probes -----------------------------------------------------
+
+  # True when a `gcc` invocation of any kind succeeds. Mirrors the system tier's
+  # `tool_available?` rather than sharing it, so an integration spec need not load the
+  # whole system helper.
+  def gcc_available?
+    Open3.capture2e('gcc --version')[1].success?
+  rescue StandardError
+    false
+  end
+
+  # True when `gcc` honours `-fdirectives-only` without complaint. Older Apple Clang releases
+  # (the `gcc` alias on macOS) ignore the flag and warn, naming it -- exactly the
+  # condition under which Ceedling itself falls back to text scanning
+  # (Configurator#resolve_directives_only_preprocessing). Integration specs branch on
+  # this the same way.
+  def directives_only_supported?
+    out, status = Open3.capture2e('gcc -E -fdirectives-only -x c -', stdin_data: "\n")
+    status.success? && !out.match?(/warning[^\n]+-fdirectives-only/)
+  rescue StandardError
+    false
+  end
+
+  # --- Fixture trees ------------------------------------------------------
+
+  # Writes `files` (project-relative path => contents) into a fresh temp directory and
+  # yields its absolute path. Parent directories are created as needed. The tree is
+  # removed when the block returns.
+  def with_source_tree(files)
+    Dir.mktmpdir('ceedling-includes-integration-') do |dir|
+      files.each do |rel, contents|
+        path = File.join(dir, rel)
+        FileUtils.mkdir_p(File.dirname(path))
+        File.write(path, contents)
+      end
+      yield dir
+    end
+  end
+
+  # Builds the real Preprocessinator graph wired to run GCC for real, and returns a
+  # small facade over it. See IncludesExtractionHarness#reconcile.
+  def build_includes_harness(work_dir, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+    IncludesExtractionHarness.new(work_dir, bare_tool: bare_tool)
+  end
+end
+
+RSpec.configure do |config|
+  config.include IntegrationSpecHelpers
+end
+
+# `include_context "requires gcc"` skips a spec (or describe block) when no usable gcc
+# is on PATH -- the same shape the system tier uses for gdb/valgrind.
+RSpec.shared_context "requires gcc" do
+  before(:all) { @gcc_available = gcc_available? }
+  before { skip 'gcc is not installed or not in PATH' unless @gcc_available }
+end

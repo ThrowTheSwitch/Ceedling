@@ -5,12 +5,89 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/c_extractor/c_extractor_types'
+
 class CExtractorPreprocessing
 
   # Directive type symbols for use with filter_directive()
   MACRO_DEFINITION = :macro_definition unless defined?(MACRO_DEFINITION)
 
   constructor :c_extractor_code_text
+
+  # Compiler-extension attribute forms (CExtractorCodeText#strip_compiler_extensions'
+  # own `__word__(...)`/`__declspec(...)` shapes) are indistinguishable from a bare
+  # invocation by identifier-plus-parens shape alone -- e.g. `__declspec(dllexport)
+  # void foo(int x) {...}` -- but they're a function signature's own leading
+  # decoration, always followed by more of that same signature, never a construct in
+  # their own right. Excluded in try_extract_bare_macro_invocation below so that method
+  # never steals them out from under the signature-scanning extractors it exists to run
+  # ahead of.
+  COMPILER_EXTENSION_IDENTIFIER = /\A(?:__\w+__|__declspec)\z/
+
+  # A bare, top-level, semicolon-less macro invocation (an x-macro call expanding to a
+  # full function definition once the macro itself is applied) has no leading '#', no
+  # trailing ';', and no trailing '{' -- real compilable C at file/statement scope
+  # never has IDENTIFIER(balanced-args) followed by anything else, so this shape only
+  # exists pre-macro-expansion. A trailing ';' (an ordinary call-as-statement) or '{'
+  # (a real function definition) are both explicitly NOT this shape and are left for
+  # the extractors that already handle those correctly.
+  #
+  # One accepted, pre-existing limitation, not introduced here: a K&R-style old-style
+  # function definition (`foo(a,b)\nint a; int b;\n{...}`) also matches this shape and
+  # would be misclassified -- but it already falls through to the same broken
+  # catch-all this method exists to intercept, so this swaps one already-wrong output
+  # for a different one, for a construct essentially extinct in Ceedling's actual
+  # (modern embedded C) audience. Not worth the real declaration-grammar knowledge
+  # this hand-rolled scanner doesn't have.
+  #
+  # @param scanner [StringScanner] positioned at a potential macro invocation
+  # @return [Array(Boolean, CExtractorTypes::CStatement|nil)]
+  def try_extract_bare_macro_invocation(scanner)
+    start_pos = scanner.pos
+
+    return [false, nil] unless scanner.scan(/[A-Za-z_]\w*/)
+    if scanner.matched.match?(COMPILER_EXTENSION_IDENTIFIER)
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+
+    @c_extractor_code_text.skip_deadspace(scanner)
+    unless scanner.peek(1) == '('
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+
+    success, _args = @c_extractor_code_text.collect_balanced(scanner, '(', ')')
+    unless success
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+
+    # Peek past trailing deadspace without consuming it as part of this element --
+    # only the invocation itself belongs to this element's own text span.
+    after_invocation = scanner.pos
+    @c_extractor_code_text.skip_deadspace(scanner)
+    # A mid-buffer eos? here is ambiguous -- it may only mean this chunk ran out, not
+    # that the real file has ended. Fail (not succeed) so extract_next_feature's own
+    # buffer-growth-and-retry sees more input before this method decides, exactly like
+    # collect_balanced/try_extract_static_assert already do at their own boundaries. A
+    # genuine, whole-file EOF right after the invocation is legitimate and handled the
+    # same way every other feature type's own unterminated-trailing-content case is
+    # (see CExtractor#extract_contents' final break) -- no special-casing needed here.
+    if scanner.eos?
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+    next_char = scanner.peek(1)
+    scanner.pos = after_invocation
+
+    if next_char == ';' || next_char == '{'
+      scanner.pos = start_pos
+      return [false, nil]
+    end
+
+    [true, CExtractorTypes::CStatement.new(text: scanner.string[start_pos...scanner.pos])]
+  end
 
   # Scan `scanner` for calls to any macro in `macro_names` and return them as a
   # flat Array of cleaned strings in order of appearance. Each string is the full
@@ -142,8 +219,9 @@ class CExtractorPreprocessing
     return [false, nil] unless success
     text << args
 
-    # Consume optional whitespace before ';'
-    text << (scanner.scan(/[ \t]*/) || '')
+    # Consume optional whitespace before ';' (including newlines, for statements formatted
+    # with the terminating ';' on its own line)
+    text << (scanner.scan(/\s*/) || '')
 
     # Consume the required terminating ';'
     return [false, nil] unless scanner.scan(/;/)
@@ -231,20 +309,97 @@ class CExtractorPreprocessing
 
   # Collect and return the full text of a preprocessing directive starting at '#'.
   # Returns nil if not positioned at '#'. Handles backslash-newline continuations.
+  # String/char literals are consumed verbatim via skip_c_string() so an in-string
+  # escape (e.g. "\n", "\"", "\\") is never mistaken for a line continuation.
   # Trailing whitespace and newlines are stripped from the returned text.
   def _collect_directive(scanner)
     return nil unless scanner.check(/#/)
 
     text = scanner.scan(/#/)
 
-    loop do
-      text += scanner.scan(/[^\n\\]*/) || ''
+    until scanner.eos?
+      # '/' is excluded here (alongside the quote/backslash/newline characters
+      # already excluded) so a comment marker is never swallowed into this plain
+      # literal run -- it has to be seen and dispatched on its own below, before
+      # any '"' or "'" inside the comment's own text gets mistaken for the start
+      # of a string/char literal (see the // and /* branches for why that matters).
+      # '#' is excluded the same way, so a #/## operator is seen and dispatched on
+      # its own below rather than absorbed into this run along with whatever
+      # whitespace happens to surround it (see the ## and # branches for why).
+      text << (scanner.scan(/[^"'\\\n\/#]*/) || '')
 
-      if scanner.scan(/\\\n/)
-        text += "\\\n"
+      if scanner.scan(%r{//})
+        # A trailing line comment (e.g. "// don't change this") can contain an
+        # apostrophe or quote that isn't a literal delimiter at all. Consumed the
+        # ordinary way, that stray quote would send skip_c_string hunting for a
+        # closing match, straight through this directive's own newline and into
+        # whatever follows -- silently merging the next #define into this one.
+        # Comment content is captured verbatim and never scanned for literals.
+        #
+        # A '\' immediately before the physical newline still splices lines here,
+        # same as everywhere else in a directive (line splicing is a translation
+        # phase that happens before comments are stripped), so the comment -- and
+        # the directive -- keeps going onto the next physical line rather than
+        # ending at that newline.
+        before = scanner.pos - 2
+        loop do
+          scanner.scan(/[^\\\n]*/)
+          break if scanner.eos?
+          break unless scanner.scan(/\\\n/) || scanner.scan(/\\/)
+        end
+        text << scanner.string[before...scanner.pos]
+
+      elsif scanner.scan(%r{/\*})
+        # A block comment can legitimately span physical lines without ending the
+        # directive (only an un-commented newline does that) -- its content, quotes
+        # included, is likewise never scanned for literals, only for its own close.
+        before = scanner.pos - 2
+        scanner.skip_until(%r{\*/}) || scanner.terminate
+        text << scanner.string[before...scanner.pos]
+
+      elsif scanner.scan(%r{/})
+        text << '/'
+
+      elsif scanner.scan(/##/)
+        # The C standard specifies ##'s token-paste semantics but not the exact
+        # whitespace a preprocessor emits when reconstructing macro text -- real
+        # toolchains can and do disagree here, and Ceedling regenerates this text
+        # into partials rather than promising byte-for-byte reproduction of that
+        # spacing. Discard whatever immediately follows the operator in the source,
+        # so its right-hand operand always glues on directly. The left side only
+        # trims when a word character (the operand actually being pasted) is
+        # immediately adjacent -- a lookbehind, not a blind rstrip -- so unrelated
+        # punctuation spacing that happens to precede the operator (e.g. the space
+        # after a macro argument's comma, or after the parameter list's closing
+        # paren when the replacement list itself starts with the operator) is left
+        # alone; that space was never the preprocessor-reconstruction artifact this
+        # is defending against. ## checked before bare '#' below so a real paste
+        # operator is never split into two stringize matches.
+        text.sub!(/(?<=\w)[ \t]+\z/, '')
+        scanner.scan(/[ \t]*/)
+        text << '##'
+
+      elsif scanner.scan(/#/)
+        # Same rationale as ## above, for the stringize operator.
+        text.sub!(/(?<=\w)[ \t]+\z/, '')
+        scanner.scan(/[ \t]*/)
+        text << '#'
+
+      elsif (ch = scanner.peek(1)) == '"' || ch == "'"
+        before = scanner.pos
+        @c_extractor_code_text.skip_c_string(scanner, ch)
+        text << scanner.string[before...scanner.pos]
+
+      elsif scanner.scan(/\\\n/)
+        text << "\\\n"
+
       elsif scanner.scan(/\n/)
-        text += "\n"
+        text << "\n"
         break
+
+      elsif scanner.scan(/\\/)
+        text << '\\'
+
       else
         break  # EOS — no trailing newline
       end

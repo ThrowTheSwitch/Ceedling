@@ -28,13 +28,9 @@ GCOV_GCOVR_ARTIFACTS_FILE_HTML        = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "Gc
 GCOV_GCOVR_ARTIFACTS_FILE_COBERTURA   = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageCobertura.xml")
 GCOV_GCOVR_ARTIFACTS_FILE_SONARQUBE   = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageSonarQube.xml")
 GCOV_GCOVR_ARTIFACTS_FILE_JSON        = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverage.json")
-
-TOOL_COLLECTION_GCOV_TASKS = {
-  :test_compiler  => TOOLS_GCOV_COMPILER,
-  :test_assembler => TOOLS_TEST_ASSEMBLER,
-  :test_linker    => TOOLS_GCOV_LINKER,
-  :test_fixture   => TOOLS_GCOV_FIXTURE
-}
+GCOV_GCOVR_ARTIFACTS_FILE_JACOCO      = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverageJaCoCo.xml")
+GCOV_GCOVR_ARTIFACTS_FILE_LCOV        = File.join(GCOV_GCOVR_ARTIFACTS_PATH, "GcovCoverage.lcov")
+GCOV_GCOVR_DEFAULT_TEXT_ARTIFACT_FILENAME = "coverage.txt".freeze
 
 # Report Creation Utilities
 GCOV_UTILITY_NAME_GCOVR = "gcovr"
@@ -63,6 +59,7 @@ class ReportTypes
   COBERTURA = "Cobertura"
   SONARQUBE = "SonarQube"
   JSON = "JSON"
+  JACOCO = "JaCoCo"
   BADGES = "Badges"
   CSV_SUMMARY = "CsvSummary"
   LATEX = "Latex"

@@ -1,8 +1,9 @@
 # =========================================================================
-#   Ceedling - Test-Centered Build System for C
-#   ThrowTheSwitch.org
-#   Copyright (c) 2010-24 Mike Karlesky, Mark VanderVoord, & Greg Williams
-#   SPDX-License-Identifier: MIT
+#   Vendored third-party source, under its own copyright and license.
+#   Not Ceedling code, and carries no Ceedling copyright banner.
+#
+#   DIY ⏩️ Atomic Object
+#   License ⏩️ vendor/diy/LICENSE.txt
 # =========================================================================
 
 

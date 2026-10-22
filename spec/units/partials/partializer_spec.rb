@@ -23,12 +23,24 @@ describe Partializer do
     @reportinator       = Reportinator.new
     @loginator          = double("Loginator").as_null_object
 
+    # Guard extraction reads the module's own header text through these two.
+    @preprocessinator_reconstructor = double("PreprocessinatorReconstructor")
+    @file_wrapper                   = double("FileWrapper")
+
+    @configurator = double( "Configurator" )
+    allow(@configurator).to receive(:paths_test).and_return( ['test'] )
+    allow(@configurator).to receive(:paths_support).and_return( [] )
+    allow(@configurator).to receive(:paths_include).and_return( ['include'] )
+
     @partializer = described_class.new(
       {
+        :configurator       => @configurator,
         :partializer_helper => @partializer_helper,
         :file_finder        => @file_finder,
         :c_extractor        => @c_extractor,
         :file_path_utils    => @file_path_utils,
+        :preprocessinator_reconstructor => @preprocessinator_reconstructor,
+        :file_wrapper       => @file_wrapper,
         :reportinator       => @reportinator,
         :loginator          => @loginator
       }
@@ -40,6 +52,16 @@ describe Partializer do
     allow(@partializer).to receive(:_log_module_contents)
     allow(@partializer).to receive(:_log_impl_functions)
     allow(@partializer).to receive(:_log_interface_functions)
+  end
+
+  # A stand-in for another partialized module's config. Only the two visibility types matter to
+  # include remapping: a non-nil mocks type means that module has a generated interface header
+  # to redirect to.
+  def make_partial_config(mocks_type: nil, tests_type: nil)
+    OpenStruct.new(
+      mocks: OpenStruct.new(type: mocks_type),
+      tests: OpenStruct.new(type: tests_type)
+    )
   end
 
   ###
@@ -69,10 +91,119 @@ describe Partializer do
       expect(result).to eq({})
     end
 
+    # --- Resolution against this test's own search paths ---
+    #
+    # A module's header is resolved against the ordered collection its own test would
+    # search, so a TEST_INCLUDE_PATH() in that test decides the outcome. Resolving
+    # against one project-wide collection instead lets two modules sharing a basename
+    # collapse to whichever appears first, regardless of which test asked.
+    context "resolving against a caller's collection" do
+      it "forwards the collection it is given to the header lookup" do
+        configs = { 'config' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+        ordered = ['include/drivers/uart/config.h']
+
+        expect(@file_finder).to receive(:find_header_file)
+          .with('config', :ignore, collection: ordered)
+          .and_return('include/drivers/uart/config.h')
+        allow(@file_finder).to receive(:find_source_file).and_return('src/drivers/uart/config.c')
+        allow(PathMirror).to receive(:relative_subdir).and_return('drivers/uart')
+
+        @partializer.populate_filepaths(configs, collection: ordered)
+      end
+    end
+
+    # A bare module name says nothing about which directory it meant, so pairing one
+    # module's header with another module's source is possible. Narrowing the source
+    # lookup by the resolved header's own directory removes that mismatch.
+    context "a bare module name whose header resolved under a directory" do
+      before(:each) do
+        @configs = { 'config' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+        allow(@file_finder).to receive(:find_header_file).and_return('include/drivers/uart/config.h')
+        allow(PathMirror).to receive(:relative_subdir).and_return('drivers/uart')
+      end
+
+      it "looks the source up under that same directory" do
+        expect(@file_finder).to receive(:find_source_file)
+          .with('drivers/uart/config', :ignore)
+          .and_return('src/drivers/uart/config.c')
+
+        @partializer.populate_filepaths(@configs)
+
+        expect(@configs['config'].source.filepath).to eq('src/drivers/uart/config.c')
+      end
+
+      # A project whose source and include trees do not mirror one another has a
+      # header under a directory and a source that is not. The bare name still has to
+      # work there.
+      it "falls back to the bare name when nothing sits under that directory" do
+        allow(@file_finder).to receive(:find_source_file).with('drivers/uart/config', :ignore).and_return(nil)
+        expect(@file_finder).to receive(:find_source_file).with('config', :ignore).and_return('src/config.c')
+
+        @partializer.populate_filepaths(@configs)
+
+        expect(@configs['config'].source.filepath).to eq('src/config.c')
+      end
+    end
+
+    context "a bare module name whose header resolved directly in a root" do
+      it "looks the source up by the bare name alone" do
+        configs = { 'config' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+        allow(@file_finder).to receive(:find_header_file).and_return('include/config.h')
+        allow(PathMirror).to receive(:relative_subdir).and_return('')
+
+        expect(@file_finder).to receive(:find_source_file).with('config', :ignore).once.and_return('src/config.c')
+
+        @partializer.populate_filepaths(configs)
+      end
+    end
+
+    # A module named by directory was spelled out by its author, so both lookups use it
+    # verbatim and neither falls back to a bare name. Falling back would defeat the
+    # point of naming the directory.
+    context "a module named by directory" do
+      it "looks both the header and the source up verbatim" do
+        configs = { 'drivers/uart/config' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+
+        allow(@file_finder).to receive(:find_header_file).and_return('include/drivers/uart/config.h')
+        expect(@file_finder).to receive(:find_source_file)
+          .with('drivers/uart/config', :ignore).once
+          .and_return('src/drivers/uart/config.c')
+
+        @partializer.populate_filepaths(configs)
+      end
+
+      it "raises when it names no header" do
+        configs = { 'drivers/uart/confg' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+
+        allow(@file_finder).to receive(:find_header_file).and_return(nil)
+        allow(@file_finder).to receive(:find_source_file).and_return(nil)
+
+        expect {
+          @partializer.populate_filepaths(configs)
+        }.to raise_error( CeedlingException, /drivers\/uart\/confg/ )
+      end
+    end
+
+    context "a Partial that only mocks public functions" do
+      it "never looks up a source, whichever way its module was named" do
+        configs = {
+          'drivers/uart/config' => make_config(
+            tests: make_tests(present: false),
+            mocks: make_mocks(present: true, type: Partials::PUBLIC)
+          )
+        }
+
+        allow(@file_finder).to receive(:find_header_file).and_return('include/drivers/uart/config.h')
+        expect(@file_finder).to_not receive(:find_source_file)
+
+        @partializer.populate_filepaths(configs)
+      end
+    end
+
     it "populates header and source for a test config" do
       configs = { 'mod' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
 
-      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore, collection: nil).and_return('mod.h')
       allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
 
       @partializer.populate_filepaths(configs)
@@ -84,7 +215,7 @@ describe Partializer do
     it "populates header only for mock-public config" do
       configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PUBLIC)) }
 
-      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore, collection: nil).and_return('mod.h')
       expect(@file_finder).not_to receive(:find_source_file)
 
       @partializer.populate_filepaths(configs)
@@ -96,7 +227,7 @@ describe Partializer do
     it "populates header and source for mock-private config" do
       configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PRIVATE)) }
 
-      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore, collection: nil).and_return('mod.h')
       allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
 
       @partializer.populate_filepaths(configs)
@@ -108,7 +239,7 @@ describe Partializer do
     it "populates header and source when mocks.type is nil" do
       configs = { 'mod' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: nil)) }
 
-      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore).and_return('mod.h')
+      allow(@file_finder).to receive(:find_header_file).with('mod', :ignore, collection: nil).and_return('mod.h')
       allow(@file_finder).to receive(:find_source_file).with('mod', :ignore).and_return('mod.c')
 
       @partializer.populate_filepaths(configs)
@@ -123,9 +254,9 @@ describe Partializer do
         'b' => make_config(tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PUBLIC))
       }
 
-      allow(@file_finder).to receive(:find_header_file).with('a', :ignore).and_return('a.h')
+      allow(@file_finder).to receive(:find_header_file).with('a', :ignore, collection: nil).and_return('a.h')
       allow(@file_finder).to receive(:find_source_file).with('a', :ignore).and_return('a.c')
-      allow(@file_finder).to receive(:find_header_file).with('b', :ignore).and_return('b.h')
+      allow(@file_finder).to receive(:find_header_file).with('b', :ignore, collection: nil).and_return('b.h')
       expect(@file_finder).not_to receive(:find_source_file).with('b', :ignore)
 
       @partializer.populate_filepaths(configs)
@@ -154,7 +285,105 @@ describe Partializer do
       expect(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
         .with(c_module, config, name).ordered
 
-      @partializer.validate_config(c_module: c_module, config: config, name: name)
+      @partializer.validate_config(c_module: c_module, config: config, name: name, fallback: false)
+    end
+
+    # The fourth check only applies where preprocessing resolved less than it could, so the
+    # accurate path must not pay for it.
+    it "does not check fallback sufficiency when preprocessing was accurate" do
+      allow(@partializer_helper).to receive(:validate_function_names_exist)
+      allow(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
+      allow(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
+
+      expect(@partializer_helper).not_to receive(:validate_fallback_sufficiency)
+
+      @partializer.validate_config(
+        c_module: double("CModule"), config: double("Config"), name: 'test_foo', fallback: false
+      )
+    end
+
+    it "hands the module's own header and source text to the fallback sufficiency check" do
+      allow(@partializer_helper).to receive(:validate_function_names_exist)
+      allow(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
+      allow(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
+
+      config = Partials::Config.new(
+        module: 'Foo',
+        header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' ),
+        source: Partials::ConfigFileInfo.new( filepath: 'src/Foo.c' )
+      )
+
+      allow(@file_wrapper).to receive(:read).with('src/Foo.h').and_return('header text')
+      allow(@file_wrapper).to receive(:read).with('src/Foo.c').and_return('source text')
+
+      expect(@partializer_helper).to receive(:validate_fallback_sufficiency).with(
+        name: 'test_foo',
+        module_name: 'Foo',
+        files: { 'src/Foo.h' => 'header text', 'src/Foo.c' => 'source text' }
+      )
+
+      @partializer.validate_config(
+        c_module: double("CModule"), config: config, name: 'test_foo', fallback: true
+      )
+    end
+
+    # A declaration-only Partial is a prototype with no matching definition, which leaves its
+    # source filepath legitimately nil.
+    it "skips a Partial's absent source file rather than reading nil" do
+      allow(@partializer_helper).to receive(:validate_function_names_exist)
+      allow(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
+      allow(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
+
+      config = Partials::Config.new(
+        module: 'Foo',
+        header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' ),
+        source: Partials::ConfigFileInfo.new( filepath: nil )
+      )
+
+      allow(@file_wrapper).to receive(:read).with('src/Foo.h').and_return('header text')
+
+      expect(@partializer_helper).to receive(:validate_fallback_sufficiency).with(
+        name: 'test_foo', module_name: 'Foo', files: { 'src/Foo.h' => 'header text' }
+      )
+
+      @partializer.validate_config(
+        c_module: double("CModule"), config: config, name: 'test_foo', fallback: true
+      )
+    end
+  end
+
+  ###
+  ### extract_module_include_guard()
+  ###
+
+  context "#extract_module_include_guard" do
+    # Read from the original header, not the reconstituted copy: that copy carries a synthetic
+    # guard which #sanitize then strips, and fallback preprocessing excludes a guard from the
+    # macros it recovers. Neither is a dependable source for the name to spoof.
+    it "reads a bounded prefix of the module's own header and returns the guard found" do
+      expect(@file_wrapper).to receive(:read)
+        .with('src/Foo.h', Partializer::GUARD_SCAN_BYTES)
+        .and_return("#ifndef FOO_H\n#define FOO_H\n")
+      allow(@preprocessinator_reconstructor).to receive(:extract_include_guard)
+        .with("#ifndef FOO_H\n#define FOO_H\n")
+        .and_return('FOO_H')
+
+      expect( @partializer.extract_module_include_guard('src/Foo.h') ).to eq('FOO_H')
+    end
+
+    # A `#pragma once` header offers no macro any generated file could define, which is what a
+    # nil return means to every caller.
+    it "returns nil when the header carries no guard macro" do
+      allow(@file_wrapper).to receive(:read).and_return("#pragma once\n")
+      allow(@preprocessinator_reconstructor).to receive(:extract_include_guard).and_return(nil)
+
+      expect( @partializer.extract_module_include_guard('src/Foo.h') ).to be_nil
+    end
+
+    it "returns nil for an absent filepath without reading anything" do
+      expect(@file_wrapper).not_to receive(:read)
+
+      expect( @partializer.extract_module_include_guard(nil) ).to be_nil
     end
   end
 
@@ -174,7 +403,7 @@ describe Partializer do
       m
     end
 
-    it "leaves macro_definitions unchanged when no macros contain CEEDLING_GENERATED" do
+    it "leaves macro_definitions unchanged when no macro carries a generated include guard" do
       macro = make_macro('#define MY_GUARD_H')
       mod   = make_module(macros: [macro])
 
@@ -183,7 +412,7 @@ describe Partializer do
       expect(mod.macro_definitions).to eq([macro])
     end
 
-    it "leaves element_sequence unchanged when no macros contain CEEDLING_GENERATED" do
+    it "leaves element_sequence unchanged when no macro carries a generated include guard" do
       macro = make_macro('#define MY_GUARD_H')
       mod   = make_module(macros: [macro])
 
@@ -192,8 +421,8 @@ describe Partializer do
       expect(mod.element_sequence).to eq([macro])
     end
 
-    it "removes macros whose text includes CEEDLING_GENERATED from macro_definitions" do
-      generated = make_macro('#ifndef CEEDLING_GENERATED_FOO_H')
+    it "removes macros carrying a generated include guard from macro_definitions" do
+      generated = make_macro('#ifndef GEN0123ABCD_FOO_H_CEEDLING')
       kept      = make_macro('#define MY_DEFINE 1')
       mod       = make_module(macros: [generated, kept])
 
@@ -204,7 +433,7 @@ describe Partializer do
     end
 
     it "removes the same macro objects from element_sequence" do
-      generated = make_macro('#ifndef CEEDLING_GENERATED_BAR_H')
+      generated = make_macro('#ifndef GEN0123ABCD_BAR_H_CEEDLING')
       kept      = make_macro('#define MY_DEFINE 2')
       mod       = make_module(macros: [generated, kept])
 
@@ -214,9 +443,9 @@ describe Partializer do
       expect(mod.element_sequence).to include(kept)
     end
 
-    it "removes all macros when every macro contains CEEDLING_GENERATED" do
-      m1  = make_macro('#ifndef CEEDLING_GENERATED_A_H')
-      m2  = make_macro('#define CEEDLING_GENERATED_A_H')
+    it "removes all macros when every macro carries a generated include guard" do
+      m1  = make_macro('#ifndef GEN0123ABCD_A_H_CEEDLING')
+      m2  = make_macro('#define GEN0123ABCD_A_H_CEEDLING')
       mod = make_module(macros: [m1, m2])
 
       @partializer.sanitize(mod)
@@ -225,8 +454,24 @@ describe Partializer do
       expect(mod.element_sequence).to be_empty
     end
 
+    # A generated guard opens with GEN and eight hex digits and closes with _CEEDLING, each
+    # at an identifier boundary, so a macro merely resembling one stays
+    it "keeps macros whose names only resemble a generated include guard" do
+      lookalikes = [
+        make_macro('#define MY_GEN0123ABCD_FOO_H_CEEDLING 1'),
+        make_macro('#define GEN0123ABCD_FOO_H_CEEDLING_LIMIT 2'),
+        make_macro('#define GEN0123ABC_FOO_H_CEEDLING 3'),
+        make_macro('#define GEN0123ABCD_CEEDLING 4')
+      ]
+      mod = make_module(macros: lookalikes)
+
+      @partializer.sanitize(mod)
+
+      expect(mod.macro_definitions).to eq(lookalikes)
+    end
+
     it "does not remove non-macro elements from element_sequence" do
-      generated  = make_macro('#ifndef CEEDLING_GENERATED_C_H')
+      generated  = make_macro('#ifndef GEN0123ABCD_C_H_CEEDLING')
       other_elem = double('CFunction', text: 'void foo(void){}')
       mod = CExtractorTypes::CModule.new
       mod.macro_definitions = [generated]
@@ -316,7 +561,10 @@ describe Partializer do
       }.to raise_error(CeedlingException, /shared/)
     end
 
-    it "raises for each overlapping function when multiple functions overlap" do
+    # Validation aborts the build on the first overlap it finds. It reports one
+    # function, not all of them, which is why this example no longer claims it
+    # raises "for each" overlapping function.
+    it "raises naming the first overlapping function when multiple functions overlap" do
       impl      = [make_impl('alpha'), make_impl('beta')]
       interface = [make_iface('alpha'), make_iface('beta')]
 
@@ -324,7 +572,10 @@ describe Partializer do
         @partializer.validate_extracted_functions(
           name: 'test_mod', partial: 'mod', impl: impl, interface: interface
         )
-      }.to raise_error(CeedlingException)
+      }.to raise_error(
+        CeedlingException,
+        "test_mod: Partial 'mod' \u23e9\ufe0f Function 'alpha' cannot be both testable and mockable"
+      )
     end
   end
 
@@ -356,6 +607,49 @@ describe Partializer do
       
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
       expect(result).not_to include(UserInclude.new('module.h'))
+    end
+
+    # A module's own header is compared by basename, since that is what an #include
+    # carries. Leaving it in the generated Partial would emit an #include whose own
+    # resolution depends on search path order, which is how a Partial for one module
+    # ends up reading another module's header.
+    it "removes the module's own header when the module is named by directory" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('config.h'), UserInclude.new('header2.h')]
+
+      result = @partializer.remap_implementation_header_includes(
+        name: 'drivers/uart/config',
+        includes: includes,
+        partials: {}
+      )
+
+      expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
+    end
+
+    it "splices the types header in at the position of a directory-named module's own header" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('config.h'), UserInclude.new('header2.h')]
+
+      result = @partializer.remap_implementation_header_includes(
+        name: 'drivers/uart/config',
+        includes: includes,
+        partials: {},
+        types_header: 'drivers/uart/ceedling_partial_config_types.h'
+      )
+
+      expect(result.map(&:filepath)).to eq(
+        ['header1.h', 'drivers/uart/ceedling_partial_config_types.h', 'header2.h']
+      )
+    end
+
+    it "removes another partialized module's header when that module is named by directory" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('other.h')]
+
+      result = @partializer.remap_implementation_header_includes(
+        name: 'drivers/uart/config',
+        includes: includes,
+        partials: { 'drivers/spi/other' => nil }
+      )
+
+      expect(result).to match_array([UserInclude.new('header1.h')])
     end
 
     it "removes partialized module headers from includes" do
@@ -522,6 +816,71 @@ describe Partializer do
       expect(result).not_to include(UserInclude.new('partial1.h'))
       expect(result).not_to include(UserInclude.new('partial2.h'))
     end
+
+    it "appends the shared types header when one was generated for this module" do
+      includes = [UserInclude.new('header1.h')]
+      partials = {}
+      result = @partializer.remap_implementation_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials,
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to include(UserInclude.new('ceedling_partial_module_types.h'))
+    end
+
+    it "does not append a types header when the module has none" do
+      includes = [UserInclude.new('header1.h')]
+      partials = {}
+      result = @partializer.remap_implementation_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+
+      expect(result).to match_array([UserInclude.new('header1.h')])
+    end
+
+    # The shared types header's own top-of-file guard-spoofing macro must
+    # be defined before anything later in the list gets a chance to transitively
+    # re-include this module's real header a second, unguarded way -- splicing the
+    # types header in at the module's own original position (rather than appending it
+    # after everything else) is what guarantees that ordering.
+    it "splices the shared types header in at the module's own original list position, not at the end" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('module.h'),
+        UserInclude.new('header2.h')
+      ]
+      result = @partializer.remap_implementation_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: {},
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to eq([
+        UserInclude.new('header1.h'),
+        UserInclude.new('ceedling_partial_module_types.h'),
+        UserInclude.new('header2.h')
+      ])
+    end
+
+    it "appends the shared types header when the module's own header wasn't in the includes list to begin with" do
+      includes = [UserInclude.new('header1.h')]
+      result = @partializer.remap_implementation_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: {},
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to eq([
+        UserInclude.new('header1.h'),
+        UserInclude.new('ceedling_partial_module_types.h')
+      ])
+    end
   end
 
   ###
@@ -683,20 +1042,96 @@ describe Partializer do
       expect(result).not_to include(UserInclude.new('partial1.h'))
       expect(result).not_to include(UserInclude.new('partial2.h'))
     end
+
+    it "appends the shared types header when one was generated for this module" do
+      includes = [UserInclude.new('header1.h')]
+      partials = {}
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials,
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to include(UserInclude.new('ceedling_partial_module_types.h'))
+    end
+
+    it "does not append a types header when the module has none" do
+      includes = [UserInclude.new('header1.h')]
+      partials = {}
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+
+      expect(result).to match_array([UserInclude.new('header1.h')])
+    end
+
+    # See the matching example in #remap_implementation_header_includes for the full
+    # rationale; the mockable interface header needs the identical ordering guarantee.
+    it "splices the shared types header in at the module's own original list position, not at the end" do
+      includes = [
+        UserInclude.new('header1.h'),
+        UserInclude.new('module.h'),
+        UserInclude.new('header2.h')
+      ]
+      result = @partializer.remap_interface_header_includes(
+        name: 'module',
+        includes: includes,
+        partials: {},
+        types_header: 'ceedling_partial_module_types.h'
+      )
+
+      expect(result).to eq([
+        UserInclude.new('header1.h'),
+        UserInclude.new('ceedling_partial_module_types.h'),
+        UserInclude.new('header2.h')
+      ])
+    end
   end
 
   ###
   ### remap_implementation_source_includes()
   ###
 
-  def make_partial_config(mocks_type: nil, tests_type: nil)
-    OpenStruct.new(
-      mocks: OpenStruct.new(type: mocks_type),
-      tests: OpenStruct.new(type: tests_type)
-    )
-  end
-
   context "#remap_implementation_source_includes" do
+    # A module tested and mocked in one test file splits its own content across two generated
+    # headers: the implementation carries the public bodies and the interface declares the
+    # private functions those bodies call. The generated source needs both, so this module's own
+    # interface header belongs in its own include list. wondrous_forest's ForestMonitor is
+    # exactly this shape, and dropping the entry leaves its private transition function
+    # undeclared at compile time.
+    it "carries this module's own interface header when it is also mocked" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('module').and_return('ceedling_partial_module_interface.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public, mocks_type: :private) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(
+        ['ceedling_partial_module_impl.h', 'ceedling_partial_module_interface.h']
+      )
+    end
+
+    it "carries no interface header for a module that is tested but not mocked" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['ceedling_partial_module_impl.h'])
+    end
+
     it "returns implementation header when input is empty and no partials" do
       includes = []
       partials = {}
@@ -814,6 +1249,75 @@ describe Partializer do
         partials: partials
       )
       
+      expect(result).to include(impl_header)
+      expect(result).to include(interface_header)
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('partial_module.h'))
+    end
+
+    # Regression test for #1215: PUBLIC/PRIVATE were once the only mock modes that existed,
+    # so this method's own "does this module have a mock to redirect to" check only ever
+    # listed those two. DEDUCT (MOCK_PARTIAL_ALL_MODULE) was added later without updating
+    # this check, so a module mocked via MOCK_PARTIAL_ALL_MODULE -- e.g. a vendor header
+    # whose only mockable functions are static inline, which requires DEDUCT to select at
+    # all -- was silently never redirected to its mock interface header.
+    it "remaps mockable deduct (ALL_MODULE) partial to interface header" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
+      partials = {
+        'partial_module' => make_partial_config(mocks_type: Partials::DEDUCT)
+      }
+      impl_filename = 'module_impl.h'
+      interface_filename = 'partial_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header = UserInclude.new(interface_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module')
+        .and_return(impl_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('partial_module')
+        .and_return(interface_filename)
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+
+      expect(result).to include(impl_header)
+      expect(result).to include(interface_header)
+      expect(result).to include(UserInclude.new('header1.h'))
+      expect(result).to include(UserInclude.new('header2.h'))
+      expect(result).not_to include(UserInclude.new('partial_module.h'))
+    end
+
+    # Same regression as the DEDUCT case above, for ACCUMULATE (MOCK_PARTIAL_MODULE).
+    it "remaps mockable accumulate partial to interface header" do
+      includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
+      partials = {
+        'partial_module' => make_partial_config(mocks_type: Partials::ACCUMULATE)
+      }
+      impl_filename = 'module_impl.h'
+      interface_filename = 'partial_module_interface.h'
+      impl_header = UserInclude.new(impl_filename)
+      interface_header = UserInclude.new(interface_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module')
+        .and_return(impl_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('partial_module')
+        .and_return(interface_filename)
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: includes,
+        partials: partials
+      )
+
       expect(result).to include(impl_header)
       expect(result).to include(interface_header)
       expect(result).to include(UserInclude.new('header1.h'))
@@ -1030,6 +1534,104 @@ describe Partializer do
   end
 
   ###
+  ### remap_types_header_includes()
+  ###
+
+  context "#remap_types_header_includes" do
+    # Nothing replaces this module's own header here. The types header cannot include itself, so
+    # its own entry is simply dropped.
+    it "drops the module's own header without substituting anything" do
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('foundation.h')],
+        partials: {}
+      )
+
+      expect( result ).to eq([UserInclude.new('foundation.h')])
+    end
+
+    it "keeps every other include in its original relative order" do
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('first.h'), UserInclude.new('module.h'), UserInclude.new('last.h')],
+        partials: {}
+      )
+
+      expect( result.map( &:filename ) ).to eq(['first.h', 'last.h'])
+    end
+
+    # Another partialized module's real header would reintroduce exactly the content that
+    # module's own Partial replaced, so a mocked one is redirected to its generated interface
+    # header and an unmocked one is dropped.
+    it "redirects a mocked partialized dependency to its interface header" do
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('other')
+        .and_return('ceedling_partial_other_interface.h')
+
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('other.h')],
+        partials: { 'other' => make_partial_config(mocks_type: :public) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['ceedling_partial_other_interface.h'])
+    end
+
+    it "drops a partialized dependency that is not mocked" do
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('other.h')],
+        partials: { 'other' => make_partial_config(tests_type: :public) }
+      )
+
+      expect( result ).to be_empty
+    end
+
+    # Comparing a module name to an include means comparing names, and GH #1266 was that going
+    # wrong. A header whose basename merely extends the module's is a different file.
+    it "leaves a header whose name only extends a partialized module's name" do
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('other_extra.h'), UserInclude.new('other.h')],
+        partials: { 'other' => make_partial_config(tests_type: :public) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['other_extra.h'])
+    end
+
+    # The interface header includes the types header, so carrying it back into the types header
+    # would fold that file's function declarations into this one. wondrous_forest's
+    # ForestMonitor is tested and mocked at once, which is the shape that makes this matter.
+    it "never carries this module's own interface header, even when it is also mocked" do
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .and_return('ceedling_partial_module_interface.h')
+
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('foundation.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public, mocks_type: :private) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['foundation.h'])
+    end
+
+    it "logs the carried list under its own noun when a test is named" do
+      expect(@loginator).to receive(:log_list).with(
+        anything,
+        'Dependency includes to carry into the shared types header for Partial a_test::module:',
+        Verbosity::OBNOXIOUS
+      )
+
+      @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('foundation.h')],
+        partials: {},
+        test: 'a_test'
+      )
+    end
+  end
+
+  ###
   ### extract_module_contents()
   ###
 
@@ -1054,7 +1656,7 @@ describe Partializer do
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
       expect(@partializer_helper).not_to receive(:extract_function_scope_static_vars)
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq([])
       expect(result.variable_declarations).to eq([])
@@ -1078,7 +1680,7 @@ describe Partializer do
         name: @name, funcs: header_funcs, filepath: '/path/to/header.h', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq(header_funcs)
       expect(result.variable_declarations).to eq([])
@@ -1102,7 +1704,7 @@ describe Partializer do
         name: @name, funcs: source_funcs, filepath: '/path/to/source.c', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq(source_funcs)
       expect(result.variable_declarations).to eq([])
@@ -1135,7 +1737,7 @@ describe Partializer do
         name: @name, funcs: header_funcs, filepath: '/path/to/header.h', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq(header_funcs + source_funcs)
       expect(result.variable_declarations).to eq(header_contents.variable_declarations + source_contents.variable_declarations)
@@ -1158,7 +1760,7 @@ describe Partializer do
         name: @name, funcs: source_funcs, filepath: '/src/module1.c', fallback: false
       )
 
-      @partializer.extract_module_contents(@name, config, false)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
     it "passes extraction name through to associate_function_line_numbers" do
@@ -1177,7 +1779,7 @@ describe Partializer do
         name: 'SpecificTestName', funcs: source_funcs, filepath: '/src/module1.c', fallback: false
       )
 
-      @partializer.extract_module_contents('SpecificTestName', config, false)
+      @partializer.extract_module_contents('SpecificTestName', config, fallback: false)
     end
 
     it "returns empty CModule when a preprocessed file has no contents" do
@@ -1194,7 +1796,7 @@ describe Partializer do
         name: @name, funcs: [], filepath: '/path/to/header.h', fallback: false
       )
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.function_definitions).to eq([])
       expect(result.variable_declarations).to eq([])
@@ -1215,7 +1817,7 @@ describe Partializer do
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
       allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([promoted_var1, promoted_var2])
 
-      result = @partializer.extract_module_contents(@name, config, false)
+      result = @partializer.extract_module_contents(@name, config, fallback: false)
 
       expect(result.element_sequence).to eq([promoted_var1, promoted_var2])
       expect(result.element_sequence[0]).to equal(promoted_var1)
@@ -1247,7 +1849,7 @@ describe Partializer do
         file_type:               'source'
       )
 
-      @partializer.extract_module_contents(@name, config, false)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
     it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on header" do
@@ -1275,7 +1877,7 @@ describe Partializer do
         file_type:               'header'
       )
 
-      @partializer.extract_module_contents(@name, config, false)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
     it "does not call update_signatures_from_full_expansion when full_expansion_filepath is nil" do
@@ -1297,7 +1899,7 @@ describe Partializer do
 
       expect(@partializer_helper).not_to receive(:update_signatures_from_full_expansion)
 
-      @partializer.extract_module_contents(@name, config, false)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
   end
 
@@ -1521,6 +2123,66 @@ describe Partializer do
       expect(result).to eq(filtered)
     end
 
+    it "merges declaration-only functions into the DEDUCT candidate pool" do
+      defn     = double('inline_func', name: 'inline_fn')
+      decl     = double('proto_func', name: 'proto_fn')
+      defs     = [defn]
+      decls    = [decl]
+      filtered = [double('iface_inline'), double('iface_proto')]
+      pf       = make_pf(type: Partials::DEDUCT)
+
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with([defn, decl], Partials::DEDUCT, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
+      )
+      expect(result).to eq(filtered)
+    end
+
+    it "merges declaration-only functions into the PUBLIC candidate pool too" do
+      defn     = double('def_func', name: 'pub_def')
+      decl     = double('decl_func', name: 'pub_decl')
+      defs     = [defn]
+      decls    = [decl]
+      filtered = [double('iface_func')]
+      pf       = make_pf(type: Partials::PUBLIC)
+
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with([defn, decl], Partials::PUBLIC, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
+      )
+      expect(result).to eq(filtered)
+    end
+
+    it "excludes a declaration already present as a definition with the same name (dedup)" do
+      defn     = double('def_func', name: 'shared')
+      decl     = double('decl_func', name: 'shared') # e.g. header prototype for the same function
+      defs     = [defn]
+      decls    = [decl]
+      filtered = [double('iface_func')]
+      pf       = make_pf(type: Partials::DEDUCT)
+
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with([defn], Partials::DEDUCT, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs)
+        .with(funcs: filtered, names: []).and_return(filtered)
+
+      result = @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: defs, declarations: decls, config: make_config(mocks: pf)
+      )
+      expect(result).to eq(filtered)
+    end
+
     it "fills list from additions only for ACCUMULATE type" do
       defs   = [double('def', name: 'named')]
       decls  = []
@@ -1548,8 +2210,10 @@ describe Partializer do
       found = double('iface_func', name: 'decl_only')
       pf    = make_pf(type: Partials::ACCUMULATE, additions: ['decl_only'])
 
+      # candidates = definitions + declarations (ACCUMULATE ignores this list regardless --
+      # it always starts empty -- but it's still built before the type check discards it).
       allow(@partializer_helper).to receive(:filter_and_transform_funcs)
-        .with(defs, Partials::ACCUMULATE, :interface).and_return([])
+        .with(decls, Partials::ACCUMULATE, :interface).and_return([])
       expect(@partializer_helper).to receive(:find_and_transform_func)
         .with(name: 'decl_only', primary_funcs: defs, secondary_funcs: decls, output_type: :interface)
         .and_return(found)
@@ -1626,4 +2290,21 @@ describe Partializer do
     end
   end
 
+
+  # A module named with a backslash separator still names a directory. Elsewhere this
+  # codebase treats either separator as a separator, and the qualifier validation already
+  # rejects a backslash-rooted absolute path, so detection has to agree.
+  describe 'a module named with a backslash separator' do
+    it 'is treated as naming a directory' do
+      expect( @partializer.send(:_names_directory?, 'drivers\\uart/config') ).to be true
+    end
+
+    it 'is treated as naming a directory when backslash is the only separator' do
+      expect( @partializer.send(:_names_directory?, 'drivers\\config') ).to be true
+    end
+
+    it 'leaves a bare module name naming none' do
+      expect( @partializer.send(:_names_directory?, 'config') ).to be false
+    end
+  end
 end

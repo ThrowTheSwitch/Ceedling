@@ -7,6 +7,7 @@
 
 require 'thor'
 require 'ceedling/constants' # From Ceedling application
+require 'cli_options_transform'
 
 ##
 ## Command Line Handling
@@ -151,7 +152,6 @@ module CeedlingTasks
   CLI_MISSING_PARAMETER_DEFAULT = "/<>\\||*"
 
   class CLI < Thor
-    include Thor::Actions
     extend PermissiveCLI
 
     # Ensure we bail out with non-zero exit code if the command line is wrong
@@ -174,6 +174,7 @@ module CeedlingTasks
     end
 
 
+    # simplecov:disable line
     # Override Thor help to list Rake tasks as well
     desc "help [COMMAND]", "Describe available commands and list build operations"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
@@ -206,22 +207,23 @@ module CeedlingTasks
         "--project is missing a required filepath parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = Verbosity::ERRORS
+      CliOptionsTransform.apply_debug_flag( _options )
       # Call application help with block to execute Thor's built-in help in the help logic
       @handler.app_help( ENV, @app_cfg, _options, command ) { |command| super(command) }
     end
+    # simplecov:enable line
 
- 
+
+    # simplecov:disable line
     desc "new [DEST]", "Create a new project structure at optional DEST path (default is current directory)"
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
     method_option :configs, :type => :boolean, :default => true, :desc => "Install starter project file in project root"
+    method_option :ceedling_yml, :type => :boolean, :default => false, :desc => "Name the starter project file ceedling.yml instead of project.yml"
     method_option :force, :type => :boolean, :default => false, :desc => "Ignore any existing project and recreate destination"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     method_option :gitsupport, :type => :boolean, :default => false, :desc => "Create .gitignore / .gitkeep files for convenience"
@@ -243,15 +245,17 @@ module CeedlingTasks
     def new(dest=nil)
       require 'version' # lib/version.rb for TAG constant
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _dest = dest.dup() if !dest.nil?
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = Verbosity::ERRORS
+      CliOptionsTransform.apply_debug_flag( _options )
 
-      @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, _dest )
+      @handler.new_project( ENV, @app_cfg, Ceedling::Version::TAG, _options, dest )
     end
+    # simplecov:enable line
 
+    # simplecov:disable line
     desc "upgrade PATH", "Upgrade vendored installation of Ceedling for a project at PATH"
     method_option :project, :type => :string, :default => DEFAULT_PROJECT_FILENAME, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :desc => "Project filename"
     method_option :debug, :type => :boolean, :default => false, :hide => true
@@ -286,17 +290,18 @@ module CeedlingTasks
         "--project is missing a required filename parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup()
-      _path = path.dup()
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = Verbosity::ERRORS
+      CliOptionsTransform.apply_debug_flag( _options )
 
-      @handler.upgrade_project( ENV, @app_cfg, _options, _path )
+      @handler.upgrade_project( ENV, @app_cfg, _options, path )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "build [TASKS...]", "Run build tasks (`build` keyword not required)"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
@@ -312,6 +317,8 @@ module CeedlingTasks
                   :desc => "Filter for individual unit test names"
     method_option :exclude_test_case, :type => :string, :default => '', :lazy_default => CLI_MISSING_PARAMETER_DEFAULT,
                   :desc => "Prevent matched unit test names from running"
+    method_option :force_test_rerun, :type => :boolean, :default => false,
+                  :desc => "Run test executables and report fresh results even if unchanged"
     method_option :ruby_replacement, :type => :boolean, :default => false, :desc => DOC_RUBY_REPLACEMENT_FLAG
     # Include for consistency with other commands (override --verbosity)
     method_option :debug, :type => :boolean, :default => false, :hide => true
@@ -333,6 +340,11 @@ module CeedlingTasks
 
       • `--test-case` and its inverse `--exclude-test-case` set test case name
       matchers to run only a subset of the unit test suite. See docs for full details.
+
+      • `--force-test-rerun` runs test executables and reports fresh results
+      even when nothing changed since the last build. A test build with
+      `:unity` ↳ `:shuffle_tests` enabled does this automatically, since a
+      shuffled run order is only meaningful if the executable actually runs.
 
       • `If --log and --logfile are both specified, --logfile will set the log file path.
       If --no-log and --logfile are both specified, no logging will occur.
@@ -371,23 +383,22 @@ module CeedlingTasks
         "--exclude-test-case is missing a required test case name parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
-      _options[:verbosity] = Verbosity::DEBUG if options[:debug]
-      _options[:logfile] = options[:logfile].dup()
+      CliOptionsTransform.apply_debug_flag( _options )
 
       @handler.build( env:ENV, app_cfg:@app_cfg, options:_options, tasks:tasks )
     end
+    # simplecov:enable line
 
 
-    desc "dumpconfig FILEPATH [SECTIONS...]", "Process project configuration and write final config to a YAML file"
+    # simplecov:disable line
+    desc "dumpconfig [FILEPATH] [SECTIONS...]", "Process project configuration and write final config to a YAML file"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
                   :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
     method_option :app, :type => :boolean, :default => true, :desc => "Runs Ceedling application and its config manipulations"
+    method_option :stdout, :type => :boolean, :default => false, :desc => "Write YAML to standard output instead of FILEPATH, for consuming tools"
     method_option :ruby_replacement, :type => :boolean, :default => false, :desc => DOC_RUBY_REPLACEMENT_FLAG
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
@@ -395,7 +406,8 @@ module CeedlingTasks
       `ceedling dumpconfig` loads your project configuration, including all manipulations & merges,
       and writes the final config to a YAML file.
 
-      FILEPATH is a required path to a destination YAML file. A nonexistent path will be created.
+      FILEPATH is a required path to a destination YAML file unless `--stdout` is set. A
+      nonexistent path will be created.
 
       SECTIONS is an optional config “path” that extracts a portion of a configuration. The
       top-level YAML container will be the path’s last element.
@@ -410,29 +422,42 @@ module CeedlingTasks
       the configuration. Disabling it dumps project config after any mixins but before any
       application manipulations.
 
+      • `--stdout` writes the YAML directly to standard output instead of FILEPATH -- handy for a
+      consuming tool that wants Ceedling's resolved configuration without a temp file. Omit FILEPATH
+      when using this flag; any positional arguments given are treated as SECTIONS instead.
+      \x5> ceedling dumpconfig --stdout tools test_compiler
+
       • #{LONGDOC_RUBY_REPLACEMENT_FLAG}
       LONGDESC
     ) )
-    def dumpconfig(filepath, *sections)
+    def dumpconfig(filepath = nil, *sections)
       @handler.validate_string_param(
         options[:project],
         CLI_MISSING_PARAMETER_DEFAULT,
         "--project is missing a required filepath parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      if options[:stdout]
+        # No destination-file slot to occupy in stdout mode -- every positional
+        # argument given is a section path element instead.
+        sections = [filepath, *sections].compact
+        filepath = nil
+      elsif filepath.nil?
+        raise Thor::Error.new("FILEPATH is a required parameter unless --stdout is set")
+      end
+
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
-      _filepath = filepath.dup()
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = Verbosity::ERRORS
+      CliOptionsTransform.apply_debug_flag( _options )
 
-      @handler.dumpconfig( ENV, @app_cfg, _options, _filepath, sections )
+      @handler.dumpconfig( ENV, @app_cfg, _options, filepath, sections )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "check", "Process project configuration with full logging"
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
     method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
@@ -461,18 +486,18 @@ module CeedlingTasks
         "--project is missing a required filepath parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::NORMAL
+      _options[:verbosity] = Verbosity::NORMAL
+      CliOptionsTransform.apply_debug_flag( _options )
 
       @handler.check( ENV, @app_cfg, _options )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "environment", "List all configured environment variable names with values."
     method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'],
                   :desc => DOC_PROJECT_FLAG
@@ -497,18 +522,18 @@ module CeedlingTasks
         "--project is missing a required filepath parameter"
       )
 
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _options[:project] = options[:project].dup() if !options[:project].nil?
-      _options[:mixin] = []
-      options[:mixin].each {|mixin| _options[:mixin] << mixin.dup() }
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : Verbosity::ERRORS
+      _options[:verbosity] = Verbosity::ERRORS
+      CliOptionsTransform.apply_debug_flag( _options )
 
       @handler.environment( ENV, @app_cfg, _options )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "examples", "List available example projects"
     method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
@@ -523,12 +548,14 @@ module CeedlingTasks
       # Get unfrozen copies so we can add / modify
       _options = options.dup()
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : nil
+      CliOptionsTransform.apply_debug_flag( _options )
 
       @handler.list_examples( ENV, @app_cfg, _options )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "example NAME [DEST]", "Create named example project in optional DEST path"
     method_option :local, :type => :boolean, :default => false, :desc => DOC_LOCAL_FLAG
     method_option :docs, :type => :boolean, :default => false, :desc => DOC_DOCS_FLAG
@@ -554,16 +581,17 @@ module CeedlingTasks
       LONGDESC
     ) )
     def example(name, dest=nil)
-      # Get unfrozen copies so we can add / modify
+      # Get an unfrozen copy so we can add / modify
       _options = options.dup()
-      _dest = dest.dup() if !dest.nil?
 
-      _options[:verbosity] = options[:debug] ? Verbosity::DEBUG : nil
+      CliOptionsTransform.apply_debug_flag( _options )
 
-      @handler.create_example( ENV, @app_cfg, _options, name, _dest )
+      @handler.create_example( ENV, @app_cfg, _options, name, dest )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "docs [DEST]", "Export documentation at optional destination (default is current directory)"
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
@@ -577,8 +605,10 @@ module CeedlingTasks
       _dest = dest.dup() if !dest.nil?
       @handler.docs( @app_cfg, _dest )
     end
+    # simplecov:enable line
 
 
+    # simplecov:disable line
     desc "version", "Display version details of Ceedling components"
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
@@ -609,6 +639,7 @@ module CeedlingTasks
     def version()
       @handler.version( ENV, @app_cfg )
     end
+    # simplecov:enable line
 
   end
 end

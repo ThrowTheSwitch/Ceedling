@@ -160,6 +160,28 @@ describe RecursiveMerger do
   end
 
   # =========================================================================
+  describe '.merge! — single value merged into list (:tools :name :arguments exception)' do
+    it 'appends a single mixin :arguments value instead of prepending it' do
+      # A mixin author writing `:arguments: -O0` (a scalar) instead of the
+      # expected `:arguments: [-O0]` must still get the left-to-right
+      # override guarantee -- appended after config's -O2, not before it.
+      config = {tools: {test_compiler: {arguments: ['-O2']}}}
+      mixin  = {tools: {test_compiler: {arguments: '-O0'}}}
+      expect(merge(config, mixin)).to eq(
+        {tools: {test_compiler: {arguments: ['-O2', '-O0']}}}
+      )
+    end
+
+    it 'still prepends a single mixin value at a non-:arguments list key' do
+      config = {tools: {test_compiler: {other: ['a']}}}
+      mixin  = {tools: {test_compiler: {other: 'b'}}}
+      expect(merge(config, mixin)).to eq(
+        {tools: {test_compiler: {other: ['b', 'a']}}}
+      )
+    end
+  end
+
+  # =========================================================================
   describe '.merge! — single mixin value merged into config list' do
     it 'prepends mixin single string value into config list' do
       config = {foo: ['bar', 'baz']}

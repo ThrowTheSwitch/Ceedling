@@ -1,5 +1,25 @@
 # Quick Start
 
+For a test suite project using the default toolchain `gcc`, Ceedling’s
+configuration file could be as simple as this:
+
+```yaml
+:project:
+  :build_root: project/build/
+
+:paths:
+  :test:
+    - tests/**
+  :source:
+    - source/**
+  :include:
+    - inc/**
+```
+
+To execute all your unit tests, you would run `ceedling test:all`.
+
+---
+
 ## Handy Documentation
 
 * [Installation](installation.md)
@@ -9,14 +29,19 @@
 * [Ceedling at the command line](command-line.md)
 * [All your project configuration file options](../configuration/index.md)
 
----
-
 ## Quick Start Steps
 
 Below is a quick overview of how to get started from Ceedling installation 
 through running build tasks. Jump down just a teeny bit to see what the Ceedling 
 command line looks like and navigate to all the documentation for the steps 
 listed immediately below.
+
+!!! warning "C toolchain requirement"
+    Ceedling requires a command line C toolchain be available in your path and is
+    flexible enough to work with most anything. By default, Ceedling is ready to 
+    work with [GCC] out of the box. On Windows, we recommend [MinGW-w64], GCC
+    built for native Windows executables, installed through [MSYS2], a Windows
+    package manager that provides it.
 
 1. [Install Ceedling](installation.md)
 1. Create a project
@@ -28,18 +53,17 @@ listed immediately below.
         1. Create a Ceedling project file in the root of your project directory.
 1. Run Ceedling tasks (see next section) from the working directory of your project.
 
-!!! note
-    Ceedling requires a command line C toolchain be available in your path. It’s 
-    flexible enough to work with most anything on any platform. By default, Ceedling 
-    is ready to work with [GCC] out of the box (we recommend the [MinGW] project 
-    on Windows).
+A common build strategy is to use your target toolchain for release builds—with or 
+without Ceedling—but rely on Ceedling + GCC for test builds (more on this 
+[here][overview]).
 
-A common build strategy with tooling other than GCC is to use your target 
-toolchain for release builds—with or without Ceedling—but rely on Ceedling + 
-GCC for test builds (more on all this [here][overview]).
+!!! tip "Ceedling VS Code extension"
+    If you are a Visual Studio Code user, you may want to install the
+    [Ceedling extension](https://marketplace.visualstudio.com/items?itemName=throw-the-switch.vscode-ceedling).
 
 [GCC]: https://gcc.gnu.org
-[MinGW]: http://www.mingw.org/
+[MinGW-w64]: https://www.mingw-w64.org
+[MSYS2]: https://www.msys2.org
 [overview]: ../overview/index.md
 
 ## Command Line & Build Tasks

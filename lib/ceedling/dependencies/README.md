@@ -1,0 +1,69 @@
+# The Dependency-Tracking Subsystem
+
+This subsystem answers one question for any expensive step in either the test or release pipeline: has anything this target depends on changed since it last built successfully? It answers using content hashes rather than timestamps, so neither pipeline ever duplicates work that doesn't need to be done.
+
+It is not itself a pipeline with sequential stages the way `test_invoker`/`release_invoker` are. It's a service both pipelines call into, over and over, as a pure oracle. It never decides *when* to run a build step or *what order* steps happen in -- that's each pipeline's own stage list -- it only answers, at the moment a step is about to run, whether that build step actually needs to run.
+
+## The subsystem's shape
+
+Two classes matter most, and everything else exists to serve them:
+
+- **`Dependinator`** is the thin, Ceedling-specific facade every pipeline actually talks to. Every method it has except one is a one-line passthrough to `DependencyTracker` below; what it actually owns is the convention for where a given pipeline's cache file lives on disk, keyed by a symbolic identifier (`:test`, `:release`, or a plugin's own symbol), and the vocabulary translation at `flush` time from the tracker's own `prune:` parameter to the pipeline-facing `refresh_dependencies:` (see below). Its whole reason for existing is so pipeline code speaks in build verbs -- register this, ask if that's stale, mark this fresh -- and never has to know anything about cache file paths or tracker internals.
+- **`DependencyTracker`** is the actual engine, and it's deliberately generic and application-agnostic -- nothing in it knows what a "test" or a "release" is. It holds this run's registrations in memory and a loaded cache of the previous run's hashes, and its whole job is answering staleness queries against the two.
+
+`DependencyTracker`, in turn, composes six narrowly-scoped collaborators, each doing exactly one job and nothing else. Four serve every run:
+
+- `DependencyHasher` decides what makes two things count as "the same."
+- `DependencyPathNormalizer` decides what makes two spellings of a path count as "the same target."
+- `DependencyCacheStore` owns the on-disk cache file itself.
+- `GccDependencyParser` turns a compiler's own dependency output into something registerable.
+
+The other two, `DependencyDebugTree` and `DependencyDiffer`, serve only the troubleshooting aid described last. The sections below cover each in turn.
+
+## The `register` → `stale?` → `mark_fresh` idiom
+
+Every call site in both pipelines, regardless of what expensive thing it's guarding -- a preprocessor subprocess, a mock generation, a real compiler or linker invocation -- follows the same three-part shape. `register` tells the tracker what a target depends on: its antecedent files, and a `meta` value carrying anything else that should count toward staleness even though it isn't a file at all -- compile flags, `-D` defines, search paths, a toolchain version string, a coverage-on-or-off flag. An object file's target is the `.o` itself; its files are its source plus whatever headers it actually pulled in; its meta is the flags and defines that, if they change, should force a recompile even though the source file itself didn't change a byte.
+
+`register` is additive on purpose. Calling it more than once for the same target unions the file lists and merges the meta rather than replacing what came before, so a target's dependencies can be built up incrementally across more than one call site without either caller needing full knowledge of what the other already supplied. This is exactly what lets a step register its source file and known flags in one call, then separately register the dependencies its tool discovered, described next.
+
+### Dependencies discovered by the tool
+
+A step can't know every file it depends on until its tool has run, since the headers a C file reaches depend on its `#include`s, its defines, and its search paths. So a step registers the files its *previous* run discovered before asking whether it is stale, then registers what its new run discovered before marking it fresh. A file the previous run read that has since changed makes the step stale. A newly reached file is recorded once the step reruns.
+
+Two sources supply these files:
+
+- **A compile's `.d` file.** `-MMD -MF` writes gcc's own dependency output, in Makefile dialect, and `register_gcc_deps_file` (or `register_gcc_deps_string`, for content already in hand) parses it with `GccDependencyParser` and `register`s each target it describes with that target's dependency list. A single `.d` file can describe more than one target at once; it's a small manifest, not just one file's dependency list.
+- **A preprocessing run's line markers.** Two stages of the test pipeline preprocess each test file. Stage 4 runs it with `-fdirectives-only`, following its `#include`s, including headers a mock stand-in includes. Stage 11 fully expands it, reading every header it reaches. Each output's line markers name every file it entered. The pipeline registers the project files among them (`Preprocessinator#preprocessed_dependencies`), so editing a header the test reaches reruns the step. Such a header's macro can decide which mocks the test needs (stage 4) or which test cases it has (stage 11). System headers are left out. So are generated files below the build root, such as stand-ins and the mocks that replace them, which derive from project files and would only ever look changed.
+
+### Fresh, stale, and invalidated
+
+Once a target's inputs are registered, `stale?` is a pure question with no side effects, and `mark_fresh` is the write that happens after a real (re)build succeeds, recording new hashes for the target itself, its meta, and every currently-existing dependency. A dependency that's gone missing is simply left out of what gets recorded -- `stale?` already treats a missing dependency as stale on its own, so there's nothing to gain by recording anything else about it. `invalidate` is the explicit override: it drops a target's cache entry outright, so its next `stale?` answers true whatever the hashes say, while leaving this run's registrations alone.
+
+Some steps also produce a file beside their target that a later run trusts, such as a test's cached results or a test file's cached build directives. These are a target's `outputs`, registered after the step produces them and before `mark_fresh`, which records their hashes in the target's cache entry. A fresh target vouches for those outputs: `stale?` reads them from the cache entry, not this run's registrations, and treats the target as stale when any one is missing or altered. Damage to a trusted artifact then costs one rerun of the step that wrote it. Throughout, only a regular file counts as present. A directory named as a dependency, as a truncated `.d` file can do, reads as missing rather than being hashed.
+
+## What makes two things "the same"
+
+Two decisions make this whole scheme trustworthy rather than merely convenient, and both trade a little efficiency for a lot of certainty.
+
+`DependencyHasher` hashes a file's exact on-disk bytes, whitespace included, with no format-aware normalization at all. Whitespace isn't reliably cosmetic: it's syntactically meaningful in YAML, and it can even change whether a C macro's line continuation is recognized. The two ways a hash-based staleness check can be wrong aren't equally bad, either. Reporting something stale when it isn't just costs a wasted rebuild. Reporting it fresh when it isn't means shipping a build that silently doesn't reflect its own source -- exactly the failure this whole subsystem exists to prevent. The same hasher also canonicalizes a `meta` value before hashing it. Hash-key order and Symbol-vs-String keys never matter as a result, while array element order is still preserved, since the order of a flags or defines list can itself be meaningful.
+
+`DependencyPathNormalizer` solves a narrower but equally important problem. It resolves a path to its real, on-disk casing before that path is ever used as a cache key. A `#include "Foo.h"` written one way and a file that actually exists on disk as `foo.h` can then never be mistaken for two different targets -- nor can the same real file assembled from project configuration two different ways.
+
+## The on-disk cache
+
+Each pipeline identifier gets exactly one JSON cache file of its own, never shared with any other identifier. Test and release builds each get their own, and a plugin introducing a third pipeline would get a third, just by choosing its own identifier. This isn't incidental. It's what makes the pruning behavior described below safe at all -- a shared cache would mean a full test run's prune could silently evict every cached release entry along with it.
+
+Loading that cache is deliberately forgiving in one direction and strict in another. Any structural surprise in the file as a whole degrades the entire store to empty rather than raising. A missing cache, malformed cache, or incompatible version simply triggers a full rebuild instead of a hard failure. A single malformed *entry* within an otherwise-good file, similarly, only drops that one entry (i.e. requires a rebuild step). On every load, entries whose target has since been deleted from disk are pruned, automatically and unconditionally. This pruning is always safe, even during a partial run that only touches a handful of targets, because it only ever removes an entry once its target is confirmed gone from disk -- never merely unregistered this run. That's exactly what distinguishes it from the opt-in pruning described next. Persisting the cache back out is done via a write-to-temp-file-then-rename, so a reader can never observe a half-written cache.
+
+## `refresh_dependencies`: the special feature
+
+A normal `flush` just persists whatever this run registered and learned. Passing `refresh_dependencies: true` additionally drops every cache entry whose target was *not* registered at some point during this run, before persisting. In effect, this treats this run's registrations as the complete, authoritative set of everything that should still have a cache entry at all. That's exactly correct for a run that's guaranteed to have touched every target that matters, such as a full `test:all` or a full release build. It's exactly wrong for anything less than that. A single test file, `test:pattern`, `test:path`, or the ad hoc single-file `release:compile:`/`release:assemble:` tasks would each, if this were set true, silently wipe out cache entries for every target the partial run simply didn't happen to touch -- forcing an unnecessary full rebuild on the next real run. Both pipelines are careful to set it only when they can actually make that guarantee.
+
+## Debugging a stale/fresh surprise
+
+Separately from anything either pipeline does on a normal run, this subsystem carries an opt-in troubleshooting aid for a human trying to understand *why* something did or didn't rebuild. Setting the `CEEDLING_DEP_DEBUG` developer-only environment variable turns on a tiered snapshot mechanism, off by default. `CEEDLING_DEP_DEBUG=meta` captures just the canonicalized meta a target was judged against. `CEEDLING_DEP_DEBUG=full` additionally captures the actual content of the target and its dependencies at the moment they were last marked fresh. Both tiers write into a human-readable file tree alongside the cache, capped in size per file so one enormous generated header can't silently balloon that tree.
+
+Those snapshots exist to back one thing: `DependencyTracker#diagnose`, an always-available "explain yourself" query that reports which of a target's self-hash, meta-hash, dependency hashes, or output hashes changed. `diagnose` runs regardless of whether `CEEDLING_DEP_DEBUG` is set. Without a snapshot to compare against, it can still report *that* a given hash changed, but not *what* changed. With one available, from a run where the matching tier was active, it produces an actual before/after diff instead.
+
+`DependencyDebugTree` writes and reads those snapshots, and `DependencyDiffer` turns a snapshot and the live content into that diff. The differ uses the `diff-lcs` gem, a development-only dependency that an installed release gem does not require. Without it, the explanation degrades to a plain before/after dump rather than failing.
+

@@ -8,10 +8,11 @@
 require 'ceedling/constants'
 require 'ceedling/encodinator'
 require 'ceedling/parsing_parcels'
+require 'ceedling/exceptions'
 
-class PreprocessinatorReconstructor 
- 
-  constructor :parsing_parcels
+class PreprocessinatorReconstructor
+
+  constructor :parsing_parcels, :file_wrapper
 
   ##
   ## Preprocessor Expansion Output Handling
@@ -104,12 +105,26 @@ class PreprocessinatorReconstructor
   # Opens `input_filepath` for reading and `output_filepath` for writing,
   # then delegates to `compact_from_expansion` with the resulting IO objects.
   def compact_file_from_expansion(input_filepath:, source_filepath:, output_filepath:)
-    # Open input in binary mode: GCC output under non-C locale contains non-ASCII bytes
-    # (localized markers). Per-line clean_encoding in _scan_expansion_for_file handles content.
-    File.open( input_filepath, 'rb' ) do |input|
-      File.open( output_filepath, 'w' ) do |output|
-        compact_from_expansion( input: input, filepath: source_filepath, output: output )
+    # Binary mode on both ends: GCC output under non-C locale contains non-ASCII
+    # bytes (localized markers; the whole-buffer clean_encoding in
+    # _scan_expansion_for_file handles content), and the compacted output is
+    # read again downstream by code that depends on its line count being exact.
+    # Windows text mode would rewrite "\n" to "\r\n" on write, which this
+    # content must not be subject to.
+    # `input_filepath` is this same build's own gcc expansion output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    # `output_filepath` is a fresh write, not a read of something just produced, so it
+    # stays a plain open. Both opens stay nested (compact_from_expansion streams straight
+    # from input to output rather than buffering) so one rescue wraps the pair, same as
+    # strip_file's own single rescue around its one file operation.
+    begin
+      @file_wrapper.open_with_retry( input_filepath, 'rb' ) do |input|
+        @file_wrapper.open( output_filepath, 'wb' ) do |output|
+          compact_from_expansion( input: input, filepath: source_filepath, output: output )
+        end
       end
+    rescue => e
+      raise CeedlingException.new("Failed to compact expansion output for '#{input_filepath}' ⏩️ #{e}")
     end
   end
 
@@ -185,7 +200,7 @@ class PreprocessinatorReconstructor
       # directive to, and dropping it silently is correct: an orphaned directive is inert.
       index = nil
       contents[cursor..-1].each_with_index do |line, offset|
-        if line =~ function_regex
+        if line.match?(function_regex)
           index = cursor + offset
           break
         end
@@ -233,8 +248,15 @@ class PreprocessinatorReconstructor
   def extract_macro_defs(file_contents, include_guard)
     macro_definitions = extract_multiline_directives( file_contents, 'define' )
 
-    # Remove an include guard if provided
-    macro_definitions.reject! {|macro| macro.include?( include_guard ) } if !include_guard.nil?
+    # Remove an include guard if provided. A plain substring test here would also reject
+    # any ordinary macro whose name or value happens to contain the guard string -- e.g.
+    # guard RTC_H matching inside RTC_HOUR_SECONDS' own name, or inside RTC_DAY_SECONDS'
+    # value, which references RTC_HOUR_SECONDS (GH #1266). Anchoring to "#define <guard>"
+    # followed by whitespace or end-of-line only matches the guard definition itself.
+    if !include_guard.nil?
+      include_guard_regex = /^\s*#\s*define\s+#{Regexp.escape(include_guard)}(?:\s|$)/
+      macro_definitions.reject! {|macro| macro =~ include_guard_regex }
+    end
 
     return macro_definitions
   end
@@ -268,10 +290,16 @@ class PreprocessinatorReconstructor
   def _scan_expansion_for_file(input, filepath, &block)
     # Expand filepath under inspection to ensure proper match
     extraction_filepath = File.expand_path( filepath )
-    # Preprocessor directive blocks generally take the form of '# <digits> <text> [optional digits]'
-    directive   = /^# \d+ \"/
+    # Preprocessor directive blocks generally take the form of '# <digits> <text> [optional digits]'.
+    # Leading whitespace is tolerated (`^\s*`, not just `^`): GCC's -fdirectives-only output
+    # replaces a top-level #include with a line marker that inherits that #include's own
+    # original indentation (GH #1268) -- an indented `#include "x.h"` produces an indented
+    # `    # 1 "x.h" 1`, not the flush-left marker every OTHER marker GCC generates uses.
+    # Failing to recognize such a marker here leaves `extract` stuck at whatever it already
+    # was instead of correctly toggling off, leaking the ignored file's content into output.
+    directive   = /^\s*# \d+ \"/
     # Line markers have the specific form of '# <digits> "path/filename.ext" [optional digits]' (see above)
-    line_marker = /^#\s(\d+)\s\"(.+)\"/
+    line_marker = /^\s*#\s(\d+)\s\"(.+)\"/
     # Boolean to ping pong between line-by-line extract/ignore
     extract = false
 
@@ -280,26 +308,39 @@ class PreprocessinatorReconstructor
 
     # Buffer for the last logical line (may still receive aggregated content)
     pending_line  = nil
-    # Whether a blank line should follow pending_line when flushed
-    pending_blank = false
+    # Count of blank lines to emit after pending_line when flushed. Tracked as
+    # an exact count, not just "was there a blank" -- callers that depend on
+    # this method for line-for-line fidelity with the original source (so
+    # that unrelated line-number math downstream stays correct) need every
+    # blank line preserved, including runs that used to be a multi-line
+    # comment before an earlier pass turned it into equivalent blank lines.
+    pending_blank_count = 0
 
-    # Yields pending_line (and optional trailing blank) then clears the buffer
+    # Yields pending_line (and any pending blank lines) then clears the buffer
     flush = lambda do
       unless pending_line.nil?
-        block.call( pending_line )
-        block.call( '' ) if pending_blank
+        yield( pending_line )
+        pending_blank_count.times { yield( '' ) }
         pending_line  = nil
-        pending_blank = false
+        pending_blank_count = 0
       end
     end
 
-    # Use `each_line()` instead of `readlines()` (chomp removes newlines).
-    # `each_line()` processes the IO buffer one line at a time instead of ingesting lines in an array.
-    # At large buffer sizes needed for potentially lengthy preprocessor output this is far more memory efficient and faster.
-    input.each_line( chomp:true ) do |line|
+    # Clean the whole buffer once rather than line-by-line: clean_encoding's cost
+    # (a double ASCII/UTF-8 transcode) scales with call count as much as with
+    # content size, and GCC's expansion output can run to many times the original
+    # source's line count -- one whole-buffer clean produces byte-for-byte
+    # identical per-line content to cleaning after each_line's split (CRLF is
+    # still normalized before chomp ever sees it; invalid byte sequences are
+    # replaced independently of where a line boundary happens to fall either
+    # way). Trades the prior line-at-a-time memory streaming for far fewer,
+    # larger encode() calls -- worthwhile for realistic single-file expansion
+    # output sizes.
+    content = input.read.clean_encoding
 
-      # Clean up any oddball characters in an otherwise ASCII document
-      line = line.clean_encoding
+    # Use `each_line()` instead of `readlines()` (chomp removes newlines).
+    # `each_line()` processes the buffer one line at a time instead of ingesting lines in an array.
+    content.each_line( chomp:true ) do |line|
 
       # Handle expansion extraction if the line is not a preprocessor directive
       if extract and not line =~ directive
@@ -308,9 +349,9 @@ class PreprocessinatorReconstructor
         # Strip a line so we can omit useless blank lines
         _line = line.strip()
 
-        # Skip processing blank lines, but mark a pending blank unless we already have one
+        # Skip processing blank lines, but track an exact count of them so runs of blanks survive intact
         if _line.empty?
-          pending_blank = true if !pending_line.nil? && !pending_line.empty?
+          pending_blank_count += 1 if !pending_line.nil? && !pending_line.empty?
           next
         end
 
@@ -331,13 +372,14 @@ class PreprocessinatorReconstructor
         extract = false
       end
 
-      # Enter extract mode if the line is a preprocessor line marker with filepath of interest
+      # Enter extract mode if the line is a preprocessor line marker with filepath of interest.
+      # Only its own markers move the line counts. Another file's line number carried back
+      # would make the next line here read as a continuation of the one before it.
       matches = line.match( line_marker )
-      if matches and matches.size() > 2
+      if matches and matches.size() > 2 and extraction_filepath == File.expand_path( matches[2].strip() )
         last_line_num = line_num
         line_num = (matches[1].to_i - 1)
-        fp = File.expand_path( matches[2].strip() )
-        extract = true if extraction_filepath == fp
+        extract = true
       end
     end
 

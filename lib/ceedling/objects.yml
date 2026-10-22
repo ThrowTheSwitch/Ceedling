@@ -10,12 +10,17 @@ application:
     - system_wrapper
 
 file_wrapper:
+  compose:
+    - loginator
+    - verbosinator
 
 file_system_wrapper:
 
 rake_wrapper:
 
 yaml_wrapper:
+  compose:
+    - file_wrapper
 
 ruby_expandinator:
 
@@ -44,21 +49,8 @@ file_path_collection_utils:
 
 test_runner_manager:
 
-cacheinator:
-  compose:
-    - cacheinator_helper
-    - file_path_utils
-    - file_wrapper
-    - yaml_wrapper
-
-cacheinator_helper:
-  compose:
-    - file_wrapper
-    - yaml_wrapper
-
 tool_executor:
   compose:
-    - configurator
     - tool_executor_helper
     - loginator
     - verbosinator
@@ -77,7 +69,6 @@ tool_validator:
     - file_wrapper
     - loginator
     - system_wrapper
-    - reportinator
     - ruby_expandinator
 
 configurator:
@@ -96,10 +87,11 @@ configurator_setup:
   compose:
     - configurator_builder
     - configurator_validator
-    - configurator_plugins
     - loginator
     - reportinator
     - file_wrapper
+    - system_wrapper
+    - tool_executor
 
 configurator_plugins:
   compose:
@@ -111,7 +103,6 @@ configurator_validator:
     - config_walkinator
     - file_wrapper
     - loginator
-    - system_wrapper
     - reportinator
     - tool_validator
 
@@ -125,7 +116,6 @@ configurator_builder:
 loginator:
   compose:
     - verbosinator
-    - file_wrapper
     - system_wrapper
 
 setupinator:
@@ -146,6 +136,9 @@ plugin_reportinator:
     - plugin_manager
     - reportinator
     - loginator
+    - templateinator
+
+templateinator:
 
 plugin_reportinator_helper:
   compose:
@@ -159,7 +152,6 @@ file_finder:
   compose:
     - configurator
     - file_finder_helper
-    - cacheinator
     - file_path_utils
     - file_wrapper
     - yaml_wrapper
@@ -177,6 +169,7 @@ test_context_extractor:
   compose:
     - configurator
     - file_wrapper
+    - yaml_wrapper
     - include_factory
     - partializer_config
     - file_path_utils
@@ -231,6 +224,8 @@ generator:
     - plugin_manager
     - test_runner_manager
     - generator_test_results_backtrace
+    - system_wrapper
+    - file_wrapper
 
 generator_helper:
   compose:
@@ -243,14 +238,17 @@ generator_test_results:
     - loginator
     - reportinator
     - yaml_wrapper
+    - file_wrapper
 
 generator_test_results_backtrace:
   compose:
      - configurator
      - tool_executor
      - generator_test_results
+     - generator_helper
      - file_path_utils
      - file_wrapper
+     - loginator
 
 generator_test_results_sanity_checker:
   compose:
@@ -269,25 +267,24 @@ generator_partials:
 
 dependinator:
   compose:
-    - configurator
-    - test_context_extractor
-    - file_path_utils 
-    - rake_wrapper
-    - file_wrapper
+    - dependency_tracker
 
 preprocessinator_line_marker_includes_extractor:
   compose:
     - include_factory
+    - file_wrapper
 
 c_comment_scanner:
 
 preprocessinator_comment_stripper:
   compose:
     - c_comment_scanner
+    - file_wrapper
 
 preprocessinator_reconstructor:
   compose:
     - parsing_parcels
+    - file_wrapper
 
 preprocessinator:
   compose:
@@ -296,8 +293,8 @@ preprocessinator:
     - preprocessinator_file_assembler
     - preprocessinator_reconstructor
     - file_path_utils
-    - tool_executor
     - file_wrapper
+    - tool_executor
     - plugin_manager
     - configurator
     - loginator
@@ -311,6 +308,8 @@ preprocessinator_includes_handler:
     - tool_executor
     - parsing_parcels
     - file_wrapper
+    - quote_include_isolator
+    - file_path_utils
     - yaml_wrapper
     - loginator
     - reportinator
@@ -327,6 +326,8 @@ preprocessinator_file_assembler:
     - reportinator
 
 preprocessinator_code_finder:
+  compose:
+    - file_wrapper
 
 c_extractor_code_text:
 
@@ -353,6 +354,9 @@ c_extractor:
     - c_extractor_functions
     - c_extractor_preprocessing
     - c_extractor_definitions
+    - configurator
+    - loginator
+    - file_wrapper
 
 partializer_config:
   compose:
@@ -369,14 +373,18 @@ partializer_helper:
     - c_extractor
     - c_extractor_declarations
     - file_path_utils
+    - parsing_parcels
     - loginator
 
 partializer:
   compose:
+    - configurator
     - partializer_helper
     - file_finder
     - c_extractor
     - file_path_utils
+    - preprocessinator_reconstructor
+    - file_wrapper
     - reportinator
     - loginator
 
@@ -389,14 +397,25 @@ batchinator:
 test_invoker:
   compose:
     - application
-    - configurator
-    - test_build_setup
-    - test_build_planner
-    - test_build_executor
     - plugin_manager
-    - batchinator
+    - dependinator
     - loginator
     - verbosinator
+    - test_pipeline_manager
+
+test_pipeline_manager:
+  compose:
+    - test_build_setup
+    - test_includes_extractinator
+    - test_build_planner
+    - partials_manager
+    - test_build_executor
+    - test_file_preprocessinator
+    - test_runner_generatinator
+    - configurator
+    - batchinator
+    - loginator
+    - reportinator
 
 test_build_setup:
   compose:
@@ -406,12 +425,77 @@ test_build_setup:
     - batchinator
     - test_context_extractor
     - include_pathinator
-    - preprocessinator
     - defineinator
     - flaginator
     - file_wrapper
     - file_path_utils
+    - file_finder
     - test_runner_manager
+    - dependinator
+    - test_search_paths
+    - mock_locator
+
+test_includes_extractinator:
+  compose:
+    - test_bare_includes_extractinator
+    - test_includes_preprocessinator
+    - test_includes_reconcilinator
+
+test_bare_includes_extractinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
+    - file_path_utils
+    - dependinator
+    - test_search_paths
+    - standin_headerinator
+
+test_includes_preprocessinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
+    - file_path_utils
+    - file_wrapper
+    - dependinator
+
+test_includes_reconcilinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - test_context_extractor
+    - preprocessinator
+    - test_search_paths
+    - mock_locator
+
+standin_headerinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - file_wrapper
+    - file_path_utils
+    - mock_locator
+
+test_search_paths:
+  compose:
+    - configurator
+    - include_pathinator
+    - test_context_extractor
+
+test_source_file_directive_resolver:
+  compose:
+    - test_context_extractor
+    - file_finder
+    - configurator
+    - loginator
 
 test_build_planner:
   compose:
@@ -420,11 +504,44 @@ test_build_planner:
     - reportinator
     - batchinator
     - test_context_extractor
+    - include_pathinator
     - partializer
     - file_finder
     - file_path_utils
     - file_wrapper
     - plugin_manager
+    - test_source_file_directive_resolver
+    - mock_locator
+
+mock_locator:
+  compose:
+    - configurator
+    - include_pathinator
+    - file_finder
+    - file_path_utils
+
+test_file_preprocessinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
+    - test_context_extractor
+    - file_path_utils
+    - file_wrapper
+    - dependinator
+    - test_source_file_directive_resolver
+
+test_runner_generatinator:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - generator
+    - test_context_extractor
+    - dependinator
 
 test_build_executor:
   compose:
@@ -433,22 +550,96 @@ test_build_executor:
     - reportinator
     - batchinator
     - preprocessinator
-    - partializer
     - generator
-    - test_context_extractor
     - plugin_manager
     - file_path_utils
     - file_finder
     - file_wrapper
+    - dependinator
+    - gcc_dependency_parser
+    - quote_include_isolator
+    - generator_helper
+
+partials_manager:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - preprocessinator
+    - partializer
+    - generator
+    - dependinator
+    - file_path_utils
 
 release_invoker:
   compose:
-    - configurator
-    - batchinator
-    - reportinator
+    - application
+    - plugin_manager
+    - dependinator
     - loginator
-    - rake_wrapper
+    - batchinator
+    - release_build_planner
+    - release_build_executor
+
+release_build_planner:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - flaginator
+    - defineinator
     - file_path_utils
     - file_wrapper
 
-erb_wrapper:
+release_build_executor:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
+    - generator
+    - file_finder
+    - file_wrapper
+    - file_path_utils
+    - dependinator
+
+gcc_dependency_parser:
+
+quote_include_isolator:
+  compose:
+    - file_wrapper
+    - loginator
+
+dependency_hasher:
+  compose:
+    - file_wrapper
+
+dependency_path_normalizer:
+  compose:
+    - file_wrapper
+
+dependency_cache_store:
+  compose:
+    - file_wrapper
+    - loginator
+
+dependency_debug_tree:
+  compose:
+    - file_wrapper
+    - yaml_wrapper
+
+dependency_differ:
+
+dependency_tracker:
+  compose:
+    - file_wrapper
+    - system_wrapper
+    - loginator
+    - dependency_hasher
+    - dependency_path_normalizer
+    - dependency_cache_store
+    - gcc_dependency_parser
+    - dependency_debug_tree
+    - dependency_differ
+

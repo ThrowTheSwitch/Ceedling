@@ -186,7 +186,9 @@ this path.
 
 Load a `gcovr` configuration file. (`gcovr --config`)
 
-**Default:** `gcovr.cfg` in the `:report_root` directory, if present.
+**Default:** unset — Ceedling does not look for or autodetect a config file
+on disk; `gcovr` itself is only ever told to load one when `:config_file` is
+explicitly set.
 
 ---
 
@@ -213,7 +215,24 @@ Exit with status 4 if total branch coverage is below this percentage.
 Exit with status 8 if total decision coverage is below this percentage.
 (`gcovr --fail-under-decision`)
 
+`gcovr` treats `--fail-under-decision` as a no-op without `--decisions` also
+present — setting this option implies `:decisions` (below) automatically, so
+it's never silently non-functional.
+
 **Values:** `1`–`100`
+
+**Requires:** `gcovr` 7.0 or higher
+
+---
+
+### `:decisions`
+
+Report the decision coverage. For HTML, JSON, and the summary report.
+(`gcovr --decisions`)
+
+Implied automatically whenever `:fail_under_decision` is set.
+
+**Requires:** `gcovr` 5.1 or higher
 
 ---
 
@@ -246,21 +265,26 @@ Source file character encoding. (`gcovr --source-encoding`)
 ### `:branches`
 
 Report branch coverage instead of line coverage. Applies to text reports only.
-(`gcovr --branches`)
+Uses `gcovr --txt-metric branch` on `gcovr` 7.0+ (`--branches` is deprecated as
+of 7.0, though still functional); `gcovr --branches` below it.
 
 ---
 
 ### `:sort_uncovered`
 
 Sort report entries by increasing number of uncovered lines. Applies to text
-and HTML reports. (`gcovr --sort-uncovered`)
+and HTML reports. Uses `gcovr --sort uncovered-number` on `gcovr` 7.0+
+(`--sort-uncovered` is deprecated as of 7.0, though still functional);
+`gcovr --sort-uncovered` below it.
 
 ---
 
 ### `:sort_percentage`
 
 Sort report entries by increasing percentage of uncovered lines. Applies to
-text and HTML reports. (`gcovr --sort-percentage`)
+text and HTML reports. Uses `gcovr --sort uncovered-percent` on `gcovr` 7.0+
+(`--sort-percentage` is deprecated as of 7.0, though still functional);
+`gcovr --sort-percentage` below it.
 
 ---
 
@@ -468,10 +492,48 @@ Override the default JSON report output filename.
 
 ---
 
+### `:jacoco_pretty`
+
+Pretty-print the JaCoCo XML report. Requires `gcovr` 7.0 or higher. (`gcovr --jacoco-pretty`)
+
+**Default:** `FALSE`
+
+---
+
+### `:jacoco_artifact_filename`
+
+Override the default JaCoCo XML report output filename. Requires `gcovr` 7.0 or higher.
+
+**Default:** `GcovCoverageJaCoCo.xml`
+
+---
+
+### `:lcov_comment`
+
+Set a comment in the LCOV report. Requires `gcovr` 7.0 or higher. (`gcovr --lcov-comment`)
+
+---
+
+### `:lcov_test_name`
+
+Set the test name recorded in the LCOV report. Requires `gcovr` 7.0 or higher.
+(`gcovr --lcov-test-name`)
+
+---
+
+### `:lcov_artifact_filename`
+
+Override the default LCOV report output filename. Requires `gcovr` 7.0 or higher.
+
+**Default:** `GcovCoverage.lcov`
+
+---
+
 ### `:text_artifact_filename`
 
-Override the default text report output filename. When unset the text report
-is printed to the console.
+Override the default text report output filename.
+
+**Default:** `coverage.txt`
 
 ---
 
@@ -538,6 +600,42 @@ Optional build tag or version label embedded in the report.
 
 ---
 
+### `:fail_under_line`
+
+Break the build if total line coverage is below this percentage.
+(ReportGenerator `minimumCoverageThresholds:lineCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_branch`
+
+Break the build if total branch coverage is below this percentage.
+(ReportGenerator `minimumCoverageThresholds:branchCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_method`
+
+Break the build if total method coverage is below this percentage.
+(ReportGenerator `minimumCoverageThresholds:methodCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
+### `:fail_under_full_method`
+
+Break the build if total full method coverage is below this percentage.
+(ReportGenerator `minimumCoverageThresholds:fullMethodCoverage`)
+
+**Values:** `1`–`100`
+
+---
+
 ### `:gcov_exclude`
 
 Optional list of regular expressions; `.gcov` notes files whose paths match
@@ -552,11 +650,13 @@ are excluded from report generation.
 
 ---
 
-### `:threads`
+### `:num_parallel_threads`
 
-Number of parallel threads to use during report generation.
+Number of parallel threads to use during report generation. Drives both
+ReportGenerator's own `numberOfReportsParsedInParallel` and
+`numberOfReportsMergedInParallel` settings together.
 
-**Default:** `1`
+**Default:** unset (ReportGenerator's own default applies)
 
 ---
 

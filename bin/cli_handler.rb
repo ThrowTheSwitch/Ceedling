@@ -9,25 +9,25 @@ require 'thor'
 require 'mixins' # Built-in Mixins
 require 'ceedling/constants' # From Ceedling application
 require 'ceedling/rake_app/rake_task_registry' # From Ceedling application
-require 'versionator' # Outisde DIY context
+require 'versionator' # Outside DIY context
 
 class CliHandler
 
   DOCS_SUBDIR = 'docs'
 
-  constructor :configinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actions_wrapper, :loginator
+  constructor :composinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actionator, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
   def inspect
-    return this.class.name
+    return self.class.name
   end
 
 
   def setup()
     # Aliases
     @helper = @cli_helper
-    @actions = @actions_wrapper
+    @actions = @actionator
     @registry = @rake_task_registry
   end
 
@@ -47,18 +47,15 @@ class CliHandler
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
-      thor_help.call( command ) if block_given?
+      yield( command ) if block_given?
       return
     end
 
     # Display Thor-generated help listing
-    thor_help.call( command ) if block_given?
-
-    # If it was help for a specific command, we're done
-    return if !command.nil?
+    yield( command ) if block_given?
 
     # If project configuration is available, also display Rake tasks
-    @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
     if @projectinator.config_available?( filepath:options[:project], env:env )
       list_rake_tasks(
         env:env,
@@ -91,13 +88,15 @@ class CliHandler
   def new_project(env, app_cfg, ceedling_tag, options, dest)
     @helper.set_verbosity( options[:verbosity] )
 
-    @path_validator.standardize_paths( dest )
+    dest = @path_validator.standardize_paths( dest ).first
 
     # If destination is nil, assume it's the working directory
     dest ||= '.'
 
-    # Check for existing project (unless --force)
-    if @helper.project_exists?( dest, :|, DEFAULT_PROJECT_FILENAME, 'src', 'test' )
+    # Check for existing project (unless --force) -- #1250: either default project
+    # filename counts, so `ceedling new` doesn't silently overwrite an existing
+    # ceedling.yml-based project just because it's looking for project.yml.
+    if @helper.project_exists?( dest, :|, DEFAULT_PROJECT_FILENAME, ALTERNATE_PROJECT_FILENAME, 'src', 'test' )
       msg = "It appears a project already exists at \"#{dest}/\"! Use --force to destroy it and create a new project."
       raise msg
     end unless options[:force]
@@ -105,34 +104,34 @@ class CliHandler
     # Update app_cfg paths (ignore return values)
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
-    # Thor Actions for project tasks use paths in relation to this path
-    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+    # Source paths for project tasks resolve in relation to this path
+    @actions.source_root = app_cfg[:ceedling_root_path]
 
     # Blow away any existing directories and contents if --force
-    @actions.remove_dir( dest ) if options[:force]
+    @actions.remove_directory( dest ) if options[:force]
 
     # Create blank directory structure
     ['.', 'src', 'test', 'test/support'].each do |path|
-      @actions._empty_directory( File.join( dest, path) )
+      @actions.make_directory( File.join( dest, path) )
     end
 
     # Vendor the tools and install command line helper scripts
     @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
 
     # Copy / set up project file
-    @helper.create_project_file( dest, options[:local], ceedling_tag ) if options[:configs]
+    @helper.create_project_file( dest, options[:local], ceedling_tag, ceedling_yml: options[:ceedling_yml] ) if options[:configs]
     
     # Copy in documentation
     @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( dest, DOCS_SUBDIR ) ) if options[:docs]
 
     # Copy Git Ignore file 
     if options[:gitsupport]
-      @actions._copy_file(
-        File.join( 'assets', 'default_gitignore' ),
+      @actions.copy_file(
+        File.join( 'assets', 'features', 'default_gitignore' ),
         File.join( dest, '.gitignore' ),
-        :force => true
+        force: true
       )
-      @actions._touch_file( File.join( dest, 'test/support', '.gitkeep') )
+      @actions.touch_file( File.join( dest, 'test/support', '.gitkeep') )
     end
     
     @loginator.console( "\nNew project created at #{File.absolute_path(dest)}/\n", LogLabels::TITLE )
@@ -142,7 +141,7 @@ class CliHandler
   def upgrade_project(env, app_cfg, options, path)
     @helper.set_verbosity( options[:verbosity] )
 
-    @path_validator.standardize_paths( path, options[:project] )
+    path, options[:project] = @path_validator.standardize_paths( path, options[:project] )
 
     # Check for existing project
     if !@helper.project_exists?( path, :&, options[:project], 'vendor/ceedling/lib/version.rb' )
@@ -156,19 +155,19 @@ class CliHandler
       @loginator.console( msg, LogLabels::NOTICE )
     end
 
-    # Thor Actions for project tasks use paths in relation to this path
-    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+    # Source paths for project tasks resolve in relation to this path
+    @actions.source_root = app_cfg[:ceedling_root_path]
 
     # Recreate vendored tools
     vendor_path = File.join( path, 'vendor', 'ceedling' )
-    @actions.remove_dir( vendor_path )
+    @actions.remove_directory( vendor_path )
     @helper.vendor_tools( app_cfg[:ceedling_root_path], path )
 
     # Recreate documentation if we find docs/ subdirectory
     docs_path = File.join( path, 'docs' )
     founds_docs = @helper.project_exists?( path, :&, File.join( 'docs', 'CeedlingPacket.md' ) )
     if founds_docs
-      @actions.remove_dir( docs_path )
+      @actions.remove_directory( docs_path )
       @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( path, DOCS_SUBDIR ) )
     end
 
@@ -183,9 +182,10 @@ class CliHandler
     @helper.set_verbosity( _verbosity, override: false )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    @path_validator.standardize_paths( options[:project], options[:logfile], *@helper.process_mixin_filepaths(options[:mixin]) )
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
+    options[:logfile] = @path_validator.standardize_paths( options[:logfile] ).first
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
@@ -194,12 +194,18 @@ class CliHandler
     # after all .rake files are loaded with constants fully resolved.
     @helper.build_rake_task_registry( config:config )
 
-    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+    default_tasks = @composinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
     @helper.process_testcase_filters(
       config: config,
       include: options[:test_case],
       exclude: options[:exclude_test_case],
+      tasks: tasks,
+      default_tasks: default_tasks
+    )
+
+    @helper.process_force_test_rerun(
+      force_test_rerun: options[:force_test_rerun],
       tasks: tasks,
       default_tasks: default_tasks
     )
@@ -215,6 +221,7 @@ class CliHandler
     app_cfg.set_log_filepath( log_filepath )
     app_cfg.set_include_test_case( options[:test_case] )
     app_cfg.set_exclude_test_case( options[:exclude_test_case] )
+    app_cfg.set_force_test_rerun( options[:force_test_rerun] )
 
     # Set graceful_exit from command line & configuration options
     app_cfg.set_tests_graceful_fail(
@@ -275,17 +282,23 @@ class CliHandler
     @helper.set_verbosity( options[:verbosity] )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    @path_validator.standardize_paths( filepath, options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
+    filepath = @path_validator.standardize_paths( filepath ).first
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
-    @cli_helper.console_project_name( config )
+    # A nil filepath means --stdout was set -- the YAML itself is the only thing
+    # that may reach stdout in that case, for a consuming tool to parse cleanly,
+    # so every banner/notice below is skipped rather than interleaved into it.
+    stdout_mode = filepath.nil?
+
+    @cli_helper.console_project_name( config ) unless stdout_mode
 
     # Exception handling to ensure we dump the configuration regardless of config validation errors
     begin
       # If enabled, process the configuration through Ceedling automatic settings, defaults, plugins, etc.
       if options[:app]
-        default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+        default_tasks = @composinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
         # Save references
         app_cfg.set_project_config( config )
@@ -293,18 +306,18 @@ class CliHandler
 
         _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
-        config = @helper.load_ceedling( 
+        config = @helper.load_ceedling(
           config: config,
           rakefile_path: path,
           default_tasks: default_tasks
         )
       else
-        @loginator.console( " > Skipped loading Ceedling application" )
+        @loginator.console( " > Skipped loading Ceedling application" ) unless stdout_mode
       end
     ensure
       @helper.dump_yaml( config, filepath, sections )
 
-      @loginator.console( "\nDumped project configuration to #{filepath}\n", LogLabels::TITLE )      
+      @loginator.console( "\nDumped project configuration to #{filepath}\n", LogLabels::TITLE ) unless stdout_mode
     end
   end
 
@@ -314,13 +327,13 @@ class CliHandler
     @helper.set_verbosity( options[:verbosity] )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.log_project_name( config )
 
-    default_tasks = @configinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
+    default_tasks = @composinator.default_tasks( config:config, default_tasks:app_cfg[:default_tasks] )
 
     # Save references; explicitly disable log file output
     app_cfg.set_project_config( config )
@@ -345,9 +358,9 @@ class CliHandler
     @helper.set_verbosity( options[:verbosity] )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    @path_validator.standardize_paths( options[:project], *@helper.process_mixin_filepaths(options[:mixin]) )
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @configinator.loadinate( builtin_mixins:BUILTIN_MIXINS, filepath:options[:project], mixins:options[:mixin], env:env )
+    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
 
     @cli_helper.console_project_name( config )
 
@@ -372,10 +385,10 @@ class CliHandler
     end
 
     # Process environment created by configuration
-    config[:environment].each do |env|
-      env.each_key do |key|
+    config[:environment].each do |section|
+      section.each_key do |key|
         name = key.to_s.upcase
-        env_list << "#{name}: \"#{env[key]}\""
+        env_list << "#{name}: \"#{section[key]}\""
       end
     end
 
@@ -424,7 +437,7 @@ class CliHandler
   def create_example(env, app_cfg, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
 
-    @path_validator.standardize_paths( dest )
+    dest = @path_validator.standardize_paths( dest ).first
 
     # Process which_ceedling for app_cfg modifications but ignore return values
     @helper.which_ceedling?( env:env, app_cfg:app_cfg )
@@ -445,14 +458,14 @@ class CliHandler
     dest_project  = File.join( dest, DEFAULT_PROJECT_FILENAME )
     dest_readme   = File.join( dest, 'README.md' )
 
-    # Thor Actions for project tasks use paths in relation to this path
-    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+    # Source paths for project tasks resolve in relation to this path
+    @actions.source_root = app_cfg[:ceedling_root_path]
 
-    @actions._directory( "examples/#{name}/src", dest_src, :force => true )
-    @actions._directory( "examples/#{name}/test", dest_test, :force => true )
-    @actions._directory( "examples/#{name}/mixin", dest_mixin, :force => true )
-    @actions._copy_file( "examples/#{name}/#{DEFAULT_PROJECT_FILENAME}", dest_project, :force => true )
-    @actions._copy_file( "examples/#{name}/README.md", dest_readme, :force => true )
+    @actions.copy_directory( "examples/#{name}/src", dest_src, force: true )
+    @actions.copy_directory( "examples/#{name}/test", dest_test, force: true )
+    @actions.copy_directory( "examples/#{name}/mixin", dest_mixin, force: true )
+    @actions.copy_file( "examples/#{name}/#{DEFAULT_PROJECT_FILENAME}", dest_project, force: true )
+    @actions.copy_file( "examples/#{name}/README.md", dest_readme, force: true )
 
     # Vendor the tools and install command line helper scripts
     @helper.vendor_tools( app_cfg[:ceedling_root_path], dest ) if options[:local]
@@ -473,8 +486,8 @@ class CliHandler
 
 
   def docs(app_cfg, dest)
-    # Thor Actions file operations require an anchored source root
-    ActionsWrapper.source_root( app_cfg[:ceedling_root_path] )
+    # File operations require an anchored source root
+    @actions.source_root = app_cfg[:ceedling_root_path]
 
     # Default to current working directory when no destination is given
     dest ||= '.'
@@ -547,10 +560,30 @@ class CliHandler
 
   private
 
+  # Standardizes a project filepath and a mixins list together. PathValidator's
+  # standardize_paths() returns new values rather than updating its arguments in
+  # place, so the mixins list can't just be passed through it directly -- inline
+  # YAML mixin entries aren't filepaths at all and must be left untouched, and
+  # only the filepath/name entries come back out standardized.
+  #
+  # Entries are matched by value. standardize_paths() is a pure mapping, so two
+  # equal inputs always produce equal outputs and a repeated mixin value gets the
+  # same replacement either way.
+  def standardize_project_and_mixins(project, mixins)
+    _project = @path_validator.standardize_paths( project ).first
+
+    file_mixins = @helper.process_mixin_filepaths( mixins )
+    standardized = @path_validator.standardize_paths( *file_mixins )
+    replacements = file_mixins.zip( standardized ).to_h
+    _mixins = mixins.map {|m| replacements.fetch( m, m ) }
+
+    return _project, _mixins
+  end
+
   def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[], silent:false)
     _, config = 
-      @configinator.loadinate(
-        builtin_mixins:BUILTIN_MIXINS,
+      @composinator.loadinate(
+        builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS,
         filepath: filepath,
         mixins: mixins,
         env: env,

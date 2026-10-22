@@ -5,17 +5,25 @@
     SPDX-License-Identifier: MIT
 ========================================================================= */
 
-/* Partials pattern: TEST_PARTIAL_ALL_MODULE
+/* Partials pattern: TEST_PARTIAL_ALL_MODULE + MOCK_PARTIAL_ALL_MODULE
  * Tests both public functions AND the private static helpers
  * TemperatureSensor__RawToMilliCelsius() and TemperatureSensor__IsInRange().
  * Also accesses the file-scoped static s_calibration_offset directly.
- * SensorHal is mocked traditionally since it has no private statics. */
+ * SensorHal is mocked via Partials (MOCK_PARTIAL_ALL_MODULE) rather than
+ * traditionally: SensorHal_RawStatusRegister() is a static inline function,
+ * which only Partial mocking (not ordinary CMock header mocking) can
+ * intercept -- there is no separate SensorHal.c definition for a static
+ * inline function to exclude from this test build and replace with a mock
+ * .o at link time, so the call must be redirected to the mock before that,
+ * at the #include level. Every existing SensorHal_*_Expect* call below
+ * keeps working unchanged either way, since Partial-mocked functions use
+ * the identical CMock expectation API as a traditionally mocked module. */
 
 #include "unity.h"
 #include "ceedling.h"
-#include "MockSensorHal.h"
 
 #include TEST_PARTIAL_ALL_MODULE(TemperatureSensor)
+#include MOCK_PARTIAL_ALL_MODULE(SensorHal)
 
 #include "Types.h"
 
@@ -78,6 +86,7 @@ void test_Sample_ReturnsTrueAndStoresReadingWhenReady(void)
     /* 1638 counts: (1638 * 85000) / 4095 ~= 34000 milli-C (34 C), in range */
     SensorHal_IsChannelReady_ExpectAndReturn(SENSOR_CHANNEL_TEMP, true);
     SensorHal_ReadChannel_ExpectAndReturn(SENSOR_CHANNEL_TEMP, 1638u);
+    SensorHal_RawStatusRegister_ExpectAndReturn(SENSOR_CHANNEL_TEMP, 0x1234u);
     SensorHal_StartConversion_Expect(SENSOR_CHANNEL_TEMP);
 
     TEST_ASSERT_TRUE(TemperatureSensor_Sample());
@@ -93,8 +102,28 @@ void test_CalibrationOffsetShiftsReading(void)
     /* 2048 counts ~= 42502 milli-C; with +1.0 C offset -> ~= 43502 */
     SensorHal_IsChannelReady_ExpectAndReturn(SENSOR_CHANNEL_TEMP, true);
     SensorHal_ReadChannel_ExpectAndReturn(SENSOR_CHANNEL_TEMP, 2048u);
+    SensorHal_RawStatusRegister_ExpectAndReturn(SENSOR_CHANNEL_TEMP, 0x1234u);
     SensorHal_StartConversion_Expect(SENSOR_CHANNEL_TEMP);
 
     TemperatureSensor_Sample();
     TEST_ASSERT_INT32_WITHIN(200, 43502, TemperatureSensor_GetMilliCelsius());
+}
+
+/* Regression test for #1215: a module partial-mocked via MOCK_PARTIAL_ALL_MODULE
+ * (as SensorHal is above) must have its calling module's real #include swapped for
+ * the generated mock interface header. Without that swap, SensorHal_RawStatusRegister()'s
+ * real static inline body -- unreachable through ordinary link-time mock substitution,
+ * since a static inline function has no separate object file to exclude -- compiles
+ * straight into this test build and always returns its 0xDEAD sentinel regardless of
+ * what's expected here, no matter what the mock is told to return. */
+void test_StatusRegisterReflectsMockedValueNotRealSentinel(void)
+{
+    SensorHal_IsChannelReady_ExpectAndReturn(SENSOR_CHANNEL_TEMP, true);
+    SensorHal_ReadChannel_ExpectAndReturn(SENSOR_CHANNEL_TEMP, 1638u);
+    SensorHal_RawStatusRegister_ExpectAndReturn(SENSOR_CHANNEL_TEMP, 0x1234u);
+    SensorHal_StartConversion_Expect(SENSOR_CHANNEL_TEMP);
+
+    TemperatureSensor_Sample();
+
+    TEST_ASSERT_EQUAL_HEX16(0x1234u, TemperatureSensor_GetStatusRegister());
 }

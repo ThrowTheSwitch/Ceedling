@@ -23,11 +23,6 @@ handy for crafting custom functionality.
     bulk and with the same collections used for all tasks. This 
     is no longer true.
 
-* `COLLECTION_PROJECT_OPTIONS`:
-
-    All project option files with path found in the configured 
-    options paths having the configured YAML file extension.
-
 * `COLLECTION_ALL_TESTS`:
 
     All files with path found in the configured test paths 

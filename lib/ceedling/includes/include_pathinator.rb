@@ -7,6 +7,7 @@
 
 require 'pathname'
 require 'ceedling/exceptions'
+require 'ceedling/file_path_utils'
 
 class IncludePathinator
 
@@ -43,8 +44,10 @@ class IncludePathinator
     # Get all paths specified by TEST_INCLUDE_PATH() directive in test files
     directive_paths = @extractor.lookup_all_include_paths
 
-    # Add to collection of headers (Rake FileList) with directive paths and shallow wildcard matching on header file extension
-    headers += @file_wrapper.instantiate_file_list( directive_paths.map { |path| File.join(path, '*' + EXTENSION_HEADER) } )
+    # Add to collection of headers (Rake FileList) with directive paths and shallow wildcard
+    # matching on header file extension -- a project may configure more than one header
+    # extension, so each directive path contributes one glob pattern per configured extension
+    headers += @file_wrapper.instantiate_file_list( directive_paths.flat_map { |path| EXTENSION_HEADER.glob_patterns(path) } )
     headers.resolve()
 
     headers.uniq!
@@ -59,6 +62,39 @@ class IncludePathinator
     return headers
   end
 
+  # Header files reachable from an already-ordered directory priority list (e.g. a
+  # test's own search_paths), in that same order and deduplicated by first occurrence.
+  # This is the candidate list a compiler's own -I search would consult for a single
+  # test's #include resolution -- distinct from collection_all_headers, which is one
+  # global, project-wide list blind to any one test's own TEST_INCLUDE_PATH() priority.
+  def ordered_header_files(search_paths)
+    headers = []
+    search_paths.each do |path|
+      headers += @file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) )
+    end
+    return headers.uniq
+  end
+
+  # The project's whole header collection, reordered so headers beneath this test's
+  # own earlier search paths come first.
+  #
+  # Distinct from ordered_header_files above, which lists each search path's immediate
+  # contents the way a compiler's own non-recursive -I search does. A reference naming
+  # a header by path needs the whole collection instead, since the file it names can
+  # sit at any depth below a search path, and it needs this test's own priority so a
+  # TEST_INCLUDE_PATH() decides among same-named candidates.
+  #
+  # Ordering within one priority rank is the collection's own, which is what keeps a
+  # reference that distinguishes nothing resolving exactly as it did before.
+  def prioritized_header_files(search_paths)
+    roots = search_paths.map { |path| FilePathUtils.no_decorators( path ) }.reject(&:empty?)
+
+    @configurator.collection_all_headers.to_a.each_with_index.sort_by do |header, index|
+      rank = roots.index { |root| header == root || header.start_with?( root + '/' ) } || roots.length
+      [rank, index]
+    end.map(&:first)
+  end
+
   def augment_environment_header_files(headers)
     @configurator.redefine_element(:collection_all_headers, headers)
   end
@@ -69,11 +105,11 @@ class IncludePathinator
     return @extractor.lookup_include_paths_list(filepath)
   end
 
-  # Gather together [:paths][:test] that actually contain .h files
+  # Gather together [:paths][:test] that actually contain header files
   def collect_test_include_paths
     paths = []
     @configurator.collection_paths_test.each do |path|
-      headers = @file_wrapper.directory_listing( File.join( path, '*' + @configurator.extension_header ) )
+      headers = @file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) )
       paths << path if headers.length > 0
     end
 

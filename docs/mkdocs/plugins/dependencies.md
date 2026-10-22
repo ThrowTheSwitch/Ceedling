@@ -1,33 +1,28 @@
 # Dependencies
 
-Plugin for supporting release dependencies. It’s rare for an embedded project to
-be built completely free of other libraries and modules. Some of these may be
-standard internal libraries. Some of these may be 3rd party libraries. In either
-case, they become part of the project’s ecosystem.
+This plugin fetches, builds, and links the libraries and modules your project depends
+on. It’s rare for an embedded project to be built completely free of other code. Some of
+it may be standard internal libraries, and some may be third-party libraries. Either way,
+it becomes part of the project’s ecosystem.
 
-This plugin is intended to make that relationship easier. It allows you to specify
-a source for dependencies. If required, it will automatically grab the appropriate
-version of that dependency.
+For each dependency, you tell this plugin where to fetch it from, how to build it, and what
+it produces. Ceedling fetches and builds it whenever those outputs are missing, then adds
+its headers, sources, and libraries to your test and release builds.
 
-Most 3rd party libraries have a method of building already in place. While we’d
-love to convert the world to a place where everything downloads with a test suite
-in Ceedling, that’s not likely to happen anytime soon. Until then, this plugin
-will allow the developer to specify what calls Ceedling should make to oversee
-the build process of those third party utilities. Are they using Make? CMake? A
-custom series of scripts that only a mad scientist could possibly understand? No
-matter. Ceedling has you covered. Just specify what should be called, and Ceedling
-will make it happen whenever it notices that the output artifacts are missing.
+Most third-party libraries already have a build process of their own. Make? CMake? A
+custom series of scripts that only a mad scientist could possibly understand? No matter.
+You list the commands, and Ceedling runs them.
 
-Output artifacts? Sure! Things like static and dynamic libraries, or folders
-containing header files that might want to be included by your release project.
+See the [_Cookbook_ section](#cookbook) for real-world scenarios along with the example 
+`:dependencies` configurations and `ceedling dependencies:...` command lines to make
+use of this plugin.
 
 ## So how does all this magic work?
 
-First, you need to add the Dependencies plugin to your list of enabled plugins. Then, we'll 
-add a new comfiguration section called `:dependencies`. There, you can list as many 
-dependencies as you desire. Each has a series of fields that help Ceedling to understand 
-your needs. Many of them are optional. If you don't need that feature, just don't include 
-it! In the end, it'll look something like this:
+Enable the plugin in your project configuration, then list your dependencies under
+`:dependencies` ↳ `:deps`. Each dependency has a series of fields, most of them optional.
+If you don’t need a feature, leave its field out. In the end, it looks something like
+this:
 
 ```yaml
 :plugins:
@@ -38,19 +33,18 @@ it! In the end, it'll look something like this:
   :deps:
     - :name: WolfSSL
       :paths:
-        :fetch:        third_party/wolfssl/source
-        :source:       third_party/wolfssl/source
-        :build:        third_party/wolfssl/build
-        :artifact_lib: third_party/wolfssl/install
-        :artifact_inc: third_party/wolfssl/install
+        :fetch:    third_party/wolfssl/source
+        :source:   third_party/wolfssl/source
+        :build:    third_party/wolfssl/build
+        :artifact: third_party/wolfssl/install
       :fetch:
         :method: :zip
         :source: \\shared_drive\third_party_libs\wolfssl\wolfssl-4.2.0.zip
       :environment:
         - CFLAGS+=-DWOLFSSL_DTLS_ALLOW_FUTURE
       :build:
-        - "autoreconf -i"
-        - "./configure --enable-tls13 --enable-singlethreaded"
+        - autoreconf -i
+        - ./configure --enable-tls13 --enable-singlethreaded
         - make
         - make install
       :artifacts:
@@ -62,204 +56,226 @@ it! In the end, it'll look something like this:
           - include/**
 ```
 
-## Starting Dash & Name
+## Name
 
-Yes, that opening dash tells the dependencies plugin that the rest of these fields
-belong to our first dependency. If we had a second dependency, we’d have another
-dash, lined up with the first, and followed by all the fields indented again.
+As a YAML array of objects, each dependency begins with a dash, followed by its fields.
+By convention, `:name` comes first, which makes each dependency easy to spot.
 
-By convention, we use the `:name` field as the first field for each tool. Ceedling
-honestly doesn't care which order the fields are given... but as humans, it makes
-it easier for us to see the name of each dependency with starting dash.
+The name appears in Ceedling’s progress messages. Its letters, digits, and underscores
+also name the dependency’s own tasks, so `Worker Bees` gets `dependencies:make:WorkerBees`.
+A name therefore needs at least one letter or digit. Two dependencies whose names reduce
+to the same task name stop the build with an error.
 
-The name field is only used to print progress while we're running Ceedling. You may
-call the name of the field whatever you wish.
+## Working paths
 
-## Working Paths
+A dependency’s paths are collected under its `:paths`. Each path you leave out falls back
+to another, and with none configured every path is `dependencies/<task name>`.
 
-All paths are collected under `:dependencies` ↳ `:paths`. The `:source` field allows us 
-to specify where the source code for each of our dependencies is stored. By default, it’s
-the same as the `:fetch` path, which is where source will be fetched TO when fetching the 
-dependency from elsewhere. All commands to build this dependency will be executed from
-the `:source` location. Temporary data will be placed in the `:build` location. Unless you're
-using one of Ceedling’s built-in builders, you'll need to learn where the tool you're using to
-build places it’s built artifacts , and list that here. Finally, the output
-artifacts will be referenced to this location. You override this by specifying a `:artifact`
-path. In summary:
+| Path | Purpose | When left out |
+|---|---|---|
+| `:fetch` | Where the dependency is fetched to | `:source` |
+| `:source` | Where build commands run from | `:fetch` |
+| `:build` | Where the build places its files | `:source`, then `:fetch` |
+| `:artifact` | Where the outputs listed under `:artifacts` are found | `:build` |
+| `:deploy` | Where `dependencies:deploy` copies dynamic libraries and executables | Your release executable’s folder |
 
-- `:paths`
-    - `:fetch` -- where things are fetched to (defaults to `build/deps/depname/`)
-    - `:source` -- where we trigger builds (defaults to `:fetch`)
-    - `:build` -- where we have the produced build files (defaults to `<:fetch>/build`)
-    - `:deploy` -- where any produced library files should be copied (defaults to same as release executable)
-    - `:artifact` -- where output libraries can be found (defaults to `:build`)
+Cleaning a dependency never removes its `:deploy` path, which holds copies alongside your
+project’s own files.
 
-If the dependency is directly included in your project (you've specified `:none` as the
-`:method` for fetching), then `:source` should be where your Ceedling can find the
-source for your dependency in you repo.
+If the dependency is part of your repository (its fetch `:method` is `:none`), `:source`
+is where its code already lives. Paths may lie outside your project, such as
+`../shared/lib`, and headers found there work in test and release builds alike.
 
-All artifacts are relative to the appropriate `:artifact` path. So if there are multiple 
-include dirs, choose the highest level and make the rest relative from there. 
+Every artifact is relative to the `:artifact` path. With several include directories,
+choose the highest level and list the rest relative to it.
 
-## Fetching Dependencies
+## Fetching dependencies
 
-The `:dependencies` plugin supports the ability to automatically fetch your dependencies
-for you... using some common methods of fetching source. This section contains only a
-couple of fields:
+The plugin fetches a dependency with one of several common methods, configured under its
+`:fetch`:
 
-- `:method` -- This is the method that this dependency is fetched.
-    - `:none` -- This tells Ceedling that the code is already included in the project.
-    - `:zip` -- This tells Ceedling that we want to unpack a zip file to our source path.
-    - `:gzip` -- This tells Ceedling that we want to unpack a gzip file to our source path.
-    - `:git` -- This tells Ceedling that we want to clone a git repo to our source path.
-    - `:svn` -- This tells Ceedling that we want to checkout a subversion repo to our source path.
-    - `:custom` -- This tells Ceedling that we want to use a custom command or commands to fetch the code.
-- `:source` -- This is the path or url to fetch code when using the `:zip`, `:gzip` or `:git` method.
-- `:tag`/`:branch` -- This is the specific tag or branch that you wish to retrieve (`:git` only, optional).
-- `:hash` -- This is the specific SHA1 hash you want to fetch (`:git` only, optional and triggers a deep clone).
-- `:revision` -- This is the specific revision you want to fetch (`:svn` only, optional).
-- `:executable` -- This is a YAML list of commands to execute when using the `:custom` method
+- `:method`, the way this dependency is fetched:
+    - `:none`: the code is already part of the project, so nothing is fetched.
+    - `:zip`: unpack a zip archive into the fetch path.
+    - `:tar_gzip`: unpack a gzipped tar archive into the fetch path.
+    - `:git`: clone a git repository into the fetch path.
+    - `:svn`: check out a Subversion repository into the fetch path.
+    - `:custom`: run commands of your own in the fetch path.
+- `:source`: the archive or repository to fetch from (`:zip`, `:tar_gzip`, `:git`, and
+  `:svn`, all of which require it).
+- `:tag` or `:branch`: the tag or branch to clone (`:git` only, optional). A tag wins
+  when both are given.
+- `:hash`: the commit to check out (`:git` only, optional). It makes a full clone rather
+  than a shallow one, so the commit is available.
+- `:revision`: the revision to check out (`:svn` only, optional).
+- `:executable`: the list of commands to run (`:custom` only, required).
 
-Some notes:
+Fetching runs from inside the fetch path, so an archive `:source` given as a relative
+path is relative to the fetch path.
 
-* The `:source` location for fetching a `:zip` or `:gzip` file is relative to the `:paths` ↳ `:source`
-folder. 
+A dependency is fetched once. Once its fetch path holds files, fetching it again, or
+building it after a fetch, leaves those files alone. To fetch a fresh copy, clean the
+dependency first with `dependencies:clean`.
 
-## Environment Variables
+The `:zip`, `:tar_gzip`, `:git`, and `:svn` methods use the plugin’s
+[tools](#custom-tools) (`unzip`, `tar`, `git`, and `svn`). Each is checked just before a
+dependency fetches with it, so a missing tool stops only that fetch, and a machine that
+never fetches, such as a CI agent working from fetched dependencies, needs none of them.
 
-Many build systems support customization through environment variables. By specifying
-an array of environment variables, the Dependencies plugin will customize the shell environment 
-before calling the build process.
+## Environment variables
 
-Note that Ceedling’s project configuration includes a top-level `:environment` sections itself.
-The top-level `:environment` section is for all of Ceedling. The `:environment` section nested 
-within a specific dependency’s configuration is only for the shell environment used to process
-that dependency. The format and abilities of the two `:environment` configuration sections are
-also different.
+Many build systems take settings from environment variables. A dependency’s
+`:environment` sets variables while that dependency’s fetch and build commands run, then
+restores them, so they never reach another dependency or Ceedling itself.
 
-Environment variables may be specified in three ways. Let’s look at one of each:
+Ceedling’s project configuration also has a top-level `:environment` section, which
+applies to all of Ceedling. The two sections differ in format and abilities.
+
+Each entry sets a variable, adds to it, or removes from it:
 
 ```yaml
 :dependencies:
-  <a dependency configuration>:
-    :environment:
-      - ARCHITECTURE=ARM9
-      - CFLAGS+=-DADD_AWESOMENESS
-      - CFLAGS-=-DWASTE
+  :deps:
+    - :name: Engine
+      :environment:
+        - ARCHITECTURE=ARM9
+        - CFLAGS+= -DADD_AWESOMENESS
+        - CFLAGS-= -DWASTE
 ```
 
-In the first example, you see the most straightforward method. The environment variable
-`ARCHITECTURE` is set to the value `ARM9`. That’s it. Simple.
+`ARCHITECTURE=ARM9` sets `ARCHITECTURE` to `ARM9`. `+=` appends to a variable, here
+adding ` -DADD_AWESOMENESS` to `CFLAGS`, and `-=` removes text from it, here removing
+` -DWASTE`. An entry in any other form stops the build with an error.
 
-The next two options modify an existing symbol. In the first one, we use `+=`, which tells
-Ceedling to add the define `ADD_AWESOMENESS` to the environment variable `CFLAGS`. The second
-tells Ceedling to remove the define `WASTE` from the same environment variable.
+When appending, Ceedling cannot know which delimiter you expect, so include it yourself:
+a space for compiler flags, or `:` (`;` on Windows) for `PATH`. Text after `+=` and `-=`
+is used exactly as written, leading space included, while a value after `=` loses its
+leading spaces. Removing text is case
+sensitive and removes only an exact match. Appending to or removing from a variable that
+is not set leaves it set, empty if nothing was appended.
 
-There are a couple of things to note here.
+## Building dependencies
 
-First, when adding to a variable, Ceedling has no way of knowing
-what delimiter you are expecting. In this example you can see we manually added some whitespace.
-If we had been modifying `PATH` instead, we might have had to use a `:` on a unux or `;` on
-Windows.
+The heart of the plugin is the build process you specify for each dependency under
+`:build`, a list of steps Ceedling runs in order. Any tools those steps use must be
+installed. A failing step stops the build with its error.
 
-Second, removing an argument will have no effect on the argument if that argument isn't found
-precisely. It’s case sensitive and the entire string must match. If symbol doesn't already exist,
-it WILL after executing this command... however it will be assigned to nothing.
-
-## Building Dependencies
-
-The heart of the `:dependencies` plugin is the ability for you, the developer, to specify the
-build process for each of your dependencies. You will need to have any required tools installed
-before using this feature.
-
-The steps are specified as an array of strings. Ceedling will execute those steps in the order
-specified, moving from step to step unless an error is encountered. By the end of the process,
-the artifacts should have been created by your process... otherwise an error will be produced.
+Each step is a command line, which runs from the dependency’s `:source` path exactly as
+written, quoting and spacing included. The source, build, and artifact paths are created
+first if they do not exist. A step can instead be `:build_lib`, which builds a static
+library with Ceedling’s own compiler and archiver (see [Custom tools](#custom-tools)).
 
 ## Artifacts
 
-These are the outputs of the build process. There are there types of artifacts. Any dependency
-may have none or some of these. Calling out these files tells Ceedling that they are important.
-Your dependency’s build process may produce many other files... but these are the files that
-Ceedling understands it needs to act on.
+Artifacts are the outputs of the build process, listed under `:artifacts`. A dependency
+may have any of them or none. Your dependency’s build process may produce many other
+files, but these are the ones Ceedling acts on.
 
 ### `static_libraries`
 
-Specifying one or more static libraries will tell Ceedling where it should find static libraries
-output by your build process. These libraries are automatically added to the list of dependencies
-and will be linked with the rest of your code to produce the final release.
-
-If any of these libraries don't exist, Ceedling will trigger your build process in order for it
-to produce them.
+Static libraries Ceedling links into your test and release builds. If one does not
+exist, Ceedling fetches and builds the dependency to produce it.
 
 ### `dynamic_libraries`
 
-Specifying one or more dynamic libraries will tell Ceedling where it should find dynamic libraries
-output by your build process. These libraries are automatically copied to the same folder as your
-final release binary.
+Dynamic libraries Ceedling links into your test and release builds. If one does not
+exist, Ceedling fetches and builds the dependency to produce it. `dependencies:deploy`
+copies them to the [`:deploy` path](#working-paths), by default beside your release
+executable, where it loads them at run time.
 
-If any of these libraries don't exist, Ceedling will trigger your build process in order for it
-to produce them.
+### `executables`
+
+Programs a dependency builds, such as a code generator, a flashing utility, or a tool
+your release ships alongside it. Ceedling never links them. A release build, or
+`dependencies:make`, fetches and builds the dependency when one does not exist, while
+test builds do not wait on them. `dependencies:deploy` copies them, with any dynamic
+libraries, to the [`:deploy` path](#working-paths).
+
+On Windows, list each executable with its `.exe` extension.
 
 ### `includes`
 
-Often when libraries are built, the same process will output a collection of includes so that
-your release code knows how to interact with that library. It’s the public API for that library.
-By specifying the directories that will contain these includes (don't specify the files themselves,
-Ceedling only needs the directories), Ceedling is able to automatically add these to its internal
-include list. This allows these files to be used while building your release code, as well we making
-them mockable during unit testing.
+The public headers a dependency provides. Ceedling adds their directories to its search
+paths, so your code can include them and your tests can mock them. An entry may be:
+
+- a header file, such as `include/wolfssl.h`, which adds that file’s directory;
+- a directory, such as `include`;
+- a glob, such as `include/**`, which adds every directory it finds.
 
 ### `source`
 
-It’s possible that your external dependency will just produce additional C files as its output.
-In this case, Ceedling is able to automatically add these to its internal source list. This allows
-these files to be used while building your release code.
+Directories of C files a dependency produces, such as generated code. Ceedling adds the
+directories to its search paths and their C files to your release build.
 
 ## Tasks
 
-Once configured correctly, the `:dependencies` plugin should integrate seamlessly into your
-workflow and you shouldn't have to think about it. In the real world, that doesn't always happen.
-Here are a number of tasks that are added or modified by this plugin.
-
-### `ceedling dependencies:clean`
-
-This can be issued in order to completely remove the dependency from its source path. On the
-next build, it will be refetched and rebuilt from scratch. This can also apply to a particular
-dependency. For example, by specifying `dependencies:clean:DepName`.
+Once configured, the plugin works on its own: a release or test build fetches and builds
+any dependency whose outputs are missing. These tasks let you act on dependencies
+directly. Each also works on a single dependency by its task name, such as
+`dependencies:make:WorkerBees`.
 
 ### `ceedling dependencies:fetch`
 
-This can be issued in order to fetch each dependency from its origin. This will have no effect on
-dependencies that don't have fetch instructions specified. This can also apply to a particular
-dependency. For example, by specifying `dependencies:fetch:DepName`.
+Fetches each dependency that is not fetched yet. Dependencies without fetch settings, or
+fetched by `:none`, are left alone.
 
 ### `ceedling dependencies:make`
 
-This will force the dependencies to all build. This should happen automatically when a release
-has been triggered... but if you're just getting your dependency configured at this moment, you
-may want to just use this feature instead. A single dependency can also be built by specifying its
-name, like `dependencies:make:MyTunaBoat`.
+Fetches each dependency if needed, then builds any whose outputs are missing. This
+happens automatically in a release build, but is handy while you are configuring a
+dependency.
+
+### `ceedling dependencies:clean`
+
+Removes a fetched dependency entirely, every one of its working paths, so the next build
+fetches and builds it from scratch. A dependency fetched by `:none` keeps its source and
+loses only its artifact path. A dependency without fetch settings is left alone.
 
 ### `ceedling dependencies:deploy`
 
-This will force any dynamic libraries produced by your dependencies to be copied to your release
-build directory... just in case you clobbered them.
+Copies every dynamic library and executable of each dependency to its
+[`:deploy` path](#working-paths), by default beside your release executable. An artifact
+that has not been built is built first.
+
+### `files:dependencies`
+
+Lists every static library, dynamic library, and executable your dependencies provide.
 
 ### `paths:include`
 
-Maybe you want to verify that all the include paths are correct. If you query Ceedling with this
-request, it will list all the header file paths that it’s found, including those produced by
-dependencies.
+Lists every header search path Ceedling uses, including those from dependencies.
 
 ### `files:include`
 
-Maybe you want to take that query further and actually get a list of ALL the header files
-Ceedling has found, including those belonging to your dependencies.
+Lists every header file Ceedling has found, including those from dependencies.
 
-## Custom Tools
+## Custom tools
 
-You can optionally specify a compiler, assembler, and linker, just as you would a release build:
+The plugin’s tools are configured like any other Ceedling tool, and you can replace them
+under `:tools`:
+
+| Tool | Default | Used for |
+|---|---|---|
+| `:deps_compiler` | `gcc` | `:build_lib` compiling |
+| `:deps_assembler` | none | `:build_lib` assembling, needed only for assembly files |
+| `:deps_linker` | `ar` | `:build_lib` archiving |
+| `:deps_zip` | `unzip` | `:zip` fetching |
+| `:deps_targzip` | `tar` | `:tar_gzip` fetching |
+| `:deps_git_clone`, `:deps_git_checkout` | `git` | `:git` fetching |
+| `:deps_subversion` | `svn` | `:svn` fetching |
+
+The compiler, assembler, and archiver are checked just before `:build_lib` uses them, so
+a project without `:build_lib` needs none of them.
+
+`:build_lib` compiles every C file anywhere under the dependency’s `:source` path, with
+every directory holding a header there as a search path. It then archives the objects
+into the first library under `:artifacts` ↳ `:static_libraries`, built in the `:build`
+path and copied to the `:artifact` path when the two differ. A dependency’s own
+`:defines` and `:flags` apply to its compilation, and `:libraries` and `:libpaths` to its
+archiving.
+
+The compiler receives its search paths as `${5}` and its defines as `${6}`, as Ceedling’s
+own compilers do:
 
 ```yaml
 :tools:
@@ -267,8 +283,8 @@ You can optionally specify a compiler, assembler, and linker, just as you would 
     :executable: gcc
     :arguments:
       - -g
-      - -I"$": COLLECTION_PATHS_SUBPROJECTS
-      - -D$: COLLECTION_DEFINES_SUBPROJECTS
+      - -I"${5}"
+      - -D${6}
       - -c "${1}"
       - -o "${2}"
   :deps_linker:
@@ -279,32 +295,253 @@ You can optionally specify a compiler, assembler, and linker, just as you would 
       - ${1}
 ```
 
-Then, once created, you can reference these tools in your build steps by using the `:build_lib` symbol instead
-of a series of strings to explain all the steps. Ceedling will understand that it should build all the specified
-source and/or assembly files into the specified library:
+A dependency built with `:build_lib` looks like this:
 
 ```yaml
 :dependencies:
   :deps:
     - :name: CaptainCrunch
       :paths:
-        :fetch:    ../cc/
         :source:   ../cc/
         :build:    ../cc/build
         :artifact: ../cc/build
       :fetch:
         :method: :none
-      :environment: []
       :build:
         - :build_lib
       :artifacts:
         :static_libraries:
           - release/cc.a
-        :dynamic_libraries: []
-        :includes: 
+        :includes:
           - ./cc.h
       :defines:
         - THESE_GET_USED_DURING_COMPILATION
+```
+
+## Cookbook
+
+Each recipe below pairs a dependency’s configuration with the commands that work with
+it. Any of them can sit alongside the others in one `:deps` list.
+
+### A tagged release from git, built with Make
+
+Your drone flight controller firmware uses an open-source sensor fusion library, which
+blends accelerometer and gyroscope readings into an orientation. Its maintainers publish
+tagged releases on GitHub and build it with a makefile.
+
+Pin a library to a release tag so every developer and CI run builds the same code. The
+clone is shallow, which keeps it quick.
+
+```yaml
+:dependencies:
+  :deps:
+    - :name: Sensor Fusion
+      :paths:
+        :fetch:    third_party/fusion
+        :artifact: third_party/fusion/out
+      :fetch:
+        :method: :git
+        :source: https://github.com/example/sensor-fusion.git
+        :tag:    v2.4.1
+      :build:
+        - make lib OUT=out
+      :artifacts:
+        :static_libraries:
+          - libfusion.a
+        :includes:
+          - ../include/**
+```
+
+```sh
+ceedling dependencies:make     # Clone v2.4.1 if needed, then build libfusion.a
+ceedling release               # Link it into the release build
+```
+
+To move to a new tag, change `:tag`, then fetch a fresh copy, since a fetched dependency
+is not fetched again:
+
+```sh
+ceedling dependencies:clean:SensorFusion dependencies:make:SensorFusion
+```
+
+### A vendor archive with environment settings
+
+Your chip vendor ships its real-time operating system as a zip archive, which your team
+keeps on a shared file server. It builds with an autotools configure script, which must
+be told to cross-compile for your ARM Cortex-M4 target.
+
+Unpack a zip from a shared location and build it with the vendor’s own configure script,
+passing settings through the environment of that build alone.
+
+```yaml
+:dependencies:
+  :deps:
+    - :name: VendorRTOS
+      :paths:
+        :fetch:    third_party/rtos/source
+        :build:    third_party/rtos/source/build
+        :artifact: third_party/rtos/install
+      :fetch:
+        :method: :zip
+        :source: /mnt/vendor/rtos-5.2.zip
+      :environment:
+        - CC=arm-none-eabi-gcc
+        - CFLAGS+= -mcpu=cortex-m4
+      :build:
+        - ./configure --prefix=../install
+        - make install
+      :artifacts:
+        :static_libraries:
+          - lib/librtos.a
+        :includes:
+          - include
+```
+
+```sh
+ceedling dependencies:fetch:VendorRTOS   # Unpack the archive
+ceedling dependencies:make:VendorRTOS    # Configure and build with CC and CFLAGS set
+```
+
+### A sibling Ceedling project
+
+Your repository holds two Ceedling projects side by side: the main application and a
+supervisor module that watches over it. The supervisor is developed and unit tested in
+its own project, and the application links it as a library.
+
+Build a library from another Ceedling project in the same repository, using that
+project’s own release build. It is never fetched, so cleaning removes only its build
+outputs.
+
+```yaml
+:dependencies:
+  :deps:
+    - :name: Supervisor
+      :paths:
+        :source:   ../supervisor
+        :build:    ../supervisor/build
+        :artifact: ../supervisor/build/release
+      :fetch:
+        :method: :none
+      :build:
+        - ceedling clobber release
+      :artifacts:
+        :static_libraries:
+          - libsupervisor.a
+        :includes:
+          - ../../src/supervisor.h
+```
+
+```sh
+ceedling dependencies:make:Supervisor    # Run the sibling project’s release build
+ceedling test:all                        # Test against its library and header
+ceedling dependencies:clean:Supervisor   # Remove only its release outputs
+```
+
+### A shared library deployed beside the release
+
+Your Linux-based product decodes audio with a third-party codec, built as a shared
+library the application loads when it starts. You keep the codec’s source release in the
+project’s `downloads` folder.
+
+Build a dynamic library and copy it beside the release executable, which loads it at run
+time.
+
+```yaml
+:dependencies:
+  :deps:
+    - :name: Codec
+      :paths:
+        :fetch:    third_party/codec
+        :artifact: third_party/codec/lib
+      :fetch:
+        :method: :tar_gzip
+        :source: ../../downloads/codec-1.8.tar.gz
+      :build:
+        - make shared
+      :artifacts:
+        :dynamic_libraries:
+          - libcodec.so
+        :includes:
+          - ../include
+```
+
+```sh
+ceedling release dependencies:deploy   # Build, link, then copy libcodec.so beside the executable
+```
+
+The archive’s relative `:source` resolves from inside the fetch path, which is why it
+climbs two folders.
+
+### Build tools deployed to a shared folder
+
+`packer` is an in-house utility your tools team keeps in its own git repository. It
+bundles a compiled firmware image with its version metadata into a signed update file,
+and its companion `packer-verify` checks such a file. Your release scripts run both from
+the project’s `tools/bin` folder, so every developer and CI agent needs them built from
+the same tagged version and installed there.
+
+Build tools from source and install them where your build scripts or CI agents expect
+them. Ceedling builds them for a release, never links them, and never cleans the deploy
+folder.
+
+```yaml
+:dependencies:
+  :deps:
+    - :name: Packer
+      :paths:
+        :fetch:  third_party/packer
+        :build:  third_party/packer/build
+        :deploy: tools/bin
+      :fetch:
+        :method: :git
+        :source: https://github.com/example/firmware-packer.git
+        :tag:    v1.3.0
+      :build:
+        - make all BUILD=build
+      :artifacts:
+        :executables:
+          - packer
+          - packer-verify
+```
+
+```sh
+ceedling dependencies:deploy:Packer   # Clone, build, then copy both tools to tools/bin
+```
+
+### A small library compiled by Ceedling
+
+A colleague’s CRC routines live in your company’s Subversion repository: a C file and
+a header, with no makefile and no library of their own. Your firmware checks its data
+packets with them.
+
+Pin a few C files from Subversion and let `:build_lib` compile and archive them, with no
+build system of their own.
+
+```yaml
+:dependencies:
+  :deps:
+    - :name: CRC Utils
+      :paths:
+        :fetch: third_party/crc
+        :build: third_party/crc/build
+      :fetch:
+        :method:   :svn
+        :source:   https://svn.example.com/repos/crc/trunk
+        :revision: '1287'
+      :build:
+        - :build_lib
+      :artifacts:
+        :static_libraries:
+          - libcrc.a
+        :includes:
+          - ../crc.h
+      :defines:
+        - CRC_TABLE_IN_ROM
+```
+
+```sh
+ceedling dependencies:make:CRCUtils   # Check out revision 1287, then compile and archive
+ceedling files:dependencies           # Confirm third_party/crc/build/libcrc.a is listed
 ```
 
 <br/><br/>

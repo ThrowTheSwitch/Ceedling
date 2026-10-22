@@ -8,6 +8,60 @@ These breaking changes are complemented by three other documents:
 
 ---
 
+# [1.2.0] — Prerelease
+
+## Mocks included through a folder are named by that folder
+
+`:cmock` ↳ `:mock_name_include_folder` is on by default. A mock included through a folder, such as `#include "drivers/uart/mock_config.h"`, now gets an include guard and `Init()`, `Verify()`, and `Destroy()` functions named by that folder (e.g. `drivers_uart_mock_config_Init()`). This lets one test file mock two same-named headers. The runner Ceedling generates calls the new names, so most projects need no change. A test or support file that calls a mock’s lifecycle functions directly, or references its include guard, must use the new names or set `:mock_name_include_folder` to `FALSE`.
+
+## `-P` and `--no-line-commands` rejected with test preprocessing
+
+Ceedling now refuses these preprocessor options at startup whenever test preprocessing is enabled. That is the case when `:project` ↳ `:use_test_preprocessor` is `:mocks`, `:tests`, or `:all`, or when Partials are enabled.
+
+Both options strip the line markers Ceedling reads in preprocessor output to find `#include`s, mockable functions, and test cases. A project that used either one with test preprocessing already lost some of these, often without a clear error.
+
+Remove the options from these places:
+
+1. `:flags` ↳ `:test` ↳ `:preprocess` and `:compile`, and the same operations in plugin build contexts such as `:gcov`. Preprocessing uses `:compile` flags wherever no `:preprocess` flags apply.
+1. The arguments of the `:test_file_full_preprocessor` and `:test_file_directives_only_preprocessor` tools.
+
+If you need an option in `:compile` flags only, give `:preprocess` flags of their own without it.
+
+## IDE console report lines are GCC diagnostics by default
+
+`report_tests_ide_stdout` now lists each failed and ignored test the way GCC reports a problem. IDEs read these lines as errors and warnings without extra configuration.
+
+```
+test/TestModel.c:21:1: error: testInit: Expected 5 Was 4
+```
+
+The earlier lines looked like this:
+
+```
+test/TestModel.c:21:testInit: "Expected 5 Was 4"
+```
+
+A multi-line message no longer repeats the file, line, and test on every line. Its first line stays with the test’s location, and the rest follow indented. The Gcov, Bullseye, and Valgrind plugins print their test results through this plugin when it is enabled, so their lines change too.
+
+A script, tool, or IDE configuration that matches the earlier lines must be updated. To keep the earlier lines, set the format to `:legacy`:
+
+```YAML
+:report_tests_ide_stdout:
+  :format: :legacy
+```
+
+---
+
+# [1.1.0] — 2026-07-16
+
+## `--ruby-replacement` CLI flag to enable inline Ruby string expansion
+
+As a security precaution, [inline Ruby string expansion][inline-ruby-string-expansion] within project configuration strings is now disabled by default. The feature still exists and functions, but it must be specifically enabled by the user at the command line each time Ceedling executes.
+
+[inline-ruby-string-expansion]: https://docs.throwtheswitch.org/Ceedling/1.1.0/configuration/project-file/#inline-ruby-string-expansion
+
+---
+
 # [1.0.0] — 2025-01-01
 
 ## Explicit `:paths` ↳ `:include` entries in the project file
@@ -50,7 +104,7 @@ Flags specified for release builds are applied to all files in the release build
 
 Ceedling’s preprocessing features have been greatly improved. Preprocessing is now no longer all-or-nothing with a simple boolean value.
 
-In place of `true` or `false`, `:use_test_preprocessing` now accepts:
+In place of `true` or `false`, `:use_test_preprocessor` now accepts:
 
 * `:none` disables preprocessing (equivalent to previous `false` setting).
 * `:all` enables preprpocessing for all mockable header files and test C files (equivalent to previous `true` setting).

@@ -35,12 +35,9 @@ class PreprocessinatorFileAssembler
     )
     contents = []
 
-    # Our extra file content to be preserved
-    # Leave these empty if :extras is false
-    pragmas = []
-    macro_defs = []
-
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
+
+    @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
 
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
@@ -55,20 +52,33 @@ class PreprocessinatorFileAssembler
     )    
     @tool_executor.exec( command )
 
-    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+    # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, filepath )
     end
 
     # Bail out if no extras are required
-    return contents, [] if !extras
+    return contents, [], nil if !extras
 
-    # Try to find an #include guard in the first 2k of the file text.
-    # An #include guard is one macro from the original file we don't want to preserve if we can help it.
-    # We create our own #include guard in the header file we create.
-    # It's possible preserving the macro from the original file's #include guard could trip something up.
-    # Of course, it's also possible some header conditional compilation feature is dependent on it.
-    # ¯\_(ツ)_/¯
-    include_guard = @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath, 2048 ).clean_encoding )
+    # Try to find an #include guard in the first 2k of the file text. This name is used two ways:
+    #   1. To exclude the guard's own #define from the macro definitions preserved as "extras" below
+    #      (it would be redundant -- assemble_preprocessed_header_file writes its own guard).
+    #   2. Returned to the caller so the reconstructed header can reuse this exact guard name (see
+    #      assemble_preprocessed_header_file) instead of a synthetic one. Reusing the original name keeps
+    #      the reconstructed file recognized as "the same header" by the preprocessor wherever both the
+    #      original and a reconstructed/mocked copy are reachable in the same translation unit's include
+    #      graph. A mismatched synthetic guard was the root cause of enum/type redeclaration errors in
+    #      https://github.com/ThrowTheSwitch/Ceedling/issues/1064.
+    # If no guard is found (e.g. the header uses `#pragma once` or has none), `nil` flows through and
+    # assemble_preprocessed_header_file falls back to a synthetic guard, matching prior behavior.
+    include_guard =
+      @preprocessinator_reconstructor.extract_include_guard(
+        @file_wrapper.read(
+          filepath,
+          2048
+        ).clean_encoding
+      )
 
     if fallback
       msg = @reportinator.generate_module_progress(
@@ -77,34 +87,20 @@ class PreprocessinatorFileAssembler
         filename: File.basename(filepath)
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-
-      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
-      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
-      @file_wrapper.open( filepath, 'rb' ) do |file|
-        # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = file.read.clean_encoding
-
-        # Filter out inactive conditional blocks before extraction so that only
-        # pragmas and macros that are active for the current defines list are returned.
-        _contents = _filter_conditionals( _contents, defines )
-
-        # Extract pragmas and macros from
-        pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
-        macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
-      end
-    else
-      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
-        # Get code contents of preprocessed directives-only file as a string
-        # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        _contents = @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
-
-        # Extract pragmas and macros from 
-        pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
-        macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
-      end
     end
 
-    return contents, (pragmas + macro_defs)
+    _contents = _active_content_for(
+      fallback:                 fallback,
+      filepath:                 filepath,
+      directives_only_filepath: directives_only_filepath,
+      defines:                  defines
+    )
+
+    # Extract pragmas and macros from the active content
+    pragmas = @preprocessinator_reconstructor.extract_pragmas( _contents )
+    macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
+
+    return contents, (pragmas + macro_defs), include_guard
   end
 
 
@@ -113,7 +109,9 @@ class PreprocessinatorFileAssembler
 
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( source_filepath, test )
 
-    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+    # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
     end
 
@@ -129,15 +127,9 @@ class PreprocessinatorFileAssembler
       @file_wrapper.read( source_filepath, 2048 ).clean_encoding
     )
 
-    pragmas = []
-    macro_defs = []
-
-    @file_wrapper.open( source_filepath, 'rb' ) do |file|
-      _contents = file.read.clean_encoding
-      _contents = _filter_conditionals( _contents, defines )
-      pragmas    = @preprocessinator_reconstructor.extract_pragmas( _contents )
-      macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
-    end
+    _contents = _active_content_for( fallback: true, filepath: source_filepath, defines: defines )
+    pragmas    = @preprocessinator_reconstructor.extract_pragmas( _contents )
+    macro_defs = @preprocessinator_reconstructor.extract_macro_defs( _contents, include_guard )
 
     return pragmas + macro_defs
   end
@@ -189,7 +181,9 @@ class PreprocessinatorFileAssembler
 
     full_expansion_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
 
-    @file_wrapper.open( full_expansion_filepath, 'r' ) do |file|
+    # `full_expansion_filepath` is this same build's own gcc output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( full_expansion_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
     end
 
@@ -197,13 +191,25 @@ class PreprocessinatorFileAssembler
   end
 
 
-  def assemble_preprocessed_header_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
-    # Generate #include guard name for header files
-    guardname = FileWrapper.generate_include_guard( filename )
+  # `filepath` is the header's own path below its configured root, and its only use is the
+  # synthetic guard below. A bare basename there would give two headers sharing one name
+  # the same guard.
+  def assemble_preprocessed_header_file(filepath:, preprocessed_filepath:, contents:, extras:, includes:, include_guard: nil)
+    # Reuse the original header's own #include guard name when we found one so that this
+    # reconstructed file is recognized as "the same header" by the preprocessor wherever both
+    # are reachable (e.g. once via a mock's shadowed copy, once via the original source path).
+    # Fall back to a synthetic guard derived from the path otherwise.
+    guardname = include_guard || FileWrapper.generate_include_guard( filepath )
 
     # Write contents of final preprocessed file a line at a time
     # ----------------------------------------------------------
-    @file_wrapper.open( preprocessed_filepath, 'w' ) do |file|
+    # Binary mode: `contents` lines below come from an upstream preprocessed
+    # file and may already carry their own line endings. Windows text mode
+    # rewrites "\n" on write, which would alter a line ending already present
+    # in that content instead of passing it through unchanged.
+    @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
+
+    @file_wrapper.open( preprocessed_filepath, 'wb' ) do |file|
       # Add include guards and extra blank lines to beginning of file contents
       file << "#ifndef #{guardname}\n"
       file << "#define #{guardname}\n\n"
@@ -217,10 +223,10 @@ class PreprocessinatorFileAssembler
 
       # Add in any macro defintions or prgamas
       extras.each do |ex|
-        if ex.class == String
+        if ex.is_a?( String )
           file << ex + "\n"
 
-        elsif ex.class == Array
+        elsif ex.is_a?( Array )
           ex.each { |line| file << line + "\n" }
         end
 
@@ -247,12 +253,10 @@ class PreprocessinatorFileAssembler
       include_paths:
     )
     contents = []
-    # TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
-    test_directives = []
-    # TEST_CASE() / TEST_RANGE() / TEST_MATRIX(), paired with the test function name each precedes
-    test_case_directives = []
 
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
+
+    @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
 
     # Run GCC with full preprocessor expansion
     command = @tool_executor.build_command_line(
@@ -267,7 +271,9 @@ class PreprocessinatorFileAssembler
     )
     @tool_executor.exec( command )
 
-    @file_wrapper.open( preprocessed_filepath, 'r' ) do |file|
+    # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
       contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, filepath )
     end
 
@@ -278,38 +284,23 @@ class PreprocessinatorFileAssembler
         filename: File.basename(filepath)
       )
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
-
-      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
-      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
-      @file_wrapper.open( filepath, 'rb' ) do |file|
-        _contents = file.read.clean_encoding
-
-        # Filter out inactive conditional blocks before extraction so that only
-        # test directives that are active for the current defines list are returned.
-        _contents = _filter_conditionals( _contents, defines )
-
-        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
-        test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
-
-        # Extract TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls paired with the test function
-        # they immediately precede -- these vanish from `contents` above because they're real
-        # (empty-expanding) Unity macros erased by full preprocessor expansion, so we must
-        # recover them from this macro-preserving text instead.
-        test_case_directives = @preprocessinator_reconstructor.extract_test_case_directives( _contents )
-      end
-    else
-      @file_wrapper.open( directives_only_filepath, 'r' ) do |file|
-        # Get code contents of preprocessed directives-only file as a string
-        _contents = @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
-
-        # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
-        test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
-
-        # Extract TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls paired with the test function
-        # they immediately precede (see comment in the fallback branch above)
-        test_case_directives = @preprocessinator_reconstructor.extract_test_case_directives( _contents )
-      end
     end
+
+    _contents = _active_content_for(
+      fallback:                 fallback,
+      filepath:                 filepath,
+      directives_only_filepath: directives_only_filepath,
+      defines:                  defines
+    )
+
+    # Extract TEST_SOURCE_FILE() and TEST_INCLUDE_PATH()
+    test_directives = @preprocessinator_reconstructor.extract_test_directive_macro_calls( _contents )
+
+    # Extract TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls paired with the test function
+    # they immediately precede -- these vanish from `contents` above because they're real
+    # (empty-expanding) Unity macros erased by full preprocessor expansion, so we must
+    # recover them from this macro-preserving text instead.
+    test_case_directives = @preprocessinator_reconstructor.extract_test_case_directives( _contents )
 
     # Reinsert TEST_CASE()/TEST_RANGE()/TEST_MATRIX() calls immediately ahead of their test
     # function in `contents` -- full expansion erased them in place with no trace (not even a
@@ -326,6 +317,35 @@ class PreprocessinatorFileAssembler
   ### Private ###
 
   private
+
+  # Returns the content string used to extract pragmas, macro definitions, and
+  # test directives -- either by binary-mode-reading and conditional-filtering
+  # the original file (fallback mode) or by reading the already directives-only
+  # preprocessed output (non-fallback mode). Shared by
+  # collect_mockable_header_file_contents, collect_macros_and_pragmas_fallback,
+  # and collect_test_file_contents, which each then run their own distinct
+  # extraction calls against the string this returns.
+  def _active_content_for(fallback:, filepath:, directives_only_filepath: nil, defines: [])
+    if fallback
+      # Open in binary mode + clean encoding: source files may contain non-ASCII bytes
+      # in comments (e.g. © symbols) that cause encoding errors under non-C locale.
+      @file_wrapper.open( filepath, 'rb' ) do |file|
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        _contents = file.read.clean_encoding
+
+        # Filter out inactive conditional blocks so only content active for the
+        # current defines list is returned.
+        _filter_conditionals( _contents, defines )
+      end
+    else
+      # `directives_only_filepath` is this same build's own gcc output -- open_with_retry
+      # rides out the file briefly not yet being visible right after the shell-out exits.
+      @file_wrapper.open_with_retry( directives_only_filepath, 'r' ) do |file|
+        # TODO: Modify to process line-at-a-time for memory savings & performance boost
+        @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
+      end
+    end
+  end
 
   # Filters `file_contents` string through CPreprocessorConditionals, returning
   # only lines in active conditional blocks. Uses code_lines internally so
@@ -347,7 +367,13 @@ class PreprocessinatorFileAssembler
   def assemble_preprocessed_code_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
     # Write contents of final preprocessed file a line at a time
     # ----------------------------------------------------------
-    @file_wrapper.open( preprocessed_filepath, 'w' ) do |file|
+    # Binary mode: `contents` lines below come from an upstream preprocessed
+    # file and may already carry their own line endings. Windows text mode
+    # rewrites "\n" on write, which would alter a line ending already present
+    # in that content instead of passing it through unchanged.
+    @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
+
+    @file_wrapper.open( preprocessed_filepath, 'wb' ) do |file|
       # Reinsert #include statements into stripped down file
       # Rely on Include object stringification for formatting of incudes
       includes.each { |include| file << "#{include}\n" }
@@ -357,9 +383,9 @@ class PreprocessinatorFileAssembler
 
       # Add in any extras like test directive macros or preserved macro definitions
       extras.each do |ex|
-        if ex.class == String
+        if ex.is_a?( String )
           file << ex + "\n"
-        elsif ex.class == Array
+        elsif ex.is_a?( Array )
           ex.each { |line| file << line + "\n" }
         end
       end

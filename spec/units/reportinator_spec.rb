@@ -224,6 +224,41 @@ describe Reportinator do
       result = @rp.generate_module_progress(module_name: 'bar', filename: 'baz.c', operation: 'Compiling')
       expect(result).to eq("Compiling bar::baz.c...")
     end
+
+    it 'omits module label when filename matches only the last segment of a mirrored, multi-segment module name' do
+      result = @rp.generate_module_progress(module_name: 'adc/TestFoo', filename: 'TestFoo.c', operation: 'Compiling')
+      expect(result).to eq("Compiling TestFoo.c...")
+    end
+
+    it 'prepends the full mirrored module name when filename differs from its last segment' do
+      result = @rp.generate_module_progress(module_name: 'adc/TestFoo', filename: 'MockBar.c', operation: 'Generating mock for')
+      expect(result).to eq("Generating mock for adc/TestFoo::MockBar.c...")
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # #generate_skip_summary
+  # ---------------------------------------------------------------------------
+
+  describe '#generate_skip_summary' do
+    it 'states the count and default reason, pluralizing the noun' do
+      result = @rp.generate_skip_summary(task: 'compilation', count: 4, noun: 'objects')
+      expect(result).to eq("Skipping compilation for 4 objects (nothing changed)...")
+    end
+
+    it 'singularizes the noun when the count is 1' do
+      result = @rp.generate_skip_summary(task: 'compilation', count: 1, noun: 'objects')
+      expect(result).to eq("Skipping compilation for 1 object (nothing changed)...")
+    end
+
+    it 'uses a custom reason when given' do
+      result = @rp.generate_skip_summary(task: 'test execution', count: 3, noun: 'tests', reason: 'reusing cached results')
+      expect(result).to eq("Skipping test execution for 3 tests (reusing cached results)...")
+    end
+
+    it 'returns nil when nothing was skipped' do
+      expect(@rp.generate_skip_summary(task: 'compilation', count: 0, noun: 'objects')).to be_nil
+    end
   end
 
   # ---------------------------------------------------------------------------

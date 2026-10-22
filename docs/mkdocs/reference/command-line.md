@@ -216,8 +216,13 @@ validation of code and configuration via your toolchain.
 ### [`ceedling test:*`](../getting-started/command-line.md#ceedling-test)
 
 Execute the named test file or the named source file that has an
-accompanying test. No path. Examples: `ceedling test:foo`, `ceedling 
-test:foo.c` or `ceedling test:test_foo.c`
+accompanying test. Examples: `ceedling test:foo`, `ceedling test:foo.c`
+or `ceedling test:test_foo.c`
+
+!!! tip
+    See the full documentation linked in this reference section title for
+    details on how to reference test files having the same filename within
+    different paths.
 
 #### [`ceedling test:* --test-case=<test_case_name>`](../getting-started/command-line.md#ceedling-test-test-casetest_case_name)
 Execute individual test cases which match `test_case_name`.
@@ -255,6 +260,13 @@ For instance, if you have file test_gpio.c with defined 3 tests:
     Exclude matching follows the same sub-string logic as discussed in the
     preceding section.
 
+!!! note "Test case filters enable test runner command line arguments"
+    Both filters select test cases through command line arguments to the test
+    executable. Ceedling enables [`:test_runner` ↳ `:cmdline_args`][cmdline-args]
+    for a build using either filter.
+
+[cmdline-args]: ../configuration/reference/test-runner.md#test_runner-cmdline_args
+
 ---
 
 ### [`ceedling test:pattern[*]`](../getting-started/command-line.md#ceedling-testpattern)
@@ -272,6 +284,41 @@ sensitive). Example: `ceedling test:path[foo/bar]` will execute all tests
 whose path contains foo/bar.
 
 Both directory separator characters `/` and `\` are valid.
+
+---
+
+### [`ceedling gen:mocks:all`](../getting-started/command-line.md#ceedling-genmocksall)
+
+Generate the mock files in the project build directory for all tests. The
+test build pipeline terminates after the mock generation stage.
+
+---
+
+### [`ceedling gen:mocks:*`](../getting-started/command-line.md#ceedling-genmocks)
+
+Generate the mock files in the project build directory for only the given 
+test or the named source file that has an accompanying test. The test 
+build pipeline terminates after the mock generation stage.
+Examples: `ceedling gen:mocks:foo`, `ceedling gen:mocks:foo.c` or 
+`ceedling gen:mocks:test_foo.c`
+
+---
+
+### [`ceedling gen:test_runner:all`](../getting-started/command-line.md#ceedling-gentest_runnerall)
+
+Generate up through test runners in the project build directory for all 
+tests. The test build pipeline terminates after the test runner generation 
+stage.
+
+---
+
+### [`ceedling gen:test_runner:*`](../getting-started/command-line.md#ceedling-gentest_runner)
+
+Generate the test runner files in the project build directory for only 
+the given test or the named source file that has an accompanying test. 
+The test build pipeline terminates after the test runner generation stage.
+Examples: `ceedling gen:test_runner:foo`, `ceedling gen:test_runner:foo.c`
+or `ceedling gen:test_runner:test_foo.c`
 
 ---
 

@@ -11,12 +11,18 @@ require 'benchmark'
 
 class ToolExecutor
 
-  constructor :configurator, :tool_executor_helper, :loginator, :verbosinator, :system_wrapper, :ruby_expandinator
+  # Populate a tool config hash's :name key from `default` if the user did not set one explicitly.
+  def self.default_name!(tool, default)
+    tool[:name] = default if tool[:name].nil?
+  end
+
+  constructor :tool_executor_helper, :loginator, :verbosinator, :system_wrapper, :ruby_expandinator
 
   # build up a command line from yaml provided config
 
   # @param extra_params is an array of parameters to append to executable (prepend to rest of command line)
-  def build_command_line(tool_config, extra_params, *args)
+  # @param trailing is an array of parameters to append after the tool's own arguments
+  def build_command_line(tool_config, extra_params, *args, trailing: [])
     command = {}
 
     command[:name] = tool_config[:name]
@@ -35,6 +41,7 @@ class ToolExecutor
       executable,
       extra_params.join(' ').strip,
       build_arguments(tool_config[:name], tool_config[:arguments], *args),
+      trailing.join(' ').strip,
       ].reject{|s| s.nil? || s.empty?}.join(' ').strip
 
     # Log command as is
@@ -83,7 +90,7 @@ class ToolExecutor
       # Scrub the string for illegal output
       unless shell_result[:output].nil?
         shell_result[:output] = shell_result[:output].scrub if "".respond_to?(:scrub)
-        shell_result[:output].gsub!(/\033\[\d\dm/,'')
+        shell_result[:output].gsub!(/\033\[[\d;]*m/,'')
       end
 
       @tool_executor_helper.log_results( command_line, shell_result )
@@ -96,6 +103,20 @@ class ToolExecutor
     end
 
     return shell_result
+  end
+
+  # Reports whether an executed command failed, whatever its `:boom` setting.
+  #
+  # A command run with `:boom` false always reports an `:exit_code` of 0 (see
+  # SystemWrapper#shell_capture3). Callers handling a failure themselves need the process
+  # status instead. A process killed by a signal has no exit status and counts as failed.
+  # A result without a status, such as a test double, falls back to its `:exit_code`.
+  def failed?(shell_result)
+    status = shell_result[:status]
+
+    return !status.success? unless status.nil?
+
+    return shell_result[:exit_code] != 0
   end
 
   private #############################
@@ -135,12 +156,14 @@ class ToolExecutor
   def expandify_element(tool_name, element, *args)
     match = //
     to_process = nil
-    args_index = 0
 
-    # Handle ${#} input replacement
-    if (element =~ PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
+    # Handle ${#} input replacement, unless the operator itself is escaped (`\${#}`) --
+    # an escaped token is left for the unconditional `\$` unescape below to turn into
+    # literal '${#}' text instead of triggering substitution.
+    match_data = element.match(PATTERNS::TOOL_EXECUTOR_ARGUMENT_REPLACEMENT)
+    if match_data && !match_data.pre_match.end_with?('\\')
       # Convert argument numbering from configuration 1-indexed to array 0-indexed
-      args_index = ($2.to_i - 1)
+      args_index = (match_data[2].to_i - 1)
 
       args_size = args.nil? ? 0 : args.size()
 
@@ -150,11 +173,11 @@ class ToolExecutor
       end
 
       if (args_index >= args_size)
-        error = "Command building for tool '#{tool_name}' was provided only #{args_size} arguments but references a replacement operator #{$1}."
+        error = "Command building for tool '#{tool_name}' was provided only #{args_size} arguments but references a replacement operator #{match_data[1]}."
         raise CeedlingException.new( error )
       end
 
-      match = /#{Regexp.escape($1)}/
+      match = /#{Regexp.escape(match_data[1])}/
       to_process = args[args_index]
     end
 
@@ -196,11 +219,18 @@ class ToolExecutor
     expansion = ((expand.class == String) ? [expand] : expand)
 
     expansion.each do |item|
+      # `item.class == String` guards every check that calls `=~` on `item` below --
+      # Ruby 3.2 removed the default Object#=~, so calling it on a non-String item
+      # (an Array, an Integer, ...) raises NoMethodError instead of returning nil the
+      # way it harmlessly used to. Checking the class first, before ever calling `=~`,
+      # keeps a non-String item flowing to the Array/literal/unsupported-type checks
+      # below instead of crashing here.
+      #
       # String eval substitution
-      if (item =~ PATTERNS::RUBY_STRING_REPLACEMENT)
+      if (item.class == String) && (item =~ PATTERNS::RUBY_STRING_REPLACEMENT)
         elements << @ruby_expandinator.expand(item, source: "tool '#{tool_name}'")
       # Global constants
-      elsif (@system_wrapper.constants_include?(item))
+      elsif (item.class == String) && @system_wrapper.constants_include?(item)
         const = Object.const_get(item)
         if (const.nil?)
           error = "Tool '#{tool_name}' found constant '#{item}' to be nil."
@@ -211,8 +241,12 @@ class ToolExecutor
       elsif (item.class == Array)
         elements << item
       elsif (item.class == String)
-        error = "Tool '#{tool_name}' cannot expand nonexistent value '#{item}' for substitution string '#{substitution}'."
-        raise CeedlingException.new( error )
+        # Neither a Ruby-replacement pattern nor a recognized global constant -- use the
+        # literal text as-is. The array-substitution shortcut documented in tools.md
+        # (`-l$-lib:` with a YAML array of plain library names) depends on this: each
+        # name is a literal value to drop into the substitution string, not a reference
+        # to anything else.
+        elements << item
       else
         error = "Tool '#{tool_name}' cannot expand value having type '#{item.class}' for substitution string '#{substitution}'."
         raise CeedlingException.new( error )

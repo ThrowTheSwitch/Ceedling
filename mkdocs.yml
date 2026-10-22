@@ -8,7 +8,7 @@
 # Site metadata
 site_name: Ceedling
 site_description: Test-Centered Build System for C
-site_url: https://throwtheswitch.github.io/Ceedling/
+site_url: https://docs.throwtheswitch.org/Ceedling/
 repo_url: https://github.com/ThrowTheSwitch/Ceedling
 repo_name: ThrowTheSwitch/Ceedling
 
@@ -26,6 +26,7 @@ copyright: >-
 theme:
   name: material
   favicon: assets/images/favicon.png
+  custom_dir: docs/overrides  # Project template overrides (outdated-version/prerelease banners)
   palette:
     - scheme: default
       primary: green
@@ -102,6 +103,7 @@ nav:
     - Quick Start: getting-started/quick-start.md
     - Installation: getting-started/installation.md
     - Command Line: getting-started/command-line.md
+    - Builds: getting-started/builds.md
     - Example Projects:
       - getting-started/example-projects/index.md
       - Temp Sensor: getting-started/example-projects/temp-sensor.md
@@ -137,6 +139,7 @@ nav:
       - Global Project Settings: configuration/reference/project.md
       - Mixins: configuration/reference/mixins.md
       - Test Build Settings: configuration/reference/test-build.md
+      - Partials Settings: configuration/reference/partials.md
       - Release Build Settings: configuration/reference/release-build.md
       - Search Paths: configuration/reference/paths.md
       - File Collections: configuration/reference/files.md
@@ -172,7 +175,10 @@ nav:
       - Advanced & Troubleshooting: plugins/gcov/troubleshooting.md
     - Cppcheck (Static Analysis): plugins/cppcheck.md
     - Valgrind (Memory Analysis): plugins/valgrind.md
-    - Bullseye (Coverage): plugins/bullseye.md
+    - Sanitize (ASan, UBSan & Leaks): plugins/sanitize.md
+    - Bullseye (Coverage):
+      - plugins/bullseye/index.md
+      - Licensing: plugins/bullseye/licensing.md
     - FFF (Fake Functions): plugins/fff.md
     - Command Hooks: plugins/command-hooks.md
     - Compile Commands JSON DB: plugins/compile-commands-json-db.md
@@ -189,12 +195,15 @@ nav:
     - Coverage Reporting: reference/gcov-plugin.md
     - Global Collections: reference/global-collections.md
   - Releases:
+    - project/index.md
     - History Documents: project/release-history.md
+    - Software Bill of Materials: project/sbom.md
     - Upgrading: project/upgrade.md
   - Help: help.md
   - Development:
     - development/index.md
     - Development Workflow: development/workflow.md
+    - Branching & Releases: development/releases.md
     - Plugin Development:
       - development/plugins/index.md
       - Configuration Plugin: development/plugins/configuration.md

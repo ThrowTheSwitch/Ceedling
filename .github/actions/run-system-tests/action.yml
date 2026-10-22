@@ -21,6 +21,14 @@ inputs:
   ruby:
     description: 'Ruby version (used in failure artifact name)'
     required: true
+  coverage:
+    description: "Set to 'system' to instrument each system-test child process with coverage (see spec/support/system/simplecov_boot.rb) -- the literal value matters, not just truthiness, so this same run's own outer rspec process doesn't also claim the unit suite's SimpleCov resultset entry"
+    required: false
+    default: 'false'
+  sanitizers:
+    description: "Name of a sanitizer flavor in spec/support/system/sanitizers/ (e.g. 'asan_ubsan') to build and run every system test's generated C under, or empty for none. A name with no matching flavor file fails the job rather than quietly running uninstrumented"
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -28,8 +36,11 @@ runs:
     # Download HTML docs bundle built by generate-docs job.
     # Required by system tests that exercise Ceedling documentation features.
     # Unit tests (run as a separate job step before this action) do not need the docs bundle.
+    # Pinned to the latest major (not v4) for Node 24 runner support --
+    # GitHub Actions runners now force Node 24 regardless, and v4 still
+    # targets the deprecated Node 20. Same reasoning below for upload-artifact.
     - name: Download HTML Documentation Bundle
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: gem-docs-site-local
         path: site-local/
@@ -41,15 +52,20 @@ runs:
       shell: bash
       env:
         CI_RSPEC_PROGRESS_FORMAT: true
+        CEEDLING_TEST_COVERAGE: ${{ inputs.coverage }}
+        # Empty on every leg but one. The flavor name, rather than a boolean,
+        # is what lets a second kind of instrumentation (leak detection) become
+        # another value here instead of another input.
+        CEEDLING_TEST_SANITIZERS: ${{ inputs.sanitizers }}
       run: rake specs:system:debug
 
     # Upload system test failure logs and temp project directories on test job failure.
     # In 'failures' mode, passing artifacts are never created, so there is nothing to clean up
-    # before uploading — the systests/ directory contains only failure data.
+    # before uploading — the specout/ directory contains only failure data.
     - name: Upload system test failure artifacts
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: systest-failures-${{ runner.os }}-ruby-${{ inputs.ruby }}
-        path: systests/
+        name: specout-failures-${{ runner.os }}-ruby-${{ inputs.ruby }}
+        path: specout/
         if-no-files-found: ignore

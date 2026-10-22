@@ -14,8 +14,12 @@
 #   and release.yml, which trigger only on intentional Git tags.
 #
 # Triggers:
-#   - Push to any branch
-#   - Pull request targeting master
+#   - Push to a long-lived integration branch (master, next_version) only —
+#     a feature/topic branch gets checks exclusively through the pull_request
+#     event once a PR exists (see the push: trigger below for why)
+#   - Pull request targeting any branch (a PR can be opened against any
+#     integration branch, not just master, as the project matures multiple
+#     branches at once); skipped for a still-draft PR until marked ready
 #   - Manual dispatch (workflow_dispatch)
 #
 # Skip-CI:
@@ -31,22 +35,45 @@
 ---
 name: CI
 
-# Triggers the workflow on push to any branch (tag pushes excluded — handled by
-# prerelease.yml and release.yml), pull requests targeting master, or manual dispatch
+# Triggers the workflow on push to a long-lived integration branch (tag pushes
+# excluded — handled by prerelease.yml and release.yml), pull requests targeting
+# any branch, or manual dispatch
 on:
   push:
-    branches:
-      - '**'             # All branches; branches: ['**'] scopes push to refs/heads/ only,
-                         # excluding refs/tags/ pushes — see Skip-CI above
+    # Deliberately narrow, not '**': a feature/topic branch's own push event used
+    # to also trigger this workflow, so a push immediately followed by opening a
+    # PR from it fired two runs for the identical commit -- push and pull_request
+    # are independent, asynchronously-fired events with no ordering guarantee
+    # between them, so no point-in-time check on either side can reliably catch
+    # this before the fact (see the concurrency: block below for the backstop
+    # that still exists for whatever this doesn't prevent). Scoping push: to only
+    # the branches that are never themselves the source of a PR removes the
+    # redundant trigger at its source instead: a feature branch now gets CI
+    # exactly once, via the PR opened from it.
+    branches: [master, next_version]
   pull_request:
-    branches: [master]
+    # No branch restriction: a PR merging into any branch gets checks. The one
+    # exclusion is gh-pages, which only ever receives generated site output and
+    # is never itself the target of a real code review.
+    branches-ignore: [gh-pages]
   workflow_dispatch:
 
 
-# Cancel any in-progress run on the same ref when a new push arrives,
-# preventing stale run pile-up on active branches
+# Cancel any in-progress run for the same commit when a new event arrives.
+# github.event.pull_request.head.sha is the PR branch's real head commit on a
+# pull_request event (github.sha there is the synthetic PR-merge commit, not
+# useful for this); github.sha is the pushed commit on a push event. For the
+# identical commit, both resolve to the same group key -- so a push to a
+# branch that also gets a PR opened from it (immediately or later, whenever
+# a runner picks up the pull_request-triggered run) lands its push and
+# pull_request runs in the *same* group, and GitHub's own cancel-in-progress
+# cancels whichever started first the instant the second one starts. This is
+# keyed on the commit rather than the branch specifically so a *different*,
+# newer commit pushed to that same branch never collides with -- and so
+# never wrongly cancels -- an older commit's still-running pull_request
+# check: each commit gets its own group.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 
@@ -58,6 +85,12 @@ jobs:
   # Job: Build MkDocs HTML documentation bundle for gem inclusion
   generate-docs:
     name: "Generate Local Docs Bundle for Gem Inclusion"
+    # pull_request fires for a draft PR the same as a ready one; github.event.pull_request
+    # is only ever populated on that event type, so this has no effect on push or
+    # workflow_dispatch runs. Holds off the full matrix's cost until a PR is actually
+    # ready for review -- a draft's own incremental commits get this workflow's checks
+    # for free the moment it's marked ready, no separate action needed.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     uses: ./.github/workflows/_generate-docs.yml
 
 
@@ -65,15 +98,27 @@ jobs:
   tests-linux:
     name: "Linux Test Suite"
     needs: generate-docs
+    # success() is spelled out explicitly here (not left implicit) because a custom
+    # if: replaces GitHub's default success()-on-needs: check entirely rather than
+    # being ANDed with it -- every job below with a needs: dependency carries this
+    # same explicit success() alongside its own draft-PR guard for that reason.
+    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4', '3.5']
+    # Each spec suite also writes RSpec JSON results here for the CI summary
+    env:
+      CI_RESULTS_DIR: tmp/ci
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
+      #
+      # checkout/cache/upload-artifact/download-artifact throughout this workflow are pinned
+      # to their latest majors (not v4) for Node 24 runner support -- GitHub Actions runners
+      # now force Node 24 regardless, and v4 still targets the deprecated Node 20.
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -97,13 +142,58 @@ jobs:
         run: |
           bundle install
 
+      # The Dependencies plugin's integration specs fetch from a local subversion
+      # repository they create, which needs tools Linux runners lack. Elsewhere those
+      # specs skip.
+      - name: Install Subversion for Dependencies Plugin Testing
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --assume-yes --quiet subversion
+
       # Run unit tests immediately after gem install — before the slower external tool
       # installation steps — so unit failures surface as quickly as possible.
       # Unit tests have no dependency on gdb, valgrind, cppcheck, gcovr, or ReportGenerator.
+      #
+      # Coverage instrumentation (CEEDLING_TEST_COVERAGE) only runs on one leg of this
+      # matrix -- Ruby 3.3, matching the other Linux-only singleton jobs' pinned version
+      # -- rather than a separate job, so the combined unit+system report reuses the
+      # tool installs this job already pays for instead of duplicating them. The value
+      # ('units' here, 'system' on the Run System Tests step below) tells spec_helper.rb
+      # which suite is instrumenting -- see spec_helper.rb's own comment for why a bare
+      # on/off flag isn't enough.
       - name: Run Unit Tests
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
+          CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'units' || 'false' }}
         run: rake specs:units
+
+      # Integration tests compose real lib/ceedling objects and shell out to real gcc,
+      # but drive a single subsystem rather than a whole build. They need only gcc
+      # (already on the runner), so they run here -- right after unit tests, before the
+      # slower external tool installs and the system suite. Same Ruby-3.3-only coverage
+      # instrumentation as the unit and system steps; 'integration' routes it to its own
+      # raw resultset (see spec_helper.rb) so `coverage:report` builds a standalone
+      # integration report and still folds it into the combined one.
+      - name: Run Integration Tests
+        env:
+          CI_RSPEC_PROGRESS_FORMAT: true
+          CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'integration' || 'false' }}
+        run: rake specs:integration
+
+      # The SBOM generator's own specs, which specs:units and specs:integration do not
+      # reach -- those suites ship in the gem and run against an installed Ceedling,
+      # where tools/ does not exist. Run across every Ruby in the matrix, the generator
+      # being expected to work wherever Ceedling does.
+      - name: Run SBOM Generator Specs
+        run: rake sbom:specs
+
+      # The CI summary's own specs, which live in tools/ for the same reason
+      - name: Run CI Summary Specs
+        run: rake ci:summary:specs
+
+      # The coverage report tooling's own specs, which live in tools/ for the same reason
+      - name: Run Coverage Report Specs
+        run: rake coverage:specs
 
       # Install gdb for backtrace feature testing
       - name: Install gdb for Backtrace Feature Testing
@@ -120,9 +210,23 @@ jobs:
       # Build cppcheck from source at a pinned version so all plugin options
       # (including SARIF, which requires 2.16+) are available for testing.
       # The installed binary is cached by version to avoid rebuilding on every run.
+      #
+      # actions/cache's restore step runs unprivileged and needs write access to recreate
+      # cached paths on a fresh runner VM. /usr/local/bin is already writable on this runner
+      # image, but /usr/local/share is not -- extracting the cached cppcheck subtree into it
+      # fails with "Cannot mkdir: Permission denied" otherwise. This has to run before every
+      # restore, on every run, since each job starts on a fresh ephemeral VM with the base
+      # image's permissions reset -- nothing from a prior run's chown carries forward. Saving
+      # the cache itself only ever needed read access (root-owned files are world-readable),
+      # so this doesn't change how or where cppcheck ultimately gets installed below.
+      - name: Ensure cppcheck Cache Destination Is Writable
+        run: |
+          sudo mkdir -p /usr/local/share/cppcheck
+          sudo chown -R "$(id -u):$(id -g)" /usr/local/share/cppcheck
+
       - name: Cache cppcheck binary and data files
         id: cache-cppcheck
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             /usr/local/bin/cppcheck
@@ -159,30 +263,83 @@ jobs:
           dotnet tool install --global dotnet-reportgenerator-globaltool
 
       # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
+      #
+      # ASan+UBSan instrumentation runs on one leg of this matrix only -- Ruby 3.5
+      # -- on the same reasoning as the Ruby-3.3 coverage gate above: it reuses the
+      # tool installs this job already pays for, and instrumentation roughly
+      # doubles build time. A finding in generated C appears identically on every
+      # leg, so paying for it more than once buys nothing. Deliberately-faulty
+      # fixtures are excluded by name (see spec/support/system/sanitizers/), and a
+      # finding fails the job through Ceedling's existing crash detection.
+      #
+      # The flavor includes leak detection, which was measured clean across the
+      # whole suite before being enabled rather than assumed safe -- see
+      # spec/support/system/sanitizers/asan_ubsan_leaks.yml. The asan_ubsan
+      # flavor beside it leaves leaks off, for telling a leak from a memory
+      # error or UB when something does fire.
       - name: Run System Tests
         uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
+          coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
+          sanitizers: ${{ matrix.ruby == '3.5' && 'asan_ubsan_leaks' || '' }}
 
-      # Common plugin test steps
+      # Common plugin test steps. Runs before Generate Combined Coverage Report below --
+      # each plugin's own coverage/raw/system-*/ resultsets (see run-plugin-tests'
+      # own coverage input) must exist on disk before that step merges/formats the
+      # report, or they'd be silently excluded from it.
       - name: Run Plugin Tests
         uses: ./.github/actions/run-plugin-tests
+        with:
+          coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
+
+      # Merges the resultset all prior coverage-instrumented steps accumulated (see
+      # Run Unit Tests, Run Integration Tests, Run System Tests, and Run Plugin Tests
+      # above) into per-suite HTML reports plus one combined report, and uploads them,
+      # downloadable from this run's own Actions summary page. Ruby-3.3-only, same leg
+      # those steps instrumented.
+      - name: Generate Combined Coverage Report
+        if: matrix.ruby == '3.3'
+        run: rake coverage:report
+
+      - name: Upload Combined Coverage Report
+        if: matrix.ruby == '3.3'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: error
+
+      # The CI summary reads each leg's RSpec counts from here, and the coverage leg's
+      # coverage too, whether or not the leg passed
+      - name: Upload CI Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-results-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: tmp/ci/
+          if-no-files-found: ignore
+          retention-days: 7
 
 
   # Job: Windows test suite
   tests-windows:
     name: "Windows Test Suite"
     needs: generate-docs
+    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         # Ruby 3.5 not available on Windows runners [July 2026]
         ruby: ['3.0', '3.1', '3.2', '3.3', '3.4']
+    # Each spec suite also writes RSpec JSON results here for the CI summary
+    env:
+      CI_RESULTS_DIR: tmp/ci
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -212,6 +369,12 @@ jobs:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:units
 
+      # See the Linux job for why integration tests run here (need only gcc).
+      - name: Run Integration Tests
+        env:
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: rake specs:integration
+
       # Install GCovr for Gcov plugin test
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
         run: |
@@ -225,9 +388,15 @@ jobs:
       # Install cppcheck via Chocolatey (installs the MSI to C:\Program Files\Cppcheck\).
       # Add the real install directory to PATH ahead of the Chocolatey shim so that
       # cppcheck can locate its cfg/ directory (needed for std.cfg library lookups).
+      # Pinned to 2.16.0 (matches the version Linux CI builds from source):
+      #   - Chocolatey's 2.14.0 package has a broken, winlibs-baked FILESDIR path
+      #     and appears to have been delisted upstream.
+      #   - Ceedling's cppcheck plugin defaults :xml_report_version to 3
+      #     (plugins/cppcheck/config/defaults.yml), which cppcheck only supports
+      #     starting at 2.16.0 -- anything older errors on --xml-version=3.
       - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
         run: |
-          choco upgrade cppcheck -y
+          choco upgrade cppcheck -y --version=2.16.0
           echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
 
       # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
@@ -240,6 +409,17 @@ jobs:
       - name: Run Plugin Tests
         uses: ./.github/actions/run-plugin-tests
 
+      # The CI summary reads each leg's RSpec counts from here, and the coverage leg's
+      # coverage too, whether or not the leg passed
+      - name: Upload CI Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-results-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: tmp/ci/
+          if-no-files-found: ignore
+          retention-days: 7
+
 
   # Job: macOS test suite
   # Targets Apple Clang (the gcc alias on macOS resolves to Xcode's LLVM-based Clang).
@@ -250,15 +430,19 @@ jobs:
   tests-macos:
     name: "macOS Test Suite"
     needs: generate-docs
+    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
         ruby: ['3.1', '3.2', '3.3', '3.4', '3.5']
+    # Each spec suite also writes RSpec JSON results here for the CI summary
+    env:
+      CI_RESULTS_DIR: tmp/ci
     steps:
       # Checks out repository under $GITHUB_WORKSPACE — must come first to enable local action access
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -287,12 +471,28 @@ jobs:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:units
 
+      # See the Linux job for why integration tests run here (need only gcc). On macOS
+      # the gcc alias is Apple Clang, which on current runners supports -fdirectives-only
+      # as GCC does. Specs covering the text-scan fallback force it rather than relying on
+      # the toolchain to lack the flag, so they run here and on Linux and Windows alike.
+      - name: Run Integration Tests
+        env:
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: rake specs:integration
+
       # gdb is not installed on macOS runners — backtrace specs detect absence and skip
       # valgrind is unavailable on macOS — valgrind specs already skip via @valgrind_available guard
 
       # Install cppcheck via Homebrew
+      #
+      # aws/tap is pre-tapped on GitHub's hosted macOS runner image (unrelated to anything
+      # this repo uses) -- newer Homebrew warns about every untrusted tap present on any
+      # `brew install`, not just ones involved in that install, so it's untapped here rather
+      # than trusted or having tap-trust checks disabled outright. `|| true` in case a future
+      # runner image doesn't have it pre-tapped.
       - name: "Install cppcheck for Tests of Ceedling Plugin: Cppcheck"
         run: |
+          brew untap aws/tap || true
           brew install cppcheck
 
       # --break-system-packages required on macOS 14+ (PEP 668 prevents pip from installing
@@ -320,6 +520,17 @@ jobs:
       - name: Run Plugin Tests
         uses: ./.github/actions/run-plugin-tests
 
+      # The CI summary reads each leg's RSpec counts from here, and the coverage leg's
+      # coverage too, whether or not the leg passed
+      - name: Upload CI Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-results-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: tmp/ci/
+          if-no-files-found: ignore
+          retention-days: 7
+
 
   # Job: Preprocessing locale encoding regression test
   # Installs ja_JP.UTF-8 locale and runs the locale encoding spec under it.
@@ -330,9 +541,10 @@ jobs:
   # a path-based Bundler deployment (deploy_gem) that does not require a gem build.
   tests-linux-locale:
     name: "Linux Test Suite (ja_JP.UTF-8 Locale)"
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -340,7 +552,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -349,6 +561,8 @@ jobs:
         with:
           ruby-version: '3.3'
 
+      # Workaround: fix Ruby toolcache gem dir permissions (Bundler exit 38)
+      # Issue: https://github.com/rubygems/rubygems/issues/7983
       - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
         run: |
           sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
@@ -377,17 +591,150 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          rm -rf systests/proj/pass || true
-          rm -f systests/systest.pass.*.log || true
+          rm -rf specout/proj/pass || true
+          rm -f specout/pass.*.log || true
 
       # Upload system test failure logs and temp project directories on test job failure
       - name: Upload system test failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: systest-failures-locale-ruby-3.3
-          path: systests/
+          name: specout-failures-locale-ruby-3.3
+          path: specout/
           if-no-files-found: ignore
+
+
+  # Job: Default-encoding stress test against example projects
+  # Forces Ruby's default external encoding to US-ASCII (via LC_ALL=C) and exports +
+  # fully tests example projects with differing preprocessing configurations, catching
+  # regressions in Ceedling's handling of non-ASCII source content under a non-UTF-8
+  # platform default encoding.
+  # Note: No generate-docs dependency needed — system tests use a path-based Bundler
+  # deployment (deploy_gem) that does not require a gem build.
+  tests-linux-encoding-stress:
+    name: "Linux Encoding Stress Test (C/POSIX)"
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v6
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-3.3-
+
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Apply Workaround for Ruby toolcache Gem Directory Permissions
+        run: |
+          sudo chmod -R go-w /opt/hostedtoolcache/Ruby/**/**/lib/ruby/gems/**/gems || true
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      # LC_ALL/LANG=C (POSIX) is the stress pick: it's always available (no locale-gen
+      # needed, unlike the ja_JP.UTF-8 job above) and it's the locale under which Ruby's
+      # Encoding.default_external resolves to US-ASCII rather than UTF-8 on Linux. That's
+      # the actual condition under test — source files here are UTF-8, but the platform
+      # default encoding is 7-bit ASCII, which is what surfaces bugs in code that reads
+      # or scans file content without accounting for the platform's default encoding.
+      # These env vars set the job-level default before RSpec boots; the spec itself
+      # additionally re-asserts them per-invocation since SystemContext#with_context
+      # otherwise forces en_US.UTF-8 ahead of each nested Ceedling call.
+      - name: Run Example Projects Under C/POSIX Default Encoding Stress
+        env:
+          LC_ALL: C
+          LANG: C
+          CI_RSPEC_PROGRESS_FORMAT: true
+        run: |
+          rake spec:system:debug:encoding_stress
+
+      # Passing project directories are deleted immediately by done!; passing logs are never written.
+      # This step is retained as a safety net in case of any leftover pass artifacts.
+      - name: Remove passing system test artifacts before upload
+        if: failure()
+        shell: bash
+        run: |
+          rm -rf specout/proj/pass || true
+          rm -f specout/pass.*.log || true
+
+      # Upload system test failure logs and temp project directories on test job failure
+      - name: Upload system test failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: specout-failures-encoding-stress-ruby-3.3
+          path: specout/
+          if-no-files-found: ignore
+
+
+  # Job: Lint Ceedling's own Ruby source with RuboCop
+  # Scoped to the Lint, Metrics, Security, and Performance departments (see
+  # .rubocop.yml). Pre-existing offenses are recorded in .rubocop_todo.yml, so this
+  # job reports only NEW ones.
+  #
+  # No needs:, deliberately -- linting does not depend on tests passing, and running
+  # in parallel with the test matrix means this adds no wall-clock time to CI.
+  # Deliberately absent from build-gem's needs: list as well; an advisory job must
+  # never gate the gem build.
+  lint:
+    name: "Lint Ruby Source"
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    # continue-on-error makes findings visible without failing the build. This is the
+    # only non-blocking job in this workflow, and that is a starting position rather
+    # than the intent: with a 1,200-entry .rubocop_todo.yml baseline, a regression is
+    # still common enough that blocking would mostly obstruct. Drop this line once
+    # the baseline has been burned down far enough that a new offense is a genuine
+    # surprise. Note a red-but-passing job is easy to ignore, so the annotations
+    # below (--format github, via CI_LINT_GITHUB_FORMAT) matter: they put findings
+    # inline on the pull request diff rather than only in a log nobody opens.
+    continue-on-error: true
+
+    # Both variables belong at job scope, not step scope. CEEDLING_LINT is what the
+    # Gemfile's install_if: predicate reads, and install_if: is Bundler's *runtime*
+    # activation check as well as its install-time one -- so `bundle install` and the
+    # later `bundle exec` inside rake both need it set.
+    env:
+      CEEDLING_LINT: 'true'
+      CI_LINT_GITHUB_FORMAT: 'true'
+
+    steps:
+      # Use a cache for our tools to speed up builds
+      # Key deliberately distinct from the other jobs' -- this job's bundle includes
+      # rubocop and its dependencies, which no other job installs.
+      - uses: actions/cache@v6
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-lint-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-lint-${{ runner.os }}-3.3-
+
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v7
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      - name: Lint Ruby Source
+        run: |
+          bundle exec rake lint
 
 
   # Job: Build the Ceedling gem once all tests pass
@@ -400,12 +747,14 @@ jobs:
       - tests-windows
       - tests-macos
       - tests-linux-locale
+      - tests-linux-encoding-stress
+    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
 
     steps:
       # Use a cache for our tools to speed up builds
       # No matrix here; Ruby version is hardcoded to match the cache key format used by test jobs
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -413,7 +762,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -428,7 +777,7 @@ jobs:
 
       # Download HTML docs bundle built by generate-docs job to validate docs ingestion in gem build
       - name: Download HTML Documentation Bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gem-docs-site-local
           path: site-local/
@@ -437,10 +786,185 @@ jobs:
         run: |
           gem build ceedling.gemspec
 
+      # Exercises the generator against the real repository, which is also what enforces
+      # the curated gem license list -- sbom:build refuses to run when a dependency has
+      # arrived, departed, or moved version away from the entry recording its license.
+      # Failing here means failing a pull request rather than a release.
+      - name: Generate SBOMs
+        run: rake sbom:build
+
+      # Schema validation against the published specifications, as a gate. Hand-written
+      # expectations proved insufficient: they caught neither a dual license placed in
+      # `license.id`, where only a single SPDX identifier is valid, nor a pedigree
+      # ancestor missing the type and name the schema requires.
+      #
+      # check-jsonschema covers both formats with one tool, and Python is already
+      # provisioned here for the documentation build. Schema URLs are pinned to the
+      # specification versions the serializers target.
+      - name: Validate SBOMs Against Published Schemas
+        run: |
+          pip install --quiet check-jsonschema
+          check-jsonschema \
+            --schemafile https://raw.githubusercontent.com/CycloneDX/specification/1.6/schema/bom-1.6.schema.json \
+            ceedling-*.cdx.json
+          check-jsonschema \
+            --schemafile https://raw.githubusercontent.com/spdx/spdx-spec/v2.3/schemas/spdx-schema.json \
+            ceedling-*.spdx.json
+
+      # The gemspec rejects generated SBOMs, since they are release assets rather than
+      # gem contents. Generating before this check is what makes the check meaningful.
+      # Reads the built artifact's own manifest rather than re-evaluating the gemspec, and
+      # rather than listing the archive -- a .gem is a tar of data.tar.gz, so inner
+      # filenames never appear at the top level.
+      - name: Confirm SBOMs Stayed Out of the Gem
+        run: |
+          for gem in ceedling-*.gem; do
+            if gem spec "$gem" files | grep -E 'cdx\.json|spdx\.json'; then
+              echo "A generated SBOM reached $gem; the gemspec reject is not working."
+              exit 1
+            fi
+          done
+          echo "No SBOM in the gem."
+
       # Upload the built gem as a workflow artifact (downloadable from the Actions UI)
       - name: Upload Built Gem Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ceedling-gem
           path: ceedling-*.gem
           if-no-files-found: error
+
+
+  # Job: CI summary
+  # Gathers every leg's results, the run's job list, and on a pull request the base
+  # branch's baseline and the pull request's diff, into one markdown summary. The summary
+  # shows on this run's own page. A pull request's copy is uploaded for pr-comment.yml,
+  # which holds the write permission to post it that this read-only workflow lacks, so
+  # pull requests from forks get the comment too. A push run instead publishes the
+  # baseline later pull requests compare against.
+  #
+  # !cancelled() runs it after a failed job too, when the summary matters most, but not
+  # after a cancel, whose partial results nothing reads.
+  ci-summary:
+    name: "CI Summary"
+    needs:
+      - tests-linux
+      - tests-windows
+      - tests-macos
+      - tests-linux-locale
+      - tests-linux-encoding-stress
+      - lint
+      - build-gem
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+    runs-on: ubuntu-latest
+
+    # actions: read lists this run's jobs and downloads the baseline from a base-branch run
+    permissions:
+      contents: read
+      actions: read
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+
+    steps:
+      - uses: actions/cache@v6
+        with:
+          path: vendor/bundle
+          key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            bundle-use-ruby-${{ runner.os }}-3.3-
+
+      # Full history, for the merge base and the diff a pull request is measured against
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      # Each artifact lands in its own directory, named for the leg that uploaded it
+      - name: Download Leg Results
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ci-results-*
+          path: ci-results/
+
+      - name: Fetch This Run's Jobs
+        run: |
+          gh api "repos/$REPO/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}/jobs?per_page=100" > ci-jobs.json
+
+      # The baseline comes from the base branch's push run for the merge base itself. A
+      # merge base with no such run (a [skip ci] commit, an expired artifact) falls back
+      # to the base branch's latest successful push run, which the summary marks nearest.
+      # No baseline at all leaves the summary's deltas blank rather than failing it.
+      - name: Fetch Baseline and Diff
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          merge_base=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
+          echo "CI_SUMMARY_MERGE_BASE=$merge_base" >> "$GITHUB_ENV"
+          git diff --unified=0 "$merge_base" "$HEAD_SHA" > ci-diff.txt
+
+          run_id=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$merge_base&event=push&status=success" \
+                     --jq '.workflow_runs[0].id // empty')
+          if [ -z "$run_id" ]; then
+            run_id=$(gh run list --repo "$REPO" --workflow ci.yml --branch "$BASE_REF" --event push \
+                       --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          fi
+          if [ -n "$run_id" ]; then
+            gh run download "$run_id" --repo "$REPO" --name ci-baseline --dir ci-baseline \
+              || echo "Run $run_id has no ci-baseline artifact"
+          fi
+
+      - name: Render CI Summary
+        env:
+          CI_SUMMARY_RESULTS: ci-results
+          CI_SUMMARY_JOBS: ci-jobs.json
+          CI_SUMMARY_BASELINE: ci-baseline/ci-baseline.json
+          CI_SUMMARY_DIFF: ci-diff.txt
+          CI_SUMMARY_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_SUMMARY_OUT: ci-summary.md
+          CI_SUMMARY_BASELINE_OUT: ${{ github.event_name == 'push' && 'ci-baseline.json' || '' }}
+          CI_SUMMARY_BRANCH: ${{ github.ref_name }}
+        run: |
+          bundle exec rake ci:summary
+          cat ci-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      # pr-comment.yml reads the pull request number from here, because a workflow_run
+      # event does not reliably name the pull request for a fork's branch
+      - name: Record Pull Request Number
+        if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "$PR_NUMBER" > ci-summary-pr.txt
+
+      - name: Upload Pull Request Summary
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-summary
+          path: |
+            ci-summary.md
+            ci-summary-pr.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload Baseline
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-baseline
+          path: ci-baseline.json
+          if-no-files-found: error
+          retention-days: 90

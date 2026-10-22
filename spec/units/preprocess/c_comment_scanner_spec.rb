@@ -17,7 +17,7 @@ RSpec.describe CCommentScanner do
   # Helper: extract the matched text for every CommentInfo in content
   # ---------------------------------------------------------------------------
   def comment_texts(content, infos)
-    infos.map { |info| content[info.position, info.length] }
+    infos.map { |info| content[info.position, info.byte_count] }
   end
 
 
@@ -63,7 +63,7 @@ RSpec.describe CCommentScanner do
 
         expect(infos.length).to eq(1)
         expect(infos[0].position).to eq(11)
-        expect(content[infos[0].position, infos[0].length]).to eq('// assign x')
+        expect(content[infos[0].position, infos[0].byte_count]).to eq('// assign x')
         expect(infos[0].lines_removed).to eq(0)
       end
 
@@ -72,7 +72,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq('// eof comment')
+        expect(content[infos[0].position, infos[0].byte_count]).to eq('// eof comment')
         expect(infos[0].lines_removed).to eq(0)
       end
 
@@ -82,7 +82,7 @@ RSpec.describe CCommentScanner do
 
         expect(infos.length).to eq(1)
         # The \n at position 10 must remain available; only the comment is captured
-        expect(content[infos[0].position, infos[0].length]).to eq('// comment')
+        expect(content[infos[0].position, infos[0].byte_count]).to eq('// comment')
         expect(infos[0].lines_removed).to eq(0)
       end
 
@@ -92,7 +92,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq("// first line \\\nsecond line still comment")
+        expect(content[infos[0].position, infos[0].byte_count]).to eq("// first line \\\nsecond line still comment")
         expect(infos[0].lines_removed).to eq(1)
       end
 
@@ -102,7 +102,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq("// first line \\   \nsecond line still comment")
+        expect(content[infos[0].position, infos[0].byte_count]).to eq("// first line \\   \nsecond line still comment")
         expect(infos[0].lines_removed).to eq(1)
       end
 
@@ -113,7 +113,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq("// comment\\\t\t\ncontinuation")
+        expect(content[infos[0].position, infos[0].byte_count]).to eq("// comment\\\t\t\ncontinuation")
         expect(infos[0].lines_removed).to eq(1)
       end
 
@@ -122,7 +122,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq("// line one \\\nline two \\\nline three")
+        expect(content[infos[0].position, infos[0].byte_count]).to eq("// line one \\\nline two \\\nline three")
         expect(infos[0].lines_removed).to eq(2)
       end
 
@@ -138,7 +138,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq('/* the value */')
+        expect(content[infos[0].position, infos[0].byte_count]).to eq('/* the value */')
         expect(infos[0].lines_removed).to eq(0)
       end
 
@@ -154,7 +154,7 @@ RSpec.describe CCommentScanner do
 
         expect(infos.length).to eq(1)
         expect(infos[0].position).to eq(0)
-        expect(content[infos[0].position, infos[0].length]).to eq("/*\n * Module: sensor\n * Version: 2.1\n */")
+        expect(content[infos[0].position, infos[0].byte_count]).to eq("/*\n * Module: sensor\n * Version: 2.1\n */")
         expect(infos[0].lines_removed).to eq(3)
       end
 
@@ -163,7 +163,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq("/* unterminated block\nstill in comment\n")
+        expect(content[infos[0].position, infos[0].byte_count]).to eq("/* unterminated block\nstill in comment\n")
         expect(infos[0].lines_removed).to eq(2)
       end
 
@@ -172,7 +172,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq("/* block with // inside\nstill block */")
+        expect(content[infos[0].position, infos[0].byte_count]).to eq("/* block with // inside\nstill block */")
         expect(infos[0].lines_removed).to eq(1)
       end
 
@@ -200,7 +200,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq('// real comment')
+        expect(content[infos[0].position, infos[0].byte_count]).to eq('// real comment')
       end
 
       it 'handles an escaped quote inside a string literal before a real comment' do
@@ -209,7 +209,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq('// real comment')
+        expect(content[infos[0].position, infos[0].byte_count]).to eq('// real comment')
       end
 
     end
@@ -224,7 +224,7 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(1)
-        expect(content[infos[0].position, infos[0].length]).to eq('// line comment /* not a block')
+        expect(content[infos[0].position, infos[0].byte_count]).to eq('// line comment /* not a block')
         expect(infos[0].lines_removed).to eq(0)
       end
 
@@ -233,8 +233,8 @@ RSpec.describe CCommentScanner do
         infos   = scanner.scan(io: StringIO.new(content))
 
         expect(infos.length).to eq(2)
-        expect(content[infos[0].position, infos[0].length]).to eq('/* block */')
-        expect(content[infos[1].position, infos[1].length]).to eq('/* another block */')
+        expect(content[infos[0].position, infos[0].byte_count]).to eq('/* block */')
+        expect(content[infos[1].position, infos[1].byte_count]).to eq('/* another block */')
       end
 
       it 'finds all comments in realistic mixed-comment C code in correct order' do

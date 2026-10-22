@@ -12,23 +12,34 @@
 #
 # Purpose:
 #   Stamp the gem version from the calling workflow's Git tag, build the
-#   Ceedling gem, and publish a GitHub release or pre-release using
-#   softprops/action-gh-release@v2.
+#   Ceedling gem, and publish a GitHub release or pre-release.
 #
 # Version stamping:
-#   lib/version.rb carries a .dev suffix between releases (e.g. 1.1.1.dev).
-#   This job derives the actual release version from the Git tag and stamps
-#   it into lib/version.rb before building — the file is never manually
-#   edited to match a release tag.
+#   lib/version.rb reports a `.dev` version everywhere except here. It holds the
+#   release cycle's target version in BASE and the marker in DEV, and composes
+#   the reported version from the two. This job stamps BASE from the Git tag and
+#   empties DEV, so a published gem is the only build reporting a bare version.
+#   Neither line is ever manually edited to match a release tag.
 #
 #   Tag-to-gem-version conversion:
 #     v1.1.0-pre.1  →  1.1.0.pre.1  (hyphen becomes dot: RubyGems pre-release notation)
 #     v1.1.0        →  1.1.0         (no suffix; substitution is a no-op)
 #
+# Software Bill of Materials:
+#   CycloneDX and SPDX documents are generated after the gem is built, validated
+#   against their published schemas, attested against the gem, and attached to the
+#   release. Generation runs after version stamping so the documents carry the release
+#   version rather than the `.dev` value the tagged commit holds.
+#
 # RubyGems.org publishing:
-#   The "Push to RubyGems.org" step below is stubbed and commented out.
-#   To enable automated publishing: uncomment the step and add a
-#   RUBYGEMS_API_KEY secret to the repository settings.
+#   A separate job, scoped to the `rubygems` environment, so that environment's
+#   protection rules gate the push and not the GitHub release. Authentication is
+#   trusted publishing, which exchanges the job's OIDC token for a short-lived
+#   credential, so no API key is stored in this repository.
+#
+#   Full releases are pushed. Pre-releases are not, matching the policy README.md
+#   states. A pre-release still runs the credential exchange, which makes it a
+#   rehearsal of the release path that publishes nothing.
 # -----------------------------------------------------------------------
 
 ---
@@ -42,9 +53,16 @@ on:
         required: true
         description: 'true = GitHub pre-release, false = full release'
 
-# contents: write is required to create and upload GitHub releases
+# contents: write is required to create and upload GitHub releases.
+#
+# id-token: write and attestations: write let actions/attest sign each SBOM against the
+# gem it describes, so a consumer can verify a document came from this workflow rather
+# than from somewhere else. The RubyGems job below grants its own id-token separately,
+# scoped to itself.
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build-and-publish:
@@ -54,7 +72,11 @@ jobs:
     steps:
       # Use a cache for our tools to speed up builds
       # No matrix here; Ruby version is hardcoded to match the cache key format used by test jobs
-      - uses: actions/cache@v4
+      #
+      # cache/checkout/download-artifact below are pinned to their latest majors (not v4) for
+      # Node 24 runner support -- GitHub Actions runners now force Node 24 regardless, and v4
+      # still targets the deprecated Node 20.
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -62,7 +84,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -76,8 +98,9 @@ jobs:
           bundle install
 
       # Derive the gem version from the Git tag and stamp it into lib/version.rb.
-      # The in-tree version.rb carries a .dev suffix between releases; the release
-      # version is computed here from the tag and is never manually set.
+      # Clearing that file's `.dev` marker is part of the stamp, and it is what
+      # makes this the only build that reports a bare version. The script verifies
+      # both substitutions and fails the job if either does not apply.
       - name: Stamp Gem Version from Git Tag
         shell: bash
         run: .github/workflows/stamp_gem_version.sh "${GITHUB_REF_NAME}" lib/version.rb
@@ -122,7 +145,7 @@ jobs:
       # Download HTML docs bundle built by _generate-docs.yml
       # Artifacts are shared within the same workflow run by run_id
       - name: Download HTML Documentation Bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gem-docs-site-local
           path: site-local/
@@ -131,8 +154,66 @@ jobs:
         run: |
           gem build ceedling.gemspec
 
-      # softprops/action-gh-release@v2 replaces the archived actions/create-release@v1
+      # After the gem build and after version stamping, both deliberately. The SBOM's
+      # root component carries the stamped release version rather than the .dev value
+      # lib/version.rb holds at the tagged commit, and the gem has to exist before it can
+      # be an attestation subject.
+      #
+      # sbom:build also enforces the curated gem license list, so a release stops here if
+      # a dependency arrived, departed, or moved version without its license being
+      # re-read.
+      #
+      # Filenames are captured rather than reconstructed from the tag. Attestation takes
+      # one file per step and will not expand a glob, and the generator already knows how
+      # it spelled the version.
+      - name: Generate SBOMs
+        run: |
+          rake sbom:build
+          echo "cdx_sbom=$(ls ceedling-*.cdx.json)" >> "$GITHUB_ENV"
+          echo "spdx_sbom=$(ls ceedling-*.spdx.json)" >> "$GITHUB_ENV"
+
+      # Pinned to the specification versions the serializers target. A document that
+      # fails its schema must not reach a release, where consumers' tooling would be the
+      # thing to discover it.
+      - name: Validate SBOMs Against Published Schemas
+        run: |
+          pip install --quiet check-jsonschema
+          check-jsonschema \
+            --schemafile https://raw.githubusercontent.com/CycloneDX/specification/1.6/schema/bom-1.6.schema.json \
+            ceedling-*.cdx.json
+          check-jsonschema \
+            --schemafile https://raw.githubusercontent.com/spdx/spdx-spec/v2.3/schemas/spdx-schema.json \
+            ceedling-*.spdx.json
+
+      # Binds each document to the gem it describes. Without this a published SBOM is
+      # just a file alongside a release; with it, `gh attestation verify` can establish
+      # that this workflow produced it for this artifact.
+      #
+      # One step per format, sbom-path taking a single file. Both are published, so both
+      # are attested -- an attested CycloneDX beside an unattested SPDX would leave
+      # whichever a consumer happens to read the less trustworthy of the two.
+      #
+      # actions/attest rather than actions/attest-sbom, which is deprecated. Passing
+      # sbom-path produces an SBOM attestation, and the action reads the format from the
+      # document, so the predicate type still comes out as cyclonedx.org/bom or
+      # spdx.dev/Document. Verification needs that type named explicitly, since
+      # `gh attestation verify` looks for SLSA provenance unless told otherwise.
+      - name: Attest CycloneDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: ceedling-*.gem
+          sbom-path: ${{ env.cdx_sbom }}
+
+      - name: Attest SPDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: ceedling-*.gem
+          sbom-path: ${{ env.spdx_sbom }}
+
+      # softprops/action-gh-release replaces the archived actions/create-release@v1
       # and actions/upload-release-asset@v1.
+      # Pinned to @v3 (not v2) for Node 24 runner support -- GitHub Actions runners
+      # now force Node 24 regardless, and v2 still targets the deprecated Node 20.
       # Two conditional steps are used because the action cannot switch between
       # body and generate_release_notes within a single step via expressions.
 
@@ -143,10 +224,13 @@ jobs:
 
       - name: Publish GitHub Release (changelog body)
         if: steps.changelog.outputs.found == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           prerelease: ${{ inputs.prerelease }}
-          files: ceedling-*.gem
+          files: |
+            ceedling-*.gem
+            ceedling-*.cdx.json
+            ceedling-*.spdx.json
           body: ${{ steps.changelog.outputs.body }}
 
       # Fall back to GitHub's auto-generated release notes (from last commit)
@@ -157,13 +241,83 @@ jobs:
 
       - name: Publish GitHub Release (auto-generated notes)
         if: steps.changelog.outputs.found != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           prerelease: ${{ inputs.prerelease }}
-          files: ceedling-*.gem
+          files: |
+            ceedling-*.gem
+            ceedling-*.cdx.json
+            ceedling-*.spdx.json
 
-      # Uncomment and add RUBYGEMS_API_KEY secret to automate RubyGems.org publishing
-      # - name: Push to RubyGems.org
-      #   run: gem push ceedling-*.gem
-      #   env:
-      #     GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+      # Hand the built gem to the RubyGems job below. That job pushes this exact file,
+      # the one attested and attached to the release, rather than rebuilding it.
+      - name: Upload Gem for RubyGems Publishing
+        uses: actions/upload-artifact@v7
+        with:
+          name: ceedling-gem-release
+          path: ceedling-*.gem
+          if-no-files-found: error
+
+  # RubyGems.org publishing, separated from the job above so this environment's
+  # protection rules gate only this step and not the GitHub release.
+  #
+  # Trusted publishing rather than a stored API key. The job's OIDC token is exchanged
+  # for a short-lived RubyGems credential, and the `rubygems` environment is part of
+  # what RubyGems.org matches that token against.
+  #
+  # This job runs last because a push to RubyGems cannot be undone. `gem yank` hides a
+  # version while permanently reserving its number, where a GitHub release can simply be
+  # deleted. Everything reversible therefore happens first.
+  publish-rubygems:
+    name: "Publish Gem to RubyGems.org"
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    environment: rubygems
+
+    permissions:
+      id-token: write   # Exchanged for the RubyGems credential
+      contents: read
+
+    steps:
+      - name: Download Built Gem
+        uses: actions/download-artifact@v8
+        with:
+          name: ceedling-gem-release
+
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      # Runs for pre-releases as well as releases, and its success is the verification.
+      # The action exchanges this job's OIDC token with RubyGems.org, so it cannot write
+      # a credential RubyGems declined to issue. A mismatched repository, workflow, or
+      # environment name fails here, before anything is published.
+      #
+      # Pinned to an exact version because this action publishes no moving major tag.
+      - name: Configure RubyGems Credentials
+        uses: rubygems/configure-rubygems-credentials@v2.1.0
+
+      # Checks locally that a credential landed, without calling RubyGems. A trusted
+      # publishing credential is scoped to pushing this gem, so a read-only endpoint can
+      # refuse it even where a push would succeed, failing a release for no reason.
+      - name: Confirm a Credential Was Issued
+        run: |
+          if [ -s "${HOME}/.gem/credentials" ] || [ -n "${GEM_HOST_API_KEY}" ]; then
+            echo "Credential in place for this job."
+          else
+            echo "No credential was written despite the exchange reporting success."
+            exit 1
+          fi
+
+      # Full releases only. Pre-releases are published as release assets rather than to
+      # RubyGems, which is the policy README.md states and the registry reflects.
+      - name: Push to RubyGems.org
+        if: ${{ !inputs.prerelease }}
+        run: gem push ceedling-*.gem
+
+      - name: Log Skipped Publication
+        if: ${{ inputs.prerelease }}
+        run: |
+          echo "Pre-release, so nothing was pushed to RubyGems.org."
+          echo "The credential exchange above was still exercised end to end."

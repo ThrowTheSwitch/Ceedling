@@ -12,22 +12,26 @@ class Projectinator
 
   PROJECT_FILEPATH_ENV_VAR = 'CEEDLING_PROJECT_FILE'
   DEFAULT_PROJECT_FILEPATH = './' + DEFAULT_PROJECT_FILENAME
+  # #1250 -- self-documenting alternative default project filename, tried only
+  # alongside DEFAULT_PROJECT_FILEPATH during default discovery below.
+  ALTERNATE_PROJECT_FILEPATH = './' + ALTERNATE_PROJECT_FILENAME
   DEFAULT_YAML_FILE_EXTENSION = '.yml'
 
-  constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator, :system_wrapper, :ruby_expandinator
+  constructor :file_wrapper, :path_validator, :yaml_wrapper, :loginator
 
   # Discovers project file path and loads configuration.
   # Precendence of attempts:
   #  1. Explcit flepath from argument
   #  2. Environment variable
-  #  3. Default filename in working directory
+  #  3. Default filename in working directory (project.yml or ceedling.yml --
+  #     #1250 -- an error if both exist, since neither is "preferred" over the other)
   # Returns:
   #  - Absolute path of project file found and used
   #  - Config hash loaded from project file
   def load(filepath:nil, env:{}, silent:false)
     # Highest priority: command line argument
     if filepath
-      @path_validator.standardize_paths( filepath )
+      filepath = @path_validator.standardize_paths( filepath ).first
       _filepath = File.expand_path( filepath )
       config = load_and_log( _filepath, 'from command line argument', silent )
       config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
@@ -35,9 +39,7 @@ class Projectinator
 
     # Next priority: environment variable
     elsif env[PROJECT_FILEPATH_ENV_VAR]
-      # ENV lookup is frozen so dup() to operate on the string
-      filepath = env[PROJECT_FILEPATH_ENV_VAR].dup()
-      @path_validator.standardize_paths( filepath )
+      filepath = @path_validator.standardize_paths( env[PROJECT_FILEPATH_ENV_VAR] ).first
       _filepath = File.expand_path( filepath )
       config = load_and_log(
         _filepath,
@@ -47,21 +49,38 @@ class Projectinator
       config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
       return _filepath, config
 
-    # Final option: default filepath
-    elsif @file_wrapper.exist?( DEFAULT_PROJECT_FILEPATH )
-      filepath = DEFAULT_PROJECT_FILEPATH
-      _filepath = File.expand_path( filepath )
-      config = load_and_log( _filepath, "from working directory", silent )
-      config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
-      return _filepath, config
-
-    # If no user-provided filepath and the default filepath does not exist, we have a big problem
+    # Final option: default filepath(s) in the working directory
     else
-      raise "No project filepath provided and default #{DEFAULT_PROJECT_FILEPATH} not found"
-    end
+      default_exists     = @file_wrapper.exist?( DEFAULT_PROJECT_FILEPATH )
+      alternate_exists    = @file_wrapper.exist?( ALTERNATE_PROJECT_FILEPATH )
 
-    # We'll never get here but return nil/empty for completeness
-    return nil, {}
+      # #1250 -- two default project files in one directory is almost certainly a
+      # mistake (which one would silently win?) -- error out rather than guess.
+      if default_exists && alternate_exists
+        raise CeedlingException.new( ambiguous_default_message() )
+      end
+
+      filepath =
+        if default_exists
+          DEFAULT_PROJECT_FILEPATH
+        elsif alternate_exists
+          ALTERNATE_PROJECT_FILEPATH
+        end
+
+      if filepath
+        _filepath = File.expand_path( filepath )
+        config = load_and_log( _filepath, "from working directory", silent )
+        config[:history] = { config: [{type: :file, path: filepath, mechanism: :project}] }
+        return _filepath, config
+
+      # If no user-provided filepath and neither default filepath exists, we have a big problem
+      else
+        raise CeedlingException.new(
+          "No project filepath provided and neither default " \
+          "#{DEFAULT_PROJECT_FILEPATH} nor #{ALTERNATE_PROJECT_FILEPATH} found"
+        )
+      end
+    end
   end
 
 
@@ -82,136 +101,26 @@ class Projectinator
   end
 
 
-  def lookup_yaml_extension(config:)
-    return DEFAULT_YAML_FILE_EXTENSION if config[:extension].nil?
+  # The extensions of mixin files found by name, as a list. A project may set one or
+  # several with :extension ↳ :yaml, which is read here, from the project file, before
+  # configuration processing. Nothing after configuration processing uses the setting.
+  def lookup_yaml_extensions(config:)
+    extensions = config[:extension][:yaml] if config[:extension].is_a?( Hash )
 
-    return DEFAULT_YAML_FILE_EXTENSION if config[:extension][:yaml].nil?
-
-    return config[:extension][:yaml]
+    return Array( extensions || DEFAULT_YAML_FILE_EXTENSION )
   end
 
-
-  # Pick apart a :mixins projcet configuration section and return components
-  # Layout mirrors :plugins section
-  def extract_mixins(config:)
-    # Get mixins config hash
-    _mixins = config[:mixins]
-
-    # If no :mixins section, return:
-    #  - Empty enabled list
-    #  - Empty load paths
-    return [], [] if _mixins.nil?
-
-    # Build list of load paths
-    # Configured load paths are higher in search path ordering
-    load_paths = _mixins[:load_paths] || []
-
-    # Get list of mixins
-    enabled = _mixins[:enabled] || []
-    enabled = enabled.clone # Ensure it's a copy of configuration section
-
-    # Handle any inline Ruby string expansion
-    load_paths.each do |load_path|
-      load_path.replace( @ruby_expandinator.expand( load_path, source: ":mixins ↳ :load_paths" ) )
-    end
-
-    enabled.each do |mixin|
-      mixin.replace( @ruby_expandinator.expand( mixin, source: ":mixins ↳ :enabled" ) )
-    end
-
-    # Remove the :mixins section of the configuration
-    config.delete( :mixins )
-
-    return enabled, load_paths
-  end
-
-
-  # Validate :load_paths from :mixins section in project configuration
-  def validate_mixin_load_paths(load_paths)
-    validated = @path_validator.validate(
-      paths: load_paths,
-      source: 'Config :mixins ↳ :load_paths =>',
-      type: :directory
-    )
-
-    if !validated
-      raise 'Project configuration file section :mixins failed validation'
-    end
-  end
-
-
-  # Validate mixins list
-  def validate_mixins(mixins:, load_paths:, builtins:, source:, yaml_extension:)
-    validated = true
-
-    mixins.each do |mixin|
-      # Validate mixin filepaths
-      if @path_validator.filepath?( mixin )
-        if !@file_wrapper.exist?( mixin )
-          @loginator.log( "Cannot find mixin at #{mixin}", Verbosity::ERRORS )
-          validated = false
-        end
-
-      # Otherwise, validate that mixin name can be found in load paths or builtins
-      else
-        found = false
-        load_paths.each do |path|
-          if @file_wrapper.exist?( File.join( path, mixin + yaml_extension ) )
-            found = true
-            break
-          end
-        end
-
-        builtins.keys.each {|key| found = true if (mixin == key.to_s)}
-
-        if !found
-          msg = "#{source} '#{mixin}' cannot be found in mixin load paths as '#{mixin + yaml_extension}' or among built-in mixins"
-          @loginator.log( msg, Verbosity::ERRORS )
-          validated = false
-        end
-      end
-    end
-
-    return validated
-  end
-
-
-  # Yield ordered list of filepaths or built-in mixin names
-  def lookup_mixins(mixins:, load_paths:, builtins:, yaml_extension:)
-    _mixins = []
-
-    # Already validated, so we know:
-    #  1. Any mixin filepaths exists
-    #  2. Built-in mixin names exist in the internal hash
-
-    # Fill filepaths array with filepaths or builtin names
-    mixins.each do |mixin|
-      # Handle explicit filepaths
-      if @path_validator.filepath?( mixin )
-        _mixins << mixin
-        next # Success, move on in mixin iteration
-      end
-
-      # Look for mixin in load paths.
-      # Move on in mixin iteration if mixin is found.
-      next if load_paths.any? do |path|
-        filepath = File.join( path, mixin + yaml_extension )
-        exist = @file_wrapper.exist?( filepath )
-        _mixins << filepath if exist
-        exist
-      end
-
-      # Finally, fall through to simply add the unmodified name to the list.
-      # It's a built-in mixin.
-      _mixins << mixin
-    end
-
-    return _mixins
-  end
 
   ### Private ###
 
   private
+
+  # #1250 -- mirrors PathMatcher's own ambiguous-file message style (path_matcher.rb).
+  def ambiguous_default_message
+    "Ambiguous default project file: both #{DEFAULT_PROJECT_FILEPATH} and " \
+    "#{ALTERNATE_PROJECT_FILEPATH} exist in the working directory. " \
+    "Remove or rename one, or specify which to use with --project/-p."
+  end
 
   def load_and_log(filepath, method, silent)
     begin

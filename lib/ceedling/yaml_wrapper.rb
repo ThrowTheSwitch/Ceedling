@@ -10,12 +10,14 @@ require 'ceedling/exceptions'
 
 class YamlWrapper
 
+  constructor :file_wrapper
+
   # Ceedling loads YAML from project config files, cache files, and generated test-result
   # files. `YAML.load` can instantiate arbitrary Ruby objects from that content, which is
   # unnecessary and unsafe -- `YAML.safe_load` restricts deserialization to plain data types
   # plus whatever is explicitly permitted below.
   #
-  # Ceedling's YAML convention (see assets/project.yml, cacheinator.rb, generator_test_results.rb)
+  # Ceedling's YAML convention (see assets/features/project.yml, cacheinator.rb, generator_test_results.rb)
   # uses colon-prefixed keys (`:foo:`) to mean "this key is a Ruby Symbol"; unprefixed keys
   # stay Strings. Psych recognizes `:foo` scalar notation as Symbol by default -- safe_load
   # just needs `Symbol` added to its class allowlist to permit it. Aliases (`&anchor`/`*alias`)
@@ -36,7 +38,7 @@ class YamlWrapper
 
   def load(filepath)
     begin
-      source = File.read(filepath)
+      source = @file_wrapper.read(filepath)
     rescue Errno::ENOENT
       raise YamlLoadException.new(
         reason: :not_found, source: filepath, original_error: nil,
@@ -89,7 +91,7 @@ class YamlWrapper
   end
 
   def dump(filepath, structure)
-    File.open(filepath, 'w') do |output|
+    @file_wrapper.open(filepath, 'w') do |output|
       YAML.dump(structure, output)
     end
   end

@@ -1,0 +1,9 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ask a question
+    url: https://throwtheswitch.discourse.group
+    about: The ThrowTheSwitch Discourse forums are the best place for questions and usage help.
+  - name: Read the documentation
+    url: https://docs.throwtheswitch.org/Ceedling/
+    about: Searchable online goodness.
+

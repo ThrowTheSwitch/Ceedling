@@ -106,16 +106,17 @@ configuration. If no tasks are provided, built-in default tasks or your
 | `--graceful-fail` | | Force exit code of 0 for unit test failures | unset |
 | `--test-case` | | Filter for individual unit test names | `''` (none) |
 | `--exclude-test-case` | | Prevent matched unit test names from running | `''` (none) |
+| `--force-test-rerun` | | Run test executables and report fresh results even if unchanged | `false` (disabled) |
 | `--ruby-replacement` | | Enables inline Ruby string expansion (`#{...}`) in project configuration | `false` (disabled) |
 
 ---
 
-### `ceedling dumpconfig FILEPATH [SECTIONS...]`
+### `ceedling dumpconfig [FILEPATH] [SECTIONS...]`
 
 Process project configuration and write final result to a YAML file.
 
-`FILEPATH` is a required path to a destination YAML file. A nonexistent 
-path will be created.
+`FILEPATH` is a required path to a destination YAML file, unless `--stdout` is 
+set (see below). A nonexistent path will be created.
 
 `SECTIONS` is an optional config “path” that extracts a portion of a 
 configuration. The top-level YAML container will be the path’s last 
@@ -126,7 +127,17 @@ element. Example: `ceedling dumpconfig my/path/config.yml tools test_compiler`.
 | `--project` | `-p` | Loads the filepath as your base project configuration | none |
 | `--mixin` | `-m` | Merges the configuration mixin by name, filepath, or inline YAML (`=` sigil). Repeatable. | `[]` |
 | `--app` | | Runs Ceedling application and its config manipulations | `true` |
+| `--stdout` | | Writes YAML to standard output instead of `FILEPATH`, for consuming tools | `false` (disabled) |
 | `--ruby-replacement` | | Enables inline Ruby string expansion (`#{...}`) in project configuration | `false` (disabled) |
+
+Use `--stdout` when a consuming tool wants Ceedling’s fully resolved 
+configuration piped directly into its own process rather than written to 
+a temp file and read back. Omit `FILEPATH` when using this flag — any 
+positional arguments given are treated as `SECTIONS` instead:
+
+```
+ceedling dumpconfig --stdout tools test_compiler
+```
 
 ---
 
@@ -218,6 +229,7 @@ new project (default is your working directory).
 | `--local` | | Install Ceedling plus supporting tools to vendor/ | `false` |
 | `--docs` | | Copy all documentation to docs/ subdirectory of project | `false` |
 | `--configs` | | Install starter project file in project root | `true` |
+| `--ceedling-yml` | | Name starter project file `ceedling.yml` instead of historical default of `project.yml` | `false` |
 | `--force` | | Ignore any existing project and recreate destination | `false` |
 | `--gitsupport` | | Create .gitignore / .gitkeep files for convenience | `false` |
 
@@ -328,9 +340,21 @@ validation of code and configuration via your toolchain.
 
 ### `ceedling test:*`
 
-Execute the named test file or the named source file that has an
-accompanying test. No path. Examples: `ceedling test:foo`, `ceedling 
-test:foo.c` or `ceedling test:test_foo.c`
+Build and execute the named test executable or the named source file that has an
+accompanying test file. Examples: `ceedling test:foo`, `ceedling test:foo.c`
+or `ceedling test:test_foo.c`
+
+!!! tip "Disambiguating test files with the same name"
+    If more than one test file shares that filename in different test
+    directories, add enough of the trailing path to identify the file you
+    want. `/` and `\` are both acceptable path separators.
+    
+    For example, given _test/unit/test_foo.c_ and _test/integration/test_foo.c_, 
+    run `ceedling test:unit/test_foo.c` at the command line to identify
+    the first test file.
+    
+    When Ceedling is unable to uniquely identify a file path, it raises 
+    an error naming every matching file.
 
 ---
 
@@ -401,6 +425,47 @@ whose path contains foo/bar. _Notes:_
 1. Both directory separator characters `/` and `\` are valid.
 1. Quotes may be necessary around the task to distinguish the parameter’s
    characters from shell command line operators.
+
+---
+
+### `ceedling gen:mocks:all`
+
+Generate the mock files in the project build directory for all tests. The
+test build pipeline terminates after the mock generation stage.
+
+---
+
+### `ceedling gen:mocks:*`
+
+Generate the mock files in the project build directory for only the given 
+test or the named source file that has an accompanying test. The test 
+build pipeline terminates after the mock generation stage.
+Examples: `ceedling gen:mocks:foo`, `ceedling gen:mocks:foo.c` or 
+`ceedling gen:mocks:test_foo.c`
+
+Like the `test:` tasks, the test specifier for duplicate test filenames
+can be disambiguated with a trailing path before the test name.
+
+---
+
+### `ceedling gen:test_runner:all`
+
+Generate up through test runners in the project build directory for all 
+tests. The test build pipeline terminates after the test runner generation 
+stage.
+
+---
+
+### `ceedling gen:test_runner:*`
+
+Generate the test runner files in the project build directory for only 
+the given test or the named source file that has an accompanying test. 
+The test build pipeline terminates after the test runner generation stage.
+Examples: `ceedling gen:test_runner:foo`, `ceedling gen:test_runner:foo.c`
+or `ceedling gen:test_runner:test_foo.c`
+
+Like the `test:` tasks, the test specifier for duplicate test filenames
+can be disambiguated with a trailing path before the test name.
 
 ---
 

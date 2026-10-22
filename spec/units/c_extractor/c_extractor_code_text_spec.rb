@@ -1181,14 +1181,14 @@ describe CExtractorCodeText do
       end
 
       it "extracts a simple paren pair" do
-        success, text, pos, rest = collect_balanced.call("(args)", '(', ')')
+        success, text, pos, _ = collect_balanced.call("(args)", '(', ')')
         expect(success).to be true
         expect(text).to eq("(args)")
         expect(pos).to eq(6)
       end
 
       it "extracts a simple bracket pair" do
-        success, text, pos, rest = collect_balanced.call("[items]", '[', ']')
+        success, text, pos, _ = collect_balanced.call("[items]", '[', ']')
         expect(success).to be true
         expect(text).to eq("[items]")
         expect(pos).to eq(7)
@@ -1949,13 +1949,13 @@ describe CExtractorCodeText do
     end
 
     it "returns false and does not advance on plain identifier" do
-      result, pos, rest = skip_ext.call("int foo")
+      result, _, rest = skip_ext.call("int foo")
       expect(result).to be false
       expect(rest).to eq("int foo")
     end
 
     it "returns false and does not advance on empty input" do
-      result, pos, rest = skip_ext.call("")
+      result, pos, _ = skip_ext.call("")
       expect(result).to be false
       expect(pos).to eq(0)
     end

@@ -12,9 +12,9 @@ require 'ceedling/constants'
 class Loginator
 
   attr_reader :project_logging
-  attr_writer :decorators
+  attr_reader :decorators
 
-  constructor :verbosinator, :file_wrapper, :system_wrapper
+  constructor :verbosinator, :system_wrapper
 
   def setup()
     $loginator = self
@@ -105,7 +105,12 @@ class Loginator
             end
           rescue ThreadError
             @done = true
-          rescue Exception => e
+          # Catching Exception rather than StandardError is deliberate here. This is
+          # the logging worker thread's last line of defense, and a thread that dies
+          # takes all further logging with it, silently. Narrowing this would trade a
+          # reported anomaly for a mute build. Interrupt and SignalException are
+          # delivered to the main thread, not here, so nothing is being swallowed.
+          rescue Exception => e # rubocop:disable Lint/RescueException
             puts e.inspect
           end
         end
@@ -294,6 +299,8 @@ class Loginator
       prepend = '💼 '
     when LogLabels::REQUEST
       prepend = '🙏 '
+    when LogLabels::BUILT
+      prepend = '🔧 '
     end
 
     return prepend + str
@@ -419,7 +426,9 @@ class Loginator
     # <IO:$stdout> May  1 22:20:40 2024 | Compiling TestUsartModel::unity.c...
     # <IO:$stdout> May  1 22:20:40 2024 | Compiling TestUsartModel::cmock.c...
 
-    @file_wrapper.write( @log_filepath, output, 'a' )
+    # Raw File I/O, not FileWrapper#write -- FileWrapper's own path-length diagnostics log
+    # through this class, so depending on FileWrapper here would be circular.
+    File.open( @log_filepath, 'a' ) { |file| file.write( output ) }
   end
 
 end

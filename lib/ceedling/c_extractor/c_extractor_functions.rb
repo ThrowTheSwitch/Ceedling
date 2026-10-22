@@ -15,13 +15,9 @@ class CExtractorFunctions
 
   constructor :c_extractor_code_text
 
-  attr_writer :max_line_length
-
   def setup()
     # Aliases
     @code_text = @c_extractor_code_text
-
-    @max_line_length = DEFAULT_MAX_LINE_LENGTH
   end
 
   def try_extract_function_declaration(scanner)
@@ -41,20 +37,14 @@ class CExtractorFunctions
   def try_extract_function_definition(scanner, filepath)
     start_pos = scanner.pos
 
-    # Look for function signature
+    # Look for function signature. extract_function_signature only ever returns
+    # non-nil for :definition mode by matching the '{' case in its own scan loop, and
+    # that case never consumes the brace -- the scanner is always left positioned
+    # exactly on the real '{' here, so there's no separate deadspace-skip/brace-check
+    # step to perform first.
     signature = extract_function_signature(scanner, :definition)
     return [false, CFunctionDefinition.new] unless signature
-    
-    @code_text.skip_deadspace(scanner)
 
-    unless scanner.peek(1) == '{'
-      return [false, CFunctionDefinition.new(
-        name: extract_function_name(signature),
-        signature: signature,
-        filepath: filepath
-      )]
-    end
-    
     # Extract function body
     success, braced_body = @code_text.extract_balanced_braces(scanner)
     unless success
@@ -124,7 +114,10 @@ class CExtractorFunctions
   #  - Before '{' for definitions)
   #
   # Safety:
-  #   Enforces max_line_length limit to prevent infinite loops on malformed input
+  #   A signature with no terminating ')'/'{' runs the scan to the end of
+  #   whatever buffer the caller (CExtractor#extract_next_feature) has grown so
+  #   far; that caller is the one place enforcing an overall length ceiling,
+  #   since only it knows how much more of the file remains to try growing into.
   def extract_function_signature(scanner, type)
     start_pos = scanner.pos
     # Tracks paren depth while accumulating candidate end-positions — not suitable for collect_balanced()
@@ -133,15 +126,9 @@ class CExtractorFunctions
     string_char = nil
     signature_candidates = []  # Track positions where paren_depth returns to 0
     found_opening_paren = false  # Track if we've seen an opening paren
-    
+
     until scanner.eos?
       char = scanner.peek(1)
-
-      # Safety check
-      if (scanner.pos - start_pos) > @max_line_length
-        scanner.pos = start_pos
-        return nil
-      end
 
       # Handle string literals
       if in_string
@@ -166,7 +153,10 @@ class CExtractorFunctions
         string_char = char
         scanner.getch
       when '/'
-        if scanner.peek(2) =~ %r{^(/[/*])}
+        # Hottest comparison in the extractor -- reached for every '/' in the
+        # source. `start_with?` avoids compiling and running a regex here. The
+        # original anchored pattern matched exactly these two character pairs.
+        if scanner.peek(2).start_with?('//', '/*')
           @code_text.skip_comment(scanner)
         else
           scanner.getch
@@ -232,7 +222,7 @@ class CExtractorFunctions
           # Check if this looks like a function declaration
           # Pattern: ends with identifier followed by (...) and semicolon
           # NOT: contains (*identifier) pattern (function pointer variable)
-          if cleaned =~ /\(\s*\*\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)/
+          if cleaned.match?(/\(\s*\*\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)/)
             # This is a function pointer variable, not a function declaration
             scanner.pos = start_pos
             return nil

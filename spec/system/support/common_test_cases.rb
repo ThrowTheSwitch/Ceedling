@@ -5,13 +5,29 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'rbconfig'
+require 'ceedling/file_wrapper'
+require 'ceedling/yaml_wrapper'
+
 module CommonSystemTestCases
+  def yaml_wrapper_for_test
+    file_wrapper = FileWrapper.new({
+      :loginator    => double('loginator').as_null_object,
+      :verbosinator => double('verbosinator').as_null_object
+    })
+    YamlWrapper.new({ file_wrapper: file_wrapper })
+  end
+
+  # The `(\.dev)?` is not optional decoration. lib/version.rb appends that marker
+  # to every build the release pipeline did not produce, and these specs deploy
+  # the in-tree gem, so the suite normally sees it. A release build clears the
+  # marker, and the assertion has to hold either way.
   def can_report_version_no_git_commit_sha
     @c.with_context do
       # Version without Git commit short SHA file in project
       output = @c.ceedling_appcmd_exec("version")
       expect(@c.last_exit_status).to eq(0)
-      expect(output).to match(/Ceedling => \d\.\d\.\d\n/)
+      expect(output).to match(/Ceedling => \d+\.\d+\.\d+(\.dev)?\n/)
     end
   end
 
@@ -25,7 +41,7 @@ module CommonSystemTestCases
     @c.with_context do
       output = @c.ceedling_appcmd_exec("version")
       expect(@c.last_exit_status).to eq(0)
-      expect(output).to match(/Ceedling => \d\.\d\.\d----{-@\n/)
+      expect(output).to match(/Ceedling => \d+\.\d+\.\d+(\.dev)?----{-@\n/)
     end
   end
 
@@ -58,7 +74,6 @@ module CommonSystemTestCases
         expect(File.exist?("project.yml")).to eq true
         expect(File.exist?("src")).to eq true
         expect(File.exist?("test")).to eq true
-        all_docs = Dir["vendor/ceedling/docs/*.pdf"].length + Dir["vendor/ceedling/docs/*.md"].length
       end
     end
   end
@@ -69,8 +84,8 @@ module CommonSystemTestCases
       FileUtils.rm_rf("#{@proj_name}/test/support")
 
       updated_prj_yml = []
-      File.read("#{@proj_name}/project.yml").split("\n").each do |line|
-        updated_prj_yml.append(line) unless line =~ /support/
+      read_spec_file("#{@proj_name}/project.yml").split("\n").each do |line|
+        updated_prj_yml.append(line) unless /support/.match?(line)
       end
       File.write("#{@proj_name}/project.yml", updated_prj_yml.join("\n"), mode: 'w')
 
@@ -100,6 +115,29 @@ module CommonSystemTestCases
     end
   end
 
+  # A vendored project carries third-party source, so it must carry that source's
+  # licenses. Each is asserted by exact filename because capitalization is what breaks
+  # this: a glob for `license.txt` finds `LICENSE.txt` only where the filesystem is
+  # case insensitive, so Unity's, CMock's, and DIY's licenses reached macOS projects and
+  # not Linux ones. fff's arrives by a different route, the whole plugins/ tree being
+  # copied rather than selected subdirectories of it.
+  def contains_vendored_licenses
+    @c.with_context do
+      Dir.chdir @proj_name do
+        [
+          'vendor/ceedling/license.txt',
+          'vendor/ceedling/vendor/unity/LICENSE.txt',
+          'vendor/ceedling/vendor/cmock/LICENSE.txt',
+          'vendor/ceedling/vendor/c_exception/license.txt',
+          'vendor/ceedling/vendor/diy/LICENSE.txt',
+          'vendor/ceedling/plugins/fff/vendor/fff/LICENSE'
+        ].each do |license|
+          expect(File.exist?(license)).to eq(true), "expected vendored license #{license}"
+        end
+      end
+    end
+  end
+
   def does_not_contain_a_vendor_directory
     @c.with_context do
       Dir.chdir @proj_name do
@@ -112,7 +150,11 @@ module CommonSystemTestCases
     @c.with_context do
       Dir.chdir @proj_name do
         all_docs = Dir["docs/*"]
-        expect(all_docs).to contain_exactly('docs/ceedling', 'docs/unity', 'docs/cmock', 'docs/c_exception', 'docs/license.txt')
+        # docs/ceedling only exists when this repo's own local HTML docs bundle
+        # (site-local/) was available to copy in -- see html_docs_bundle_available?.
+        expected = ['docs/unity', 'docs/cmock', 'docs/c_exception', 'docs/license.txt']
+        expected << 'docs/ceedling' if html_docs_bundle_available?
+        expect(all_docs).to contain_exactly(*expected)
       end
     end
   end
@@ -126,11 +168,16 @@ module CommonSystemTestCases
   end
 
   def test_project_success
+    windows = /mingw|win32/.match?(RUBY_PLATFORM.downcase)
+
     @c.with_context do
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
         FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        # The starter project names test executables `.out`. Without it, Windows' own `.exe` applies.
+        @c.remove_project_yml_option_for_test( :extension, :executable ) if windows
 
         output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(0) # Since a test either pass or are ignored, we return success here
@@ -138,6 +185,12 @@ module CommonSystemTestCases
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
         expect(output).to match(/IGNORED:\s+\d/)
+
+        # Windows' Installer Detection reads a manifest beside each test executable
+        if windows
+          manifests = Dir.glob('build/test/out/test_example_file_success/*.manifest')
+          expect(manifests).to eq(['build/test/out/test_example_file_success/test_example_file_success.exe.manifest'])
+        end
       end
     end
   end
@@ -191,6 +244,48 @@ module CommonSystemTestCases
         expect(output).to match(/IGNORED:\s+\d/)
 
         expect(output).to match(/:post_test_fixture_execute/)
+      end
+    end
+  end
+
+  # The Overall Test Summary must still print at :warnings verbosity
+  # (`--verbosity=warnings`, Verbosity::COMPLAIN) on an all-passing run, not just
+  # when verbosity is :normal or higher, or when a test fails.
+  def test_project_with_warnings_verbosity_prints_overall_summary
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = @c.ceedling_build_exec("--verbosity=warnings")
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/OVERALL TEST SUMMARY/)
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
+      end
+    end
+  end
+
+  # ERRORS is the true floor for the Overall Test Summary -- a build's own
+  # test results are core information, visible even at the most restrictive
+  # verbosity short of :silent, whether the run passed or failed.
+  def test_project_with_errors_verbosity_prints_overall_summary_on_passing_run
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+
+        output = @c.ceedling_build_exec("--verbosity=errors")
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/OVERALL TEST SUMMARY/)
+        expect(output).to match(/TESTED:\s+\d/)
+        expect(output).to match(/PASSED:\s+\d/)
+        expect(output).to match(/FAILED:\s+\d/)
+        expect(output).to match(/IGNORED:\s+\d/)
       end
     end
   end
@@ -437,6 +532,102 @@ module CommonSystemTestCases
     end
   end
 
+  # A module splits its function declarations (same_dir_pairing_module_func.h, mocked by
+  # this test) from its type declarations (same_dir_pairing_module.h, reached only
+  # transitively via same_dir_pairing_other.h, never included directly by the test). All
+  # of these files are colocated in the test's own directory, which is what exercises
+  # GCC's same-directory quoted #include resolution during bare-includes extraction.
+  # Auto source-pairing must not pull the real source implementing the type header's
+  # like-named stem into this build alongside its mock of the differently-named header.
+  def test_project_preprocessing_same_dir_mock_pairing
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("same_dir_pairing_module.h"), 'test/'
+        FileUtils.cp test_asset_path("same_dir_pairing_module_func.h"), 'test/'
+        FileUtils.cp test_asset_path("same_dir_pairing_module.c"), 'test/'
+        FileUtils.cp test_asset_path("same_dir_pairing_other.h"), 'test/'
+        FileUtils.cp test_asset_path("same_dir_pairing_other.c"), 'test/'
+        FileUtils.cp test_asset_path("test_same_dir_pairing.c"), 'test/'
+
+        settings = {
+          :project => { :use_test_preprocessor => :all },
+          :paths => {
+            :source  => ['src/**', 'test/**'],
+            :include => ['src/**', 'test/**']
+          }
+        }
+        @c.merge_project_yml_for_test(settings)
+
+        output = @c.ceedling_build_exec("test:same_dir_pairing")
+        expect(@c.last_exit_status).to eq(0) # Successful build and tests
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+        expect(output).not_to match(/multiple definition|duplicate symbol/)
+      end
+    end
+  end
+
+  # A module header with both a plain (non-inline) function prototype and a `static
+  # inline` function, with no paired .c source providing a body for the plain prototype
+  # (so it exists only as a bare declaration, never a definition). MOCK_PARTIAL_ALL_MODULE()
+  # must mock both functions, not just the one with a body.
+  def test_project_partial_all_module_mocks_declaration_only_function
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("partial_all_module.h"), 'src/'
+        FileUtils.cp test_asset_path("test_partial_all_module.c"), 'test/'
+
+        settings = {
+          :project => {
+            :use_partials          => true,
+            :use_test_preprocessor => :all
+          }
+        }
+        @c.merge_project_yml_for_test(settings)
+
+        output = @c.ceedling_build_exec("test:partial_all_module")
+        expect(@c.last_exit_status).to eq(0) # Successful build and tests
+        expect(output).to match(/TESTED:\s+1/)
+        expect(output).to match(/PASSED:\s+1/)
+        expect(output).to match(/FAILED:\s+0/)
+      end
+    end
+  end
+
+  # A project can use Partials for some modules while other, unrelated tests keep
+  # mocking a plain `static inline` function through CMock's own :treat_inlines
+  # option -- the two mechanisms don't need to agree project-wide, since each
+  # mock's own configuration is independent of what any other test in the project
+  # is doing.
+  def test_project_partials_enabled_still_allows_plain_treat_inlines_mocking
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("partial_all_module.h"), 'src/'
+        FileUtils.cp test_asset_path("test_partial_all_module.c"), 'test/'
+        FileUtils.cp test_asset_path("plain_inline_module.h"), 'src/'
+        FileUtils.cp test_asset_path("test_plain_inline_module.c"), 'test/'
+
+        settings = {
+          :project => {
+            :use_partials          => true,
+            :use_test_preprocessor => :all
+          },
+          :cmock => {
+            :treat_inlines => :include
+          }
+        }
+        @c.merge_project_yml_for_test(settings)
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(0) # Successful build and tests
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/PASSED:\s+2/)
+        expect(output).to match(/FAILED:\s+0/)
+      end
+    end
+  end
+
   def test_project_fail
     @c.with_context do
       Dir.chdir @proj_name do
@@ -493,7 +684,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_boom.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_boom.c"), 'test/'
 
         output = @c.ceedling_build_exec("test:all")
         expect(@c.last_exit_status).to eq(1) # Since a test explodes, we return error here
@@ -681,7 +872,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :none }})
 
@@ -702,7 +893,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :none }})
 
@@ -710,9 +901,9 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_example_file_crash_sigsegv.c\:\d+/ )
+        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
+        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_nosanitize_crash_sigsegv.c\:\d+/ )
       end
     end
   end
@@ -725,7 +916,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -733,17 +924,17 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
-        log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
-        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
       end
     end
@@ -756,7 +947,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -764,17 +955,17 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
-        log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
-        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
       end
     end
@@ -787,7 +978,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -795,17 +986,17 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_example_file_crash_sigsegv.fail'))
-        output_rd = File.read('./build/test/results/test_example_file_crash_sigsegv.fail')
+        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
-        log_path = './build/logs/test/test_example_file_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
-        expect(File.read(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+        expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
       end
     end
@@ -820,7 +1011,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_assert.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_assert.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
 
@@ -830,12 +1021,20 @@ module CommonSystemTestCases
         expect(output).to match(/Unit test failures/)
         expect(output).to match(/SIGABRT/i)
         expect(output).to match(/Assertion/i)
-        log_path = './build/logs/test/test_example_file_crash_assert/test_add_numbers_triggers_assert.gdb.log'
+        log_path = './build/logs/test/test_nosanitize_crash_assert/test_add_numbers_triggers_assert.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         # Windwos gdb output for an assertion failure can be quite different from Linux.
-        # Windows gdb reports do not seem to cite the signal "SIGABRT" and may be quite brief, 
+        # Windows gdb reports do not seem to cite the signal "SIGABRT" and may be quite brief,
         # only citing an assertion failure.
-        expect(File.read(log_path)).to match(/SIGABRT|abort|assert/i)
+        #
+        # A bare "assert" alternative here is a false-positive trap: this test case's own
+        # name is `test_add_numbers_triggers_assert`, and do_gdb writes that name into the
+        # log's own header line regardless of whether gdb produced anything useful. A gdb
+        # that cannot attach at all (e.g. lost macOS codesigning trust) writes a log whose
+        # only "assert" is that header -- matching a bare substring and passing this
+        # assertion despite gdb reporting nothing real. Requiring "fail" near "Assertion"
+        # anchors the match to an actual assertion-failure report instead.
+        expect(read_spec_file(log_path)).to match(/SIGABRT|Aborted|Assertion.{0,100}fail/i)
         expect(output).to match(/test_add_numbers_triggers_assert\.gdb\.log/)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
@@ -852,7 +1051,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_sigsegv.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :simple }})
 
@@ -875,7 +1074,7 @@ module CommonSystemTestCases
       Dir.chdir @proj_name do
         FileUtils.cp test_asset_path("example_file.h"), 'src/'
         FileUtils.cp test_asset_path("example_file.c"), 'src/'
-        FileUtils.cp test_asset_path("test_example_file_crash_assert.c"), 'test/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_assert.c"), 'test/'
 
         @c.merge_project_yml_for_test({:project => { :use_backtrace => :simple }})
 
@@ -888,6 +1087,204 @@ module CommonSystemTestCases
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
+      end
+    end
+  end
+
+  # Regression test for issue #1185: a parameterized test (TEST_CASE) defined after a
+  # crashing test in the same file must still report its own real PASS results instead
+  # of being swept up as "crashed" alongside the actual crash. Uses :use_backtrace => :simple
+  # (Ceedling's default), which is the mode in which the bug was reported.
+  def crash_simple_sigsegv_with_parameterized_test
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv_with_param.c"), 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_backtrace => :simple },
+          :unity   => { :use_param_tests => true }
+        })
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
+        expect(output).to match(/Unit test failures/)
+        # 1 crashing test + 3 parameterized cases
+        expect(output).to match(/TESTED:\s+4/)
+        expect(output).to match(/PASSED:\s+3/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+
+        result_file = './build/test/results/test_nosanitize_crash_sigsegv_with_param.fail'
+        expect(File.exist?(result_file)).to be(true)
+        results = yaml_wrapper_for_test.load(result_file)
+
+        # Only the truly crashing test is reported as a failure/crash
+        expect(results[:failures].map { |f| f[:test] }).to eq(['test_add_numbers_will_fail'])
+        expect(results[:failures].first[:message]).to match(/Test case crashed/)
+
+        # Each parameterized case reports its own real (passing) result, by name, not a crash
+        expect(results[:successes].map { |s| s[:test] }).to contain_exactly(
+          'test_difference_between_numbers_is_correct(5, 3, 2)',
+          'test_difference_between_numbers_is_correct(10, 4, 6)',
+          'test_difference_between_numbers_is_correct(0, 0, 0)'
+        )
+      end
+    end
+  end
+
+  # Same regression coverage as `crash_simple_sigsegv_with_parameterized_test`, but for
+  # :use_backtrace => :gdb: confirms gdb-based isolation also correctly distinguishes the
+  # crashing test from the unrelated parameterized test, and still attributes the crash to
+  # the correct source line (exercising the gdb crash-frame symbol matching fix).
+  def crash_gdb_sigsegv_with_parameterized_test
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv_with_param.c"), 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_backtrace => :gdb },
+          :unity   => { :use_param_tests => true }
+        })
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
+        expect(output).to match(/Unit test failures/)
+        expect(output).to match(/TESTED:\s+4/)
+        expect(output).to match(/PASSED:\s+3/)
+        expect(output).to match(/FAILED:\s+1/)
+        expect(output).to match(/IGNORED:\s+0/)
+
+        result_file = './build/test/results/test_nosanitize_crash_sigsegv_with_param.fail'
+        expect(File.exist?(result_file)).to be(true)
+        results = yaml_wrapper_for_test.load(result_file)
+
+        # Only the truly crashing test is reported as a failure/crash
+        expect(results[:failures].map { |f| f[:test] }).to eq(['test_add_numbers_will_fail'])
+        expect(results[:failures].first[:message]).to match(/Test case crashed/)
+        expect(results[:failures].first[:message]).to match(/SIGSEGV/i)
+
+        # Each parameterized case reports its own real (passing) result, by name, not a crash
+        expect(results[:successes].map { |s| s[:test] }).to contain_exactly(
+          'test_difference_between_numbers_is_correct(5, 3, 2)',
+          'test_difference_between_numbers_is_correct(10, 4, 6)',
+          'test_difference_between_numbers_is_correct(0, 0, 0)'
+        )
+
+        log_path = './build/logs/test/test_nosanitize_crash_sigsegv_with_param/test_add_numbers_will_fail.gdb.log'
+        expect(File.exist?(log_path)).to be(true)
+        expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
+      end
+    end
+  end
+
+  # Validates the inverse of the other five gdb system tests: when gdb is
+  # installed but cannot actually attach to a process (the exact macOS
+  # codesigning-trust-loss scenario those five tests gate around and skip on),
+  # Ceedling detects this at build startup and automatically falls back to
+  # :simple backtraces rather than leaving :use_backtrace: :gdb configured but
+  # non-functional. See ConfiguratorSetup#validate_gdb_attach_capability.
+  def crash_gdb_hobbled_falls_back_to_simple
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_nosanitize_crash_sigsegv.c"), 'test/'
+
+        @c.merge_project_yml_for_test({:project => { :use_backtrace => :gdb }})
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
+
+        # Ceedling detected the hobbled gdb and downgraded automatically
+        expect(output).to match(/:use_backtrace.*is ':gdb'/)
+        expect(output).to match(/could not attach to a probe process/i)
+        expect(output).to match(/Falling back to ':simple'/i)
+
+        # The crash is reported the :simple way, not the :gdb way
+        expect(output).to match(/Test Case Crashed/i)
+        expect(output).to match(/Unit test failures/)
+        expect(output).to match(/TESTED:\s+2/)
+        expect(output).to match(/FAILED:\s+(?:1|2)/)
+        expect(output).to match(/IGNORED:\s+0/)
+
+        # do_gdb never ran, so no .gdb.log was ever written
+        expect(Dir.glob('./build/logs/**/*.gdb.log')).to be_empty
+      end
+    end
+  end
+
+  # Regression test for issue #1198: a custom :test_fixture tool (e.g. a wrapper
+  # enabling a sanitizer's halt-on-error) can correctly detect a crash on the main run,
+  # only for that crash to be silently overwritten by a :simple backtrace diagnostic
+  # retry that runs through a *different*, independently-configured tool
+  # (test_fixture_simple_backtrace) and behaves differently there -- legitimately
+  # passing in that other environment. fake_crash_test_fixture.rb reproduces the
+  # mismatch without needing a real sanitizer: it always exits nonzero without ever
+  # running the real, bug-free test executable it's given, while the unmodified default
+  # backtrace retry tool runs that same executable directly and passes.
+  def crash_simple_diagnostic_retry_disagrees_with_main_fixture
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        FileUtils.cp test_asset_path("fake_crash_test_fixture.rb"), 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_backtrace => :simple },
+          :tools   => {
+            :test_fixture => {
+              :executable => RbConfig.ruby,
+              :arguments  => ['test/fake_crash_test_fixture.rb']
+            }
+          }
+        })
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).not_to eq(0)
+        expect(output).to match(/Unit test failures/)
+        expect(output).not_to match(/PASSED:\s+1/)
+      end
+    end
+  end
+
+  # Same regression coverage as crash_simple_diagnostic_retry_disagrees_with_main_fixture
+  # above, but with a real UBSan-triggered crash (matching issue #1198's own
+  # reproduction exactly) instead of the portable simulated fixture. UBSan doesn't
+  # produce an OS-level crash signal the way a segfault does -- run_with_ubsan.rb's
+  # halt_on_error setting is what turns the undefined behavior into a hard stop, and
+  # only the main :test_fixture invocation goes through that wrapper. Requires a Linux
+  # gcc toolchain with -fsanitize=undefined support -- see "requires gcc with UBSan".
+  def crash_simple_ubsan_diagnostic_retry_disagrees_with_main_fixture
+    @c.with_context do
+      Dir.chdir @proj_name do
+        FileUtils.cp test_asset_path("test_nosanitize_ub_shift_overflow.c"), 'test/'
+        FileUtils.cp test_asset_path("run_with_ubsan.rb"), 'test/'
+
+        @c.merge_project_yml_for_test({
+          :project => { :use_backtrace => :simple },
+          :flags   => {
+            :test => {
+              :compile => { '*' => ['-fsanitize=undefined'] },
+              :link    => { '*' => ['-fsanitize=undefined'] }
+            }
+          },
+          :tools => {
+            :test_fixture => {
+              :executable => RbConfig.ruby,
+              :arguments  => ['test/run_with_ubsan.rb', '${1}']
+            }
+          }
+        })
+
+        output = @c.ceedling_build_exec("test:all")
+        expect(@c.last_exit_status).not_to eq(0)
+        expect(output).to match(/Unit test failures/)
+        expect(output).not_to match(/PASSED:\s+1/)
       end
     end
   end
@@ -918,8 +1315,8 @@ module CommonSystemTestCases
 
         add_line = false
         updated_test_file = []
-        File.read(File.join('test','test_example_file_success.c')).split("\n").each do |line|
-          if line =~ /#include "unity.h"/
+        read_spec_file(File.join('test','test_example_file_success.c')).split("\n").each do |line|
+          if /#include "unity.h"/.match?(line)
             add_line = true
             updated_test_file.append(line)
           else

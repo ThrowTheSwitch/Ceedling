@@ -16,6 +16,58 @@ includes full documentation of its capabilities and configuration options.
 See the [`:plugins` configuration reference](../configuration/reference/plugins.md) 
 for how to enable built-in plugins and load custom plugins in your project.
 
+---
+
+## Understanding plugin build duplication
+
+!!! warning
+    Build-related plugins intentionally execute duplicated builds.
+
+Plugins including [Gcov](gcov/index.md), [Bullseye](bullseye/index.md), [Valgrind](valgrind.md),
+and [Sanitize](sanitize.md) recreate test build tasks. That is, the command line build task
+`test:foo` also exists as `gcov:foo`, `bullseye:foo`, `valgrind:foo`, and/or `sanitize:foo`
+if these plugins are enabled. Each of these triggers a full rebuild of the named test with 
+instrumentation activated. **This duplication is intentional and very necessary.**
+
+These plugins modify executable code or the environment in which a test suite 
+executable runs. Duplicating and segregating the build tasks addresses several 
+important issues:
+
+1. **Conflicting interactions**. Enabling multiple plugins without 
+   duplicated tasks (i.e. integrated build tasks) can bring about conflicts and
+   undefined behavior. For instance, Gcov’s instrumentation does not
+   necessarily play nice with Valgrind’s memory-instrumented emulation
+   runtime, and the two should be kept entirely segregated. Likewise, a
+   sanitizer-instrumented test executable cannot run under Valgrind at all.
+2. **Unforeseen effects**. These plugins can directly alter the functioning of
+   the code under test. For instance, coverage instrumentation inserted into
+   your compiled code can alter its function or timing. As such, it is vital
+   to maintain distinct builds to compare them. Your vanilla test suite build
+   may function slightly differently than the coverage-instrumented build.
+3. **Optional instrumentation**. The `<plugin>:` command line task convention
+   also provides a very simple opt-in scheme. Plugins automatically enabled 
+   for every build drives the desire to optional disable them. Valgrind testing
+   can require 25-50x the execution time of a test suite, and you likely will
+   want the option to easily disable it. While Ceedling could certainly provide
+   that option at the command line for otherwise always-on plugins, this
+   plugin task namespacing scheme naturally accomplished this along with the
+   needs of (1) and (2).
+
+!!! note
+    A duplicated build task is a [delta build](../getting-started/builds.md).
+    Ceedling skips unneeded work in a `gcov:`, `bullseye:`, `valgrind:`, or
+    `sanitize:` build in the same way it does in a standard `test:` build.
+
+Each of these plugins maintains its own separate delta build cache, apart from
+plain test builds and from each other. A file with no role specific to a
+given plugin will still be rebuilt the first you run that plugin’s build.
+This happens because each build tracks state in its own dependency cache, 
+not because of the file itself.
+
+---
+
+## Directory
+
 ### Console Test Results
 
 <div class="grid cards" markdown>
@@ -32,16 +84,16 @@ for how to enable built-in plugins and load custom plugins in your project.
 
     ---
 
-    Formats test results for the console such that an IDE executing Ceedling
-    tasks can recognize file paths and line numbers in test failures and link
-    them for direct file navigation.
+    Lists failed and ignored tests in the shape of GCC diagnostics, which
+    Eclipse CDT, VS Code, CLion, and other IDEs read as problems that link to
+    each test.
 
 -   :material-monitor-screenshot: **[`report_tests_gtestlike_stdout`](report-tests-gtestlike-stdout.md)**
 
     ---
 
     Prints test results to the console in a format that mimics
-    [Google Test's output][gtest-sample-output] — both human readable and
+    [Google Test’s output][gtest-sample-output] — both human readable and 
     recognized by a variety of reporting tools, IDEs, and CI servers.
 
 -   :material-monitor-screenshot: **[`report_tests_teamcity_stdout`](report-tests-teamcity-stdout.md)**
@@ -77,8 +129,8 @@ for how to enable built-in plugins and load custom plugins in your project.
 
     ---
 
-    Scans the output of build tools for console warning notices and produces
-    a simple text file that collects all such warning messages.
+    Scans the output of build tools for console warning notices and collects
+    them in a simple text file and optional SARIF and JSON reports.
 
 </div>
 
@@ -109,6 +161,15 @@ for how to enable built-in plugins and load custom plugins in your project.
     detection. Valgrind catches memory leaks, invalid accesses, and use-after-free
     bugs. The plugin produces per-test log files in the build artifacts directory.
 
+-   :material-shield-bug: **[`sanitize`](sanitize.md)**
+
+    ---
+
+    Adds Ceedling tasks to build and run test executables with the compiler’s
+    sanitizers. ASan, UBSan, and LeakSanitizer find memory errors, undefined
+    behavior, and leaks as tests run. Findings fail the build and can be written
+    as text, JSON, and SARIF reports.
+
 </div>
 
 ### Code Coverage
@@ -124,13 +185,16 @@ for how to enable built-in plugins and load custom plugins in your project.
     and .Net-based [ReportGenerator] to produce coverage reports in a
     variety of formats.
 
--   :material-percent: **[`bullseye`](bullseye.md)**
+-   :material-percent: **[`bullseye`](bullseye/index.md)**
 
     ---
 
     Adds Ceedling tasks to execute tests with code coverage instrumentation
     provided by the commercial [Bullseye] tool, which provides visualization
     and report generation from the coverage results.
+
+    Note: Bullseye requires a commercial license. It was disabled as of 1.0.0
+    and is enabled again as of 1.2.0.
 
 </div>
 
@@ -159,9 +223,9 @@ for how to enable built-in plugins and load custom plugins in your project.
 
     ---
 
-    Connects Ceedling's build events to tool entries you define in your
-    project configuration. Easily attach your own scripts or command line
-    utilities to build steps without writing a full custom plugin.
+    Connects Ceedling’s build events to tool entries you define. Easily 
+    attach your own scripts or command line utilities to build steps 
+    without writing a full custom plugin.
 
 -   :material-database: **[`compile_commands_json_db`](compile-commands-json-db.md)**
 
@@ -189,18 +253,17 @@ for how to enable built-in plugins and load custom plugins in your project.
 
     ---
 
-    Saves time in Test-Driven Development by generating a templated triplet
+    Save time in Test-Driven Development by generating a templated triplet
     of source file, header file, and test file — scaffolded such that they
-    refer to one another — with convenient command line tasks.
+    refer to one another — with a variety of options through command line tasks.
 
 -   :material-package-variant-closed: **[`dependencies`](dependencies.md)**
 
     ---
 
-    Manages release build dependencies (e.g. static libraries) including 
-    fetching those dependencies and calling a given dependency‘s build 
-    process to generate the components needed by your Ceedling release 
-    build target.
+    Manages release build dependencies (e.g. static libraries or built tools)
+    including fetching dependencies, calling a dependency’s build process, 
+    and deploying resulting executables and dynamic libraries.
 
 </div>
 

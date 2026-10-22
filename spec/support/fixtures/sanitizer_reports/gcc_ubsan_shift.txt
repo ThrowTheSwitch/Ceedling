@@ -1,0 +1,6 @@
+ub.c:3:67: runtime error: left shift of 128 by 24 places cannot be represented in type 'int'
+    #0 0x556361836270 in main /x/ub.c:3
+    #1 0x7f83aa8e9ca7 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #2 0x7f83aa8e9d64 in __libc_start_main_impl ../csu/libc-start.c:360
+    #3 0x5563618360e0 in _start (/x/ub.out+0x10e0) (BuildId: a095f27d01a3014853980a08bf835d43e3b31098)
+

@@ -33,7 +33,11 @@ jobs:
     steps:
       # Use a cache for our tools to speed up builds
       # No matrix here; Ruby version is hardcoded to match the cache key format used by test jobs
-      - uses: actions/cache@v4
+      #
+      # cache/checkout/upload-artifact below are pinned to their latest majors (not v4) for
+      # Node 24 runner support -- GitHub Actions runners now force Node 24 regardless, and v4
+      # still targets the deprecated Node 20.
+      - uses: actions/cache@v6
         with:
           path: vendor/bundle
           key: bundle-use-ruby-${{ runner.os }}-3.3-${{ hashFiles('**/Gemfile.lock') }}
@@ -41,7 +45,7 @@ jobs:
             bundle-use-ruby-${{ runner.os }}-3.3-
 
       - name: Checkout Latest Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -68,7 +72,7 @@ jobs:
           rake docs:build:local --trace
 
       - name: Upload HTML Documentation Bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gem-docs-site-local
           path: site-local/

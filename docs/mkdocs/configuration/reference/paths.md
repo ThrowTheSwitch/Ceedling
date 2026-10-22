@@ -10,7 +10,12 @@ Entries in `:paths` help create directory-based bulk file collections. The
 `:files` configuration section is available for filepath-oriented tailoring of
 these bulk file collections.
 
-Entries in `:paths` ↳ `:include` also specify search paths for header files.
+Entries in `:paths` ↳ `:include` also specify compilation search paths for 
+header files.
+
+!!! tip
+    Ceedling [distinguishes files of the same name by their path with various interfaces and conventions to expose this](../../testing-guide/conventions.md#distinguishing-same-named-files).
+    This ability is particularly of interest in test suite builds.
 
 All of the configuration subsections that follow default to empty lists. In
 YAML, list items can be comma separated within brackets or organized per line
@@ -262,6 +267,21 @@ use `+:`, but strictly speaking, it’s not necessary.
 
 Subtractive paths may be simple paths or globs just like any other path entry.
 
+!!! warning "Quote the whole entry, decoration included"
+    YAML keeps quote marks that begin partway through a value as part of the
+    value. Quoting only the path leaves quote marks in the path, and
+    Ceedling rejects the entry. Quote an entry whenever it holds `#{…}`
+    [inline Ruby string expansion][inline-ruby-string-expansion], because YAML
+    otherwise reads the `#` as the start of a comment.
+
+    ```yaml
+    # Correct
+    - "-:#{ENV['SRC_ROOT']}/vendor/legacy"
+
+    # Incorrect -- the quote marks become part of the path
+    - -:"#{ENV['SRC_ROOT']}/vendor/legacy"
+    ```
+
 !!! note "Subtractive paths resolve after all mixins merge"
     The resolution of subtractive paths happens after your full paths lists are
     assembled. So, if you use `:paths` entries in Mixins to build up your
@@ -270,7 +290,14 @@ Subtractive paths may be simple paths or globs just like any other path entry.
     paths with Mixins to your heart’s content. The subtractive paths are not
     removed until all Mixins have been merged.
 
+!!! tip "The same `+:` / `-:` convention is available in test files"
+    The [`TEST_SOURCE_FILE()` build directive macro][test-source-file-subtractive]
+    supports this identical notation for removing a specific source file from
+    a test executable’s own compile/link list.
+
 [GCC]: https://gcc.gnu.org
 [inline-ruby-string-expansion]: ../project-file.md#inline-ruby-string-expansion
+[test-source-file-subtractive]: ../../testing-guide/build-directives.md#test_source_file-subtractive-notation
+
 
 <br/><br/>

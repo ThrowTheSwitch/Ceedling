@@ -1,0 +1,6 @@
+segv.c:2:53: runtime error: load of null pointer of type 'uint32_t'
+    #0 0x56319c1561c0 in main /x/segv.c:2
+    #1 0x7f3d51844ca7 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #2 0x7f3d51844d64 in __libc_start_main_impl ../csu/libc-start.c:360
+    #3 0x56319c1560c0 in _start (/x/segv.out+0x10c0) (BuildId: a7358f4ca3e1903dd1bc22e16b15bdb46bb87a92)
+

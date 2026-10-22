@@ -6,7 +6,9 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
+require 'ceedling/path_matcher'
 require 'set'
+require 'stringio'
 
 ##
 ## System Includes Directives-only Preprocessor Output Parsing
@@ -82,17 +84,24 @@ require 'set'
 
 # Parse GCC preprocessor output (from -fdirectives-only) to extract system include directives
 class PreprocessinatorLineMarkerIncludesExtractor
-  LINE_MARKER_REGEX = /^#\s+(\d+)\s+"([^"]+)"(?:\s+(\d+(?:\s+\d+)*))?$/ unless const_defined?(:LINE_MARKER_REGEX)
+  # Leading whitespace is tolerated (`^\s*`, not just `^`): GCC's -fdirectives-only output
+  # replaces a top-level #include with a line marker that inherits that #include's own
+  # original indentation (GH #1268) -- an indented `#include "x.h"` produces an indented
+  # `    # 1 "x.h" 1`, not the flush-left marker every OTHER marker GCC generates uses.
+  # Without this, such an include is silently missing from the extracted list entirely.
+  LINE_MARKER_REGEX = /^\s*#\s+(\d+)\s+"([^"]+)"(?:\s+(\d+(?:\s+\d+)*))?$/ unless const_defined?(:LINE_MARKER_REGEX)
 
   SYSTEM = :system  unless const_defined?(:SYSTEM)
   USER   = :user    unless const_defined?(:USER)
 
-  constructor :include_factory
+  constructor :include_factory, :file_wrapper
 
   # Parse preprocessor output from a file (production use)
   # @param filepath [String] Path to the preprocessor output file
+  # @param test [String, nil] Current test's identity, needed to correctly strip its
+  #   own mock subdirectory from a resolved mock include's filepath
   # @return [Array<UserInclude, SystemInclude>]
-  def extract_includes_from_file(filepath, type, max_depth=nil)
+  def extract_includes_from_file(filepath, type, max_depth=nil, test: nil)
     validate_type_argument( type )
     includes = []
     begin
@@ -105,8 +114,10 @@ class PreprocessinatorLineMarkerIncludesExtractor
       # their first byte is 0x3C — ASCII '<' — regardless of the surrounding encoding.
       # NOTE: binary mode means \r\n line endings are NOT translated on Windows; the
       # extract_includes method calls line.chomp! before regex matching to handle this.
-      File.open(filepath, 'rb') do |file|
-        includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth)
+      # `filepath` is this same build's own gcc output -- open_with_retry rides out
+      # the file briefly not yet being visible right after the shell-out exits.
+      @file_wrapper.open_with_retry(filepath, 'rb') do |file|
+        includes = extract_includes(io: file, filepath: filepath, type: type, max_depth: max_depth, test: test)
       end
     rescue StandardError => e
       raise CeedlingException.new("Failed to extract #{type} includes from preprocessor output file '#{filepath}' ⏩️ #{e.message}")
@@ -114,17 +125,170 @@ class PreprocessinatorLineMarkerIncludesExtractor
     return includes
   end
 
+  # Every user file the preprocessor entered, once each, in the order entered: the files
+  # its output depends on. System headers (marker flag 3) and the preprocessor's own
+  # markers, such as "<built-in>", are left out.
+  def extract_entered_files_from_string(content)
+    return extract_entered_files( StringIO.new( content ) )
+  end
+
+  # As extract_entered_files_from_string, reading this build's own preprocessor output
+  def extract_entered_files_from_file(filepath)
+    files = []
+    @file_wrapper.open_with_retry( filepath, 'rb' ) { |file| files = extract_entered_files( file ) }
+    return files
+  end
+
   # Parse preprocessor output from a string (testing use)
   # @param content [String] Preprocessor output as a string
   # @return [Array<UserInclude, SystemInclude>]
-  def extract_includes_from_string(content, filepath, type, max_depth=nil)
+  def extract_includes_from_string(content, filepath, type, max_depth=nil, test: nil)
     validate_type_argument( type )
     require 'stringio'
     io = StringIO.new(content)
-    return extract_includes(io: io, filepath: filepath, type: type, max_depth: max_depth)
+    return extract_includes(io: io, filepath: filepath, type: type, max_depth: max_depth, test: test)
+  end
+
+  # Correlate `-fdirectives-only` entering line markers back to the raw source lines
+  # that produced them, for a set of lines of interest. Used to recover GCC's own
+  # resolution of an `#include` whose target is a macro invocation: the directive
+  # carries no literal filename to scan for, but the accurate directives-only pass
+  # still resolves it and emits an ordinary entering marker for the header.
+  #
+  # @param preprocessed_filepath [String] raw directives-only output (line markers
+  #   intact, comments stripped or not -- physical line count is 1:1 with the source
+  #   either way, which is all this walk needs), or a test file's plain fallback
+  #   expansion, read as a best effort (see correlate_computed_includes)
+  # @param source_basename [String] basename of the original source file, used to
+  #   recognize its own line markers in the stream
+  # @param source_lines [Enumerable<Integer>] 1-indexed source line numbers to report
+  #   a resolution for (the lines carrying a non-literal `#include`)
+  # @return [Hash{Integer => String}] source line number => path GCC resolved that
+  #   line's `#include` to; only lines that actually produced an entering marker appear
+  def resolve_computed_includes(preprocessed_filepath:, source_basename:, source_lines:)
+    wanted = source_lines.to_a
+    return {} if wanted.empty?
+
+    begin
+      # Binary mode for the same reason extract_includes_from_file uses it: GCC output
+      # under a non-C locale carries non-ASCII bytes, and \r\n must survive untranslated
+      # for the per-line chomp! below to normalize.
+      # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
+      # rides out the file briefly not yet being visible right after the shell-out exits.
+      @file_wrapper.open_with_retry( preprocessed_filepath, 'rb' ) do |file|
+        return correlate_computed_includes( io: file, source_basename: source_basename, wanted: Set.new( wanted ) )
+      end
+    rescue StandardError => e
+      raise CeedlingException.new("Failed to correlate computed #includes from preprocessor output file '#{preprocessed_filepath}' ⏩️ #{e.message}")
+    end
   end
 
   private
+
+  # Walk the directives-only stream tracking which source line of the file of interest
+  # the current physical line maps to, and report the resolved path for every entering
+  # marker attributed to a `wanted` source line.
+  #
+  # `src_line` names the source line the NEXT non-marker physical line will be. A
+  # `# n "<file of interest>"` marker sets it to `n`; each subsequent body line of that
+  # file bumps it by one. The macro-target `#include` directive is REPLACED by the
+  # entering marker for the header it pulled in, so it never shows up as a body line --
+  # `src_line` therefore still reads that directive's own line number when its entering
+  # marker appears. Body lines and markers of any OTHER file are skipped entirely, so
+  # a header's own nesting can't drift the count.
+  #
+  # A plain expansion, fallback's stand-in for directives-only output, drops runs of lines
+  # it has no use for, but it ends each such gap with a `# n` marker for the file, which
+  # resets the count. Fallback reads it as a best effort.
+  def correlate_computed_includes(io:, source_basename:, wanted:)
+    resolved = {}
+    in_file_of_interest = false
+    src_line = 0
+
+    io.each_line do |line|
+      line.chomp!
+
+      match = LINE_MARKER_REGEX.match(line)
+
+      # A non-marker line advances the counter only while inside the file of interest.
+      unless match
+        src_line += 1 if in_file_of_interest
+        next
+      end
+
+      marker_path = match[2]
+      next if marker_path.start_with?('<')  # <built-in>, <command-line>
+
+      marker_path = canonicalize_marker_path( marker_path )
+      flags = match[3] ? match[3].split.map(&:to_i) : []
+
+      if File.basename(marker_path) == source_basename
+        # Entering or resuming the file of interest: its own markers carry the
+        # authoritative line number for whatever comes next.
+        src_line = match[1].to_i
+        in_file_of_interest = true
+      elsif in_file_of_interest && flags.include?(1)
+        # An entering marker for another file, standing in for a directive on the
+        # file-of-interest line the counter currently names.
+        resolved[src_line] = marker_path if wanted.include?(src_line)
+        in_file_of_interest = false
+      else
+        # Any other marker (returning to an intermediate header, a nested entry):
+        # we're no longer tracking file-of-interest body lines until its own marker
+        # brings us back.
+        in_file_of_interest = false
+      end
+    end
+
+    resolved
+  end
+
+  # GCC's own marker text is real and complete but sometimes left uncanonicalized:
+  # PathMatcher.resolve_relative deliberately leaves an ABSOLUTE query's own `..`
+  # untouched (its own documented contract defers that case to a File.expand_path-
+  # based comparison elsewhere) -- reachable whenever the file actually being
+  # preprocessed has an absolute path of its own, which makes GCC's marker for a
+  # directory-relative include absolute too. Collapsed here with a plain segment
+  # walk rather than File.expand_path, which is CWD- and drive-dependent on Windows
+  # and would silently inject the current process's own drive letter into an
+  # already-absolute Unix-style path instead of leaving it alone. Only reached when
+  # the result is still absolute AND still carries a literal `..` segment -- a no-op
+  # for the ordinary, already-clean case.
+  def canonicalize_marker_path(path)
+    resolved = PathMatcher.resolve_relative( path, anchor: '' )
+    segments = resolved.split(%r{[\\/]}).reject(&:empty?)
+
+    # A relative result keeps only the leading .. segments naming a path above the
+    # project root, which are already as collapsed as they can be
+    return resolved unless segments.include?('..') and PathMatcher.absolute?( resolved )
+
+    # Absolute forms this can see: a leading "/" (Unix), or a drive letter
+    # ("C:\..." / "C:/..."). Either way, remember the prefix so the collapsed
+    # result stays just as absolute as it started -- neither form's own marker is
+    # ever a bare relative path once resolve_relative has already left it untouched.
+    drive_match = resolved.match(/\A([A-Za-z]:)[\\\/]/)
+    prefix = drive_match ? "#{drive_match[1]}/" : '/'
+    segments.shift if drive_match
+
+    collapsed = []
+    segments.each { |segment| segment == '..' ? collapsed.pop : collapsed << segment }
+
+    "#{prefix}#{collapsed.join('/')}"
+  end
+
+  def extract_entered_files(io)
+    return io.each_line.filter_map { |line| entered_user_file( LINE_MARKER_REGEX.match( line.chomp ) ) }.uniq
+  end
+
+  # The user file a line marker enters (flag 1), or nil for any other line or marker
+  def entered_user_file(match)
+    return nil if match.nil? or match[2].start_with?( '<' )
+
+    flags = match[3] ? match[3].split.map( &:to_i ) : []
+    return nil if !flags.include?( 1 ) or flags.include?( 3 )
+
+    return canonicalize_marker_path( match[2] )
+  end
 
   def validate_type_argument(type)
     unless [SYSTEM, USER].include?(type)
@@ -134,7 +298,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
 
   # Extracts includes from directives-only preprocessor output
   # Returns an array of Include-derived objects
-  def extract_includes(io:, filepath:, type:, max_depth:)
+  def extract_includes(io:, filepath:, type:, max_depth:, test: nil)
     includes = []
     seen_paths = Set.new
     initial_file_seen = false
@@ -161,6 +325,13 @@ class PreprocessinatorLineMarkerIncludesExtractor
 
         # Skip special markers like "<built-in>" and "<command-line>"
         next if filepath.start_with?('<')
+
+        # GCC forms a directory-relative quoted include's own line marker by
+        # concatenating the including file's directory onto the literal include
+        # text -- real and complete, but left uncanonicalized. Collapsing any ..
+        # here, once, means this path can correspond to the project's own real,
+        # ..-free file list the same way any other candidate already does.
+        filepath = canonicalize_marker_path( filepath )
 
         # Integer line number
         line_number = match[1].to_i
@@ -199,7 +370,7 @@ class PreprocessinatorLineMarkerIncludesExtractor
           # Extract user includes
           elsif type == USER
             unless flags.include?(3)
-              includes << @include_factory.user_include_from_filepath( filepath )
+              includes << @include_factory.user_include_from_filepath( filepath, test: test )
             end
           end
         # Flag 2 means returning to a previous file

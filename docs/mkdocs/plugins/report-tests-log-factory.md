@@ -13,7 +13,7 @@ This plugin generates one or more of up to four available test suite report form
 1. CppUnit XML
 1. HTML
 
-This plugin generates reports after test builds, storing them in your project `artifacts/` build path. It also regenerates reports when `ceedling summary` is executed, building reports from the test results already present.
+This plugin generates reports after test builds, storing them in your project `artifacts/` build path. It also regenerates reports when `ceedling summary` is executed, building reports from the test results a previous test build left on disk. These reports are written for the `test` context and carry no build duration, since no build ran.
 
 With a limited amount of Ruby code, you can also create your own report without creating an entire Ceedling plugin.
 
@@ -24,7 +24,7 @@ Test reports often lack well managed standards or even much documentation at all
 If a test report produced by this plugin does not work for your needs or is not recognized by your report processing tool of choice, well, sadly, this is not all that uncommon. You have at least two options:
 
 1. Use a script or other tool to post-process the report into a format that works for you. You might be surprised how many of these hacks are commonly necessary and exist peppered throughout online forums. You can incorporate any such post-processing step by enabling the `command_hooks` Ceedling plugin (lower in the plugin list than this plugin) and configuring a Ceedling tool to run the needed transformation.
-1. Use Ceedling's abilities plus features of this plugin (documented below) to generate your own test report with a minimal amount of Ruby code.
+1. Use Ceedling’s abilities plus features of this plugin (documented below) to generate your own test report with a minimal amount of Ruby code.
 
 ## Setup
 
@@ -36,11 +36,11 @@ Enable the plugin in your Ceedling project file by adding `report_tests_log_fact
     - report_tests_log_factory
 ```
 
-All generated reports are written to `<build root>/artifacts/<context>`. Your Ceedling project file specifies `<build root>` as a required entry for any build. Your build's context defaults to `test`. Certain other test build plugins (e.g. GCov) provide a different context (e.g. `gcov`) for test builds, generally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than `test/`, `gcov/`.
+All generated reports are written to `<build root>/artifacts/<context>`. Your Ceedling project file specifies `<build root>` as a required entry for any build. Your build’s context defaults to `test`. Certain other test build plugins (e.g. GCov) provide a different context (e.g. `gcov`) for test builds, generally named after themselves. That is, for example, if this plugin is used in conjunction with a GCov coverage build, the reports will end up in a subdirectory other than `test/`, `gcov/`.
 
 ## Configuration
 
-Enable the reports you wish to generate — `json`, `junit`, and/or `cppunit` — within the `:report_tests_log_factory` ↳ `:reports` configuration list.
+Enable the reports you wish to generate — `json`, `junit`, `cppunit`, and/or `html` — within the `:report_tests_log_factory` ↳ `:reports` configuration list.
 
 ```yaml
 :report_tests_log_factory:
@@ -79,11 +79,11 @@ Those reports that support build time or test suite execution time “stopwatch�
 
 ### Execution duration values
 
-Some test reporting formats include the execution time (duration) for aspects of a test suite run. Various granularities exist from the total time for all tests to the time of each suite (per the relevant defition of a suite) to the time required to run individual test cases. See _CeedlingPacket_ for the details on time duration values.
+Some test reporting formats include the execution time (duration) for aspects of a test suite run. Various granularities exist from the total time for all tests to the time of each suite (per the relevant definition of a suite) to the time required to run individual test cases. See _CeedlingPacket_ for the details on time duration values.
 
-Ceedling automatically gathers all the relevant durations. In fact, Ceedling itself performs the needed timing and arithmetric in all cases, except one. Individual test case exection time tracking is specifically a [Unity] feature (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values and make them available to reports.
+Ceedling automatically gathers all the relevant durations. In fact, Ceedling itself performs the needed timing and arithmetic in all cases, except one. Individual test case execution time tracking is specifically a [Unity] feature (see its documentation for more details). If enabled and if your platform supports the time mechanism Unity relies on, Ceedling will automatically collect test case time values and make them available to reports.
 
-To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity's compilation symbols (`:unity` ↳ `:defines`) in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest. Unity test case durations as reported by Ceedling default to 0 if this Unity compilation option is not configured.
+To enable test case duration measurements, they must be enabled as a Unity compilation option. Add `UNITY_INCLUDE_EXEC_TIME` to Unity’s compilation symbols (`:unity` ↳ `:defines`) in your Ceedling project file (below). This plugin and the core of Ceedling take care of the rest. Unity test case durations as reported by Ceedling default to 0 if this Unity compilation option is not configured.
 
 ```yaml
 :unity:
@@ -168,7 +168,7 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
 
 ### JUnit XML Format
 
-[JUnit] holds a certain position among testing tools. While it is an xUnit-style framework specific to unit testing Java, it has influenced how Continuous Integration build tools operate, and its [JUnit XML report format][junit-xml-format] has become something of a defacto standard for test reports in any language. The JUnit XML format has been revised in various ways over time but generally has more available documentation than some other formats.
+[JUnit] holds a certain position among testing tools. While it is an xUnit-style framework specific to unit testing Java, it has influenced how Continuous Integration build tools operate, and its [JUnit XML report format][junit-xml-format] has become something of a de facto standard for test reports in any language. The JUnit XML format has been revised in various ways over time but generally has more available documentation than some other formats.
 
 [JUnit]: https://junit.org/
 [junit-xml-format]: https://docs.getxray.app/display/XRAY/Taking+advantage+of+JUnit+XML+reports
@@ -183,17 +183,38 @@ In the following example a single test file _TestUsartModel.c_ exercised four te
 :report_tests_log_factory:
   :reports:
     - junit
-  # Default filename shown for completeness
-  # `:junit` block only needed to override default
+  # Defaults shown for completeness
+  # `:junit` block only needed to override defaults
   :junit:
     :filename: junit_tests_report.xml
+    :file_line_anchor: FALSE
 ```
+
+#### JUnit test locations
+
+Each `<testcase>` names where its test lives, so CI tools can group results and
+link to the code.
+
+* **`classname`** is the test file’s path without its extension, the same as the
+  enclosing `<testsuite>` name. Keeping the path matters because Ceedling can build
+  two test files of the same name in different folders, each with a test case of
+  the same name. CI tools identify a test case by its class and name together, and
+  the path keeps the two apart.
+* **`file`** is the test file’s path.
+* **`line`** is the line Unity reported for the test, when it reports one.
+* A failure’s message starts with the file and line in the form compilers use,
+  such as `test/TestUsartModel.c:62: Expected 8 Was 9`.
+
+Some tools follow a `file` attribute written as `path#line` to the line itself.
+Set `:file_line_anchor` to `TRUE` to write `file` that way for each test case that
+has a line, such as `test/TestUsartModel.c#62`. It defaults to `FALSE`, which
+writes the plain path that tools such as GitLab turn into a link.
 
 #### Example JUnit test report
 
 In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored (a.k.a. “skipped” in JUnit lingo).
 
-In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ becomes a JUnit _test suite_.
+In mapping a Ceedling test suite to JUnit conventions, a Ceedling _test file_ becomes a JUnit _test suite_.
 
 ```sh
  > ceedling test:UsartModel
@@ -203,12 +224,12 @@ In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ bec
 <?xml version="1.0" encoding="utf-8" ?>
 <testsuites name="Ceedling Test Suite" tests="4" failures="1" time="0.331">
   <testsuite name="test/TestUsartModel" tests="4" failures="1" skipped="1" errors="0" time="0.331">
-    <testcase name="testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting" time="0.000"/>
-    <testcase name="testShouldReturnErrorMessageUponInvalidTemperatureValue" time="0.000"/>
-    <testcase name="testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately" time="0.000">
-      <failure message="Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected." />
+    <testcase name="testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting" classname="test/TestUsartModel" file="test/TestUsartModel.c" line="25" time="0.000"/>
+    <testcase name="testShouldReturnErrorMessageUponInvalidTemperatureValue" classname="test/TestUsartModel" file="test/TestUsartModel.c" line="33" time="0.000"/>
+    <testcase name="testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately" classname="test/TestUsartModel" file="test/TestUsartModel.c" line="44" time="0.000">
+      <failure message="test/TestUsartModel.c:44: Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected." />
     </testcase>
-    <testcase name="testShouldReturnWakeupMessage" time="0.000">
+    <testcase name="testShouldReturnWakeupMessage" classname="test/TestUsartModel" file="test/TestUsartModel.c" line="51" time="0.000">
       <skipped />
     </testcase>
   </testsuite>
@@ -241,7 +262,7 @@ In mapping a Ceedling test suite to JUnit convetions, a Ceedling _test file_ bec
 
 In the following example a single test file _TestUsartModel.c_ exercised four test cases. Two test cases passed, one test case failed, and one test case was ignored.
 
-In mapping a Ceedling test suite to CppUnit convetions, a CppUnit test name is the concatenation of a Ceedling test filename and a test case function name. As such, a test filename will appear in the report a number of times equal to the number of test cases it holds. Test IDs are merely an incrementing count useful to uniquely identifying tests by number; no ordering or convention is enforced in generating them.
+In mapping a Ceedling test suite to CppUnit conventions, a CppUnit test name is the concatenation of a Ceedling test filename and a test case function name. As such, a test filename will appear in the report a number of times equal to the number of test cases it holds. Test IDs are merely an incrementing count useful to uniquely identifying tests by number; no ordering or convention is enforced in generating them.
 
 ```sh
  > ceedling test:UsartModel
@@ -323,7 +344,7 @@ Configuration steps, (1) and (3) above, are documented by example below. Convent
 ```yaml
 :plugins:
   :load_paths:              # Paths can be relative or absolute
-    - scripts/              # Add <build root>/scripts to Ruby's load paths
+    - scripts/              # Add <build root>/scripts to Ruby’s load paths
   :enabled:
     - report_tests_log_factory
 
@@ -334,9 +355,9 @@ Configuration steps, (1) and (3) above, are documented by example below. Convent
 
 ### Custom `TestsReporter` code
 
-To create a custom report, here's what you gotta do:
+To create a custom report, here’s what you gotta do:
 
-1. Create a Ruby file in your configured additional load path named `<custom_report>_tests_reporter.rb`. `<custom_report>` should be in lower case and use underscores if you wish to seperate words (i.e. snakecase).
+1. Create a Ruby file in your configured additional load path named `<custom_report>_tests_reporter.rb`. `<custom_report>` should be in lower case and use underscores if you wish to separate words (i.e. snakecase).
 1. The Ruby code itself must subclass an existing plugin class, `TestsReporter`.
 1. Your new subclass must be named `<CustomReport>TestsReporter` where `<CustomReport>` is the camelcase version of your report name from (1).
 1. Fill out up to four methods in your custom `TestsReporter` subclass:
@@ -345,11 +366,15 @@ To create a custom report, here's what you gotta do:
     * `body()`
     * `footer()` (optional)
 
+    `header()`, `body()`, and `footer()` each receive the same four keyword
+    arguments — `stream:`, `name:`, `results:`, and `duration_s:` — whether
+    or not your own implementation needs all of them.
+
 Overriding the default filename of your custom report happens just as it does for the built-in reports. In fact, apart from the custom load path, the built-in reports documented above use the same mechanisms as a custom report. These Ruby files can and should be used as references.
 
 You may access `:report_tests_log_factory` configuration for your custom report using a handy utility method documented in a later section.
 
-#### Sample `TestReporter` custom subclass
+#### Sample `TestsReporter` custom subclass
 
 The following code creates a simple, dummy report of the _FancyShmancy_ variety (note the name correspondence to the example configuration YAML above).
 
@@ -361,7 +386,7 @@ require 'tests_reporter'
 #  1. Follow the naming convention <CustomReport>TestsReporter where 
 #     <CustomReport> corresponds to the <custom_report> entry in your 
 #     `:report_tests_log_factory` configuration.
-#  2. Sublcass `TestsReporter`.
+#  2. Subclass `TestsReporter`.
 class FancyShmancyTestsReporter < TestsReporter
 
   # Must include a method `setup()` that:
@@ -375,23 +400,26 @@ class FancyShmancyTestsReporter < TestsReporter
   
   # If your report includes a header section, fill out this method.
   # If no header in your report, this method is not needed in this file at all.
-  def header(results:, stream:)
+  def header(stream:, name:, results:, duration_s:)
     stream.puts( '<?xml version="1.0" encoding="utf-8" ?>' )
-    stream.puts( "<FancyShmancy TestCount=#{results[:counts][:total]}>" )
+    stream.puts( "<FancyShmancy Name=\"#{xml_escape( name )}\" TestCount=\"#{results[:counts][:total]}\">" )
   end
 
-  # Process test results into report records
-  def body(results:, stream:)
-    results.each do |result|
-      result[:collection].each do |item|
-        write_test( item, stream )
+  # Process test results into report records.
+  # Each outcome category lists test files, each with a collection of test cases.
+  def body(stream:, name:, results:, duration_s:)
+    [:successes, :failures, :ignores].each do |category|
+      results[category].each do |result|
+        result[:collection].each do |item|
+          write_test( item, stream )
+        end
       end
-    end    
+    end
   end
 
   # If your report includes a footer section, fill out this method.
-  # If no footer in your report, this method is not needed in this file at all.
-  def footer(results:, stream:)
+  # If you have no footer in your report, this method is not needed in this file at all.
+  def footer(stream:, name:, results:, duration_s:)
     stream.puts( "</FancyShmancy>" )
   end
 
@@ -402,9 +430,9 @@ class FancyShmancyTestsReporter < TestsReporter
   private
 
   # A simple helper method for a simple test report entry.
-  # This methid is not required by a custom `TestReporter` subclass.
+  # This method is not required by a custom `TestsReporter` subclass.
   def write_test(item, stream)
-    stream.puts( "  <Test><Name>#{item[:test]}</Name></Test>" )
+    stream.puts( "  <Test><Name>#{xml_escape( item[:test] )}</Name></Test>" )
   end
 
 end
@@ -414,7 +442,7 @@ end
 
 See [_PluginDevelopmentGuide_][custom-plugins] for documentation of the test results data structure (i.e. the `results` method arguments in above sample code).
 
-See this plugin's built-in `TestsReports` subclasses — `json_tests_reporter.rb`, `junit_tests_reporter.rb`, and `cppunit_tests_reporter.rb` — for examples of using test results.
+See this plugin’s built-in `TestsReporter` subclasses — `json_tests_reporter.rb`, `junit_tests_reporter.rb`, `cppunit_tests_reporter.rb`, and `html_tests_reporter.rb` — for examples of using test results.
 
 [custom-plugins]: ../development/plugins/index.md
 
@@ -422,9 +450,9 @@ See this plugin's built-in `TestsReports` subclasses — `json_tests_reporter.rb
 
 ##### Configuration access: `fetch_config_value(*keys)`
 
-You may call the private method `fetch_config_value(*keys)` of the parent class `TestReporters` from your custom subclass to retrieve configuration entries.
+You may call the private method `fetch_config_value(*keys)` of the parent class `TestsReporter` from your custom subclass to retrieve configuration entries.
 
-This method automatically indexes into `:report_tests_log_factory` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns `nil`. Otherwise, it returns the hash, list, string, boolean, or numeric value for the specified key walk into your report's configuration.
+This method automatically indexes into `:report_tests_log_factory` configuration to extract any needed configuration values for your custom report. If the configuration keys do not exist, it simply returns `nil`. Otherwise, it returns the hash, list, string, boolean, or numeric value for the specified key walk into your report’s configuration.
 
 `fetch_config_value(*keys)` expects a list of keys and only accesses configuration beneath `:report_tests_log_factory` ↳ `:<custom_report>`.
 
@@ -450,5 +478,11 @@ fetch_config_value( :standardize, :filters ) => ['/^Foo/', '/Bar$/']
 
 fetch_config_value( :does, :not, :exist ) => nil
 ```
+
+##### Markup escaping: `xml_escape(str)` and `html_escape(str)`
+
+Test names, messages, filepaths, and your project name can all contain characters that are significant in markup, such as `&`, `<`, and `"`. Pass each such value through the private method `xml_escape()` or `html_escape()` before writing it into an XML or HTML report. Without escaping, a single unusual test name produces a report that report processing tools reject.
+
+Both methods return a new string. Never modify the `results` structure in place. Every configured report receives the very same `results`.
 
 <br/><br/>

@@ -1,0 +1,29 @@
+
+
+-----------
+TEST OUTPUT
+-----------
+test/TestFoo.c: "debug line one"
+test/TestFoo.c: "debug line two"
+
+--------------------
+IGNORED TEST SUMMARY
+--------------------
+test/TestFoo.c:40:test_ignored: "skipped"
+
+-------------------
+FAILED TEST SUMMARY
+-------------------
+test/TestFoo.c:30:test_fails: "Expected 1 Was 2.
+test/TestFoo.c:30:test_fails: second line
+test/TestFoo.c:30:test_fails: third line"
+test/TestBar.c:30:test_fails: "Expected 3 Was 4."
+
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  5
+PASSED:  2
+FAILED:  2
+IGNORED: 1
+

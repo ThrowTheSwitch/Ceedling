@@ -12,18 +12,98 @@ gem "bundler", "~> 2.5"
 # Testing tools
 gem "rspec", "~> 3.8"
 gem "rake", ">= 12", "< 14"
-gem "rr"
 gem "require_all"
 
+# Test-only: spec/system/support/gcov_partials_test_cases.rb parses coverage XML.
+# rexml has been removed from the default gems bundled with some Ruby installations
+# (same category as benchmark below), so it must be declared explicitly here too.
+gem "rexml", ">= 3.2"
+
+# Dev-only: used by DependencyTracker's :full debug tier to render human-readable
+# content diffs. Soft dependency at runtime (lib/ceedling/dependencies/dependency_differ.rb
+# requires it defensively and degrades gracefully if absent) -- deliberately NOT declared in
+# ceedling.gemspec, so it is never a hard requirement for an installed release gem.
+gem "diff-lcs", "~> 1.5"
+
+# Dev-only: code coverage for CI's combined unit+system test coverage report.
+# require: false since it's only ever loaded when CEEDLING_TEST_COVERAGE is set --
+# deliberately NOT declared in ceedling.gemspec, same as diff-lcs above.
+#
+# The version gate exists to reach a significant SimpleCov feature revision.
+# SimpleCov 1.x requires Ruby >= 3.2 and gives access to modern config method names
+# (cover/skip/group) and the simplecov:disable/enable directive comments used
+# throughout .simplecov and bin/cli.rb. Benefiting from that modernization is only
+# possible by gating on Ruby version, hence the branch below.
+#
+# Coverage reporting is purely a CI mechanism, so it is deliberately confined to the
+# one leg that satisfies the version requirement: the `tests-linux` job on Ruby 3.3
+# (see ci.yml, where CEEDLING_TEST_COVERAGE is set only when matrix.ruby == '3.3').
+# No Windows or macOS leg, and no other Ruby leg, ever sets that variable, so none of
+# them load this gem at all. The ~> 0.22 fallback exists purely so `bundle install`
+# still resolves cleanly on older interpreters, not because anything in this repo
+# actually runs against it.
+if RUBY_VERSION >= '3.2'
+  gem "simplecov", "~> 1.1", require: false
+else
+  gem "simplecov", "~> 0.22", require: false
+end
+
+# Dev-only: sampling call-stack profiler for ad hoc performance investigation
+# (flame graphs of a real Ceedling build/test run). Not required by any
+# runtime code path -- deliberately NOT declared in ceedling.gemspec, same
+# as diff-lcs/simplecov above. install_if: keeps it out of ordinary `bundle
+# install` (CI included) entirely -- only `rake profile:setup` installs it,
+# by setting CEEDLING_PROFILING=true first. Gating is necessary, not just
+# tidy: its native C extension fails to build on Windows
+# (Gem::Ext::BuildError), which broke Windows CI outright when this gem was
+# briefly installed unconditionally. Whether stackprof can ever build on
+# Windows at all (even via an explicit `rake profile:setup` there) is
+# untested and unresolved -- profiling should currently be assumed
+# non-Windows-only.
+gem "stackprof", "~> 0.2", require: false, install_if: -> { ENV['CEEDLING_PROFILING'] == 'true' }
+
+# Dev-only: Ruby linting, limited to the Lint, Metrics, Security, and Performance
+# departments (see .rubocop.yml). Not required by any runtime code path --
+# deliberately NOT declared in ceedling.gemspec, same as diff-lcs/simplecov/stackprof
+# above. install_if: keeps these out of an ordinary `bundle install` so a developer
+# who never lints never pays to fetch them; `rake lint:setup` sets CEEDLING_LINT=true
+# and installs them on demand. Unlike CEEDLING_PROFILING, CI *does* set this variable
+# -- the lint job sets it at job scope because install_if: is Bundler's runtime
+# activation predicate as well as its install-time one, so `bundle exec` needs it too.
+#
+# Note install_if: governs installation and activation, not resolution: both gems and
+# their transitive dependencies appear in Gemfile.lock regardless, exactly as stackprof
+# already does. The savings are install time and bandwidth, not lockfile size.
+#
+# Both are pinned to a patch range rather than `~> 1.x`. Every RuboCop minor release
+# adds cops, which would silently change the offense set and move CI results with no
+# commit to point at. Bumping is therefore a deliberate act that lands alongside any
+# resulting .rubocop_todo.yml churn.
+gem "rubocop", "~> 1.91.0", require: false, install_if: -> { ENV['CEEDLING_LINT'] == 'true' }
+gem "rubocop-performance", "~> 1.27.0", require: false, install_if: -> { ENV['CEEDLING_LINT'] == 'true' }
+
+# Nothing here declares `erb`, and that is deliberate. Ceedling itself no longer uses
+# it at all. RSpec does: rspec-core requires `erb` at load time (configuration_options.rb)
+# without declaring a dependency on it, and that works only because `erb` is a default
+# gem, which is always requirable even under `bundle exec` and even when undeclared.
+# Verified a default gem on every Ruby Ceedling supports, through 3.5.
+#
+# If a future Ruby demotes `erb` to a bundled gem the way it did `benchmark` in 3.5,
+# `bundle exec rspec` will fail to load with `cannot load such file -- erb`. The fix is
+# a development/test-only declaration here, never a gemspec dependency, since no
+# Ceedling runtime code path requires it.
+
 # Ceedling dependencies
-gem "diy", "~> 1.1"
+#
+# `diy` is absent deliberately. Its source is vendored at vendor/diy, and
+# bin/ceedling puts that directory on the load path before requiring it, so the
+# vendored copy is what loads. Upstream has been unmaintained since 2009.
 gem "constructor", "~> 2"
 gem "thor", "~> 1.3"
 gem "deep_merge", "~> 1.2"
 
-# `erb` & `benchmark` have been removed from the default gems in some Ruby versions Ceedling supports.
-# These must be declared explicitly for plain `gem install` (non-Bundler) users to successfully span supported Ruby versions.
-gem "erb", ">= 2.2"
+# `benchmark` has been removed from the default gems in some Ruby versions Ceedling supports.
+# It must be declared explicitly for plain `gem install` (non-Bundler) users to successfully span supported Ruby versions.
 gem "benchmark", ">= 0.3"
 
 gem "unicode-display_width", "~> 3.1"

@@ -96,12 +96,27 @@ Flags may be represented in a simple YAML list or with a more sophisticated
 file matcher YAML key plus flag list. Both are documented below.
 
 !!! note "`:preprocess` flags default behavior"
-    Left unspecified, `:preprocess` flags default to behaving identically
-    to `:compile` flags. Override this behavior by adding `:test` ↳ `:preprocess`
-    flags. If you want no additional flags for preprocessing regardless of test
-    compilation flags, simply specify an empty list `[]`.
+    Left unspecified entirely, `:preprocess` flags default to behaving
+    identically to `:compile` flags for every file.
 
-**Default**: Same flags as specified for test compilation
+    If `:preprocess` is a matcher hash the flags apply **per file**. A 
+    test file that matches one of your `:preprocess` matchers gets exactly 
+    those flags, while a test file that matches none of them falls back 
+    to flags resolved under `:compile`.
+
+    Override this behavior by adding `:test` ↳ `:preprocess` flags. If you
+    want no additional flags for preprocessing regardless of test compilation
+    flags, specify an empty list `[]` for the relevant matcher (or for the
+    whole `:preprocess` section, if using the simple list format).
+
+!!! warning "Keep line markers in preprocessor output"
+    Ceedling reads the line markers in preprocessor output to find 
+    `#include`s, mockable functions, and test cases. With test preprocessing 
+    enabled, Ceedling refuses to start if `-P` or `--no-line-commands` 
+    appears in `:preprocess` flags. The same holds for `:compile` flags, 
+    which preprocessing uses wherever no `:preprocess` flags apply.
+
+**Default**: Same flags as that same file resolved to for `:compile`, unless specified
 
 ## `:flags` ↳ `:test` ↳ `:link`
 
@@ -120,6 +135,10 @@ Ceedling Gcov plugin uses a context of `:gcov`, surprisingly enough. For any
 plugins with tools that take advantage of Ceedling’s internal mechanisms, you
 can add to those tools' flags in the same manner as the built-in contexts and
 operations.
+
+The Gcov and Bullseye plugins' contexts, `:gcov` and `:bullseye`, accept
+per-test matchers in their operations as `:test` does. A plugin’s build uses
+`:test`’s flags for any operation its context lacks.
 
 ## Simple `:flags` configuration
 

@@ -18,7 +18,7 @@ class Setupinator
   # Object variables are gigantic and produce a flood of output.
   def inspect
     # TODO: When identifying information is added to constructor, insert it into `inspect()` string
-    return this.class.name
+    return self.class.name
   end
 
 
@@ -50,8 +50,11 @@ class Setupinator
     @configurator.include_test_case = app_cfg[:include_test_case]
     @configurator.exclude_test_case = app_cfg[:exclude_test_case]
 
+    # Set special purpose forced test re-execution (from command line)
+    @configurator.force_test_rerun = app_cfg[:force_test_rerun]
+
     # Verbosity handling
-    @configurator.set_verbosity( config_hash )
+    @configurator.set_verbosity()
 
     # Logging configuration
     @loginator.set_logfile( app_cfg[:log_filepath] )
@@ -121,6 +124,9 @@ class Setupinator
     # Populate CMock configuration with values to tie vendor tool configurations together
     @configurator.populate_cmock_config( config_hash )
 
+    # Populate Partials configuration reference for dependency-tracker meta
+    @configurator.populate_partials_config( config_hash )
+
     # Configure test runner generation
     @configurator.populate_test_runner_generation_config( config_hash )
 
@@ -160,7 +166,7 @@ class Setupinator
 
     log_step( 'Validating final project configuration', heading: false )
 
-    @configurator.validate_final( config_hash, app_cfg )
+    @configurator.validate_final( config_hash )
 
     ##
     ## 7. Flatten configuration + process it into globals and accessors

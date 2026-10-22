@@ -1,0 +1,35 @@
+# `:partials`
+
+**Configuring C feature extraction for Partials**
+
+## Example `:partials` YAML
+
+```yaml
+:partials:
+  # Ceiling of 1000 character blocks for buffer growth
+  # 8000 = a max buffer growth to 8,000,000 characters
+  :max_extraction_length: 8000
+```
+
+## `:max_extraction_length`
+
+**_Note:_** The default should be sufficient for nearly all test builds. Modification should only be necessary on error.
+
+Building a Partial requires Ceedling to extract each C construct — a
+variable declaration, a function, a macro, and so on — from your source
+files one at a time. Extraction reads a construct into a growing buffer
+until it finds that construct’s natural end (a terminating `;`, a closing
+`}`, etc.). This setting bounds how large that buffer may grow before
+extraction fails outright.
+
+The value is a multiplier of 1000 characters, not a raw character count. For example,
+`8000` means 8,000,000 characters (approx. 7.6MB). It must be a whole number no smaller
+than `10` (10,000 characters).
+
+Raise this value if Ceedling reports an extraction failure for a
+legitimately large single construct in your codebase (e.g. a sizable
+lookup table). Ordinarily, there’s no reason to lower it.
+
+**Default**: 5000 (5,000,000 characters)
+
+<br/><br/>

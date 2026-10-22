@@ -4,11 +4,26 @@ Adds Ceedling tasks to run test executables under [Valgrind] memory error
 detection to help find memory leaks, invalid memory accesses, and
 use-after-free bugs in your C code.
 
+The Valgrind plugin creates a duplicate test build with `valgrind:` 
+command line plugin tasks. [This is intentional and needed](index.md#understanding-plugin-build-duplication).
+
+!!! note
+    A `valgrind:` task is a [delta build](../getting-started/builds.md).
+    This plugin maintains its own dependency cache. A test executable will be 
+    rebuilt the first time you run a `valgrind:` build.
+
+---
+
 ## Plugin overview
 
 !!! note "Linux only"
     Valgrind runs on Linux and other Unix-like systems. It is not available
     on Windows or macOS (ARM).
+
+    Enabling this plugin on a platform without Valgrind does not affect your
+    other builds. `ceedling test:all` and every non-`valgrind:` task run
+    normally. Only a `valgrind:` task requires the executable, and it reports
+    the platform constraint when it cannot find one.
 
 The Valgrind plugin integrates [Valgrind] dynamic analysis into Ceedling,
 building and then running test executables under Valgrind’s Memcheck tool.
@@ -67,6 +82,11 @@ project configuration:
     - valgrind
 ```
 
+!!! warning "Sanitizer flags"
+    A test executable built with sanitizers (`-fsanitize`) cannot run under
+    Valgrind. A `valgrind:` build whose flags carry `-fsanitize` stops with 
+    a message naming them.
+
 ## Configuration
 
 The plugin ships with sensible defaults that enable full leak checking. By
@@ -117,11 +137,48 @@ not marked as failed.
   :fail_build: false
 ```
 
-!!! note "Detection uses log parsing, not Valgrind’s exit code"
+!!! note "Detection uses report parsing, not Valgrind’s exit code"
     Valgrind’s `--error-exitcode` flag is not used because its exit code would
     overlap with Unity’s own exit code, which equals the number of failing test
-    cases. Instead, the plugin parses the `ERROR SUMMARY: N errors` line written
-    to the Valgrind log file.
+    cases. Instead, the plugin counts errors from the report it wrote.
+
+    With [`:xml_report:`](#xml_report) disabled, it sums every
+    `ERROR SUMMARY: N errors` line in the text log. Valgrind writes one such
+    line per traced process, so a test that forks reports more than one.
+
+    With `:xml_report:` enabled, it counts `<error>` elements in the XML
+    instead. Valgrind writes no error summary to the text log once XML output
+    is active.
+
+### `:suppressions:`
+
+A list of Valgrind suppression files. Each becomes one `--suppressions=`
+argument, placed ahead of your own `:arguments:` entries.
+
+```yaml
+:valgrind:
+  :suppressions:
+    - suppressions/third_party.supp
+```
+
+**Default:** `[]`
+
+!!! warning "A malformed suppression file aborts the run"
+    Valgrind refuses to start when it cannot parse a suppression file, which
+    surfaces as a test executable that produced no output. Each suppression
+    needs at least one location line that is not `...`.
+
+### `:xml_report:`
+
+When `true`, writes a machine-readable XML report per test binary alongside the
+text log. Useful for CI systems that consume Valgrind output directly.
+
+```yaml
+:valgrind:
+  :xml_report: true
+```
+
+**Default:** `false`
 
 ## Usage
 
@@ -158,6 +215,13 @@ Each test executable produces a Valgrind log file at:
 build/artifacts/valgrind/<test_name>.log
 ```
 
+With [`:xml_report:`](#xml_report) enabled, a machine-readable report is written
+beside it:
+
+```
+build/artifacts/valgrind/<test_name>.xml
+```
+
 For example, running `ceedling valgrind:test_my_module.c` produces:
 
 ```
@@ -169,6 +233,64 @@ detected memory errors, leak summaries, and (with `--track-origins=yes`)
 the origin of uninitialized values.
 
 The log files are included in `ceedling clean` targets.
+
+## Console output
+
+These excerpts come from real runs. Build progress lines are left out.
+
+A clean run adds one notice after the test summary:
+
+```
+VALGRIND: ✅ OVERALL TEST SUMMARY
+TESTED:  2
+PASSED:  1
+FAILED:  0
+IGNORED: 1
+
+ℹ️ NOTICE: Wrote 1 Valgrind report to build/artifacts/valgrind/
+```
+
+A test that a memory error ends gets a notice naming the first error and its
+report. It replaces Ceedling’s generic crash notice:
+
+```
+☠️ ERROR: Test executable `test_nosanitize_crash_sigsegv.out` terminated with Valgrind memory errors.
+> Invalid read of size 4 at test_nosanitize_crash_sigsegv.c:32
+> Boom log: build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log
+
+VALGRIND: FAILED TEST SUMMARY
+[test/test_nosanitize_crash_sigsegv.c]
+  Test: test_add_numbers_will_fail
+  At line (28): "Test case crashed >> Segmentation fault"
+
+VALGRIND: ❌ OVERALL TEST SUMMARY
+TESTED:  2
+PASSED:  1
+FAILED:  1
+IGNORED: 0
+
+ℹ️ NOTICE: Wrote 1 Valgrind report to build/artifacts/valgrind/
+
+❌ BUILD FAILURE SUMMARY
+ • [VALGRIND] Unit test failures
+ • [VALGRIND] Valgrind detected 2 memory errors across 1 test
+```
+
+With [`:fail_build:`](#fail_build) set to `false`, the same run omits the last
+line. Only the test failure fails the build.
+
+A test that completes despite memory errors logs one line as it runs:
+
+```
+🪲 ERROR: Valgrind detected 2 memory errors in test_example ➡️ see build/artifacts/valgrind/test_example.log
+```
+
+A test whose report is missing logs a warning, since its memory error status
+is unknown:
+
+```
+⚠️ WARNING: Valgrind wrote no report for test_example at build/artifacts/valgrind/test_example.log. Memory error status is unknown.
+```
 
 ## Interpreting results
 
@@ -190,3 +312,5 @@ Common Valgrind findings include:
 See [Valgrind] documentation for more details.
 
 [Valgrind]: https://valgrind.org
+
+<br/><br/>

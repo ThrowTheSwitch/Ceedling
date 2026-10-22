@@ -9,19 +9,23 @@ require 'spec_helper'
 require 'ceedling/preprocess/c_comment_scanner'
 require 'ceedling/preprocess/preprocessinator_comment_stripper'
 require 'ceedling/preprocess/preprocessinator_code_finder'
+require 'ceedling/file_wrapper'
 
 RSpec.describe PreprocessinatorCommentStripper do
 
   before(:each) do
     @stripper = PreprocessinatorCommentStripper.new(
       {
-        c_comment_scanner: CCommentScanner.new
+        c_comment_scanner: CCommentScanner.new,
+        file_wrapper:      double('file_wrapper').as_null_object
       }
     )
 
     # PreprocessinatorCodeFinder is used to verify that stripped output preserves
     # correct source-line mapping via the marker-relative arithmetic it implements.
-    @finder = PreprocessinatorCodeFinder.new
+    @finder = PreprocessinatorCodeFinder.new({
+      file_wrapper: double('file_wrapper').as_null_object
+    })
   end
 
 
@@ -129,9 +133,9 @@ RSpec.describe PreprocessinatorCommentStripper do
 
         # Verify source-line mapping via PreprocessinatorCodeFinder round-trip.
         # #define SENSOR_H: marker # 1 + 4 newlines = line 5.
-        expect(@finder.find_in_preprpocessed_string(result, '#define SENSOR_H')).to eq(5)
+        expect(@finder.find_in_preprocessed_string(result, '#define SENSOR_H')).to eq(5)
         # #define MAX_CHANNELS 16: unchanged marker # 7 + 0 newlines = line 7.
-        expect(@finder.find_in_preprpocessed_string(result, '#define MAX_CHANNELS 16')).to eq(7)
+        expect(@finder.find_in_preprocessed_string(result, '#define MAX_CHANNELS 16')).to eq(7)
       end
 
       it 'handles a large realistic module header with multi-line block comment' do
@@ -171,10 +175,10 @@ RSpec.describe PreprocessinatorCommentStripper do
         # All markers # 8 through # 14 are unchanged.
         # Each # N "file" marker is immediately followed by its directive (0 newlines),
         # so code finder returns N+0=N for each.
-        expect(@finder.find_in_preprpocessed_string(result, '#ifndef BUFFER_H')).to eq(8)
-        expect(@finder.find_in_preprpocessed_string(result, '#define BUFFER_H')).to eq(9)
-        expect(@finder.find_in_preprpocessed_string(result, '#define BUFFER_MAX_SIZE 512')).to eq(10)
-        expect(@finder.find_in_preprpocessed_string(result, 'void buffer_init(Buffer *b);')).to eq(13)
+        expect(@finder.find_in_preprocessed_string(result, '#ifndef BUFFER_H')).to eq(8)
+        expect(@finder.find_in_preprocessed_string(result, '#define BUFFER_H')).to eq(9)
+        expect(@finder.find_in_preprocessed_string(result, '#define BUFFER_MAX_SIZE 512')).to eq(10)
+        expect(@finder.find_in_preprocessed_string(result, 'void buffer_init(Buffer *b);')).to eq(13)
       end
 
       it 'replaces multiple multi-line comments with blank lines preserving line markers' do
@@ -206,9 +210,9 @@ RSpec.describe PreprocessinatorCommentStripper do
         # FIRST: # 1 + 2 newlines (\n replacement + original \n after */) = 3.
         # SECOND: # 5 + 2 newlines = 7.
         # THIRD: # 9 + 0 newlines = 9.
-        expect(@finder.find_in_preprpocessed_string(result, '#define FIRST 1')).to eq(3)
-        expect(@finder.find_in_preprpocessed_string(result, '#define SECOND 2')).to eq(7)
-        expect(@finder.find_in_preprpocessed_string(result, '#define THIRD 3')).to eq(9)
+        expect(@finder.find_in_preprocessed_string(result, '#define FIRST 1')).to eq(3)
+        expect(@finder.find_in_preprocessed_string(result, '#define SECOND 2')).to eq(7)
+        expect(@finder.find_in_preprocessed_string(result, '#define THIRD 3')).to eq(9)
       end
 
       it 'replaces a multi-line comment before any line marker with equivalent blank lines' do
@@ -223,7 +227,7 @@ RSpec.describe PreprocessinatorCommentStripper do
         expect(result).not_to include('/*')
         # Marker unchanged; code finder: # 3 + 0 newlines = 3.
         expect(result).to include('# 3 "foo.c"')
-        expect(@finder.find_in_preprpocessed_string(result, '#define FOO 1')).to eq(3)
+        expect(@finder.find_in_preprocessed_string(result, '#define FOO 1')).to eq(3)
       end
 
       it 'handles an inline single-line /* */ block comment without changing markers' do
@@ -269,8 +273,8 @@ RSpec.describe PreprocessinatorCommentStripper do
         expect(result).not_to include('/*')
         # int result = 0: marker # 1 + 0 newlines = 1.
         # result += 1: marker # 1 + 3 newlines (code \n + \n replacement + original \n after */) = 4.
-        expect(@finder.find_in_preprpocessed_string(result, 'int result = 0;')).to eq(1)
-        expect(@finder.find_in_preprpocessed_string(result, 'result += 1;')).to eq(4)
+        expect(@finder.find_in_preprocessed_string(result, 'int result = 0;')).to eq(1)
+        expect(@finder.find_in_preprocessed_string(result, 'result += 1;')).to eq(4)
       end
 
       it 'maps code before a comment and code after when a subsequent marker exists' do
@@ -292,9 +296,9 @@ RSpec.describe PreprocessinatorCommentStripper do
         # int result = 0: marker # 1 + 0 newlines = 1.
         # result += 1: marker # 1 + 3 newlines = 4 (original source line 4).
         # return result: unchanged marker # 6 + 0 newlines = 6.
-        expect(@finder.find_in_preprpocessed_string(result, 'int result = 0;')).to eq(1)
-        expect(@finder.find_in_preprpocessed_string(result, 'result += 1;')).to eq(4)
-        expect(@finder.find_in_preprpocessed_string(result, 'return result;')).to eq(6)
+        expect(@finder.find_in_preprocessed_string(result, 'int result = 0;')).to eq(1)
+        expect(@finder.find_in_preprocessed_string(result, 'result += 1;')).to eq(4)
+        expect(@finder.find_in_preprocessed_string(result, 'return result;')).to eq(6)
       end
 
       it 'maps multiple code lines before a comment and code after' do
@@ -319,10 +323,10 @@ RSpec.describe PreprocessinatorCommentStripper do
         # int port = 0:   marker # 1 + 1 newline = 2.
         # port = GPIO_BASE: marker # 1 + 5 newlines (void, int port, \n\n replacement, original \n) = 6.
         # gpio_write: unchanged marker # 8 + 0 = 8.
-        expect(@finder.find_in_preprpocessed_string(result, 'void gpio_init(void) {')).to eq(1)
-        expect(@finder.find_in_preprpocessed_string(result, 'int port = 0;')).to eq(2)
-        expect(@finder.find_in_preprpocessed_string(result, 'port = GPIO_BASE;')).to eq(6)
-        expect(@finder.find_in_preprpocessed_string(result, 'gpio_write(port);')).to eq(8)
+        expect(@finder.find_in_preprocessed_string(result, 'void gpio_init(void) {')).to eq(1)
+        expect(@finder.find_in_preprocessed_string(result, 'int port = 0;')).to eq(2)
+        expect(@finder.find_in_preprocessed_string(result, 'port = GPIO_BASE;')).to eq(6)
+        expect(@finder.find_in_preprocessed_string(result, 'gpio_write(port);')).to eq(8)
       end
 
       it 'maps code correctly when blank lines surround a comment within code' do
@@ -348,9 +352,9 @@ RSpec.describe PreprocessinatorCommentStripper do
         # uint32_t result: marker # 1 + 6 newlines
         #   (data \n, blank \n, \n\n replacement, original \n after */, blank \n) = 7.
         # process: unchanged marker # 9 + 0 = 9.
-        expect(@finder.find_in_preprpocessed_string(result, 'uint8_t data;')).to eq(1)
-        expect(@finder.find_in_preprpocessed_string(result, 'uint32_t result;')).to eq(7)
-        expect(@finder.find_in_preprpocessed_string(result, 'process(result);')).to eq(9)
+        expect(@finder.find_in_preprocessed_string(result, 'uint8_t data;')).to eq(1)
+        expect(@finder.find_in_preprocessed_string(result, 'uint32_t result;')).to eq(7)
+        expect(@finder.find_in_preprocessed_string(result, 'process(result);')).to eq(9)
       end
 
       it 'accumulates correct newline count for two comments under the same marker' do
@@ -376,10 +380,10 @@ RSpec.describe PreprocessinatorCommentStripper do
         # int y: marker # 1 + 3 newlines (x \n, \n replacement, original \n) = 4.
         # int z: marker # 1 + 6 newlines (x, repl, orig, y \n, repl, orig) = 7.
         # int w: unchanged marker # 9 + 0 = 9.
-        expect(@finder.find_in_preprpocessed_string(result, 'int x = 0;')).to eq(1)
-        expect(@finder.find_in_preprpocessed_string(result, 'int y = 0;')).to eq(4)
-        expect(@finder.find_in_preprpocessed_string(result, 'int z = 0;')).to eq(7)
-        expect(@finder.find_in_preprpocessed_string(result, 'int w = 0;')).to eq(9)
+        expect(@finder.find_in_preprocessed_string(result, 'int x = 0;')).to eq(1)
+        expect(@finder.find_in_preprocessed_string(result, 'int y = 0;')).to eq(4)
+        expect(@finder.find_in_preprocessed_string(result, 'int z = 0;')).to eq(7)
+        expect(@finder.find_in_preprocessed_string(result, 'int w = 0;')).to eq(9)
       end
 
       it 'handles // and /* */ comments interleaved with code under the same marker' do
@@ -403,9 +407,9 @@ RSpec.describe PreprocessinatorCommentStripper do
         # int x: marker # 1 + 0 = 1.
         # int y: marker # 1 + 3 newlines (x-line \n, \n replacement, original \n) = 4.
         # int z: unchanged marker # 6 + 0 = 6.
-        expect(@finder.find_in_preprpocessed_string(result, 'int x;')).to eq(1)
-        expect(@finder.find_in_preprpocessed_string(result, 'int y;')).to eq(4)
-        expect(@finder.find_in_preprpocessed_string(result, 'int z;')).to eq(6)
+        expect(@finder.find_in_preprocessed_string(result, 'int x;')).to eq(1)
+        expect(@finder.find_in_preprocessed_string(result, 'int y;')).to eq(4)
+        expect(@finder.find_in_preprocessed_string(result, 'int z;')).to eq(6)
       end
 
       it 'maps all code correctly in realistic function-level output with multiple comment types' do
@@ -452,13 +456,13 @@ RSpec.describe PreprocessinatorCommentStripper do
         #   (status-line \n + \n replacement + original \n after retry comment) = 10.
         # initialized = status: unchanged marker # 12 + 0 = 12.
         # }: unchanged marker # 13 + 0 = 13.
-        expect(@finder.find_in_preprpocessed_string(result, '#include <stdint.h>')).to eq(1)
-        expect(@finder.find_in_preprpocessed_string(result, 'static int initialized = 0;')).to eq(5)
-        expect(@finder.find_in_preprpocessed_string(result, 'void module_init(void) {')).to eq(6)
-        expect(@finder.find_in_preprpocessed_string(result, 'int status = 0;')).to eq(7)
-        expect(@finder.find_in_preprpocessed_string(result, 'status = do_init();')).to eq(10)
-        expect(@finder.find_in_preprpocessed_string(result, 'initialized = status;')).to eq(12)
-        expect(@finder.find_in_preprpocessed_string(result, '}')).to eq(13)
+        expect(@finder.find_in_preprocessed_string(result, '#include <stdint.h>')).to eq(1)
+        expect(@finder.find_in_preprocessed_string(result, 'static int initialized = 0;')).to eq(5)
+        expect(@finder.find_in_preprocessed_string(result, 'void module_init(void) {')).to eq(6)
+        expect(@finder.find_in_preprocessed_string(result, 'int status = 0;')).to eq(7)
+        expect(@finder.find_in_preprocessed_string(result, 'status = do_init();')).to eq(10)
+        expect(@finder.find_in_preprocessed_string(result, 'initialized = status;')).to eq(12)
+        expect(@finder.find_in_preprocessed_string(result, '}')).to eq(13)
       end
 
     end
@@ -503,13 +507,13 @@ RSpec.describe PreprocessinatorCommentStripper do
         # All markers # 7 through # 16 are unchanged.
         # Directives immediately follow their respective # N "file" markers (0 newlines
         # between), so code finder returns N+0=N for each.
-        expect(@finder.find_in_preprpocessed_string(result, '#ifndef PLATFORM_H')).to eq(7)
-        expect(@finder.find_in_preprpocessed_string(result, '#define PLATFORM_H')).to eq(8)
-        expect(@finder.find_in_preprpocessed_string(result, '#define CPU_FREQ_HZ  168000000UL')).to eq(9)
-        expect(@finder.find_in_preprpocessed_string(result, '#define FLASH_SIZE   0x100000UL')).to eq(10)
-        expect(@finder.find_in_preprpocessed_string(result, '#define RAM_SIZE     0x020000UL')).to eq(11)
-        expect(@finder.find_in_preprpocessed_string(result, 'typedef unsigned int uint32_t;')).to eq(12)
-        expect(@finder.find_in_preprpocessed_string(result, '#endif')).to eq(16)
+        expect(@finder.find_in_preprocessed_string(result, '#ifndef PLATFORM_H')).to eq(7)
+        expect(@finder.find_in_preprocessed_string(result, '#define PLATFORM_H')).to eq(8)
+        expect(@finder.find_in_preprocessed_string(result, '#define CPU_FREQ_HZ  168000000UL')).to eq(9)
+        expect(@finder.find_in_preprocessed_string(result, '#define FLASH_SIZE   0x100000UL')).to eq(10)
+        expect(@finder.find_in_preprocessed_string(result, '#define RAM_SIZE     0x020000UL')).to eq(11)
+        expect(@finder.find_in_preprocessed_string(result, 'typedef unsigned int uint32_t;')).to eq(12)
+        expect(@finder.find_in_preprocessed_string(result, '#endif')).to eq(16)
       end
 
     end
@@ -568,11 +572,88 @@ RSpec.describe PreprocessinatorCommentStripper do
         expect(result).not_to match(%r{^/}m)
 
         # Markers unchanged; code finder verifies byte-accurate replacement
-        expect(@finder.find_in_preprpocessed_string(result, '#define MODULE_H')).to eq(4)
-        expect(@finder.find_in_preprpocessed_string(result, '#define VERSION 1')).to eq(5)
-        expect(@finder.find_in_preprpocessed_string(result, 'int init(void);')).to eq(6)
+        expect(@finder.find_in_preprocessed_string(result, '#define MODULE_H')).to eq(4)
+        expect(@finder.find_in_preprocessed_string(result, '#define VERSION 1')).to eq(5)
+        expect(@finder.find_in_preprocessed_string(result, 'int init(void);')).to eq(6)
       end
 
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#strip_file' do
+  # ===========================================================================
+
+    before(:each) do
+      @file_wrapper = double('file_wrapper')
+      @stripper = PreprocessinatorCommentStripper.new(
+        {
+          c_comment_scanner: CCommentScanner.new,
+          file_wrapper:      @file_wrapper
+        }
+      )
+    end
+
+    it 'reads the file in binary mode and returns false without writing when there are no comments' do
+      content = "# 1 \"foo.c\"\nint x;\n"
+      allow(@file_wrapper).to receive(:open_with_retry).with('foo.c', 'rb').and_yield(StringIO.new(content))
+
+      expect(@file_wrapper).not_to receive(:write)
+      expect(@stripper.strip_file('foo.c')).to be false
+    end
+
+    it 'writes stripped content back in binary mode and returns true when comments are found' do
+      content = "# 1 \"foo.c\"\n// comment\nint x;\n"
+      allow(@file_wrapper).to receive(:open_with_retry).with('foo.c', 'rb').and_yield(StringIO.new(content))
+
+      expect(@file_wrapper).to receive(:write).with('foo.c', anything, 'wb')
+      expect(@stripper.strip_file('foo.c')).to be true
+    end
+
+    it 'wraps a read failure in a CeedlingException identifying the file' do
+      allow(@file_wrapper).to receive(:open_with_retry).and_raise(Errno::ENOENT.new('no such file'))
+
+      expect { @stripper.strip_file('missing.c') }
+        .to raise_error(CeedlingException, /Failed to read 'missing\.c' for comment stripping/)
+    end
+
+    it 'wraps a write failure in a CeedlingException identifying the file' do
+      content = "# 1 \"foo.c\"\n// comment\nint x;\n"
+      allow(@file_wrapper).to receive(:open_with_retry).with('foo.c', 'rb').and_yield(StringIO.new(content))
+      allow(@file_wrapper).to receive(:write).and_raise(Errno::EACCES.new('permission denied'))
+
+      expect { @stripper.strip_file('foo.c') }
+        .to raise_error(CeedlingException, /Failed to rewrite 'foo\.c' after comment stripping/)
+    end
+
+    # Fix 3 (concurrency/file-presence Stage 2): confirms strip_file itself now
+    # tolerates a transient fault, end to end through a real FileWrapper -- the
+    # exhaustive proof of the retry/backoff mechanism's own behavior lives in
+    # file_wrapper_spec.rb, so this is just the one representative, focused
+    # call-site proof that strip_file is actually wired to it. Uses a real
+    # FileWrapper (not a double) specifically so open_with_retry's own internal
+    # retry loop is what's exercised, not a stand-in for it; only File.open is
+    # stubbed, and the fault clears on the very first retry so this still runs
+    # near-instantly (one real ~20ms sleep, not the full backoff schedule).
+    it 'tolerates a transient read fault that clears on retry, via open_with_retry' do
+      content = "# 1 \"foo.c\"\nint x;\n"
+      call_count = 0
+      allow(File).to receive(:open) do |*_args, &block|
+        call_count += 1
+        raise Errno::EACCES, 'transient' if call_count == 1
+        block.call(StringIO.new(content))
+      end
+
+      real_file_wrapper = FileWrapper.new(loginator: double('loginator').as_null_object, verbosinator: double('verbosinator').as_null_object)
+      stripper = PreprocessinatorCommentStripper.new(
+        c_comment_scanner: CCommentScanner.new,
+        file_wrapper:      real_file_wrapper
+      )
+
+      expect(stripper.strip_file('foo.c')).to be false
+      expect(call_count).to eq(2)
     end
 
   end

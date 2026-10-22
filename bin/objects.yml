@@ -11,8 +11,13 @@
 #
 
 file_wrapper:
+  compose:
+    - loginator
+    - verbosinator
 
 yaml_wrapper:
+  compose:
+    - file_wrapper
 
 ruby_expandinator:
 
@@ -29,7 +34,6 @@ rake_task_registry:
 loginator:
   compose:
     - verbosinator
-    - file_wrapper
     - system_wrapper
 
 #
@@ -37,17 +41,20 @@ loginator:
 # ----------------
 #
 
-actions_wrapper:
+actionator:
+  compose:
+    - file_wrapper
+    - loginator
 
 # Separation of logic from CLI user interface
 cli_handler:
   compose:
-    - configinator
+    - composinator
     - projectinator
     - cli_helper
     - path_validator
     - rake_task_registry
-    - actions_wrapper
+    - actionator
     - loginator
 
 cli_helper:
@@ -55,7 +62,7 @@ cli_helper:
     - file_wrapper
     - config_walkinator
     - path_validator
-    - actions_wrapper
+    - actionator
     - rake_task_registry
     - loginator
     - reportinator
@@ -89,13 +96,19 @@ projectinator:
     - path_validator
     - yaml_wrapper
     - loginator
-    - system_wrapper
+
+mixin_resolvinator:
+  compose:
+    - file_wrapper
+    - path_validator
+    - loginator
     - ruby_expandinator
 
-configinator:
+composinator:
   compose:
     - config_walkinator
     - projectinator
+    - mixin_resolvinator
     - mixinator
 
 

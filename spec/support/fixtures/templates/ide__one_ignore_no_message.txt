@@ -1,0 +1,15 @@
+
+
+--------------------
+IGNORED TEST SUMMARY
+--------------------
+test/TestFoo.c:40:test_ignored
+
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  2
+PASSED:  1
+FAILED:  0
+IGNORED: 1
+

@@ -16,6 +16,7 @@ Dir.glob(File.join(CEEDLING_APPCFG[:ceedling_lib_path], '**/')).each do |dir|
 end
 
 require 'rake'
+require 'rake_patches'
 
 # Let's make sure we remember the task descriptions in case we need them
 Rake::TaskManager.record_task_metadata = true
@@ -33,7 +34,7 @@ def log_runtime(run, start_time_s, end_time_s, enabled)
 
   return if duration.empty?
 
-  @ceedling[:loginator].log( "\nCeedling #{run} completed in #{duration}", Verbosity::NORMAL)
+  @ceedling[:loginator].log( "\nCeedling #{run} completed in #{duration}\n\n", Verbosity::NORMAL)
 end
 
 start_time = nil # Outside scope of exception handling

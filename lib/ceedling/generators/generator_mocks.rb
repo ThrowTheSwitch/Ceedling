@@ -15,25 +15,30 @@ class GeneratorMocks
     return CMock.new(config)
   end
 
-  def build_configuration( output_path )
+  def build_configuration( output_path, overrides: {} )
     config = @configurator.get_cmock_config
     config[:mock_path] = output_path
 
-    # Verbosity management for logging messages
+    # A project sets one overall verbosity; CMock's own scale is coarser (errors
+    # only, warnings and errors, normal, verbose), so this maps the finer scale
+    # down onto CMock's four levels, keeping messaging from both tools balanced
+    # rather than doubled up at every level. Middling verbosity levels settle
+    # on CMock's "warnings and errors" as a reasonable default.
     verbosity = @configurator.project_verbosity
 
-    # Default to errors and warnings only so we can customize messages inside Ceedling
     config[:verbosity] = 1
 
-    # Extreme ends of verbosity scale case handling
-    if    (verbosity == Verbosity::SILENT)
-      # CMock is silent
+    if    (verbosity <= Verbosity::ERRORS)
+      # CMock's quietest level -- errors only, since it has no true silent mode.
       config[:verbosity] = 0
-      
     elsif (verbosity == Verbosity::DEBUG)
-      # CMock max verbosity
       config[:verbosity] = 3
     end
+
+    # A caller with a reason to run this one mock through CMock differently than
+    # the project's own defaults hands in exactly the settings that differ; those
+    # win over whatever was computed above.
+    config.merge!( overrides )
 
     return config
   end

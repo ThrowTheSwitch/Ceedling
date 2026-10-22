@@ -30,9 +30,9 @@ describe UserInclude do
       expect(include_obj).to eq('header.h')
     end
 
-    it "creates a UserInclude with a path and used path in string expansion" do
-      include_obj = UserInclude.new("path/to/header.h", use_path: true)
-      
+    it "creates a UserInclude with an include_path override used in string expansion" do
+      include_obj = UserInclude.new("path/to/header.h", include_path: "path/to/header.h")
+
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("path/to/header.h")
       expect("#{include_obj}").to eq('#include "path/to/header.h"')
@@ -110,13 +110,25 @@ describe SystemInclude do
       expect(include_obj).to eq('header.h')
     end
 
-    it "creates a SystemInclude with a path and used path in string expansion" do
-      include_obj = SystemInclude.new("path/to/header.h", use_path: true)
-      
+    it "creates a SystemInclude with an include_path override used in string expansion" do
+      include_obj = SystemInclude.new("path/to/header.h", include_path: "path/to/header.h")
+
       expect(include_obj.filename).to eq("header.h")
       expect(include_obj.filepath).to eq("path/to/header.h")
       expect("#{include_obj}").to eq('#include <path/to/header.h>')
       expect(include_obj).to eq('path/to/header.h')
+    end
+
+    it "renders include_path instead of the bare filename, while filepath/filename keep the resolved identity" do
+      include_obj = SystemInclude.new(
+        "/usr/include/x86_64-linux-gnu/sys/stat.h", include_path: "sys/stat.h"
+      )
+
+      expect(include_obj.filepath).to eq("/usr/include/x86_64-linux-gnu/sys/stat.h")
+      expect(include_obj.filename).to eq("stat.h")
+      expect(include_obj.include_path).to eq("sys/stat.h")
+      expect("#{include_obj}").to eq('#include <sys/stat.h>')
+      expect(include_obj).to eq('sys/stat.h')
     end
   end
 
@@ -189,9 +201,9 @@ describe "Include equality" do
     end
 
     it "compares not equal to another UserInclude with same filename but different paths" do
-      include1 = UserInclude.new("path1/header.h", use_path: true)
-      include2 = UserInclude.new("path2/header.h", use_path: true)
-      
+      include1 = UserInclude.new("path1/header.h", include_path: "path1/header.h")
+      include2 = UserInclude.new("path2/header.h", include_path: "path2/header.h")
+
       expect(include1).not_to eq(include2)
       expect(include2).not_to eq(include1)
     end
@@ -266,9 +278,9 @@ describe "Include equality" do
     end
 
     it "compares not equal to another SystemInclude with same filename but different paths" do
-      include1 = SystemInclude.new("sys/stdio.h", use_path: true)
-      include2 = SystemInclude.new("other/stdio.h", use_path: true)
-      
+      include1 = SystemInclude.new("sys/stdio.h", include_path: "sys/stdio.h")
+      include2 = SystemInclude.new("other/stdio.h", include_path: "other/stdio.h")
+
       expect(include1).not_to eq(include2)
       expect(include2).not_to eq(include1)
     end
@@ -342,9 +354,9 @@ describe "Include equality" do
     end
 
     it "compares not equal to another MockInclude with same filename but different paths" do
-      include1 = MockInclude.new("mocks/mock_module.h", use_path: true)
-      include2 = MockInclude.new("test/mocks/mock_module.h", use_path: true)
-      
+      include1 = MockInclude.new("mocks/mock_module.h", include_path: "mocks/mock_module.h")
+      include2 = MockInclude.new("test/mocks/mock_module.h", include_path: "test/mocks/mock_module.h")
+
       expect(include1).not_to eq(include2)
       expect(include2).not_to eq(include1)
     end
@@ -547,9 +559,9 @@ describe "Include string coercion (to_str)" do
       expect(include_obj.to_str).to eq("header.h")
     end
 
-    it "returns the full filepath when constructed with use_path: true" do
-      include_obj = UserInclude.new("sub/dir/header.h", use_path: true)
-      # to_str always returns @filename (the basename) regardless of use_path
+    it "returns the basename even when constructed with an include_path override" do
+      include_obj = UserInclude.new("sub/dir/header.h", include_path: "sub/dir/header.h")
+      # to_str always returns @filename (the basename) regardless of include_path
       expect(include_obj.to_str).to eq("header.h")
     end
   end
@@ -644,11 +656,15 @@ describe "Include regex matching" do
       expect(include_obj =~ /mock_sensor/).not_to be_nil
     end
 
+    # Include#=~ is the subject of these examples, not an incidental String match.
+    # RuboCop reads the receiver as a String and offers `start_with?`, which Include
+    # does not define, so accepting that correction raises NoMethodError. The nil
+    # expectations also depend on #=~ returning an index or nil rather than a boolean.
     it "supports anchored patterns" do
       include_obj = UserInclude.new("mock_module.h")
 
-      expect(include_obj =~ /\Amock_/).not_to be_nil
-      expect(include_obj =~ /\Amodule/).to be_nil
+      expect(include_obj =~ /\Amock_/).not_to be_nil # rubocop:disable Performance/StartWith
+      expect(include_obj =~ /\Amodule/).to be_nil     # rubocop:disable Performance/StartWith
     end
 
     it "can be used in Array#select via block" do
@@ -658,7 +674,7 @@ describe "Include regex matching" do
         UserInclude.new("mock_driver.h")
       ]
 
-      mocks = includes.select { |inc| inc =~ /\Amock_/ }
+      mocks = includes.select { |inc| inc =~ /\Amock_/ } # rubocop:disable Performance/StartWith
 
       expect(mocks.length).to eq(2)
       expect(mocks).to include(UserInclude.new("mock_sensor.h"))
@@ -707,7 +723,7 @@ describe "Include regex matching" do
         UserInclude.new("mock_driver.h")
       ]
 
-      non_mocks = includes.reject { |inc| inc =~ /\Amock_/ }
+      non_mocks = includes.reject { |inc| inc =~ /\Amock_/ } # rubocop:disable Performance/StartWith
 
       expect(non_mocks.length).to eq(1)
       expect(non_mocks).to include(UserInclude.new("module.h"))

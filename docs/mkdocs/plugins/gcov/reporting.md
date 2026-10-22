@@ -43,6 +43,8 @@ these tools.
 | `Cobertura` | ✓ | ✓ |
 | `SonarQube` | ✓ | ✓ |
 | `JSON` | ✓ | |
+| `JaCoCo` | ✓<sup>†</sup> | |
+| `lcov` | ✓<sup>†</sup> | ✓ |
 | `HtmlInline` | | ✓ |
 | `HtmlInlineAzure` | | ✓ |
 | `HtmlInlineAzureDark` | | ✓ |
@@ -54,14 +56,16 @@ these tools.
 | `LatexSummary` | | ✓ |
 | `PngChart` | | ✓ |
 | `TeamCitySummary` | | ✓ |
-| `lcov` | | ✓ |
 | `Xml` | | ✓ |
 | `XmlSummary` | | ✓ |
+
+<sup>†</sup> Requires `gcovr` 7.0 or higher. See [Supported tool versions](tool-versions.md).
 
 ```yaml
 :gcov:
   # Specify one or more reports to generate.
-  # Defaults to HtmlBasic.
+  # Empty or absent disables report generation entirely (coverage summaries
+  # are unaffected).
   :reports:
     # Generate an HTML summary report.
     # Supported utilities: gcovr, ReportGenerator
@@ -71,7 +75,7 @@ these tools.
     # Supported utilities: gcovr, ReportGenerator
     - HtmlDetailed
 
-    # Generate a Text report, which may be output to the console with gcovr or a file in both gcovr and ReportGenerator.
+    # Generate a Text report, written to a file by both gcovr and ReportGenerator.
     # Supported utilities: gcovr, ReportGenerator
     - Text
 
@@ -86,6 +90,14 @@ these tools.
     # Generate a JSON report.
     # Supported utilities: gcovr
     - JSON
+
+    # Generate a JaCoCo XML report.
+    # Supported utilities: gcovr (7.0+)
+    - JaCoCo
+
+    # Generate a text file in lcov format.
+    # Supported utilities: gcovr (7.0+), ReportGenerator
+    - lcov
 
     # Generate a detailed HTML report with CSS and JavaScript included in every HTML page. Useful for build servers.
     # Supported utilities: ReportGenerator
@@ -130,10 +142,6 @@ these tools.
     # Command line output interpreted by TeamCity.
     # Supported utilities: ReportGenerator
     - TeamCitySummary
-
-    # Generate a text file in lcov format.
-    # Supported utilities: ReportGenerator
-    - lcov
 
     # Generate a XML file containing a summary for all classes and detailed reports for each class.
     # Supported utilities: ReportGenerator

@@ -11,15 +11,9 @@ require_relative 'support/cppcheck_common_test_cases'
 ceedling_system_tests do
   describe "Cppcheck" do
     include CppcheckCommonTestCases
+    include_context "requires cppcheck"
 
     before :all do
-      @cppcheck_available = begin
-        `cppcheck --version 2>&1`
-        $?.exitstatus == 0
-      rescue
-        false
-      end
-
       @c = SystemContext.new
       @c.deploy_gem
     end
@@ -32,7 +26,6 @@ ceedling_system_tests do
 
     describe "Basic operations" do
       before do
-        skip "cppcheck is not installed or not in PATH" unless @cppcheck_available
         @c.with_context do
           @c.ceedling_appcmd_exec("new --local #{@proj_name}")
         end
@@ -44,6 +37,31 @@ ceedling_system_tests do
       test_case :can_list_cppcheck_suppression_files
       test_case :can_create_xml_report
       test_case :can_create_text_report
+      test_case :warns_when_no_reports_configured
+    end
+
+    describe "Findings and build failure" do
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :reports_findings_by_severity
+      test_case :fail_build_breaks_build_on_matching_severity
+      test_case :fail_build_passes_when_no_matching_severity
+    end
+
+    # The plugin must not make Cppcheck a dependency of unrelated builds. Regression
+    # coverage for the same defect class as issue #1252 in the Gcov plugin.
+    describe "Tool dependency scope" do
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :suppression_file_listing_needs_no_cppcheck
     end
   end
 end

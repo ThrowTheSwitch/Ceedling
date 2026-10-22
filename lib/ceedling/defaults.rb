@@ -69,7 +69,10 @@ DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
   :name => 'default_test_fixture_simple_backtrace'.freeze,
   :optional => false.freeze,
   :arguments => [
-    '-n ${2}'.freeze # Exact test case name matching flag
+    # Test case matching flag and (quoted) value, fully composed by the caller as
+    # either `-n "<exact name>"` or `-f "<base name>"` -- see
+    # GeneratorTestResultsBacktrace#unity_filter_arg.
+    '${2}'.freeze
     ].freeze
   }
 
@@ -202,7 +205,10 @@ DEFAULT_TEST_BACKTRACE_GDB_TOOL = {
     "--command \"${1}\"".freeze, # Debug script file to run
     '--args'.freeze,
     '${2}'.freeze,               # Test executable
-    '-n ${3}'.freeze             # Exact test case name matching flag
+    # Test case matching flag and (quoted) value, fully composed by the caller as
+    # either `-n "<exact name>"` or `-f "<base name>"` -- see
+    # GeneratorTestResultsBacktrace#unity_filter_arg.
+    '${3}'.freeze
     ].freeze
   }
 
@@ -289,6 +295,14 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :preprocess_force_fallback => false,
   },
 
+  :partials => {
+    # A single C construct (declaration, definition, directive, etc.) is extracted into a
+    # growing buffer; this bounds how large that buffer may grow before extraction fails
+    # outright rather than silently dropping an oversized construct and everything after
+    # it in the file. Value is a multiplier of 1000 characters -- 5000 means 5,000,000.
+    :max_extraction_length => 5000,
+  },
+
   # Unlike other top-level entries, :environment is an array (of hashes) to preserve order
   :environment => [],
 
@@ -325,7 +339,7 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
 
   :libraries => {
     :flag => '-l${1}',
-    :path_flag => '-L ${1}',
+    :path_flag => '-L "${1}"',
     :test => [],
     :release => []
     },
@@ -341,13 +355,14 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :list => '.lst',
     :testpass => '.pass',
     :testfail => '.fail',
-    :dependencies => '.d',
-    :yaml => '.yml'
+    :dependencies => '.d'
+    # :yaml, for mixin files, is read only from the project file itself (see bin/projectinator.rb)
     },
 
   :unity => {
     :defines => [],
-    :use_param_tests => false
+    :use_param_tests => false,
+    :shuffle_tests => false
     },
 
   :cmock => {
@@ -360,6 +375,8 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     #  (B) Test runner generator uses these same configuration values
     :mock_prefix => 'Mock',
     :mock_suffix => '',
+    # Names each mock by the folder its #include names so same-named headers stay distinct
+    :mock_name_include_folder => true,
     # CMock's default duplicated here.
     # We need a value present so preprocessing logic can safely reference it.
     :treat_inlines => :exclude,
@@ -380,6 +397,14 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
 
   # All tools populated while building up config / defaults structure
   :tools => {},
+
+  :plugins => {
+    # Hidden setting, for plugins alone and absent from project configuration docs.
+    # Plugins declare, in their own defaults, which build contexts are peers of :test,
+    # whose :defines and :flags may then hold matcher hashes. A project setting it
+    # replaces every plugin's declaration.
+    :test_build_contexts => []
+    },
 
   }.freeze
 
@@ -405,11 +430,11 @@ CEEDLING_RUNTIME_CONFIG = {
 
 
 DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
-% ignored        = hash[:results][:counts][:ignored]
-% failed         = hash[:results][:counts][:failed]
-% stdout_count   = hash[:results][:counts][:stdout]
-% header_prepend = ((hash[:context] != TEST_SYM) ? "#{hash[:context].to_s.upcase}: " : '')
-% banner_width   = 25 + header_prepend.length # widest message
+% preamble       = @ceedling[:plugin_reportinator].test_report_preamble(hash)
+% ignored        = preamble[:ignored]
+% failed         = preamble[:failed]
+% stdout_count   = preamble[:stdout_count]
+% header_prepend = preamble[:header_prepend]
 
 % if (stdout_count > 0)
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'TEST OUTPUT')%>
@@ -424,9 +449,10 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'IGNORED TEST SUMMARY')%>
 %   hash[:results][:ignores].each do |ignore|
 %     ignore[:collection].each do |item|
-<%=ignore[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+%       prefix = "#{ignore[:source][:file]}:#{item[:line]}:#{item[:test]}"
+<%=prefix%>
 % if (item[:message].length > 0)
-: "<%=item[:message]%>"
+: "<%=@ceedling[:plugin_reportinator].reflow_message(item[:message], "#{prefix}: ")%>"
 % else
 <%="\n"%>
 % end
@@ -438,9 +464,10 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 <%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'FAILED TEST SUMMARY')%>
 %   hash[:results][:failures].each do |failure|
 %     failure[:collection].each do |item|
-<%=failure[:source][:file]%>:<%=item[:line]%>:<%=item[:test]%>
+%       prefix = "#{failure[:source][:file]}:#{item[:line]}:#{item[:test]}"
+<%=prefix%>
 % if (item[:message].length > 0)
-: "<%=item[:message]%>"
+: "<%=@ceedling[:plugin_reportinator].reflow_message(item[:message], "#{prefix}: ")%>"
 % else
 <%="\n"%>
 % end
@@ -450,7 +477,8 @@ DEFAULT_TESTS_RESULTS_REPORT_TEMPLATE = %q{
 % end
 % total_string = hash[:results][:counts][:total].to_s
 % format_string = "%#{total_string.length}i"
-<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + 'OVERALL TEST SUMMARY')%>
+% banner_text = @ceedling[:plugin_reportinator].decorate_summary_banner('OVERALL TEST SUMMARY', failed)
+<%=@ceedling[:plugin_reportinator].generate_banner(header_prepend + banner_text)%>
 % if (hash[:results][:counts][:total] > 0)
 TESTED:  <%=hash[:results][:counts][:total].to_s%>
 PASSED:  <%=sprintf(format_string, hash[:results][:counts][:passed])%>

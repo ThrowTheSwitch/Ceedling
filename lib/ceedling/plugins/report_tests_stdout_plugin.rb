@@ -10,7 +10,7 @@ require 'ceedling/defaults'
 
 # Base class for stdout test-results reporting plugins.
 # Subclasses need only override the private `load_template` method to supply
-# a different ERB template string. All hook logic lives here.
+# a different template string. All hook logic lives here.
 class ReportTestsStdoutPlugin < Plugin
 
   # `Plugin` setup()
@@ -35,7 +35,10 @@ class ReportTestsStdoutPlugin < Plugin
     # Thread-safe manipulation since test fixtures can be run in child processes
     # spawned within multiple test execution threads.
     @mutex.synchronize do
-      if (result_file =~ /#{PROJECT_TEST_RESULTS_PATH}/) && !@result_list.include?(result_file)
+      # A plain substring check -- this is containment, not a pattern match,
+      # so a Regexp (even one properly escaped, per #104's own history) was
+      # never the right tool here to begin with.
+      if result_file.include?(PROJECT_TEST_RESULTS_PATH) && !@result_list.include?(result_file)
         @result_list << arg_hash[:result_file]
       end
     end
@@ -50,7 +53,7 @@ class ReportTestsStdoutPlugin < Plugin
 
     results = @plugin_reportinator.assemble_test_results( @result_list )
     hash = { :context => TEST_SYM, :results => results }
-    verbosity = (results[:counts][:failed] > 0) ? Verbosity::ERRORS : Verbosity::NORMAL
+    verbosity = @plugin_reportinator.test_results_floor_verbosity
 
     # Print unit test suite results
     @plugin_reportinator.run_test_results_report( hash, verbosity )
@@ -78,11 +81,21 @@ class ReportTestsStdoutPlugin < Plugin
 
   private
 
-  # Returns the ERB template string used for test results reports.
-  # Default: reads assets/template.erb from the plugin's own root path.
+  # Returns the template string used for test results reports.
+  # Default: reads assets/test_results.template from the plugin's own root path.
   # Override in a subclass to supply a different template string.
+  #
+  # Falls back to the historical assets/template.erb name so an out-of-tree plugin
+  # subclass shipping only that file keeps working. Ceedling no longer renders with
+  # ERB, so the old name describes neither the contents nor the engine, but breaking
+  # those plugins to correct a filename would be a poor trade.
   def load_template
-    return @ceedling[:file_wrapper].read( File.join( @plugin_root_path, 'assets/template.erb' ) )
+    preferred = File.join( @plugin_root_path, 'assets/test_results.template' )
+    legacy    = File.join( @plugin_root_path, 'assets/template.erb' )
+
+    path = @ceedling[:file_wrapper].exist?( preferred ) ? preferred : legacy
+
+    return @ceedling[:file_wrapper].read( path )
   end
 
 end

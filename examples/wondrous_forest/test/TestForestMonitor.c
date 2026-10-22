@@ -12,6 +12,10 @@
  * allowing direct state injection to test each state branch in isolation.
  * Six traditional mocks coexist alongside the Partial mock. */
 
+//
+// Unicode characters in comment block: ©️ © →
+//
+
 #include "unity.h"
 #include "ceedling.h"
 #include "MockTemperatureSensor.h"

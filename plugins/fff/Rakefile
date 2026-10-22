@@ -7,6 +7,14 @@
 
 require 'rake'
 require 'rspec/core/rake_task'
+require 'rbconfig'
+
+def windows?()
+  return (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
+end
+
+# Add `ruby` to the command line on Windows to execute the Ruby-based shell script bin/ceedling
+CEEDLING_CLI_EXEC = "#{'ruby ' if windows?}../../../../bin/ceedling"
 
 desc "Run all rspecs"
 RSpec::Core::RakeTask.new(:spec) do |t|
@@ -18,8 +26,12 @@ end
 desc "Run integration test on example"
 task :integration_test do
     chdir("./examples/fff_example") do
-        sh "ceedling clobber"
-        sh "ceedling test:all"
+        # Repo-relative path (rather than a bare `ceedling` resolved via PATH, i.e.
+        # the separately gem-installed copy) so this exercises the exact same
+        # bin/lib source this repo's other tests instrument, matching the
+        # dependencies/module_generator plugins' own Rakefiles.
+        sh "#{CEEDLING_CLI_EXEC} clobber"
+        sh "#{CEEDLING_CLI_EXEC} test:all"
     end
 end
 

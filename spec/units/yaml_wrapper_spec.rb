@@ -10,7 +10,8 @@ require 'ceedling/yaml_wrapper'
 
 describe YamlWrapper do
   before(:each) do
-    @yaml_wrapper = described_class.new
+    @file_wrapper = double('file_wrapper').as_null_object
+    @yaml_wrapper = described_class.new({ file_wrapper: @file_wrapper })
   end
 
   describe '#load_string' do
@@ -75,6 +76,8 @@ describe YamlWrapper do
 
   describe '#load' do
     it 'reports a missing file as :not_found' do
+      allow(@file_wrapper).to receive(:read).with('/no/such/file.yml').and_raise(Errno::ENOENT)
+
       expect { @yaml_wrapper.load('/no/such/file.yml') }.to raise_error(YamlLoadException) do |e|
         expect(e.reason).to eq(:not_found)
         expect(e.message).to match(/could not find yaml file/i)

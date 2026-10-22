@@ -8,8 +8,10 @@
 require 'fileutils'
 require 'tmpdir'
 require 'open3'
-require 'ceedling/yaml_wrapper'
+# spec_helper pulls in the 'constructor' gem -- must load before any Ceedling
+# class using the `constructor` class macro, e.g. ceedling/yaml_wrapper below.
 require 'spec_helper'
+require 'ceedling/yaml_wrapper'
 require 'deep_merge'
 
 require_relative 'system_test_output'
@@ -22,7 +24,7 @@ module CeedlingSystemSpecHelpers
 
   # Helper method to convert method name to readable description
   def test_case(method_name)
-    description = method_name.to_s.gsub('_', ' ').capitalize
+    description = method_name.to_s.tr('_', ' ').capitalize
     it(description) { send(method_name) }
   end
 end
@@ -51,15 +53,15 @@ RSpec.configure do |config|
     when 'all'
       # Individual spec debug mode (and CI locale test): preserve everything for inspection.
       $stdout.puts "\n[System Tests] Artifact preservation: ALL (pass + fail)"
-      $stdout.puts "  Pass project dirs: systests/proj/pass/"
-      $stdout.puts "  Fail project dirs: systests/proj/fail/"
-      $stdout.puts "  Pass logs:         systests/systest.pass.*.log"
-      $stdout.puts "  Fail logs:         systests/systest.fail.*.log\n\n"
+      $stdout.puts "  Pass project dirs: #{SystemContext::ARTIFACTS_DIR}/proj/pass/"
+      $stdout.puts "  Fail project dirs: #{SystemContext::ARTIFACTS_DIR}/proj/fail/"
+      $stdout.puts "  Pass logs:         #{SystemContext::ARTIFACTS_DIR}/pass.*.log"
+      $stdout.puts "  Fail logs:         #{SystemContext::ARTIFACTS_DIR}/fail.*.log\n\n"
     when 'failures'
       # CI batch debug mode: preserve only failures; passing dirs are deleted immediately.
       $stdout.puts "\n[System Tests] Artifact preservation: FAILURES ONLY"
-      $stdout.puts "  Fail project dirs: systests/proj/fail/"
-      $stdout.puts "  Fail logs:         systests/systest.fail.*.log"
+      $stdout.puts "  Fail project dirs: #{SystemContext::ARTIFACTS_DIR}/proj/fail/"
+      $stdout.puts "  Fail logs:         #{SystemContext::ARTIFACTS_DIR}/fail.*.log"
       $stdout.puts "  Passing artifacts deleted immediately.\n\n"
     end
 
@@ -117,13 +119,17 @@ RSpec.configure do |config|
              # (e.g. "s_" from "Project's" -> "Project_s_" when the cut lands mid-segment).
              .then { |s| s.length > 120 ? s[-120..].sub(/\A[^_]*_+/, '') : s }
 
-    timestamp   = Time.now.utc.strftime('%Y%m%dT%H%M%SZ')
+    # PID + microsecond precision, not just a second-precision timestamp -- two concurrent
+    # processes writing a log for identically-described tests in the same UTC second would
+    # otherwise silently overwrite one another. Mirrors simplecov_boot.rb's own resultset
+    # directory naming, which solves the same concurrent-writer problem for coverage data.
+    timestamp   = Time.now.utc.strftime('%Y%m%dT%H%M%S%6NZ')
     # Centralize all system test result logs so CI can upload one directory as an artifact.
-    results_dir = File.join(Dir.pwd, 'systests')
+    results_dir = File.join(Dir.pwd, SystemContext::ARTIFACTS_DIR)
     FileUtils.mkdir_p(results_dir)
 
     result_tag = is_failure ? 'fail' : 'pass'
-    log_path   = File.join(results_dir, "systest.#{result_tag}.#{test_name}.#{timestamp}.log")
+    log_path   = File.join(results_dir, "#{result_tag}.#{test_name}.#{Process.pid}-#{timestamp}.log")
 
     log_content = ""
     log_content << "Command: `#{@c.last_cmd}`\n\n" if @c.respond_to?(:last_cmd) && !@c.last_cmd.nil?
@@ -147,7 +153,110 @@ RSpec.configure do |config|
 end
 
 def test_asset_path(asset_file_name)
-  File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', asset_file_name)
+  File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', 'fixtures', asset_file_name)
+end
+
+# Reads a file a spec is inspecting -- a project source, a generated runner, a report --
+# as UTF-8 rather than at the platform default.
+#
+# Ruby resolves `Encoding.default_external` once at startup from the ambient locale, and
+# a developer machine exporting no locale resolves it to US-ASCII. A bare read of content
+# carrying any non-ASCII byte then raises `invalid byte sequence`, which reads like a
+# defect in whatever feature is under test rather than in the spec's own file handling.
+# CI hides it by exporting a UTF-8 locale.
+#
+# Reading explicitly rather than forcing the process default is deliberate: the
+# encoding-stress spec asserts that default is *not* UTF-8 and that a naive read of a
+# non-ASCII fixture still raises, which is the condition it exists to stress.
+def read_spec_file(path)
+  File.read( path, encoding: 'UTF-8' )
+end
+
+def readlines_spec_file(path)
+  File.readlines( path, encoding: 'UTF-8' )
+end
+
+# Collapses the `@c.with_context { Dir.chdir(@proj_name) { ... } }` triple-nesting
+# repeated at nearly every before-hook and example body across the path/name
+# disambiguation specs (spec/system/*_disambiguation*, *_path*, etc.) into one call.
+# `@c`/`@proj_name` are instance state set by the "a fresh ceedling gem project"
+# shared context below -- any spec using this helper needs that context (or
+# equivalent) included first.
+def in_project(&block)
+  @c.with_context { Dir.chdir(@proj_name, &block) }
+end
+
+# Copies test_asset_path(fixture_relative_path) into dest_dir (created if it doesn't
+# already exist) -- collapses the FileUtils.mkdir_p + FileUtils.cp test_asset_path(...)
+# pair repeated identically across every fixture-loading before-hook in the
+# test_asset_path-based specs in this same cluster.
+def copy_fixture(fixture_relative_path, dest_dir)
+  FileUtils.mkdir_p(dest_dir)
+  FileUtils.cp(test_asset_path(fixture_relative_path), dest_dir)
+end
+
+# Copies the alpha/dup.{h,c} + beta/dup.{h,c} fixture pair -- two identically-shaped
+# header+source pairs in different directories -- into the current example's project.
+# Shared by implicit_source_header_correspondence_disambiguation_spec.rb and
+# test_source_file_directive_spec.rb, which both build scenarios around this same
+# same-basename ambiguity (previously a byte-for-byte duplicate private method in
+# both files).
+def copy_duplicate_dup_pairs
+  in_project do
+    copy_fixture("implicit_source_header_correspondence/alpha/dup.h", 'src/alpha')
+    copy_fixture("implicit_source_header_correspondence/alpha/dup.c", 'src/alpha')
+    copy_fixture("implicit_source_header_correspondence/beta/dup.h", 'src/beta')
+    copy_fixture("implicit_source_header_correspondence/beta/dup.c", 'src/beta')
+  end
+end
+
+# Lays down the same-named module fixture, mirroring issue #1311's own project shape
+# -- one include root, namespaced headers, and a source tree that mirrors it.
+# `drivers` names which of the two same-basename modules to copy, so a caller can
+# stage one module for an unambiguous build or both for an ambiguous one.
+#
+# The include root is added because a `ceedling new` project has none. It is recursive
+# so the namespaced headers below it are actually collected. A non-recursive entry
+# collects none of them and no module resolves.
+#
+# `partials` and `preprocess` are the two settings that change how same-named modules
+# are handled, so each caller states what it is exercising.
+def copy_same_named_modules(*drivers, partials: false, preprocess: nil)
+  in_project do
+    drivers.each do |driver|
+      copy_fixture("same_named_modules/include/drivers/#{driver}/config.h", "include/drivers/#{driver}")
+      copy_fixture("same_named_modules/src/drivers/#{driver}/config.c", "src/drivers/#{driver}")
+    end
+
+    project = { :use_partials => partials }
+    project[:use_test_preprocessor] = preprocess unless preprocess.nil?
+
+    @c.merge_project_yml_for_test(
+      :project => project,
+      :paths   => { :include => ['include/**'] }
+    )
+  end
+end
+
+# Partials enable preprocessing of their own accord, so callers exercising Partials
+# need name only the modules.
+def copy_same_named_partial_modules(*drivers)
+  copy_same_named_modules( *drivers, partials: true )
+end
+
+def feature_asset_path(asset_file_name)
+  File.join(File.dirname(__FILE__), '..', '..', '..', 'assets', 'features', asset_file_name)
+end
+
+# `ceedling new`/`upgrade` only populates a project's docs/ceedling/ by copying this
+# repo's own site-local/ -- the local mkdocs HTML bundle, built only by `rake
+# docs:build:local` (see bin/cli_helper.rb's own identical check). That's a step CI
+# runs in a dedicated job before the test suite, but a plain local `bundle install &&
+# rspec` never runs at all, so docs/ceedling/ is legitimately absent there. Tests
+# asserting a deployed project's doc contents check this first rather than hardcoding
+# an assumption that only ever holds in CI's own environment (issue #1216).
+def html_docs_bundle_available?
+  Dir.exist?(File.join(File.dirname(__FILE__), '..', '..', '..', 'site-local'))
 end
 
 def unique_proj_name(prefix)
@@ -160,8 +269,8 @@ def unique_proj_name(prefix)
 end
 
 def convert_slashes(path)
-  if RUBY_PLATFORM.downcase.match(/mingw|win32/)
-    path.gsub("/","\\")
+  if /mingw|win32/.match?(RUBY_PLATFORM.downcase)
+    path.tr("/","\\")
   else
     path
   end
@@ -177,12 +286,176 @@ rescue
   false
 end
 
+# True when `gcc` honours `-fdirectives-only` without complaint. Older Apple Clang releases
+# (the `gcc` alias on macOS) ignore the flag with a warning naming it, which is exactly when
+# Ceedling falls back to text scanning for a whole run (Configurator#resolve_directives_only_preprocessing).
+# The integration tier keeps its own copy so it need not load this helper.
+def directives_only_supported?
+  out, status = Open3.capture2e('gcc -E -fdirectives-only -x c -', stdin_data: "\n")
+  status.success? && !out.match?(/warning[^\n]+-fdirectives-only/)
+rescue StandardError
+  false
+end
+
+# Probed versions, keyed by tool. Each tool is asked once per process: these shell out,
+# and the answer cannot change mid-run.
+TOOL_VERSIONS = {}
+
+# The gcov plugin gates features on tool versions two ways, and a system test exercising a
+# gated feature has to agree with whichever applies or it tests nothing:
+#
+#   - A gate that *raises*. Configuring the feature on too old a tool breaks the build by
+#     design, so a test asserting success fails for a correct reason. Loud.
+#   - A `:min_version` arg-table entry that *silently omits* the flag. The build succeeds
+#     and the feature simply did not happen, so a test can pass while asserting nothing.
+#     Quiet, and the more dangerous of the two.
+#
+# Either way the version has to be known, hence these probes rather than the presence-only
+# ones above.
+
+# A tool's version as [major, minor], or nil when the tool is absent, fails to run, or
+# prints something the pattern cannot read. All three mean the same thing to a caller:
+# this machine cannot answer for that tool, so gate on it rather than guess.
+def tool_version(key, cmd, pattern)
+  return TOOL_VERSIONS[key] if TOOL_VERSIONS.key?( key )
+
+  TOOL_VERSIONS[key] =
+    begin
+      output = `#{cmd}`
+      match  = ($?.exitstatus == 0) ? output.match( pattern ) : nil
+      match.nil? ? nil : [match[1].to_i, match[2].to_i]
+    rescue
+      nil
+    end
+end
+
+def gcovr_version
+  tool_version( :gcovr, 'gcovr --version 2>&1', /gcovr\s+(\d+)\.(\d+)/ )
+end
+
+# Deliberately the same pattern the plugin itself uses to read a GCC version, so this
+# agrees with the plugin about what counts as a readable `gcc`. A platform whose `gcc` is
+# really Clang behind a compatibility shim (macOS) prints something this cannot read, and
+# nil is the correct answer there: the plugin would raise on it too.
+def gcc_version
+  tool_version( :gcc, 'gcc --version 2>&1', /^gcc(?:\.exe)?\s+.*\s+(\d+)\.(\d+)\.\d+/ )
+end
+
+# True when `version` is at least `minimum`, both [major, minor]. A nil version is never
+# sufficient.
+def tool_version_at_least?(version, minimum)
+  return false if version.nil?
+
+  return (version <=> minimum) >= 0
+end
+
+def version_label(version)
+  version.nil? ? 'unreadable' : version.join('.')
+end
+
+# `gdb --version` answers on a machine where gdb cannot actually attach to a
+# process -- macOS revokes a Homebrew gdb's debugger entitlement often enough (a
+# Homebrew upgrade, a macOS system update, a Gatekeeper/taskgated cache reset) that
+# trusting `--version` alone would let these system tests run under a gdb that can
+# never do real work, producing confusing failures instead of a clean skip. A
+# short-lived real process and a minimal attach/detach proves gdb can actually do
+# the job -- the same real-probe shape as `ConfiguratorSetup#probe_gdb_attach` in
+# `lib/ceedling` (a separate implementation: that one is shipped library code, this
+# is spec-only support code). Linux/macOS only, matching `ubsan_available?` below --
+# gdb system tests are already gated off Windows entirely.
+def gdb_real_attach_succeeds?
+  tool_available?(
+    %q{sh -c 'sleep 5 & pid=$!; gdb -q --batch --pid "$pid" --eval-command detach 2>&1; rc=$?; kill "$pid" 2>/dev/null; exit $rc'}
+  )
+end
+
 def gdb_available?
-  tool_available?('gdb --version 2>&1')
+  return false unless RUBY_PLATFORM.downcase.match?(/linux|darwin/)
+  return false unless tool_available?('gdb --version 2>&1')
+
+  gdb_real_attach_succeeds?
+end
+
+# True when gdb is installed but confirmed unable to attach to a process --
+# the exact condition ConfiguratorSetup#validate_gdb_attach_capability detects
+# and downgrades :use_backtrace from :gdb to :simple for. macOS-only, matching
+# that production check's own platform gate: a hobbled Linux gdb wouldn't
+# trigger the fallback at all, so there'd be nothing here to exercise.
+def gdb_installed_but_unusable?
+  return false unless RUBY_PLATFORM.downcase.include?('darwin')
+  return false unless tool_available?('gdb --version 2>&1')
+
+  !gdb_real_attach_succeeds?
 end
 
 def valgrind_available?
   tool_available?('valgrind --version 2>&1')
+end
+
+def cppcheck_available?
+  tool_available?('cppcheck --version 2>&1')
+end
+
+def bullseye_available?
+  # covc has no --version flag (unrecognized options always exit non-zero,
+  # licensed or not) — --help is the cheapest licensed command that succeeds.
+  tool_available?('covc --help 2>&1')
+end
+
+# Real UBSan support is Linux-specific in practice for this test suite -- macOS's
+# system `gcc` is really Clang under a compatibility shim with different sanitizer
+# runtime behavior, and MinGW gcc on Windows doesn't ship the sanitizer runtime at
+# all. Restricting to Linux avoids flaky, platform-dependent compiler probing.
+def ubsan_available?
+  return false unless RUBY_PLATFORM.downcase.include?('linux')
+
+  Dir.mktmpdir do |dir|
+    source = File.join(dir, 'ubsan_check.c')
+    binary = File.join(dir, 'ubsan_check')
+    File.write(source, "int main(void) { return 0; }\n")
+    tool_available?(%(gcc -fsanitize=undefined -o "#{binary}" "#{source}" 2>&1))
+  end
+end
+
+# The sanitize plugin runs where the compiler builds and links ASan and UBSan programs
+# that then run: Linux with GCC or Clang, and macOS with Apple Clang. The program is run
+# as well as built, since a runtime missing at load time only shows then.
+def sanitizers_available?
+  return false if RUBY_PLATFORM.downcase.match?( /mswin|mingw|msys|cygwin/ )
+
+  Dir.mktmpdir do |dir|
+    source = File.join(dir, 'sanitizers_check.c')
+    binary = File.join(dir, 'sanitizers_check')
+    File.write(source, "int main(void) { return 0; }\n")
+    tool_available?(%(gcc -fsanitize=address,undefined -o "#{binary}" "#{source}" 2>&1 && "#{binary}"))
+  end
+end
+
+# LeakSanitizer is not supported on macOS
+def leak_detection_available?
+  return RUBY_PLATFORM.downcase.include?('linux') && sanitizers_available?
+end
+
+# Collapses the before(:all)/after(:all) SystemContext setup/teardown pair plus the
+# `ceedling new` scaffold call -- identical across every "Deployed as a gem" spec in
+# the path/name disambiguation cluster -- into one `include_context` line. `proj_prefix`
+# feeds `unique_proj_name`, matching each file's own former hardcoded prefix string.
+RSpec.shared_context "a fresh ceedling gem project" do |proj_prefix|
+  before :all do
+    @c = SystemContext.new
+    @c.deploy_gem
+  end
+
+  after :all do
+    @c.done!
+  end
+
+  before { @proj_name = unique_proj_name(proj_prefix) }
+
+  # Not in_project -- the project directory doesn't exist until this call creates
+  # it, so there's nothing yet to Dir.chdir into. Every subsequent step (fixture
+  # loading, build/test invocations) uses in_project as normal.
+  before { @c.with_context { @c.ceedling_appcmd_exec("new #{@proj_name}") } }
 end
 
 RSpec.shared_context "requires gdb" do
@@ -191,7 +464,19 @@ RSpec.shared_context "requires gdb" do
   end
 
   before do
-    skip "gdb is not installed or not in PATH" unless @gdb_available
+    skip "gdb is not installed, not in PATH, or cannot attach to a process " \
+         "(e.g. a macOS codesigning trust problem -- see taskgated(8))" unless @gdb_available
+  end
+end
+
+RSpec.shared_context "requires a hobbled gdb" do
+  before :all do
+    @gdb_hobbled = gdb_installed_but_unusable?
+  end
+
+  before do
+    skip "gdb is fully functional, not installed, or this isn't macOS " \
+         "(the only platform Ceedling currently auto-detects this on)" unless @gdb_hobbled
   end
 end
 
@@ -203,4 +488,115 @@ RSpec.shared_context "requires valgrind" do
   before do
     skip "valgrind is not installed or not in PATH" unless @valgrind_available
   end
+end
+
+RSpec.shared_context "requires cppcheck" do
+  before :all do
+    @cppcheck_available = cppcheck_available?
+  end
+
+  before do
+    skip "cppcheck is not installed or not in PATH" unless @cppcheck_available
+  end
+end
+
+RSpec.shared_context "requires bullseye" do
+  before :all do
+    @bullseye_available = bullseye_available?
+  end
+
+  before do
+    skip "Bullseye (covc) is not installed, licensed, or not in PATH" unless @bullseye_available
+  end
+end
+
+# Takes the minimum this group needs, as [major, minor]. Presence alone is not enough for
+# a group exercising a version-gated gcov feature: on too old a gcovr the plugin either
+# breaks the build by design or quietly drops the flag, and either way the group is not
+# testing what it claims.
+#
+#   include_context "requires gcovr", [7, 0]
+#
+# Pass nothing to require presence alone.
+RSpec.shared_context "requires gcovr" do |minimum = nil|
+  before :all do
+    @gcovr_version = gcovr_version
+  end
+
+  before do
+    if @gcovr_version.nil?
+      skip "gcovr is not installed, not in PATH, or its version could not be read"
+    elsif !minimum.nil? && !tool_version_at_least?( @gcovr_version, minimum )
+      skip "gcovr #{minimum.join('.')} or higher is required for this feature " \
+           "(found #{version_label( @gcovr_version )})"
+    end
+  end
+end
+
+# As "requires gcovr", for a feature gated on the compiler's own version rather than the
+# report tool's. A platform whose `gcc` is really Clang prints a version this cannot read,
+# which skips -- the plugin would refuse such a toolchain too.
+RSpec.shared_context "requires gcc" do |minimum = nil|
+  before :all do
+    @gcc_version = gcc_version
+  end
+
+  before do
+    if @gcc_version.nil?
+      skip "gcc is not installed, not in PATH, or is not a real GCC whose version can be read"
+    elsif !minimum.nil? && !tool_version_at_least?( @gcc_version, minimum )
+      skip "gcc #{minimum.join('.')} or higher is required for this feature " \
+           "(found #{version_label( @gcc_version )})"
+    end
+  end
+end
+
+RSpec.shared_context "requires gcc with UBSan" do
+  before :all do
+    @ubsan_available = ubsan_available?
+  end
+
+  before do
+    skip "gcc UBSan support not available (Linux + gcc -fsanitize=undefined required)" unless @ubsan_available
+  end
+end
+
+RSpec.shared_context "requires sanitizers" do
+  before :all do
+    @sanitizers_available = sanitizers_available?
+  end
+
+  before do
+    skip "ASan and UBSan not available (Linux or macOS with gcc -fsanitize=address,undefined required)" unless @sanitizers_available
+  end
+end
+
+RSpec.shared_context "requires leak detection" do
+  before :all do
+    @leak_detection_available = leak_detection_available?
+  end
+
+  before do
+    skip "LeakSanitizer not available (Linux with gcc -fsanitize=address required)" unless @leak_detection_available
+  end
+end
+
+# Disables ASan+UBSan instrumentation for the examples that include it, rather
+# than skipping them -- which is why this is deliberately not named "requires
+# ...", unlike every shared context above. The examples still run; they just run
+# uninstrumented on the instrumented CI leg.
+#
+# Opting out is mandatory for correctness, not tidiness. The sanitizer mixins
+# configure :flags ↳ :test, and lib/ceedling/test_invoker/test_build_setup.rb
+# falls back to the :test context for any plugin context that defines no flags of
+# its own -- so a :gcov, :bullseye, or :valgrind build inherits them whether or
+# not that was intended.
+#
+# Toggled per example, so an opted-out spec file leaves the rest of the suite
+# instrumented. The flag lives on SystemContext itself (class level) because
+# specs construct their SystemContext in before(:all) while this pair runs in
+# before/after(:each); see SystemContext.sanitizers_disabled=.
+RSpec.shared_context "cannot be sanitized" do
+  before { SystemContext.sanitizers_disabled = true }
+  after  { SystemContext.sanitizers_disabled = false }
 end

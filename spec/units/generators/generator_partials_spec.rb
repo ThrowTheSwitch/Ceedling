@@ -11,12 +11,18 @@ require 'ceedling/partials/partials'
 require 'ceedling/includes/includes'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'stringio'
+require 'include_guard_helper'
 
 describe GeneratorPartials do
+  include IncludeGuardHelper
+
   before(:each) do
     @file_wrapper    = double( "FileWrapper" )
     @file_path_utils = double( "FilePathUtils" )
     @loginator       = double( "Loginator" ).as_null_object
+
+    # Every generator creates its target's own directory before writing.
+    allow(@file_wrapper).to receive(:mkdir)
 
     @generator = described_class.new(
       {
@@ -61,7 +67,88 @@ describe GeneratorPartials do
     CExtractorTypes::CModule.new()
   end
 
+  # A StringIO standing in for the generated types header, with the filename lookup stubbed.
+  # Several examples differ only in what they hand generate_types, not in this plumbing.
+  def types_buffer(name, header_filename)
+    allow(@file_path_utils).to receive(:form_partial_types_header_filename)
+      .with(name)
+      .and_return(header_filename)
+
+    buf = StringIO.new()
+    allow(@file_wrapper).to receive(:open)
+      .with(File.join('/path/to/output', header_filename), 'wb')
+      .and_yield(buf)
+
+    buf
+  end
+
   context "#generate_implementation" do
+    # A bare module name implies no directory of its own, so the directory created is
+    # just the output path it was handed.
+    it "creates the output path for a module named without a directory" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_source_filename).and_return( 'm_impl.c' )
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename).and_return( 'm_impl.h' )
+      allow(@file_wrapper).to receive(:open).and_yield( double('handle').as_null_object )
+      allow(@generator).to receive(:generate_header)
+      allow(@generator).to receive(:generate_source)
+
+      expect(@file_wrapper).to receive(:mkdir).with( '/path/to/output' ).at_least(:once)
+
+      @generator.generate_implementation(
+        test: 'test_m', name: 'm', function_definitions: [],
+        source_includes: [], header_includes: [],
+        c_module: empty_module, output_path: '/path/to/output'
+      )
+    end
+
+    # A module named by directory produces a nested filename, so the directory has to
+    # exist before the write. Nothing else creates it.
+    it "creates the nested directory for a module named by directory" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_source_filename)
+        .and_return( 'drivers/uart/ceedling_partial_config_impl.c' )
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .and_return( 'drivers/uart/ceedling_partial_config_impl.h' )
+      allow(@file_wrapper).to receive(:open).and_yield( double('handle').as_null_object )
+      allow(@generator).to receive(:generate_header)
+      allow(@generator).to receive(:generate_source)
+
+      expect(@file_wrapper).to receive(:mkdir).with( '/path/to/output/drivers/uart' ).at_least(:once)
+
+      @generator.generate_implementation(
+        test: 'test_config', name: 'drivers/uart/config', function_definitions: [],
+        source_includes: [], header_includes: [],
+        c_module: empty_module, output_path: '/path/to/output'
+      )
+    end
+
+    # Two modules sharing a basename generate two headers sharing one basename. A guard
+    # built from the basename alone is the same in both, so whichever header the compiler
+    # reads second is emptied and its declarations vanish.
+    it "builds an include guard distinguishing modules that share a basename" do
+      guards = []
+
+      ['drivers/uart', 'drivers/spi'].each do |dir|
+        handle = StringIO.new
+        allow(@file_path_utils).to receive(:form_partial_implementation_source_filename)
+          .and_return( "#{dir}/ceedling_partial_config_impl.c" )
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .and_return( "#{dir}/ceedling_partial_config_impl.h" )
+        allow(@file_wrapper).to receive(:mkdir)
+        allow(@file_wrapper).to receive(:open).and_yield( handle )
+
+        @generator.generate_implementation(
+          test: 'test_both', name: "#{dir}/config", function_definitions: [],
+          source_includes: [], header_includes: [],
+          c_module: empty_module, output_path: '/path/to/output'
+        )
+
+        guards << handle.string[/#ifndef (\S+)/, 1]
+      end
+
+      expect( guards.first ).to_not be_nil
+      expect( guards.first ).to_not eq( guards.last )
+    end
+
     it "should call generate_header() and generate_source() with correct parameters" do
       # Setup
       output_path = '/path/to/output'
@@ -84,12 +171,14 @@ describe GeneratorPartials do
       header_file_handle = double('header_file_handle')
       source_file_handle = double('source_file_handle')
 
+      # Binary mode ('wb'): generated files carry embedded content whose line
+      # endings must reach disk unchanged, which text mode would not guarantee.
       allow(@file_wrapper).to receive(:open)
-        .with(expected_header_filepath, 'w')
+        .with(expected_header_filepath, 'wb')
         .and_yield(header_file_handle)
 
       allow(@file_wrapper).to receive(:open)
-        .with(expected_source_filepath, 'w')
+        .with(expected_source_filepath, 'wb')
         .and_yield(source_file_handle)
 
       # Spy on generate_header and generate_source -- allow them to be called but track the calls
@@ -129,7 +218,7 @@ describe GeneratorPartials do
         header_includes,
         defns,
         c_module,
-        true
+        { include_variables: true, include_guard: nil }
       )
 
       # Verify generate_source was called with correct parameters
@@ -145,8 +234,8 @@ describe GeneratorPartials do
       expect(@file_path_utils).to have_received(:form_partial_implementation_header_filename).with(name)
 
       # Verify file operations
-      expect(@file_wrapper).to have_received(:open).with(expected_header_filepath, 'w')
-      expect(@file_wrapper).to have_received(:open).with(expected_source_filepath, 'w')
+      expect(@file_wrapper).to have_received(:open).with(expected_header_filepath, 'wb')
+      expect(@file_wrapper).to have_received(:open).with(expected_source_filepath, 'wb')
 
       # Verify return value is the source filepath
       expect(result).to eq(expected_source_filepath)
@@ -167,9 +256,11 @@ describe GeneratorPartials do
         .and_return(header_filename)
 
       # Mock FileWrapper.open to yield a file handle
+      # Binary mode ('wb'): generated files carry embedded content whose line
+      # endings must reach disk unchanged, which text mode would not guarantee.
       file_handle = double('file_handle')
       allow(@file_wrapper).to receive(:open)
-        .with(expected_filepath, 'w')
+        .with(expected_filepath, 'wb')
         .and_yield(file_handle)
 
       # Spy on generate_header -- allow it to be called but track the call
@@ -204,17 +295,361 @@ describe GeneratorPartials do
         includes,
         decls,
         c_module,
-        false
+        { include_variables: false, include_guard: nil }
       )
 
       # Verify file path utilities were called
       expect(@file_path_utils).to have_received(:form_partial_interface_header_filename).with(name)
 
       # Verify file operations
-      expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'w')
+      expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'wb')
 
       # Verify return value is the header filepath
       expect(result).to eq(expected_filepath)
+    end
+  end
+
+  context "#generate_types" do
+    it "writes nothing and returns nil when the module has no typedefs or aggregate definitions" do
+      allow(@file_wrapper).to receive(:open)
+
+      c_module = make_module(
+        make_stmt(text: "#define FOO 1", line_num: 1),
+        make_var(name: 'counter', type: 'int', text: 'int counter;', line_num: 2)
+      )
+
+      result = @generator.generate_types(
+        name: 'my_module',
+        c_module: c_module,
+        output_path: '/path/to/output'
+      )
+
+      expect(@file_wrapper).not_to have_received(:open)
+      expect(result).to be_nil
+    end
+
+    it "writes nothing when the module's only CStatement is a bare macro invocation (not type-defining)" do
+      allow(@file_wrapper).to receive(:open)
+
+      invocation = CExtractorTypes::CStatement.new(text: "FOO(0)", line_num: 1)
+      c_module = CExtractorTypes::CModule.new(
+        macro_invocations: [invocation],
+        element_sequence:  [invocation]
+      )
+
+      result = @generator.generate_types(
+        name: 'my_module',
+        c_module: c_module,
+        output_path: '/path/to/output'
+      )
+
+      expect(@file_wrapper).not_to have_received(:open)
+      expect(result).to be_nil
+    end
+
+    it "writes the typedefs and aggregate definitions, guarded and in element_sequence order, carrying forward a macro that precedes one of them, and returns the bare filename" do
+      file_contents = <<~CONTENTS
+      #ifndef GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
+      #define GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
+
+      typedef uint8_t Byte;
+      #define FOO 1
+      struct Config { int id; };
+
+      #endif // GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
+
+      CONTENTS
+
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+      expected_filepath = File.join(output_path, header_filename)
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename)
+        .with(name)
+        .and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open)
+        .with(expected_filepath, 'wb')
+        .and_yield(buf)
+
+      # A variable and a macro sit between the two type-defining statements in
+      # element_sequence. The variable (which stays behind for generate_header) is
+      # entirely absent here, but the macro precedes the aggregate and is carried
+      # forward immediately before it -- the aggregate's definition may depend on it
+      # (e.g. an array-size constant), and this header is #included before
+      # generate_header's own later, inline copy of that same macro would exist.
+      typedef_stmt   = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+      var_decl       = make_var(name: 'counter', type: 'int', text: 'int counter;', line_num: 2)
+      macro_stmt     = CExtractorTypes::CStatement.new(text: "#define FOO 1", line_num: 3)
+      aggregate_stmt = CExtractorTypes::CStatement.new(text: "struct Config { int id; };", line_num: 4)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:      [typedef_stmt],
+        macro_definitions:     [macro_stmt],
+        variable_declarations: [var_decl],
+        aggregate_definitions: [aggregate_stmt],
+        element_sequence:      [typedef_stmt, var_decl, macro_stmt, aggregate_stmt]
+      )
+
+      result = @generator.generate_types(
+        name: name,
+        c_module: c_module,
+        output_path: output_path
+      )
+
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+      expect(@file_wrapper).to have_received(:open).with(expected_filepath, 'wb')
+      expect(result).to eq(header_filename)
+    end
+
+    # The spoof and the carried includes are what make this header compile wherever it lands.
+    # Order between them is load-bearing: a carried header can transitively reach the real
+    # module header, so the guard has to be satisfied before any include is processed.
+    it "states the module's own guard before the includes it carries, then the types" do
+      file_contents = <<~CONTENTS
+      #ifndef GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
+      #define GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
+
+      #define MY_MODULE_H
+
+      #include "foundation.h"
+      #include <stdint.h>
+
+      typedef uint8_t Byte;
+
+      #endif // GEN<HASH>_MY_MODULE_TYPES_H_CEEDLING
+
+      CONTENTS
+
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions: [typedef_stmt],
+          element_sequence: [typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        includes: [UserInclude.new('foundation.h'), SystemInclude.new('stdint.h')],
+        include_guard: 'MY_MODULE_H'
+      )
+
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    it "states no guard when the module's header has none to spoof" do
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions: [typedef_stmt],
+          element_sequence: [typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        includes: [UserInclude.new('foundation.h')],
+        include_guard: nil
+      )
+
+      expect( buf.string ).to include('#include "foundation.h"')
+      expect( buf.string.scan(/^#define /).length ).to eq(1) # the generated guard alone
+    end
+
+    # The real header's own guard also arrives among the extracted macros, since it survives
+    # preprocessing. Stating it deliberately and carrying it too would duplicate it.
+    it "drops the carried copy of the guard it states itself" do
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      guard_macro  = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H", line_num: 1)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 2)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions:  [typedef_stmt],
+          macro_definitions: [guard_macro],
+          element_sequence:  [guard_macro, typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        include_guard: 'MY_MODULE_H'
+      )
+
+      expect( buf.string.scan(/^#define MY_MODULE_H$/).length ).to eq(1)
+    end
+
+    # GH #1266's shape, one level over: a macro whose name merely begins with the guard's, and
+    # a guard-named macro that actually carries a value. Neither is the guard statement.
+    it "keeps a macro whose name only resembles the guard" do
+      buf = types_buffer( 'my_module', 'my_module_types.h' )
+      near_macro   = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H_LIMIT 8", line_num: 1)
+      valued_macro = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H 2", line_num: 2)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 3)
+
+      @generator.generate_types(
+        name: 'my_module',
+        c_module: CExtractorTypes::CModule.new(
+          type_definitions:  [typedef_stmt],
+          macro_definitions: [near_macro, valued_macro],
+          element_sequence:  [near_macro, valued_macro, typedef_stmt]
+        ),
+        output_path: '/path/to/output',
+        include_guard: 'MY_MODULE_H'
+      )
+
+      expect( buf.string ).to include('#define MY_MODULE_H_LIMIT 8')
+      expect( buf.string ).to include('#define MY_MODULE_H 2')
+    end
+
+    it "carries a macro forward directly before the single typedef it immediately precedes" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      macro_stmt   = CExtractorTypes::CStatement.new(text: "#define LOCAL_CAPACITY 4", line_num: 1)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef struct { int values[LOCAL_CAPACITY]; } Context;", line_num: 3)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:  [typedef_stmt],
+        macro_definitions: [macro_stmt],
+        element_sequence:  [macro_stmt, typedef_stmt]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to include( "#define LOCAL_CAPACITY 4\ntypedef struct { int values[LOCAL_CAPACITY]; } Context;\n" )
+    end
+
+    it "carries forward multiple macros preceding one type-defining item, in their own original relative order" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      macro_a      = CExtractorTypes::CStatement.new(text: "#define WIDTH 4", line_num: 1)
+      macro_b      = CExtractorTypes::CStatement.new(text: "#define HEIGHT 8", line_num: 2)
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef int Grid[WIDTH][HEIGHT];", line_num: 3)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:  [typedef_stmt],
+        macro_definitions: [macro_a, macro_b],
+        element_sequence:  [macro_a, macro_b, typedef_stmt]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to include( "#define WIDTH 4\n#define HEIGHT 8\ntypedef int Grid[WIDTH][HEIGHT];\n" )
+    end
+
+    it "carries a macro forward only once, before the first type-defining item it precedes, not before a later one too" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      macro_stmt     = CExtractorTypes::CStatement.new(text: "#define FOO 1", line_num: 1)
+      typedef_stmt   = CExtractorTypes::CStatement.new(text: "typedef int Foo;", line_num: 2)
+      aggregate_stmt = CExtractorTypes::CStatement.new(text: "struct Bar { int x; };", line_num: 3)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:      [typedef_stmt],
+        macro_definitions:     [macro_stmt],
+        aggregate_definitions: [aggregate_stmt],
+        element_sequence:      [macro_stmt, typedef_stmt, aggregate_stmt]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string.scan("#define FOO 1").length ).to eq(1)
+    end
+
+    it "does not carry a macro into the shared header when it appears only after every type-defining item" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef int Foo;", line_num: 1)
+      macro_stmt   = CExtractorTypes::CStatement.new(text: "#define FOO 1", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions:  [typedef_stmt],
+        macro_definitions: [macro_stmt],
+        element_sequence:  [typedef_stmt, macro_stmt]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to_not include("#define FOO 1")
+    end
+
+    # #1262: two consecutive typedefs (no macro carry-forward involved at
+    # all) had no byte-exact adjacency coverage -- only the macro-before-
+    # typedef pending_macros path did.
+    it "emits two consecutive typedefs each on their own line" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      typedef_a = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 1)
+      typedef_b = CExtractorTypes::CStatement.new(text: "typedef uint16_t Word;", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        type_definitions: [typedef_a, typedef_b],
+        element_sequence: [typedef_a, typedef_b]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to include( "typedef uint8_t Byte;\ntypedef uint16_t Word;\n" )
+    end
+
+    # #1262: same gap for two consecutive aggregate definitions.
+    it "emits two consecutive aggregate definitions each on their own line" do
+      output_path = '/path/to/output'
+      name = 'my_module'
+      header_filename = 'my_module_types.h'
+
+      allow(@file_path_utils).to receive(:form_partial_types_header_filename).and_return(header_filename)
+
+      buf = StringIO.new()
+      allow(@file_wrapper).to receive(:open).and_yield(buf)
+
+      aggregate_a = CExtractorTypes::CStatement.new(text: "struct Point { int x; int y; };", line_num: 1)
+      aggregate_b = CExtractorTypes::CStatement.new(text: "struct Color { int r; int g; int b; };", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        aggregate_definitions: [aggregate_a, aggregate_b],
+        element_sequence:      [aggregate_a, aggregate_b]
+      )
+
+      @generator.generate_types(name: name, c_module: c_module, output_path: output_path)
+
+      expect( buf.string ).to include( "struct Point { int x; int y; };\nstruct Color { int r; int g; int b; };\n" )
     end
   end
 
@@ -224,26 +659,26 @@ describe GeneratorPartials do
 
     it "should generate a nearly empty header file" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_FOO_BAR_H__
-      #define __CEEDLING_GENERATED_FOO_BAR_H__
+      #ifndef GEN<HASH>_FOO_BAR_H_CEEDLING
+      #define GEN<HASH>_FOO_BAR_H_CEEDLING
 
-      #endif // __CEEDLING_GENERATED_FOO_BAR_H__
+      #endif // GEN<HASH>_FOO_BAR_H_CEEDLING
 
       CONTENTS
 
-      @generator.send(:generate_header, buf, 'foo_bar', [], [], empty_module, false)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      @generator.send(:generate_header, buf, 'foo_bar', [], [], empty_module, include_variables: false)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should generate a header file with #include statements but nothing else" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
-      #define __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #ifndef GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
+      #define GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
 
       #include "foo.h"
       #include "bar.h"
 
-      #endif // __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #endif // GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
 
       CONTENTS
 
@@ -252,21 +687,21 @@ describe GeneratorPartials do
         buf,
         'Apples-and-Bananas',
         [UserInclude.new('foo.h'), UserInclude.new('bar.h')],
-        [], empty_module, false
+        [], empty_module, include_variables: false
       )
 
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should generate a header file with variable declarations (extern prefix added automatically)" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_PB_AND_J_H__
-      #define __CEEDLING_GENERATED_PB_AND_J_H__
+      #ifndef GEN<HASH>_PB_AND_J_H_CEEDLING
+      #define GEN<HASH>_PB_AND_J_H_CEEDLING
 
       extern unsigned int slices_of_bread;
       extern char crumbs;
 
-      #endif // __CEEDLING_GENERATED_PB_AND_J_H__
+      #endif // GEN<HASH>_PB_AND_J_H_CEEDLING
 
       CONTENTS
 
@@ -274,14 +709,32 @@ describe GeneratorPartials do
         make_var(name: 'slices_of_bread', type: 'unsigned int', text: 'unsigned int slices_of_bread = 10;'),
         make_var(name: 'crumbs', type: 'char', text: 'char crumbs[10];')
       )
-      @generator.send(:generate_header, buf, 'pb-and-j', [], [], c_module, true)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      @generator.send(:generate_header, buf, 'pb-and-j', [], [], c_module, include_variables: true)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    it "should reapply a leading qualifier decorator to an extern declaration" do
+      c_module = make_module(
+        make_var(name: 'cmd', type: 'cmd_t', text: 'cmd_t cmd = { 0 };', decorators: ['static', 'volatile'])
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern volatile cmd_t cmd;')
+    end
+
+    it "should not reapply a qualifier already embedded in a pointer-level declarator" do
+      c_module = make_module(
+        make_var(name: 'lookup_table', type: 'uint8_t* const', text: 'uint8_t* const lookup_table;', decorators: ['static', 'const'])
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern const uint8_t* const lookup_table;')
     end
 
     it "should generate a header file with #include statements, variable declarations, and function signatures" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
-      #define __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #ifndef GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
+      #define GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
 
       #include "Eeny.h"
       #include "Meeny.h"
@@ -293,7 +746,7 @@ describe GeneratorPartials do
 
       int razzleDazzle(void* ptr);
 
-      #endif // __CEEDLING_GENERATED_APPLES_AND_BANANAS_H__
+      #endif // GEN<HASH>_APPLES_AND_BANANAS_H_CEEDLING
 
       CONTENTS
 
@@ -327,22 +780,22 @@ describe GeneratorPartials do
         [UserInclude.new('Eeny.h'), UserInclude.new('Meeny.h')],
         decls,
         c_module,
-        true
+        include_variables: true
       )
 
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should emit CStatement text as-is in the header" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_DEFS_H__
-      #define __CEEDLING_GENERATED_DEFS_H__
+      #ifndef GEN<HASH>_DEFS_H_CEEDLING
+      #define GEN<HASH>_DEFS_H_CEEDLING
 
       #define MAX_SIZE 100
       typedef uint8_t Byte;
       struct Point { int x; int y; };
 
-      #endif // __CEEDLING_GENERATED_DEFS_H__
+      #endif // GEN<HASH>_DEFS_H_CEEDLING
 
       CONTENTS
 
@@ -352,29 +805,83 @@ describe GeneratorPartials do
         make_stmt(text: "struct Point { int x; int y; };")
       )
 
-      @generator.send(:generate_header, buf, 'defs', [], [], c_module, false)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      @generator.send(:generate_header, buf, 'defs', [], [], c_module, include_variables: false)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
-    it "should emit all four injectable statement categories correctly in element_sequence order" do
-      # One item of each category that can be injected into a generated Partial header:
-      #   macro_definitions    → CStatement emitted as-is
-      #   type_definitions     → CStatement emitted as-is
-      #   aggregate_definitions → CStatement emitted as-is
-      #   variable_declarations → CVariableDeclaration emitted as extern declaration
+    # #1262: a header with several single-line macros in a row and nothing
+    # type-defining after them (so generate_types never runs at all, per its
+    # own empty-module guard) is the ordinary, ungoverned case -- every macro
+    # here goes through this inline CStatement branch, not generate_types'
+    # own carry-forward logic, which already had its own adjacency coverage.
+    it "emits three consecutive macros each on their own line, with nothing following them" do
+      file_contents = <<~CONTENTS
+      #ifndef GEN<HASH>_REGS_H_CEEDLING
+      #define GEN<HASH>_REGS_H_CEEDLING
+
+      #define START_ADDRESS 0x00
+      #define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)
+      #define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)
+
+      #endif // GEN<HASH>_REGS_H_CEEDLING
+
+      CONTENTS
+
+      c_module = make_module(
+        make_stmt(text: "#define START_ADDRESS 0x00", line_num: 1),
+        make_stmt(text: "#define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)", line_num: 2),
+        make_stmt(text: "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)", line_num: 3)
+      )
+
+      @generator.send(:generate_header, buf, 'regs', [], [], c_module, include_variables: false)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    # #1262 regression: the actual reported shape -- one macro's trailing // comment
+    # includes an apostrophe. Extraction is what previously merged the macros (see
+    # c_extractor specs); this confirms generate_header still emits each item's text,
+    # comment included, on its own line once extraction is correct.
+    it "emits each macro on its own line even when one has a trailing comment with an apostrophe (GH #1262)" do
+      c_module = make_module(
+        make_stmt(text: "#define START_ADDRESS 0x00 // don't change this", line_num: 1),
+        make_stmt(text: "#define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)", line_num: 2),
+        make_stmt(text: "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)", line_num: 3)
+      )
+
+      @generator.send(:generate_header, buf, 'regs', [], [], c_module, include_variables: false)
+
+      expect( buf.string ).to include(
+        "#define START_ADDRESS 0x00 // don't change this\n" +
+        "#define IDX_DATARATE (ADS124S08_REG_ADDR_DATARATE - START_ADDRESS)\n" +
+        "#define IDX_REF (ADS124S08_REG_ADDR_REF - START_ADDRESS)\n"
+      )
+    end
+
+    it "should emit macro and variable statements inline while routing typedefs and aggregates to the shared types header" do
+      # One item of each category that can appear in a generated Partial header:
+      #   macro_definitions     → CStatement emitted as-is, inline
+      #   type_definitions      → CStatement skipped here; belongs to generate_types instead
+      #   aggregate_definitions → CStatement skipped here; belongs to generate_types instead
+      #   variable_declarations → CVariableDeclaration emitted as extern declaration, inline
+      #
+      # A typedef or aggregate defines a type, and C rejects a second definition of the same
+      # type in one translation unit even when it's textually identical -- unlike a macro,
+      # which may legally repeat. Since a module's implementation and interface headers can
+      # both be included in the same test file, generate_header always defers type-defining
+      # content to the one shared types header generate_types produces, rather than risking
+      # two independent copies landing in the same translation unit.
       #
       # Ordering is intentionally interleaved (not grouped by category) to confirm that
-      # element_sequence — not typed-array membership — governs emit order.
+      # element_sequence — not typed-array membership — governs emit order for the items
+      # that do remain inline.
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_ALL_STATEMENTS_H__
-      #define __CEEDLING_GENERATED_ALL_STATEMENTS_H__
+      #ifndef GEN<HASH>_ALL_STATEMENTS_H_CEEDLING
+      #define GEN<HASH>_ALL_STATEMENTS_H_CEEDLING
 
       #define MAX_ITEMS 16
-      typedef uint8_t Byte;
       extern int item_count;
-      struct Config { int id; int flags; };
 
-      #endif // __CEEDLING_GENERATED_ALL_STATEMENTS_H__
+      #endif // GEN<HASH>_ALL_STATEMENTS_H_CEEDLING
 
       CONTENTS
 
@@ -391,20 +898,20 @@ describe GeneratorPartials do
         element_sequence:      [macro_stmt, typedef_stmt, var_decl, aggregate_stmt]
       )
 
-      @generator.send(:generate_header, buf, 'all_statements', [], [], c_module, true)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      @generator.send(:generate_header, buf, 'all_statements', [], [], c_module, include_variables: true)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should emit mixed CStatement and CVariableDeclaration items in element_sequence order" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_MIXED_H__
-      #define __CEEDLING_GENERATED_MIXED_H__
+      #ifndef GEN<HASH>_MIXED_H_CEEDLING
+      #define GEN<HASH>_MIXED_H_CEEDLING
 
       #define FOO 1
       extern int counter;
       typedef uint8_t Byte;
 
-      #endif // __CEEDLING_GENERATED_MIXED_H__
+      #endif // GEN<HASH>_MIXED_H_CEEDLING
 
       CONTENTS
 
@@ -415,18 +922,18 @@ describe GeneratorPartials do
         make_stmt(text: "typedef uint8_t Byte;", line_num: 3)
       )
 
-      @generator.send(:generate_header, buf, 'mixed', [], [], c_module, true)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      @generator.send(:generate_header, buf, 'mixed', [], [], c_module, include_variables: true)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should not emit variable declarations when include_variables is false" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_INTERFACE_H__
-      #define __CEEDLING_GENERATED_INTERFACE_H__
+      #ifndef GEN<HASH>_INTERFACE_H_CEEDLING
+      #define GEN<HASH>_INTERFACE_H_CEEDLING
 
       #define FOO 1
 
-      #endif // __CEEDLING_GENERATED_INTERFACE_H__
+      #endif // GEN<HASH>_INTERFACE_H_CEEDLING
 
       CONTENTS
 
@@ -435,16 +942,75 @@ describe GeneratorPartials do
         make_var( name: 'counter', type: 'int', text: 'int counter;', line_num: 2)
       )
 
-      @generator.send(:generate_header, buf, 'interface', [], [], c_module, false)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      @generator.send(:generate_header, buf, 'interface', [], [], c_module, include_variables: false)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
-    it "should interleave functions with other elements in element_sequence order" do
+    # make_module bins every CStatement into macro_definitions, the wrong bucket for a
+    # macro_invocations item -- CModule is constructed by hand here instead, same as
+    # this describe block's other macro_invocations-specific tests below.
+    #
+    # A bare macro invocation is never emitted into any header, implementation or
+    # interface, include_variables true or false -- unlike a #define (safe to repeat
+    # identically across translation units), its expansion is real executable code
+    # (typically a function definition), and both kinds of generated header routinely
+    # get #include'd into more than one separately-compiled source for one test build
+    # (the implementation source file, the test file itself, and the generated test
+    # runner all #include the implementation header) -- landing it in any header risks
+    # a one-definition-rule violation the moment more than one of those objects ends up
+    # containing it. See #generate_source for where it actually belongs.
+    it "should not emit a bare macro invocation in the implementation header (include_variables true)" do
       file_contents = <<~CONTENTS
-      #ifndef __CEEDLING_GENERATED_INTERLEAVED_H__
-      #define __CEEDLING_GENERATED_INTERLEAVED_H__
+      #ifndef GEN<HASH>_IMPL_INVOCATION_H_CEEDLING
+      #define GEN<HASH>_IMPL_INVOCATION_H_CEEDLING
 
-      typedef uint8_t Byte;
+      #define FOO(x) void bar##x(void) { }
+
+      #endif // GEN<HASH>_IMPL_INVOCATION_H_CEEDLING
+
+      CONTENTS
+
+      macro_stmt = make_stmt(text: "#define FOO(x) void bar##x(void) { }", line_num: 1)
+      invocation = make_stmt(text: "FOO(0)", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        macro_definitions: [macro_stmt],
+        macro_invocations: [invocation],
+        element_sequence:  [macro_stmt, invocation]
+      )
+
+      @generator.send(:generate_header, buf, 'impl_invocation', [], [], c_module, include_variables: true)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    it "should not emit a bare macro invocation in the mockable interface header (include_variables false)" do
+      file_contents = <<~CONTENTS
+      #ifndef GEN<HASH>_INTERFACE_INVOCATION_H_CEEDLING
+      #define GEN<HASH>_INTERFACE_INVOCATION_H_CEEDLING
+
+      #define FOO(x) void bar##x(void) { }
+
+      #endif // GEN<HASH>_INTERFACE_INVOCATION_H_CEEDLING
+
+      CONTENTS
+
+      macro_stmt = make_stmt(text: "#define FOO(x) void bar##x(void) { }", line_num: 1)
+      invocation = make_stmt(text: "FOO(0)", line_num: 2)
+
+      c_module = CExtractorTypes::CModule.new(
+        macro_definitions: [macro_stmt],
+        macro_invocations: [invocation],
+        element_sequence:  [macro_stmt, invocation]
+      )
+
+      @generator.send(:generate_header, buf, 'interface_invocation', [], [], c_module, include_variables: false)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    it "should interleave functions with other elements in element_sequence order, skipping a leading typedef routed to the shared types header" do
+      file_contents = <<~CONTENTS
+      #ifndef GEN<HASH>_INTERLEAVED_H_CEEDLING
+      #define GEN<HASH>_INTERLEAVED_H_CEEDLING
 
       void foo(void);
 
@@ -452,10 +1018,12 @@ describe GeneratorPartials do
 
       int bar(int x);
 
-      #endif // __CEEDLING_GENERATED_INTERLEAVED_H__
+      #endif // GEN<HASH>_INTERLEAVED_H_CEEDLING
 
       CONTENTS
 
+      # typedef_stmt is a member of type_definitions, so generate_header leaves it out here;
+      # it's the sole responsibility of generate_types (see the "shared types header" tests)
       typedef_stmt = make_stmt(text: "typedef uint8_t Byte;", line_num: 1)
       var_decl     = make_var( name: 'counter', type: 'int', text: 'int counter;', line_num: 5)
 
@@ -477,8 +1045,8 @@ describe GeneratorPartials do
         element_sequence:      [typedef_stmt, foo_raw, var_decl, bar_raw]
       )
 
-      @generator.send(:generate_header, buf, 'interleaved', [], [foo_decl, bar_decl], c_module, true)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      @generator.send(:generate_header, buf, 'interleaved', [], [foo_decl, bar_decl], c_module, include_variables: true)
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "emits function signature with __declspec(dllexport) verbatim in header" do
@@ -489,7 +1057,7 @@ describe GeneratorPartials do
       raw = CExtractorTypes::CFunctionDeclaration.new(name: 'exported_func')
       c_module = make_module(raw)
 
-      @generator.send(:generate_header, buf, 'mymod', [], [decl], c_module, false)
+      @generator.send(:generate_header, buf, 'mymod', [], [decl], c_module, include_variables: false)
 
       expect(buf.string).to include('__declspec(dllexport) void exported_func(void);')
     end
@@ -499,7 +1067,7 @@ describe GeneratorPartials do
         make_var(name: 'counter', type: 'int', text: 'int counter __attribute__((aligned(16)));')
       )
 
-      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, true)
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
 
       expect(buf.string).to include('extern int counter;')
       expect(buf.string).not_to include('__attribute__')
@@ -513,12 +1081,12 @@ describe GeneratorPartials do
 
     it "should generate a nearly empty source file" do
       @generator.send(:generate_source, buf, [], [], empty_module)
-      expect( buf.string.strip() ).to eq '// Ceeding generated file'
+      expect( buf.string.strip() ).to eq '// Ceedling generated file'
     end
 
     it "should generate a source file with #include directives" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
       #include "foo.h"
       #include <bar.h>
 
@@ -531,12 +1099,12 @@ describe GeneratorPartials do
         [], empty_module
       )
 
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should preserve internal whitespace of function code block for coverage instrumentation line mapping" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       void foobar(int x, int y)
 
@@ -561,12 +1129,46 @@ describe GeneratorPartials do
       c_module = make_module( CExtractorTypes::CFunctionDefinition.new(name: 'foobar') )
 
       @generator.send(:generate_source, buf, [], defns, c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    it "should reapply a leading qualifier decorator to a variable definition" do
+      c_module = make_module(
+        make_var(name: 'cmd', type: 'cmd_t', text: 'cmd_t cmd = { 0 };', decorators: ['static', 'volatile'])
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).to include('volatile cmd_t cmd = { 0 };')
+    end
+
+    it "should emit a bare macro invocation -- this is the one file that compiles to the one object its real function definition can safely live in" do
+      invocation = make_stmt(text: "FOO(0)", line_num: 1)
+      c_module = CExtractorTypes::CModule.new(
+        macro_invocations: [invocation],
+        element_sequence:  [invocation]
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).to include('FOO(0)')
+    end
+
+    it "should not emit a plain macro definition or other non-invocation CStatement in source (headers only)" do
+      macro_stmt = make_stmt(text: "#define FOO 1", line_num: 1)
+      c_module = CExtractorTypes::CModule.new(
+        macro_definitions: [macro_stmt],
+        element_sequence:  [macro_stmt]
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).not_to include('#define FOO 1')
     end
 
     it "should generate a source file with include directives, variable declarations, and functions" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
       #include "foobar.h"
       #include "baz.h"
 
@@ -599,12 +1201,12 @@ describe GeneratorPartials do
         [defn],
         c_module
       )
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should generate a source file with functions and #line directives" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       #line 9 "../foo/bar/fubar.c"
       void foobarbaz(int x, int y) {
@@ -646,7 +1248,29 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_source, buf, [], defns, c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    it "should pass a code_block's line endings through unchanged, including embedded CRLF" do
+      # code_block content is written to the IO handle exactly as given, byte for
+      # byte, since the file it ends up in is opened by its caller in binary mode
+      # specifically so nothing here alters a line ending already present in it.
+      code_block_with_crlf = "void helloBlanks(void) {\r\n\r\n  return;\r\n}"
+
+      defn = Partials.manufacture_function_definition(
+        line_num: 2,
+        source_filepath: 'src/blanks.c',
+        name: 'helloBlanks',
+        signature: 'void helloBlanks(void)',
+        code_block: code_block_with_crlf
+      )
+      c_module = make_module(
+        CExtractorTypes::CFunctionDefinition.new(name: 'helloBlanks')
+      )
+
+      @generator.send(:generate_source, buf, [], [defn], c_module)
+
+      expect( buf.string ).to include( code_block_with_crlf )
     end
 
     it "should emit only variable declarations and function definitions from all four element_sequence categories" do
@@ -659,7 +1283,7 @@ describe GeneratorPartials do
       # All four categories are present in element_sequence to confirm the full
       # filtering and emission behavior in a single test.
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       int counter = 0;
 
@@ -689,12 +1313,12 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_source, buf, [], [defn], c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should emit only CVariableDeclaration items from element_sequence, skipping CStatement items" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       int counter = 0;
 
@@ -708,12 +1332,12 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_source, buf, [], [], c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "should interleave variables and functions in element_sequence order" do
       file_contents = <<~CONTENTS
-      // Ceeding generated file
+      // Ceedling generated file
 
       int x = 1;
 
@@ -757,7 +1381,7 @@ describe GeneratorPartials do
       )
 
       @generator.send(:generate_source, buf, [], [foo_defn, bar_defn], c_module)
-      expect( buf.string.strip() ).to eq file_contents.strip()
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
     end
 
     it "emits function code_block with __attribute__((noreturn)) verbatim in source" do

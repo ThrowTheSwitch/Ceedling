@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/quote_include_isolator'
 require 'stringio'
 require 'ceedling/preprocess/preprocessinator_includes_handler'
 require 'ceedling/preprocess/preprocessinator_line_marker_includes_extractor'
@@ -19,16 +20,21 @@ RSpec.describe PreprocessinatorIncludesHandler do
   let(:real_parsing_parcels) { ParsingParcels.new }
 
   before :each do
-    @configurator    = double('configurator')
-    @include_factory = double('include_factory')
-    @file_wrapper    = double('file_wrapper')
-    @yaml_wrapper    = double('yaml_wrapper')
-    @loginator       = double('loginator')
-    @reportinator    = double('reportinator')
+    @configurator     = double('configurator')
+    @include_factory  = double('include_factory')
+    @file_wrapper     = double('file_wrapper')
+    @file_path_utils  = double('file_path_utils')
+    @tool_executor    = double('tool_executor')
+    @yaml_wrapper     = double('yaml_wrapper')
+    @isolator         = double('quote_include_isolator')
+    @loginator        = double('loginator')
+    @reportinator     = double('reportinator')
     @preprocessinator_line_marker_includes_extractor =
       double('preprocessinator_line_marker_includes_extractor')
 
     allow(@loginator).to receive(:log)
+    allow(@loginator).to receive(:lazy)
+    allow(@loginator).to receive(:log_list)
     allow(@reportinator).to receive(:generate_module_progress).and_return('')
 
     # Include factory helpers: return typed Include objects based on the path
@@ -50,10 +56,12 @@ RSpec.describe PreprocessinatorIncludesHandler do
         include_factory:        @include_factory,
         preprocessinator_line_marker_includes_extractor:
           @preprocessinator_line_marker_includes_extractor,
-        tool_executor:          double('tool_executor'),
+        tool_executor:          @tool_executor,
         file_wrapper:           @file_wrapper,
+        file_path_utils:        @file_path_utils,
         yaml_wrapper:           @yaml_wrapper,
         parsing_parcels:        real_parsing_parcels,
+        quote_include_isolator: @isolator,
         loginator:              @loginator,
         reportinator:           @reportinator
       }
@@ -63,6 +71,103 @@ RSpec.describe PreprocessinatorIncludesHandler do
   # Helper: yield StringIO of content from file_wrapper.open
   def stub_file_open(filepath, content)
     allow(@file_wrapper).to receive(:open).with(filepath, 'rb').and_yield(StringIO.new(content))
+  end
+
+
+  # ===========================================================================
+  describe '#extract_bare_includes' do
+  # ===========================================================================
+  # Extraction stages an isolated, sibling-free copy of the file being scanned before running
+  # GCC's bare-includes preprocessor pass, so that GCC's own directory-relative #include
+  # resolution has no real sibling header available to find and recurse into.
+
+    let(:test_name)         { 'test_other' }
+    let(:filepath)          { '/project/test/test_other.c' }
+    let(:isolation_parent)  { '/project/build/test/preprocess/files/test_other' }
+    let(:isolation_dir)     { "#{isolation_parent}/tmp1234" }
+    let(:isolated_filepath) { "#{isolation_dir}/test_other.c" }
+    let(:make_rules) do
+      "test_other.o: #{isolated_filepath} unity.h mock_foo_func.h other.h\n\n" \
+      "unity.h:\n\nmock_foo_func.h:\n\nother.h:\n"
+    end
+
+    before :each do
+      allow(@file_path_utils).to receive(:form_test_preprocess_files_path)
+        .with(test_name).and_return(isolation_parent)
+      isolation = QuoteIncludeIsolator::Isolation.new(isolation_dir, { filepath => isolated_filepath })
+      allow(@isolator).to receive(:within).with(parent: isolation_parent, files: [filepath]).and_yield(isolation)
+
+      allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return(:bare_tool)
+
+      allow(@tool_executor).to receive(:build_command_line) do |tool, _extra_args, fp, defs, flgs, paths|
+        { options: {}, tool: tool, filepath: fp, defines: defs, flags: flgs, search_paths: paths }
+      end
+
+      allow(@tool_executor).to receive(:exec).and_return(output: make_rules)
+    end
+
+    def call_it
+      subject.extract_bare_includes(
+        test: test_name, filepath: filepath, search_paths: [], flags: [], defines: []
+      )
+    end
+
+    # The isolator releases the copy when its block ends, raised or not, so extraction
+    # running inside that block is what keeps cleanup guaranteed.
+    it 'runs extraction inside an isolation of the file, sibling-free' do
+      ran_within = false
+      allow(@isolator).to receive(:within).with(parent: isolation_parent, files: [filepath]) do |**_, &block|
+        ran_within = true
+        block.call(QuoteIncludeIsolator::Isolation.new(isolation_dir, { filepath => isolated_filepath }))
+      end
+
+      call_it()
+
+      expect(ran_within).to be true
+      expect(@tool_executor).to have_received(:exec)
+    end
+
+    it 'builds the bare-includes command against the isolated staged path, not the original' do
+      call_it()
+
+      expect(@tool_executor).to have_received(:build_command_line)
+        .with(:bare_tool, [], isolated_filepath, [], [], [])
+    end
+
+    it 'returns the includes parsed from the staged file make-rule output' do
+      result = call_it()
+      expect(result.map(&:filename)).to contain_exactly('unity.h', 'mock_foo_func.h', 'other.h')
+    end
+
+    # A rule naming only the object and the file itself is a file with no #includes, not a
+    # failed run
+    it 'returns an empty list when GCC\'s rule names no #includes' do
+      allow(@tool_executor).to receive(:exec).and_return(output: "test_other.o: #{isolated_filepath}\n")
+
+      expect(call_it()).to eq( [] )
+    end
+
+    # Errors in the file's own code still leave a rule; its absence means the tool itself
+    # failed, which is not a file with no #includes
+    it 'returns nil, logging the tool\'s output, when the run gives no make rule' do
+      allow(@tool_executor).to receive(:exec).and_return(output: "gcc: error: unrecognized command-line option\n")
+
+      expect(call_it()).to be_nil
+      expect(@loginator).to have_received(:log).with(
+        "Failed to extract bare #includes (text-scan #includes will stand in) for #{filepath}:\ngcc: error: unrecognized command-line option",
+        Verbosity::OBNOXIOUS, LogLabels::ERROR
+      )
+    end
+
+    it 'still cleans self-reference against the original filepath identity, not the staged copy' do
+      self_ref_rules =
+        "test_other.o: #{isolated_filepath} #{filepath} other.h\n\n#{filepath}:\n\nother.h:\n"
+      allow(@tool_executor).to receive(:exec).and_return(output: self_ref_rules)
+
+      result = call_it()
+      expect(result.map(&:filename)).to contain_exactly('other.h')
+    end
+
   end
 
 
@@ -104,6 +209,13 @@ RSpec.describe PreprocessinatorIncludesHandler do
         stub_file_open(filepath, content)
         result = subject.extract_user_includes_from_text(name: 'test', filepath: filepath)
         expect(result.map(&:filename)).to contain_exactly('real.h')
+      end
+
+      it 'anchors a .. in the directive text against the scanned file\'s own directory' do
+        nested_filepath = 'test/unit/module.c'
+        stub_file_open(nested_filepath, "#include \"../common/helper.h\"\n")
+        result = subject.extract_user_includes_from_text(name: 'test', filepath: nested_filepath)
+        expect(result.map(&:filepath)).to eq(['test/common/helper.h'])
       end
 
     end
@@ -251,6 +363,184 @@ RSpec.describe PreprocessinatorIncludesHandler do
 
 
   # ===========================================================================
+  describe '#extract_bare_includes_from_text' do
+  # ===========================================================================
+
+    let(:filepath) { '/src/module.c' }
+
+    it 'extracts a simple user include' do
+      stub_file_open(filepath, "#include \"foo.h\"\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to include('foo.h')
+    end
+
+    it 'extracts a system include too, unlike extract_user_includes_from_text' do
+      stub_file_open(filepath, "#include <stdio.h>\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to include('stdio.h')
+    end
+
+    it 'returns plain Include objects, not UserInclude/SystemInclude' do
+      stub_file_open(filepath, "#include \"foo.h\"\n#include <stdio.h>\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result).to all( be_an_instance_of(Include) )
+    end
+
+    it 'ignores includes inside line comments' do
+      stub_file_open(filepath, "// #include \"commented_out.h\"\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result).to be_empty
+    end
+
+    it 'ignores includes inside block comments' do
+      content = "/* #include \"in_block.h\" */\n#include \"real.h\"\n"
+      stub_file_open(filepath, content)
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to contain_exactly('real.h')
+    end
+
+    # The defining difference from extract_user_includes_from_text: no conditional
+    # tracking at all -- an #include inside an #ifdef for an undefined macro is
+    # still captured, since this method's whole purpose is to see past a guard
+    # whose condition can't be evaluated without opening another header (issue #1223).
+    it 'captures a conditionally-guarded include regardless of whether the guard could be evaluated true' do
+      content = <<~C
+        #ifdef UNDEFINED_MACRO
+        #include "conditional.h"
+        #endif
+      C
+      stub_file_open(filepath, content)
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to include('conditional.h')
+    end
+
+    it 'removes a self-referential include matching the file being scanned' do
+      stub_file_open(filepath, "#include \"#{filepath}\"\n#include \"foo.h\"\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filename)).to contain_exactly('foo.h')
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#extract_preprocessed_dependencies' do
+    it "gives the files a preprocessor's output entered, from its line markers" do
+      allow(@preprocessinator_line_marker_includes_extractor).to receive(:extract_entered_files_from_file).with( 'build/do/test_a.c' ).and_return( ['src/config.h'] )
+
+      expect(subject.extract_preprocessed_dependencies( preprocessed_filepath: 'build/do/test_a.c' )).to eq( ['src/config.h'] )
+    end
+  end
+
+
+  # ===========================================================================
+  describe '#extract_computed_includes' do
+  # ===========================================================================
+  # Resolves an #include whose target is a macro invocation, not a literal filename.
+  # Finds each such directive's source line, asks the line-marker extractor which
+  # header GCC entered at that line in the accurate pass, and returns base Includes.
+
+    let(:filepath)  { '/src/module.c' }
+    let(:donly)     { '/build/directives_only/module.c' }
+
+    it 'returns an empty list without touching the line-marker extractor when there is no directives-only output' do
+      expect(@preprocessinator_line_marker_includes_extractor).to_not receive(:resolve_computed_includes)
+      expect(
+        subject.extract_computed_includes( filepath: filepath, directives_only_filepath: nil )
+      ).to eq([])
+    end
+
+    it 'returns an empty list for a file whose every #include is a literal "..." or <...>' do
+      stub_file_open(filepath, %(#include "foo.h"\n#include <stdio.h>\nint m(void){return 0;}\n))
+      expect(@preprocessinator_line_marker_includes_extractor).to_not receive(:resolve_computed_includes)
+
+      expect(
+        subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+      ).to eq([])
+    end
+
+    it 'does not treat a commented-out or string-embedded #include as a computed directive' do
+      content = <<~C
+        // #include COMMENTED_MACRO
+        /* #include BLOCK_MACRO */
+        const char *s = "#include STRING_MACRO";
+        int m(void) { return 0; }
+      C
+      stub_file_open(filepath, content)
+      expect(@preprocessinator_line_marker_includes_extractor).to_not receive(:resolve_computed_includes)
+
+      expect(
+        subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+      ).to eq([])
+    end
+
+    it 'asks the line-marker extractor about each non-literal #include line and wraps the resolved paths as bare Includes' do
+      content = <<~C
+        #include "literal.h"
+        #include DEVICE_HEADER(a)
+        int m(void) { return 0; }
+      C
+      stub_file_open(filepath, content)
+
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:resolve_computed_includes).with(
+        preprocessed_filepath: donly,
+        source_basename:       'module.c',
+        source_lines:          [2]
+      ).and_return( { 2 => 'src/device_a.h' } )
+
+      result = subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+
+      expect(result.map(&:filepath)).to eq(['src/device_a.h'])
+      expect(result).to all( be_an_instance_of(Include) )
+    end
+
+    it 'passes every computed-include line number through, in source order' do
+      content = <<~C
+        #include FIRST_MACRO
+        int a;
+        #include SECOND_MACRO
+        int b;
+      C
+      stub_file_open(filepath, content)
+
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:resolve_computed_includes).with(
+        hash_including( source_lines: [1, 3] )
+      ).and_return( {} )
+
+      subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+    end
+
+    # -fdirectives-only attributes a consumed multi-line directive's own entering
+    # marker to its LAST physical line, not its first (see preprocess/README.md) --
+    # so the line asked about here must be the line the backslash continuation ends
+    # on, not the line it starts on, or a correlating marker at the right line never
+    # matches.
+    it 'asks about the LAST physical line of a backslash-continued computed #include, not the first' do
+      content = "#include \"literal.h\"\n#include \\\n  DEVICE_HEADER(a)\nint m(void) { return 0; }\n"
+      stub_file_open(filepath, content)
+
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:resolve_computed_includes).with(
+        hash_including( source_lines: [3] )
+      ).and_return( {} )
+
+      subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+    end
+
+    it 'drops a computed-include line the extractor could not correlate to an entered header' do
+      content = %(#include ACTIVE_MACRO\n#include INACTIVE_MACRO\nint m(void){return 0;}\n)
+      stub_file_open(filepath, content)
+
+      allow(@preprocessinator_line_marker_includes_extractor).to receive(:resolve_computed_includes)
+        .and_return( { 1 => 'src/active.h' } )  # line 2 absent -- guard was false
+
+      result = subject.extract_computed_includes( filepath: filepath, directives_only_filepath: donly )
+
+      expect(result.map(&:filepath)).to eq(['src/active.h'])
+    end
+  end
+
+
+  # ===========================================================================
   describe '#extract_system_includes_from_text' do
   # ===========================================================================
 
@@ -268,6 +558,13 @@ RSpec.describe PreprocessinatorIncludesHandler do
         stub_file_open(filepath, "#include \"user.h\"\n")
         result = subject.extract_system_includes_from_text(name: 'test', filepath: filepath)
         expect(result).to be_empty
+      end
+
+      it 'anchors a .. in the directive text against the scanned file\'s own directory, same as a user include' do
+        nested_filepath = 'test/unit/module.c'
+        stub_file_open(nested_filepath, "#include <../vendor/compat.h>\n")
+        result = subject.extract_system_includes_from_text(name: 'test', filepath: nested_filepath)
+        expect(result.map(&:filepath)).to eq(['test/vendor/compat.h'])
       end
 
     end
@@ -330,6 +627,137 @@ RSpec.describe PreprocessinatorIncludesHandler do
         }.not_to raise_error
       end
 
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#extract_user_includes_preprocess' do
+  # ===========================================================================
+
+    let(:filepath) { '/src/module.c' }
+
+    it 'delegates to the line-marker extractor with USER type, no depth limit, and the test name' do
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:extract_includes_from_file).with(
+        '/build/directives_only/module.c',
+        PreprocessinatorLineMarkerIncludesExtractor::USER,
+        test: 'test'
+      ).and_return( [ UserInclude.new('widget.h') ] )
+
+      result = subject.extract_user_includes_preprocess(
+        name: 'test', filepath: filepath, preprocessed_filepath: '/build/directives_only/module.c'
+      )
+
+      expect(result.map(&:filename)).to eq(['widget.h'])
+    end
+
+    it 'removes a self-referential entry matching the file being processed' do
+      allow(@preprocessinator_line_marker_includes_extractor).to receive(:extract_includes_from_file).and_return(
+        [ UserInclude.new(filepath), UserInclude.new('widget.h') ]
+      )
+
+      result = subject.extract_user_includes_preprocess(
+        name: 'test', filepath: filepath, preprocessed_filepath: '/build/directives_only/module.c'
+      )
+
+      expect(result.map(&:filename)).to eq(['widget.h'])
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#extract_system_includes_preprocess' do
+  # ===========================================================================
+
+    let(:filepath) { '/src/module.c' }
+
+    it 'delegates to the line-marker extractor with SYSTEM type and a practical max depth of 5' do
+      expect(@preprocessinator_line_marker_includes_extractor).to receive(:extract_includes_from_file).with(
+        '/build/directives_only/module.c',
+        PreprocessinatorLineMarkerIncludesExtractor::SYSTEM,
+        5
+      ).and_return( [ SystemInclude.new('stdint.h') ] )
+
+      result = subject.extract_system_includes_preprocess(
+        name: 'test', filepath: filepath, preprocessed_filepath: '/build/directives_only/module.c'
+      )
+
+      expect(result.map(&:filename)).to eq(['stdint.h'])
+    end
+
+    it 'removes a self-referential entry matching the file being processed' do
+      allow(@preprocessinator_line_marker_includes_extractor).to receive(:extract_includes_from_file).and_return(
+        [ SystemInclude.new(filepath), SystemInclude.new('stdint.h') ]
+      )
+
+      result = subject.extract_system_includes_preprocess(
+        name: 'test', filepath: filepath, preprocessed_filepath: '/build/directives_only/module.c'
+      )
+
+      expect(result.map(&:filename)).to eq(['stdint.h'])
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#write_includes_list' do
+  # ===========================================================================
+
+    it 'dumps the includes list, converted to hashes, to the given filepath' do
+      captured = nil
+      allow(@yaml_wrapper).to receive(:dump) { |filepath, hashes| captured = [filepath, hashes] }
+
+      subject.write_includes_list( '/build/includes/module.c.yml', [ UserInclude.new('widget.h') ] )
+
+      expect(captured[0]).to eq('/build/includes/module.c.yml')
+      expect(captured[1]).to eq( Includes.to_hashes( [ UserInclude.new('widget.h') ] ) )
+    end
+
+  end
+
+
+  # ===========================================================================
+  describe '#load_includes_list' do
+  # ===========================================================================
+
+    it 'loads and converts a hash list back into Include objects' do
+      allow(@yaml_wrapper).to receive(:load).and_return(
+        [ { 'type' => 'user', 'filepath' => 'widget.h' } ]
+      )
+
+      result = subject.load_includes_list( '/build/includes/module.c.yml' )
+
+      expect(result.map(&:filename)).to eq(['widget.h'])
+      expect(result.first).to be_a(UserInclude)
+    end
+
+    it 'treats nil YAML content (an empty cache file) as an empty list, not nil' do
+      allow(@yaml_wrapper).to receive(:load).and_return(nil)
+
+      result = subject.load_includes_list( '/build/includes/module.c.yml' )
+
+      expect(result).to eq([])
+    end
+
+    it 'wraps a YamlLoadException with a clearer message, preserving reason/source/original_error' do
+      original_error = StandardError.new('boom')
+      allow(@yaml_wrapper).to receive(:load).and_raise(
+        YamlLoadException.new( reason: :syntax, source: '/build/includes/module.c.yml', original_error: original_error, message: 'line 3: bad indentation' )
+      )
+
+      expect {
+        subject.load_includes_list( '/build/includes/module.c.yml' )
+      }.to raise_error do |error|
+        expect(error).to be_a(YamlLoadException)
+        expect(error.reason).to eq(:syntax)
+        expect(error.source).to eq('/build/includes/module.c.yml')
+        expect(error.original_error).to eq(original_error)
+        expect(error.message).to match(/Cached #include list is corrupted or unreadable/)
+        expect(error.message).to match(/line 3: bad indentation/)
+      end
     end
 
   end

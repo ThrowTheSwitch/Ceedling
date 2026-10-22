@@ -6,61 +6,19 @@
 # =========================================================================
 
 ---
+:plugins:
+  :test_build_contexts:
+    - :bullseye   # Its :defines and :flags work as :test's do, matchers included
 
 :bullseye:
-  :auto_license: TRUE
-:plugins:
-  :bullseye_lib_path: []
-:paths:
-  :bullseye_toolchain_include: []
-
-# TODO: Restore :tools once Bullseye plugin has been updated for Ceedling >= 1.0.0
-# :tools:
-#   :bullseye_instrumentation:
-#     :executable: covc
-#     :optional: true
-#     :arguments:
-#       - '--file $': ENVIRONMENT_COVFILE
-#       - -q
-#       - ${1}
-#   :bullseye_compiler:
-#     :executable: gcc
-#     :arguments:
-#       - -g
-#       - -I"$": COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR
-#       - -I"$": COLLECTION_PATHS_BULLSEYE_TOOLCHAIN_INCLUDE
-#       - -D$: COLLECTION_DEFINES_TEST_AND_VENDOR
-#       - -DBULLSEYE_COMPILER
-#       - -c "${1}"
-#       - -o "${2}"
-#   :bullseye_linker:
-#     :executable: gcc
-#     :arguments:
-#       - ${1}
-#       - -o ${2}
-#       - -L$: PLUGINS_BULLSEYE_LIB_PATH
-#       - -lcov
-#   :bullseye_fixture:
-#     :executable: ${1}
-#   :bullseye_report_covsrc:
-#     :executable: covsrc
-#     :optional: true
-#     :arguments:
-#       - '--file $': ENVIRONMENT_COVFILE
-#       - -q
-#       - -w140
-#   :bullseye_report_covfn:
-#     :executable: covfn
-#     :optional: true
-#     :arguments:
-#       - '--file $': ENVIRONMENT_COVFILE
-#       - --width 120
-#       - --no-source
-#       - '"${1}"'
-#   :bullseye_browser:
-#     :executable: CoverageBrowser
-#     :optional: TRUE
-#     :arguments:
-#       - '"$"': ENVIRONMENT_COVFILE
+  :summaries: TRUE               # Enable covsrc totals banner + per-source covfn dump to console after tests
+  :report_task: FALSE            # Disable dedicated report generation task (this enables automatic report generation)
+  :untested_sources: :list       # :ignore (skip entirely), :list (log filepaths not in report), :compile (compile all for 0% coverage)
+  :branch_detail: :none          # Annotated source listing of uncovered branches. :none, :uncovered (covbr --uncover), :all (covbr --all)
+  :xml_report: :none             # Machine-readable coverage report. :none, :native (Bullseye schema), :cobertura (CI-friendly)
+  :fail_under:                   # Fail the build below these coverage percentages. 0 disables the check.
+    :functions: 0
+    :branches: 0
+  :license_manager_file:         # Path to a Bullseye floating-license manager file (sets COVLM); irrelevant for node-locked/unlimited licenses
 
 ...

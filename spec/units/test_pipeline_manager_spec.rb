@@ -1,0 +1,415 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'spec_helper'
+require 'ceedling/test_invoker/test_pipeline_manager'
+require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/exceptions'
+
+describe TestPipelineManager do
+  before(:each) do
+    @test_build_setup     = double( "TestBuildSetup" )
+    @test_includes_extractinator = double( "TestIncludesExtractinator" )
+    @test_file_preprocessinator  = double( "TestFilePreprocessinator" )
+    @test_runner_generatinator   = double( "TestRunnerGeneratinator" )
+    @test_build_planner   = double( "TestBuildPlanner" )
+    @partials_manager     = double( "PartialsManager" )
+    @test_build_executor  = double( "TestBuildExecutor" )
+    @configurator         = double( "Configurator" )
+    @batchinator          = double( "Batchinator" )
+    @loginator            = double( "Loginator" )
+    @reportinator         = double( "Reportinator" )
+
+    allow(@batchinator).to receive(:build_step) { |*_args, &block| block.call }
+    allow(@loginator).to receive(:log)
+    allow(@loginator).to receive(:decorate) { |str, _label| "👷 #{str}" }
+    allow(@reportinator).to receive(:generate_banner) { |msg| "---\n#{msg}\n---\n" }
+
+    allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+    allow(@configurator).to receive(:project_use_partials).and_return( false )
+    allow(@configurator).to receive(:project_use_mocks).and_return( false )
+    allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+
+    allow(@test_build_setup).to receive(:stage_prepare_build_paths)
+    allow(@test_build_setup).to receive(:stage_collect_test_context)
+    allow(@test_build_setup).to receive(:stage_ingest_configurations)
+    allow(@test_includes_extractinator).to receive(:stage_collect_preprocessor_context)
+
+    allow(@test_build_planner).to receive(:stage_determine_files)
+    allow(@test_build_planner).to receive(:stage_flatten_partials_lists)
+    allow(@test_build_planner).to receive(:stage_flatten_mocks_list)
+    allow(@test_build_planner).to receive(:stage_determine_artifacts)
+    allow(@test_build_planner).to receive(:stage_flatten_objects_list)
+
+    allow(@partials_manager).to receive(:stage_preprocess_partial_headers)
+    allow(@partials_manager).to receive(:stage_preprocess_partial_sources)
+    allow(@partials_manager).to receive(:stage_generate_partials)
+    allow(@test_build_executor).to receive(:stage_preprocess_mocks)
+    allow(@test_build_executor).to receive(:stage_generate_mocks)
+    allow(@test_file_preprocessinator).to receive(:preprocess)
+    allow(@test_runner_generatinator).to receive(:collect_details)
+    allow(@test_runner_generatinator).to receive(:generate)
+    allow(@test_build_executor).to receive(:stage_build_objects)
+    allow(@test_build_executor).to receive(:stage_build_executables)
+    allow(@test_build_executor).to receive(:stage_execute)
+
+    @manager = described_class.new(
+      {
+        :test_build_setup    => @test_build_setup,
+        :test_includes_extractinator => @test_includes_extractinator,
+        :test_build_planner  => @test_build_planner,
+        :partials_manager    => @partials_manager,
+        :test_build_executor => @test_build_executor,
+        :test_file_preprocessinator => @test_file_preprocessinator,
+        :test_runner_generatinator  => @test_runner_generatinator,
+        :configurator        => @configurator,
+        :batchinator         => @batchinator,
+        :loginator           => @loginator,
+        :reportinator        => @reportinator
+      }
+    )
+  end
+
+  # Defaults every flattened list to non-empty, real-shaped-enough content, so every
+  # existing test below exercises the "has work to do" path without having to know or
+  # care about T1/T2's output -- exactly as it would if a project had at least one
+  # Partial and one mock. Tests specifically about the "enabled but nothing to do this
+  # run" case (below) override one or more of these to `[]`.
+  def state(options: [], partials_headers: [double("PartialWork")], partials_sources: [double("PartialWork")], mocks_list: [double("MockWork")])
+    TestInvokerTypes::PipelineState.new(
+      :testables        => {}, :context => :test, :options => options,
+      :partials_headers => partials_headers, :partials_sources => partials_sources, :mocks_list => mocks_list,
+      :objects_list     => []
+    )
+  end
+
+  describe "#run" do
+    context "stop-point validation" do
+      it "raises naming every stop-point option present when more than one is given" do
+        expect { @manager.run( state(options: [:mocking, :build_only]) ) }
+          .to raise_error( CeedlingException, /:mocking, :build_only/ )
+      end
+
+      it "does not raise with a single stop-point option" do
+        expect { @manager.run( state(options: [:mocking]) ) }.to_not raise_error
+      end
+
+      it "does not raise with no options" do
+        expect { @manager.run( state(options: []) ) }.to_not raise_error
+      end
+    end
+
+    context "with :mocking" do
+      before(:each) do
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+        allow(@configurator).to receive(:project_use_partials).and_return( true )
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+      end
+
+      it "runs every stage through Mocking and stops before test-file preprocessing onward" do
+        expect(@test_build_setup).to receive(:stage_prepare_build_paths)
+        expect(@test_build_setup).to receive(:stage_collect_test_context)
+        expect(@test_build_setup).to receive(:stage_ingest_configurations)
+        expect(@test_includes_extractinator).to receive(:stage_collect_preprocessor_context)
+        expect(@test_build_planner).to receive(:stage_determine_files)
+        expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
+        expect(@partials_manager).to receive(:stage_preprocess_partial_headers)
+        expect(@partials_manager).to receive(:stage_preprocess_partial_sources)
+        expect(@partials_manager).to receive(:stage_generate_partials)
+        expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
+        expect(@test_build_executor).to receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to receive(:stage_generate_mocks)
+
+        expect(@test_file_preprocessinator).to_not receive(:preprocess)
+        expect(@test_runner_generatinator).to_not receive(:collect_details)
+        expect(@test_runner_generatinator).to_not receive(:generate)
+        expect(@test_build_planner).to_not receive(:stage_determine_artifacts)
+        expect(@test_build_planner).to_not receive(:stage_flatten_objects_list)
+        expect(@test_build_executor).to_not receive(:stage_build_objects)
+        expect(@test_build_executor).to_not receive(:stage_build_executables)
+        expect(@test_build_executor).to_not receive(:stage_execute)
+
+        @manager.run( state(options: [:mocking]) )
+      end
+
+      it "announces this is a mocks-only run" do
+        expect(@loginator).to receive(:log)
+          .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:mocking], Verbosity::NORMAL, LogLabels::NOTICE )
+
+        @manager.run( state(options: [:mocking]) )
+      end
+
+      it "ends with a BUILT completion banner naming this a mocks-only run" do
+        expect(@loginator).to receive(:decorate)
+          .with( TestPipelineManager::STOP_POINT_BANNERS[:mocking], LogLabels::BUILT )
+          .and_return( "👷 #{TestPipelineManager::STOP_POINT_BANNERS[:mocking]}" )
+        expect(@reportinator).to receive(:generate_banner)
+          .with( "👷 #{TestPipelineManager::STOP_POINT_BANNERS[:mocking]}" )
+          .and_return( "banner" )
+        expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
+
+        @manager.run( state(options: [:mocking]) )
+      end
+
+      context "when the project has mocks disabled" do
+        before(:each) do
+          allow(@configurator).to receive(:project_use_mocks).and_return( false )
+        end
+
+        it "skips Mocking itself but still announces and banners a mocks-only run" do
+          expect(@test_build_executor).to_not receive(:stage_generate_mocks)
+
+          expect(@loginator).to receive(:log)
+            .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:mocking], Verbosity::NORMAL, LogLabels::NOTICE )
+          expect(@loginator).to receive(:decorate)
+            .with( TestPipelineManager::STOP_POINT_BANNERS[:mocking], LogLabels::BUILT )
+            .and_return( "👷 #{TestPipelineManager::STOP_POINT_BANNERS[:mocking]}" )
+          expect(@reportinator).to receive(:generate_banner)
+            .with( "👷 #{TestPipelineManager::STOP_POINT_BANNERS[:mocking]}" )
+            .and_return( "banner" )
+          expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
+
+          @manager.run( state(options: [:mocking]) )
+        end
+      end
+    end
+
+    context "with :test_runner" do
+      before(:each) do
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+        allow(@configurator).to receive(:project_use_partials).and_return( true )
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+      end
+
+      it "runs every stage through Test Runners, including Mocking along the way, and stops before artifact determination onward" do
+        expect(@test_build_executor).to receive(:stage_generate_mocks)
+        expect(@test_file_preprocessinator).to receive(:preprocess)
+        expect(@test_runner_generatinator).to receive(:collect_details)
+        expect(@test_runner_generatinator).to receive(:generate)
+
+        expect(@test_build_planner).to_not receive(:stage_determine_artifacts)
+        expect(@test_build_planner).to_not receive(:stage_flatten_objects_list)
+        expect(@test_build_executor).to_not receive(:stage_build_objects)
+        expect(@test_build_executor).to_not receive(:stage_build_executables)
+        expect(@test_build_executor).to_not receive(:stage_execute)
+
+        @manager.run( state(options: [:test_runner]) )
+      end
+
+      it "announces this is a mocks-and-runners-only run" do
+        expect(@loginator).to receive(:log)
+          .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:test_runner], Verbosity::NORMAL, LogLabels::NOTICE )
+
+        @manager.run( state(options: [:test_runner]) )
+      end
+
+      it "ends with a BUILT completion banner naming this a mocks-and-runners-only run" do
+        expect(@reportinator).to receive(:generate_banner)
+          .with( a_string_including( TestPipelineManager::STOP_POINT_BANNERS[:test_runner] ) )
+          .and_return( "banner" )
+        expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
+
+        @manager.run( state(options: [:test_runner]) )
+      end
+    end
+
+    context "with :build_only" do
+      it "runs through linking and stops before execution" do
+        expect(@test_build_executor).to receive(:stage_build_objects)
+        expect(@test_build_executor).to receive(:stage_build_executables)
+        expect(@test_build_executor).to_not receive(:stage_execute)
+
+        @manager.run( state(options: [:build_only]) )
+      end
+
+      it "announces this is a build-only run" do
+        expect(@loginator).to receive(:log)
+          .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:build_only], Verbosity::NORMAL, LogLabels::NOTICE )
+
+        @manager.run( state(options: [:build_only]) )
+      end
+
+      it "ends with a BUILT completion banner naming this a build-only run" do
+        expect(@reportinator).to receive(:generate_banner)
+          .with( a_string_including( TestPipelineManager::STOP_POINT_BANNERS[:build_only] ) )
+          .and_return( "banner" )
+        expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
+
+        @manager.run( state(options: [:build_only]) )
+      end
+    end
+
+    context "with :sources_only" do
+      it "stops before object compilation, leaving linking and execution unrun" do
+        expect(@test_build_planner).to receive(:stage_determine_artifacts)
+        expect(@test_build_executor).to_not receive(:stage_build_objects)
+        expect(@test_build_executor).to_not receive(:stage_build_executables)
+        expect(@test_build_executor).to_not receive(:stage_execute)
+
+        @manager.run( state(options: [:sources_only]) )
+      end
+
+      it "announces this is a sources-only run" do
+        expect(@loginator).to receive(:log)
+          .with( TestPipelineManager::STOP_POINT_ANNOUNCEMENTS[:sources_only], Verbosity::NORMAL, LogLabels::NOTICE )
+
+        @manager.run( state(options: [:sources_only]) )
+      end
+
+      it "ends with a BUILT completion banner naming this a sources-only run" do
+        expect(@reportinator).to receive(:generate_banner)
+          .with( a_string_including( TestPipelineManager::STOP_POINT_BANNERS[:sources_only] ) )
+          .and_return( "banner" )
+        expect(@loginator).to receive(:log).with( "\nbanner", Verbosity::NORMAL, LogLabels::NONE )
+
+        @manager.run( state(options: [:sources_only]) )
+      end
+    end
+
+    context "with no stop-point options and every optional feature enabled" do
+      before(:each) do
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+        allow(@configurator).to receive(:project_use_partials).and_return( true )
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+      end
+
+      it "runs every stage and transform, start to finish" do
+        expect(@test_build_setup).to receive(:stage_prepare_build_paths)
+        expect(@test_build_setup).to receive(:stage_collect_test_context)
+        expect(@test_build_setup).to receive(:stage_ingest_configurations)
+        expect(@test_includes_extractinator).to receive(:stage_collect_preprocessor_context)
+        expect(@test_build_planner).to receive(:stage_determine_files)
+        expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
+        expect(@partials_manager).to receive(:stage_preprocess_partial_headers)
+        expect(@partials_manager).to receive(:stage_preprocess_partial_sources)
+        expect(@partials_manager).to receive(:stage_generate_partials)
+        expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
+        expect(@test_build_executor).to receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to receive(:stage_generate_mocks)
+        expect(@test_file_preprocessinator).to receive(:preprocess)
+        expect(@test_runner_generatinator).to receive(:collect_details)
+        expect(@test_runner_generatinator).to receive(:generate)
+        expect(@test_build_planner).to receive(:stage_determine_artifacts)
+        expect(@test_build_planner).to receive(:stage_flatten_objects_list)
+        expect(@test_build_executor).to receive(:stage_build_objects)
+        expect(@test_build_executor).to receive(:stage_build_executables)
+        expect(@test_build_executor).to receive(:stage_execute)
+
+        @manager.run( state(options: []) )
+      end
+
+      it "announces nothing -- a full build has no stop-point run scope to call out" do
+        TestPipelineManager::STOP_POINT_ANNOUNCEMENTS.each_value do |announcement|
+          expect(@loginator).to_not receive(:log).with( announcement, anything, anything )
+        end
+
+        @manager.run( state(options: []) )
+      end
+
+      it "logs no BUILT completion banner -- a full build's own test-results banner covers this separately" do
+        expect(@reportinator).to_not receive(:generate_banner)
+
+        @manager.run( state(options: []) )
+      end
+    end
+
+    context "when test preprocessing is disabled" do
+      it "skips test-file preprocessing and its two dependent stages, independent of any stop-point option" do
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+
+        expect(@test_includes_extractinator).to_not receive(:stage_collect_preprocessor_context)
+        expect(@test_file_preprocessinator).to_not receive(:preprocess)
+        expect(@test_runner_generatinator).to_not receive(:collect_details)
+        expect(@test_runner_generatinator).to receive(:generate)
+
+        @manager.run( state(options: []) )
+      end
+    end
+
+    context "when Partials is disabled" do
+      it "skips the Partials transform and its three stages, independent of any stop-point option, in total silence" do
+        allow(@configurator).to receive(:project_use_partials).and_return( false )
+
+        expect(@test_build_planner).to_not receive(:stage_flatten_partials_lists)
+        expect(@partials_manager).to_not receive(:stage_preprocess_partial_headers)
+        expect(@partials_manager).to_not receive(:stage_preprocess_partial_sources)
+        expect(@partials_manager).to_not receive(:stage_generate_partials)
+        expect(@test_build_planner).to receive(:stage_determine_files)
+        expect(@loginator).to_not receive(:log)
+
+        @manager.run( state(options: []) )
+      end
+    end
+
+    context "when mocking is disabled" do
+      it "skips the mocks transform and both mocking stages, independent of any stop-point option, in total silence" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( false )
+
+        expect(@test_build_planner).to_not receive(:stage_flatten_mocks_list)
+        expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to_not receive(:stage_generate_mocks)
+        expect(@test_runner_generatinator).to receive(:generate)
+        expect(@loginator).to_not receive(:log)
+
+        @manager.run( state(options: []) )
+      end
+    end
+
+    context "when Partials is enabled but this run has no Partials" do
+      it "skips the three Partials stages and logs an OBNOXIOUS notice for each, instead of running them" do
+        allow(@configurator).to receive(:project_use_partials).and_return( true )
+
+        expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
+        expect(@partials_manager).to_not receive(:stage_preprocess_partial_headers)
+        expect(@partials_manager).to_not receive(:stage_preprocess_partial_sources)
+        expect(@partials_manager).to_not receive(:stage_generate_partials)
+
+        expect(@loginator).to receive(:log)
+          .with( "Preprocessing for Testing & Mocking Partials: no Partials to process", Verbosity::OBNOXIOUS )
+        expect(@loginator).to receive(:log)
+          .with( "Preprocessing for Testing Partials: no Partials to process", Verbosity::OBNOXIOUS )
+        expect(@loginator).to receive(:log)
+          .with( "Partials: no Partials to generate", Verbosity::OBNOXIOUS )
+
+        @manager.run( state(options: [], partials_headers: [], partials_sources: []) )
+      end
+    end
+
+    context "when mocking is enabled but this run has no mocks" do
+      it "skips both mocking stages and logs an OBNOXIOUS notice for each, instead of running them" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+
+        expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
+        expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to_not receive(:stage_generate_mocks)
+
+        expect(@loginator).to receive(:log)
+          .with( "Preprocessing for Mocks: no mocks to process", Verbosity::OBNOXIOUS )
+        expect(@loginator).to receive(:log)
+          .with( "Mocking: no mocks to generate", Verbosity::OBNOXIOUS )
+
+        @manager.run( state(options: [], mocks_list: []) )
+      end
+    end
+
+    context "when mocking is enabled but mock preprocessing is disabled" do
+      it "still generates mocks but skips preprocessing headers to be mocked" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+
+        expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to receive(:stage_generate_mocks)
+
+        @manager.run( state(options: []) )
+      end
+    end
+  end
+end

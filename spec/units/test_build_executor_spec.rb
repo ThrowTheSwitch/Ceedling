@@ -1,0 +1,1759 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'spec_helper'
+require 'ceedling/filename_extension'
+require 'rake'
+require 'ceedling/test_invoker/test_build_executor'
+require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/partials/partials'
+require 'ceedling/test_context_extractor'
+require 'ceedling/quote_include_isolator'
+
+PROJECT_BUILD_VENDOR_UNITY_PATH = 'build/vendor/unity' unless defined?(PROJECT_BUILD_VENDOR_UNITY_PATH)
+UNITY_C_FILE = 'unity.c' unless defined?(UNITY_C_FILE)
+
+describe TestBuildExecutor do
+  before(:each) do
+    @configurator            = double( "Configurator" )
+    @loginator                = double( "Loginator" )
+    @reportinator               = double( "Reportinator" )
+    @batchinator                  = double( "Batchinator" )
+    @preprocessinator                = double( "Preprocessinator" )
+    @generator                           = double( "Generator" )
+    @test_context_extractor                 = double( "TestContextExtractor" )
+    @plugin_manager                            = double( "PluginManager" )
+    @file_path_utils                              = double( "FilePathUtils" )
+    @file_finder                                     = double( "FileFinder" )
+    @file_wrapper                                       = double( "FileWrapper" )
+    @dependinator                                          = double( "Dependinator" )
+    @test_source_file_directive_resolver                      = double( "TestSourceFileDirectiveResolver" )
+    @gcc_dependency_parser                                        = double( "GccDependencyParser" )
+    @quote_include_isolator                                       = double( "QuoteIncludeIsolator" )
+    @generator_helper                                                = double( "GeneratorHelper" )
+
+    @tools_test_compiler                     = { name: 'fake compiler' }
+    @tools_test_assembler                    = { name: 'fake assembler' }
+    @tools_test_linker                       = { name: 'fake linker' }
+    @tools_test_fixture                      = { name: 'fake fixture' }
+    @tools_test_bare_includes_preprocessor   = { name: 'fake bare includes preprocessor' }
+    @tools_test_file_directives_only_preprocessor = { name: 'fake directives-only preprocessor' }
+    @tools_test_backtrace_gdb                = { name: 'fake gdb backtrace' }
+    @tools_test_fixture_simple_backtrace     = { name: 'fake simple backtrace' }
+
+    allow(@configurator).to receive(:extension_assembly).and_return( FilenameExtension.new('.asm') )
+    allow(@configurator).to receive(:extension_testfail).and_return( FilenameExtension.new('.fail') )
+    allow(@configurator).to receive(:tools_test_compiler).and_return( @tools_test_compiler )
+    allow(@configurator).to receive(:tools_test_assembler).and_return( @tools_test_assembler )
+    allow(@configurator).to receive(:tools_test_linker).and_return( @tools_test_linker )
+    allow(@configurator).to receive(:tools_test_fixture).and_return( @tools_test_fixture )
+    allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return( @tools_test_bare_includes_preprocessor )
+    allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( @tools_test_file_directives_only_preprocessor )
+    # tools_test_backtrace_gdb is deliberately NOT stubbed here -- the real Configurator
+    # only defines it at all when :use_backtrace is :gdb (see test_build_executor.rb's
+    # own comment at its one call site), so leaving it unstubbed here means any example
+    # that calls it without :gdb mode explicitly set up fails loudly, the same way the
+    # real Configurator would raise NoMethodError.
+    allow(@configurator).to receive(:tools_test_fixture_simple_backtrace).and_return( @tools_test_fixture_simple_backtrace )
+    allow(@configurator).to receive(:project_config_hash).and_return( { project_use_backtrace: :simple } )
+    allow(@configurator).to receive(:test_build_preprocess_force_fallback).and_return( false )
+    allow(@configurator).to receive(:project_use_mocks).and_return( false )
+    allow(@configurator).to receive(:project_use_exceptions).and_return( false )
+    allow(@configurator).to receive(:collection_all_support).and_return( [] )
+    allow(@configurator).to receive(:force_test_rerun).and_return( false )
+    allow(@configurator).to receive(:unity_shuffle_tests).and_return( false )
+    allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
+
+    allow(@file_path_utils).to receive(:form_test_build_list_filepath).and_return( 'build/list' )
+    allow(@file_path_utils).to receive(:form_test_dependencies_filepath).and_return( 'build/deps' )
+    allow(@file_path_utils).to receive(:form_preprocessed_source_files_cache_filepath).and_return( 'build/preprocess/build_directives/a_test/TestFoo.c_source_files.yml' )
+
+    allow(@file_wrapper).to receive(:mkdir)
+    allow(@quote_include_isolator).to receive(:release)
+    # The real literal scan over the doubled file layer, so each example's read stubs decide it
+    real_isolator = QuoteIncludeIsolator.new( { :file_wrapper => @file_wrapper, :loginator => @loginator } )
+    allow(@quote_include_isolator).to receive(:includes_by_name?) { |file, name| real_isolator.includes_by_name?( file, name ) }
+    allow(@generator_helper).to receive(:explain_possible_mock_partial_collision).and_return( nil )
+
+    allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
+    allow(@reportinator).to receive(:generate_progress).and_return( '' )
+    allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
+    allow(@loginator).to receive(:log)
+    allow(@loginator).to receive(:log_list)
+    allow(@test_context_extractor).to receive(:store_build_directives_cache)
+    allow(@test_context_extractor).to receive(:load_build_directives_cache)
+
+    # Default: no prior `.d` file on disk, and the tracker reports every target
+    # stale -- i.e. every real build in this spec proceeds as an unconditional
+    # fresh compile unless a test overrides `stale?` to exercise the skip path.
+    # A prior run's .d file is looked for with exist? before a compile, and a freshly
+    # written one with exist_with_retry? after it. The sibling-header check calls exist?.
+    allow(@file_wrapper).to receive(:exist?).and_return( false )
+    allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
+    # Default: no plugin implements the new pre-*-register hooks -- each is a
+    # no-op that leaves the arg_hash it's handed untouched.
+    allow(@plugin_manager).to receive(:pre_test_compile_register)
+    allow(@plugin_manager).to receive(:pre_test_link_register)
+    allow(@plugin_manager).to receive(:pre_test_fixture_register)
+
+    allow(@dependinator).to receive(:register)
+    allow(@dependinator).to receive(:register_gcc_deps_file)
+    allow(@dependinator).to receive(:stale?).and_return( true )
+    allow(@dependinator).to receive(:mark_fresh)
+    allow(@test_source_file_directive_resolver).to receive(:validate!)
+
+    @executor = described_class.new(
+      {
+        :configurator            => @configurator,
+        :loginator               => @loginator,
+        :reportinator            => @reportinator,
+        :batchinator             => @batchinator,
+        :preprocessinator        => @preprocessinator,
+        :generator               => @generator,
+        :plugin_manager          => @plugin_manager,
+        :file_path_utils         => @file_path_utils,
+        :file_finder             => @file_finder,
+        :file_wrapper            => @file_wrapper,
+        :dependinator            => @dependinator,
+        :gcc_dependency_parser   => @gcc_dependency_parser,
+        :quote_include_isolator  => @quote_include_isolator,
+        :generator_helper        => @generator_helper
+      }
+    )
+
+    testable = TestInvokerTypes::Testable.new(
+      :compile_defines  => [],
+      :search_paths     => [],
+      :compile_flags    => [],
+      :assembler_flags  => []
+    )
+
+    @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => testable }, :lock => Mutex.new )
+  end
+
+  # An isolation staged into `dir`, as QuoteIncludeIsolator#isolate returns one
+  def isolation_in(dir)
+    QuoteIncludeIsolator::Isolation.new( dir, {} )
+  end
+
+  # `@batchinator.exec` is a real collaborator only in production; here it's
+  # stubbed to synchronously yield every `things` entry to the given block,
+  # matching its real per-item iteration contract without pulling in Parallel.
+  def stub_batchinator_exec
+    allow(@batchinator).to receive(:exec) do |workload:, things:, &block|
+      things.each { |k, v| block.call(k, v) }
+    end
+  end
+
+  context "#compile_test_component" do
+    it "compiles a C source file with the configured test compiler tool" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+
+      expect(@generator).to receive(:generate_object_file_c) do |**args|
+        expect( args[:tool] ).to eq( @tools_test_compiler )
+      end
+      expect(@generator).to_not receive(:generate_object_file_asm)
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    it "assembles an assembly source file with the configured test assembler tool when assembly support is enabled" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.asm' ).and_return( '.asm' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( true )
+
+      expect(@generator).to receive(:generate_object_file_asm) do |**args|
+        expect( args[:tool] ).to eq( @tools_test_assembler )
+      end
+      expect(@generator).to_not receive(:generate_object_file_c)
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.asm', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    it "does not compile an assembly source file when assembly support is disabled" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.asm' ).and_return( '.asm' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+
+      expect(@generator).to_not receive(:generate_object_file_c)
+      expect(@generator).to_not receive(:generate_object_file_asm)
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.asm', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    it "skips compiling and does not mark the object fresh when the dependency tracker reports it unchanged" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@generator).to_not receive(:generate_object_file_c)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    it "registers the object's source before checking staleness, and its freshly-written gcc deps file after a real compile" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+      allow(@file_wrapper).to receive(:exist?).with('build/deps').and_return( true )
+      allow(@file_wrapper).to receive(:exist_with_retry?).with('build/deps').and_return( true )
+
+      expect(@dependinator).to receive(:register).with( 'build/foo.o', files: ['src/foo.c'], meta: anything ).ordered
+      expect(@dependinator).to receive(:register_gcc_deps_file).with('build/deps').ordered # pre-compile: prior .d file, if any
+      expect(@dependinator).to receive(:stale?).with('build/foo.o').and_return(true).ordered
+      expect(@generator).to receive(:generate_object_file_c).ordered
+      expect(@dependinator).to receive(:register_gcc_deps_file).with('build/deps').ordered # post-compile: freshly-written .d file
+      expect(@dependinator).to receive(:mark_fresh).with('build/foo.o').ordered
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    # A clean build has no .d file before a compile, and nothing has just written one,
+    # so a single look settles it. Waiting out a transient miss there would cost every
+    # object in a clean build the whole retry schedule.
+    it "looks once for a prior .d file before compiling, without waiting for one" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@file_wrapper).to receive(:exist?).with('build/deps').and_return( false )
+      expect(@file_wrapper).to_not receive(:exist_with_retry?)
+      expect(@dependinator).to_not receive(:register_gcc_deps_file)
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    # The .d file a compile just wrote can briefly read as absent once the compiler exits.
+    # exist_with_retry? waits that out, so its headers are registered this run rather than
+    # on the next. Its retry mechanism is proven in file_wrapper_spec.rb.
+    it "registers the .d file a compile just wrote through exist_with_retry?, though none was there before" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+      allow(@file_wrapper).to receive(:exist?).with('build/deps').and_return( false )
+      allow(@file_wrapper).to receive(:exist_with_retry?).with('build/deps').and_return( true )
+
+      expect(@generator).to receive(:generate_object_file_c)
+      expect(@dependinator).to receive(:register_gcc_deps_file).with('build/deps').once
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    it "resolves the compile tool/flags/defines through pre_test_compile_register before registering staleness meta, and uses the resolved values for the real compile" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+
+      swapped_tool = { name: 'fake gcov compiler' }
+      allow(@plugin_manager).to receive(:pre_test_compile_register) do |arg_hash|
+        arg_hash[:tool]    = swapped_tool
+        arg_hash[:flags]   += ['-fcondition-coverage']
+        arg_hash[:defines] += ['CODE_COVERAGE']
+      end
+
+      expect(@dependinator).to receive(:register).with(
+        'build/foo.o',
+        files: ['src/foo.c'],
+        meta:  hash_including(
+          tools:   [swapped_tool],
+          flags:   array_including('-fcondition-coverage'),
+          defines: array_including('CODE_COVERAGE')
+        )
+      )
+      expect(@generator).to receive(:generate_object_file_c) do |**args|
+        expect( args[:tool] ).to eq( swapped_tool )
+        expect( args[:flags] ).to include('-fcondition-coverage')
+        expect( args[:defines] ).to include('CODE_COVERAGE')
+      end
+
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    it "registers the configured compiler tool as meta for a C source, and the configured assembler tool for an assembly source" do
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
+      allow(@file_wrapper).to receive(:extname).with( 'src/foo.asm' ).and_return( '.asm' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( true )
+      allow(@generator).to receive(:generate_object_file_c)
+      allow(@generator).to receive(:generate_object_file_asm)
+
+      expect(@dependinator).to receive(:register).with( 'build/foo.o', files: ['src/foo.c'], meta: hash_including( tools: [@tools_test_compiler] ) )
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.c', :object => 'build/foo.o', :state => @state
+      )
+
+      expect(@dependinator).to receive(:register).with( 'build/foo.o', files: ['src/foo.asm'], meta: hash_including( tools: [@tools_test_assembler] ) )
+      @executor.send(
+        :compile_test_component,
+        :context => :test, :test => :a_test, :source => 'src/foo.asm', :object => 'build/foo.o', :state => @state
+      )
+    end
+
+    # A test's own file compile is the one point where its full, transitive dependency
+    # closure is freshly known -- reached headers a mock or Partial never sees directly,
+    # since substitution only ever looks at what the test file itself #includes. When
+    # that closure reveals a real header sharing a directory with one this test mocks or
+    # Partializes, quote-include's own same-directory-first rule could let that real
+    # content slip past the substitution entirely; isolating the sibling and retrying
+    # with corrected search paths closes that gap without ever touching the original
+    # compile's own registered dependencies.
+    # A source beside a header mocked under :treat_inlines :include would find the real
+    # header first and run its inline bodies. It compiles from an isolated copy instead.
+    context "a source sharing a directory with a header mocked with inline shadowing" do
+      let(:isolation) do
+        QuoteIncludeIsolator::Isolation.new( 'build/test/out/a_test/tmp1', { 'src/gpio.c' => 'build/test/out/a_test/tmp1/gpio.c' } )
+      end
+
+      before(:each) do
+        allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
+        allow(@file_wrapper).to receive(:exist_with_retry?).and_return( false )
+
+        @testable              = @state.testables[:a_test]
+        @testable.filepath     = 'test/test_gpio.c'
+        @testable.paths        = { :build => 'build/test/out/a_test' }
+        @testable.search_paths = ['build/test/mocks/a_test', 'src']
+        @testable.mocks        = {
+          :mock_board => TestInvokerTypes::MockDetails.new( name: 'mock_board', source: 'src/board.h', partial: false )
+        }
+
+        allow(@file_wrapper).to receive(:exist?).with( 'src/gpio.c' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( 'src/gpio.c' ).and_return( %(#include "board.h"\n) )
+
+        # A real scoped isolation hands back whatever its block returns
+        allow(@quote_include_isolator).to receive(:within) { |**_, &block| block.call( isolation ) }
+        allow(@quote_include_isolator).to receive(:restore_dependencies)
+        allow(@generator).to receive(:generate_object_file_c)
+      end
+
+      def compile(source: 'src/gpio.c')
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => source, :object => 'build/gpio.o', :state => @state
+        )
+      end
+
+      it "compiles a location-preserving copy, with the original's directory searched last" do
+        compile()
+
+        expect(@quote_include_isolator).to have_received(:within)
+          .with( parent: 'build/test/out/a_test', files: ['src/gpio.c'], preserve_location: true )
+        expect(@generator).to have_received(:generate_object_file_c).with( hash_including(
+          source:         'src/gpio.c',
+          compile_source: 'build/test/out/a_test/tmp1/gpio.c',
+          search_paths:   ['build/test/mocks/a_test', 'src', 'src']
+        ) )
+      end
+
+      it "restores the dependency file before registering it" do
+        allow(@file_wrapper).to receive(:exist_with_retry?).with( 'build/deps' ).and_return( true )
+
+        expect(@quote_include_isolator).to receive(:restore_dependencies).with( isolation, 'build/deps' ).ordered
+        expect(@dependinator).to receive(:register_gcc_deps_file).with( 'build/deps' ).ordered
+
+        compile()
+      end
+
+      it "restores the dependency file and raises when the compile fails" do
+        ex = ShellException.new( shell_result: { output: 'error' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+
+        expect { compile() }.to raise_error( ShellException )
+        expect(@quote_include_isolator).to have_received(:restore_dependencies).with( isolation, 'build/deps' )
+      end
+
+      it "logs the isolation at NORMAL verbosity, decorated as a notice" do
+        compile()
+
+        expect(@loginator).to have_received(:log).with( a_string_including( 'src/gpio.c', 'src/board.h' ), Verbosity::NORMAL, LogLabels::NOTICE )
+      end
+
+      # Isolation is an implementation detail of how a source compiles. Its staleness must
+      # read the same either way, or toggling isolation would force a rebuild.
+      it "registers the same staleness meta as an ordinary compile" do
+        metas = []
+        allow(@dependinator).to receive(:register) { |_, **kwargs| metas << kwargs[:meta] }
+
+        compile()
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude )
+        compile()
+
+        expect( metas.uniq.length ).to eq( 1 )
+      end
+
+      shared_examples "an ordinary compile" do
+        it "compiles the original in place" do
+          compile( source: source )
+
+          expect(@quote_include_isolator).to_not have_received(:within)
+          expect(@generator).to have_received(:generate_object_file_c).with( hash_excluding( :compile_source ) )
+        end
+      end
+
+      context "when inline functions are excluded from mocking" do
+        before(:each) { allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude ) }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when mocks are disabled" do
+        before(:each) { allow(@configurator).to receive(:project_use_mocks).and_return( false ) }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the mock is a Partial mock" do
+        before(:each) { @testable.mocks[:mock_board].partial = true }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the mocked header lives in another directory" do
+        before(:each) { @testable.mocks[:mock_board].source = 'inc/board.h' }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the source does not include the mocked header" do
+        before(:each) { allow(@file_wrapper).to receive(:read).with( 'src/gpio.c' ).and_return( %(#include "gpio.h"\n) ) }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+
+      context "when the source is the test file itself" do
+        before(:each) { @testable.filepath = 'src/gpio.c' }
+        let(:source) { 'src/gpio.c' }
+        include_examples "an ordinary compile"
+      end
+    end
+
+    context "sibling-header isolation retry" do
+      before(:each) do
+        allow(@file_wrapper).to receive(:extname).with( 'test/a_test.c' ).and_return( '.c' )
+        allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+        allow(@file_wrapper).to receive(:exist_with_retry?).with( 'build/deps' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).and_return( '' )
+
+        @state.testables[:a_test].filepath = 'test/a_test.c'
+        @state.testables[:a_test].paths    = { build: 'build/test/out/a_test' }
+        @state.testables[:a_test].mocks    = {
+          gpio: TestInvokerTypes::MockDetails.new(
+            name: 'gpio', filepath: '/project/library/gpio.h', path: 'library',
+            source: '/project/library/gpio.h', input: '/project/library/gpio.h', partial: false
+          )
+        }
+
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'build/foo.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
+        )
+
+        # driverlib.h is the sibling under test throughout this context -- it
+        # genuinely #includes gpio.h, the signal that distinguishes a real risk
+        # from merely sharing a directory.
+        allow(@file_wrapper).to receive(:exist?).with( '/project/library/driverlib.h' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( '/project/library/driverlib.h' ).and_return( "#include \"gpio.h\"\n" )
+      end
+
+      it "retries the compile with corrected search paths when a sibling risk is found, and clears an initial failure" do
+        allow(@quote_include_isolator).to receive(:isolate)
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
+
+        ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
+        call_count = 0
+        allow(@generator).to receive(:generate_object_file_c) do
+          call_count += 1
+          raise ex if call_count == 1
+        end
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to_not raise_error
+
+        expect( @generator ).to have_received( :generate_object_file_c ).twice
+        expect( @state.testables[:a_test].search_paths ).to include( 'build/test/out/a_test/isolated_headers/xyz' )
+        expect( @state.testables[:a_test].isolated_headers_path ).to eq( 'build/test/out/a_test/isolated_headers/xyz' )
+      end
+
+      it "retries against a separate, throwaway dependencies path, and registers only the original .d file" do
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
+        allow(@generator).to receive(:generate_object_file_c)
+
+        expect(@generator).to receive(:generate_object_file_c).with( hash_including( dependencies: 'build/deps' ) ).ordered
+        expect(@generator).to receive(:generate_object_file_c).with( hash_including( dependencies: a_string_matching(/\Abuild\/deps\..+/) ) ).ordered
+
+        expect(@dependinator).to receive(:register_gcc_deps_file).with( 'build/deps' ).at_least(:once)
+        expect(@dependinator).to_not receive(:register_gcc_deps_file).with( a_string_matching(/\Abuild\/deps\..+/) )
+
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+        )
+      end
+
+      it "still raises when the retry itself also fails" do
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
+
+        ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to raise_error( ShellException )
+      end
+
+      it "does not retry, and still raises, when no sibling risk is found" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'build/foo.o' => ['test/a_test.c', '/project/library/gpio.h'] }
+        )
+
+        ex = ShellException.new( shell_result: { output: 'some unrelated failure' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to raise_error( ShellException )
+
+        expect( @generator ).to have_received( :generate_object_file_c ).once
+      end
+
+      it "still registers the original compile's own .d file when the first attempt fails and nothing is isolated" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'build/foo.o' => ['test/a_test.c', '/project/library/gpio.h'] }
+        )
+        allow(@generator).to receive(:generate_object_file_c).and_raise(
+          ShellException.new( shell_result: { output: 'some unrelated failure' }, name: 'compiler' )
+        )
+
+        # Once pre-compile for the previous run's .d file, and once again for the .d file the
+        # failed attempt wrote. A failed compile is still a real attempt whose dependency
+        # output is worth keeping.
+        allow(@file_wrapper).to receive(:exist?).with( 'build/deps' ).and_return( true )
+        expect(@dependinator).to receive(:register_gcc_deps_file).with( 'build/deps' ).twice
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to raise_error( ShellException )
+      end
+
+      it "does not attempt isolation for an object other than the test's own file" do
+        allow(@file_wrapper).to receive(:extname).with( 'src/other.c' ).and_return( '.c' )
+        allow(@generator).to receive(:generate_object_file_c)
+
+        expect(@gcc_dependency_parser).to_not receive(:parse)
+
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => 'src/other.c', :object => 'build/other.o', :state => @state
+        )
+      end
+
+      # A delta build's own whole point is that an unchanged object never recompiles --
+      # but isolation's own correction to search_paths only ever happens as a side
+      # effect of a real compile. Without also applying it here, every other object in
+      # this same test's build would compute its own staleness against paths that
+      # silently drift from what actually got cached the last time isolation *did* run,
+      # forcing them to recompile on every single subsequent build, forever, even
+      # though nothing about the project actually changed.
+      it "applies whatever isolation the existing .d file already reveals even when this object is not stale" do
+        allow(@dependinator).to receive(:stale?).with( 'build/foo.o' ).and_return( false )
+        allow(@quote_include_isolator).to receive(:isolate)
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
+
+        expect(@generator).to_not receive(:generate_object_file_c)
+
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+        )
+
+        expect( @state.testables[:a_test].search_paths ).to include( 'build/test/out/a_test/isolated_headers/xyz' )
+        expect( @state.testables[:a_test].isolated_headers_path ).to eq( 'build/test/out/a_test/isolated_headers/xyz' )
+      end
+
+      it "does not attempt isolation on a skip when there is no existing .d file yet" do
+        allow(@dependinator).to receive(:stale?).with( 'build/foo.o' ).and_return( false )
+        allow(@file_wrapper).to receive(:exist_with_retry?).with( 'build/deps' ).and_return( false )
+
+        expect(@gcc_dependency_parser).to_not receive(:parse)
+        expect(@generator).to_not receive(:generate_object_file_c)
+
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+        )
+      end
+
+      # A Partial's own generated content never gives isolation an alternative same-named
+      # file for a search path to fall through to, so a redeclaration/conflicting-types
+      # failure can survive every attempt here. Logging the likely cause alongside the raw
+      # compiler error, rather than raising it bare, is the deliberate fallback for exactly
+      # that case -- and for any other collision isolation doesn't resolve.
+      it "logs the guidance from generator_helper and still raises, when the compile fails with no isolation to try" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h'] }
+        )
+
+        ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+
+        allow(@generator_helper).to receive(:explain_possible_mock_partial_collision)
+          .with( output: 'redeclaration of struct gpio', mocked_headers: { 'gpio.h' => '/project/library/gpio.h' } )
+          .and_return( 'explanatory notice text' )
+
+        expect(@loginator).to receive(:log).with( 'explanatory notice text', Verbosity::ERRORS, LogLabels::NOTICE )
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to raise_error( ShellException )
+      end
+
+      it "logs the guidance after a retry that also fails" do
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
+
+        ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+        allow(@generator_helper).to receive(:explain_possible_mock_partial_collision).and_return( 'explanatory notice text' )
+
+        expect(@loginator).to receive(:log).with( 'explanatory notice text', Verbosity::ERRORS, LogLabels::NOTICE )
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to raise_error( ShellException )
+      end
+
+      it "logs nothing extra when generator_helper finds no explanation" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h'] }
+        )
+        ex = ShellException.new( shell_result: { output: 'totally unrelated failure' }, name: 'compiler' )
+        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
+
+        expect(@loginator).to_not receive(:log).with( anything, Verbosity::ERRORS, LogLabels::NOTICE )
+
+        expect {
+          @executor.send(
+            :compile_test_component,
+            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
+          )
+        }.to raise_error( ShellException )
+      end
+    end
+  end
+
+  context "#isolate_sibling_headers" do
+    before(:each) do
+      @testable = TestInvokerTypes::Testable.new(
+        :name => 'a_test', :filepath => 'test/a_test.c',
+        :search_paths => ['test/support'],
+        :paths => { build: 'build/test/out/a_test' }
+      )
+
+      allow(@file_wrapper).to receive(:read).with( 'build/deps' ).and_return( '' )
+    end
+
+    def call_it
+      @executor.send( :isolate_sibling_headers, testable: @testable, dependencies_filepath: 'build/deps' )
+    end
+
+    it "returns nil, and never reads the dependencies file, when the testable mocks or Partializes nothing" do
+      expect(@file_wrapper).to_not receive(:read)
+      expect( call_it() ).to be_nil
+    end
+
+    context "with a mocked header" do
+      before(:each) do
+        @testable.mocks = {
+          gpio: TestInvokerTypes::MockDetails.new(
+            name: 'gpio', filepath: '/project/library/gpio.h', path: 'library',
+            source: '/project/library/gpio.h', input: '/project/library/gpio.h', partial: false
+          )
+        }
+
+        # driverlib.h is the sibling under test throughout this context -- it
+        # genuinely #includes gpio.h, the signal that distinguishes a real risk
+        # from merely sharing a directory.
+        allow(@file_wrapper).to receive(:exist?).with( '/project/library/driverlib.h' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( '/project/library/driverlib.h' ).and_return( "#include \"gpio.h\"\n" )
+      end
+
+      it "returns nil when the mocked header itself never appears in the dependency list" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/other/unrelated.h'] }
+        )
+        expect( call_it() ).to be_nil
+      end
+
+      it "returns nil when the mocked header has no directory-mates in the dependency list" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/other/unrelated.h'] }
+        )
+        expect( call_it() ).to be_nil
+      end
+
+      # A same-directory file is a real project header layout, not a special one --
+      # most projects keep every header in one shared directory as ordinary
+      # convention. A candidate that merely lives beside the mocked header, without
+      # itself #including it, is exactly that ordinary case, not a collision risk;
+      # isolating it anyway would recompile it every single build for no reason.
+      it "does not isolate a same-directory file that does not itself #include the mocked header" do
+        allow(@file_wrapper).to receive(:exist?).with( '/project/library/unrelated_neighbor.h' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( '/project/library/unrelated_neighbor.h' ).and_return( "#include <stdint.h>\n" )
+
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/unrelated_neighbor.h'] }
+        )
+
+        expect(@quote_include_isolator).to_not receive(:isolate)
+        expect( call_it() ).to be_nil
+      end
+
+      it "isolates a real header sharing a directory with the mocked header, prepending the isolation directory to search paths" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
+        )
+        allow(@quote_include_isolator).to receive(:isolate)
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
+
+        result = call_it()
+
+        expect( result ).to eq(
+          search_paths:   ['build/test/out/a_test/isolated_headers/xyz', 'test/support'],
+          isolation_dir:  'build/test/out/a_test/isolated_headers/xyz'
+        )
+      end
+
+      it "logs the isolation at NORMAL verbosity, decorated as a notice" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
+        )
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'isolated/dir' ) )
+
+        expect(@loginator).to receive(:log).with(
+          a_string_including( '/project/library/driverlib.h' ).and( a_string_including( '/project/library/gpio.h' ) ),
+          Verbosity::NORMAL, LogLabels::NOTICE
+        )
+
+        call_it()
+      end
+
+      it "excludes a mock-Partial's own generated source from consideration entirely" do
+        @testable.mocks[:gpio].partial = true
+
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
+        )
+
+        expect(@quote_include_isolator).to_not receive(:isolate)
+        expect( call_it() ).to be_nil
+      end
+
+      it "reports, but does not isolate, another shared directory elsewhere in the dependency list" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          {
+            'a.o' => [
+              'test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h',
+              '/project/other/x.h', '/project/other/y.h'
+            ]
+          }
+        )
+        allow(@quote_include_isolator).to receive(:isolate)
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .and_return( isolation_in( 'isolated/dir' ) )
+
+        expect(@loginator).to receive(:log).with(
+          a_string_including( '/project/other/x.h' ).and( a_string_including( '/project/other/y.h' ) ),
+          Verbosity::COMPLAIN, LogLabels::NOTICE
+        )
+
+        result = call_it()
+
+        expect( result[:search_paths] ).to_not include( a_string_including( '/project/other' ) )
+      end
+
+      it "logs nothing at all when there is no risk anywhere in the dependency list" do
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h'] }
+        )
+
+        expect(@loginator).to_not receive(:log).with( anything, anything, LogLabels::NOTICE )
+
+        call_it()
+      end
+
+      # This test's own mocks output directory routinely holds several generated files
+      # side by side (a mock's own interface header, and -- when :treat_inlines: :include
+      # is configured -- a same-basename shadow of the real header too), and Unity's own
+      # vendor directory ships more than one header as a matter of course. Neither is a
+      # real project header directory a quote-include could ambiguously resolve within,
+      # so neither belongs in the "worth investigating" heads-up.
+      it "does not report co-resident files inside this test's own mocks output directory or a vendor framework directory" do
+        @testable.paths = { build: 'build/test/out/a_test', mocks: 'build/test/mocks/a_test' }
+
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          {
+            'a.o' => [
+              'test/a_test.c', '/project/library/gpio.h',
+              'build/test/mocks/a_test/mock_gpio.h', 'build/test/mocks/a_test/gpio.h',
+              PROJECT_BUILD_VENDOR_UNITY_PATH + '/unity.h', PROJECT_BUILD_VENDOR_UNITY_PATH + '/unity_internals.h'
+            ]
+          }
+        )
+
+        expect(@loginator).to_not receive(:log).with( anything, Verbosity::COMPLAIN, anything )
+
+        call_it()
+      end
+
+      # A test's own Partials output directory is shaped exactly the same way as its
+      # mocks output directory -- several generated headers (a types header, an
+      # interface header, and more) routinely sit side by side there, one set per
+      # Partialized module, none of it a real project header.
+      it "does not report co-resident files inside this test's own Partials output directory" do
+        @testable.paths = { build: 'build/test/out/a_test', partials: 'build/test/partials/a_test' }
+
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          {
+            'a.o' => [
+              'test/a_test.c', '/project/library/gpio.h',
+              'build/test/partials/a_test/ceedling_partial_moduleA_impl.h',
+              'build/test/partials/a_test/ceedling_partial_gpio_interface.h',
+              'build/test/partials/a_test/ceedling_partial_gpio_types.h'
+            ]
+          }
+        )
+
+        expect(@loginator).to_not receive(:log).with( anything, Verbosity::COMPLAIN, anything )
+
+        call_it()
+      end
+    end
+
+    context "with a Partialized header" do
+      it "isolates a real header sharing a directory with the Partial's own header" do
+        @testable.partials = TestInvokerTypes::TestablePartials.new(
+          configs: { moduleA: double( "PartialConfig", header: double( "HeaderFile", filepath: '/project/library/moduleA.h' ) ) },
+          tests: [], mocks: []
+        )
+
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/moduleA.h', '/project/library/driverlib.h'] }
+        )
+        allow(@file_wrapper).to receive(:exist?).with( '/project/library/driverlib.h' ).and_return( true )
+        allow(@file_wrapper).to receive(:read).with( '/project/library/driverlib.h' ).and_return( "#include \"moduleA.h\"\n" )
+        allow(@quote_include_isolator).to receive(:isolate)
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .and_return( isolation_in( 'isolated/dir' ) )
+
+        expect( call_it() ).to_not be_nil
+      end
+    end
+  end
+
+  context "#stage_build_objects" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@file_finder).to receive(:find_build_input_file).and_return( 'src/foo.c' )
+      allow(@file_wrapper).to receive(:extname).and_return( '.c' )
+      allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name              => 'a_test',
+        :compile_defines   => [], :search_paths => [], :compile_flags => []
+      )
+      @state = TestInvokerTypes::PipelineState.new(
+        :testables   => { :a_test => @testable },
+        :objects_list => [ TestInvokerTypes::ObjectWork.new( test: :a_test, obj: 'build/foo.o' ) ],
+        :lock => Mutex.new, :context => :test, :options => []
+      )
+    end
+
+    it "logs a summary line stating how many objects were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping compilation for 1 object (nothing changed)..." )
+
+      expect(@loginator).to receive(:log).with( "Skipping compilation for 1 object (nothing changed)..." )
+      @executor.stage_build_objects( @state )
+    end
+
+    it "logs no summary line when every object needed compiling" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_object_file_c)
+
+      expect(@loginator).to_not receive(:log).with( /Skipping compilation/ )
+
+      @executor.stage_build_objects( @state )
+    end
+
+    # A test's own file compiles in a batch fully completed before any other object
+    # starts -- any search-path fix-up sibling isolation makes during that first
+    # compile needs to be visible to every other object in the same test's build,
+    # and parallel compilation gives no other guarantee that it lands before them.
+    it "compiles the test's own file fully before any other object in the same test begins" do
+      @testable.filepath = 'test/a_test.c'
+      @testable.paths    = { build: 'build/test/out/a_test' }
+
+      @state.objects_list = [
+        TestInvokerTypes::ObjectWork.new( test: :a_test, obj: 'build/other.o' ),
+        TestInvokerTypes::ObjectWork.new( test: :a_test, obj: 'build/a_test.o' )
+      ]
+
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'build/other.o', context: :test, test: :a_test ).and_return( 'src/other.c' )
+      allow(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'build/a_test.o', context: :test, test: :a_test ).and_return( 'test/a_test.c' )
+
+      order = []
+      allow(@generator).to receive(:generate_object_file_c) do |**args|
+        order << args[:source]
+      end
+
+      @executor.stage_build_objects( @state )
+
+      expect( order ).to eq( ['test/a_test.c', 'src/other.c'] )
+    end
+
+    it "removes a testable's isolated headers directory once, after both batches complete" do
+      @testable.isolated_headers_path = 'build/test/out/a_test/isolated_headers/xyz'
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@quote_include_isolator).to receive(:release).with( 'build/test/out/a_test/isolated_headers/xyz' ).once
+
+      @executor.stage_build_objects( @state )
+    end
+
+    it "attempts no cleanup for a testable that never isolated anything" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@quote_include_isolator).to_not receive(:release)
+
+      @executor.stage_build_objects( @state )
+    end
+  end
+
+  context "#stage_build_executables" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@file_path_utils).to receive(:form_test_build_map_filepath).and_return( 'build/map' )
+
+      allow(@generator).to receive(:generate_test_executable_manifest)
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name       => 'a_test',
+        :filepath   => 'test/a_test.c',
+        :objects    => ['build/foo.o'],
+        :executable => 'build/a_test.out',
+        :link_flags => [],
+        :paths      => { :build => 'build/test' }
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
+    end
+
+    it "links and marks the executable fresh, and records that it was rebuilt, when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      expect(@generator).to receive(:generate_executable_file)
+      expect(@dependinator).to receive(:mark_fresh).with('build/a_test.out')
+
+      @executor.stage_build_executables( @state )
+
+      expect( @testable.executable_rebuilt ).to be(true)
+    end
+
+    it "skips linking and records that it was not rebuilt when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      expect(@generator).to_not receive(:generate_executable_file)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_build_executables( @state )
+
+      expect( @testable.executable_rebuilt ).to be(false)
+    end
+
+    # An executable linked by an earlier build still needs its manifest
+    it "provides each executable its manifest, whether linked or skipped" do
+      allow(@generator).to receive(:generate_executable_file)
+
+      [true, false].each do |stale|
+        allow(@dependinator).to receive(:stale?).and_return( stale )
+        expect(@generator).to receive(:generate_test_executable_manifest).with( executable: 'build/a_test.out', test_filepath: 'test/a_test.c' )
+
+        @executor.stage_build_executables( @state )
+      end
+    end
+
+    it "resolves the link tool/flags through pre_test_link_register before registering staleness meta, and uses the resolved values for the real link" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      swapped_tool = { name: 'fake bullseye linker' }
+      allow(@plugin_manager).to receive(:pre_test_link_register) do |arg_hash|
+        arg_hash[:tool] = swapped_tool
+      end
+
+      expect(@dependinator).to receive(:register).with(
+        'build/a_test.out',
+        files: ['build/foo.o'],
+        meta:  hash_including( tools: [swapped_tool] )
+      )
+      expect(@generator).to receive(:generate_executable_file) do |tool, *_rest|
+        expect( tool ).to eq( swapped_tool )
+      end
+
+      @executor.stage_build_executables( @state )
+    end
+
+    it "registers the configured test linker tool as meta, alongside link flags and library arguments" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@dependinator).to receive(:register).with(
+        'build/a_test.out',
+        files: ['build/foo.o'],
+        meta:  { flags: [], lib_args: [], lib_paths: [], tools: [@tools_test_linker] }
+      )
+
+      @executor.stage_build_executables( @state )
+    end
+
+    it "logs a summary line stating how many executables were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping linking for 1 executable (nothing changed)..." )
+
+      expect(@loginator).to receive(:log).with( "Skipping linking for 1 executable (nothing changed)..." )
+      @executor.stage_build_executables( @state )
+    end
+  end
+
+  context "#generate_executable" do
+    before(:each) do
+      allow(@file_path_utils).to receive(:form_test_build_map_filepath).and_return( 'build/map' )
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+    end
+
+    def build_args
+      {
+        context:    :test,
+        build_path: 'build/test',
+        executable: 'build/a_test.out',
+        objects:    ['build/foo.o'],
+        flags:      [],
+        lib_args:   [],
+        lib_paths:  [],
+        tool:       { name: 'fake linker' }
+      }
+    end
+
+    it "re-raises a ShellException from the linker" do
+      ex = ShellException.new( shell_result: { output: 'some unrelated linker failure' }, name: 'linker' )
+      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
+      allow(@loginator).to receive(:log)
+
+      expect {
+        @executor.generate_executable( **build_args )
+      }.to raise_error( ShellException )
+    end
+
+    it "logs missing-symbols guidance when the shell output mentions a symbol, before re-raising" do
+      ex = ShellException.new( shell_result: { output: 'undefined reference to symbol foo' }, name: 'linker' )
+      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
+
+      expect(@loginator).to receive(:log).with(
+        a_string_matching(/missing symbols/i),
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      expect {
+        @executor.generate_executable( **build_args )
+      }.to raise_error( ShellException )
+    end
+
+    it "does not log guidance when the shell output does not mention a symbol" do
+      ex = ShellException.new( shell_result: { output: 'some unrelated linker failure' }, name: 'linker' )
+      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
+
+      expect(@loginator).to_not receive(:log)
+
+      expect {
+        @executor.generate_executable( **build_args )
+      }.to raise_error( ShellException )
+    end
+
+    it "includes mock-specific guidance only when the project uses mocks" do
+      ex = ShellException.new( shell_result: { output: 'missing symbol foo' }, name: 'linker' )
+      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+
+      expect(@loginator).to receive(:log).with(
+        a_string_matching(/needed mocks/i),
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      expect {
+        @executor.generate_executable( **build_args )
+      }.to raise_error( ShellException )
+    end
+
+    it "does not raise when the linker succeeds" do
+      allow(@generator).to receive(:generate_executable_file)
+
+      expect { @executor.generate_executable( **build_args ) }.to_not raise_error
+    end
+  end
+
+  context "#stage_execute" do
+    before(:each) do
+      stub_batchinator_exec()
+      allow(@plugin_manager).to receive(:post_test)
+      # Flushed once after every testable in this stage has executed -- see
+      # `report_gdb_attach_health`'s own spec for its actual behavior.
+      allow(@generator).to receive(:report_gdb_attach_health)
+
+      # This context's own tests are about executable_rebuilt/force_rerun/shuffle
+      # deciding whether a fixture reruns, so the fixture-target's own staleness
+      # (the tool-config trigger) defaults to fresh here -- see the dedicated
+      # "tool configuration changed" examples below for that case on its own.
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      allow(@file_wrapper).to receive(:touch)
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name         => 'a_test',
+        :filepath     => 'test/TestFoo.c',
+        :executable   => 'build/a_test.out',
+        :results_pass => 'build/a_test.pass',
+        :paths        => { :results => 'build/test/results' }
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
+      @fixture_target = 'build/test/results/a_test.fixture_run'
+    end
+
+    it "runs the test fixture when stage 16 rebuilt the executable, first clearing any stale prior result" do
+      @testable.executable_rebuilt = true
+      allow(@file_wrapper).to receive(:rm_f)
+      expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: false ) )
+
+      @executor.stage_execute( @state )
+    end
+
+    # A skipped run reuses the result file, so the fixture target vouches for it. Damage
+    # to that file then reads as stale and the test reruns instead of reusing it.
+    it "registers the result files as outputs of the fixture target before marking it fresh after a real run" do
+      @testable.executable_rebuilt = true
+      allow(@file_wrapper).to receive(:rm_f)
+      allow(@generator).to receive(:generate_test_results)
+
+      expect(@dependinator).to receive(:register).with( @fixture_target, outputs: ['build/a_test.pass', 'build/a_test.fail'] ).ordered
+      expect(@dependinator).to receive(:mark_fresh).with( @fixture_target ).ordered
+
+      @executor.stage_execute( @state )
+    end
+
+    it "registers no outputs on a skipped run" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+
+      expect(@dependinator).to_not receive(:register).with( @fixture_target, hash_including( :outputs ) )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "reports the cached result instead of running the test fixture when stage 16 found the executable unchanged, and does not touch the cached result file" do
+      @testable.executable_rebuilt = false
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: true ) )
+      expect(@file_wrapper).to_not receive(:rm_f)
+
+      @executor.stage_execute( @state )
+    end
+
+    it "runs the test fixture and clears any stale prior result when :force_test_rerun is enabled, even though the executable is unchanged" do
+      @testable.executable_rebuilt = false
+      allow(@configurator).to receive(:force_test_rerun).and_return( true )
+      allow(@file_wrapper).to receive(:rm_f)
+      expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: false ) )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "runs the test fixture and clears any stale prior result when :unity ↳ :shuffle_tests is enabled, even though the executable is unchanged" do
+      @testable.executable_rebuilt = false
+      allow(@configurator).to receive(:unity_shuffle_tests).and_return( true )
+      allow(@file_wrapper).to receive(:rm_f)
+      expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: false ) )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "logs a NOTICE that shuffling is overriding a delta-build skip when :unity ↳ :shuffle_tests is enabled and the executable is unchanged" do
+      @testable.executable_rebuilt = false
+      allow(@configurator).to receive(:unity_shuffle_tests).and_return( true )
+      allow(@generator).to receive(:generate_test_results)
+      allow(@file_wrapper).to receive(:rm_f)
+
+      expect(@loginator).to receive(:log)
+        .with( /1 already up-to-date test executable/, Verbosity::NORMAL, LogLabels::NOTICE )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "does not log the shuffling NOTICE when :unity ↳ :shuffle_tests is enabled but the executable was already rebuilt (nothing to override)" do
+      @testable.executable_rebuilt = true
+      allow(@configurator).to receive(:unity_shuffle_tests).and_return( true )
+      allow(@generator).to receive(:generate_test_results)
+      allow(@file_wrapper).to receive(:rm_f)
+
+      expect(@loginator).to_not receive(:log).with( /shuffl/i, any_args )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "does not log the shuffling NOTICE when :force_test_rerun (not shuffling) is what forces the rerun" do
+      @testable.executable_rebuilt = false
+      allow(@configurator).to receive(:force_test_rerun).and_return( true )
+      allow(@generator).to receive(:generate_test_results)
+      allow(@file_wrapper).to receive(:rm_f)
+
+      expect(@loginator).to_not receive(:log).with( /shuffl/i, any_args )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "always fires the post_test plugin hook, rebuilt or not" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+      expect(@plugin_manager).to receive(:post_test).with('test/TestFoo.c')
+
+      @executor.stage_execute( @state )
+    end
+
+    it "logs a summary line stating how many tests reused a cached result" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping test execution for 1 test (reusing cached results)..." )
+
+      expect(@loginator).to receive(:log).with( "Skipping test execution for 1 test (reusing cached results)..." )
+      @executor.stage_execute( @state )
+    end
+
+    it "resolves the fixture tool through pre_test_fixture_register before registering staleness meta, and uses the resolved value for the real run" do
+      @testable.executable_rebuilt = false
+
+      swapped_tool = { name: 'fake valgrind wrapper' }
+      allow(@plugin_manager).to receive(:pre_test_fixture_register) do |arg_hash|
+        expect( arg_hash[:target] ).to eq( @fixture_target )
+        arg_hash[:tool] = swapped_tool
+      end
+
+      expect(@dependinator).to receive(:register).with(
+        @fixture_target,
+        files: ['build/a_test.out'],
+        meta:  hash_including( tools: [swapped_tool] )
+      )
+      expect(@generator).to receive(:generate_test_results) do |**args|
+        expect( args[:tool] ).to eq( swapped_tool )
+      end
+
+      @executor.stage_execute( @state )
+    end
+
+    it "registers a dedicated marker target separate from the executable, with the executable as antecedent and the test fixture tool as meta" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+
+      expect(@dependinator).to receive(:register).with(
+        @fixture_target,
+        files: ['build/a_test.out'],
+        meta:  hash_including( tools: [@tools_test_fixture] )
+      )
+
+      @executor.stage_execute( @state )
+    end
+
+    # :use_backtrace doesn't swap the fixture tool itself -- it only selects what
+    # generator.rb does *after* a crash is detected (see this call site's own comment
+    # in test_build_executor.rb). Without capturing it (and the tool config(s) it
+    # drives) as meta here, toggling it would never invalidate a cached-fresh
+    # fixture_target, so a delta build would keep reusing a stale crash-diagnosis result.
+    it "registers :use_backtrace and the gdb backtrace tool as meta when :use_backtrace is :gdb" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+      allow(@configurator).to receive(:project_config_hash).and_return( { project_use_backtrace: :gdb } )
+      allow(@configurator).to receive(:tools_test_backtrace_gdb).and_return( @tools_test_backtrace_gdb )
+
+      expect(@dependinator).to receive(:register).with(
+        @fixture_target,
+        files: ['build/a_test.out'],
+        meta:  {
+          tools: [@tools_test_fixture],
+          use_backtrace: :gdb,
+          backtrace_tools: [@tools_test_fixture_simple_backtrace, @tools_test_backtrace_gdb]
+        }
+      )
+
+      @executor.stage_execute( @state )
+    end
+
+    # Regression guard: tools_test_backtrace_gdb only exists on the real Configurator
+    # when :use_backtrace is :gdb (Configurator only merges its defaults in that case) --
+    # calling it unconditionally raised NoMethodError against a real project configured
+    # for :simple or :none. @configurator here is a plain double with no stub for
+    # tools_test_backtrace_gdb, so it fails the same way a real run would if this
+    # regressed.
+    it "registers only the simple backtrace tool as meta, and never reads the gdb tool's config, when :use_backtrace is :simple" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+      allow(@configurator).to receive(:project_config_hash).and_return( { project_use_backtrace: :simple } )
+
+      expect(@dependinator).to receive(:register).with(
+        @fixture_target,
+        files: ['build/a_test.out'],
+        meta:  {
+          tools: [@tools_test_fixture],
+          use_backtrace: :simple,
+          backtrace_tools: [@tools_test_fixture_simple_backtrace]
+        }
+      )
+
+      @executor.stage_execute( @state )
+    end
+
+    it "reruns the test fixture when only the :tools ↳ :test_fixture configuration changed, even though the executable is unchanged" do
+      @testable.executable_rebuilt = false
+      allow(@dependinator).to receive(:stale?).with(@fixture_target).and_return( true )
+      allow(@file_wrapper).to receive(:rm_f)
+
+      expect(@file_wrapper).to receive(:rm_f).with( Dir.glob( File.join( 'build/test/results', 'a_test.*' ) ) )
+      expect(@generator).to receive(:generate_test_results).with( hash_including( skipped: false ) )
+      expect(@dependinator).to receive(:mark_fresh).with(@fixture_target)
+
+      @executor.stage_execute( @state )
+    end
+
+    # The whole reason this target is a dedicated marker file rather than the test's own
+    # outcome-dependent .pass/.fail result file: a failing test never writes the .pass
+    # path, and DependencyTracker#mark_fresh would otherwise crash trying to hash a target
+    # that doesn't exist -- exactly the CI failure this scenario guards against regressing.
+    it "marks the marker target fresh after a real run even when the test itself fails" do
+      @testable.executable_rebuilt = true
+      allow(@file_wrapper).to receive(:rm_f)
+      allow(@generator).to receive(:generate_test_results).and_return( { results: { counts: { failed: 1 } } } )
+
+      expect(@file_wrapper).to receive(:touch).with(@fixture_target)
+      expect(@dependinator).to receive(:mark_fresh).with(@fixture_target)
+
+      @executor.stage_execute( @state )
+    end
+
+    it "does not mark the fixture target fresh when the run was skipped" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_execute( @state )
+    end
+  end
+
+  context "#stage_preprocess_mocks" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
+      allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude )
+      allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/MockFoo.h' )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name             => 'a_test',
+        :preprocess_flags => [], :preprocess_defines => [], :search_paths => []
+      )
+      mock = TestInvokerTypes::MockWork.new(
+        :details  => TestInvokerTypes::MockDetails.new( :source => 'src/Foo.h', :path => 'sub' ),
+        :testable => @testable,
+        :name     => :MockFoo,
+        :directives_only_filepath => nil
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => [] )
+    end
+
+    it "preprocesses and marks fresh the mockable header when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      expect(@preprocessinator).to receive(:preprocess_mockable_header_file)
+      expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/MockFoo.h')
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "skips preprocessing the mockable header when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      expect(@preprocessinator).to_not receive(:preprocess_mockable_header_file)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "logs a summary line stating how many mocks' preprocessing was recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping mock preprocessing for 1 mock (nothing changed)..." )
+
+      expect(@loginator).to receive(:log).with( "Skipping mock preprocessing for 1 mock (nothing changed)..." )
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "registers the bare-includes and directives-only preprocessor tools, and the fallback setting, as meta" do
+      allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/MockFoo.h',
+        files: ['src/Foo.h'],
+        meta:  {
+          flags: [], defines: [], search_paths: [], extras: false,
+          tools: [@tools_test_bare_includes_preprocessor, @tools_test_file_directives_only_preprocessor],
+          preprocess_force_fallback: false
+        }
+      )
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "runs the extra treat-inlines-aware pass for an ordinary mock when the project configures :treat_inlines: :include" do
+      allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
+      allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/MockFoo.h',
+        files: anything,
+        meta:  hash_including( extras: true )
+      )
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "skips the extra treat-inlines-aware pass for a Partial mock even when the project configures :treat_inlines: :include -- its own generated header is already inline-free" do
+      @state.mocks_list.first.details.partial = true
+      allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
+      allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/preprocess/MockFoo.h',
+        files: anything,
+        meta:  hash_including( extras: false )
+      )
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+  end
+
+  context "#stage_generate_mocks" do
+    before(:each) do
+      stub_batchinator_exec()
+
+      allow(@configurator).to receive(:project_config_hash).and_return( {} )
+      allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock' } )
+      allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
+      allow(@file_wrapper).to receive(:mkdir)
+      # Where a mock's files sit is composed in one shared place, so the stage that
+      # compiles a mock and the stage that generates it cannot disagree.
+      allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
+        subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
+      end
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name  => 'a_test',
+        :paths => { :mocks => 'build/test/mocks' }
+      )
+      mock = TestInvokerTypes::MockWork.new(
+        :details  => TestInvokerTypes::MockDetails.new(
+          :source => 'src/Foo.h', :path => 'sub', :input => 'build/preprocess/MockFoo.h', :name => 'MockFoo'
+        ),
+        :testable => @testable,
+        :name     => :MockFoo
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :lock => Mutex.new, :context => :test, :options => [] )
+    end
+
+    it "generates and marks fresh the mock when the dependency tracker reports it stale" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      expect(@generator).to receive(:generate_mock)
+      expect(@dependinator).to receive(:mark_fresh).with('build/test/mocks/sub/MockFoo.c')
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "skips generating the mock when the dependency tracker reports it unchanged" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      expect(@generator).to_not receive(:generate_mock)
+      expect(@dependinator).to_not receive(:mark_fresh)
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "logs a summary line stating how many mocks were recalled from cache" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      allow(@reportinator).to receive(:generate_skip_summary).and_return( "Skipping mock generation for 1 mock (nothing changed)..." )
+
+      expect(@loginator).to receive(:log).with( "Skipping mock generation for 1 mock (nothing changed)..." )
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "tracks the mock's own generated header as an output of the mock" do
+      # Includes stand-in generation (test_build_setup.rb) can overwrite a mock's
+      # generated header with a blank placeholder on a run where only the test file's
+      # own bare-includes cache misses. The header's recorded hash is what lets that
+      # overwrite be detected and the mock regenerated on the next run.
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_mock)
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/test/mocks/sub/MockFoo.c',
+        files:   ['build/preprocess/MockFoo.h'],
+        meta:    anything,
+        outputs: ['build/test/mocks/sub/MockFoo.h']
+      )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "registers CMock's actual configuration as meta, not project_config_hash's flattened (and therefore always-empty) :cmock entry" do
+      # project_config_hash is flattened -- CMock's settings live there as individual
+      # top-level keys like :cmock_mock_prefix, never as a :cmock section -- so a
+      # config change (e.g. :cmock ↳ :mock_prefix) can only be detected here via
+      # get_cmock_config, the one place CMock's configuration still exists as a
+      # single value.
+      allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Custom' } )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_mock)
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/test/mocks/sub/MockFoo.c',
+        files:   anything,
+        meta:    { cmock: { mock_prefix: 'Custom' } },
+        outputs: anything
+      )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "generates an ordinary mock with no configuration override" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@generator).to receive(:generate_mock).with( hash_including( overrides: {} ) )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "generates a Partial mock with its inline handling disabled, redundant alongside Partials' own" do
+      @state.mocks_list.first.details.partial = true
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@generator).to receive(:generate_mock).with( hash_including( overrides: { treat_inlines: :exclude } ) )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    # CMock and the runner both name a mock by the folder its #include names. CMock writes
+    # below its own root at that folder, so the folder must also end the mock's directory.
+    context "naming a mock by its #include's folder" do
+      before(:each) do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@dependinator).to receive(:mark_fresh)
+      end
+
+      def include_as(path)
+        @state.mocks_list.first.details.include_path = path
+      end
+
+      it "passes no folder for a bare #include and keeps the mirrored location" do
+        include_as( 'MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/sub', folder: nil ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      it "passes the folder and keeps the mirrored location when the folder ends it" do
+        include_as( 'sub/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/sub', folder: 'sub' ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # The runner ignores a leading ./ too, so both name the mock alike
+      it "drops a leading ./ from the folder" do
+        include_as( './sub/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/sub', folder: 'sub' ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # The mirror cannot hold a folder longer than itself, so the mock moves to the
+      # written path below the per-test root, and its tracked target moves with it.
+      it "places the mock at its written path when the #include spells more than the mirror" do
+        include_as( 'more/sub/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/more/sub', folder: 'more/sub' ) )
+        expect(@dependinator).to receive(:mark_fresh).with( 'build/test/mocks/more/sub/MockFoo.c' )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      it "passes no folder when :mock_name_include_folder is disabled" do
+        allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( false )
+        include_as( 'sub/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/sub', folder: nil ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+    end
+  end
+
+  context "#tailor_search_paths" do
+    PROJECT_BUILD_VENDOR_CMOCK_PATH      = 'build/vendor/cmock'      unless defined?(PROJECT_BUILD_VENDOR_CMOCK_PATH)
+    PROJECT_BUILD_VENDOR_CEXCEPTION_PATH = 'build/vendor/cexception' unless defined?(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH)
+
+    before(:each) do
+      allow(@configurator).to receive(:collection_paths_support).and_return( ['support'] )
+    end
+
+    it "returns the given search paths unchanged for an ordinary test source" do
+      result = @executor.send( :tailor_search_paths, filepath: 'src/Foo.c', search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['src', 'test'] )
+    end
+
+    it "swaps in the support paths plus Unity's own vendor path for Unity's own source" do
+      filepath = File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['support', PROJECT_BUILD_VENDOR_UNITY_PATH] )
+    end
+
+    it "swaps in the support, Unity, and CMock vendor paths for CMock's own source when mocks are in use" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      filepath = File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['support', PROJECT_BUILD_VENDOR_UNITY_PATH, PROJECT_BUILD_VENDOR_CMOCK_PATH] )
+    end
+
+    it "also folds in the CException vendor path for CMock's own source when exceptions are also in use" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:project_use_exceptions).and_return( true )
+      filepath = File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq(
+        ['support', PROJECT_BUILD_VENDOR_UNITY_PATH, PROJECT_BUILD_VENDOR_CMOCK_PATH, PROJECT_BUILD_VENDOR_CEXCEPTION_PATH]
+      )
+    end
+
+    it "leaves CMock's own source untouched when mocks are not in use, falling through to the given search paths" do
+      filepath = File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['src', 'test'] )
+    end
+
+    it "swaps in the support and CException vendor paths for CException's own source when exceptions are in use" do
+      allow(@configurator).to receive(:project_use_exceptions).and_return( true )
+      filepath = File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['support', PROJECT_BUILD_VENDOR_CEXCEPTION_PATH] )
+    end
+
+    it "adds the support and every in-use framework's own vendor path for a support file" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:project_use_exceptions).and_return( true )
+      allow(@configurator).to receive(:collection_all_support).and_return( ['test/support/CustomAsserts.c'] )
+
+      result = @executor.send( :tailor_search_paths, filepath: 'test/support/CustomAsserts.c', search_paths: ['src', 'test'] )
+
+      expect(result).to eq(
+        ['src', 'test', 'support', PROJECT_BUILD_VENDOR_UNITY_PATH, PROJECT_BUILD_VENDOR_CMOCK_PATH, PROJECT_BUILD_VENDOR_CEXCEPTION_PATH]
+      )
+    end
+
+    it "deduplicates the tailored search paths it assembles" do
+      allow(@configurator).to receive(:collection_paths_support).and_return( ['support', PROJECT_BUILD_VENDOR_UNITY_PATH] )
+      filepath = File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
+
+      result = @executor.send( :tailor_search_paths, filepath: filepath, search_paths: ['src', 'test'] )
+
+      expect(result).to eq( ['support', PROJECT_BUILD_VENDOR_UNITY_PATH] )
+    end
+  end
+
+end

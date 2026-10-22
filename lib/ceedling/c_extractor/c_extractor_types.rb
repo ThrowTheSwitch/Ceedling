@@ -17,7 +17,7 @@ module CExtractorTypes
     def initialize(text: nil, line_num: nil)
       super
     end
-  end
+  end unless const_defined?(:CStatement, false)
 
   # Data class representing all extracted content of C module
   CModule = Struct.new(
@@ -27,6 +27,7 @@ module CExtractorTypes
     :macro_definitions,     # Array of CStatement — raw #define text with source line number
     :type_definitions,      # Array of CStatement — raw typedef text with source line number
     :aggregate_definitions, # Array of CStatement — raw non-typedef struct/enum/union text with source line number
+    :macro_invocations,     # Array of CStatement — raw bare, top-level, semicolon-less macro-invocation text (e.g. an x-macro call) with source line number
     :element_sequence,      # Array of references to all items above in extraction order (cross-type ordering index)
     keyword_init: true
   ) do
@@ -38,6 +39,7 @@ module CExtractorTypes
         macro_definitions: [],
         type_definitions: [],
         aggregate_definitions: [],
+        macro_invocations: [],
         element_sequence: []
       )
       super
@@ -54,10 +56,11 @@ module CExtractorTypes
         macro_definitions:     (self.macro_definitions     + other.macro_definitions),
         type_definitions:      (self.type_definitions      + other.type_definitions),
         aggregate_definitions: (self.aggregate_definitions + other.aggregate_definitions),
+        macro_invocations:     (self.macro_invocations     + other.macro_invocations),
         element_sequence:      (self.element_sequence      + other.element_sequence)
       )
     end
-  end
+  end unless const_defined?(:CModule, false)
 
   # Data class representing an extracted C function declaration
   CFunctionDeclaration = Struct.new(
@@ -71,7 +74,7 @@ module CExtractorTypes
     def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil, line_num: nil)
       super
     end
-  end
+  end unless const_defined?(:CFunctionDeclaration, false)
 
   # Data class representing an extracted C function definition
   CFunctionDefinition = Struct.new(
@@ -100,7 +103,7 @@ module CExtractorTypes
       )
       super
     end
-  end
+  end unless const_defined?(:CFunctionDefinition, false)
 
   # Struct representing a single parsed C variable declaration
   CVariableDeclaration = Struct.new(
@@ -117,6 +120,6 @@ module CExtractorTypes
     def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil)
       super
     end
-  end
+  end unless const_defined?(:CVariableDeclaration, false)
 
 end

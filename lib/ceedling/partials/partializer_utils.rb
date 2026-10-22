@@ -47,9 +47,14 @@ class PartializerUtils
         code_block:      new_code_block
       )
     when :interface
+      # A signature sourced from a CFunctionDefinition never carries a trailing semicolon
+      # (it's followed by a body, not one), but a signature sourced from a
+      # CFunctionDeclaration always does (it's a bare prototype). Strip it here so
+      # callers can render "#{signature};" uniformly regardless of which kind of
+      # function this interface entry came from.
       Partials.manufacture_function_declaration(
         name: func.name,
-        signature: signature
+        signature: signature.sub(/;\s*\z/, '')
       )
     else
       PartializerRuntime.raise_on_option(output_type)
@@ -157,7 +162,7 @@ class PartializerUtils
   # @param preprocessed_filepath [String] Path to the preprocessed directives-only file
   # @return [Integer, nil] 1-indexed source line number, or nil if not found
   def locate_function_via_preprocessed(code_block:, filepath:, preprocessed_filepath:)
-    line_num = @code_finder.find_in_preprpocessed_file(preprocessed_filepath, code_block)
+    line_num = @code_finder.find_in_preprocessed_file(preprocessed_filepath, code_block)
     return line_num unless line_num.nil?
 
     msg = "Using fallback C function location search for #{filepath}"

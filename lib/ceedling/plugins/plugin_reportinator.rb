@@ -5,14 +5,13 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'erb'
 require 'ceedling/constants'
 require 'ceedling/defaults'
 require 'ceedling/exceptions'
 
 class PluginReportinator
   
-  constructor :plugin_reportinator_helper, :plugin_manager, :reportinator, :loginator
+  constructor :plugin_reportinator_helper, :plugin_manager, :reportinator, :loginator, :templateinator
 
   def setup
     @test_results_template = nil
@@ -23,7 +22,7 @@ class PluginReportinator
   end
 
   def set_system_objects(system_objects)
-    # Available for use inside ERB report rendering via binding()
+    # Available for use inside report template rendering via binding()
     @ceedling = system_objects
   end
   
@@ -37,6 +36,34 @@ class PluginReportinator
 
   def generate_heading(message)
     return @reportinator.generate_heading(message)
+  end
+
+  # Common preamble values every stdout test-results template needs before
+  # rendering -- centralized so sibling templates can't silently drift the
+  # way two of them once did over which of these values got computed at all.
+  def test_report_preamble(hash)
+    {
+      ignored:        hash[:results][:counts][:ignored],
+      failed:         hash[:results][:counts][:failed],
+      stdout_count:   hash[:results][:counts][:stdout],
+      header_prepend: (hash[:context] != TEST_SYM ? "#{hash[:context].to_s.upcase}: " : '')
+    }
+  end
+
+  # Reflows a possibly multi-line failure/ignore message so every physical
+  # line stays useful to whichever format is rendering it -- one template
+  # passes plain spaces to align continuation lines under a text header;
+  # another passes a repeated "file:line:test: " prefix so every line
+  # remains its own clickable reference.
+  def reflow_message(message, continuation_prefix)
+    message.each_line(chomp: true).with_index.map { |line, i| i.zero? ? line : continuation_prefix + line }.join("\n")
+  end
+
+  # Color-decorates summary-banner text green/red by overall pass/fail
+  # outcome -- shared so no sibling template can silently omit this the way
+  # one once did.
+  def decorate_summary_banner(text, failed_count)
+    @loginator.decorate(text, failed_count > 0 ? LogLabels::FAIL : LogLabels::PASS)
   end
 
   ##
@@ -95,6 +122,16 @@ class PluginReportinator
     return aggregated_results
   end
       
+  # A build's own test results -- pass or fail -- are core information a user
+  # silencing routine build chatter still wants to see; ERRORS is the floor
+  # for both, not just for a failing run. Centralized here so every plugin
+  # printing post-build test results (report_tests_stdout_plugin, gcov,
+  # bullseye, valgrind) agrees on the same answer instead of each hardcoding
+  # its own.
+  def test_results_floor_verbosity
+    Verbosity::ERRORS
+  end
+
   def run_test_results_report(hash, verbosity=Verbosity::NORMAL)
     if @test_results_template.nil?
       raise CeedlingException.new( "No test results report template has been set." )
@@ -104,10 +141,11 @@ class PluginReportinator
   end
   
   def run_report(template, hash=nil, verbosity=Verbosity::NORMAL)
-    output = ERB.new( template, trim_mode: "%<>" )
+    # binding() is what exposes `hash` and this object's own methods to the template
+    output = @templateinator.render( template, binding() )
 
-    # Run the report template and log result with no log level heading
-    @loginator.log( output.result(binding()), verbosity, LogLabels::NONE )
+    # Log the rendered report with no log level heading
+    @loginator.log( output, verbosity, LogLabels::NONE )
   end
   
   #

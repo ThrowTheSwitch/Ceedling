@@ -13,15 +13,25 @@
 #   <tag>           Git tag (e.g. v1.1.0-pre.1 or v1.1.0)
 #   <version_file>  Path to the version.rb file to patch in place
 #
-# Exits 0 on success. Exits 1 if the version file is missing.
+# Exits 0 on success. Exits 1 if the version file is missing or if either
+# substitution fails to apply.
 #
 # Tag-to-gem-version conversion:
 #   v1.1.0-pre.1  →  1.1.0.pre.1  (hyphen becomes dot: RubyGems pre-release notation)
 #   v1.1.0        →  1.1.0         (no suffix; substitution is a no-op)
 #
+# Two lines are stamped, and both matter. BASE receives the release version. DEV
+# is emptied, which is what makes this build report a bare version instead of the
+# `.dev` marker every other build carries. Leaving DEV alone would publish a
+# release named `1.1.0.dev`.
+#
+# Both substitutions are verified afterward. `sed` reports success when its
+# pattern matches nothing, so an unverified stamp against a restructured
+# version.rb would silently publish the in-tree default.
+#
 # Local testing examples:
-#   bash stamp_gem_version.sh v1.1.0 ../../lib/version.rb && grep GEM ../../lib/version.rb
-#   bash stamp_gem_version.sh v1.1.0-pre.1 ../../lib/version.rb && grep GEM ../../lib/version.rb
+#   bash stamp_gem_version.sh v1.1.0 ../../lib/version.rb && grep -E 'BASE|DEV' ../../lib/version.rb
+#   bash stamp_gem_version.sh v1.1.0-pre.1 ../../lib/version.rb && grep -E 'BASE|DEV' ../../lib/version.rb
 
 set -euo pipefail
 
@@ -39,5 +49,17 @@ GEM_VERSION="${TAG#v}"
 # e.g. 1.1.0-pre.1 → 1.1.0.pre.1 ; 1.1.0 → 1.1.0 (no-op for release tags)
 GEM_VERSION="${GEM_VERSION/-/.}"
 
-sed -i "s/GEM = '.*'/GEM = '${GEM_VERSION}'/" "${VERSION_FILE}"
+sed -i "s/BASE = '.*'/BASE = '${GEM_VERSION}'/" "${VERSION_FILE}"
+sed -i "s/DEV = '.*'/DEV = ''/" "${VERSION_FILE}"
+
+if ! grep -q "BASE = '${GEM_VERSION}'" "${VERSION_FILE}"; then
+  echo "Failed to stamp BASE in '${VERSION_FILE}'. Expected a line reading: BASE = '...'"
+  exit 1
+fi
+
+if ! grep -q "DEV = ''" "${VERSION_FILE}"; then
+  echo "Failed to clear DEV in '${VERSION_FILE}'. Expected a line reading: DEV = '...'"
+  exit 1
+fi
+
 echo "Stamped gem version: ${GEM_VERSION}"

@@ -6,10 +6,13 @@
 ========================================================================= */
 
 /* Partials pattern: TEST_PARTIAL_PUBLIC_MODULE + MOCK_PARTIAL_PRIVATE_MODULE
- * Tests the public interface (LightSensor_Sample, GetLux, IsNighttime)
- * while mocking the private helpers LightSensor__ConvertRawToLux() and
- * LightSensor__IsNighttime(). SensorHal is mocked traditionally.
- * This demonstrates testing public behavior while isolating private logic. */
+ * Tests the public interface (LightSensor_Sample, GetLux, IsNighttime,
+ * GetLightLevel) while mocking the private helpers LightSensor__ConvertRawToLux(),
+ * LightSensor__IsNighttime(), and LightSensor__ClassifyLux(). SensorHal is mocked
+ * traditionally. This demonstrates testing public behavior while isolating private
+ * logic. LightSensor.h's LightLevel_t enum is needed by both a tested public
+ * function's return type and a mocked private function's return type, so this
+ * module also exercises a type shared between the generated test and mock headers. */
 
 #include "unity.h"
 #include "ceedling.h"
@@ -48,6 +51,7 @@ void test_Sample_CallsConvertHelperAndStoresResult(void)
     SensorHal_IsChannelReady_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, true);
     SensorHal_ReadChannel_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, 2000u);
     LightSensor__ConvertRawToLux_ExpectAndReturn(2000u, 48840u);
+    LightSensor__ClassifyLux_ExpectAndReturn(48840u, LIGHT_LEVEL_BRIGHT);
     SensorHal_StartConversion_Expect(SENSOR_CHANNEL_LIGHT);
 
     TEST_ASSERT_TRUE(LightSensor_Sample());
@@ -59,6 +63,7 @@ void test_IsNighttime_ReturnsTrueWhenPrivateHelperReturnsTrue(void)
     SensorHal_IsChannelReady_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, true);
     SensorHal_ReadChannel_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, 10u);
     LightSensor__ConvertRawToLux_ExpectAndReturn(10u, 244u);
+    LightSensor__ClassifyLux_ExpectAndReturn(244u, LIGHT_LEVEL_DIM);
     SensorHal_StartConversion_Expect(SENSOR_CHANNEL_LIGHT);
     LightSensor_Sample();
 
@@ -71,9 +76,34 @@ void test_IsNighttime_ReturnsFalseWhenPrivateHelperReturnsFalse(void)
     SensorHal_IsChannelReady_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, true);
     SensorHal_ReadChannel_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, 3000u);
     LightSensor__ConvertRawToLux_ExpectAndReturn(3000u, 73260u);
+    LightSensor__ClassifyLux_ExpectAndReturn(73260u, LIGHT_LEVEL_BRIGHT);
     SensorHal_StartConversion_Expect(SENSOR_CHANNEL_LIGHT);
     LightSensor_Sample();
 
     LightSensor__IsNighttime_ExpectAndReturn(73260u, false);
     TEST_ASSERT_FALSE(LightSensor_IsNighttime());
+}
+
+void test_Sample_ClassifiesLuxAsDark(void)
+{
+    SensorHal_IsChannelReady_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, true);
+    SensorHal_ReadChannel_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, 1u);
+    LightSensor__ConvertRawToLux_ExpectAndReturn(1u, 20u);
+    LightSensor__ClassifyLux_ExpectAndReturn(20u, LIGHT_LEVEL_DARK);
+    SensorHal_StartConversion_Expect(SENSOR_CHANNEL_LIGHT);
+
+    TEST_ASSERT_TRUE(LightSensor_Sample());
+    TEST_ASSERT_EQUAL(LIGHT_LEVEL_DARK, LightSensor_GetLightLevel());
+}
+
+void test_Sample_ClassifiesLuxAsBright(void)
+{
+    SensorHal_IsChannelReady_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, true);
+    SensorHal_ReadChannel_ExpectAndReturn(SENSOR_CHANNEL_LIGHT, 4000u);
+    LightSensor__ConvertRawToLux_ExpectAndReturn(4000u, 97680u);
+    LightSensor__ClassifyLux_ExpectAndReturn(97680u, LIGHT_LEVEL_BRIGHT);
+    SensorHal_StartConversion_Expect(SENSOR_CHANNEL_LIGHT);
+
+    TEST_ASSERT_TRUE(LightSensor_Sample());
+    TEST_ASSERT_EQUAL(LIGHT_LEVEL_BRIGHT, LightSensor_GetLightLevel());
 }

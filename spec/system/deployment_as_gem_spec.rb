@@ -62,6 +62,12 @@ ceedling_system_tests do
       test_case :test_project_with_preprocessing_for_mocks
       test_case :test_project_with_preprocessing_for_missing_mock
       test_case :test_project_with_preprocessing_all
+      test_case :test_project_preprocessing_same_dir_mock_pairing
+    end
+
+    describe "Partials" do
+      test_case :test_project_partial_all_module_mocks_declaration_only_function
+      test_case :test_project_partials_enabled_still_allows_plain_treat_inlines_mocking
     end
 
     describe "Defines and configuration" do
@@ -82,6 +88,8 @@ ceedling_system_tests do
 
     describe "Verbosity and output" do
       test_case :test_project_with_named_verbosity
+      test_case :test_project_with_warnings_verbosity_prints_overall_summary
+      test_case :test_project_with_errors_verbosity_prints_overall_summary_on_passing_run
       test_case :test_project_with_numerical_verbosity
       test_case :report_tests_raw_output_log_plugin
     end
@@ -91,6 +99,14 @@ ceedling_system_tests do
       test_case :crash_none_writes_fail_results_file
       test_case :crash_simple_sigsegv_all_test_cases
       test_case :crash_simple_sigabrt_assert_failure
+      test_case :crash_simple_sigsegv_with_parameterized_test
+      test_case :crash_simple_diagnostic_retry_disagrees_with_main_fixture
+    end
+
+    describe "Crash handling with real UBSan" do
+      include_context "requires gcc with UBSan"
+
+      test_case :crash_simple_ubsan_diagnostic_retry_disagrees_with_main_fixture
     end
 
     describe "Backtrace with GDB" do
@@ -100,6 +116,13 @@ ceedling_system_tests do
       test_case :crash_gdb_sigsegv_targets_test_case_filter
       test_case :crash_gdb_sigsegv_excludes_test_case_filter
       test_case :crash_gdb_sigabrt_assert_failure
+      test_case :crash_gdb_sigsegv_with_parameterized_test
+    end
+
+    describe "Backtrace with GDB (hobbled)" do
+      include_context "requires a hobbled gdb"
+
+      test_case :crash_gdb_hobbled_falls_back_to_simple
     end
 
     describe "Test filtering" do

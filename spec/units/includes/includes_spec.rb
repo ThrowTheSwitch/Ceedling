@@ -8,6 +8,7 @@
 require 'set'
 require 'spec_helper'
 require 'ceedling/includes/includes'
+require 'ceedling/exceptions'
 
 describe "Includes serialization" do
   it "produces valid hash structure" do
@@ -73,6 +74,20 @@ describe "Includes serialization" do
       expect("#{restored[0]}").to eq("#{original[0]}")
     end
 
+    it "serializes and deserializes a single bare Include (undifferentiated user vs. system)" do
+      original = [Include.new("header.h")]
+
+      hashes = Includes.to_hashes(original)
+      restored = Includes.from_hashes(hashes)
+
+      expect(hashes[0]['type']).to eq('bare')
+      expect(restored.length).to eq(1)
+      expect(restored[0].class).to eq(Include)
+      expect(restored[0]).to eq(original[0])
+      expect(restored[0].filename).to eq(original[0].filename)
+      expect(restored[0].filepath).to eq(original[0].filepath)
+    end
+
     it "serializes and deserializes mixed include types" do
       original = [
         SystemInclude.new("stdio.h"),
@@ -111,20 +126,38 @@ describe "Includes serialization" do
       expect(restored.map(&:filename)).to eq(["first.h", "second.h", "third.h", "fourth.h"])
     end
 
-    it "handles includes with paths during serialization" do
+    it "handles includes with an include_path override during serialization" do
       original = [
-        UserInclude.new("path/to/header.h", use_path: true),
-        SystemInclude.new("sys/stdio.h", use_path: true),
-        MockInclude.new("mocks/mock_module.h", use_path: true)
+        UserInclude.new("path/to/header.h", include_path: "path/to/header.h"),
+        SystemInclude.new("sys/stdio.h", include_path: "sys/stdio.h"),
+        MockInclude.new("mocks/mock_module.h")
       ]
-      
+
       hashes = Includes.to_hashes(original)
       restored = Includes.from_hashes(hashes)
-      
+
       expect(restored.length).to eq(3)
       expect(restored[0].filepath).to eq("path/to/header.h")
       expect(restored[1].filepath).to eq("sys/stdio.h")
       expect(restored[2].filepath).to eq("mocks/mock_module.h")
+      # `include_path` must itself round-trip, not merely `filepath` -- otherwise a cached
+      # build silently reverts to filename-only rendering on its next, cache-hit run.
+      expect("#{restored[0]}").to eq('#include "path/to/header.h"')
+      expect("#{restored[1]}").to eq('#include <sys/stdio.h>')
+    end
+
+    it "round-trips include_path, and has it take rendering precedence over filepath/filename" do
+      original = [
+        SystemInclude.new("/usr/include/x86_64-linux-gnu/sys/stat.h", include_path: "sys/stat.h")
+      ]
+
+      hashes = Includes.to_hashes(original)
+      restored = Includes.from_hashes(hashes)
+
+      expect(restored.length).to eq(1)
+      expect(restored[0].filepath).to eq("/usr/include/x86_64-linux-gnu/sys/stat.h")
+      expect(restored[0].include_path).to eq("sys/stat.h")
+      expect("#{restored[0]}").to eq("#include <sys/stat.h>")
     end
 
     it "handles empty array" do
@@ -394,13 +427,31 @@ describe "Includes sorting" do
         MockInclude.new("mock_module.h"),
         UserInclude.new("config.h")
       ]
-      
+
       Includes.sort!(includes)
-      
+
       expect(includes.length).to eq(3)
       expect(includes[0]).to be_a(UserInclude)
       expect(includes[1]).to be_a(UserInclude)
       expect(includes[2]).to be_a(UserInclude)
+    end
+
+    # Ruby's sort/sort_by family does not guarantee a stable sort -- every UserInclude
+    # here ties on the same comparator value, so a comparator-sort-based implementation
+    # is free to reorder them unpredictably across Ruby versions/platforms even with no
+    # actual duplicates present. This is the shape that exposed that gap in practice.
+    it "preserves each group's own original relative order exactly, not just which group it ends up in" do
+      header1 = UserInclude.new("header1.h")
+      header2 = UserInclude.new("header2.h")
+      header3 = UserInclude.new("header3.h")
+      stdio   = SystemInclude.new("stdio.h")
+      stdlib  = SystemInclude.new("stdlib.h")
+
+      includes = [header1, stdio, header2, stdlib, header3]
+
+      result = Includes.sort!(includes)
+
+      expect(result).to eq([stdio, stdlib, header1, header2, header3])
     end
 
     it "handles empty array" do
@@ -481,6 +532,49 @@ end
 
 describe "Includes sanitization" do
   describe "sanitize!()" do
+    # An unresolved include carries only the text as written, so its filepath has no
+    # directory of its own. Beside a resolved entry for the same basename it can only
+    # ever reach a file by search-path accident, and which file that is depends on
+    # search order rather than on anything the test author wrote.
+    #
+    # A header that genuinely sits at an include root is the case this must not touch.
+    # It renders bare too, but its filepath is resolved and carries a directory.
+    it "drops an unresolved include shadowed by a resolved entry for the same basename" do
+      includes = [
+        UserInclude.new('"config.h"'),
+        UserInclude.new('include/drivers/uart/config.h', include_path: 'uart/config.h'),
+        UserInclude.new('include/drivers/spi/config.h', include_path: 'spi/config.h')
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect( result.map(&:filepath) )
+        .to eq(['include/drivers/uart/config.h', 'include/drivers/spi/config.h'])
+    end
+
+    it "keeps a resolved root-level header beside a resolved nested sibling" do
+      includes = [
+        UserInclude.new('include/config.h'),
+        UserInclude.new('include/drivers/uart/config.h', include_path: 'uart/config.h')
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect( result.map(&:filepath) )
+        .to eq(['include/config.h', 'include/drivers/uart/config.h'])
+    end
+
+    it "keeps a lone unresolved include, nothing resolved shadowing it" do
+      includes = [
+        UserInclude.new('"config.h"'),
+        UserInclude.new('include/drivers/uart/other.h', include_path: 'uart/other.h')
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect( result.map(&:filepath) ).to include('config.h')
+    end
+
     it "removes duplicate includes" do
       includes = [
         UserInclude.new("header.h"),
@@ -568,7 +662,7 @@ describe "Includes sanitization" do
       ]
       
       # Reject all includes with 'std' in the filename
-      result = Includes.sanitize!(includes) do |include, all|
+      result = Includes.sanitize!(includes) do |include, _all|
         include.filename.include?('std')
       end
       
@@ -586,7 +680,7 @@ describe "Includes sanitization" do
         SystemInclude.new("stdio.h")
       ]
       
-      result = Includes.sanitize!(includes) do |include, all|
+      result = Includes.sanitize!(includes) do |include, _all|
         include.filename.include?('test')
       end
       
@@ -627,7 +721,7 @@ describe "Includes sanitization" do
         SystemInclude.new("stdio.h")
       ]
       
-      result = Includes.sanitize!(includes) { |include, all| true }
+      result = Includes.sanitize!(includes) { |_include, _all| true }
       
       expect(result).to eq([])
     end
@@ -638,11 +732,34 @@ describe "Includes sanitization" do
         SystemInclude.new("stdio.h"),
         UserInclude.new("config.h")
       ]
-      
-      result = Includes.sanitize!(includes) { |include, all| false }
-      
+
+      result = Includes.sanitize!(includes) { |_include, _all| false }
+
       expect(result.length).to eq(3)
       expect(result[0]).to be_a(SystemInclude)
+    end
+
+    it "keeps two different same-basename includes distinct, rather than deduping them as if identical" do
+      includes = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("baz/bar.h")
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:filepath)).to include("foo/bar.h", "baz/bar.h")
+    end
+
+    it "still dedupes a genuine literal duplicate include of the same path" do
+      includes = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("foo/bar.h")
+      ]
+
+      result = Includes.sanitize!(includes)
+
+      expect(result.length).to eq(1)
     end
   end
 
@@ -1049,21 +1166,320 @@ describe "Includes reconciliation" do
       expect(user_count).to eq(50)
     end
 
-    it "handles includes with path separators in filenames" do
+    it "matches a bare entry against a candidate with more resolved path than the bare text carries" do
+      # A bare, unqualified #include ("header.h") commonly resolves to a candidate
+      # reported with a fuller, actual location by directives-only preprocessing --
+      # a bare entry with less path than its candidate is the realistic case, not the
+      # other way around, since the candidate reflects where the compiler actually found it.
       bare = [
-        Include.new("subdir/header.h"),
-        Include.new("sys/types.h")
+        Include.new("header.h"),
+        Include.new("types.h")
       ]
-      
-      user = [UserInclude.new("header.h")]
-      system = [SystemInclude.new("types.h")]
-      
+
+      user = [UserInclude.new("subdir/header.h")]
+      system = [SystemInclude.new("sys/types.h")]
+
       result = Includes.reconcile(bare: bare, user: user, system: system)
-      
-      # Should match by filename only
+
       expect(result.length).to eq(2)
-      expect(result[0].filename).to eq("types.h")
-      expect(result[1].filename).to eq("header.h")
+      expect(result[0].filepath).to eq("sys/types.h")
+      expect(result[1].filepath).to eq("subdir/header.h")
+    end
+
+    it "matches a bare entry with more resolved path than its candidate carries" do
+      # A module source's own bare-includes extraction can resolve a quoted #include
+      # via the including file's own directory (real, standard C search behavior)
+      # even when the candidate side -- text-scanned via fallback preprocessing --
+      # only ever sees the literal, unresolved #include text.
+      bare = [
+        Include.new("src/conditional_module.h"),
+        Include.new("src/optional_dep.h")
+      ]
+
+      user = [
+        UserInclude.new("conditional_module.h"),
+        UserInclude.new("optional_dep.h")
+      ]
+
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:filepath)).to include("conditional_module.h", "optional_dep.h")
+    end
+
+    it "keeps two genuinely different same-basename candidates distinct when each bare entry carries its own disambiguating path" do
+      bare = [
+        Include.new("foo/bar.h"),
+        Include.new("baz/bar.h")
+      ]
+
+      user = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("baz/bar.h")
+      ]
+
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:filepath)).to include("foo/bar.h", "baz/bar.h")
+    end
+
+    it "never raises, resolving to the first candidate in user's own order, when a pathless bare entry could correspond to either of two same-named candidates" do
+      bare = [Include.new("bar.h")]
+
+      user = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("baz/bar.h")
+      ]
+
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect(result.first.filepath).to eq("foo/bar.h")
+    end
+
+    it "calls on_ambiguous with the bare filepath, the chosen candidate, and every candidate passed over" do
+      bare = [Include.new("bar.h")]
+
+      user = [
+        UserInclude.new("foo/bar.h"),
+        UserInclude.new("baz/bar.h")
+      ]
+
+      system = []
+
+      calls = []
+      Includes.reconcile(bare: bare, user: user, system: system) do |bare_filepath, chosen, passed_over|
+        calls << [bare_filepath, chosen, passed_over]
+      end
+
+      expect(calls).to eq([["bar.h", "foo/bar.h", ["baz/bar.h"]]])
+    end
+
+    it "does not call on_ambiguous when a bare entry resolves uniquely" do
+      bare = [Include.new("bar.h")]
+      user = [UserInclude.new("foo/bar.h")]
+      system = []
+
+      calls = []
+      Includes.reconcile(bare: bare, user: user, system: system) { |*args| calls << args }
+
+      expect(calls).to be_empty
+    end
+
+    it "preserves a system include directive's original directory components instead of collapsing to its bare filename" do
+      bare = [Include.new("sys/stat.h")]
+      user = []
+      system = [SystemInclude.new("/usr/include/x86_64-linux-gnu/sys/stat.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect(result[0]).to be_a(SystemInclude)
+      expect(result[0].filepath).to eq("/usr/include/x86_64-linux-gnu/sys/stat.h")
+      expect("#{result[0]}").to eq("#include <sys/stat.h>")
+      expect(Includes.from_hashes(Includes.to_hashes(result)).map(&:to_s)).to eq(["#include <sys/stat.h>"])
+    end
+
+    it "prefers the more specific bare entry when a system header's basename collides with an unrelated bare entry" do
+      # A project's own quoted `#include "stat.h"` sitting alongside a system
+      # `#include <sys/stat.h>` in the same file: both reach `bare` as plain, untyped
+      # Include objects (bare extraction can't tell quoted from bracketed apart), and
+      # the short entry trivially "corresponds" to any longer resolved path ending in
+      # the same filename. The longer, genuinely-corresponding entry must still win,
+      # regardless of which one happens to appear first in `bare`.
+      bare = [
+        Include.new("stat.h"),
+        Include.new("sys/stat.h")
+      ]
+      user = []
+      system = [SystemInclude.new("/usr/include/x86_64-linux-gnu/sys/stat.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect("#{result[0]}").to eq("#include <sys/stat.h>")
+    end
+
+    it "falls back to a same-filename bare entry when nothing corresponds by path" do
+      # The compiler's real search-path structure can diverge from a directive's own
+      # literal spelling (a symlinked or vendored include root, for instance), so a
+      # resolved system path may not share any trailing segment with its bare entry
+      # beyond the filename itself. Rendering the bare entry's own spelling is still
+      # strictly better than collapsing to the bare filename alone.
+      bare = [Include.new("compat/stat.h")]
+      user = []
+      system = [SystemInclude.new("/usr/include/x86_64-linux-gnu/bits/stat.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect("#{result[0]}").to eq("#include <compat/stat.h>")
+    end
+
+    it "renders a matched user include filename-only even when both bare and candidate carry the same subdirectory" do
+      # Deliberately not preserving subdirectory qualification for an UNTAGGED bare
+      # entry -- a bare quoted #include is resolved by GCC's own directory-relative
+      # search even under -nostdinc, so an ordinary bare entry's own text can't be
+      # trusted as "the literal, as-written spelling" the way a system include's can.
+      # A bare entry carrying `include_path` (see the tests below) is a different,
+      # known-literal case -- this one stays untagged.
+      bare = [Include.new("drivers/gpio.h")]
+      user = [UserInclude.new("drivers/gpio.h")]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect(result[0]).to be_a(UserInclude)
+      expect("#{result[0]}").to eq('#include "gpio.h"')
+    end
+
+    it "disambiguates two matched user includes that collide on a basename, using each one's own real resolved path" do
+      # Both bare entries genuinely differ (see the "keeps two genuinely different
+      # same-basename candidates distinct" case above -- this proves what reconcile
+      # then RENDERS for each, not merely that both survive as separate results).
+      # Neither candidate's `filepath` is a literal/unresolved directive text --
+      # these come from the accurate pass or the fallback text scan, always a real,
+      # resolved location -- disambiguation works from that, not from `bare` at all.
+      bare = [
+        Include.new("hw/config.h"),
+        Include.new("app/config.h")
+      ]
+      user = [
+        UserInclude.new("hw/config.h"),
+        UserInclude.new("app/config.h")
+      ]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:to_s)).to contain_exactly('#include "hw/config.h"', '#include "app/config.h"')
+    end
+
+    it "grows the disambiguating suffix past 2 segments when a shorter one is still ambiguous" do
+      # "sensors/adc/config.h" and "drivers/adc/config.h" still collide at 2
+      # segments ("adc/config.h" both times) -- the 3rd segment (sensors vs drivers)
+      # is where they first diverge.
+      bare = [
+        Include.new("sensors/adc/config.h"),
+        Include.new("drivers/adc/config.h")
+      ]
+      user = [
+        UserInclude.new("sensors/adc/config.h"),
+        UserInclude.new("drivers/adc/config.h")
+      ]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.map(&:to_s)).to contain_exactly(
+        '#include "sensors/adc/config.h"', '#include "drivers/adc/config.h"'
+      )
+    end
+
+    it "disambiguates three colliding basenames at once, each needing only its own minimal suffix" do
+      bare = [
+        Include.new("drivers/config.h"),
+        Include.new("app/config.h"),
+        Include.new("shared/config.h")
+      ]
+      user = [
+        UserInclude.new("src/module/drivers/config.h"),
+        UserInclude.new("src/module/app/config.h"),
+        UserInclude.new("src/shared/config.h")
+      ]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.map(&:to_s)).to contain_exactly(
+        '#include "drivers/config.h"', '#include "app/config.h"', '#include "shared/config.h"'
+      )
+    end
+
+    it "renders a bare, unqualified UserInclude bare even when its candidate resolves to a fuller path" do
+      # A bare #include "Types.h" commonly resolves, via directives-only preprocessing, to a
+      # fuller, project-root-relative candidate location like "src/Types.h" -- Ceedling adds
+      # each source directory as its own search path, so rendering that fuller resolved path
+      # verbatim breaks the build ("src/Types.h" isn't found via a "-Isrc" search path, only
+      # "Types.h" is). The reconciled render must stay bare, matching what the user actually
+      # wrote, regardless of how much extra path the candidate resolved to.
+      bare = [Include.new("Types.h")]
+      user = [UserInclude.new("src/Types.h")]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect(result[0]).to be_a(UserInclude)
+      expect("#{result[0]}").to eq('#include "Types.h"')
+    end
+
+    it "renders a matched MockInclude the same way regardless of the include_path fix, since MockInclude#to_s never consults it" do
+      bare = [Include.new("mock_module.h")]
+      user = [MockInclude.new("mocks/subdir/mock_module.h")]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.length).to eq(1)
+      expect(result[0]).to be_a(MockInclude)
+      expect("#{result[0]}").to eq('#include "mocks/subdir/mock_module.h"')
+    end
+
+    it "does not hard-error over two same-named system headers, a normal toolchain wrapper-chain pattern rather than a project-file conflict" do
+      # e.g. a compiler-provided stdint.h #include_next-ing its libc counterpart --
+      # both real, both legitimately entered, both sharing a basename, neither a
+      # project file whose identity is actually in question.
+      bare = [Include.new("stdint.h")]
+
+      user = []
+      system = [
+        SystemInclude.new("/usr/lib/gcc/x86_64-linux-gnu/14/include/stdint.h"),
+        SystemInclude.new("/usr/include/stdint.h")
+      ]
+
+      result = nil
+      expect {
+        result = Includes.reconcile(bare: bare, user: user, system: system)
+      }.not_to raise_error
+
+      expect(result.length).to eq(2)
+      expect(result.map(&:filepath)).to include(
+        "/usr/lib/gcc/x86_64-linux-gnu/14/include/stdint.h", "/usr/include/stdint.h"
+      )
+    end
+
+    it "resolves a .. in a bare entry's literal text against test_filepath's own directory to match a clean candidate" do
+      # A fallback text scan sees a directory-relative #include exactly as written --
+      # ".." and all -- while a candidate reported via directives-only preprocessing
+      # is already a clean, project-root-relative path with no .. of its own.
+      bare = [Include.new("../common/helper.h")]
+      user = [UserInclude.new("test/common/helper.h")]
+      system = []
+
+      result = Includes.reconcile(bare: bare, user: user, system: system, test_filepath: "test/unit/test_dotdot.c")
+
+      expect(result.length).to eq(1)
+      expect(result[0].filepath).to eq("test/common/helper.h")
+    end
+
+    it "raises a CeedlingException when a bare entry's .. has no test_filepath to anchor against" do
+      bare = [Include.new("../common/helper.h")]
+      user = [UserInclude.new("test/common/helper.h")]
+      system = []
+
+      expect {
+        Includes.reconcile(bare: bare, user: user, system: system)
+      }.to raise_error(CeedlingException, /\.\.\/common\/helper\.h/)
     end
   end
-end    
+end

@@ -6,20 +6,64 @@
 # =========================================================================
 
 require 'fileutils'
+require 'bundler'
+require 'ceedling/encodinator'
+require 'ceedling/file_wrapper'
+require 'ceedling/verbosinator'
+require 'ceedling/yaml_wrapper'
 require_relative 'gem_dir_layout'
 
 class SystemContext
   class VerificationFailed < RuntimeError; end
-  class InvalidBackupEnv < RuntimeError; end
 
   attr_reader :dir, :gem, :console_summary, :raw_output, :last_exit_status, :last_cmd
 
   SYSTEM_TEST_KEEP_ENV = 'CEEDLING_SYSTEM_TEST_KEEP'
 
+  # Dynamic analysis of Ceedling's own generated C -- runners, mocks, Partials.
+  #
+  # Names a sanitizer flavor, which is a file in SANITIZERS_DIR, so adding a
+  # flavor needs no change here. Follows CEEDLING_TEST_COVERAGE's convention of a
+  # named value rather than a boolean, so a second kind of instrumentation (leak
+  # detection) is another value rather than another variable.
+  SANITIZERS_ENV = 'CEEDLING_TEST_SANITIZERS'
+
+  # Slot 9, not 1: spec/system/mixin_ordering_spec.rb sets CEEDLING_MIXIN_1
+  # itself and asserts the resulting merge, so sharing that slot would collide
+  # with a spec. Higher also means merging last among env mixins.
+  SANITIZERS_MIXIN_ENV = 'CEEDLING_MIXIN_9'
+
+  REPO_ROOT = File.expand_path( File.join( File.dirname(__FILE__), '..', '..', '..' ) )
+
+  SANITIZERS_DIR = File.join( REPO_ROOT, 'spec', 'support', 'system', 'sanitizers' )
+
+  # Set per example by the "cannot be sanitized" shared context (see
+  # spec_system_helper.rb). Class-level rather than instance state because specs
+  # build their own SystemContext in before(:all) while this toggles in
+  # before/after(:each) -- a class-level flag makes the two order-independent.
+  @@sanitizers_disabled = false
+
+  # Flavor file path => its :sanitizer_runtime hash. See #sanitizer_runtime.
+  @@sanitizer_runtime = {}
+
+  def self.sanitizers_disabled=(disabled)
+    @@sanitizers_disabled = disabled
+  end
+
+  def self.sanitizers_disabled?
+    @@sanitizers_disabled
+  end
+
+  # Root for retained system test artifacts, relative to the working directory.
+  # Named once here because the log writer in spec_system_helper.rb, the gemspec,
+  # .rubocop.yml, .gitignore, and CI all reach this path by name.
+  ARTIFACTS_DIR = 'specout'
+
   # Shared gem installation — built once by setup_shared_gem!, reused by every deploy_gem call.
   # Eliminates redundant `bundle install` runs (one per describe group → one per suite).
   @@shared_gem_dir = nil
   @@shared_gem     = nil
+  @@git_repo       = nil
 
   def self.setup_shared_gem!
     return if @@shared_gem_dir
@@ -28,29 +72,48 @@ class SystemContext
     shared_gem = GemDirLayout.new(shared_dir)
 
     git_repo = File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..'))
-    File.write(
-      File.join(shared_dir, 'Gemfile'),
-      [
-        %Q{source "http://rubygems.org/"},
-        %Q{gem "rake"},
-        %Q{gem "constructor"},
-        %Q{gem "diy"},
-        %Q{gem "thor"},
-        %Q{gem "deep_merge"},
-        %Q{gem "unicode-display_width"},
-        %Q{gem "ceedling", :path => '#{git_repo}'}
-      ].join("\n")
-    )
+    gemfile_lines = [
+      %Q{source "http://rubygems.org/"},
+      %Q{gem "rake"},
+      %Q{gem "constructor"},
+      # `diy` is absent deliberately, mirroring ceedling.gemspec. Its source is
+      # vendored and reaches the child process through the gem's own require_paths.
+      %Q{gem "thor"},
+      %Q{gem "deep_merge"},
+      %Q{gem "unicode-display_width"},
+      %Q{gem "ceedling", :path => '#{git_repo}'}
+    ]
+    # This machine-generated Gemfile is never committed -- adding simplecov here only
+    # when coverage mode is on keeps every other run's deployed environment identical
+    # to what a real installed gem's own dependencies actually are. Pinned to the same
+    # constraint as the main Gemfile's Ruby->=3.2 branch so both processes run the
+    # identical SimpleCov version -- an unpinned resolve here could otherwise drift to
+    # whatever's newest on rubygems.org independent of the main Gemfile.lock. No
+    # RUBY_VERSION branch needed here (unlike the main Gemfile): this line only ever
+    # runs at all when CEEDLING_TEST_COVERAGE == 'system', itself only ever set on the
+    # Ruby 3.3 CI leg.
+    gemfile_lines << %Q{gem "simplecov", "~> 1.1"} if ENV['CEEDLING_TEST_COVERAGE'] == 'system'
+    File.write( File.join(shared_dir, 'Gemfile'), gemfile_lines.join("\n") )
 
     Dir.chdir(shared_dir) do
-      saved = ENV.to_hash
       begin
-        %w{BUNDLE_GEMFILE BUNDLE_BIN_PATH RUBYOPT}.each { |k| ENV.delete(k) }
-        deploy_output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
-        deploy_output += `bundle install 2>&1`
+        # Bundler.with_unbundled_env restores the pre-`bundle exec` environment for
+        # this block -- clearing not just BUNDLE_GEMFILE/BUNDLE_BIN_PATH/RUBYOPT but
+        # also GEM_HOME/GEM_PATH/RUBYLIB and every other var Bundler sets when this
+        # spec suite itself runs under `bundle exec` against a non-default GEM_HOME
+        # (e.g. `bundle install --path vendor/bundle`). Without it, this nested
+        # install inherits the outer Bundler's env and fails to find its own
+        # dependencies under a completely different Gemfile.
+        deploy_output = Bundler.with_unbundled_env do
+          output  = `bundle config set --local path '#{shared_gem.install_dir}' 2>&1`
+          # --prefer-local: Without it, Bundler resolves gems (e.g. `benchmark`) fresh from
+          # rubygems repository even when Ruby's default-gem copy satisfies the Gemfile constraint.
+          output += `bundle install --prefer-local 2>&1`
+          output
+        end
         raise VerificationFailed, "bundle install failed:\n#{deploy_output}" unless $?.success?
 
-        verify = `bundle exec ruby -S ceedling version 2>&1`
+        verify = Bundler.with_unbundled_env { `bundle exec ruby -S ceedling version 2>&1` }
         unless $?.success?
           raise VerificationFailed,
             "Ceedling does not appear to be installed or ready for use.\n" \
@@ -59,27 +122,28 @@ class SystemContext
       rescue
         FileUtils.rm_rf(shared_dir)
         raise
-      ensure
-        ENV.replace(saved)
       end
     end
 
     @@shared_gem_dir = shared_dir
     @@shared_gem     = shared_gem
+    @@git_repo       = git_repo
   end
 
   def self.cleanup_shared_gem!
     FileUtils.rm_rf(@@shared_gem_dir) if @@shared_gem_dir
     @@shared_gem_dir = nil
     @@shared_gem     = nil
+    @@git_repo       = nil
   end
 
   def initialize
     if ENV[SYSTEM_TEST_KEEP_ENV]
-      # In either debug mode ('failures' or 'all'), root the temp dir inside systests/proj/
-      # so that done! can rename it to pass/ or fail/ on the same filesystem without a
-      # cross-device copy. The specific subdir (pass/ or fail/) is determined by done!.
-      base = File.join(Dir.pwd, 'systests', 'proj')
+      # In either debug mode ('failures' or 'all'), root the temp dir inside the
+      # artifacts directory's proj/ so that done! can rename it to pass/ or fail/ on
+      # the same filesystem without a cross-device copy. The specific subdir (pass/
+      # or fail/) is determined by done!.
+      base = File.join(Dir.pwd, ARTIFACTS_DIR, 'proj')
       FileUtils.mkdir_p(base)
       @dir = Dir.mktmpdir(nil, base)
     else
@@ -128,17 +192,39 @@ class SystemContext
   end
 
   def with_context
-    Dir.chdir @dir do |current_dir|
+    # Resolved out here, before with_constrained_env: Bundler.with_unbundled_env
+    # restores ENV from the snapshot it took when Bundler was first loaded, so
+    # CEEDLING_TEST_SANITIZERS is not readable inside that block unless it
+    # happened to be set before this process started. Resolving first makes this
+    # work whoever sets the variable, and whenever.
+    sanitizers = sanitizer_environment
+
+    Dir.chdir @dir do |_current_dir|
       with_constrained_env do
         # Point bundle exec to the shared Gemfile so it works from any project directory.
-        # constrain_env removes BUNDLE_GEMFILE; we re-set it here within the constrained scope.
+        # with_constrained_env's unbundled environment has no BUNDLE_GEMFILE of its
+        # own; set it here so the yielded commands resolve against the shared gem.
         ENV['BUNDLE_GEMFILE'] = File.join(@@shared_gem_dir, 'Gemfile') if @@shared_gem_dir
         ENV['RUBYLIB'] = @gem.lib
         ENV['RUBYPATH'] = @gem.bin
 
+        # RUBYOPT survives Bundler's env-stripping above only because it's set here,
+        # inside this block, rather than by whatever called into this method -- forces
+        # spec/support/system/simplecov_boot.rb to load before the child process's own
+        # requires run, the same way a coverage tool would hook any externally invoked
+        # CLI. CEEDLING_TEST_COVERAGE_ROOT tells that boot script where this repo (and
+        # its shared .simplecov config) actually live, since the child's own CWD is
+        # this ephemeral deployed project directory, not the repo.
+        if ENV['CEEDLING_TEST_COVERAGE'] == 'system'
+          ENV['RUBYOPT'] = "-r#{File.join(File.dirname(__FILE__), 'simplecov_boot.rb')}"
+          ENV['CEEDLING_TEST_COVERAGE_ROOT'] = @@git_repo
+        end
+
         ENV['LANG'] = 'en_US.UTF-8'
         ENV['LANGUAGE'] = 'en_US.UTF-8'
         ENV['LC_ALL'] = 'en_US.UTF-8'
+
+        sanitizers.each { |name, value| ENV[name] = value }
 
         yield
       end
@@ -147,63 +233,111 @@ class SystemContext
 
   ############################################################
   # Functions for manipulating environment settings during tests:
-  def backup_env
-    @_env = ENV.to_hash
+
+  # Translates CEEDLING_TEST_SANITIZERS into the environment variables Ceedling
+  # and the sanitizer runtime actually consume, as a hash for with_context to
+  # export. Empty when no flavor is selected or the current spec has opted out,
+  # which is what leaves every other matrix leg untouched.
+  #
+  # Nothing is needed downstream to make a finding fail a build:
+  # GeneratorHelper#test_crash? already reads both shapes a sanitizer produces --
+  # SIGABRT, and "zero failures reported but a nonzero unsignaled exit" -- as a
+  # crashed test executable.
+  def sanitizer_environment
+    return {} if self.class.sanitizers_disabled?
+
+    flavor = ENV[SANITIZERS_ENV].to_s.strip
+    return {} if flavor.empty?
+
+    path = File.join( SANITIZERS_DIR, "#{flavor}.yml" )
+    unless File.exist?( path )
+      available = Dir[File.join( SANITIZERS_DIR, '*.yml' )].map { |f| File.basename( f, '.yml' ) }.sort
+      raise VerificationFailed,
+        "#{SANITIZERS_ENV} names no sanitizer flavor: '#{flavor}'. " \
+        "Available flavors: #{available.join(', ')}. " \
+        "Failing here rather than running uninstrumented -- a silent fallback would report " \
+        "success while testing none of what it claims to."
+    end
+
+    # The mixin path is absolute because each spec chdir's into its own ephemeral
+    # project directory and Ceedling resolves a mixin path against that CWD.
+    #
+    # Each flavor owns its runtime options -- they are the only difference
+    # between asan_ubsan and asan_ubsan_leaks -- and they reach the test
+    # executable because it inherits this environment through Ceedling.
+    environment = { SANITIZERS_MIXIN_ENV => path }
+    sanitizer_runtime( path ).each { |name, value| environment[name.to_s] = value.to_s }
+    environment
   end
 
-  def reduce_env(destroy_keys=[])
-    ENV.keys.each {|k| ENV.delete(k) if destroy_keys.include?(k) }
-  end
-
-  def constrain_env
-    destroy_keys = %w{BUNDLE_GEMFILE BUNDLE_BIN_PATH RUBYOPT}
-    reduce_env(destroy_keys)
-  end
-
-  def restore_env
-    if @_env
-      # delete environment variables we've added since we started
-      ENV.to_hash.each_pair {|k,v| ENV.delete(k) unless @_env.include?(k) }
-
-      # restore environment variables we've modified since we started
-      @_env.each_pair {|k,v| ENV[k] = v}
-    else
-      raise InvalidBackupEnv.new
+  # Memoized per flavor file: with_context runs on every build in the suite, and
+  # re-reading the same YAML thousands of times buys nothing.
+  def sanitizer_runtime(path)
+    @@sanitizer_runtime[path] ||= begin
+      file_wrapper = FileWrapper.new({
+        :loginator    => NullLoginator.new,
+        :verbosinator => Verbosinator.new
+      })
+      hash = YamlWrapper.new({ file_wrapper: file_wrapper }).load( path )
+      hash[:sanitizer_runtime] || {}
     end
   end
 
+  # Runs the block against the pre-`bundle exec` environment (see the matching
+  # comment on Bundler.with_unbundled_env in setup_shared_gem! above) so a
+  # subprocess spawned inside -- e.g. `bundle exec ruby -S ceedling ...` against
+  # the shared gem's own Gemfile in with_context below -- resolves against that
+  # Gemfile rather than whatever Bundler context this spec suite itself is
+  # already running under.
   def with_constrained_env
-    begin
-      backup_env
-      constrain_env
-      yield
-    ensure
-      restore_env
-    end
+    Bundler.with_unbundled_env { yield }
   end
 
   ############################################################
   # Functions for manipulating project.yml files during tests:
+
+  # `self` here is a plain SystemContext instance, not an RSpec example, so
+  # RSpec::Mocks' `double` isn't reachable -- a trivial no-op stands in for it.
+  class NullLoginator
+    def log(*); end
+  end
+
   def merge_project_yml_for_test(settings, show_final=false)
-    yaml_wrapper = YamlWrapper.new
+    file_wrapper = FileWrapper.new({
+      :loginator    => NullLoginator.new,
+      :verbosinator => Verbosinator.new
+    })
+    yaml_wrapper = YamlWrapper.new({ file_wrapper: file_wrapper })
     project_hash = yaml_wrapper.load('project.yml')
     project_hash.deep_merge!(settings)
     puts "\n\n#{project_hash.to_yaml}\n\n" if show_final
     yaml_wrapper.dump('project.yml', project_hash)
   end
 
+  # Deletes one setting, e.g. [:extension, :executable], so Ceedling's default applies
+  def remove_project_yml_option_for_test(*keys)
+    file_wrapper = FileWrapper.new({
+      :loginator    => NullLoginator.new,
+      :verbosinator => Verbosinator.new
+    })
+    yaml_wrapper = YamlWrapper.new({ file_wrapper: file_wrapper })
+    project_hash = yaml_wrapper.load('project.yml')
+    project_hash.dig( *keys[0...-1] )&.delete( keys.last )
+    yaml_wrapper.dump('project.yml', project_hash)
+  end
+
   def append_project_yml_for_test(new_args)
-    fake_prj_yml= "#{File.read('project.yml')}\n#{new_args}"
+    fake_prj_yml= "#{read_spec_file('project.yml')}\n#{new_args}"
     File.write('project.yml', fake_prj_yml, mode: 'w')
   end
 
   def uncomment_project_yml_option_for_test(option)
-    fake_prj_yml= File.read('project.yml').gsub(/\##{option}/,option)
+    fake_prj_yml= read_spec_file('project.yml').gsub(/\##{option}/,option)
     File.write('project.yml', fake_prj_yml, mode: 'w')
   end
 
   def comment_project_yml_option_for_test(option)
-    fake_prj_yml= File.read('project.yml').gsub(/#{option}/,"##{option}")
+    fake_prj_yml= read_spec_file('project.yml').gsub(/#{option}/,"##{option}")
     File.write('project.yml', fake_prj_yml, mode: 'w')
   end
 
@@ -218,6 +352,15 @@ class SystemContext
 
     @last_cmd         = cmd
     @last_exit_status = status.exitstatus
+    # Captured subprocess output carries whatever raw bytes the child process wrote; under
+    # a non-UTF-8 default external encoding those bytes are read back tagged with that
+    # encoding regardless of their actual content, so any project source content the
+    # subprocess echoes (verbose logging, compiler output, etc.) can make later regex
+    # matching against this string raise. Sanitize once here, the same way Ceedling itself
+    # sanitizes file content it scans -- reused for both the raw output and the failure
+    # report below, since a real compiler's own diagnostic text (e.g. clang's curly-quoted
+    # identifiers) is exactly the kind of non-ASCII content this needs to survive too.
+    stdout, stderr    = stdout.clean_encoding, stderr.clean_encoding
     @raw_output       = stdout + stderr
     @console_summary  = compose_failure_report(stdout, stderr)
 
@@ -232,6 +375,7 @@ class SystemContext
 
     @last_cmd         = cmd
     @last_exit_status = status.exitstatus
+    stdout, stderr    = stdout.clean_encoding, stderr.clean_encoding
     @raw_output       = stdout + stderr
     @console_summary  = compose_failure_report(stdout, stderr)
 
@@ -268,6 +412,21 @@ class SystemContext
     unless stderr.strip.empty?
       sections << ">> STDERR"
       sections << stderr.strip
+    end
+
+    # Loginator routes `Verbosity::DEBUG` messages (including the backtrace
+    # `log_debug_backtrace` emits for a caught exception) to stdout rather than
+    # stderr, and this method's stdout scan above only pulls lines containing
+    # the literal substrings 'ERROR'/'EXCEPTION' -- a bare backtrace line
+    # (file:line:in `method') contains neither, so without surfacing it here
+    # explicitly, the one piece of stdout most useful for diagnosing *why* a
+    # command failed would otherwise only ever reach the full raw-output log
+    # file, not this console-visible summary (what CI output actually shows).
+    label = 'Debug Backtrace ==>'
+    backtrace_block = extract_section(stdout, label)
+    unless backtrace_block.empty?
+      sections << ">> DEBUG BACKTRACE"
+      sections.concat(backtrace_block)
     end
 
     label = 'FAILED TEST SUMMARY'

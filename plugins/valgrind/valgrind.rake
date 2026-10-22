@@ -11,22 +11,40 @@
 ## to avoid marking test: tasks as invoked.
 ##
 
-CLEAN.include(File.join(VALGRIND_ARTIFACTS_PATH, '*'))
+# The plugin's own build context, kept apart from test builds
+CLEAN.include(File.join(VALGRIND_BUILD_PATH, BUILD_OUT_DIR, '*'))
+CLEAN.include(File.join(VALGRIND_BUILD_PATH, BUILD_RESULTS_DIR, '*'))
+CLEAN.include(File.join(VALGRIND_BUILD_PATH, BUILD_DEPENDENCIES_DIR, '*'))
+CLEAN.include(File.join(VALGRIND_ARTIFACTS_PATH, '**/*'))
+
+CLOBBER.include(File.join(VALGRIND_BUILD_PATH, '**/*'))
+
+# Declares the artifacts path as a Rake directory task so the `directories`
+# prerequisite below can actually resolve it. Without this the prerequisite only
+# resolved because the directory already happened to exist on disk.
+directory(VALGRIND_ARTIFACTS_PATH)
 
 task directories: [VALGRIND_ARTIFACTS_PATH]
 
-task :valgrind => [:prepare] do
+# Every valgrind: task depends on this. It is the one place the Valgrind executable
+# and the host platform are checked, so a build that never runs a valgrind: task
+# never requires Valgrind to be installed. See Valgrind#validate_environment!.
+task :valgrind_deps do
+  @ceedling[VALGRIND_SYM].validate_environment!
+end
+
+task :valgrind => [:prepare, :valgrind_deps] do
   Rake.application['valgrind:all'].invoke
 end
 
 namespace VALGRIND_SYM do
 
   desc "Run all unit tests under Valgrind (also just 'valgrind' works)."
-  task :all => [:prepare] do
+  task :all => [:prepare, :valgrind_deps] do
     @ceedling[:test_invoker].setup_and_invoke(
       tests: COLLECTION_ALL_TESTS,
       context: VALGRIND_SYM,
-      options: { :force_run => true, :build_only => false }.merge(TOOL_COLLECTION_TEST_TASKS)
+      options: []
     )
   end
 
@@ -39,14 +57,16 @@ namespace VALGRIND_SYM do
   end
 
   desc "Run Valgrind tests by matching regular expression pattern."
-  task :pattern, [:regex] => [:prepare] do |_t, args|
+  task :pattern, [:regex] => [:prepare, :valgrind_deps] do |_t, args|
     matches = []
-    COLLECTION_ALL_TESTS.each { |test| matches << test if test =~ /#{args.regex}/ }
+    # Compile the user's pattern once rather than once per test in the collection
+    pattern = Regexp.new( args.regex )
+    COLLECTION_ALL_TESTS.each { |test| matches << test if test.match?( pattern ) }
     if !matches.empty?
       @ceedling[:test_invoker].setup_and_invoke(
         tests: matches,
         context: VALGRIND_SYM,
-        options: { :force_run => false }.merge(TOOL_COLLECTION_TEST_TASKS)
+        options: []
       )
     else
       @ceedling[:loginator].log( "Found no tests matching pattern /#{args.regex}/", Verbosity::ERRORS )
@@ -54,14 +74,14 @@ namespace VALGRIND_SYM do
   end
 
   desc "Run Valgrind tests whose test path contains [dir] or [dir] substring."
-  task :path, [:dir] => [:prepare] do |_t, args|
+  task :path, [:dir] => [:prepare, :valgrind_deps] do |_t, args|
     matches = []
     COLLECTION_ALL_TESTS.each { |test| matches << test if File.dirname(test).include?(args.dir.tr('\\', '/')) }
     if !matches.empty?
       @ceedling[:test_invoker].setup_and_invoke(
         tests: matches,
         context: VALGRIND_SYM,
-        options: { :force_run => false }.merge(TOOL_COLLECTION_TEST_TASKS)
+        options: []
       )
     else
       @ceedling[:loginator].log( "Found no tests including the given path or path component", Verbosity::ERRORS )
@@ -73,15 +93,17 @@ end
 # Use a rule to handle dynamic per-file tasks: valgrind:foo → build and run foo under Valgrind
 rule(/^#{VALGRIND_TASK_ROOT}\S+$/ => [
   proc do |task_name|
-    test = task_name.strip().sub(/^#{VALGRIND_TASK_ROOT}/, '').chomp(EXTENSION_SOURCE)
+    test = task_name.strip().sub(/^#{VALGRIND_TASK_ROOT}/, '')
+    EXTENSION_SOURCE.each { |ext| test = test.chomp(ext) }
     test = PROJECT_TEST_FILE_PREFIX + test unless test.start_with?(PROJECT_TEST_FILE_PREFIX)
     @ceedling[:file_finder].find_test_file_from_name(test)
   end
 ]) do |test|
   @ceedling[:rake_wrapper][:prepare].invoke
+  @ceedling[:rake_wrapper][:valgrind_deps].invoke
   @ceedling[:test_invoker].setup_and_invoke(
     tests: [test.source],
     context: VALGRIND_SYM,
-    options: { :force_run => true, :build_only => false }.merge(TOOL_COLLECTION_TEST_TASKS)
+    options: []
   )
 end

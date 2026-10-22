@@ -1,0 +1,42 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# mkdocs uses a simple overwrite merge -- must rewrite entire sections to make small changes.
+INHERIT: mkdocs.yml
+
+# Material theme configuration
+theme:
+  name: material
+  favicon: assets/images/favicon.png
+  custom_dir: docs/overrides  # Project template overrides (outdated-version/prerelease banners)
+  palette:
+    - scheme: default
+      primary: green
+      accent: deep_purple
+  features:
+    - navigation.tabs        # Top-level nav rendered as tabs
+    - navigation.sections    # Sections rendered as groups in left sidebar
+    - navigation.top         # Back-to-top button
+    - navigation.indexes     # Section index pages (first item in section = section landing page)
+    - navigation.path        # Breadcrumb trail below page title
+    - navigation.instant     # Instant navigation with page content swaps (without page reloads)
+    - search.suggest         # Autocomplete suggestions in search
+    - search.highlight       # Highlight search terms on result pages
+    - content.code.copy      # Copy button on code blocks
+    - content.code.annotate  # Inline annotation support in code blocks
+
+# Extra site configuration
+extra:
+  generator: false  # Suppress "Made with Material for MkDocs" footer text
+  version:
+    provider: mike  # Versioned documentation deployment via mike
+    default: latest
+  prerelease: true  # Swaps the outdated-version banner for a prerelease notice (docs/overrides/main.html)
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sponsors/ThrowTheSwitch
+      name: Sponsor ThrowTheSwitch on GitHub

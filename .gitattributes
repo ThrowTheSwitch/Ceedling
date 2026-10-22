@@ -18,6 +18,12 @@ makefile         text
 rakefile         text
 bin/ceedling     text
 
+# Golden render fixtures are an exact byte-for-byte record of report output
+# captured from ERB before it was removed as a dependency. Line ending conversion
+# would rewrite the very bytes they exist to preserve, and the specs that read
+# them with binread would then compare against something nobody recorded.
+spec/support/fixtures/templates/*.txt  -text
+
 #These files are binary and should not be normalized
 *.doc            binary
 *.odt            binary

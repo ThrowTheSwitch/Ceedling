@@ -9,6 +9,8 @@ require 'stringio'
 
 class PreprocessinatorCodeFinder
 
+  constructor :file_wrapper
+
   LINE_MARKER_REGEX = /^#\s+(\d+)\s+"[^"]+"[^\n]*\n/ unless const_defined?(:LINE_MARKER_REGEX)
 
   # Regex-special-character-immune string
@@ -17,8 +19,10 @@ class PreprocessinatorCodeFinder
   # Open a GCC preprocessor output file and search it for code.
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for production use where preprocessor output resides on disk.
-  def find_in_preprpocessed_file(filepath, code)
-    File.open( filepath, 'r' ) do |file|
+  def find_in_preprocessed_file(filepath, code)
+    # `filepath` is this same build's own gcc preprocessor output -- open_with_retry
+    # rides out the file briefly not yet being visible right after the shell-out exits.
+    @file_wrapper.open_with_retry( filepath, 'r' ) do |file|
       return find_in_preprocessed_content( io: file, search: code )
     end
   end
@@ -27,7 +31,7 @@ class PreprocessinatorCodeFinder
   # Wrap a GCC preprocessor output string in a StringIO and search it for code.
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for test use so that specs require no temporary files.
-  def find_in_preprpocessed_string(content, code)
+  def find_in_preprocessed_string(content, code)
     buffer = StringIO.new( content )
     return find_in_preprocessed_content( io: buffer, search: code )
   end
@@ -36,7 +40,7 @@ class PreprocessinatorCodeFinder
   # Returns the 1-indexed source line number of the match, or nil if not found.
   # Intended for production use where C file resides on disk.
   def find_in_c_file(filepath, code)
-    File.open( filepath, 'r' ) do |file|
+    @file_wrapper.open( filepath, 'r' ) do |file|
       return find_in_c_code( io: file, search: code )
     end
   end
@@ -119,8 +123,6 @@ class PreprocessinatorCodeFinder
 
     return (content[0, match_pos].count("\n")) + 1
   end
-
-  private
 
   def whitespace_insensitive_search(content, code)
     # Collapse whitespace to a unique token

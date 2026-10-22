@@ -1,0 +1,15 @@
+
+--------------------
+IGNORED TEST SUMMARY
+--------------------
+[test/TestFoo.c]
+  Test: test_ignored
+  At line (40)
+
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  2
+PASSED:  1
+FAILED:  0
+IGNORED: 1

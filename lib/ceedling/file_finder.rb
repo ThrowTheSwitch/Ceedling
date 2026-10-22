@@ -8,57 +8,95 @@
 require 'rubygems'
 require 'rake' # for adding ext() method to string
 require 'ceedling/exceptions'
+require 'ceedling/path_matcher'
+require 'ceedling/path_mirror'
+require 'ceedling/file_path_utils'
 
 class FileFinder
 
-  constructor :configurator, :file_finder_helper, :cacheinator, :file_path_utils, :file_wrapper, :yaml_wrapper
+  constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper
 
 
-  def find_header_input_for_mock(mock)
-    # Mock name => <mock prefix><header filename (.h)>
-    # Examples: 'Mockfoo.h' or 'mock_Bar.h'
+  # `collection`, when given, is a caller's own already-ordered, per-test header list
+  # (see IncludePathinator#ordered_header_files) reflecting that one test's real search-path
+  # priority -- TEST_INCLUDE_PATH() ranked ahead of :support/:include, as a real compile would
+  # see it. Absent that (a caller with no single test in view, e.g. Partializer resolving a
+  # module generically), the project-wide collection_all_headers is the only sensible fallback.
+  # `complain` sets what a missing header does: :error raises, and :warn or :ignore
+  # returns nil. A header matching only in letter case raises under all three; :silent
+  # returns nil for that too.
+  def find_header_input_for_mock(mock, collection: nil, complain: :error)
+    # Mock name/path => <mock prefix><header filename (.h)>, optionally preceded by however
+    # much path the #include itself carried (e.g. 'Mockfoo.h' or 'drivers/Mockfoo.h').
     # Note: In some rare cases, a mock name may include a dot (ex. Sensor.44) because of versioning file naming convention
     #       Be careful about assuming the end of the name has any sort of file extension
+    #
+    # Stripping the mock prefix from only the basename -- not the whole query -- preserves
+    # whatever disambiguating path the #include carried, so a query with a path is matched
+    # exactly as specifically as it was written, not collapsed to a bare basename that would
+    # throw away real disambiguating information.
+    dir      = File.dirname(mock)
+    basename = File.basename(mock).delete_prefix(@configurator.cmock_mock_prefix)
+    header   = dir == '.' ? basename : File.join(dir, basename)
 
-    header = mock.delete_prefix(@configurator.cmock_mock_prefix)
-
-    found_path = @file_finder_helper.find_file_in_collection(
+    found_path = @file_finder_helper.resolve_file_in_collection(
       header,
-      @configurator.collection_all_headers,
-      :error,
-      header.ext()
+      collection || @configurator.collection_all_headers,
+      complain
     )
 
     return found_path
   end
 
+  # A mock's real header and its own mirrored subdirectory below whichever configured
+  # :test/:support/:include root contains it -- the same roots collection_all_headers is
+  # built from. Combined into one call since every caller needing the mirrored subdirectory
+  # also needs (or can reuse) the header path it was derived from, and every caller placing
+  # a mock's own files -- its search path, an early stand-in for it, or its real generated
+  # content -- must agree on exactly the same subdirectory for that mock to ever compile.
+  # A missing header the caller tolerates through `complain` resolves to neither.
+  def resolve_mock(mock, collection: nil, complain: :error)
+    source = find_header_input_for_mock(mock, collection: collection, complain: complain)
+    return [nil, nil] if source.nil?
 
-  # Find test filepath from another filepath (e.g. test executable with same base name, a/path/test_foo.exe)
-  def find_test_file_from_filepath(filepath)
-    # Strip filepath down to filename and remove file extension
-    name = File.basename( filepath ).ext('')
-
-    return find_test_file_from_name( name )
+    subdir = PathMirror.relative_subdir(source, @configurator.paths_test + @configurator.paths_support + @configurator.paths_include)
+    return [source, subdir]
   end
 
 
   # Find test filepath from only the base name of a test file (e.g. 'test_foo')
+  #
+  # Deliberately strict, unlike every other lookup this class performs: a human typing
+  # a `ceedling test:<name>` command needs to be told outright when their own name is
+  # ambiguous, not have Ceedling silently guess which test they meant -- there's no
+  # compilation step downstream to catch a wrong guess the way there is for a header
+  # or source file resolved during a build.
+  #
+  # A task name has no file of its own to anchor a `..` against, unlike an #include or
+  # TEST_SOURCE_FILE() entry -- resolving with no anchor surfaces that as a specific,
+  # named error rather than falling through to a generic file-not-found further down.
   def find_test_file_from_name(name)
-    test_file = name + @configurator.extension_source
-
-    found_path = @file_finder_helper.find_file_in_collection(test_file, @configurator.collection_all_tests, :error, name)
-
-    return found_path
+    name = PathMatcher.resolve_relative(name)
+    return find_first_candidate(name, @configurator.extension_source, @configurator.collection_all_tests, :error, strict: true)
   end
 
 
-  def find_build_input_file(filepath:, complain: :error, context:)
+  def find_build_input_file(filepath:, complain: :error, context:, test: nil)
     release = (context == RELEASE_SYM)
 
     found_file = nil
 
     # Extract filename without file extension
     source_file = File.basename(filepath).ext('')
+
+    # Recovered once and reused by every branch below that needs it, rather than each
+    # independently re-deriving the same test identity from the same filepath. Prefers the
+    # caller's own explicitly-known test identity over inferring it from the filepath's own
+    # structure -- inference only works when a context's own object paths are mirrored under
+    # a per-test subdirectory (the :test context is; GCOV and Bullseye's own flat, project-wide
+    # object paths are not), so a context lacking that structure would otherwise never recover
+    # a test identity at all.
+    test_context = test ? test.to_s : test_context_of(filepath)
 
     # We only collect files that already exist when we start up.
     # FileLists can produce undesired results for dynamically generated files depending on when they're accessed.
@@ -69,44 +107,68 @@ class FileFinder
     #       Some legacy files can include naming conventions like <name>.##.<ext> for versioning.
     #       If we use .ext() below we'll clobber the dotted portion of the filename
 
-    # Generated test runners
+    # Generated test runners -- a flat test's own runner is searched for in the shared flat
+    # runners directory; only a nested test's own mirrored subdirectory scopes the search
+    # further, so two same-named tests' runners are never mistaken for each other
     if (!release) and
        (source_file =~ /^#{Regexp.escape(@configurator.project_test_file_prefix)}.+#{Regexp.escape(@configurator.test_runner_file_suffix)}$/)
       _source_file = source_file + EXTENSION_CORE_SOURCE
+      # #104 -- runner_scope_dir mirrors the test's own subdirectory, which may itself
+      # contain a literal `[`/`]` (e.g. a test living directly under a bracket-named
+      # directory); FilePathUtils.glob escapes it before Dir.glob (via directory_listing)
+      # re-interprets it.
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
-          @file_wrapper.directory_listing( File.join(@configurator.project_test_runners_path, '*') ),
-          complain,
-          filepath)
+          @file_wrapper.directory_listing( FilePathUtils.glob(runner_scope_dir(test_context), '*') ),
+          complain)
 
-    # Generated mocks
-    elsif (!release) and 
+    # Generated mocks -- scoped to this test's own mock subtree so another test's
+    # identically named mock (expected, routine repetition) is never mistaken for ambiguity
+    elsif (!release) and
           (source_file.start_with?( @configurator.cmock_mock_prefix ))
-      _source_file = source_file + EXTENSION_CORE_SOURCE
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @file_wrapper.directory_listing(
-            File.join(@configurator.cmock_mock_path,
-            ('**/*' + EXTENSION_CORE_SOURCE))
-          ),
-          complain,
-          filepath)
+      # A mock mirrors the directory of whatever it mocks, so two same-named headers
+      # mocked in one test -- two modules mocked as Partials by directory, say -- are
+      # told apart only by that subdirectory. Measured the same way a generated
+      # Partial's is, below.
+      mocks_root = File.join(@configurator.cmock_mock_path, test_context)
+      subdir     = generated_file_subdir( filepath, mocks_root, test: test, context: context )
 
-    # Generated partials
-    elsif (!release) and 
-          (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
       _source_file = source_file + EXTENSION_CORE_SOURCE
+      _source_file = File.join( subdir, _source_file ) unless subdir.empty?
+
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
           @file_wrapper.directory_listing(
-            File.join(@configurator.project_test_partials_path,
-            ('**/*' + EXTENSION_CORE_SOURCE))
+            File.join(mocks_root, ('**/*' + EXTENSION_CORE_SOURCE))
           ),
-          complain,
-          filepath)
+          complain)
+
+    # Generated partials -- same per-test scoping rationale as mocks, above
+    elsif (!release) and
+          (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
+      # A generated Partial sits in the subdirectory mirroring its own module, so that
+      # subdirectory is what distinguishes two modules sharing a basename. Derived the
+      # same way a mock's is, above.
+      partials_root = File.join(@configurator.project_test_partials_path, test_context)
+      subdir        = generated_file_subdir( filepath, partials_root, test: test, context: context )
+
+      _source_file = source_file + EXTENSION_CORE_SOURCE
+      _source_file = File.join( subdir, _source_file ) unless subdir.empty?
+
+      collection =
+        @file_wrapper.directory_listing(
+          File.join(partials_root, ('**/*' + EXTENSION_CORE_SOURCE))
+        )
+
+      # Ambiguity is detected here rather than rescued from the matching below. One
+      # matching implementation stays in force, and the message is composed from the
+      # module names the test author wrote instead of reworded by exception.
+      raise_ambiguous_partial!( _source_file, collection, partials_root )
+
+      found_file =
+        @file_finder_helper.find_file_in_collection( _source_file, collection, complain )
 
     # Vendor framework sources (unity.c, cmock.c, cexception.c, etc.)
     # Note: Taking a small chance by mixing test and release frameworks without smart checks on test/release build
@@ -116,8 +178,14 @@ class FileFinder
         @file_finder_helper.find_file_in_collection(
           _source_file,
           @configurator.collection_existing_test_build_input,
-          complain,
-          filepath)
+          complain)
+
+    # The test file's own object, resolving back to its own source -- go directly by this
+    # object's own test identity rather than searching the whole project's test collection
+    # by bare basename, which is exactly the kind of query that's ambiguous the moment
+    # another same-named test exists elsewhere
+    elsif (!release) and !test_context.empty? and (source_file == File.basename( test_context ))
+      found_file = find_test_file_from_name( test_context )
 
     end
 
@@ -129,30 +197,24 @@ class FileFinder
     # Above we can confidently rely on the complain parameter passed to file_finder_helper because
     # we know the specific type of file being searched for.
     #
-    # Below we ignore file misses because of lgoical complexities of searching for potentially either 
+    # Below we ignore file misses because of lgoical complexities of searching for potentially either
     # assmebly or C files, including C files that may not exist (counterparts to header files by convention).
     # We save the existence handling until the end.
     #
 
-    # Assembly files for release build 
-    if release and @configurator.release_build_use_assembly
-      _source_file = source_file + @configurator.extension_assembly
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @configurator.collection_release_build_input,
-          :ignore,
-          filepath)
+    # A module-under-test or release source's object mirrors that source's own subdirectory
+    # below whichever configured root it came from -- recovering that mirrored subdirectory
+    # here lets the query go straight to the matching source, rather than a bare basename
+    # that's ambiguous the moment another same-named source exists elsewhere.
+    query_file = mirrored_query(filepath, release: release, test: test, context: context)
 
-    # Assembly files for test build 
+    # Assembly files for release build
+    if release and @configurator.release_build_use_assembly
+      found_file = try_extensions(query_file, @configurator.extension_assembly, @configurator.collection_release_build_input)
+
+    # Assembly files for test build
     elsif (!release) and @configurator.test_build_use_assembly
-      _source_file = source_file + @configurator.extension_assembly
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @configurator.collection_existing_test_build_input,
-          :ignore,
-          filepath)
+      found_file = try_extensions(query_file, @configurator.extension_assembly, @configurator.collection_existing_test_build_input)
     end
 
     if !found_file.nil?
@@ -161,52 +223,274 @@ class FileFinder
 
     # Release build C files
     if release
-      _source_file = source_file + @configurator.extension_source
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @configurator.collection_release_build_input,
-          :ignore,
-          filepath)
-        
+      found_file = try_extensions(query_file, @configurator.extension_source, @configurator.collection_release_build_input)
+
     # Test build C files
     else
-      _source_file = source_file + @configurator.extension_source
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          @configurator.collection_existing_test_build_input,
-          :ignore,
-          filepath)
+      found_file = try_extensions(query_file, @configurator.extension_source, @configurator.collection_existing_test_build_input)
     end
 
     if found_file.nil?
-      _source_file += " or #{_source_file.ext(@configurator.extension_assembly)}" if @configurator.release_build_use_assembly
-      @file_finder_helper.handle_missing_file(_source_file, complain)
+      # Every name actually attempted above, laid out for the reader in the same order they
+      # were tried, so a missing-file complaint names every filename ceedling went looking for.
+      tried = @configurator.extension_source.map { |ext| query_file + ext }
+      tried += @configurator.extension_assembly.map { |ext| query_file + ext } if @configurator.release_build_use_assembly
+      @file_finder_helper.handle_missing_file(tried.join(' or '), complain)
     end
 
     return found_file
   end
 
 
-  def find_header_file(filepath, complain = :error)
-    header_file = File.basename(filepath).ext(@configurator.extension_header)
-    return @file_finder_helper.find_file_in_collection(header_file, @configurator.collection_all_headers, complain, filepath)
+  # `collection`, when given, overrides collection_all_headers with a caller's own
+  # already-ordered, per-test header list -- see find_header_input_for_mock's comment.
+  def find_header_file(filepath, complain = :error, collection: nil)
+    return find_first_candidate(filepath, @configurator.extension_header, collection || @configurator.collection_all_headers, complain)
   end
 
   def find_source_file(filepath, complain = :error)
-    source_file = File.basename(filepath).ext(@configurator.extension_source)
-    return @file_finder_helper.find_file_in_collection(source_file, @configurator.collection_all_source, complain, filepath)
+    return find_first_candidate(filepath, @configurator.extension_source, @configurator.collection_all_source, complain)
   end
 
 
   def find_assembly_file(filepath, complain = :error)
-    assembly_file = File.basename(filepath).ext(@configurator.extension_assembly)
-    return @file_finder_helper.find_file_in_collection(assembly_file, @configurator.collection_all_assembly, complain, filepath)
+    return find_first_candidate(filepath, @configurator.extension_assembly, @configurator.collection_all_assembly, complain)
   end
 
   def find_file_from_list(filepath, file_list, complain)
-    return @file_finder_helper.find_file_in_collection(filepath, file_list, complain, filepath)
+    return @file_finder_helper.find_file_in_collection(filepath, file_list, complain)
   end
-end
 
+  ### Private ###
+
+  private
+
+  # Translates a generated-Partial ambiguity into the test author's own terms. The query
+  # here is a generated filename under a build directory, neither of which the author
+  # typed, so reporting them offers nothing to act on. Candidates render as extensionless
+  # module paths -- exactly what a directive macro takes -- so one can be pasted straight
+  # into the macro the message names.
+  def raise_ambiguous_partial!(query, collection, root)
+    candidates = PathMatcher.candidates( query, collection )
+
+    return if candidates.length < 2
+
+    _module = @file_path_utils.module_from_partial_filename( query )
+
+    # Candidates arrive as paths below the generated Partials root for this test. The root
+    # is Ceedling's own, so only the module's mirrored subdirectory below it means anything
+    # to the author.
+    modules = candidates.map do |candidate|
+      @file_path_utils.module_from_partial_filename( candidate.delete_prefix( root + '/' ) )
+    end.compact.uniq.sort
+
+    message = "Ambiguous Partial module reference '#{_module}' found.\n" \
+              "  Include more trailing path to distinguish among:\n" \
+              "    #{modules.join(",\n    ")}"
+
+    # The hint only helps when a candidate actually has a directory to name.
+    hint = modules.find { |candidate| File.dirname( candidate ) != '.' }
+
+    unless hint.nil?
+      message += "\n  Name one with a directory, " \
+                 "e.g. TEST_PARTIAL_ALL_MODULE_AT(#{File.dirname( hint )}, #{File.basename( hint )})"
+    end
+
+    raise CeedlingException.new( message )
+  end
+
+  # A test object's build directory identity mirrors the configured test root a source
+  # file lives under (e.g. `unit/test_foo` for `test/unit/test_foo.c`, plain `test_foo` for
+  # a flat file). Recovering that identity from a build artifact's own path lets a lookup
+  # go straight to the one test it belongs to, rather than searching the whole project by
+  # bare basename -- exactly the query shape that's ambiguous when another same-named test
+  # exists elsewhere.
+  #
+  # A filepath that isn't under the test build root at all (a source-tree-relative query
+  # from an #include or TEST_SOURCE_FILE(), rather than a build artifact's own path) has no
+  # test identity to recover -- empty string, never a directory name that could coincidentally
+  # match some unrelated file's own basename.
+  def test_context_of(filepath)
+    dir  = File.dirname( filepath )
+    root = @configurator.project_test_build_output_path
+    return dir.start_with?( root + '/' ) ? dir[(root.length + 1)..] : ''
+  end
+
+  # A flat test's own runner lives in the shared flat runners directory; only a nested
+  # test's own mirrored subdirectory (excluding its own basename) narrows the search
+  # further -- mirroring FilePathUtils#form_test_runners_path's own directory-forming rule.
+  # Takes the test identity already recovered by the caller rather than a raw filepath, so
+  # it isn't independently re-deriving what the caller already has in hand.
+  def runner_scope_dir(test_context)
+    subdir = File.dirname( test_context )
+    root   = @configurator.project_test_runners_path
+    return subdir == '.' ? root : File.join(root, subdir)
+  end
+
+  # A release or module-under-test object's own path mirrors its source's subdirectory
+  # below whichever configured root it came from, rooted at the release build output path
+  # or (given the current test's identity) that test's own build path. Recovering that
+  # mirrored subdirectory and combining it with the bare basename recreates a query that
+  # identifies the same one source PathMirror originally mirrored it from.
+  #
+  # A filepath that isn't under the project's build root at all is a source-tree-relative
+  # query in its own right -- straight from an #include or a TEST_SOURCE_FILE() directive,
+  # say. Such a path keeps whatever disambiguating path it carries rather than being
+  # collapsed to a bare basename, reduced to its own namespace below a configured include
+  # root when one contains it (see header_root_relative_query below).
+  #
+  # A filepath that IS somewhere under the build root, but either belongs to a build
+  # context this method doesn't specifically know how to mirror (a plugin's own object
+  # output, e.g. build/valgrind/out/..., rather than release or test) or lacks enough to
+  # peel back a known per-test root (test build input queried without a test identity),
+  # falls back to the bare basename -- exactly what every caller has always seen for those
+  # cases.
+  def mirrored_query(filepath, release:, test:, context:)
+    dir = File.dirname(filepath)
+    build_root = @configurator.project_build_root
+
+    unless dir == build_root || dir.start_with?(build_root + '/')
+      query = header_root_relative_query( filepath )
+      return query.nil? ? filepath.ext('') : query
+    end
+
+    basename = File.basename(filepath).ext('')
+
+    root =
+      if release
+        @configurator.project_release_build_output_path
+      elsif test
+        @file_path_utils.form_test_build_path(test, context: context)
+      end
+
+    return basename if root.nil?
+
+    subdir = PathMirror.relative_subdir(filepath, [root])
+    return subdir.empty? ? basename : File.join(subdir, basename)
+  end
+
+  # The subdirectory a generated file's query carries, mirroring the module it belongs to.
+  #
+  # Which root it sits below depends on who is asking. The generated #include carries the
+  # root the file itself was written under; an object for that same file mirrors the
+  # subdirectory below the test's own out root instead. Measuring against only one of the
+  # two yields nothing for queries of the other kind, degrading them to a bare basename
+  # that matches every same-named module in the test.
+  #
+  # Below neither root, the query is a synthesized name rather than a real file's path --
+  # fallback preprocessing builds a generated #include from a module name instead of
+  # resolving the file. Whatever directory such a name carries is the module's own.
+  def generated_file_subdir(filepath, root, test:, context:)
+    out_root = test.nil? ? nil : @file_path_utils.form_test_build_path(test, context: context)
+
+    subdir = PathMirror.relative_subdir( filepath, [root, out_root].compact )
+
+    return subdir unless subdir.empty?
+
+    return synthesized_relative_dir( filepath )
+  end
+
+  # The directory a synthesized generated-file name carries, or '' when it carries none.
+  # Such a name is relative to nothing on disk, so its own dirname is all the module
+  # context there is.
+  def synthesized_relative_dir(filepath)
+    dir  = File.dirname( filepath )
+    root = @configurator.project_build_root
+
+    return '' if dir == '.'
+
+    # Matched at a path boundary. A directory merely beginning with the build root's own
+    # name is an ordinary relative directory and still names its module.
+    return '' if dir == root || dir.start_with?( root + '/' )
+
+    return dir
+  end
+
+  # A header's own path below its configured include root, or nil when no include root
+  # contains it. Ceedling's convention correlates an #include'd header with the source
+  # beside it, and the two trees routinely sit below different roots -- headers below
+  # `include`, sources below `src`. The namespace they share below those roots is what
+  # correlates them, so comparing the roots themselves only ever fails the match.
+  #
+  # Only the root is dropped. The namespace is preserved, since that is what keeps two
+  # same-basename modules apart.
+  def header_root_relative_query(filepath)
+    subdir = PathMirror.relative_subdir_if_rooted( filepath, @configurator.paths_include )
+
+    return nil if subdir.nil?
+
+    basename = File.basename( filepath ).ext('')
+
+    return subdir.empty? ? basename : File.join( subdir, basename )
+  end
+
+  # A file type may be named by any one of several configured extensions, so a basename
+  # alone doesn't say which candidate filename actually exists. Every candidate but the
+  # last is searched for quietly by plain exact match -- a miss there just means trying
+  # the next spelling, not a real problem, and critically, must not go through
+  # find_file_in_collection/resolve_file_in_collection at all: that helper's own
+  # case-insensitive "did you mean" fallback would otherwise fire on an early, expected
+  # miss (trying `.s` before `.S`, say) the moment ANY differently-cased candidate
+  # happens to exist on disk, well before every real candidate has had its turn. Only
+  # the true last candidate is searched under the caller's own complain-on-miss
+  # behavior, so a genuine failure still reports one sensible name -- and, in non-strict
+  # mode, is the one place an ambiguity-resolution NOTICE gets logged (an ambiguity
+  # among the quietly-tried earlier spellings resolves silently; extension collections
+  # with only one configured spelling, the common case, always resolve via this last,
+  # logged attempt anyway).
+  #
+  # `strict:` selects which of the two ambiguity policies every attempt uses: raise
+  # (today's only behavior, still used by CLI test-name resolution) or resolve to the
+  # first match by collection order (everything else).
+  def find_first_candidate(query, extension, collection, complain, strict: false)
+    candidates = extension.candidates(query)
+
+    candidates[0...-1].each do |candidate|
+      found = match_candidate(candidate, collection, strict: strict)
+      return found unless found.nil?
+    end
+
+    if strict
+      return @file_finder_helper.find_file_in_collection(candidates.last, collection, complain)
+    else
+      return @file_finder_helper.resolve_file_in_collection(candidates.last, collection, complain)
+    end
+  end
+
+  # As `find_first_candidate`, but builds each candidate by plain string concatenation
+  # rather than `String#ext` -- some legacy filenames carry a dotted version segment
+  # (e.g. `foo.44`), and `.ext` would clobber that segment while re-adding the extension.
+  # Mirrors find_first_candidate's quiet-until-the-last-spelling shape (see its own
+  # comment) -- the caller decides how to react if no spelling is ever found.
+  def try_extensions(basename, extension, collection, strict: false)
+    exts = extension.to_a
+
+    exts[0...-1].each do |ext|
+      found = match_candidate(basename + ext, collection, strict: strict)
+      return found unless found.nil?
+    end
+
+    last = basename + exts.last
+
+    if strict
+      return @file_finder_helper.find_file_in_collection(last, collection, :ignore)
+    else
+      return @file_finder_helper.resolve_file_in_collection(last, collection, :ignore)
+    end
+  end
+
+  # A single candidate query, matched against `collection` via the shared path-aware
+  # matcher. Strict mode raises on genuine ambiguity, exactly as today; non-strict mode
+  # silently takes the first match by collection order with no log of its own -- this
+  # quiet probe is for trying several candidate spellings in turn, not the caller's
+  # real resolution attempt (see find_first_candidate/try_extensions).
+  def match_candidate(candidate, collection, strict: false)
+    if strict
+      return PathMatcher.match(candidate, collection)
+    else
+      winner, _others = PathMatcher.resolve(candidate, collection)
+      return winner
+    end
+  end
+
+end

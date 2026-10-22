@@ -63,7 +63,7 @@ class PluginManager
 
     # If we only ran basic unit tests, there's no need to prefix the failure messages with the context.
     if (@build_fail_registry.keys.size == 1 and @build_fail_registry.keys[0] == TEST_SYM)
-      @build_fail_registry.each do |context, messages|
+      @build_fail_registry.each do |_context, messages|
         messages.each {|message| failures << message}
       end
     # Otherwise, add the context to each message so the user knows the source of the failure.
@@ -102,6 +102,17 @@ class PluginManager
   def pre_runner_generate(arg_hash); execute_plugins(:pre_runner_generate, arg_hash); end
   def post_runner_generate(arg_hash); execute_plugins(:post_runner_generate, arg_hash); end
 
+  # Fire ahead of and separate from pre_compile_execute/pre_link_execute/
+  # pre_test_fixture_execute below -- once per object/executable/test, unconditionally,
+  # before TestBuildExecutor registers dependency-tracker meta or checks staleness,
+  # rather than only when a real (re)compile/link/fixture-run actually happens. A
+  # plugin swapping in its own tool for a build context (Gcov, Valgrind, Bullseye)
+  # implements these so that swap is what dependency-tracker meta reflects, not the
+  # plain tool it's about to replace.
+  def pre_test_compile_register(arg_hash); execute_plugins(:pre_test_compile_register, arg_hash); end
+  def pre_test_link_register(arg_hash); execute_plugins(:pre_test_link_register, arg_hash); end
+  def pre_test_fixture_register(arg_hash); execute_plugins(:pre_test_fixture_register, arg_hash); end
+
   def pre_compile_execute(arg_hash); execute_plugins(:pre_compile_execute, arg_hash); end
   def post_compile_execute(arg_hash); execute_plugins(:post_compile_execute, arg_hash); end
 
@@ -109,9 +120,16 @@ class PluginManager
   def post_link_execute(arg_hash); execute_plugins(:post_link_execute, arg_hash); end
 
   def pre_test_fixture_execute(arg_hash); execute_plugins(:pre_test_fixture_execute, arg_hash); end
+
+  # A plugin that recognizes why a test executable crashed sets `arg_hash[:explanation]` and,
+  # optionally, `:explanation_details` lines and an `:explanation_heading`. `:crash_notice` says
+  # whether the explanation will appear in a crash notice or only in a test failure.
+  def explain_test_crash(arg_hash); execute_plugins(:explain_test_crash, arg_hash); end
   def post_test_fixture_execute(arg_hash)
-    # Special arbitration: Raw test results are printed or taken over by plugins handling the job
-    @loginator.log( arg_hash[:shell_result][:output] ) if @configurator.plugins_display_raw_test_results
+    # Special arbitration: Raw test results are printed or taken over by plugins handling the job.
+    # A test reported from cached results was not run, so it has no output to show.
+    shell_result = arg_hash[:shell_result]
+    @loginator.log( shell_result[:output] ) if shell_result && @configurator.plugins_display_raw_test_results
 
     # Core failure detection independent of any reporting plugin
     register_build_failure( arg_hash[:context], 'Unit test failures' ) if arg_hash.dig(:results, :counts, :failed).to_i > 0
@@ -141,19 +159,17 @@ class PluginManager
   end
 
   def execute_plugins(method, *args)
-    @plugin_objects.each do |plugin|
-      begin
-        if plugin.respond_to?(method)
-          @loginator.lazy( Verbosity::OBNOXIOUS ) do 
-            @reportinator.generate_progress( "Plugin | #{camelize( plugin.name )} > :#{method}" )
-          end
-          plugin.send(method, *args)
-        end
-      rescue
-        @loginator.log( "Exception raised in plugin `#{plugin.name}` within build hook :#{method}", Verbosity::ERRORS )
-        raise # Raise again for backtrace, etc.
-      end
+    @plugin_objects.each { |plugin| execute_plugin( plugin, method, *args ) if plugin.respond_to?( method ) }
+  end
+
+  def execute_plugin(plugin, method, *args)
+    @loginator.lazy( Verbosity::OBNOXIOUS ) do
+      @reportinator.generate_progress( "Plugin | #{camelize( plugin.name )} > :#{method}" )
     end
+    plugin.send(method, *args)
+  rescue
+    @loginator.log( "Exception raised in plugin `#{plugin.name}` within build hook :#{method}", Verbosity::ERRORS )
+    raise # Raise again for backtrace, etc.
   end
 
 end

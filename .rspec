@@ -1,2 +1,3 @@
 -I spec/support
 -I spec/support/system
+-I spec/support/integration

@@ -7,7 +7,9 @@
 
 require 'spec_helper'
 require 'ceedling/generators/generator_test_results_backtrace'
+require 'ceedling/generators/generator_helper'
 require 'ceedling/constants'
+require 'ceedling/exceptions'
 
 # ── Representative gdb output constants ──────────────────────────────────────
 
@@ -65,6 +67,19 @@ GDB_NO_SIGNAL_OUTPUT = <<~GDB.freeze
   Inferior 1 (process 12345) exited with code 0139.
 GDB
 
+# Parameterized test crash (issue #1185): the crashing frame names the generated
+# wrapper function (`runner_args1_test_value_out_of_range_good`), not the human-facing
+# test name (`test_value_out_of_range_good(101, 1)`) that Unity reports at runtime.
+GDB_SIGSEGV_PARAM_OUTPUT = <<~GDB.freeze
+  [Thread debugging using libthread_db enabled]
+
+  Program received signal SIGSEGV, Segmentation fault.
+  0x00005618066ea1fb in runner_args1_test_value_out_of_range_good () at test/test_module_d.c:157
+  157	  int invalid = 1 / 0;
+  #0  0x00005618066ea1fb in runner_args1_test_value_out_of_range_good () at test/test_module_d.c:157
+  #1  0x00005618066eb4de in run_test (func=0x5618066ea1e7 <runner_args1_test_value_out_of_range_good>, name=0x5618066eb2e0 "test_value_out_of_range_good(101, 1)", line_num=157) at build/test/runners/test_module_d_runner.c:76
+GDB
+
 # Windows SIGSEGV — Thread N prefix, space-padded source line, DLL frames
 # Single-quoted heredoc: backslashes in Windows paths are literal, not escape sequences
 GDB_WINDOWS_SIGSEGV_OUTPUT = <<~'GDB'.freeze
@@ -84,7 +99,7 @@ GDB_WINDOWS_ASSERT_BRIEF_OUTPUT = <<~'GDB'.freeze
   [New Thread 4168.0xa14]
   [Thread 4168.0xa14 exited with code 3]
   [Inferior 1 (process 4168) exited with code 03]
-  Assertion failed: 0, file test/test_example_file_crash_assert.c, line 24
+  Assertion failed: 0, file test/test_nosanitize_crash_assert.c, line 24
 GDB
 
 # Windows assert(0) — signal ?, DLL abort frames, assertion text at end of output
@@ -95,13 +110,13 @@ GDB_WINDOWS_ASSERT_OUTPUT = <<~'GDB'.freeze
   #0  0x00007ff938364aee in ucrtbase!abort () from C:\Windows\System32\ucrtbase.dll
   #1  0x00007ff938320fb9 in ucrtbase!_isctype_l () from C:\Windows\System32\ucrtbase.dll
   #2  0x00007ff938382b01 in ucrtbase!_assert () from C:\Windows\System32\ucrtbase.dll
-  #3  0x00007ff691745367 in _assert (message=0x7ff691747026 "0", file=0x7ff691747000 "test/test_example_file_crash_assert.c", line=24)
-  #4  0x00007ff691741523 in test_add_numbers_triggers_assert () at test/test_example_file_crash_assert.c:24
-  #5  0x00007ff691741675 in run_test (func=0x7ff6917414ff <test_add_numbers_triggers_assert>, name=0x7ff6917470d8 "test_add_numbers_triggers_assert", line_num=20) at build/test/runners/test_example_file_crash_assert_runner.c:77
-  #6  0x00007ff6917418ce in main (argc=3, argv=0x8000e0) at build/test/runners/test_example_file_crash_assert_runner.c:123
+  #3  0x00007ff691745367 in _assert (message=0x7ff691747026 "0", file=0x7ff691747000 "test/test_nosanitize_crash_assert.c", line=24)
+  #4  0x00007ff691741523 in test_add_numbers_triggers_assert () at test/test_nosanitize_crash_assert.c:24
+  #5  0x00007ff691741675 in run_test (func=0x7ff6917414ff <test_add_numbers_triggers_assert>, name=0x7ff6917470d8 "test_add_numbers_triggers_assert", line_num=20) at build/test/runners/test_nosanitize_crash_assert_runner.c:77
+  #6  0x00007ff6917418ce in main (argc=3, argv=0x8000e0) at build/test/runners/test_nosanitize_crash_assert_runner.c:123
   Kill the program being debugged? (y or n) [answered Y; input not from terminal]
   [Inferior 1 (process 8364) killed]
-  Assertion failed: 0, file test/test_example_file_crash_assert.c, line 24
+  Assertion failed: 0, file test/test_nosanitize_crash_assert.c, line 24
   gdb: unknown target exception 0xc0000409 at 0x7ff938364aee
 GDB
 
@@ -112,9 +127,10 @@ SIMPLE_ASSERT_CRASH_OUTPUT =
   "test_lib.out: src/lib.c:5: asserting: Assertion `0' failed.\n" \
   "Aborted (core dumped)\n"
 
-SIMPLE_PASS_OUTPUT   = "test_lib.c:3:test_empty:PASS\n"
-SIMPLE_FAIL_OUTPUT   = "test_lib.c:8:test_bad:FAIL: Expected 1 Was 2\n"
-SIMPLE_IGNORE_OUTPUT = "test_lib.c:12:test_skip:IGNORE\n"
+SIMPLE_PASS_OUTPUT   = "test_lib.c:3:test_empty:PASS\n---------\n1 Tests 0 Failures 0 Ignored\nOK\n"
+SIMPLE_FAIL_OUTPUT   = "test_lib.c:8:test_bad:FAIL: Expected 1 Was 2\n---------\n1 Tests 1 Failures 0 Ignored\nFAIL\n"
+SIMPLE_IGNORE_OUTPUT = "test_lib.c:12:test_skip:IGNORE\n---------\n1 Tests 0 Failures 1 Ignored\nOK\n"
+SIMPLE_IGNORE_WITH_MESSAGE_OUTPUT = "test_lib.c:12:test_skip:IGNORE: Not yet implemented\n---------\n1 Tests 0 Failures 1 Ignored\nOK\n"
 
 
 describe GeneratorTestResultsBacktrace do
@@ -127,15 +143,27 @@ describe GeneratorTestResultsBacktrace do
     @generator_test_results  = instance_double('GeneratorTestResults')
     @file_path_utils         = instance_double('FilePathUtils')
     @file_wrapper            = instance_double('FileWrapper')
+    @loginator               = double('loginator').as_null_object
+    # A real GeneratorHelper, not a double -- these tests exercise the actual crash
+    # detection logic a retry's status is checked against, not a stubbed stand-in for it.
+    @generator_helper        = GeneratorHelper.new({ :loginator => @loginator })
 
     @backtrace = described_class.new({
       :configurator           => @configurator,
       :tool_executor          => @tool_executor,
       :generator_test_results => @generator_test_results,
+      :generator_helper       => @generator_helper,
       :file_path_utils        => @file_path_utils,
-      :file_wrapper           => @file_wrapper
+      :file_wrapper           => @file_wrapper,
+      :loginator              => @loginator
     })
     @backtrace.setup()
+
+    # A healthy retry sub-process status -- the common case for most stubs below. Crash
+    # scenarios that already resolve via a missing result-line match (the pre-existing
+    # "unresolved" path) don't depend on this value at all; it's included on every stub
+    # anyway so `crash_result[:status]` is never unexpectedly missing.
+    @ok_status = double('status', signaled?: false, success?: true, exitstatus: 0, termsig: nil)
 
     # Standard stubs used by most tests
     allow(@tool_executor).to receive(:build_command_line).and_return({ options: {} })
@@ -153,52 +181,153 @@ describe GeneratorTestResultsBacktrace do
     let(:filename)    { 'test_lib.c' }
     let(:executable)  { 'build/test/out/test_lib/test_lib.out' }
     let(:shell_result){ { exit_code: 1, output: '', time: 0.0 } }
-    let(:test_cases)  { [{ test: 'test_asserting', line_number: 8 }] }
+    let(:test_cases)  { [{ test: 'test_asserting', symbol: 'test_asserting', line_number: 8 }] }
 
     before(:each) do
       allow(@configurator).to receive(:project_build_tests_root).and_return('build/test')
       allow(@configurator).to receive(:tools_test_backtrace_gdb).and_return({})
     end
 
+    # Companion helper: a genuinely-crashing group paired alongside the group under
+    # test, matching realistic multi-test-case usage -- do_gdb only ever runs because
+    # the main run already crashed, so an isolated group with nothing but a clean match
+    # is indistinguishable from the #1198 bug pattern (every retry legitimately clean,
+    # contradicting the crash that triggered this method) and correctly falls back on
+    # its own, tested separately below.
+    let(:companion_case) { { test: 'test_crashes_elsewhere', symbol: 'test_crashes_elsewhere', line_number: 20 } }
+
     it 'handles a PASS test case and does not write a log' do
-      allow(@tool_executor).to receive(:exec)
-        .and_return({ output: "test_lib.c:9:test_asserting:PASS\n", time: 0.1, exit_code: 0 })
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status },
+        { output: "test_lib.c:9:test_asserting:PASS\n---------\n1 Tests 0 Failures 0 Ignored\nOK\n",
+          time: 0.1, exit_code: 0, stderr: '', status: @ok_status }
+      )
 
-      expect(@file_wrapper).not_to receive(:write)
+      expect(@file_wrapper).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything, anything)
 
-      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
 
-      expect(result[:exit_code]).to eq(0)
+      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:9:test_asserting:PASS')
     end
 
     it 'handles an IGNORE test case and does not write a log' do
-      allow(@tool_executor).to receive(:exec)
-        .and_return({ output: "test_lib.c:9:test_asserting:IGNORE\n", time: 0.1, exit_code: 0 })
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status },
+        { output: "test_lib.c:9:test_asserting:IGNORE\n---------\n1 Tests 0 Failures 1 Ignored\nOK\n",
+          time: 0.1, exit_code: 0, stderr: '', status: @ok_status }
+      )
 
-      expect(@file_wrapper).not_to receive(:write)
+      expect(@file_wrapper).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything, anything)
 
-      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
 
-      expect(result[:exit_code]).to eq(0)
+      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:9:test_asserting:IGNORE')
     end
 
     it 'handles a FAIL test case and does not write a log' do
-      allow(@tool_executor).to receive(:exec)
-        .and_return({ output: "test_lib.c:9:test_asserting:FAIL: Expected 1 Was 2\n", time: 0.1, exit_code: 1 })
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status },
+        { output: "test_lib.c:9:test_asserting:FAIL: Expected 1 Was 2\n---------\n1 Tests 1 Failures 0 Ignored\nFAIL\n",
+          time: 0.1, exit_code: 1, stderr: '', status: @ok_status }
+      )
 
-      expect(@file_wrapper).not_to receive(:write)
+      expect(@file_wrapper).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything, anything)
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:9:test_asserting:FAIL: Expected 1 Was 2')
+    end
+
+    # Ignored-crash false positive: a TEST_IGNORE_MESSAGE(...) test case carries a
+    # trailing message, same as FAIL. Before this fix, only FAIL tolerated one --
+    # a message-carrying IGNORE fell through to "unresolved" and was misreported
+    # as crash evidence (a second @file_wrapper.write, for a companion_case that
+    # never actually crashed).
+    it 'handles an IGNORE test case with a trailing message and does not write a log' do
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status },
+        { output: "test_lib.c:9:test_asserting:IGNORE: Not yet implemented\n---------\n1 Tests 0 Failures 1 Ignored\nOK\n",
+          time: 0.1, exit_code: 0, stderr: '', status: @ok_status }
+      )
+
+      expect(@file_wrapper).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything, anything)
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:9:test_asserting:IGNORE: Not yet implemented')
+    end
+
+    it "does not trust a matched PASS line when the retry's own real status contradicts it" do
+      # Regression test for issue #1198: a diagnostic retry can print a clean Unity
+      # result line while its own real process outcome says otherwise.
+      bad_status = double('status', signaled?: false, success?: false, exitstatus: 1, termsig: nil)
+
+      allow(@tool_executor).to receive(:exec).and_return({
+        output: "test_lib.c:9:test_asserting:PASS\n---------\n1 Tests 0 Failures 0 Ignored\nOK\n",
+        time: 0.1, exit_code: 0, stderr: '', status: bad_status
+      })
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
 
       result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
 
       expect(result[:exit_code]).to eq(1)
+      expect(expected_output_lines.first).to include(':FAIL:')
+    end
+
+    it 'falls back to a whole-file crash failure when no retry ever reproduces the crash the main run detected' do
+      # Regression test for issue #1198: every retry can legitimately pass in its own,
+      # differently-configured environment even though the main run genuinely crashed.
+      # An all-clean diagnostic must not be allowed to overrule that.
+      allow(@tool_executor).to receive(:exec).and_return({
+        output: "test_lib.c:9:test_asserting:PASS\n---------\n1 Tests 0 Failures 0 Ignored\nOK\n",
+        time: 0.1, exit_code: 0, stderr: '', status: @ok_status
+      })
+
+      fallback_result = { output: 'crash-failure-output', exit_code: 1 }
+      expect(@generator_test_results).to receive(:create_crash_failure)
+        .with(filename, shell_result, test_cases)
+        .and_return(fallback_result)
+
+      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+
+      expect(result).to eq(fallback_result)
     end
 
     it 'handles a SIGSEGV crash — writes log, includes signal label, backtick source line, and log path' do
-      test_cases_sigsegv = [{ test: 'testCrash', line_number: 37 }]
+      test_cases_sigsegv = [{ test: 'testCrash', symbol: 'testCrash', line_number: 37 }]
       filename_sigsegv   = 'TestUsartModel.c'
 
       allow(@tool_executor).to receive(:exec)
-        .and_return({ output: GDB_SIGSEGV_OUTPUT, time: 0.5, exit_code: 139 })
+        .and_return({ output: GDB_SIGSEGV_OUTPUT, time: 0.5, exit_code: 139, stderr: '', status: @ok_status })
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
@@ -219,11 +348,68 @@ describe GeneratorTestResultsBacktrace do
       expect(crash_line).to include('(/build/logs/test/TestUsartModel/testCrash.gdb.log)')
     end
 
-    it 'handles a SIGABRT crash from assert() — shows assertion text, no source line (issue #1038)' do
-      test_cases_assert = [{ test: 'test_asserting', line_number: 8 }]
+    it 'attributes a crash in a parameterized test to its wrapper symbol, not its display name' do
+      test_cases_param = [{
+        test:        'test_value_out_of_range_good(101, 1)',
+        symbol:      'runner_args1_test_value_out_of_range_good',
+        line_number: 157
+      }]
+      filename_param = 'test_module_d.c'
 
       allow(@tool_executor).to receive(:exec)
-        .and_return({ output: GDB_SIGABRT_ASSERT_OUTPUT, time: 0.3, exit_code: 134 })
+        .and_return({ output: GDB_SIGSEGV_PARAM_OUTPUT, time: 0.5, exit_code: 139, stderr: '', status: @ok_status })
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      expect(@file_wrapper).to receive(:write)
+        .with('/build/logs/test/test_module_d/test_value_out_of_range_good(101, 1).gdb.log', /=== test_value_out_of_range_good\(101, 1\) ===/, 'a')
+
+      @backtrace.do_gdb( filename_param, executable, shell_result, test_cases_param, context: :test )
+
+      crash_line = expected_output_lines.first
+      # The FAIL line reports the human-facing display name (with args)...
+      expect(crash_line).to start_with('test_module_d.c:157:test_value_out_of_range_good(101, 1):FAIL: Test case crashed')
+      # ...but the crash frame was still correctly located via the wrapper symbol.
+      expect(crash_line).to include('>> [SIGSEGV] Segmentation fault')
+      expect(crash_line).to include("#{NEWLINE_TOKEN}`int invalid = 1 / 0;`")
+      expect(crash_line).not_to include('failed to extract')
+    end
+
+    # #1266 follow-on: the same unanchored-substring risk class as #1262/#1266, here in the
+    # "prefer whichever unresolved member's own symbol is named in the backtrace" search --
+    # no \b before the escaped symbol, so a shorter unresolved symbol that's a suffix of a
+    # longer one actually named in the crash frame can false-match and steal the attribution.
+    it 'attributes a crash to the member whose symbol actually appears in the backtrace, not a shorter symbol that is merely its suffix' do
+      test_cases_suffix = [
+        { test: 'test_x(1)', symbol: 'foo',    line_number: 10 },
+        { test: 'test_x(2)', symbol: 'my_foo', line_number: 20 }
+      ]
+      filename_suffix = 'test_module.c'
+
+      crash_output = <<~GDB
+        Program received signal SIGSEGV, Segmentation fault.
+        0x00005618066ea1fb in my_foo () at test/test_module.c:42
+        #0  0x00005618066ea1fb in my_foo () at test/test_module.c:42
+      GDB
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: crash_output, time: 0.5, exit_code: 139, stderr: '', status: @ok_status })
+
+      expect(@file_wrapper).to receive(:write)
+        .with('/build/logs/test/test_module/test_x(2).gdb.log', /=== test_x\(2\) ===/, 'a')
+
+      @backtrace.do_gdb( filename_suffix, executable, shell_result, test_cases_suffix, context: :test )
+    end
+
+    it 'handles a SIGABRT crash from assert() — shows assertion text, no source line' do
+      test_cases_assert = [{ test: 'test_asserting', symbol: 'test_asserting', line_number: 8 }]
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_SIGABRT_ASSERT_OUTPUT, time: 0.3, exit_code: 134, stderr: '', status: @ok_status })
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
@@ -244,7 +430,7 @@ describe GeneratorTestResultsBacktrace do
 
     it 'handles a crash with no identifiable signal — fallback message, log path without "log: " prefix' do
       allow(@tool_executor).to receive(:exec)
-        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1 })
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
@@ -258,6 +444,89 @@ describe GeneratorTestResultsBacktrace do
       expect(crash_line).not_to include(' >> ')
       expect(crash_line).not_to include('(log: ')
       expect(crash_line).to include('(/build/logs/test/test_lib/test_asserting.gdb.log)')
+    end
+
+    # A crashed test case that resolves to no useful gdb report is worth flagging on
+    # its own, not just silently folded into the generic crash message -- COMPLAIN
+    # level (not ERRORS/WARNING) because this is per-case noise, not yet evidence
+    # that gdb itself is broken. See `#report_gdb_attach_health` below for the
+    # stronger, whole-suite signal.
+    it 'logs a per-occurrence COMPLAIN message (default decorator) when a test case falls back to "no useful report"' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
+
+      expect(@loginator).to receive(:log)
+        .with(a_string_including('test_asserting'), Verbosity::COMPLAIN)
+
+      @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+    end
+  end
+
+  # ── #report_gdb_attach_health ────────────────────────────────────────────────
+
+  describe '#report_gdb_attach_health' do
+    let(:filename)    { 'test_lib.c' }
+    let(:executable)  { 'build/test/out/test_lib/test_lib.out' }
+    let(:shell_result){ { exit_code: 1, output: '', time: 0.0 } }
+    let(:test_cases)  { [{ test: 'test_asserting', symbol: 'test_asserting', line_number: 8 }] }
+
+    before(:each) do
+      allow(@configurator).to receive(:project_build_tests_root).and_return('build/test')
+      allow(@configurator).to receive(:tools_test_backtrace_gdb).and_return({})
+    end
+
+    it 'logs nothing when no do_gdb call has ever run (no crash in this suite)' do
+      expect(@loginator).to_not receive(:log)
+        .with(anything, Verbosity::ERRORS, LogLabels::WARNING)
+
+      @backtrace.report_gdb_attach_health()
+    end
+
+    # This is the whole point: gdb explaining not one single crash across an entire
+    # suite is a materially stronger signal than any one hard-to-diagnose crash, and
+    # deserves exactly one summary -- not one per crashing test executable.
+    it 'logs one summary WARNING after multiple test executables all fell back to "no useful report"' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
+
+      @backtrace.do_gdb( 'test_lib.c', executable, shell_result.dup, test_cases, context: :test )
+      @backtrace.do_gdb( 'test_module.c', executable, shell_result.dup, test_cases, context: :test )
+
+      expect(@loginator).to receive(:log)
+        .with(a_string_including('test suite run'), Verbosity::ERRORS, LogLabels::WARNING).once
+
+      @backtrace.report_gdb_attach_health()
+    end
+
+    it 'does not log when at least one test executable in the suite got a useful report' do
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: GDB_SIGSEGV_OUTPUT, time: 0.5, exit_code: 139, stderr: '', status: @ok_status }
+      )
+      @backtrace.do_gdb(
+        'TestUsartModel.c', executable, shell_result.dup,
+        [{ test: 'testCrash', symbol: 'testCrash', line_number: 37 }], context: :test
+      )
+
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
+      @backtrace.do_gdb( 'test_lib.c', executable, shell_result.dup, test_cases, context: :test )
+
+      expect(@loginator).to_not receive(:log)
+        .with(anything, Verbosity::ERRORS, LogLabels::WARNING)
+
+      @backtrace.report_gdb_attach_health()
+    end
+
+    it 'only flushes once -- a second call logs nothing further without a new crash' do
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
+      @backtrace.do_gdb( filename, executable, shell_result.dup, test_cases, context: :test )
+
+      expect(@loginator).to receive(:log)
+        .with(anything, Verbosity::ERRORS, LogLabels::WARNING).once
+
+      @backtrace.report_gdb_attach_health()
+      @backtrace.report_gdb_attach_health()
     end
   end
 
@@ -273,42 +542,140 @@ describe GeneratorTestResultsBacktrace do
       allow(@configurator).to receive(:tools_test_fixture_simple_backtrace).and_return({})
     end
 
+    # Each of the three cases below is paired with a companion group that genuinely
+    # crashes -- a realistic multi-test-case file, where the group under test is only
+    # one of several. Without a companion, an isolated group with nothing but a clean
+    # match is indistinguishable from the #1198 bug pattern (every retry legitimately
+    # clean, contradicting the crash do_simple only ever runs because of) and correctly
+    # triggers the whole-file fallback tested below in its own right.
+
     it 'handles a PASS test case' do
-      allow(@tool_executor).to receive(:exec)
-        .and_return({ output: SIMPLE_PASS_OUTPUT, time: 0.05, exit_code: 0 })
+      test_cases_multi = [{ test: 'test_crashes_elsewhere', line_number: 20 }] + test_cases
 
-      result = @backtrace.do_simple( filename, executable, shell_result, test_cases, context: :test )
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status },
+        { output: SIMPLE_PASS_OUTPUT, time: 0.05, exit_code: 0, stderr: '', status: @ok_status }
+      )
 
-      expect(result[:exit_code]).to eq(0)
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_multi, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:3:test_empty:PASS')
     end
 
     it 'handles a FAIL test case with a message' do
-      test_cases_fail = [{ test: 'test_bad', line_number: 8 }]
+      test_cases_fail = [{ test: 'test_crashes_elsewhere', line_number: 20 }, { test: 'test_bad', line_number: 8 }]
 
-      allow(@tool_executor).to receive(:exec)
-        .and_return({ output: SIMPLE_FAIL_OUTPUT, time: 0.05, exit_code: 1 })
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status },
+        { output: SIMPLE_FAIL_OUTPUT, time: 0.05, exit_code: 1, stderr: '', status: @ok_status }
+      )
 
-      result = @backtrace.do_simple( filename, executable, shell_result, test_cases_fail, context: :test )
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
 
-      expect(result[:exit_code]).to eq(1)
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_fail, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:8:test_bad:FAIL: Expected 1 Was 2')
     end
 
     it 'handles an IGNORE test case' do
-      test_cases_ignore = [{ test: 'test_skip', line_number: 12 }]
+      test_cases_ignore = [{ test: 'test_crashes_elsewhere', line_number: 20 }, { test: 'test_skip', line_number: 12 }]
+
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status },
+        { output: SIMPLE_IGNORE_OUTPUT, time: 0.02, exit_code: 0, stderr: '', status: @ok_status }
+      )
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:12:test_skip:IGNORE')
+    end
+
+    # Ignored-crash false positive: a TEST_IGNORE_MESSAGE(...) test case carries a
+    # trailing message, same as FAIL (handled just above). Before this fix, only FAIL
+    # tolerated one -- a message-carrying IGNORE fell through to the "no result line"
+    # branch and was misreported as a second crashed test case (test_skip, alongside
+    # the real crash attributed to test_crashes_elsewhere).
+    it 'handles an IGNORE test case with a trailing message' do
+      test_cases_ignore = [{ test: 'test_crashes_elsewhere', line_number: 20 }, { test: 'test_skip', line_number: 12 }]
+
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status },
+        { output: SIMPLE_IGNORE_WITH_MESSAGE_OUTPUT, time: 0.02, exit_code: 0, stderr: '', status: @ok_status }
+      )
+
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
+
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore, context: :test )
+
+      expect(expected_output_lines).to include('test_lib.c:12:test_skip:IGNORE: Not yet implemented')
+      expect(expected_output_lines).to_not include(a_string_matching(/test_skip:FAIL/))
+    end
+
+    it "does not trust a matched PASS line when the retry's own real status contradicts it" do
+      # Regression test for issue #1198: a diagnostic retry can print a clean Unity
+      # result line while its own real process outcome says otherwise.
+      bad_status = double('status', signaled?: false, success?: false, exitstatus: 1, termsig: nil)
 
       allow(@tool_executor).to receive(:exec)
-        .and_return({ output: SIMPLE_IGNORE_OUTPUT, time: 0.02, exit_code: 0 })
+        .and_return({ output: SIMPLE_PASS_OUTPUT, time: 0.05, exit_code: 0, stderr: '', status: bad_status })
 
-      result = @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore, context: :test )
+      expected_output_lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
+        expected_output_lines = kwargs[:output]
+        'regenerated'
+      end
 
-      expect(result[:exit_code]).to eq(0)
+      result = @backtrace.do_simple( filename, executable, shell_result, test_cases, context: :test )
+
+      expect(result[:exit_code]).to eq(1)
+      expect(expected_output_lines.first).to include(':FAIL:')
+    end
+
+    it 'falls back to a whole-file crash failure when no retry ever reproduces the crash the main run detected' do
+      # Regression test for issue #1198: the exact reported scenario -- a custom
+      # :test_fixture wrapper enables sanitizer halt-on-error and the main run crashes,
+      # but the unrelated, independently-configured test_fixture_simple_backtrace tool
+      # runs the same executable directly, without the wrapper, and it legitimately
+      # passes. Every retry can be entirely clean and still must not overrule a crash
+      # Ceedling already established.
+      allow(@tool_executor).to receive(:exec)
+        .and_return({ output: SIMPLE_PASS_OUTPUT, time: 0.05, exit_code: 0, stderr: '', status: @ok_status })
+
+      fallback_result = { output: 'crash-failure-output', exit_code: 1 }
+      expect(@generator_test_results).to receive(:create_crash_failure)
+        .with(filename, shell_result, test_cases)
+        .and_return(fallback_result)
+
+      result = @backtrace.do_simple( filename, executable, shell_result, test_cases, context: :test )
+
+      expect(result).to eq(fallback_result)
     end
 
     it 'handles a crash and includes extra executable output in the failure message' do
       test_cases_crash = [{ test: 'test_asserting', line_number: 8 }]
 
       allow(@tool_executor).to receive(:exec)
-        .and_return({ output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134 })
+        .and_return({ output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status })
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
@@ -328,7 +695,7 @@ describe GeneratorTestResultsBacktrace do
       test_cases_crash = [{ test: 'test_asserting', line_number: 8 }]
 
       allow(@tool_executor).to receive(:exec)
-        .and_return({ output: "\n\n\n", time: 0.1, exit_code: 134 })
+        .and_return({ output: "\n\n\n", time: 0.1, exit_code: 134, stderr: '', status: @ok_status })
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
@@ -345,6 +712,83 @@ describe GeneratorTestResultsBacktrace do
   end
 
   # ── private #format_signal_label ───────────────────────────────────────────
+
+  # A plugin that swaps the fixture tool, such as one setting a sanitizer's runtime options,
+  # can have its reruns run the same way the main run was
+  describe '#do_simple rerun tool' do
+    let(:filename)     { 'test_lib.c' }
+    let(:executable)   { 'build/test/out/test_lib/test_lib.out' }
+    let(:test_cases)   { [{ test: 'test_empty', line_number: 3 }] }
+    let(:fixture)      { { name: 'default_test_fixture', executable: '${1}', arguments: [] } }
+    let(:rerun_tool)   { { name: 'default_test_fixture_simple_backtrace', executable: '${1}', arguments: ['${2}'] } }
+    let(:wrapper)      { { name: 'wrapper', executable: 'env', arguments: ['A=1', '${1}'], backtrace_rerun: true } }
+    let(:valgrind)     { { name: 'valgrind', executable: 'valgrind', arguments: ['--log-file=test_lib.log', '${1}'] } }
+
+    before(:each) do
+      allow(@configurator).to receive(:tools_test_fixture).and_return( fixture )
+      allow(@configurator).to receive(:tools_test_fixture_simple_backtrace).and_return( rerun_tool )
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status }
+      )
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout).and_return( 'regenerated' )
+    end
+
+    def rerun(tool)
+      @backtrace.do_simple( filename, executable, { exit_code: 1, output: '', time: 0.0 }, test_cases, context: :test, tool: tool )
+    end
+
+    it 'reruns through the dedicated backtrace tool when the fixture tool is the configured one' do
+      rerun( fixture )
+      expect(@tool_executor).to have_received(:build_command_line).with( rerun_tool, [], executable, '-n "test_empty"' )
+    end
+
+    # Valgrind writes one report per test, which a rerun through it would overwrite
+    it 'reruns through the dedicated backtrace tool when a swapped fixture tool does not ask for reruns' do
+      rerun( valgrind )
+      expect(@tool_executor).to have_received(:build_command_line).with( rerun_tool, [], executable, '-n "test_empty"' )
+    end
+
+    it 'reruns through a swapped fixture tool that asks for reruns, with the test case filter after its arguments' do
+      rerun( wrapper )
+      expect(@tool_executor).to have_received(:build_command_line).with( wrapper, [], executable, trailing: ['-n "test_empty"'] )
+    end
+  end
+
+  describe '#do_simple crash explanations' do
+    let(:filename)   { 'test_lib.c' }
+    let(:executable) { 'build/test/out/test_lib/test_lib.out' }
+    let(:test_cases) { [{ test: 'test_crashes', line_number: 20 }] }
+
+    before(:each) do
+      allow(@configurator).to receive(:tools_test_fixture_simple_backtrace).and_return( {} )
+      allow(@tool_executor).to receive(:exec).and_return(
+        { output: SIMPLE_ASSERT_CRASH_OUTPUT, time: 0.1, exit_code: 134, stderr: '', status: @ok_status }
+      )
+    end
+
+    def crashed_lines(explain)
+      lines = []
+      allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) { |**kwargs| lines = kwargs[:output]; 'regenerated' }
+      @backtrace.do_simple( filename, executable, { exit_code: 1, output: '', time: 0.0 }, test_cases, context: :test, explain: explain )
+      return lines
+    end
+
+    it 'fails a crashed case with the cause named for its own rerun' do
+      lines = crashed_lines( ->(_crash_result) { 'ASan heap-buffer-overflow at src/lib.c:5' } )
+      expect(lines.first).to start_with( 'test_lib.c:20:test_crashes:FAIL: ASan heap-buffer-overflow at src/lib.c:5' )
+    end
+
+    # The named cause is where its full report lives, so the rerun's raw output is left out
+    it 'leaves a crashed case\'s raw output out of the message when a cause is named' do
+      lines = crashed_lines( ->(_crash_result) { 'ASan heap-buffer-overflow at src/lib.c:5' } )
+      expect(lines.first).to eq( 'test_lib.c:20:test_crashes:FAIL: ASan heap-buffer-overflow at src/lib.c:5' )
+    end
+
+    it 'fails a crashed case as a crash when nothing names a cause' do
+      lines = crashed_lines( ->(_crash_result) { nil } )
+      expect(lines.first).to start_with( 'test_lib.c:20:test_crashes:FAIL: Test case crashed' )
+    end
+  end
 
   describe '#format_signal_label (private)' do
     subject { |ex| @backtrace.send(:format_signal_label, ex.metadata[:output]) }
@@ -451,7 +895,7 @@ describe GeneratorTestResultsBacktrace do
     end
 
     it 'returns nil for brief Windows assert-only output' do
-      result = @backtrace.send(:extract_source_line, GDB_WINDOWS_ASSERT_BRIEF_OUTPUT, 'test_add_numbers_triggers_assert', 'test_example_file_crash_assert.c')
+      result = @backtrace.send(:extract_source_line, GDB_WINDOWS_ASSERT_BRIEF_OUTPUT, 'test_add_numbers_triggers_assert', 'test_nosanitize_crash_assert.c')
       expect(result).to be_nil
     end
   end
@@ -459,9 +903,9 @@ describe GeneratorTestResultsBacktrace do
   # ── private #format_signal_label (Windows brief form) → #do_gdb ──────────
 
   describe '#do_gdb with brief Windows assert (no crash frame)' do
-    let(:filename_assert)   { 'test_example_file_crash_assert.c' }
-    let(:test_cases_assert) { [{ test: 'test_add_numbers_triggers_assert', line_number: 20 }] }
-    let(:executable)        { 'build/test/out/test_example_file_crash_assert/test_example_file_crash_assert.out' }
+    let(:filename_assert)   { 'test_nosanitize_crash_assert.c' }
+    let(:test_cases_assert) { [{ test: 'test_add_numbers_triggers_assert', symbol: 'test_add_numbers_triggers_assert', line_number: 20 }] }
+    let(:executable)        { 'build/test/out/test_nosanitize_crash_assert/test_nosanitize_crash_assert.out' }
     let(:shell_result)      { { exit_code: 1, output: '', time: 0.0 } }
 
     before(:each) do
@@ -471,7 +915,7 @@ describe GeneratorTestResultsBacktrace do
 
     it 'uses assertion label and metadata line number when no crash location frame is found' do
       allow(@tool_executor).to receive(:exec)
-        .and_return({ output: GDB_WINDOWS_ASSERT_BRIEF_OUTPUT, time: 0.1, exit_code: 3 })
+        .and_return({ output: GDB_WINDOWS_ASSERT_BRIEF_OUTPUT, time: 0.1, exit_code: 3, stderr: '', status: @ok_status })
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|

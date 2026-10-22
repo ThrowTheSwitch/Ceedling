@@ -1,0 +1,8 @@
+
+--------------------
+OVERALL TEST SUMMARY
+--------------------
+TESTED:  2
+PASSED:  2
+FAILED:  0
+IGNORED: 0

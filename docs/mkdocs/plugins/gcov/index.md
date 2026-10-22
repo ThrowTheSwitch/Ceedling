@@ -4,6 +4,12 @@ The `gcov` plugin integrates the code coverage abilities of the GNU compiler
 collection with test builds. It provides simple coverage metrics by default and
 can optionally produce sophisticated coverage reports.
 
+!!! note
+    The Gcov plugin creates a duplicate test build with `gcov:` command line
+    plugin tasks. [This is intentional and needed](../index.md#understanding-plugin-build-duplication).
+
+---
+
 <div class="grid cards" markdown>
 
 -   :material-information-outline: **[Overview][overview]**

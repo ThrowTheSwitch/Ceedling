@@ -11,15 +11,15 @@ require 'app_cfg'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/rake_app/rakefile_component_resolver'
-require 'versionator' # Outisde DIY context
+require 'versionator' # Outside DIY context
 
 class CliHelper
 
-  constructor :file_wrapper, :actions_wrapper, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :reportinator, :system_wrapper, :ruby_expandinator
+  constructor :file_wrapper, :actionator, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :reportinator, :system_wrapper, :ruby_expandinator
 
   def setup
     # Aliases
-    @actions = @actions_wrapper
+    @actions = @actionator
     @registry = @rake_task_registry
   end
 
@@ -49,7 +49,7 @@ class CliHelper
 
     # Documentation incorporating Ceedling version tag in URL
     msg = "Ceedling Packet User Manual (v#{ceedling_tag})\n" +
-          "https://throwtheswitch.github.io/Ceedling/#{ceedling_tag}/\n\n"
+          "https://docs.throwtheswitch.org/Ceedling/#{ceedling_tag}/\n\n"
     @loginator.console( msg, LogLabels::DOCUMENTATION )
 
     # Ceedling Suite
@@ -74,28 +74,33 @@ class CliHelper
   end
 
 
-  def create_project_file(dest, local, ceedling_tag)
-    project_filepath = File.join( dest, DEFAULT_PROJECT_FILENAME )
-    source_filepath = File.join( 'assets', DEFAULT_PROJECT_FILENAME )
+  # #1250 -- `ceedling_yml:` names the generated file ALTERNATE_PROJECT_FILENAME
+  # (ceedling.yml) instead of the default DEFAULT_PROJECT_FILENAME (project.yml). Only
+  # the destination filename changes -- both are cloned from the same one template
+  # asset; no second template file exists or is needed.
+  def create_project_file(dest, local, ceedling_tag, ceedling_yml: false)
+    filename = ceedling_yml ? ALTERNATE_PROJECT_FILENAME : DEFAULT_PROJECT_FILENAME
+    project_filepath = File.join( dest, filename )
+    source_filepath = File.join( 'assets', 'features', DEFAULT_PROJECT_FILENAME )
 
     # Clone the project file
-    @actions._copy_file( source_filepath, project_filepath, :force => true)
+    @actions.copy_file( source_filepath, project_filepath, force: true)
 
     # Silently update internal version
-    @actions._gsub_file(
+    @actions.gsub_file(
       project_filepath,
       /:ceedling_version:\s+'\?'/,
       ":ceedling_version: #{ceedling_tag}",
-      :verbose => false
+      verbose: false
     )
 
     # Silently path to point at local install
     if local
-      @actions._gsub_file(
+      @actions.gsub_file(
         project_filepath,
         /:which_ceedling:\s+gem/,
         ":which_ceedling: vendor/ceedling",
-        :verbose => false
+        verbose: false
       )
     end
   end
@@ -228,6 +233,16 @@ class CliHelper
   end
 
 
+  def process_force_test_rerun(force_test_rerun:, tasks:, default_tasks:)
+    # Do nothing if the flag wasn't set
+    return if !force_test_rerun
+
+    unless test_task?( tasks: (tasks.empty? ? default_tasks : tasks ) )
+      raise CeedlingException.new( "The force test rerun option is only applicable to test tasks. No test tasks were specified." )
+    end
+  end
+
+
   def process_graceful_fail(config:, cmdline_graceful_fail:, tasks:, default_tasks:)
     # Precedence
     #  1. Command line option
@@ -279,7 +294,7 @@ class CliHelper
     # If logging is enabled without a filepath in --logfile, then set up the default path
     elsif log
       filepath = File.join( logging_path, DEFAULT_CEEDLING_LOGFILE )
-    elsif logfile.empty?
+    else
       return ''
     end
 
@@ -402,7 +417,12 @@ class CliHelper
     PROJECT_VERBOSITY.freeze()
 
     # Create global constant PROJECT_DEBUG
-    debug = (verbosity == Verbosity::DEBUG)
+    #
+    # `debug` is read by the module_eval string below, which RuboCop cannot see into.
+    # The cop reads the assignment as useless and offers to delete it. Accepting that
+    # leaves the eval referencing a local that was never assigned, so PROJECT_DEBUG
+    # raises NameError. Do not autocorrect this line.
+    debug = (verbosity == Verbosity::DEBUG) # rubocop:disable Lint/UselessAssignment
     Object.send(:remove_const, 'PROJECT_DEBUG') if Object.const_defined?('PROJECT_DEBUG')
     Object.module_eval("PROJECT_DEBUG = debug")
     PROJECT_DEBUG.freeze()
@@ -426,7 +446,7 @@ class CliHelper
       # If we fail to find the section path, blow up
       if value.nil?
         # Reformat list of symbols to list of :<section>s
-        _sections.map! {|section| ":#{section.to_s}"}
+        _sections.map! {|section| ":#{section}"}
         msg = "Cound not find configuration section #{_sections.join(' ↳ ')}"
         raise(msg)
       end
@@ -435,7 +455,13 @@ class CliHelper
       _config = { _sections.last => value }
     end
 
-    File.open( filepath, 'w' ) {|out| YAML.dump( _config, out )}
+    # A nil filepath is the --stdout signal threaded down from the CLI layer --
+    # write the YAML directly to standard output instead of a file.
+    if filepath.nil?
+      YAML.dump( _config, $stdout )
+    else
+      File.open( filepath, 'w' ) {|out| YAML.dump( _config, out )}
+    end
   end
 
 
@@ -476,7 +502,7 @@ class CliHelper
       # Form glob to collect all markdown files
       glob = File.join( ceedling_root, src, '*.md' )
       # Look up markdown files
-      listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
+      listing = @file_wrapper.directory_listing( glob )
       # For each markdown filepath, add to hash
       listing.each do |filepath|
         # Reassign destination
@@ -492,12 +518,9 @@ class CliHelper
       'cmock'       => 'vendor/cmock',
       'c_exception' => 'vendor/c_exception',
     }.each do |dest, src|
-      glob = File.join( ceedling_root, src, 'license.txt' )
-      # Look up licenses (use glob as capitalization can be inconsistent)
-      listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
-      # Safety check on nil references since we explicitly reference first element
-      next if listing.empty?
-      filepath = listing.first
+      filepath = license_filepath( File.join( ceedling_root, src ) )
+      next if filepath.nil?
+
       # Reassign dest
       dest = File.join( dest, File.basename( filepath ) )
       doc_files[ dest ] = filepath
@@ -505,13 +528,13 @@ class CliHelper
 
     # Copy all individual documentation files gathered up
     doc_files.each_pair do |_dest, src|
-      @actions._copy_file(src, File.join( dest, _dest ), :force => true )
+      @actions.copy_file(src, File.join( dest, _dest ), force: true )
     end
 
     # If present copy internl HTML documentation bundle (site-local/) to docs/ceedling/
     site_local_path = File.join( ceedling_root, DOCS_SITE_LOCAL_PATH )
     if @file_wrapper.directory?( site_local_path )
-      @actions._directory( site_local_path, docs_path_ceedling, :force => true )
+      @actions.copy_directory( site_local_path, docs_path_ceedling, force: true )
     else
       @loginator.console( "Internal HTML documentation bundle not found", LogLabels::WARNING )
       return
@@ -533,15 +556,15 @@ class CliHelper
 
     # Copy folders from current Ceedling into project
     %w{plugins lib bin}.each do |folder|
-      @actions._directory( 
+      @actions.copy_directory( 
         folder,
         File.join( vendor_path, folder ),
-        :force => true
+        force: true
       )
     end
 
     # Mark ceedling as an executable
-    @actions._chmod( File.join( vendor_path, 'bin', 'ceedling' ), 0755 ) unless @system_wrapper.windows?
+    @actions.chmod( File.join( vendor_path, 'bin', 'ceedling' ), 0755 ) unless @system_wrapper.windows?
 
     # Assembly necessary subcomponent dirs
     components = [
@@ -559,14 +582,17 @@ class CliHelper
       _src = path
       _dest = File.join( vendor_path, path )
       # Copy entire directory, filter out any junk files
-      @actions._directory(
+      @actions.copy_directory(
         _src, _dest,
-        :force => true
+        force: true
       )
     end
 
     # Add licenses from Ceedling and supporting projects
     license_files = {}
+    # Only the vendor/ subcomponents, which arrive here as selected subdirectories and
+    # so would otherwise come without their licenses. plugins/, lib/, and bin/ are
+    # copied whole above, which already carries fff's license along with its source.
     [ # Source paths
       '.', # Ceedling
       'vendor/unity',
@@ -574,55 +600,70 @@ class CliHelper
       'vendor/c_exception',
       'vendor/diy'
     ].each do |src|
-      # Look up licenses using a Glob as capitalization can be inconsistent
-      glob = File.join( ceedling_root, src, 'license.txt' )
-      listing = @file_wrapper.directory_listing( glob ) # Already case-insensitive
-      
-      # Safety check on nil references since we explicitly reference first element
-      next if listing.empty?
-      
-      # Add license copying to hash      
-      license = listing.first
+      license = license_filepath( File.join( ceedling_root, src ) )
+      next if license.nil?
+
+      # Add license copying to hash
       filepath = File.join( vendor_path, src, File.basename( license ) )
       license_files[ filepath ] = license
     end
 
     # Copy license files into place
     license_files.each_pair do |dest, src|
-      @actions._copy_file( src, dest, :force => true)
+      @actions.copy_file( src, dest, force: true)
     end
 
     # Silently copy Git SHA file for version #.#.#-build lookups if it exists
     if @file_wrapper.exist?( File.join( ceedling_root, GIT_COMMIT_SHA_FILENAME) )
-      @actions._copy_file(
+      @actions.copy_file(
         GIT_COMMIT_SHA_FILENAME,
         File.join( vendor_path, GIT_COMMIT_SHA_FILENAME ),
-        :force => true, :verbose => false
+        force: true, verbose: false
       )
     end
 
     # Create executable helper scripts in project root
     if @system_wrapper.windows?
       # Windows command prompt launch script
-      @actions._copy_file(
-        File.join( 'assets', 'ceedling.cmd'),
+      @actions.copy_file(
+        File.join( 'assets', 'features', 'ceedling.cmd'),
         File.join( dest, 'ceedling.cmd'),
-        :force => true
+        force: true
       )
     else
       # Unix shell launch script
       launch = File.join( dest, 'ceedling')
-      @actions._copy_file(
-        File.join( 'assets', 'ceedling'),
+      @actions.copy_file(
+        File.join( 'assets', 'features', 'ceedling'),
         launch,
-        :force => true
+        force: true
       )
-      @actions._chmod( launch, 0755 )
+      @actions.chmod( launch, 0755 )
     end
   end
 
 
   private
+
+  # Matches a license filename whatever its capitalization and extension. The vendored
+  # projects disagree on all three: `license.txt`, `LICENSE.txt`, and fff's
+  # extensionless `LICENSE` all appear.
+  LICENSE_FILENAME = /\Alicen[sc]e/i
+
+  # Absolute path to a directory's license file, or nil when it holds none.
+  #
+  # Entry matching rather than a glob, because a glob cannot do this portably. A
+  # lowercase pattern finds `LICENSE.txt` only where the filesystem happens to be case
+  # insensitive, so globbing succeeded on macOS and dropped the Unity, CMock, and DIY
+  # licenses on Linux.
+  def license_filepath(directory)
+    return nil unless @file_wrapper.directory?( directory )
+
+    name = @file_wrapper.directory_entries( directory ).grep( LICENSE_FILENAME ).first
+    return nil if name.nil?
+
+    File.join( directory, name )
+  end
 
   def project_name_banner(config)
     name, _ = @config_walkinator.fetch_value( :project, :name, hash:config )

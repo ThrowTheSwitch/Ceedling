@@ -1,0 +1,447 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'spec_helper'
+require 'ceedling/file_wrapper'
+require 'ceedling/system_wrapper'
+require 'ceedling/exceptions'
+
+describe FileWrapper do
+  before(:each) do
+    @loginator    = double('loginator')
+    @verbosinator = double('verbosinator')
+
+    @file_wrapper = described_class.new({
+      :loginator    => @loginator,
+      :verbosinator => @verbosinator
+    })
+
+    # Debug verbosity off by default in these examples -- explicitly enabled
+    # only in the origin-prefix examples below.
+    allow(@verbosinator).to receive(:should_output?).with(Verbosity::DEBUG).and_return(false)
+    allow(@loginator).to receive(:log)
+
+    # Pin the platform so limit-selection is deterministic regardless of the
+    # machine actually running this spec.
+    allow(SystemWrapper).to receive(:windows?).and_return(false)
+    allow(SystemWrapper).to receive(:macos?).and_return(false)
+  end
+
+  # Absolute paths throughout: check_path_length measures File.expand_path(path).length,
+  # so a relative path would pick up the test-runner's own CWD and throw off the
+  # precise threshold arithmetic these examples depend on. The padding is sized off
+  # File.expand_path('/')'s own actual length rather than assumed to be 1, since Windows
+  # expands a bare '/' by prepending a drive letter (e.g. "C:/") -- without probing that
+  # overhead first, expanded lengths on Windows would run a couple characters longer than
+  # intended and throw off the precise threshold boundaries these examples depend on.
+  def path_of_length(n)
+    overhead = File.expand_path('/').length - 1
+    '/' + ('a' * (n - 1 - overhead))
+  end
+
+  describe '#check_path_length' do
+    # Linux limit (4096) is the default platform pinned in before(:each) above.
+
+    it 'logs nothing for a path well under the limit' do
+      @file_wrapper.check_path_length('/short/path.c', origin: 'Test')
+      expect(@loginator).not_to have_received(:log)
+    end
+
+    it 'logs a WARNING once length is within the fixed margin (25) of the limit' do
+      # 4096 - 25 == 4071 -- the first length at/over threshold
+      @file_wrapper.check_path_length(path_of_length(4071), origin: 'Test')
+      expect(@loginator).to have_received(:log).with(any_args, Verbosity::COMPLAIN)
+    end
+
+    it 'does not yet log a WARNING one character under the margin threshold' do
+      @file_wrapper.check_path_length(path_of_length(4070), origin: 'Test')
+      expect(@loginator).not_to have_received(:log)
+    end
+
+    it 'logs an ERROR once length reaches the limit' do
+      @file_wrapper.check_path_length(path_of_length(4096), origin: 'Test')
+      expect(@loginator).to have_received(:log).with(any_args, Verbosity::ERRORS)
+    end
+
+    it 'logs an ERROR for a length beyond the limit' do
+      @file_wrapper.check_path_length(path_of_length(5000), origin: 'Test')
+      expect(@loginator).to have_received(:log).with(any_args, Verbosity::ERRORS)
+    end
+
+    it 'never raises regardless of path length' do
+      expect { @file_wrapper.check_path_length(path_of_length(10_000), origin: 'Test') }.not_to raise_error
+    end
+
+    context 'origin prefix' do
+      it 'omits the origin from the message when verbosity is below DEBUG' do
+        allow(@verbosinator).to receive(:should_output?).with(Verbosity::DEBUG).and_return(false)
+        @file_wrapper.check_path_length(path_of_length(5000), origin: 'FileWrapper#mkdir_tmp')
+        expect(@loginator).to have_received(:log) do |message, _verbosity|
+          expect(message).not_to include('FileWrapper#mkdir_tmp')
+        end
+      end
+
+      it 'includes the origin in the message when verbosity is DEBUG' do
+        allow(@verbosinator).to receive(:should_output?).with(Verbosity::DEBUG).and_return(true)
+        @file_wrapper.check_path_length(path_of_length(5000), origin: 'FileWrapper#mkdir_tmp')
+        expect(@loginator).to have_received(:log) do |message, _verbosity|
+          expect(message).to include('FileWrapper#mkdir_tmp')
+        end
+      end
+    end
+
+    context 'platform limit selection' do
+      it 'uses the Windows limit (260) when SystemWrapper.windows? is true' do
+        allow(SystemWrapper).to receive(:windows?).and_return(true)
+        @file_wrapper.check_path_length(path_of_length(260), origin: 'Test')
+        expect(@loginator).to have_received(:log).with(any_args, Verbosity::ERRORS)
+      end
+
+      it 'does not yet flag a path under the Windows limit' do
+        allow(SystemWrapper).to receive(:windows?).and_return(true)
+        @file_wrapper.check_path_length(path_of_length(200), origin: 'Test')
+        expect(@loginator).not_to have_received(:log)
+      end
+
+      it 'uses the macOS limit (1024) when SystemWrapper.macos? is true' do
+        allow(SystemWrapper).to receive(:macos?).and_return(true)
+        @file_wrapper.check_path_length(path_of_length(1024), origin: 'Test')
+        expect(@loginator).to have_received(:log).with(any_args, Verbosity::ERRORS)
+      end
+
+      it 'does not yet flag a path under the macOS limit' do
+        allow(SystemWrapper).to receive(:macos?).and_return(true)
+        @file_wrapper.check_path_length(path_of_length(900), origin: 'Test')
+        expect(@loginator).not_to have_received(:log)
+      end
+
+      it 'falls back to the Linux limit (4096) when neither Windows nor macOS' do
+        @file_wrapper.check_path_length(path_of_length(4096), origin: 'Test')
+        expect(@loginator).to have_received(:log).with(any_args, Verbosity::ERRORS)
+      end
+    end
+  end
+
+  # #104 -- plain FileList.new(files)/#include treats every entry as a glob pattern to
+  # (re-)resolve via Dir.glob, which drops a literal `[`/`]` survivor in an already-
+  # concrete filename, and can only ever match files that already exist on disk at all
+  # -- wrong for a caller that already has the real, final answer in hand (e.g. an
+  # object file this same build is about to create). `<<` bypasses glob interpretation
+  # entirely.
+  describe '#instantiate_file_list_literal' do
+    it 'returns a FileList instance' do
+      expect( @file_wrapper.instantiate_file_list_literal( [] ) ).to be_a( Rake::FileList )
+    end
+
+    it 'returns an empty FileList for an empty array' do
+      expect( @file_wrapper.instantiate_file_list_literal( [] ).to_a ).to eq( [] )
+    end
+
+    it 'preserves every entry exactly, including a not-yet-existing path with literal [] brackets' do
+      files = ['src/[legacy]/foo.c', 'build/test/out/a_test/[legacy]/foo.o']
+      expect( @file_wrapper.instantiate_file_list_literal( files ).to_a ).to eq( files )
+    end
+
+    it 'preserves entry order and duplicates as given, with no glob re-resolution' do
+      files = ['b.c', 'a.c', 'a.c']
+      expect( @file_wrapper.instantiate_file_list_literal( files ).to_a ).to eq( files )
+    end
+  end
+
+  # Retries a transient OS-level failure a few times before giving up -- covers
+  # the "shell out, then immediately read/check the file that process just
+  # wrote" race (sporadic Windows AV/share-lock reports, chiefly) without ever
+  # masking a real, non-transient failure. Entirely stub-based: no real
+  # filesystem or real timing is involved -- `sleep` is stubbed away so these
+  # run instantly regardless of the configured delays, and the real-filesystem/
+  # real-timing proof of this mechanism lives at the integration tier instead
+  # (`spec/integration/preprocessing_transient_io_retry_spec.rb`).
+  describe '#open_with_retry' do
+    before(:each) do
+      allow(@file_wrapper).to receive(:sleep)
+    end
+
+    it 'behaves identically to #open when nothing fails' do
+      yielded = nil
+      allow(File).to receive(:open).with('/f.txt', 'r').and_yield(:the_file)
+
+      @file_wrapper.open_with_retry('/f.txt', 'r') { |f| yielded = f }
+
+      expect(yielded).to eq(:the_file)
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+
+    it 'retries past a SystemCallError and succeeds once the underlying open stops raising' do
+      call_count = 0
+      allow(File).to receive(:open) do |*_args, &block|
+        call_count += 1
+        raise Errno::EACCES, 'transient' if call_count < 3
+        block.call(:the_file)
+      end
+
+      yielded = nil
+      @file_wrapper.open_with_retry('/f.txt', 'r') { |f| yielded = f }
+
+      expect(yielded).to eq(:the_file)
+      expect(call_count).to eq(3)
+      expect(@file_wrapper).to have_received(:sleep).twice
+    end
+
+    it 'raises a CeedlingException naming the filepath and retry count once every retry is exhausted, and logs it' do
+      allow(File).to receive(:open).and_raise(Errno::EACCES, 'still locked')
+
+      expect { @file_wrapper.open_with_retry('/f.txt', 'r') { |f| f } }.to raise_error(CeedlingException, /\/f\.txt/)
+      expect(@loginator).to have_received(:log).with(a_string_including('/f.txt'), Verbosity::ERRORS)
+      # Initial attempt + one retry per configured delay.
+      expect(File).to have_received(:open).exactly(FileWrapper::TRANSIENT_IO_RETRY_DELAYS.size + 1).times
+    end
+
+    it 'does not retry a non-SystemCallError raised from inside the block -- propagates immediately' do
+      allow(File).to receive(:open).and_yield(:the_file)
+
+      expect {
+        @file_wrapper.open_with_retry('/f.txt', 'r') { |_f| raise ArgumentError, 'not transient' }
+      }.to raise_error(ArgumentError, 'not transient')
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+  end
+
+  # Same transient-visibility race as #open_with_retry, here hitting FileUtils.cp_r's
+  # own internal stat-then-open sequence instead of a bare File.open (Issue #1292:
+  # a vendor destination briefly reporting the wrong file/directory type mid-copy).
+  # Stub-based, matching #open_with_retry's own spec above -- no real filesystem or
+  # timing involved.
+  describe '#cp_r_with_retry' do
+    before(:each) do
+      allow(@file_wrapper).to receive(:sleep)
+    end
+
+    it 'behaves identically to #cp_r when nothing fails' do
+      allow(FileUtils).to receive(:cp_r)
+
+      @file_wrapper.cp_r_with_retry('/src/.', '/dest')
+
+      expect(FileUtils).to have_received(:cp_r).with('/src/.', '/dest')
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+
+    it 'retries past a SystemCallError and succeeds once the underlying copy stops raising' do
+      call_count = 0
+      allow(FileUtils).to receive(:cp_r) do
+        call_count += 1
+        raise Errno::EISDIR, 'transient' if call_count < 3
+      end
+
+      @file_wrapper.cp_r_with_retry('/src/.', '/dest')
+
+      expect(call_count).to eq(3)
+      expect(@file_wrapper).to have_received(:sleep).twice
+    end
+
+    it 'raises a CeedlingException naming the destination and retry count once every retry is exhausted, and logs it' do
+      allow(FileUtils).to receive(:cp_r).and_raise(Errno::ENOTDIR, 'still wrong type')
+
+      expect { @file_wrapper.cp_r_with_retry('/src/.', '/dest') }.to raise_error(CeedlingException, /\/dest/)
+      expect(@loginator).to have_received(:log).with(a_string_including('/dest'), Verbosity::ERRORS)
+      # Initial attempt + one retry per configured delay.
+      expect(FileUtils).to have_received(:cp_r).exactly(FileWrapper::TRANSIENT_IO_RETRY_DELAYS.size + 1).times
+    end
+
+    it 'does not retry a non-SystemCallError -- propagates immediately' do
+      allow(FileUtils).to receive(:cp_r).and_raise(ArgumentError, 'not transient')
+
+      expect {
+        @file_wrapper.cp_r_with_retry('/src/.', '/dest')
+      }.to raise_error(ArgumentError, 'not transient')
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+  end
+
+  # The removal methods are thin pass-throughs to FileUtils. These examples exist
+  # for one reason: to pin that a caller's options actually arrive. #rm_r and #rm_rf
+  # previously splatted an inline assignment, which replaced the caller's hash with
+  # an empty one and dropped the options on the floor.
+  describe 'removal delegation' do
+    it 'forwards caller options through #rm_f' do
+      allow(FileUtils).to receive(:rm_f)
+
+      @file_wrapper.rm_f('/f.txt', {:noop => true})
+
+      expect(FileUtils).to have_received(:rm_f).with('/f.txt', :noop => true)
+    end
+
+    it 'forwards caller options through #rm_r' do
+      allow(FileUtils).to receive(:rm_r)
+
+      @file_wrapper.rm_r('/dir', {:force => true})
+
+      expect(FileUtils).to have_received(:rm_r).with('/dir', :force => true)
+    end
+
+    it 'forwards caller options through #rm_rf' do
+      allow(FileUtils).to receive(:rm_rf)
+
+      @file_wrapper.rm_rf('/dir', {:secure => true})
+
+      expect(FileUtils).to have_received(:rm_rf).with('/dir', :secure => true)
+    end
+  end
+
+  describe '#exist_with_retry?' do
+    before(:each) do
+      allow(@file_wrapper).to receive(:sleep)
+    end
+
+    it 'returns true immediately when the file exists on the first check' do
+      allow(File).to receive(:exist?).with('/f.txt').and_return(true)
+
+      expect(@file_wrapper.exist_with_retry?('/f.txt')).to be true
+      expect(@file_wrapper).not_to have_received(:sleep)
+    end
+
+    it 'returns true once a later check sees the file' do
+      call_count = 0
+      allow(File).to receive(:exist?) do
+        call_count += 1
+        call_count >= 3
+      end
+
+      expect(@file_wrapper.exist_with_retry?('/f.txt')).to be true
+      expect(call_count).to eq(3)
+    end
+
+    it 'returns false, and logs a NOTICE naming the filepath, only once every attempt misses' do
+      allow(File).to receive(:exist?).and_return(false)
+
+      expect(@file_wrapper.exist_with_retry?('/f.txt')).to be false
+      expect(@loginator).to have_received(:log).with(a_string_including('/f.txt'), Verbosity::NORMAL)
+      # Initial check + one retry per configured delay.
+      expect(File).to have_received(:exist?).exactly(FileWrapper::TRANSIENT_IO_RETRY_DELAYS.size + 1).times
+    end
+  end
+
+  # The hash leads every generated include guard. It is computed from the name exactly as
+  # given, so names that fold to the same readable stem still receive distinct guards.
+  describe '.include_guard_hash' do
+    it 'yields the first eight hex digits of the name\'s SHA-256 digest, uppercased' do
+      expect( FileWrapper.include_guard_hash('config.h') ).to eq('DBA8F242')
+      expect( FileWrapper.include_guard_hash('drivers/uart/config.h') ).to eq('2B4E27AE')
+    end
+
+    it 'treats a backslash separator as a forward slash' do
+      expect( FileWrapper.include_guard_hash('drivers\\uart\\config.h') )
+        .to eq( FileWrapper.include_guard_hash('drivers/uart/config.h') )
+    end
+
+    it 'distinguishes names that differ only in punctuation or case' do
+      expect( FileWrapper.include_guard_hash('a-b.h') ).to_not eq( FileWrapper.include_guard_hash('a_b.h') )
+      expect( FileWrapper.include_guard_hash('Foo.h') ).to_not eq( FileWrapper.include_guard_hash('foo.h') )
+    end
+  end
+
+  # Guards a reconstructed or generated header against double inclusion. The fixed hash
+  # makes the formatting expectations below exact.
+  describe '.generate_include_guard' do
+    before(:each) do
+      allow(FileWrapper).to receive(:include_guard_hash).and_return('0123ABCD')
+    end
+
+    it 'derives a guard from a bare filename' do
+      expect( FileWrapper.generate_include_guard('config.h') ).to eq('GEN0123ABCD_CONFIG_H_CEEDLING')
+    end
+
+    it 'hashes the name exactly as given' do
+      FileWrapper.generate_include_guard('drivers\\uart\\config.h')
+
+      expect(FileWrapper).to have_received(:include_guard_hash).with('drivers\\uart\\config.h')
+    end
+
+    it 'folds a path into the readable stem' do
+      expect( FileWrapper.generate_include_guard('drivers/uart/config.h') )
+        .to eq('GEN0123ABCD_DRIVERS_UART_CONFIG_H_CEEDLING')
+    end
+
+    it 'folds a backslash separator too' do
+      expect( FileWrapper.generate_include_guard('drivers\\uart\\config.h') )
+        .to eq('GEN0123ABCD_DRIVERS_UART_CONFIG_H_CEEDLING')
+    end
+
+    it 'strips only the extension, keeping a dotted filename otherwise intact' do
+      expect( FileWrapper.generate_include_guard('abc-XYZ.v2.h') )
+        .to eq('GEN0123ABCD_ABC_XYZ_V2_H_CEEDLING')
+    end
+
+    it 'collapses runs of separators and underscores into single underscores' do
+      expect( FileWrapper.generate_include_guard('../_lib--core/__x_.h') )
+        .to eq('GEN0123ABCD_LIB_CORE_X_H_CEEDLING')
+    end
+
+    # A name of only separators and an extension leaves nothing to fold into the stem
+    it 'omits an empty stem rather than doubling an underscore' do
+      ['.h', '_.h', '--.h'].each do |name|
+        expect( FileWrapper.generate_include_guard(name) ).to eq('GEN0123ABCD_H_CEEDLING')
+      end
+    end
+  end
+
+  # Properties every generated guard holds with its real hash. C reserves identifiers
+  # beginning with an underscore and an uppercase letter or with a double underscore
+  # (C99 7.1.3), and C++ reserves any identifier containing a double underscore. C90
+  # guarantees only 31 significant characters in a macro name, and C99 only 63 (MISRA
+  # C:2012 Rule 5.4), so guards for different names differ within their first eleven.
+  describe 'generated include guard properties' do
+    names = ['config.h', 'drivers/uart/config.h', 'drivers/spi/config.h', '../_lib--core/__x_.h',
+             '.h', 'a-b.h', 'a_b.h', 'Foo.h', 'foo.h']
+
+    it 'opens with GEN and eight uppercase hex digits and closes with _CEEDLING' do
+      names.each do |name|
+        expect( FileWrapper.generate_include_guard(name) ).to match( /\AGEN[0-9A-F]{8}_\w+_CEEDLING\z/ )
+      end
+    end
+
+    it 'never contains a double underscore' do
+      names.each { |name| expect( FileWrapper.generate_include_guard(name) ).to_not include('__') }
+    end
+
+    it 'is unique within its first eleven characters across distinct names' do
+      leads = names.map { |name| FileWrapper.generate_include_guard(name)[0, 11] }
+
+      expect( leads.uniq.size ).to eq(names.size)
+    end
+
+    it 'is recognized by the generated include guard pattern' do
+      names.each do |name|
+        expect( FileWrapper.generate_include_guard(name) ).to match( GENERATED_INCLUDE_GUARD_PATTERN )
+      end
+    end
+  end
+
+  # Complements #directory_listing for the one case a glob cannot serve: matching a
+  # filename whose capitalization is unknown. Callers apply their own case insensitive
+  # pattern to these names, since File::FNM_CASEFOLD has no effect in Dir.glob and a
+  # lowercase glob pattern therefore matches LICENSE.txt only where the filesystem
+  # itself happens to be case insensitive.
+  describe '#directory_entries' do
+    it 'returns the names within a directory, sorted' do
+      allow(Dir).to receive(:children).with('/some/dir').and_return(['b.txt', 'a.txt'])
+
+      expect( @file_wrapper.directory_entries('/some/dir') ).to eq(['a.txt', 'b.txt'])
+    end
+
+    it 'returns bare entry names rather than paths, so a pattern can anchor on them' do
+      allow(Dir).to receive(:children).with('/some/dir').and_return(['LICENSE'])
+
+      expect( @file_wrapper.directory_entries('/some/dir') ).to eq(['LICENSE'])
+    end
+
+    it 'returns an empty list for an empty directory' do
+      allow(Dir).to receive(:children).with('/empty').and_return([])
+
+      expect( @file_wrapper.directory_entries('/empty') ).to eq([])
+    end
+  end
+end

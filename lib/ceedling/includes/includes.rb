@@ -5,6 +5,10 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
+require 'ceedling/exceptions'
+require 'ceedling/path_matcher'
+
 class Includes
   # Class method to convert mixed list of Include objects into an order-preserving list of hashes
   #
@@ -24,18 +28,27 @@ class Includes
   #   # ]
   def self.to_hashes(includes)
     return includes.map do |include|
-      type = 
+      type =
         case include
         when MockInclude then 'mock'
         when UserInclude then 'user'
         when SystemInclude then 'system'
+        # Plain `Include` (not a subclass) is bare -- undifferentiated user vs.
+        # system, e.g. straight from bare-includes extraction, before any
+        # reconciliation has sorted includes into the subclasses above.
+        when Include then 'bare'
         else raise ArgumentError, "Unknown Include type: #{include.class}"
         end
 
-      {
+      hash = {
         'type' => type,
         'filepath' => include.filepath,
       }
+      # `include_path` is only ever meaningful on a reconciled UserInclude/SystemInclude,
+      # so it's written only when actually set -- a cached build's YAML stays
+      # uncluttered for the common, plain case.
+      hash['include_path'] = include.include_path if include.include_path
+      hash
     end
   end
 
@@ -63,13 +76,15 @@ class Includes
       
       case hash['type']
       when 'user'
-        UserInclude.new(hash['filepath'])
+        UserInclude.new(hash['filepath'], include_path: hash['include_path'])
       when 'mock'
         MockInclude.new(hash['filepath'])
       when 'system'
-        SystemInclude.new(hash['filepath'])
+        SystemInclude.new(hash['filepath'], include_path: hash['include_path'])
+      when 'bare'
+        Include.new(hash['filepath'])
       else
-        raise ArgumentError, "Invalid include type: #{hash['type']}. Must be 'user' or 'system'"
+        raise ArgumentError, "Invalid include type: #{hash['type']}. Must be 'user', 'system', 'mock', or 'bare'"
       end
     end
   end
@@ -121,12 +136,16 @@ class Includes
   # @example Custom rejection
   #   Includes.sanitize!(includes) { |include, all| ... }
   def self.sanitize!(includes, &block)
-    # Remove any duplicates
-    includes.uniq!
+    # Remove any duplicates -- by filepath, not just filename, so two genuinely
+    # different files that happen to share a basename are never mistaken for the
+    # same entry and collapsed down to one.
+    includes.uniq!( &:filepath )
+
+    self.drop_shadowed!( includes )
 
     # Apply custom rejection with access to full list if block provided
     if block_given?
-      includes.reject! { |include| block.call(include, includes) }
+      includes.reject! { |include| yield(include, includes) }
     end
 
     # Ensure system includes come first
@@ -135,13 +154,38 @@ class Includes
     return includes
   end
 
+  # Drops any include that carries no path of its own while another entry resolves to a
+  # real file of the same basename.
+  #
+  # An unresolved include holds only the text as written, so its filepath has no
+  # directory. Beside a resolved sibling of the same basename it can only reach a file by
+  # search-path accident, and which file that is depends on search order rather than on
+  # anything the test author wrote. Dropping it leaves the entries that name real files.
+  #
+  # A header genuinely sitting at an include root is not affected. It renders bare, but
+  # its filepath is resolved and carries that root, so it is a path-bearing entry here.
+  def self.drop_shadowed!(includes)
+    resolved_basenames = includes
+      .reject { |include| File.dirname( include.filepath ) == '.' }
+      .map { |include| File.basename( include.filepath ) }
+      .to_set
+
+    includes.reject! do |include|
+      File.dirname( include.filepath ) == '.' &&
+        resolved_basenames.include?( File.basename( include.filepath ) )
+    end
+
+    return includes
+  end
+  private_class_method :drop_shadowed!
+
   # Class method to reconcile bare, user, and system includes returning a list of
   # reconciled user and system includes.
   #
   # Purpose
   # -------
   # Bare include preprocessing extracts user and system includes, but there's no way
-  # to explicitly differentiate these. Meanwhile, by necessity, user and system include 
+  # to explicitly differentiate these. Meanwhile, by necessity, user and system include
   # extraction can identify too many includes. This class method uses the knowledeg of
   # the different types of extraction to reconcile the two lists. It accomplishes:
   #  1. Paring down system includes to the include directives used in original file.
@@ -150,10 +194,66 @@ class Includes
   #
   # Method
   # ------
-  # Compares bare includes against user and system includes and applies the following rules:
-  # 1. Intersection of bare includes and system includes.
-  # 2. Intersection of bare includes and user includes.
-  def self.reconcile(bare:, user:, system:)
+  # User (and mock) includes are matched against bare entries by path, not merely by
+  # filename, since a project may legitimately contain two files of the same name in
+  # different directories. Matching honors however much path either side carries: a bare
+  # entry's literal #include text can carry more path than its candidate (a fallback text
+  # scan sees only what's literally written) or less (a candidate directives-only
+  # preprocessing resolved to a fuller real location than an unqualified bare #include
+  # ever names). A bare entry matching more than one user/mock candidate (typically a
+  # pathless bare entry corresponding to two same-named project files in different
+  # directories) resolves to the first candidate in `user`'s own order -- itself already
+  # real preprocessor-derived resolution order, so this mirrors the same first-by-known-
+  # priority policy applied everywhere else a query is matched against a collection of real
+  # files. `on_ambiguous`, when given, is called with the bare filepath, the chosen
+  # candidate, and every candidate passed over, so a caller with somewhere to log that
+  # (reconcile itself carries no logger) can surface it.
+  #
+  # System includes are still matched by filename alone: a system header commonly reaches
+  # the same basename through more than one real file (a compiler-provided header
+  # #include_next-ing its libc counterpart, for instance) as a normal, benign toolchain
+  # detail rather than a genuine project-file conflict, and a system header is never a
+  # candidate module Ceedling needs to build -- there's no project-identity question here
+  # worth hard-erroring over.
+  #
+  # A matched system include's `filepath` is its real, resolved location (possibly
+  # absolute), which is what identity and deduplication need but is wrong to render
+  # verbatim into a generated file. Each matched system include is therefore rebuilt
+  # carrying `include_path:` recovered from `bare` -- the original, as-written directive
+  # text -- via `best_bare_match`, so `<sys/stat.h>` renders as written instead of
+  # collapsing to `<stat.h>`.
+  #
+  # A matched user include renders filename-only whenever its basename is unique
+  # among this reconciliation's own results -- deliberately not the literal,
+  # as-written subdirectory spelling, even when one was available. Ceedling adds
+  # every real source/test/include directory as its OWN individual search path
+  # (nothing project-root-relative), so a header's basename alone already finds the
+  # right file precisely when nothing else in this same file's own includes shares
+  # it; preserving more path than that would achieve nothing (see the class comment
+  # on `best_bare_match` for the analogous reasoning already applied to a resolved
+  # `gcc -M` bare entry) and can actively break the build the moment it reaches
+  # further than a single configured search directory ever will (there is no
+  # project-root search path for a fuller, project-relative spelling to resolve
+  # against once rendered into a generated file living somewhere else entirely).
+  #
+  # When two or more matched user includes DO share a basename -- the genuinely
+  # destructive case, since a plain basename-only render for either one would then
+  # be ambiguous and silently pick just one of the real files, dropping the other's
+  # declarations from the reconstructed file entirely -- `reconcile` disambiguates
+  # them using each one's own REAL, RESOLVED `filepath` (from the accurate pass or
+  # the fallback text scan, never a literal, unresolved directive), computing the
+  # shortest trailing-path suffix that's unique among that colliding group. This
+  # never needs to reach further than the two (or more) files' own real, distinct
+  # containing directories, so it never risks reaching past what Ceedling's own
+  # per-directory search paths can find. See `disambiguating_user_include_path`.
+  #
+  # `test_filepath` is the anchor a bare entry's own `..` resolves against -- a bare
+  # scan sees a directory-relative #include exactly as written, `..` and all, so it's
+  # resolved here against the one file any such directive could possibly belong to:
+  # the test file itself. It's also carried so a caller's own `on_ambiguous` block can
+  # name the one test file whose #include statement is worth a closer look, since
+  # nothing further up the call stack adds that context on its own.
+  def self.reconcile(bare:, user:, system:, test_filepath: nil, &on_ambiguous)
     # Validate input types
 
     # `bare` can only be base Include objects, no sub-classes.
@@ -162,39 +262,129 @@ class Includes
     end
 
     # Ensure `user` is an array of UserInclude objects or sub-classes
-    unless user.is_a?(Array) && user.all? { |include| include.is_a?(UserInclude) }    
+    unless user.is_a?(Array) && user.all? { |include| include.is_a?(UserInclude) }
       raise ArgumentError, "`user` must be an Array of UserInclude objects"
     end
-    
+
     # Ensure `system` is an array of SystemInclude objects or sub-classes
-    unless system.is_a?(Array) && system.all? { |include| include.is_a?(SystemInclude) }    
+    unless system.is_a?(Array) && system.all? { |include| include.is_a?(SystemInclude) }
       raise ArgumentError, "`system` must be an Array of SystemInclude objects"
     end
 
     return [] if bare.empty?
 
-    system_includes = []
-    user_includes = []
-
-    # Create set of bare include filenames for O(1) lookup
     bare_filenames = Set.new(bare.map(&:filename))
 
-    # Intersect system includes with bare includes based on filename.
-    # Keep system includes that have matching filenames in bare list.
     system_includes = system.select do |include|
       bare_filenames.include?(include.filename)
+    end.map do |include|
+      original = best_bare_match(bare, include.filepath)
+      SystemInclude.new(include.filepath, include_path: original.filepath)
     end
 
-    # Intersect user includes with bare includes based on filename.
-    # Keep user includes (including subclasses) that have matching filenames in bare list.
-    user_includes = user.select do |include|
-      bare_filenames.include?(include.filename)
-    end    
+    user_filepaths = user.map(&:filepath)
+    user_by_filepath = {}
+    user.each { |include| user_by_filepath[include.filepath] ||= include }
 
-    # Construct reconciled list of includes with reconciled results.
+    user_includes = []
+    seen = Set.new
+
+    bare.each do |bare_include|
+      # A directory-relative #include's own literal text is anchored to the one file
+      # a bare scan could have found it in -- the test file itself, never a header,
+      # since bare extraction never recurses into one. Resolving here, once, means
+      # every candidate below is compared against an ordinary, ..-free path exactly
+      # as if it had been written that way to begin with.
+      bare_filepath = PathMatcher.resolve_relative(bare_include.filepath, anchor: test_filepath && File.dirname(test_filepath))
+
+      # Matching is deliberately bidirectional: a bare entry can carry either more path
+      # than its candidate (literal, unresolved #include text against a bare-scanned
+      # candidate from fallback preprocessing) or less (a pathless bare entry against a
+      # candidate directives-only preprocessing resolved to a fuller real location) --
+      # either side may be the more specific one, so whichever is shorter sets how many
+      # of the longer one's trailing segments must match.
+      matched = user_filepaths.select { |filepath| paths_correspond?(bare_filepath, filepath) }
+
+      next if matched.empty?
+
+      filepath = matched.first
+      next if seen.include?(filepath)
+      seen << filepath
+
+      on_ambiguous&.call(bare_include.filepath, filepath, matched[1..]) if matched.length > 1
+
+      user_includes << user_by_filepath[filepath]
+    end
+
+    # Disambiguate same-basename results -- see the class comment above. A group of
+    # one (the overwhelmingly common case) is left completely untouched.
+    by_basename = user_includes.group_by(&:filename)
+    user_includes = user_includes.map do |include|
+      siblings = by_basename[include.filename]
+      next include if siblings.length <= 1
+      suffix = disambiguating_user_include_path(siblings.map(&:filepath), include.filepath)
+      include.class.new(include.filepath, include_path: suffix)
+    end
+
     # Always system includes first (C best practice).
-    return (system_includes + user_includes)
+    reconciled = system_includes + user_includes
+    self.sort!(reconciled)
+    return reconciled
   end
+
+  # Two filepaths correspond if the shorter one's path segments equal the longer one's
+  # own trailing segments, exactly, in order -- checked without regard for which side is
+  # shorter, since either a bare entry or its candidate may be the one carrying less path.
+  # Delegates to PathMatcher's own version of this same comparison rather than
+  # reimplementing segment-splitting a second time.
+  def self.paths_correspond?(a, b)
+    PathMatcher.correspond?(a, b)
+  end
+  private_class_method :paths_correspond?
+
+  # Finds the bare entry that best identifies a resolved system include's original,
+  # as-written spelling. A bare entry carries no information about whether its own
+  # #include was quoted or bracketed -- PreprocessinatorBareIncludesExtractor can't see
+  # that far -- so a project's own same-named quoted include (`#include "stat.h"`) can
+  # sit in `bare` right alongside a system one (`#include <sys/stat.h>`). Preferring the
+  # *longest* path correspondence, rather than merely the first one found, keeps a short,
+  # unrelated bare entry -- which trivially "corresponds" to any longer resolved path
+  # ending in the same filename -- from shadowing the correct, more specific entry.
+  # Falls back to the longest same-filename candidate, even without path correspondence,
+  # only when the compiler's real search-path structure doesn't literally match the
+  # directive's own spelling (a symlinked or vendored include root, for instance) --
+  # this still can't happen for the filename-only match itself, since `system_includes`
+  # was only reached because some bare entry already shares this filename.
+  def self.best_bare_match(bare, filepath)
+    candidates = bare.select { |bare_include| bare_include.filename == File.basename(filepath) }
+    corresponding = candidates.select { |bare_include| paths_correspond?(bare_include.filepath, filepath) }
+    pool = corresponding.empty? ? candidates : corresponding
+    return pool.max_by { |bare_include| bare_include.filepath.split(/[\\\/]/).reject(&:empty?).length }
+  end
+  private_class_method :best_bare_match
+
+  # The shortest trailing-path suffix of `filepath` (a matched user include's own
+  # real, resolved location) that distinguishes it from every OTHER real filepath in
+  # `sibling_filepaths` -- the full set of matched user includes sharing this one's
+  # basename, `filepath` included. Starts at 2 segments (1 alone is the plain
+  # basename these are colliding on in the first place) and grows only as far as
+  # actually needed. Two files can share a basename yet still share a longer
+  # trailing run too (e.g. two same-named headers nested identically under
+  # different top-level trees) -- growth continues past any length that isn't yet
+  # unique among the group, falling back to `filepath` in full only if every
+  # shorter suffix remains ambiguous.
+  def self.disambiguating_user_include_path(sibling_filepaths, filepath)
+    segments = filepath.split(/[\\\/]/).reject(&:empty?)
+    others = (sibling_filepaths - [filepath]).map { |fp| fp.split(/[\\\/]/).reject(&:empty?) }
+
+    (2..segments.length).each do |n|
+      suffix = segments.last(n)
+      return suffix.join('/') unless others.any? { |seg| seg.last(n) == suffix }
+    end
+
+    segments.join('/')
+  end
+  private_class_method :disambiguating_user_include_path
 
   # Sort list so system includes are at the beginning
   # (Best practice)
@@ -204,8 +394,19 @@ class Includes
     return _includes
   end
 
+  # Ruby's sort/sort_by family does not guarantee a stable sort -- confirmed by Ruby
+  # core team (https://redmine.ruby-lang.org/issues/20226), not a version-specific bug.
+  # With only two possible keys (system vs. everything else), most elements tie, and an
+  # index-decorated sort_by (this method's own prior approach) turns out not to be the
+  # airtight guarantee it looks like -- observed producing a different relative order
+  # among tied elements on Windows Ruby 3.0-3.2 specifically, despite the explicit
+  # tiebreaker, where every other platform/version combination tested came out fine.
+  # partition sidesteps the question entirely: it's a simple filter, not a comparator
+  # sort, so each group's own original relative order is preserved by definition, on
+  # every Ruby version and platform, with nothing to be unstable about.
   def self.sort!(includes)
-    includes.sort_by! { |include| include.is_a?(SystemInclude) ? 0 : 1 }
+    system, other = includes.partition { |include| include.is_a?(SystemInclude) }
+    includes.replace(system + other)
     return includes
   end
 end
@@ -216,6 +417,7 @@ class Include
   attr_reader :filepath
   attr_reader :filename
   attr_reader :path
+  attr_reader :include_path
 
   # Initialize an Include object from a C include statement or simple filepath.
   #
@@ -224,18 +426,33 @@ class Include
   #  - #include <stdio.h>
   #  - A quoted/bracketed filepath (e.g., '"header.h"' or <stdio.h>')
   #  - A plain filepath (e.g., 'path/to/header.h')
-  # @param use_path [Boolean] (default: false)
-  #  - If true, use the full filepath in the include directive
-  #  - If false, use only the filename
+  # @param include_path [String, nil] (default: nil)
+  #  - When set, this exact spelling is used in the include directive, taking
+  #    precedence over `filepath`/`filename`. This exists for a reconciled
+  #    UserInclude/SystemInclude, whose `filepath` is deliberately the header's real,
+  #    resolved location (needed elsewhere for identity -- see `Includes.sanitize!`)
+  #    rather than the original, as-written directive text a reconciled render needs.
   # @raise [ArgumentError] If the statement is empty or becomes empty after cleaning
-  def initialize(statement, use_path: false)
+  def initialize(statement, include_path: nil)
     @filepath = clean(statement)
 
     raise ArgumentError, "Empty include statement" if @filepath.empty?
 
     @filename = File.basename(@filepath)
     @path = File.dirname(@filepath)
-    @use_path = use_path
+    @include_path = clean(include_path) if include_path
+  end
+
+  # Resolves any `..` in this include's own filepath against `anchor` (a directory
+  # path in the same representation `filepath` itself uses), returning a new instance
+  # of this same class if resolution actually changed anything, or this instance
+  # unchanged otherwise. A raw text scan -- unlike a real compiler, which resolves a
+  # directory-relative #include on its own while opening it -- has no way to know
+  # which real file its own literal directive text reaches until this runs.
+  def anchored(anchor)
+    resolved = PathMatcher.resolve_relative( @filepath, anchor: anchor )
+    return self if resolved == @filepath
+    return self.class.new( resolved, include_path: @include_path )
   end
 
   # Method specialized by subclasses
@@ -294,7 +511,8 @@ class Include
 
   # Returns the configured entry to use in the include directive
   def include()
-    @use_path ? @filepath : @filename
+    return @include_path if @include_path
+    @filename
   end
 
   private
@@ -303,13 +521,11 @@ class Include
     # Remove any initial `#include` statement
     _line = line.gsub(/#\s*include/, '')
     
-    # Remove any quotation marks from an extracted user include directive
-    _line.gsub!(/"/, '')
-    
-    # Remove any angle brackets from an extracted system include directive
-    _line.gsub!(/</, '')
-    _line.gsub!(/>/, '')
-    
+    # Remove the quotation marks of a user include directive and the angle
+    # brackets of a system include directive. One `delete!` pass over the line
+    # rather than three regex substitutions -- this runs once per `#include`.
+    _line.delete!('"<>')
+
     # Whitespace cleanup
     _line.strip!
 

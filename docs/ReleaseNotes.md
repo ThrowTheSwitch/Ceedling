@@ -3,40 +3,408 @@
 These release notes are complemented by three other documents:
 
 1. 🪵 **[Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
-1. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
-1. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
+2. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
+3. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
 
 ---
 
-# 1.1.0 — July 2026
+# 1.2.0 — October 21, 2026
 
-## New features and improvements
+## 👀 Highlights
 
-1.1.0 adds several significant new features plus a number of bug fixes and other improvements. See [Changelog](Changelog.md) for a full list of new features, bug fixes, and improvements.
+1.2.0 restores delta builds, adds full handling of paths and same-named files, is faster than 1.1.0, and incorporates a large number of fixes and other improvements. See [Changelog](Changelog.md) for a full list of new features, bug fixes, and improvements.
+
+The incomplete list of goodies:
+
+* **Delta builds** are back. A build only regenerates, compiles, links, or reruns what changed files require. Delta builds are automatic and complement parallel builds for build time speedups.
+* Full support for **relative paths and same-named files**. `#include` directives, `TEST_SOURCE_FILE()`, test task names (e.g. `ceedling test:foo/file` vs. `ceedling test:bar/file`), and [Partials][partials-directory-docs-1.2.0] can all distinguish files and modules of the same name by path.
+* **Multiple file extensions per file type**, so `.c` and `.cc` sources, for instance, can be collected into one build.
+* **Shuffled test order** through Unity’s randomized test case ordering. When test shuffling is enabled, delta builds always rerun test executables so each run is shuffled.
+* `TEST_SOURCE_FILE()` can now **remove** a source file from a test executable, overriding Ceedling’s source file conventions where a project’s structure differs from the convention’s assumptions.
+* Plugins:
+   * The [Gcov plugin][gcov-plugin-1.2.0] adds raw `gcovr` arguments and `ReportGenerator` coverage thresholds.
+   * The [Valgrind][valgrind-plugin-1.2.0] and [Cppcheck][cppcheck-plugin-1.2.0] plugins have expanded features including failing a build on analysis findings.
+   * The new [Sanitize plugin][sanitize-plugin-1.2.0] builds and runs tests with ASan, UBSan, and LeakSanitizer, naming each finding where a test fails and writing text, JSON, and SARIF reports.
+   * The [Bullseye code coverage plugin][bullseye-plugin-1.2.0] is re-enabled and modernized (disabled since 1.0.0), adding branch coverage detail, XML reports, and a coverage threshold.
+* Performance improvements yield a 5–10% faster build even before delta builds speed up successive runs.
+* `ceedling.yml` is accepted as an alternate default project filename alongside `project.yml`.
+* `ceedling dumpconfig --stdout` writes the fully resolved project configuration to the console (useful for scripting and agentic tools).
+* Some 40+ fixes and refinements for robustness across test preprocessing, Partials, mocking, backtraces, mixins, filepath handling, and plugin reports.
+
+[partials-directory-docs-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/partials/directives/#naming-a-module-by-directory
+[bullseye-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/
+[sanitize-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/sanitize/
+[gcov-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/gcov/
+[valgrind-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/valgrind/
+[cppcheck-plugin-1.2.0]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/cppcheck/
+
+## 🔢 Ruby version support
+
+Ceedling 1.2.0 is known to work well across all versions of Ruby 3.0 – 3.4 on Linux, Windows, and macOS. Ruby 2.x support was removed with 1.0.0.
+
+Ceedling 1.2.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world.
+
+Ceedling 1.2.0 has had no Ruby 4.0 compatibility work, but users have reported success running Ceedling with Ruby 4.0.
+
+## 📖 Configuration Cheatsheet for 1.2.0 Changes
+
+The following is not a complete project configuration. But, for those already familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling through the lens of a project configuration. To be clear, more has changed than what is referenced in this YAML blurb (see the Changelog).
+
+```yaml
+:extension:
+  # Each file type now accepts a single extension or a list of extensions.
+  # Ceedling collects files under any extension in a list.
+  :source:
+    - .c
+    - .C
+    - .cc
+  :header: .h
+
+:unity:
+  # When TRUE, Unity's test runner shuffles the order of test cases within each test executable.
+  # Useful for surfacing tests that depend on execution order or on state left by an earlier test.
+  # Delta builds always rerun test executables when shuffling is enabled so each run is shuffled.
+  :shuffle_tests: FALSE
+
+:test_runner:
+  # Seed for :shuffle_tests. The default of 0 seeds from the current time for a new order
+  # on every run. A fixed, nonzero value repeats one shuffled order (e.g. for debugging).
+  :rng_seed: 0
+
+:plugins:
+  :enabled:
+    # (See config blurbs below)
+    - gcov
+    - bullseye
+    - valgrind
+    - sanitize
+    - cppcheck
+    - module_generator
+    - dependencies
+    - report_build_warnings_log
+    - report_tests_log_factory
+
+    # Enable only one console test report plugin
+    - report_tests_ide_stdout
+    # - report_tests_gtestlike_stdout
+
+:gcov:
+  # gcovr now also generates JaCoCo XML and LCOV reports (requires gcovr 7.0+).
+  # ReportGenerator continues to generate lcov as well.
+  :reports:
+    - JaCoCo
+    - lcov
+
+  :gcovr:
+    # Optional list of raw command line arguments passed to gcovr as-is (e.g. limiting
+    # its search paths). These are passed even when :config_file is set.
+    :custom_args: []
+
+    # Optional JaCoCo and LCOV report settings
+    :jacoco_pretty: FALSE
+    :jacoco_artifact_filename: GcovCoverageJaCoCo.xml
+    :lcov_comment: "Q-36 Space Modulator"
+    :lcov_test_name: unit_tests
+    :lcov_artifact_filename: GcovCoverage.lcov
+
+  :report_generator:
+    # Optional coverage thresholds (1–100) that break the build, mirroring the gcovr
+    # :fail_under_* options already available.
+    :fail_under_line: 80
+    :fail_under_branch: 70
+    :fail_under_method: 90
+    :fail_under_full_method: 75
+
+# The Bullseye code coverage plugin is enabled again (disabled since 1.0.0) and modernized.
+:bullseye:
+  # Coverage totals and per-source function coverage printed to the console after tests
+  :summaries: TRUE
+
+  # Untested sources are logged by default.
+  # - :list (default) logs sources missing from coverage results.
+  # - :ignore entirely omits any handling of untested sources.
+  # - :compile compiles all untested sources for 0% coverage entries.
+  :untested_sources: :list
+
+  # Optional annotated listing of branches: :none (default), :uncovered, or :all
+  :branch_detail: :none
+
+  # Optional machine-readable coverage report: :none (default), :native, or :cobertura
+  :xml_report: :none
+
+  # Optional coverage thresholds that break the build. 0 (default) disables each check.
+  :fail_under:
+    :functions: 0
+    :branches: 0
+
+  # Path to a floating-license manager file. Not needed for node-locked licenses.
+  :license_manager_file: ~
+
+:valgrind:
+  # When TRUE, writes a machine-readable XML report per test binary alongside the text log.
+  # With XML enabled, memory errors that are reported by the plugin or optionally cause
+  # a test build to break are counted from the XML rather than the text log (more reliable).
+  :xml_report: FALSE
+
+  # Valgrind suppression files, each passed as one --suppressions= argument ahead of
+  # any entries in :arguments.
+  :suppressions: []
+
+# New plugin: builds and runs tests with sanitizers in sanitize: builds of their own.
+# Its flags never reach another plugin's build, such as gcov: or valgrind:.
+:sanitize:
+  # Any of :address, :undefined, and :leak. ASan's runtime checks leaks too.
+  :sanitizers:
+    - :address
+    - :undefined
+
+  # Halt each test at its first finding (default), or keep running after each
+  :recover: FALSE
+
+  # Check for leaks at exit (Linux only; left off on macOS)
+  :detect_leaks: TRUE
+
+  # Also instrument ordinary test: builds
+  :test_builds: FALSE
+
+  # Fail the build on any finding
+  :fail_build: TRUE
+
+  # Any of :text, :json, and :sarif. None listed is the text report alone.
+  :reports:
+    - :sarif
+
+  # Optional extra runtime options for each sanitizer
+  :runtime_options:
+    :asan:
+      - strict_string_checks=1
+
+:cppcheck:
+  # When TRUE, findings matching :fail_build_severities fail the build.
+  # Enabling this implies the XML report, since findings are counted from its output.
+  :fail_build: FALSE
+
+  # Finding severities that fail the build when :fail_build is enabled.
+  # Valid values: error, warning, style, performance, portability, information.
+  :fail_build_severities:
+    - error
+
+  # The default XML report schema version is now 2, which every Cppcheck release accepts.
+  # Older Cppcheck releases reject version 3 and fail the build.
+  :xml_report_version: 2
+
+:module_generator:
+  # :naming now takes effect (bug fix). Without it, generated file names keep the case
+  # typed at the command line (it no longer defaults to :snake).
+  # Options: :bumpy, :camel, :snake, or :caps.
+  :naming: :snake
+
+  # Wrap each generated test file in #if rather than the default #ifdef.
+  # Options: :ifdef (default) or :if.
+  :test_guard: :if
+
+:dependencies:
+  :deps:
+    - :name: Packer
+      :paths:
+        :fetch: third_party/packer
+        :build: third_party/packer/build
+
+        # New optional folder where `dependencies:deploy` copies executables and
+        # dynamic libraries. Defaults to beside the release executable.
+        :deploy: tools/bin
+      :fetch:
+        :method: :git
+        :source: https://github.com/example/firmware-packer.git
+        :tag: v1.3.0
+      :build:
+        - make all BUILD=build
+      :artifacts:
+        # New list of programs a dependency builds as tools rather than libraries.
+        # They are built for a release, never linked, and copied by `dependencies:deploy`.
+        :executables:
+          - packer
+
+:report_build_warnings_log:
+  # Now a base name. Each report adds its own extension (e.g. warnings.log, warnings.sarif).
+  :filename: warnings
+
+  # Any of :text, :sarif, and :json. No listing is the original text log alone (default).
+  :reports:
+    - :text
+    - :sarif
+
+  # Optional regular expressions replacing the default match of any line mentioning "warning"
+  :patterns: []
+
+  # Optional regular expressions dropping matched warnings, along with their context
+  :excludes:
+    - 'third_party/'
+
+:report_tests_log_factory:
+  :reports:
+    - junit
+  :junit:
+    # Each JUnit <testcase> now carries classname, file, and line attributes.
+    # When TRUE, the file attribute is written as path#line for tools that follow that form.
+    :file_line_anchor: FALSE
+
+:report_tests_ide_stdout:
+  # Failed and ignored tests now print as GCC diagnostics by default, which IDEs read as problems.
+  # - :gcc (default) works with any tool that reads GCC output.
+  # - :legacy restores the lines printed before 1.2.0.
+  # - :vscode, :eclipse, and :clion are shortcuts for the :gcc settings each IDE needs.
+  :format: :gcc
+
+  # Optional full paths in place of project-relative paths. Unset, each format's own
+  # path form applies. :clion requires TRUE and automatically sets this value.
+  :absolute_paths: FALSE
+
+:report_tests_gtestlike_stdout:
+  # Unity ignored tests are now reported as GoogleTest skipped tests.
+  # Set FALSE to leave ignored tests out of the report.
+  :ignored_as_skipped: TRUE
+
+```
+
+## 📣 Shout-outs and Special Thank-You’s
+
+### Sponsors
+
+  - [ThingamaByte, LLC](https://thingamabyte.com) - For continuing to nurture these projects and community with so much of their time.
+
+### Major Code/Doc Contributors
+
+These individuals contributed significant features, bugfixes, and improvements.
+
+  - Michael Karlesky
+  - Mark VanderVoord
+
+### Also, thanks for your contributions!
+
+James Raphael Tiovalen, Kamil Sroka
+
+# 1.1.0 — July 16, 2026
+
+## 👀 Highlights
+
+1.1.0 adds several significant new features plus incorporates a number of bug fixes and other improvements. See [Changelog](Changelog.md) for a full list of new features, bug fixes, and improvements.
 
 The incomplete list of goodies:
 
 * A [Partial][partials-docs] allows a test to mix mocked and real functions from the same source module in a single test file and enables testing of `static` and `inline` functions without modifying source code.
-* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
+* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site] available both online and as a local bundle exported from Ceedling’s command line.
 * More and expanded [example projects][example-projects].
 * New stock plugins for [Valgrind memory checking][valgrind-plugin] and [Cppcheck static analysis][cppcheck-plugin].
 * The [GCov plugin][gcov-plugin]:
    * _Finally_ supports coverage reports for all sources.
    * Adds support for Modified Condition / Decision Coverage.
 * Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
+* Test preprocessing has undergone significant improvements (again) and is both more robust and handles more testing needs.
 * Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases (support was temporarily removed with 1.0.0).
+* Helpful logging at start up flagging automatic configuration changes or problematic combinations of settings.
+* Integrates latest [Unity](https://github.com/ThrowTheSwitch/Unity) ([2.7.0](https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityChangeLog.md)).
+* Integrates latest [CMock](https://github.com/ThrowTheSwitch/CMock) ([2.7.0](https://github.com/ThrowTheSwitch/CMock/blob/master/docs/CMockChangeLog.md)).
 
-[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
-[example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/
-[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
-[valgrind-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/
-[cppcheck-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/
-[gcov-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/
-[mixins-inline-yaml]: https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins/?h=mixins#-mixin-command-line-flags
+[partials-docs]: https://docs.throwtheswitch.org/Ceedling/1.1.0/testing-guide/partials/
+[example-projects]: https://docs.throwtheswitch.org/Ceedling/latest/getting-started/example-projects/
+[ceedling-docs-site]: https://docs.throwtheswitch.org/Ceedling/
+[valgrind-plugin]: https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/valgrind/
+[cppcheck-plugin]: https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/cppcheck/
+[gcov-plugin]: https://docs.throwtheswitch.org/Ceedling/1.1.0/plugins/gcov/
+[mixins-inline-yaml]: https://docs.throwtheswitch.org/Ceedling/latest/configuration/mixins/?h=mixins#-mixin-command-line-flags
 
-## Ruby version support
+## 🔢 Ruby version support
 
-Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4. Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5. To avoid Ruby version and installatione environment complications, [consider using the readymade MadScienceLab Docker images](https://throwtheswitch.github.io/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
+Ceedling 1.1.0 is known to work well across all versions of Ruby 3.0 – 3.4 on Linux, Windows, and macOS. Ruby 2.x support was removed with 1.0.0.
+
+Ceedling 1.1.0 also passes all internal tests for Ruby 3.5, but it has not yet been thoroughly exercised with Ruby 3.5 in the real world.
+
+To avoid Ruby version and installation environment complications, consider using [the readymade MadScienceLab Docker images](https://docs.throwtheswitch.org/Ceedling/1.1.0/getting-started/installation/#madsciencelab-docker-images).
+
+## 📖 Configuration Cheatsheet for 1.1.0 Changes
+
+The following is not a complete project configuration. But, for those already familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling through the lens of a project configuration. To be clear, more has changed than what is referenced in this YAML blurb (see the Changelog).
+
+```yaml
+:project:
+  # Optional field that when set with a non-blank string adds a banner with project name
+  # to build logging and to plugin report fields that make use of it.
+  :name: "Q-36 Space Modulator"
+
+  # When TRUE enables a significant new set of testing abilities (see Partials documentation).
+  # Because this feature depends on test preprocessing and uses mocking, it automatically
+  # enables those settings, overriding any user settings disabling them.
+  :use_partials: FALSE
+
+:test_build:
+  # This configuration option is primarily to enable internal prepocessing fallback handling
+  # measures when certain toolchain preprocessing features are unavailable.
+  # This option is unlikely to be needed in real-world use but in rare edge cases it could 
+  # ovverride a false positive when toolchain preprocessing features are probed.
+  :preprocess_force_fallback: FALSE
+
+:plugins:
+  :enabled:
+    # (See config blurb below)
+    - gcov
+
+    # New Valgrind plugin to run test suites with memory checking and reporting
+    - valgrind
+    
+    # New Cppcheck static analysis reporting plugin
+    - cppcheck
+
+:gcov:
+  # The Gcov plugin now supports Modified Condition / Decision Coverage reporting.
+  # These abilities require GCC 14+ and optionally GCovr 8.6+.
+  :mcdc: FALSE
+
+  # The Gcov plugin now offers options for processing coverage for all sources in the project.
+  # Untested sources can be optionally compiled with coverage for 0% coverage entries in the final report.
+  # - :warn (default) logs all untested sources that are not in a coverage report.
+  # - :ignore entirely omits any handling of untested sources.
+  # - :compile attempts to compile all untested sources for coverage tracking.
+  #   Note: Compilation may require additional defines, flags, and stand-in headers/symbols.
+  :untested_sources: :warn
+
+```
+
+## 📣 Shout-outs and Special Thank-You’s
+
+### Sponsors
+
+- [ThingamaByte, LLC](https://thingamabyte.com) — For continuing to nurture these projects and community with so much of their time.
+- [Infineon Technologies AG](https://www.infineon.com/) — For sponsoring the long-awaited [Partials][partials-doc] features.
+
+### Major Code/Doc Contributors
+
+These individuals contributed significant features, bugfixes, and improvements.
+
+- Michael Karlesky
+- Mark VanderVoord
+- Roland Stahn
+- Alejandro Rosso
+- Ross Smyth
+- burakutkuc
+- ml-physec
+- Cory Todd
+- Gavin Dunlap
+- Dariqq
+- James Browning
+- David Beitey
+- savashn
+- bal-stan
+- aditya
+- Marquez, Humberto
+
+### Also, thanks for your contributions!
+
+Artem Sharipov, Christer Fletcher, Costas Akrivoulis, Crt Mori, Dominik Loidolt, Ivan Kravets, Jacques Boivin, 
+James Raphael Tiovalen, Joshua Stone, Kiran Phalak, Lucas Saavedra Vaz, Matt Sullivan, Matthew Biddlestone, 
+Michael Dwan, Peter Backeman, Roland Marchand, pikammmmm, yahyayozo
+
+---
 
 # 1.0.1 - January 30, 2025
 
@@ -46,6 +414,8 @@ See [Changelog](Changelog.md) for a full list of bug fixes and improvements.
 
 The most significant issues addressed with this release are problems with preprocessor handling, particularly when discovering which header files are required for each test. If you were running into similar problems with `1.0.0`, we highly recommend this upgrade.
 
+---
+
 # 1.0.0 — January 01, 2025
 
 **This Ceedling release is probably the most significant since the project was first [posted to SourceForge in 2009][sourceforge].**
@@ -54,7 +424,7 @@ Ceedling now runs in Ruby 3. Builds can now run much faster than previous versio
 
 * See all the [Highlights](#-highlights) below for an overview of everything in this big release.
 * See the [Changelog](Changelog.md) for a detailed list of new features, fixes, and changes in this release.
-* We’ve included below a [project configuration cheatsheet](#-project-configuration-cheatsheet-for-100-changes) for those already familiar with Ceedling that want to understand the various configuration changes.
+* We’ve included below a [project configuration cheatsheet](#-configuration-cheatsheet-for-100-changes) for those already familiar with Ceedling that want to understand the various configuration changes.
 
 ## 🏴‍☠️ Avast, Breaking Changes, Ye Scallywags!
 
@@ -71,9 +441,9 @@ We'd like to make some quick shout-outs to some especially helpful contributions
 ### Sponsors of Ceedling 1.0.0
 
  - [ThingamaByte, LLC](https://thingamabyte.com) - For continuing to nurture these projects and community with so much of their time.
- - [Kamstrup, A/S](https://kamstrup.com) - For sponsoring and testing Ceedling's new parallel build/test support
- - [Fraunhofer Institute for Integrated Systems and Device Technology IISB](https://iisb.fraunhofer.de) - For also sponsoring and testing Ceedling's new parallel build/test support
- - [Peter Membrey](https://github.com/pmembrey) - For sponsoring, helping to plan, and validating Ceedling's new dependencies plugin
+ - [Kamstrup, A/S](https://kamstrup.com) - For sponsoring and testing Ceedling’s new parallel build/test support
+ - [Fraunhofer Institute for Integrated Systems and Device Technology IISB](https://iisb.fraunhofer.de) - For also sponsoring and testing Ceedling’s new parallel build/test support
+ - [Peter Membrey](https://github.com/pmembrey) - For sponsoring, helping to plan, and validating Ceedling’s new dependencies plugin
 
 ### Major Code/Doc Contributors 
 
@@ -116,7 +486,7 @@ Kalle Møller, Peter Kempter, Luca Cavalli, Maksim Chichikalov, Marcelo Jo, Matt
 Olivier C. Larocque, Patrick Little, Richard Eklycke, Serjche, Spencer Russell, Stavros Vagionitis, Steven Huang,
 Toby Mole, Tom Hotston, Yuanqing Liu, afacotti, ccarrizosa, diachini, Steven Willard
 
-## 📖 Project Configuration Cheatsheet for 1.0.0 Changes
+## 📖 Configuration Cheatsheet for 1.0.0 Changes
 
 The following is not a complete project configuration. But, for those already familiar with Ceedling, this cheatsheet illustrates some of the important changes in this latest release of Ceedling through the lens of a project configuration.
 
@@ -267,18 +637,18 @@ Ever wanted to smoosh in some extra configuration selectively? Let’s say you h
 All such features have been superseded by _Mixins_. Mixins are simply additional YAML that gets merged into you base project configuration. However, Mixins provide several key improvements over previous features:
 
 1. Mixins can be as little or as much configuration as you want. You could push all your configuration into mixins with a base project file including nothing but a `:mixins` section.
-1. Mixins can be specified in your project configuration, via environment variables, and from the command line. A clear order of precedence controls the order of merging. Any conflicts or duplicates are automatically resolved.
-1. Logging makes clear what proejct file and mixins are loaded and merged at startup.
-1. Like built-in plugins, Ceedling will soon come with built-in mixins available for common build scenarios.
+2. Mixins can be specified in your project configuration, via environment variables, and from the command line. A clear order of precedence controls the order of merging. Any conflicts or duplicates are automatically resolved.
+3. Logging makes clear what proejct file and mixins are loaded and merged at startup.
+4. Like built-in plugins, Ceedling will soon come with built-in mixins available for common build scenarios.
 
 #### A proper command line
 
 Until this release, Ceedling depended on Rake for most of its command line handling. Rake’s task conventions provide poor command line handling abilities. The core problems with Rake command line handling include:
 
 1. Only brief, limited help statements.
-1. No optional flags to modify a task — verbosity, logging, etc. were their own tasks.
-1. Complex/limited parameterization (e.g. `verbosity[3]` instead of `--verbosity normal`).
-1. Tasks are order-dependent. So, for example, `test:all verbosity[5]` changes verbosity after the tests are run.
+2. No optional flags to modify a task — verbosity, logging, etc. were their own tasks.
+3. Complex/limited parameterization (e.g. `verbosity[3]` instead of `--verbosity normal`).
+4. Tasks are order-dependent. So, for example, `test:all verbosity[5]` changes verbosity after the tests are run.
 
 Ceedling now offers a full command line interface with rich help, useful order-independent option flags, and more.
 
@@ -292,7 +662,7 @@ Try `ceedling help` and then `ceedling help <command>` to get started.
 * The `build` keyword is assumed by Ceedling. That is, it’s optional. `ceedling test:all` is the same as `ceedling build test:all`. The `build` keyword handling tells the Ceedling application to execute the named build task dynamically generated from your project configuration. 
 * In the transition to remove Rake from Ceedling, two categories of command line interactions now exist. Note this distinction in the `help` headings.
    1. **Application Commands** — `help`, `build`, `new`, `upgrade`, `environment`, `examples`, `example`, `dumpconfig`, and `version`. These have full help via `ceedling help <command>` and a variety of useful command line switches that conform to typical command line conventions.
-   1. **Build & Plugin Tasks** — Operations dynamically generated from your project configuration. These have only summary help (listed in `ceedling help`) and work just as they previously did. Common command line tasks including `ceedling test:all` and `ceedling release` are in this category.
+   2. **Build & Plugin Tasks** — Operations dynamically generated from your project configuration. These have only summary help (listed in `ceedling help`) and work just as they previously did. Common command line tasks including `ceedling test:all` and `ceedling release` are in this category.
 
 ### Medium Deal Highlights 🥈
 

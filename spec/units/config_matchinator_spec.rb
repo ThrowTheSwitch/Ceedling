@@ -396,6 +396,109 @@ describe ConfigMatchinator do
       end
     end
 
+    context 'no_match_default' do
+      it 'returns the accumulated (empty) result when nothing matches and no fallback is given' do
+        hash = { :Model => ['HIT'] }
+        result = @cm.matches?(hash: hash, filepath: 'test_Unrelated', section: :defines, context: :test)
+        expect(result).to eq([])
+      end
+
+      it 'returns no_match_default when nothing matches and a fallback is given' do
+        hash = { :Model => ['HIT'] }
+        result = @cm.matches?(
+          hash: hash, filepath: 'test_Unrelated', section: :defines, context: :test, no_match_default: ['FALLBACK']
+        )
+        expect(result).to eq(['FALLBACK'])
+      end
+
+      it 'ignores no_match_default when something does match' do
+        hash = { :* => ['ALWAYS'] }
+        result = @cm.matches?(
+          hash: hash, filepath: 'test_Anything', section: :defines, context: :test, no_match_default: ['FALLBACK']
+        )
+        expect(result).to eq(['ALWAYS'])
+      end
+
+      it 'logs a notice at OBNOXIOUS verbosity when falling back to no_match_default' do
+        hash = { :Model => ['HIT'] }
+        expect(@loginator).to receive(:lazy).with(Verbosity::OBNOXIOUS)
+
+        @cm.matches?(
+          hash: hash, filepath: 'test_Unrelated', section: :defines, context: :test, no_match_default: ['FALLBACK']
+        )
+      end
+    end
+
+    # -------------------------------------------------------------------------
+    # Exclusion by negative lookahead
+    # -------------------------------------------------------------------------
+    # Matchers only ever add (`_values += values` in #matches?), so there is no
+    # way to say "every test executable except these." The only way to express
+    # an exclusion is a regex that fails to match what should be left alone.
+    #
+    # Ceedling's own CI relies on this to instrument the system test suite with
+    # ASan+UBSan while leaving the deliberately-crashing `nosanitize` fixtures
+    # un-instrumented -- see spec/support/system/sanitizers/. These examples
+    # pin the two properties that scheme depends on, both of which fail
+    # silently rather than loudly if they ever stop holding: the key is treated
+    # as a regex (a demotion to substring matching would match nothing, and
+    # instrument nothing), and the lookahead is anchored.
+    # -------------------------------------------------------------------------
+    context 'exclusion by negative lookahead' do
+      # The matcher Ceedling's sanitizer mixins use, verbatim
+      let(:exclusion_hash) { { :'/\A(?!.*nosanitize).*\z/' => ['INSTRUMENTED'] } }
+
+      it 'is recognized as a regex rather than demoted to a substring match' do
+        # A substring match against this key would never hit any real filepath,
+        # so a non-empty result is itself the proof the regex form was taken
+        result = @cm.matches?(
+          hash: exclusion_hash, filepath: 'test/test_example_file.c', section: :flags, context: :test
+        )
+        expect(result).to eq(['INSTRUMENTED'])
+      end
+
+      it 'matches ordinary test filepaths' do
+        [
+          'test/test_example_file.c',
+          'test/test_example_file_with_mock.c',
+          'build/test/runners/test_example_file_runner.c',
+          'test_nosanitary_name.c'
+        ].each do |filepath|
+          expect(
+            @cm.matches?(hash: exclusion_hash, filepath: filepath, section: :flags, context: :test)
+          ).to eq(['INSTRUMENTED']), "expected #{filepath} to be instrumented"
+        end
+      end
+
+      it 'excludes every filepath carrying the marker' do
+        [
+          'test/test_nosanitize_crash_sigsegv.c',
+          'test/test_nosanitize_crash_sigsegv_with_param.c',
+          'test/test_nosanitize_crash_assert.c',
+          'test/test_nosanitize_ub_shift_overflow.c',
+          'test/test_nosanitize_boom.c',
+          'build/test/runners/test_nosanitize_crash_assert_runner.c'
+        ].each do |filepath|
+          expect(
+            @cm.matches?(hash: exclusion_hash, filepath: filepath, section: :flags, context: :test)
+          ).to eq([]), "expected #{filepath} to be excluded"
+        end
+      end
+
+      it 'requires \A anchoring -- an unanchored lookahead excludes nothing' do
+        # Regexp#match scans forward for any position where the pattern can
+        # succeed. Past the marker, the lookahead is satisfied, so an
+        # unanchored pattern matches the very files it means to skip. This
+        # example exists to keep that trap documented and caught.
+        unanchored = { :'/(?!.*nosanitize).*\z/' => ['INSTRUMENTED'] }
+        expect(
+          @cm.matches?(
+            hash: unanchored, filepath: 'test/test_nosanitize_crash_sigsegv.c', section: :flags, context: :test
+          )
+        ).to eq(['INSTRUMENTED'])
+      end
+    end
+
   end # #matches?
 
 end

@@ -18,6 +18,15 @@ describe FilePathCollectionUtils do
   # converts them back to the expected relative form without any filesystem access.
   before(:each) do
     @file_wrapper = double('file_wrapper')
+    # #104 -- real (not stubbed-away) behavior: builds a FileList via `<<`, never
+    # `.new`/`.include`, so a literal `[`/`]` survivor in an already-concrete path
+    # is never mistaken for glob syntax and silently dropped. revise_filelist's own
+    # final FileList construction goes through this.
+    allow(@file_wrapper).to receive(:instantiate_file_list_literal) do |files|
+      list = Rake::FileList.new
+      files.each { |file| list << file }
+      list
+    end
     @fpcu = described_class.new({ file_wrapper: @file_wrapper })
   end
 

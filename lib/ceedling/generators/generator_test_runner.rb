@@ -6,6 +6,8 @@
 # =========================================================================
 
 require 'generate_test_runner' # Unity's test runner generator
+require 'ceedling/parsing_parcels'
+require 'ceedling/includes/includes'
 
 class GeneratorTestRunner
 
@@ -16,9 +18,10 @@ class GeneratorTestRunner
   # It is instantiated on demand for each test file processed in a build.
   #
 
-  def initialize(config:, test_file_contents:, preprocessed_file_contents: nil)
+  def initialize(config:, test_file_contents:, preprocessed_file_contents: nil, parsing_parcels:)
     @unity_runner_generator = UnityTestRunnerGenerator.new( config )
-    
+    @parsing_parcels = parsing_parcels
+
     # Reduced information set
     @test_cases = []
 
@@ -36,7 +39,30 @@ class GeneratorTestRunner
       @test_cases_internal,
       # Small hack for mock subdirectory support until include paths fully supported
       mocks.map{ |include| include.filepath },
-      includes.map{ |include| include.filename }
+      # Unity's own generator emits a string verbatim if it contains '<' and otherwise
+      # wraps it in double quotes -- each entry here must therefore already be in its
+      # final, exact form.
+      #
+      # System includes only: use the full, bracketed spelling (include_path, a
+      # reconciled SystemInclude's original as-written directive text -- e.g.
+      # "sys/stat.h" -- when set, else the directory-preserving filepath). A bare
+      # filename here drops both the directory component and the '<>' delimiters a
+      # system header's own search path depends on (issue #1236).
+      #
+      # User includes: bare filename, same as always. Unlike mocks (whose subdirectory
+      # is a real, dedicated build/test/mocks/<test>/ path -- hence their own
+      # directory-preserving filepath usage above) or a system header (whose directory
+      # is meaningful to the system include search path), a project's own directories
+      # are exposed to the compiler as a flat list of -I search paths, not nested to
+      # match whatever directory component a captured UserInclude's filepath happens to
+      # carry -- rendering the full path here breaks resolution instead of fixing it.
+      includes.map do |include|
+        if include.is_a?(SystemInclude)
+          "<#{include.include_path || include.filepath}>"
+        else
+          include.filename
+        end
+      end
     )
   end
 
@@ -47,39 +73,71 @@ class GeneratorTestRunner
   def parse_test_file(test_file_contents, preprocessed_file_contents)
     # If there's a preprocessed file, align test case line numbers with original file contents
     if (!preprocessed_file_contents.nil?)
-      # Save the test case structure to be used in generation
-      @test_cases_internal = @unity_runner_generator.find_tests( preprocessed_file_contents )
-      
-      # Configure the runner generator around `setUp()` and `tearDown()`
-      @unity_runner_generator.find_setup_and_teardown( preprocessed_file_contents )
+      @test_cases_internal = extract_test_cases( preprocessed_file_contents )
 
       # Modify line numbers to match the original, non-preprocessed file
-      source_lines = test_file_contents.split("\n")
-      source_index = 0;
-      @test_cases_internal.size.times do |i|
-        source_lines[source_index..-1].each_with_index do |line, index|
-          if (line =~ /#{@test_cases_internal[i][:test]}/)
-            source_index += index
-            @test_cases_internal[i][:line_number] = source_index + 1
-            break
-          end
-        end
-      end
+      remap_line_numbers!( @test_cases_internal, test_file_contents )
 
     # Just look for the test cases within the original test file
     else
-      # Save the test case structure to be used in generation
-      @test_cases_internal = @unity_runner_generator.find_tests( test_file_contents )
-
-      # Configure the runner generator around `setUp()` and `tearDown()`
-      @unity_runner_generator.find_setup_and_teardown( test_file_contents )
+      @test_cases_internal = extract_test_cases( test_file_contents )
     end
 
-    # Unity's `find_tests()` produces an array of hashes with the following keys...
+    # Unity's runner generator `find_tests()` produces an array of hashes with the following keys...
     # { test:, args:, call:, params:, line_number: }
 
-    # For external use of test case names and line numbers, keep only those pieces of info
-    @test_cases = @test_cases_internal.map {|hash| hash.slice( :test, :line_number )}
+    # For external use, reduce down to test name, runtime C symbol, and line number.
+    # A parameterized test (`:args` populated) is expanded into one entry per TEST_CASE /
+    # TEST_RANGE / TEST_MATRIX row, since Unity's generated runner registers each invocation
+    # under its own name (matching `generate_test_runner.rb`'s `"#{test}(#{args})"` naming) and
+    # runs it through its own wrapper function (`runner_args<N>_<test>`). Collapsing these to a
+    # single bare-name entry breaks exact-match test case isolation (crash handling) for
+    # parameterized tests.
+    @test_cases = @test_cases_internal.flat_map do |hash|
+      if hash[:args].nil? || hash[:args].empty?
+        [ { test: hash[:test], symbol: hash[:test], line_number: hash[:line_number] } ]
+      else
+        hash[:args].each_with_index.map do |args, idx|
+          {
+            test:        "#{hash[:test]}(#{args})",
+            symbol:      "runner_args#{idx + 1}_#{hash[:test]}",
+            line_number: hash[:line_number]
+          }
+        end
+      end
+    end
+  end
+
+  def extract_test_cases(source_contents)
+    # Save the test case structure to be used in generation
+    test_cases = @unity_runner_generator.find_tests( source_contents )
+
+    # Configure the runner generator around `setUp()` and `tearDown()`
+    @unity_runner_generator.find_setup_and_teardown( source_contents )
+
+    return test_cases
+  end
+
+  def remap_line_numbers!(test_cases, original_file_contents)
+    remaining = test_cases.dup
+
+    # Use `ParsingParcels` to walk the original, non-preprocessed source line by line.
+    # This sanitizes encoding oddities (rather than raising mid-match, unpredictably by
+    # platform default encoding) and strips comments (rather than false-matching a test
+    # name that merely appears inside a comment).
+    @parsing_parcels.code_lines_with_num( original_file_contents ) do |line, line_num|
+      break if remaining.empty?
+
+      next_case = remaining.first
+      # Escaped (a raw test name can contain regex metacharacters) and \b-anchored on both
+      # sides so an unrelated line that merely contains this test's name as a substring --
+      # e.g. a helper function like `reset_test_ab_state()` sitting before `test_ab` itself
+      # -- can't steal its line number and cascade misalignment to every case after it.
+      if (line =~ /\b#{Regexp.escape(next_case[:test])}\b/)
+        next_case[:line_number] = line_num
+        remaining.shift
+      end
+    end
   end
 
 end

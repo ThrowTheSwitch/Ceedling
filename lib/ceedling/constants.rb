@@ -41,6 +41,7 @@ class LogLabels
   DOCUMENTATION = 12  # decorator only
   COMMERCIAL    = 13  # decorator only
   REQUEST       = 14  # decorator only
+  BUILT         = 15  # decorator only
 
   # Verbosity levels ERRORS – DEBUG default to certain labels or lack thereof
   # The above label constants are available to override Loginator's default AUTO level as needed
@@ -75,12 +76,34 @@ EXTENSION_NONWIN_EXE  = '.out'
 EXTENSION_CORE_HEADER = '.h'
 EXTENSION_CORE_SOURCE = '.c'
 
+# Ceedling's own internal cache files are always .yml, independent of a project's
+# configurable :extension ↳ :yaml setting (which governs files a project author
+# might actually want to name differently, not Ceedling's own bookkeeping).
+EXTENSION_CORE_YAML = '.yml'
+
 CEEDLING_HEADER_FILENAME = 'ceedling.h'
 CEEDLING_HEADER_FILEPATH = CEEDLING_HEADER_FILENAME # lib/ceedling/
 PARTIAL_FILENAME_PREFIX  = 'ceedling_partial_'
+# One suffix per kind of file generated for a Partialized module. The builders that append
+# these and the reverse that strips one share this single definition, so neither can drift
+# from the other. No suffix is a suffix of another, so a generated name ends in exactly one.
+PARTIAL_SUFFIX_INTERFACE = '_interface'
+PARTIAL_SUFFIX_TYPES     = '_types'
+PARTIAL_SUFFIX_IMPL      = '_impl'
+PARTIAL_FILENAME_SUFFIXES = [
+  PARTIAL_SUFFIX_INTERFACE,
+  PARTIAL_SUFFIX_TYPES,
+  PARTIAL_SUFFIX_IMPL
+].freeze
 
 class PATTERNS
-  GLOB = /[\*\?\{\}\[\]]/
+  # #104 -- `[`/`]` deliberately excluded: they're legal filename characters
+  # (common on Windows especially) but never a documented Ceedling glob feature
+  # (unlike `*`/`?`/`{`/`}`, Ceedling's own real wildcard syntax) -- including them
+  # here meant a literal bracket in a real directory name was silently treated as
+  # "where the glob starts," truncating path validation to the wrong ancestor
+  # directory. See FilePathUtils.no_decorators, this regex's one consumer.
+  GLOB = /[\*\?\{\}]/
 
   RUBY_STRING_REPLACEMENT = /#\{.+\}/
   TOOL_EXECUTOR_ARGUMENT_REPLACEMENT = /(\$\{(\d+)\})/
@@ -115,14 +138,24 @@ MIXIN_SIGIL_INLINE_YAML = '='
 MIXIN_SIGIL_FILEPATH    = '@'
 
 DEFAULT_PROJECT_FILENAME = 'project.yml'
+# #1250 -- self-documenting alternative to the generic DEFAULT_PROJECT_FILENAME, tried
+# during default discovery only (Projectinator#load) when no --project/-p or
+# CEEDLING_PROJECT_FILE was given. Neither name is "preferred" over the other -- either
+# alone is used as found; both present is an error (see Projectinator#load).
+ALTERNATE_PROJECT_FILENAME = 'ceedling.yml'
 DEFAULT_BUILD_LOGS_PATH = 'logs'
 
 DOCS_SITE_LOCAL_PATH = 'site-local'
 
 GENERATED_DIR_PATH = [['vendor', 'ceedling'], 'src', "test", ['test', 'support'], 'build'].each{|p| File.join(*p)}
 
-# String used in generated include guards
-CEEDLING_GENERATED = 'CEEDLING_GENERATED'
+# Generated include guards take the form GEN<hash>_<STEM>_H_CEEDLING (see
+# FileWrapper.generate_include_guard). The pattern recognizes one wherever it appears in a
+# line of text by its fixed head and tail, each at an identifier boundary.
+GENERATED_INCLUDE_GUARD_PREFIX      = 'GEN'
+GENERATED_INCLUDE_GUARD_SUFFIX      = '_CEEDLING'
+GENERATED_INCLUDE_GUARD_HASH_LENGTH = 8
+GENERATED_INCLUDE_GUARD_PATTERN     = /\b#{GENERATED_INCLUDE_GUARD_PREFIX}[0-9A-F]{#{GENERATED_INCLUDE_GUARD_HASH_LENGTH}}_\w+#{GENERATED_INCLUDE_GUARD_SUFFIX}\b/
 
 PREPROCESS_SYM = :preprocess
 
@@ -166,6 +199,13 @@ UTILS_ROOT_NAME   = 'utils'                unless defined?(UTILS_ROOT_NAME)
 UTILS_TASK_ROOT   = UTILS_ROOT_NAME + ':'  unless defined?(UTILS_TASK_ROOT)
 UTILS_SYM         = UTILS_ROOT_NAME.to_sym unless defined?(UTILS_SYM)
 
+GEN_ROOT_NAME = 'gen'                unless defined?(GEN_ROOT_NAME)
+GEN_TASK_ROOT = GEN_ROOT_NAME + ':'  unless defined?(GEN_TASK_ROOT)
+GEN_SYM       = GEN_ROOT_NAME.to_sym unless defined?(GEN_SYM)
+
+GENERATE_MOCKS_TASK_ROOT       = GEN_TASK_ROOT + 'mocks:'       unless defined?(GENERATE_MOCKS_TASK_ROOT)
+GENERATE_TEST_RUNNER_TASK_ROOT = GEN_TASK_ROOT + 'test_runner:' unless defined?(GENERATE_TEST_RUNNER_TASK_ROOT)
+
 OPERATION_PREPROCESS_SYM  = :preprocess unless defined?(OPERATION_PREPROCESS_SYM)
 OPERATION_COMPILE_SYM     = :compile    unless defined?(OPERATION_COMPILE_SYM)
 OPERATION_ASSEMBLE_SYM    = :assemble   unless defined?(OPERATION_ASSEMBLE_SYM)
@@ -175,6 +215,7 @@ PREPROCESS_STANDINS_DIR  = 'standins'
 PREPROCESS_FULL_EXPANSION_DIR  = 'full_expansion'
 PREPROCESS_DIRECTIVES_ONLY_DIR = 'directives_only'
 PREPROCESS_RAW_DIRECTIVES_ONLY_DIR = 'directives_only/raw'
+PREPROCESS_FALLBACK_EXPANSION_DIR = 'fallback_expansion'
 
 BUILD_OUT_DIR          = 'out'
 BUILD_RESULTS_DIR      = 'results'
@@ -196,6 +237,19 @@ UNITY_TEST_RESULTS_TEMPLATE = <<~UNITY_TEST_RESULTS
   %{result}
 UNITY_TEST_RESULTS
 
+# Names Windows' Installer Detection treats as an installer's, requiring administrator rights
+WINDOWS_INSTALLER_KEYWORDS = /install|setup|update|patch/i
 
-
-
+# Requests the invoker's own rights, which turns Installer Detection off for a test executable
+TEST_EXECUTABLE_MANIFEST = <<~XML.freeze
+  <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+    <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+      <security>
+        <requestedPrivileges>
+          <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+        </requestedPrivileges>
+      </security>
+    </trustInfo>
+  </assembly>
+XML

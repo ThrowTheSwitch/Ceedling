@@ -9,16 +9,74 @@ require 'rubygems'
 require 'rake' # for FileList
 require 'fileutils'
 require 'pathname'
+require 'tmpdir'
+# Generated include guards are built inside parallel worker threads. Loading SHA-256 here,
+# once and single-threaded, settles the class before any thread first reaches for it,
+# which Digest's lazy autoload does not survive under contention.
+require 'digest/sha2'
 require 'ceedling/constants'
+require 'ceedling/system_wrapper'
+require 'ceedling/exceptions'
 
 
 class FileWrapper
 
+  constructor :loginator, :verbosinator
+
+  # Platform practical filepath length ceilings, used only as a diagnostic heuristic --
+  # neither Ruby nor the host OS exposes a portable, runtime-queryable API for this.
+  # POSIX pathconf(2) is the real mechanism (PATH_MAX can vary by filesystem/mount
+  # point, so it's a per-path query, not a system-wide sysconf() value), but Ruby's Etc
+  # module defines the PC_PATH_MAX/PC_NAME_MAX pathconf constants without exposing a
+  # pathconf method to use them. Windows has no Ruby-accessible equivalent at all
+  # without an FFI dependency. These are the stable, documented OS/libc defaults
+  # instead: Windows' legacy MAX_PATH, and macOS/Linux's PATH_MAX from their own libc
+  # headers (a project can opt into longer paths on some platforms, but that's not
+  # safely assumable here, so these stay conservative).
+  PATH_LENGTH_LIMITS = {
+    windows: 260,
+    macos:   1024,
+    linux:   4096,
+  }.freeze unless const_defined?(:PATH_LENGTH_LIMITS, false)
+
+  # The leading, uniquely identifying portion of a generated include guard: the first eight
+  # hex digits of the SHA-256 digest of `name`, uppercased. Backslashes count as forward
+  # slashes, so a header receives the same hash on every platform. The hash comes from the
+  # name as given, before any folding, so names differing only in case or punctuation
+  # still differ here.
+  def self.include_guard_hash(name)
+    digest = Digest::SHA256.hexdigest( name.tr('\\', '/') )
+
+    return digest[0, GENERATED_INCLUDE_GUARD_HASH_LENGTH].upcase
+  end
+
+  # drivers/uart/config.h --> GEN2B4E27AE_DRIVERS_UART_CONFIG_H_CEEDLING
+  #
+  # A guard carries its distinguishing hash within its first eleven characters. C90
+  # guarantees only 31 significant characters in a macro name and C99 only 63, and MISRA
+  # C:2012 Rule 5.4 asks macro names to differ within those limits; guards for different
+  # names differ inside any of them, barring a collision of the eight-digit hash.
+  #
+  # The guard opens with the letter G. A hash alone could open with a digit, which no
+  # identifier may, or with E and a digit or uppercase letter, a form C reserves for
+  # <errno.h>. No reserved C or POSIX prefix opens with GEN (POSIX's GLOB_ and gl_ are
+  # the nearest), and GEN says what the guard belongs to. Neither does any guard begin with
+  # an underscore, a form C reserves with an uppercase letter or second underscore
+  # following (C99 7.1.3).
+  #
+  # The readable stem folds in whatever path `name` carries, each run of non-word
+  # characters and underscores becoming one underscore. Underscores stay single, since C++
+  # reserves any identifier holding a double underscore, and a name contributing nothing
+  # drops out of the join.
+  # The trailing _CEEDLING lets Ceedling recognize its own guards by a pattern anchored
+  # at both ends (GENERATED_INCLUDE_GUARD_PATTERN).
   def self.generate_include_guard(name)
-    # abc-XYZ.h --> _ABC_XYZ_H_
-    base = File.basename(name, '.*') # Remove any extension
-    guard = '__' + CEEDLING_GENERATED + '_' + base.gsub(/\W/, '_').upcase + '_H__'
-    return guard
+    base = name.sub(/\.[^.\/\\]*\z/, '') # Remove any extension, keeping any path
+    base = base.gsub(/\W/, '_').squeeze('_').delete_prefix('_').delete_suffix('_')
+
+    head = GENERATED_INCLUDE_GUARD_PREFIX + include_guard_hash( name )
+
+    return [head, base.upcase, 'H'].reject(&:empty?).join('_') + GENERATED_INCLUDE_GUARD_SUFFIX
   end
 
   def get_expanded_path(path)
@@ -54,8 +112,21 @@ class FileWrapper
 
   def directory_listing(glob)
     # Note: `sort()` to ensure platform-independent directory listings (Github Issue #860)
-    # FNM_PATHNAME => Case insensitive globs
+    # FNM_PATHNAME keeps a wildcard from matching across path separators. Globs here are
+    # case sensitive wherever the filesystem is, which rules this out for matching a name
+    # whose capitalization varies -- see `directory_entries()`.
     return Dir.glob(glob, File::FNM_PATHNAME).sort()
+  end
+
+  # Entry names within a single directory, `.` and `..` excluded.
+  #
+  # Complements `directory_listing()` for the case a glob cannot serve: matching a
+  # filename whose capitalization is unknown. A caller can apply a case insensitive
+  # pattern to these names, which a glob cannot do portably. `File::FNM_CASEFOLD` has
+  # no effect in `Dir.glob`.
+  def directory_entries(path)
+    # Note: `sort()` for the same platform-independence reason as above
+    return Dir.children(path).sort()
   end
 
   def rm_f(filepath, options={})
@@ -63,14 +134,15 @@ class FileWrapper
   end
 
   def rm_r(filepath, options={})
-    FileUtils.rm_r(filepath, **options={})
+    FileUtils.rm_r(filepath, **options)
   end
 
   def rm_rf(path, options={})
-    FileUtils.rm_rf(path, **options={})
+    FileUtils.rm_rf(path, **options)
   end
 
   def cp(source, destination, options={})
+    check_path_length(destination, origin: 'FileWrapper#cp')
     FileUtils.cp(source, destination, **options)
   end
 
@@ -80,6 +152,11 @@ class FileWrapper
 
   def mv(source, destination, options={})
     FileUtils.mv(source, destination, **options)
+  end
+
+  # Recursive so a directory argument applies the mode to its whole tree.
+  def chmod(path, mode, options={})
+    FileUtils.chmod_R(mode, path, **options)
   end
 
   def compare(from, to)
@@ -95,8 +172,99 @@ class FileWrapper
   end
 
   def open(filepath, flags)
+    # Only writing/creating/appending can run into a platform's filepath length ceiling --
+    # a read-mode open is against a path that (if it exists) already fit on disk.
+    check_path_length(filepath, origin: 'FileWrapper#open') if flags.to_s.match?(/[wa+]/)
     File.open(filepath, flags) do |file|
       yield(file)
+    end
+  end
+
+  # A handful of scheduled backoff delays (seconds) shared by #open_with_retry and
+  # #exist_with_retry? below -- both exist for the same reason: a shell-out that has
+  # already exited 0 doesn't guarantee the file it just wrote is visible to the very
+  # next read/exist? check (a transient AV/EDR share-lock or cloud-sync filter driver
+  # holding the file a beat longer than the process itself did, chiefly on Windows).
+  # Four retries, capped a little under half a second total, is enough to ride out that
+  # kind of transient delay without masking a real, permanent failure for long.
+  TRANSIENT_IO_RETRY_DELAYS = [0.02, 0.05, 0.1, 0.2].freeze unless const_defined?(:TRANSIENT_IO_RETRY_DELAYS, false)
+
+  # As #open, but retries the whole open-and-yield on a transient OS-level error
+  # (Errno::EACCES, Errno::ENOENT, ...) instead of surfacing it on the first attempt --
+  # the direct fix for a file a shell-out just wrote not yet being visible to the very
+  # next read. Deliberately scoped to SystemCallError, not StandardError: a programming
+  # bug elsewhere in the block (a parse error, a bad argument) must never be silently
+  # retried or masked, only a genuine OS-level access error. A failure that never
+  # clears still surfaces just as loudly as a bare #open would -- as a CeedlingException
+  # naming the file and how many attempts were made, not a bare, unhelpful SystemCallError.
+  def open_with_retry(filepath, flags)
+    attempts_remaining = TRANSIENT_IO_RETRY_DELAYS.dup
+    begin
+      # This calls FileWrapper#open above, not Kernel#open, so it is neither the
+      # security risk RuboCop reads it as nor safe to rewrite as File.open. Going
+      # direct would skip this class's own path-length check and, more importantly,
+      # bypass the one seam the transient-I/O retry specs inject faults through --
+      # which is how a previous attempt at "fixing" this cop was caught.
+      open(filepath, flags) { |file| yield(file) } # rubocop:disable Security/Open
+    rescue SystemCallError => e
+      if attempts_remaining.empty?
+        msg = "Failed to open '#{filepath}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}"
+        @loginator.log(msg, Verbosity::ERRORS)
+        raise CeedlingException, msg
+      end
+      delay = attempts_remaining.shift
+      @loginator.log("Retrying read of '#{filepath}' after a transient error: #{e.message}", Verbosity::DEBUG)
+      sleep(delay)
+      retry
+    end
+  end
+
+  # As #exist?, but a false result is retried a few times before being trusted -- the
+  # same transient-visibility race #open_with_retry guards against, for the many call
+  # sites that gate on presence (`exist?(path) ? register... : skip`) rather than
+  # opening the file directly. Returns true the moment any attempt sees the file. If
+  # every attempt still misses, logs a NOTICE naming the file and how long it waited
+  # before handing callers the same `false` a bare #exist? would -- so a genuine,
+  # permanent absence is at least visible in the log, not silently indistinguishable
+  # from a file that was only ever checked once.
+  def exist_with_retry?(filepath)
+    return true if exist?(filepath)
+    TRANSIENT_IO_RETRY_DELAYS.each do |delay|
+      sleep(delay)
+      return true if exist?(filepath)
+    end
+    waited = TRANSIENT_IO_RETRY_DELAYS.sum
+    @loginator.log("'#{filepath}' still not present after waiting #{waited}s across #{TRANSIENT_IO_RETRY_DELAYS.size} retries", Verbosity::NORMAL)
+    false
+  end
+
+  # As #cp_r, but retries the whole copy on a transient OS-level error instead of
+  # surfacing it on the first attempt -- the same transient-visibility race
+  # #open_with_retry guards against, here hitting FileUtils.cp_r's own internal
+  # stat-then-open sequence on either the source or destination tree. A source/dest
+  # entry briefly reporting the wrong type (a directory where a file was just stat'd,
+  # or vice versa) mid-copy raises Errno::ENOTDIR/EISDIR from deep inside cp_r; a
+  # retry a moment later re-walks the tree fresh rather than trusting stale type info
+  # from the failed attempt. A failure that never clears still surfaces as a
+  # CeedlingException naming the destination and how many attempts were made, not a
+  # bare, unhelpful Errno.
+  def cp_r_with_retry(source, destination, options={})
+    attempts_remaining = TRANSIENT_IO_RETRY_DELAYS.dup
+    begin
+      cp_r(source, destination, options)
+    rescue SystemCallError => e
+      if attempts_remaining.empty?
+        msg = "Failed to copy into '#{destination}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}\n" \
+              "This path may be corrupted (a file exists where Ceedling expects a directory, or vice versa). " \
+              "Try deleting this project's build/ directory and rebuilding -- or, if the error names a path " \
+              "under your Ruby gem install, reinstall the ceedling gem."
+        @loginator.log(msg, Verbosity::ERRORS)
+        raise CeedlingException, msg
+      end
+      delay = attempts_remaining.shift
+      @loginator.log("Retrying copy into '#{destination}' after a transient error: #{e.message}", Verbosity::DEBUG)
+      sleep(delay)
+      retry
     end
   end
 
@@ -104,17 +272,29 @@ class FileWrapper
     return File.read(filepath, length)
   end
 
+  # Reads raw bytes with no text-mode translation. `File.read`'s default text
+  # mode silently converts CRLF to LF on Windows but not on Unix-like
+  # platforms, so the same on-disk bytes can read back differently depending
+  # on the host OS. Callers needing a deterministic, platform-independent view
+  # of a file's actual bytes -- content hashing chief among them -- use this
+  # instead.
+  def read_binary(filepath)
+    return File.binread(filepath)
+  end
+
   def touch(filepath, options={})
     FileUtils.touch(filepath, **options)
   end
 
   def write_blank_file(filepath)
+    check_path_length(filepath, origin: 'FileWrapper#write_blank_file')
     File.open(filepath, 'w') do |file|
       file.write("// Ceedling intentionally blank file\n\n")
     end
   end
 
   def write(filepath, contents, flags='w')
+    check_path_length(filepath, origin: 'FileWrapper#write')
     File.open(filepath, flags) do |file|
       file.write(contents)
     end
@@ -128,8 +308,73 @@ class FileWrapper
     return FileList.new(files)
   end
 
+  # #104 -- `FileList.new(files)` (and `FileList#include`) treats every string in `files`
+  # as a glob *pattern* to (re-)resolve against the real filesystem via Dir.glob, even
+  # when the caller already has a fully concrete, computed filepath in hand -- so a
+  # literal `[`/`]` surviving in one is silently dropped by that re-resolution, and a
+  # not-yet-existing path (e.g. an object file this same build is about to create) is
+  # dropped outright regardless of brackets, since Dir.glob only ever matches files that
+  # already exist. `<<` (unlike `.new`/`.include`) adds an entry to a FileList literally,
+  # with no glob interpretation at all -- the right tool whenever every entry is already
+  # exactly the real path wanted, existing or not. Only use this for that case; callers
+  # that actually want pattern matching (a directory to search, a real user-authored
+  # glob) still want `instantiate_file_list` + `.include`, same as always.
+  def instantiate_file_list_literal(files=[])
+    list = FileList.new
+    files.each { |file| list << file }
+    return list
+  end
+
   def mkdir(folder)
+    check_path_length(folder, origin: 'FileWrapper#mkdir')
     return FileUtils.mkdir_p(folder)
+  end
+
+  # Creates a uniquely-named, empty directory nested inside `parent` and returns its path.
+  # `parent` must already exist. Collision-free even across concurrent callers targeting
+  # the same `parent` -- Dir.mktmpdir retries internally on name clash.
+  def mkdir_tmp(prefix, parent)
+    path = Dir.mktmpdir(prefix, parent)
+    check_path_length(path, origin: 'FileWrapper#mkdir_tmp')
+    return path
+  end
+
+  # Path length gets flagged once it's within this many characters of the platform limit --
+  # a fixed margin rather than a percentage, since a near-miss matters the same whether the
+  # limit itself is Windows' cramped 260 or Linux's roomy 4096.
+  WARNING_MARGIN = 25 unless const_defined?(:WARNING_MARGIN, false)
+
+  # Warn as a path's length approaches its platform's practical ceiling, and flag if it
+  # reaches or exceeds it. Logging only -- never raises or blocks the caller's own
+  # operation, which will surface its own real failure on its own if the OS actually
+  # rejects the path. The calling context (`origin:`) is only included at DEBUG
+  # verbosity -- otherwise the message stays plain, since the path itself is normally
+  # enough and repeated origin labels add noise at everyday verbosity levels.
+  def check_path_length(path, origin:)
+    limit  = path_length_limit
+    length = File.expand_path(path).length
+
+    prefix = @verbosinator.should_output?(Verbosity::DEBUG) ? "#{origin} ⏩️ " : ''
+
+    if length >= limit
+      @loginator.log(
+        "#{prefix}Path length (#{length}) reaches or exceeds this platform's practical limit (#{limit}): #{path}",
+        Verbosity::ERRORS
+      )
+    elsif length >= (limit - WARNING_MARGIN)
+      @loginator.log(
+        "#{prefix}Path length (#{length}) is approaching this platform's practical limit (#{limit}): #{path}",
+        Verbosity::COMPLAIN
+      )
+    end
+  end
+
+  private
+
+  def path_length_limit
+    return PATH_LENGTH_LIMITS[:windows] if SystemWrapper.windows?
+    return PATH_LENGTH_LIMITS[:macos] if SystemWrapper.macos?
+    return PATH_LENGTH_LIMITS[:linux]
   end
 
 end

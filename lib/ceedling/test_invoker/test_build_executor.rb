@@ -8,10 +8,12 @@
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/test_invoker/test_invoker_types'
+require 'ceedling/test_invoker/test_pipeline_helpers'
 
 class TestBuildExecutor
 
   include TestInvokerTypes
+  include TestPipelineHelpers
 
   constructor(
     :configurator,
@@ -19,257 +21,80 @@ class TestBuildExecutor
     :reportinator,
     :batchinator,
     :preprocessinator,
-    :partializer,
     :generator,
-    :test_context_extractor,
     :plugin_manager,
     :file_path_utils,
     :file_finder,
-    :file_wrapper
+    :file_wrapper,
+    :dependinator,
+    :gcc_dependency_parser,
+    :quote_include_isolator,
+    :generator_helper
   )
-
-  def setup()
-    @context_extractor = @test_context_extractor
-  end
-
-  # Stage 6: Preprocess partial header files for extract-and-generate pass.
-  def stage_preprocess_partial_headers(state)
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-
-    # Generate directive-only preprocessor output if available
-    @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
-      config   = details[:config]
-      testable = details[:testable]
-      name     = testable.name
-
-      arg_hash = {
-        filepath:      config.filepath,
-        test:          name,
-        flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
-        defines:       testable.preprocess_defines
-      }
-
-      details[:directives_only_filepath] = @preprocessinator.generate_directives_only_output( **arg_hash )
-    end if directives_only
-
-    # Preprocess and assemble header files
-    @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
-      config                   = details[:config]
-      testable                 = details[:testable]
-      name                     = testable.name
-      directives_only_filepath = details[:directives_only_filepath]
-
-      arg_hash = {
-        test:                     name,
-        filepath:                 config.filepath,
-        directives_only_filepath: directives_only_filepath,
-        fallback:                 (!directives_only or directives_only_filepath.nil?),
-        flags:                    testable.preprocess_flags,
-        include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
-        defines:                  testable.preprocess_defines
-      }
-
-      config.directives_only_filepath, config.includes = @preprocessinator.preprocess_partial_header_file_preserve_macros( **arg_hash )
-    end
-
-    # Full-preprocess partial header files for expanded signature extraction.
-    @batchinator.exec(workload: :compile, things: state.partials_headers) do |details|
-      config   = details[:config]
-      testable = details[:testable]
-      name     = testable.name
-
-      arg_hash = {
-        filepath:      config.filepath,
-        test:          name,
-        flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
-        defines:       testable.preprocess_defines
-      }
-
-      config.full_expansion_filepath = @preprocessinator.preprocess_partial_header_expand_macros( **arg_hash )
-    end
-  end
-
-  # Stage 7: Preprocess partial source files for extract-and-generate pass.
-  def stage_preprocess_partial_sources(state)
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-
-    # Generate directive-only preprocessor output if available
-    @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
-      config   = details[:config]
-      testable = details[:testable]
-      name     = testable.name
-
-      arg_hash = {
-        filepath:      config.filepath,
-        test:          name,
-        flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
-        defines:       testable.preprocess_defines
-      }
-
-      details[:directives_only_filepath] = @preprocessinator.generate_directives_only_output( **arg_hash )
-    end if directives_only
-
-    # Preprocess and assemble source files
-    @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
-      config                   = details[:config]
-      testable                 = details[:testable]
-      name                     = testable.name
-      directives_only_filepath = details[:directives_only_filepath]
-
-      arg_hash = {
-        test:                     name,
-        filepath:                 config.filepath,
-        directives_only_filepath: directives_only_filepath,
-        fallback:                 (!directives_only or directives_only_filepath.nil?),
-        flags:                    testable.preprocess_flags,
-        include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
-        defines:                  testable.preprocess_defines
-      }
-
-      config.directives_only_filepath, config.includes = @preprocessinator.preprocess_partial_source_file_preserve_macros( **arg_hash )
-    end
-
-    # Full-preprocess partial source files for expanded signature extraction.
-    @batchinator.exec(workload: :compile, things: state.partials_sources) do |details|
-      config   = details[:config]
-      testable = details[:testable]
-      name     = testable.name
-
-      arg_hash = {
-        filepath:      config.filepath,
-        test:          name,
-        flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
-        defines:       testable.preprocess_defines
-      }
-
-      config.full_expansion_filepath = @preprocessinator.preprocess_partial_source_expand_macros( **arg_hash )
-    end
-  end
-
-  # Stage 8: Extract and generate partial implementation and interface files.
-  def stage_generate_partials(state)
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-
-    partials = []
-    state.testables.each do |_, testable|
-      next if testable.partials.configs.empty?
-      testable.partials.configs.each do |_, config|
-        partials << { config: config, testable: testable }
-      end
-    end
-
-    @batchinator.exec(workload: :compile, things: partials) do |partial|
-      config   = partial[:config]
-      testable = partial[:testable]
-      name     = testable.name
-
-      module_contents = @partializer.extract_module_contents(
-        name,
-        config,
-        !directives_only
-      )
-
-      @partializer.validate_config( c_module: module_contents, config: config, name: name )
-
-      @partializer.sanitize( module_contents )
-
-      implementation = @partializer.extract_implementation_functions(
-        test:        name,
-        partial:     config.module,
-        definitions: module_contents.function_definitions,
-        config:      config
-      )
-
-      interface = @partializer.extract_interface_functions(
-        test:         name,
-        partial:      config.module,
-        definitions:  module_contents.function_definitions,
-        declarations: module_contents.function_declarations,
-        config:       config
-      )
-
-      @partializer.validate_extracted_functions(
-        name:      name,
-        partial:   config.module,
-        impl:      implementation,
-        interface: interface
-      )
-
-      arg_hash = {
-        test:                 name,
-        partial:              config.module,
-        function_definitions: implementation,
-        c_module:             module_contents,
-        header_includes:      @partializer.remap_implementation_header_includes(
-                                name:     config.module,
-                                includes: (config.source.includes + config.header.includes),
-                                partials: testable.partials.configs,
-                                test:     name
-                              ),
-        source_includes:      @partializer.remap_implementation_source_includes(
-                                name:     config.module,
-                                includes: (config.source.includes + config.header.includes),
-                                partials: testable.partials.configs,
-                                test:     name
-                              ),
-        input_filepath:       config.source.filepath,
-        output_path:          testable.paths[:partials]
-      }
-
-      unless implementation.nil?
-        @generator.generate_partial_implementation( **arg_hash )
-        state.lock.synchronize { testable.partials.tests << config.module }
-      end
-
-      arg_hash = {
-        test:                  name,
-        partial:               config.module,
-        function_declarations: interface,
-        includes:              @partializer.remap_interface_header_includes(
-                                 name:     config.module,
-                                 includes: (config.source.includes + config.header.includes),
-                                 partials: testable.partials.configs,
-                                 test:     name
-                               ),
-        c_module:              module_contents,
-        input_filepath:        config.header.filepath,
-        output_path:           testable.paths[:partials]
-      }
-
-      unless interface.nil?
-        @generator.generate_partial_interface( **arg_hash )
-        state.lock.synchronize { testable.partials.mocks << config.module }
-      end
-    end
-  end
 
   # Stage 9: Preprocess header files to be mocked.
   def stage_preprocess_mocks(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
+    skipped = 0
+
+    # Register every mock's preprocessed-header target and settle its staleness
+    # up front (sequentially -- cheap, no subprocess work), since it gates both
+    # of the parallel batches below.
+    state.mocks_list.each do |mock|
+      details  = mock.details
+      testable = mock.testable
+
+      # A Partial mock's own generated header is already free of inline function
+      # bodies, so it never needs this extra pass regardless of what the project
+      # configures for CMock's own mocks of real headers elsewhere.
+      extras = !details.partial && (@configurator.cmock_treat_inlines == :include)
+
+      target = @file_path_utils.form_preprocessed_file_filepath( details.source, testable.name )
+
+      @dependinator.register(
+        target,
+        files: [details.source],
+        meta:  {
+          flags:                     testable.preprocess_flags,
+          defines:                   testable.preprocess_defines,
+          search_paths:              testable.search_paths,
+          extras:                    extras,
+          tools:                     [@configurator.tools_test_bare_includes_preprocessor, @configurator.tools_test_file_directives_only_preprocessor],
+          preprocess_force_fallback: @configurator.test_build_preprocess_force_fallback
+        }
+      )
+
+      mock.preprocessed_target = target
+      mock.stale               = @dependinator.stale?( target )
+
+      next if mock.stale
+
+      msg = @reportinator.generate_module_progress(
+        operation:   'Skipping mock preprocessing for',
+        module_name: testable.name,
+        filename:    File.basename( details.source )
+      )
+      @loginator.log( msg, Verbosity::OBNOXIOUS )
+      skipped += 1
+    end
+
+    log_skip_summary( task: "mock preprocessing", count: skipped, noun: "mocks" )
 
     # Generate directive-only preprocessor output if available
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
-      details  = mock[:details]
-      testable = mock[:testable]
+      next unless mock.stale
+
+      details  = mock.details
+      testable = mock.testable
       name     = testable.name
-      filepath = details[:source]
+      filepath = details.source
 
       arg_hash = {
         filepath:      filepath,
         test:          name,
         flags:         testable.preprocess_flags,
         include_paths: testable.search_paths,
-        vendor_paths:  [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
 
@@ -280,200 +105,371 @@ class TestBuildExecutor
         @loginator.log( msg, Verbosity::COMPLAIN )
       end
 
-      mock[:directives_only_filepath] = _filepath
+      mock.directives_only_filepath = _filepath
     end if directives_only
 
     # Preprocess and assemble header files to be mocked
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
-      details                  = mock[:details]
-      testable                 = mock[:testable]
-      directives_only_filepath = mock[:directives_only_filepath]
+      next unless mock.stale
 
-      extras = (@configurator.cmock_treat_inlines == :include)
+      details                  = mock.details
+      testable                 = mock.testable
+      directives_only_filepath = mock.directives_only_filepath
+      extras                   = !details.partial && (@configurator.cmock_treat_inlines == :include)
 
       arg_hash = {
         test:                     testable.name,
-        filepath:                 details[:source],
+        filepath:                 details.source,
         directives_only_filepath: directives_only_filepath,
-        fallback:                 (!directives_only or directives_only_filepath.nil?),
+        fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
         flags:                    testable.preprocess_flags,
         include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
+        vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines,
         extras:                   extras
       }
 
       @preprocessinator.preprocess_mockable_header_file( **arg_hash )
+
+      @dependinator.mark_fresh( mock.preprocessed_target )
     end
   end
 
   # Stage 10: Generate mocks for all tests.
   def stage_generate_mocks(state)
-    @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
-      details  = mock[:details]
-      testable = mock[:testable]
+    # get_cmock_config, not project_config_hash[:cmock]: project_config_hash is
+    # flattened -- CMock's own settings live there as individual top-level keys
+    # like :cmock_mock_prefix, not as a :cmock section -- so this is the only
+    # place that still holds CMock's configuration as a single value to compare.
+    cmock_meta = @configurator.get_cmock_config
+    skipped = 0
 
-      output_path = File.join( testable.paths[:mocks], details[:path] )
+    @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
+      details  = mock.details
+      testable = mock.testable
+
+      output_path = @file_path_utils.form_mock_output_path( testable.paths[:mocks], details.path )
+      folder, output_path = mock_folder_and_path( testable.paths[:mocks], output_path, details.include_path )
       @file_wrapper.mkdir( output_path )
+
+      # `details.input` -- not the stage 9 preprocessed target -- is the
+      # correct antecedent here: it's exactly what CMock reads, whether or not
+      # mock preprocessing is enabled for this project (see stage_determine_files).
+      #
+      # `details.name` (a String), not `mock.name` (the Symbol key T2 carried
+      # the same value in for hash lookups) -- needed here as a real filename.
+      target      = File.join( output_path, details.name + EXTENSION_CORE_SOURCE )
+      mock_header = File.join( output_path, details.name + EXTENSION_CORE_HEADER )
+
+      # CMock writes `mock_header` in the same call as `target`, so the mock vouches for
+      # it as an output. Stage 4 places a stand-in at this exact path when no file is
+      # there or an earlier stand-in is out of date (StandinHeaderinator), independent of
+      # this mock's antecedents. The recorded hash catches a stand-in in the mock's place
+      # and regenerates the mock.
+      @dependinator.register( target, files: [details.input], meta: { cmock: cmock_meta }, outputs: [mock_header] )
+
+      unless @dependinator.stale?( target )
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping mock generation for',
+          module_name: testable.name,
+          filename:    details.name
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped += 1 }
+        next
+      end
+
+      # A Partial mock's own generated header is already free of inline function
+      # bodies -- CMock's own inline handling has nothing to do on it and is
+      # skipped for this one mock, independent of whatever the project configures
+      # for CMock's own mocks of real headers elsewhere in the same test suite.
+      overrides = details.partial ? { treat_inlines: :exclude } : {}
 
       arg_hash = {
         context:        state.context,
-        mock:           mock[:name],
+        mock:           mock.name,
         test:           testable.name,
-        input_filepath: details[:input],
-        output_path:    output_path
+        input_filepath: details.input,
+        output_path:    output_path,
+        folder:         folder,
+        overrides:      overrides
       }
 
       @generator.generate_mock( **arg_hash )
+
+      @dependinator.mark_fresh( target )
     end
-  end
 
-  # Stage 11: Preprocess test files and extract source build directives.
-  def stage_preprocess_test_files(state)
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-
-    @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      filepath                 = testable.filepath
-      filename                 = File.basename( filepath )
-      name                     = testable.name
-      directives_only_filepath = testable.preprocess[:directives_only][:filepath]
-
-      fallback = (!directives_only or directives_only_filepath.nil?)
-
-      arg_hash = {
-        test:                     name,
-        filepath:                 filepath,
-        directives_only_filepath: directives_only_filepath,
-        fallback:                 fallback,
-        includes:                 @context_extractor.lookup_all_header_includes_list( testable.filepath ),
-        flags:                    testable.preprocess_flags,
-        include_paths:            testable.search_paths,
-        vendor_paths:             [@configurator.project_build_vendor_ceedling_path],
-        defines:                  testable.preprocess_defines
-      }
-
-      _filepath = @preprocessinator.preprocess_test_file( **arg_hash )
-
-      state.lock.synchronize { testable.runner[:input_filepath] = _filepath }
-
-      msg = @reportinator.generate_progress( "Parsing #{filename} for test source directive macros" )
-      @loginator.log( msg )
-
-      if fallback
-        _filepath = filepath
-      else
-        _filepath = @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, name )
-      end
-
-      @context_extractor.collect_simple_context_from_file(
-        _filepath,
-        filepath,
-        TestContextExtractor::Context::BUILD_DIRECTIVE_SOURCE_FILES
-      )
-
-      state.testables.each do |_, t|
-        validate_build_directive_source_files( test: name, filepath: t.filepath )
-      end
-    end
-  end
-
-  # Stage 12: Collect test runner details (test case names) from preprocessed test files.
-  def stage_collect_runner_details(state)
-    @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      msg = @reportinator.generate_module_progress(
-        operation:   'Parsing test case names',
-        module_name: testable.name,
-        filename:    File.basename( testable.filepath )
-      )
-      @loginator.log( msg )
-
-      @context_extractor.collect_test_runner_details( testable.filepath, testable.runner[:input_filepath] )
-    end
-  end
-
-  # Stage 13: Generate test runner files.
-  def stage_generate_runners(state)
-    @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      arg_hash = {
-        context:         state.context,
-        mocks:           @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
-        includes:        @context_extractor.lookup_nonmock_header_includes_list( testable.filepath ),
-        test_filepath:   testable.filepath,
-        input_filepath:  testable.runner[:input_filepath],
-        runner_filepath: testable.runner[:output_filepath]
-      }
-
-      @generator.generate_test_runner( **arg_hash )
-    end
+    log_skip_summary( task: "mock generation", count: skipped, noun: "mocks" )
   end
 
   # Stage 15: Compile all test build objects in parallel.
+  #
+  # An unchanged object skips its compile-execute plugin hooks entirely (see
+  # compile_test_component), so plugins that accumulate per-run state from
+  # pre_compile_execute/post_compile_execute -- compile_commands_json_db,
+  # report_build_warnings_log, bullseye, command_hooks -- only see objects
+  # actually recompiled this run, not the full set. Same for stage 16's link
+  # hooks. Contrast with stage 17, where Generator#generate_test_results
+  # reports a skipped executable's cached result through both fixture-execute
+  # hooks regardless, so consumers of *that* pair always see every test.
+  #
+  # Compiles in two sequential batches -- every test's own file first, in a batch
+  # fully completed before any other object starts. compile_test_component's own
+  # sibling-header isolation (run only against a test's own file) may correct that
+  # testable's search paths; every other object in the same test needs to compile
+  # against the corrected paths, never the original ones, and a real barrier
+  # between the two groups is the only way parallel compilation can guarantee that.
+  #
+  # BARRIER INVARIANT (see also apply_sibling_isolation's own note): each pair below
+  # runs through @batchinator.exec -- real worker threads via Parallel.map -- and
+  # `compile_pass.call( test_file_pairs )` fully drains (Parallel.map blocks until
+  # every thread in that call is done) before `compile_pass.call( other_pairs )`
+  # even starts. That's what makes apply_sibling_isolation's unguarded writes to
+  # testable.search_paths/isolated_headers_path safe: the only thread that ever
+  # writes them is the one compiling that test's own file, in the first batch, and
+  # every thread reading them afterward starts only once that write has already
+  # happened. Merging or reordering these two calls -- e.g. to parallelize them
+  # together for speed -- would reintroduce a real, unguarded data race on those
+  # fields, confirmed experimentally (see concurrency-file-presence-factfinding
+  # memory, Finding 4): a merged single-pass variant of this exact shape saw
+  # violations on 97%+ of reads once the barrier was removed.
   def stage_build_objects(state)
-    @batchinator.exec(workload: :compile, things: state.objects_list) do |obj|
-      src = @file_finder.find_build_input_file( filepath: obj[:obj], context: state.context )
-      compile_test_component(
-        tool:    obj[:tool],
-        context: state.context,
-        test:    obj[:test],
-        source:  src,
-        object:  obj[:obj],
-        state:   state
-      )
+    skipped = 0
+
+    resolved = state.objects_list.map do |obj|
+      src = @file_finder.find_build_input_file( filepath: obj.obj, context: state.context, test: obj.test )
+      [obj, src]
     end
+
+    test_file_pairs, other_pairs = resolved.partition do |obj, src|
+      testable = state.testables[obj.test.to_sym]
+      !testable.nil? && src == testable.filepath
+    end
+
+    compile_pass = lambda do |pairs|
+      @batchinator.exec(workload: :compile, things: pairs) do |obj, src|
+        compiled = compile_test_component(
+          context: state.context,
+          test:    obj.test,
+          source:  src,
+          object:  obj.obj,
+          state:   state
+        )
+        state.lock.synchronize { skipped += 1 } unless compiled
+      end
+    end
+
+    compile_pass.call( test_file_pairs )
+    compile_pass.call( other_pairs )
+
+    # Any isolated sibling-header copy staged for a testable during either batch
+    # above was scoped to this one build and never registered as a tracked
+    # dependency in its own right (see isolate_sibling_headers) -- nothing past
+    # this point still needs it to exist.
+    state.testables.each_value do |testable|
+      next if testable.isolated_headers_path.nil?
+      @quote_include_isolator.release( testable.isolated_headers_path )
+    end
+
+    log_skip_summary( task: "compilation", count: skipped, noun: "objects" )
   end
 
   # Stage 16: Link test executables.
   def stage_build_executables(state)
     lib_args  = convert_libraries_to_arguments()
     lib_paths = get_library_paths_to_arguments()
+    skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       remove_partials_source_objects( testable.objects, testable.partials.configs )
 
-      arg_hash = {
-        context:    state.context,
-        build_path: testable.paths[:build],
-        executable: testable.executable,
-        objects:    testable.objects,
-        flags:      testable.link_flags,
-        lib_args:   lib_args,
-        lib_paths:  lib_paths,
-        options:    state.options
-      }
+      link_flags = testable.link_flags
+      tool, link_flags = resolve_link_tool( context: state.context, tool: @configurator.tools_test_linker, flags: link_flags, executable: testable.executable )
 
-      generate_executable_now( **arg_hash )
+      @dependinator.register(
+        testable.executable,
+        files: testable.objects,
+        meta:  { flags: link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [tool] }
+      )
+      stale = @dependinator.stale?( testable.executable )
+
+      if stale
+        arg_hash = {
+          context:    state.context,
+          build_path: testable.paths[:build],
+          executable: testable.executable,
+          objects:    testable.objects,
+          flags:      link_flags,
+          lib_args:   lib_args,
+          lib_paths:  lib_paths,
+          tool:       tool
+        }
+
+        generate_executable( **arg_hash )
+
+        @dependinator.mark_fresh( testable.executable )
+      else
+        msg = @reportinator.generate_module_progress(
+          operation:   'Skipping linking for',
+          module_name: testable.name,
+          filename:    File.basename( testable.executable )
+        )
+        @loginator.log( msg, Verbosity::OBNOXIOUS )
+        state.lock.synchronize { skipped += 1 }
+      end
+
+      @generator.generate_test_executable_manifest( executable: testable.executable, test_filepath: testable.filepath )
+
+      # Stage 17 relies on this rather than a second `stale?` call -- by the
+      # time it runs, `mark_fresh` above (when `stale` was true) has already
+      # updated the cache entry to match the executable's current state, so a
+      # fresh `stale?` query would always answer false.
+      state.lock.synchronize { testable.executable_rebuilt = stale }
     end
+
+    log_skip_summary( task: "linking", count: skipped, noun: "executables" )
   end
 
   # Stage 17: Execute test fixtures and collect results.
+  #
+  # An executable that didn't need relinking (see stage 16) still has valid
+  # cached results on disk from whenever it was last built -- Generator#generate_test_results
+  # reports those instead of actually (re)running it, per `skipped:` below.
+  #
+  # `:force_test_rerun` and `:unity ↳ :shuffle_tests` both override that skip:
+  # shuffled test-case order is decided at runtime inside the executable itself
+  # (Unity's generated `main()` reshuffles on every invocation), not at compile
+  # or link time, so an executable that's otherwise unchanged still needs to
+  # actually run again for shuffling to have any effect at all.
+  #
+  # The dependency tracker gives a third reason to rerun, alongside those two:
+  # `testable.executable` unchanged says nothing about whether the *tool* that
+  # actually runs it -- :tools ↳ :test_fixture -- changed since the last run.
+  # This target is registered separately from stage 16's own executable target
+  # (not reusing it) so a tool-only change reruns the fixture without also
+  # marking the executable itself stale and forcing an unnecessary relink.
+  #
+  # The target itself is a dedicated marker file, not either outcome-dependent
+  # results file (.pass/.fail) -- which of those two actually gets written
+  # depends on whether the test passes, so neither is guaranteed to exist after
+  # every run, and a target `mark_fresh` can't hash is a crash on a failing
+  # test, while a target `stale?` can't find is permanent, unwanted staleness
+  # for a test that keeps failing the same way. The marker's own content is
+  # irrelevant and never changes -- only its existence (written after every
+  # real run, pass or fail alike) and the registered files/meta drive staleness.
   def stage_execute(state)
+    skipped = 0
+    force_rerun = @configurator.force_test_rerun || @configurator.unity_shuffle_tests
+
+    overridden = state.testables.values.count { |t| !t.executable_rebuilt }
+
+    if @configurator.unity_shuffle_tests && overridden > 0
+      noun = overridden == 1 ? 'test executable' : 'test executables'
+      @loginator.log(
+        "Test shuffling is enabled -- rerunning #{overridden} already up-to-date #{noun} to randomize test case order.",
+        Verbosity::NORMAL,
+        LogLabels::NOTICE
+      )
+    end
+
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
+        # `paths[:results]` is only per-test-unique for a test mirrored into its own
+        # subdirectory -- a test with no mirrored subdir shares that directory with
+        # every other such test, so the marker's own filename (not just its directory)
+        # must be test-specific too, matching clean_test_results' own `test + '.*'`
+        # naming below.
+        fixture_target = File.join( testable.paths[:results], "#{File.basename( testable.name )}.fixture_run" )
+
+        fixture_tool = resolve_fixture_tool( context: state.context, tool: @configurator.tools_test_fixture, test_name: testable.name, target: fixture_target )
+
+        # :use_backtrace doesn't swap the fixture tool itself (unlike Valgrind/Gcov's own
+        # pre_test_fixture_register hooks) -- it only selects what happens *after*
+        # run_fixture detects a crash (generator.rb's own case on :project_use_backtrace:
+        # :gdb runs tools_test_backtrace_gdb, :simple runs tools_test_fixture_simple_backtrace,
+        # :none does neither). Without capturing that selector (and the tool config(s) it
+        # actually drives) as meta here, toggling :use_backtrace -- or editing a backtrace
+        # tool's own executable/args -- would never invalidate this fixture_target, so a
+        # delta build would keep reusing a stale crash-diagnosis result on the next crash.
+        #
+        # tools_test_backtrace_gdb only exists at all when :use_backtrace is :gdb --
+        # Configurator only merges its defaults (DEFAULT_TOOLS_TEST_GDB_BACKTRACE) in that
+        # case (configurator.rb) -- so it's only read here when actually relevant.
+        # tools_test_fixture_simple_backtrace has no such gate (DEFAULT_TOOLS_TEST always
+        # includes it) and is always safe to read.
+        use_backtrace = @configurator.project_config_hash[:project_use_backtrace]
+        backtrace_tools = [@configurator.tools_test_fixture_simple_backtrace]
+        backtrace_tools << @configurator.tools_test_backtrace_gdb if use_backtrace == :gdb
+
+        @dependinator.register(
+          fixture_target, files: [testable.executable],
+          meta: { tools: [fixture_tool], use_backtrace: use_backtrace, backtrace_tools: backtrace_tools }
+        )
+
+        run_now = testable.executable_rebuilt || force_rerun || @dependinator.stale?( fixture_target )
+
+        # Clear out any stale prior result (e.g. a lingering `.fail` from a test
+        # that now passes) immediately before an actual (re)run -- not upfront
+        # for every test regardless of whether it's about to run, which would
+        # destroy the still-valid cached result of a test left unchanged.
+        clean_test_results( testable.paths[:results], File.basename( testable.name ) ) if run_now
+
+        unless run_now
+          msg = @reportinator.generate_module_progress(
+            operation:   'Skipping test execution for',
+            module_name: testable.name,
+            filename:    File.basename( testable.executable )
+          )
+          @loginator.log( msg, Verbosity::OBNOXIOUS )
+          state.lock.synchronize { skipped += 1 }
+        end
+
         arg_hash = {
           context:       state.context,
           test_name:     testable.name,
           test_filepath: testable.filepath,
           executable:    testable.executable,
           result:        testable.results_pass,
-          options:       state.options
+          skipped:       !run_now,
+          tool:          fixture_tool
         }
 
-        run_fixture_now( **arg_hash )
+        run_fixture( **arg_hash )
+
+        if run_now
+          @file_wrapper.touch( fixture_target )
+
+          # A later skipped run reuses the result this run wrote, so the fixture target
+          # vouches for it. Only whichever of the two exists is recorded.
+          @dependinator.register(
+            fixture_target,
+            outputs: [testable.results_pass, testable.results_pass.ext( @configurator.extension_testfail.primary )]
+          )
+          @dependinator.mark_fresh( fixture_target )
+        end
 
       ensure
         @plugin_manager.post_test( testable.filepath )
       end
     end
+
+    # `@batchinator.exec` above fully drains before returning -- every test executable
+    # in this run has finished executing, so this is the one correct point to flush the
+    # whole-suite gdb health summary, once, before final results reporting.
+    @generator.report_gdb_attach_health()
+
+    log_skip_summary( task: "test execution", count: skipped, noun: "tests", reason: "reusing cached results" )
   end
 
   # -----------------------------------------------------------------------
   # Helper methods
   # -----------------------------------------------------------------------
 
-  def generate_executable_now(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, options:)
+  def generate_executable(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, tool:)
     begin
       @generator.generate_executable_file(
-        options[:test_linker],
+        tool,
         context,
         objects.map { |v| "\"#{v}\"" },
         flags,
@@ -483,7 +479,7 @@ class TestBuildExecutor
         lib_paths
       )
     rescue ShellException => ex
-      if ex.shell_result[:output] =~ /symbol/i
+      if ex.shell_result[:output].match?(/symbol/i)
         notice =    "If the linker reports missing symbols, the following may be to blame:\n" +
                     "  1. This test lacks #include statements corresponding to needed source files (see note below).\n" +
                     "  2. Project file paths omit source files corresponding to #include statements in this test.\n" +
@@ -494,7 +490,7 @@ class TestBuildExecutor
         end
 
         notice +=   "\n"
-        notice +=   "NOTE: A test file directs the build of a test executable with #include statemetns:\n" +
+        notice +=   "NOTE: A test file directs the build of a test executable with #include statements:\n" +
                     "  * By convention, Ceedling assumes header filenames correspond to source filenames.\n" +
                     "  * Which code files to compile and link are determined by #include statements.\n"
         if @configurator.project_use_mocks
@@ -506,7 +502,7 @@ class TestBuildExecutor
                     "  1. Doublecheck this test's #include statements.\n" +
                     "  2. Simplify complex macros or fully specify symbols for this test in :project ↳ :defines.\n" +
                     "  3. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE()\n" +
-                    "     build diective macro in this test to inject a source file into the build.\n\n" +
+                    "     build directive macro in this test to inject a source file into the build.\n\n" +
                     "See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.\n\n"
 
         @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
@@ -516,14 +512,19 @@ class TestBuildExecutor
     end
   end
 
-  def run_fixture_now(context:, test_name:, test_filepath:, executable:, result:, options:)
+  def clean_test_results(path, test)
+    @file_wrapper.rm_f( Dir.glob( File.join( path, test + '.*' ) ) )
+  end
+
+  def run_fixture(context:, test_name:, test_filepath:, executable:, result:, tool:, skipped: false)
     @generator.generate_test_results(
-      tool:          options[:test_fixture],
+      tool:          tool,
       context:       context,
       test_name:     test_name,
       test_filepath: test_filepath,
       executable:    executable,
-      result:        result
+      result:        result,
+      skipped:       skipped
     )
   end
 
@@ -545,14 +546,75 @@ class TestBuildExecutor
 
   private
 
-  # Compile a single C or assembly source file into an object file.
-  def compile_test_component(tool:, context:, test:, source:, object:, state:)
+  # Finds the folder a mock's #include names and the directory the mock is written to.
+  #
+  # CMock names a mock's guard and lifecycle functions by that folder, and the runner names
+  # its calls by the same #include. Two same-named mocks stay distinct only if the folder
+  # reaches CMock. CMock writes below its own root at that folder, so the folder must end the
+  # mock's directory. A folder trailing the mirrored location keeps that location. An #include
+  # spelling more path than the mirror holds moves its mock below the per-test root at the
+  # written path, which the root search path still reaches. A bare #include has no folder.
+  # Without :mock_name_include_folder no folder is passed, and CMock names by filename alone.
+  def mock_folder_and_path(mocks_root, output_path, include_path)
+    return [nil, output_path] unless @configurator.cmock_mock_name_include_folder
+
+    folder = File.dirname( include_path.to_s ).sub( %r{\A(?:\./)+}, '' )
+
+    return [nil, output_path] if folder.empty? || folder == '.'
+    return [folder, output_path] if output_path.end_with?( File.join( '', folder ) )
+
+    return [folder, File.join( mocks_root, folder )]
+  end
+
+  # Compile a single C or assembly source file into an object file. Returns
+  # whether a real compile actually happened, so the caller can report how
+  # many objects across the whole build needed nothing done.
+  #
+  # A test file's own C compile (only) gets one extra check: isolate_sibling_headers
+  # inspects its freshly-written .d file for a real header sharing a directory with
+  # one this test mocks or Partializes, and retries with corrected search paths if
+  # it finds one. A failure that's still standing afterward -- nothing to isolate,
+  # or an isolated retry that failed too -- gets one last look from generator_helper
+  # before it's raised, in case it's explainable as this same class of collision.
+  #
+  # Any other source sharing a directory with a header mocked under inline shadowing
+  # compiles from an isolated copy instead (compile_isolated_source).
+  def compile_test_component(context:, test:, source:, object:, state:)
     testable     = state.testables[test.to_sym]
     defines      = testable.compile_defines
     search_paths = tailor_search_paths( search_paths: testable.search_paths, filepath: source )
+    dependencies = @file_path_utils.form_test_dependencies_filepath( object, name: test, context: context )
 
-    if @file_wrapper.extname( source ) != @configurator.extension_assembly
+    if !@configurator.extension_assembly.match?( source )
       flags = testable.compile_flags
+      tool, flags, defines = resolve_compile_tool(
+        context: context, operation: OPERATION_COMPILE_SYM, tool: @configurator.tools_test_compiler,
+        flags: flags, defines: defines, module_name: test, source: source, object: object
+      )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool )
+
+      unless stale
+        # A skipped compile still needs this test's search paths corrected the same
+        # way a real compile would have left them -- otherwise every other object in
+        # this test's build (compiled or skipped) would compute its own staleness
+        # against paths that silently drift from whatever the last real compile
+        # actually cached, forcing a recompile on every subsequent build regardless
+        # of whether anything actually changed. The existing .d file already on disk
+        # (from whichever run last actually compiled this file) is what a skip has
+        # to go on -- there's no fresh one to write this run.
+        if source == testable.filepath && @file_wrapper.exist_with_retry?( dependencies )
+          apply_sibling_isolation( testable: testable, dependencies_filepath: dependencies )
+        end
+
+        return log_compile_skip( test: test, source: source )
+      end
+
+      # A module-under-test or support source mirrored into its own subdirectory needs that
+      # subdirectory (and its dependencies-file counterpart) to actually exist before the
+      # compiler can write there -- the test's own per-test directories are pre-created
+      # upfront, but a mirrored subdirectory beneath one is not.
+      @file_wrapper.mkdir( File.dirname( object ) )
+      @file_wrapper.mkdir( File.dirname( dependencies ) )
 
       arg_hash = {
         tool:         tool,
@@ -564,13 +626,79 @@ class TestBuildExecutor
         flags:        flags,
         defines:      defines,
         list:         @file_path_utils.form_test_build_list_filepath( object ),
-        dependencies: @file_path_utils.form_test_dependencies_filepath( object, name: test, context: context )
+        dependencies: dependencies
       }
 
-      @generator.generate_object_file_c( **arg_hash )
+      compile_failure = nil
+      shadowed_header = inline_mocked_sibling_header( testable, source )
+
+      if shadowed_header
+        compile_failure = compile_isolated_source( arg_hash: arg_hash, testable: testable, header: shadowed_header )
+      else
+        begin
+          @generator.generate_object_file_c( **arg_hash )
+        rescue ShellException => ex
+          compile_failure = ex
+        end
+      end
+
+      # gcc's dependency output is a side effect of preprocessing -- already written to
+      # disk by the time a later parse/type-check phase can still fail -- so this
+      # attempt's own .d file is worth registering whether or not it went on to fail.
+      # exist_with_retry? rides out the file briefly not yet being visible right after
+      # the shell-out exits (a raw miss here silently drops this compile's discovered
+      # header dependencies -- self-correcting into one extra recompile next run, but
+      # worth riding out directly).
+      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist_with_retry?( dependencies )
+
+      # Only the test file's own compile is ever checked here directly -- every other
+      # object in the same test's build already sees whatever search paths that check
+      # settled on (see stage_build_objects's own two-pass split).
+      if source == testable.filepath && @file_wrapper.exist_with_retry?( dependencies )
+        isolation = apply_sibling_isolation( testable: testable, dependencies_filepath: dependencies )
+
+        if isolation
+          # A throwaway retry: its own .d file is never registered, so the attempt
+          # registered just above -- real headers, real paths -- remains the lasting
+          # record of this object's antecedents. The isolated copy is always freshly,
+          # fully derived from those same tracked files, so it can never itself go
+          # stale independently and needs no tracking of its own.
+          retry_arg_hash = arg_hash.merge(
+            search_paths: tailor_search_paths( search_paths: isolation[:search_paths], filepath: source ),
+            dependencies: dependencies + '.isolated_retry'
+          )
+
+          begin
+            @generator.generate_object_file_c( **retry_arg_hash )
+            compile_failure = nil
+          rescue ShellException => ex
+            compile_failure = ex
+          end
+        end
+      end
+
+      if compile_failure
+        notice = @generator_helper.explain_possible_mock_partial_collision(
+          output: compile_failure.shell_result[:output],
+          mocked_headers: mocked_and_partialized_headers( testable )
+        )
+        @loginator.log( notice, Verbosity::ERRORS, LogLabels::NOTICE ) if notice
+
+        raise compile_failure
+      end
 
     elsif @configurator.test_build_use_assembly
       flags = testable.assembler_flags
+      tool, flags, defines = resolve_compile_tool(
+        context: context, operation: OPERATION_ASSEMBLE_SYM, tool: @configurator.tools_test_assembler,
+        flags: flags, defines: defines, module_name: test, source: source, object: object
+      )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool )
+
+      return log_compile_skip( test: test, source: source ) unless stale
+
+      @file_wrapper.mkdir( File.dirname( object ) )
+      @file_wrapper.mkdir( File.dirname( dependencies ) )
 
       arg_hash = {
         tool:         tool,
@@ -582,80 +710,332 @@ class TestBuildExecutor
         flags:        flags,
         defines:      defines,
         list:         @file_path_utils.form_test_build_list_filepath( object ),
-        dependencies: @file_path_utils.form_test_dependencies_filepath( object, name: test, context: context )
+        dependencies: dependencies
       }
 
       @generator.generate_object_file_asm( **arg_hash )
+
+      # register_gcc_deps_file again to pick up the freshly-written `.d` file's current
+      # header set (a no-op call here regardless, since the assembler tool has no
+      # -MMD/-MF of its own) before recording this target's new baseline.
+      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist_with_retry?( dependencies )
+    else
+      return false
+    end
+
+    @dependinator.mark_fresh( object )
+
+    true
+  end
+
+  # The mocked header `source` would reach directly in place of its mock, or nil.
+  #
+  # With :treat_inlines set to :include, CMock writes an inline-stripped copy of a mocked
+  # header into the mocks directory, first on the search path. A source sharing a directory
+  # with the real header and quote-including it finds the real one first. Its inline bodies
+  # then run in place of the mock. A Partial mock writes no such copy, and a test file
+  # reaches its mocks by their own names.
+  def inline_mocked_sibling_header(testable, source)
+    return nil unless @configurator.project_use_mocks
+    return nil unless @configurator.cmock_treat_inlines == :include
+    return nil if source == testable.filepath
+
+    directory = File.expand_path( File.dirname( source ) )
+
+    (testable.mocks || {}).each_value do |details|
+      next if details.partial || details.source.nil?
+      next unless File.expand_path( File.dirname( details.source ) ) == directory
+
+      header = File.basename( details.source )
+      return details.source if @quote_include_isolator.includes_by_name?( source, header )
+    end
+
+    return nil
+  end
+
+  # Compiles a source from a copy staged alone, returning any compile failure.
+  #
+  # With no real header beside the copy, its quoted #include of `header` reaches CMock's
+  # inline-stripped copy on the search path. A #line directive keeps every report naming
+  # the original. The original's directory follows all other search paths so its other
+  # includes still resolve. The dependency file is restored before the copy is released,
+  # so tracking never names a file that no longer exists.
+  def compile_isolated_source(arg_hash:, testable:, header:)
+    source = arg_hash[:source]
+
+    msg = "Compiling an isolated copy of '#{source}' for this test because it shares a directory with " \
+          "mocked header '#{header}', whose inline functions it would otherwise call instead of the mock."
+    @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+
+    @quote_include_isolator.within( parent: testable.paths[:build], files: [source], preserve_location: true ) do |isolation|
+      begin
+        @generator.generate_object_file_c(
+          **arg_hash.merge(
+            compile_source: isolation.copy_of( source ),
+            search_paths:   arg_hash[:search_paths] + [File.dirname( source )]
+          )
+        )
+        nil
+      rescue ShellException => ex
+        ex
+      ensure
+        @quote_include_isolator.restore_dependencies( isolation, arg_hash[:dependencies] )
+      end
     end
   end
 
-  def tailor_search_paths(filepath:, search_paths:)
-    _search_paths = []
+  def log_compile_skip(test:, source:)
+    msg = @reportinator.generate_module_progress(
+      operation:   'Skipping compilation for',
+      module_name: test,
+      filename:    File.basename( source )
+    )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    false
+  end
 
-    if filepath == File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
+  # Lets a plugin swap in its own compiler tool (and adjust flags/defines) for a
+  # particular build context -- e.g. Gcov/Bullseye's instrumented compilers -- via
+  # pre_test_compile_register, *before* dependency-tracker meta is computed below, so a
+  # plugin's own tool config is what actually drives that target's staleness rather
+  # than the plain test compiler it's about to be swapped out for. The resolved
+  # values are also what the real compile itself uses (see the two call sites
+  # above), so the two can never disagree about which tool actually ran.
+  def resolve_compile_tool(context:, operation:, tool:, flags:, defines:, module_name:, source:, object:)
+    arg_hash = {
+      context: context, operation: operation, tool: tool, flags: flags, defines: defines,
+      module_name: module_name, source: source, object: object
+    }
+    @plugin_manager.pre_test_compile_register( arg_hash )
+    return arg_hash[:tool], arg_hash[:flags], arg_hash[:defines]
+  end
 
-    elsif @configurator.project_use_mocks and
-          (filepath == File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE ))
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
-      _search_paths << PROJECT_BUILD_VENDOR_CMOCK_PATH
-      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+  # As resolve_compile_tool above, for the link step's own tool swap (pre_test_link_register),
+  # e.g. Gcov/Bullseye's instrumented linkers.
+  def resolve_link_tool(context:, tool:, flags:, executable:)
+    arg_hash = { context: context, tool: tool, flags: flags, executable: executable }
+    @plugin_manager.pre_test_link_register( arg_hash )
+    return arg_hash[:tool], arg_hash[:flags]
+  end
 
-    elsif @configurator.project_use_exceptions and
-          (filepath == File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE ))
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH
+  # As resolve_compile_tool/resolve_link_tool above, for the test-fixture step's own
+  # tool swap (pre_test_fixture_register), e.g. Valgrind wrapping the executable.
+  # `target` (the fixture-run marker target -- see stage_execute) is included so a
+  # plugin can register additional meta of its own against the same target, merging
+  # with what this stage registers immediately after -- Dependinator#register is
+  # additive across multiple calls for one target regardless of call order.
+  def resolve_fixture_tool(context:, tool:, test_name:, target:)
+    arg_hash = { context: context, tool: tool, test_name: test_name, target: target }
+    @plugin_manager.pre_test_fixture_register( arg_hash )
+    return arg_hash[:tool]
+  end
 
-    elsif @configurator.collection_all_support.include?( filepath )
-      _search_paths  = search_paths
-      _search_paths += @configurator.collection_paths_support
-      _search_paths << PROJECT_BUILD_VENDOR_UNITY_PATH
-      _search_paths << PROJECT_BUILD_VENDOR_CMOCK_PATH      if @configurator.project_use_mocks
-      _search_paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+  # Checks `dependencies_filepath` (this test's own most recent `.d` file, whether
+  # freshly written by a real compile just now or left over from whichever run
+  # last actually compiled it) for a sibling-header risk, and mutates `testable`
+  # in place to apply whatever it finds -- the one path both a real compile and a
+  # skipped one share, so search_paths reads the same way regardless of which one
+  # happened this run. Returns whatever isolate_sibling_headers itself returned.
+  # BARRIER INVARIANT (see also stage_build_objects's own note): the writes below to
+  # testable.search_paths/isolated_headers_path are completely unguarded -- no mutex --
+  # which is only safe because this method is only ever called while compiling a
+  # test's own file, and stage_build_objects's two-pass split guarantees every other
+  # object belonging to that same test compiles in a later, separate batch that starts
+  # only after this one has fully finished. That ordering, not anything visible at
+  # these two lines, is the entire safety argument -- do not call this from, or read
+  # these fields during, a batch that could run concurrently with a test's own-file
+  # compile.
+  def apply_sibling_isolation(testable:, dependencies_filepath:)
+    isolation = isolate_sibling_headers( testable: testable, dependencies_filepath: dependencies_filepath )
+    return nil if isolation.nil?
+
+    testable.search_paths          = isolation[:search_paths]
+    testable.isolated_headers_path = isolation[:isolation_dir]
+
+    isolation
+  end
+
+  # A mock or Partial substitutes a header only by way of search-path order -- a
+  # module reaching the same real header a second way, unmocked, can slip past the
+  # substitution entirely, silently, because C's own quote-include rule checks a
+  # file's own directory before ever consulting a search path. A test file's own
+  # freshly-compiled `.d` file already reveals every real header reachable from
+  # it, mocked/Partialized or not, which is enough to know where that risk exists
+  # even though it says nothing about whether any given occurrence actually won.
+  #
+  # For each header this test mocks or Partializes, any other file sharing its real
+  # directory in that dependency list, that itself actually #includes the real
+  # header by name, is staged, alone, into an isolated directory -- with nothing
+  # else there for its own #include of the real header to find, that #include is
+  # forced through the search paths that list the mock/Partial first. Actually
+  # #including the real header is the deciding signal, not mere co-residency: most
+  # real projects keep every header in one shared directory as a matter of
+  # ordinary convention, so "shares a directory" alone would flag nearly every
+  # file in the project. Only one level deep: a directory elsewhere in the same
+  # dependency list that shares no header with any of this test's own mocks or
+  # Partials, but itself holds more than one candidate, is shaped the same way
+  # and reported, but nothing designates which of its occupants should win, so
+  # nothing there is acted on.
+  #
+  # Returns nil when nothing needs isolating; otherwise a hash of the search
+  # paths to compile with (isolation directory listed first) and that directory's
+  # own path, for the caller to track and eventually clean up.
+  def isolate_sibling_headers(testable:, dependencies_filepath:)
+    mocked_headers = mocked_and_partialized_headers( testable )
+    return nil if mocked_headers.empty?
+
+    parsed       = @gcc_dependency_parser.parse( @file_wrapper.read( dependencies_filepath ) )
+    dependencies = parsed.values.flatten.uniq
+    by_directory = dependencies.group_by { |dep| File.dirname( dep ) }
+
+    isolated   = []
+    mocked_dirs = mocked_headers.values.map { |real_path| File.dirname( real_path ) }.uniq
+
+    mocked_headers.each_value do |real_path|
+      next unless dependencies.include?( real_path )
+
+      basename = File.basename( real_path )
+      siblings = (by_directory[File.dirname( real_path )] || []) - [real_path]
+      # A same-directory file is only a genuine risk if it actually #includes the
+      # real header by name -- most real projects keep every header in one shared
+      # directory, so "shares a directory" alone would flag nearly everything.
+      siblings = siblings.select { |sibling| @quote_include_isolator.includes_by_name?( sibling, basename ) }
+      next if siblings.empty?
+
+      siblings.each do |sibling|
+        isolated << sibling
+
+        msg = "Isolated '#{sibling}' into its own directory for this test's build because it shares a " \
+              "directory with '#{real_path}' and C conventions could bypass mock substitution leading to " \
+              "false negative test failures or even test fixture crashes."
+        @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
+      end
     end
+
+    # Any other directory in this same reachable set holding more than one file is
+    # shaped the same way a mocked header's own directory is -- but with no
+    # designated substitute among its occupants, there's nothing to safely isolate.
+    # Ceedling's own generated/vendor directories are exempt: a mocks output
+    # directory or a vendor framework's own source directory routinely holds
+    # several co-resident files as a matter of course, never a same-directory
+    # quote-include shortcut risk the way a real project header directory is.
+    generated_dirs = generated_content_dirs( testable )
+
+    by_directory.each do |dir, files|
+      next if mocked_dirs.include?( dir )
+      next if generated_dirs.any? { |gd| dir.start_with?( gd ) }
+
+      files.uniq.combination( 2 ).each do |a, b|
+        msg = "'#{a}' sits alongside '#{b}' at a nesting depth beyond what automated sibling-header " \
+              "isolation provides. If this test's build fails with a redeclaration or conflicting types " \
+              "error, the include ordering and path structure leading to '#{a}' or '#{b}' is worth investigating."
+        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+      end
+    end
+
+    return nil if isolated.empty?
+
+    isolation = @quote_include_isolator.isolate( parent: testable.paths[:build], files: isolated.uniq )
+
+    { search_paths: [isolation.dir] + testable.search_paths, isolation_dir: isolation.dir }
+  end
+
+  # `{ basename => real path }` for every real header this test substitutes -- CMock
+  # mocks of a real header, and Partials -- cross-referenced elsewhere against
+  # whatever a test's own compile actually reached. A mock Partial's own `source` is
+  # its own generated interface header, not a real project header, and is excluded.
+  def mocked_and_partialized_headers(testable)
+    headers = {}
+
+    (testable.mocks || {}).each_value do |details|
+      next if details.partial
+      headers[File.basename( details.source )] = details.source if details.source
+    end
+
+    testable.partials.configs.each_value do |config|
+      filepath = config.header.filepath
+      headers[File.basename( filepath )] = filepath if filepath
+    end
+
+    headers
+  end
+
+  # Directory roots holding only Ceedling's own generated or vendored content for this
+  # test -- never real project headers, so co-residency there is routine, not a
+  # same-directory quote-include risk. A test's own Partials output directory
+  # routinely holds several generated headers side by side (a types header, an
+  # interface header, and more, one set per Partialized module), exactly the same
+  # shape as the mocks output directory.
+  def generated_content_dirs(testable)
+    [
+      testable.paths[:mocks],
+      testable.paths[:partials],
+      PROJECT_BUILD_VENDOR_UNITY_PATH,
+      PROJECT_BUILD_VENDOR_CMOCK_PATH,
+      PROJECT_BUILD_VENDOR_CEXCEPTION_PATH,
+      @configurator.project_build_vendor_ceedling_path
+    ].compact
+  end
+
+  # Registers `object`'s antecedents (its source file, plus whatever headers
+  # gcc's `-MMD -MF` discovered on the *previous* successful compile, if any)
+  # and reports whether it needs (re)building. The previous run's `.d` file is
+  # the only header list available before this run's compile has happened --
+  # if headers changed, that's exactly what makes this stale. Nothing has just
+  # written that file, so one look suffices: a clean build has none, and a missed
+  # one leaves the object stale, forcing a recompile.
+  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:)
+    @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths, tools: [tool] ) )
+    @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
+    @dependinator.stale?( object )
+  end
+
+  # Each framework/support source needs its own vendor path (and, for CMock and a
+  # support file, other frameworks' vendor paths too, when those frameworks are also in
+  # play) spliced in ahead of a test's ordinary search paths -- the vendor sources
+  # themselves live outside any configured :test/:source/:support/:include root, so
+  # without this they'd never resolve. An ordinary test source matches none of the
+  # cases below and falls through to `search_paths` unchanged.
+  def tailor_search_paths(filepath:, search_paths:)
+    _search_paths =
+      if filepath == File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE )
+        unity_search_paths()
+      elsif @configurator.project_use_mocks and
+            (filepath == File.join( PROJECT_BUILD_VENDOR_CMOCK_PATH, CMOCK_C_FILE ))
+        cmock_search_paths()
+      elsif @configurator.project_use_exceptions and
+            (filepath == File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE ))
+        cexception_search_paths()
+      elsif @configurator.collection_all_support.include?( filepath )
+        support_file_search_paths( search_paths )
+      else
+        []
+      end
 
     return search_paths if _search_paths.empty?
 
     return _search_paths.uniq
   end
 
-  def validate_build_directive_source_files(test:, filepath:)
-    sources = @test_context_extractor.lookup_build_directive_sources_list( filepath )
-
-    ext_message = @configurator.extension_source
-    if @configurator.test_build_use_assembly
-      ext_message += " or #{@configurator.extension_assembly}"
-    end
-
-    sources.each do |source|
-      valid_extension = true
-
-      if not @configurator.test_build_use_assembly
-        valid_extension = false if @file_wrapper.extname( source ) != @configurator.extension_source
-      else
-        ext = @file_wrapper.extname( source )
-        valid_extension = false if (ext != @configurator.extension_assembly) and (ext != @configurator.extension_source)
-      end
-
-      if not valid_extension
-        error = "File '#{source}' specified with TEST_SOURCE_FILE() in #{test} is not a #{ext_message} source file"
-        raise CeedlingException.new( error )
-      end
-
-      if @file_finder.find_build_input_file( filepath: source, complain: :ignore, context: TEST_SYM ).nil?
-        error = "File '#{source}' specified with TEST_SOURCE_FILE() in #{test} cannot be found in the source file collection"
-        raise CeedlingException.new( error )
-      end
-    end
+  def unity_search_paths()
+    @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_UNITY_PATH]
   end
 
-  def remove_partials_source_objects(objects, configs)
-    modules = configs.keys
-    objects.delete_if do |filepath|
-      modules.include?( File.basename( filepath ).ext() )
-    end
+  def cmock_search_paths()
+    paths = @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_UNITY_PATH, PROJECT_BUILD_VENDOR_CMOCK_PATH]
+    paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+    paths
+  end
+
+  def cexception_search_paths()
+    @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_CEXCEPTION_PATH]
+  end
+
+  def support_file_search_paths(search_paths)
+    paths = search_paths + @configurator.collection_paths_support + [PROJECT_BUILD_VENDOR_UNITY_PATH]
+    paths << PROJECT_BUILD_VENDOR_CMOCK_PATH      if @configurator.project_use_mocks
+    paths << PROJECT_BUILD_VENDOR_CEXCEPTION_PATH if @configurator.project_use_exceptions
+    paths
   end
 
 end

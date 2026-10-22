@@ -8,11 +8,21 @@
 
 ## Some YAML Learnin’
 
-Please consult YAML documentation for the finer points of format
-and to understand details of our YAML-based configuration file.
-
 We recommend [Wikipedia’s entry on YAML](http://en.wikipedia.org/wiki/Yaml)
-for this. A few highlights from that reference page:
+and [educative.io’s advanced YAML cheatsheet](https://www.educative.io/blog/advanced-yaml-syntax-cheatsheet)
+for a simple overview of YAML and its syntax sufficient for 
+understanding your Ceedling project configuration.
+
+!!! tip "`ceedling dumpconfig` to verify your YAML"
+    Ceedling provides a means to export the final result of YAML
+    processing for your inspection via [`dumpconfig`](../getting-started/command-line.md#ceedling-dumpconfig-filepath-sections).
+    Dump output includes the resolution of advanced YAML features and 
+    Ceedling’s own manipulations. This is a good way to troubleshoot 
+    your project configuration.
+
+### YAML highlights & overview
+
+A few points from the preceding references:
 
 * YAML streams are encoded using the set of printable Unicode
   characters, either in UTF-8 or UTF-16.
@@ -40,9 +50,17 @@ for this. A few highlights from that reference page:
   punctuation can generally be represented without needing
   to be enclosed in quotes.
 
-* Repeated nodes are initially denoted by an ampersand (`&`) and
-  thereafter referenced with an asterisk (`*`). These are known as
-  anchors and aliases in YAML speak.
+### YAML anchors, aliases, and extensions
+
+YAML provides several “shortcuts” for referencing and modifying blocks
+of YAML so you can avoid duplication. This is advanced YAML and 
+well beyond the scope of Ceedling documentation. However, know that
+Ceedling’s YAML parser is entirely capable of handling these advanced 
+aspects of YAML.
+
+See this [cheatsheet entry](https://www.educative.io/blog/advanced-yaml-syntax-cheatsheet#anchors) 
+and [this guide](https://blog.daemonl.com/2016/02/yaml.html)
+for much more on these powerful but finicky features.
 
 ## Notes on Project File Structure
 
@@ -72,22 +90,24 @@ for this. A few highlights from that reference page:
   is parsed. This is usually accompanied by a complaint with
   line and column number pointing into the project file.
 
-* Certain advanced features rely on `gcc` and `cpp` as preprocessing
-  tools. In most Linux systems, these tools are already available.
-  For Windows environments, we recommend the [MinGW] project
-  (Minimalist GNU for Windows).
+* Certain advanced features rely on `gcc` as a preprocessing tool.
+  In most Linux systems, the GNU Compiler Collection is already 
+  available. For Windows environments, we recommend [MinGW-w64], 
+  GCC built for native Windows executables, installed through 
+  [MSYS2], a Windows package manager that provides it.
 
 * Ceedling is primarily meant as a build tool to support automated
   unit testing. All the heavy lifting is involved there. Creating
-  a simple binary release build artifact is quite trivial in
+  a simple binary release build artifact is simpler in
   comparison. Consequently, most default options and the construction
   of Ceedling itself is skewed towards supporting testing, though
   Ceedling can, of course, build your binary release artifact
   as well. Note that some complex binary release builds are beyond
-  Ceedling's abilities. See the [`dependencies`](../plugins/dependencies.md)
+  Ceedling’s abilities. See the [`dependencies`](../plugins/dependencies.md)
   plugin for extending release build abilities.
 
-[MinGW]: http://www.mingw.org/
+[MinGW-w64]: https://www.mingw-w64.org
+[MSYS2]: https://www.msys2.org
 
 ## Ceedling YAML Handling & Conventions
 
@@ -95,7 +115,7 @@ for this. A few highlights from that reference page:
 
 !!! warning "Disabled by default for security"
     Inline Ruby string expansion executes arbitrary Ruby code from a
-    project configuration, Mixins, and/or plugin config — so it's
+    project configuration, Mixins, and/or plugin config — so it’s
     **disabled by default**.
 
     Enable it with `--ruby-replacement` for any [application command](../getting-started/command-line.md#application-commands) 
@@ -130,11 +150,17 @@ Inline Ruby string expansion may constitute the entirety of a configuration
 value string, may be embedded within a string, or may be used multiple times
 within a string.
 
-Because of the `#` it's a good idea to wrap any string values in your YAML that
-rely on this feature with quotation marks. Quotation marks for YAML strings are
-optional. However, the `#` can cause a YAML parser to see a comment. As such,
-explicitly indicating a string to the YAML parser with enclosing quotation 
-marks alleviates this problem.
+Only the Ruby inside each `#{…}` is evaluated. Text outside it is kept exactly
+as written, so backslashes in Windows paths and any quote marks or `#`
+characters stay literal. A `#{` with no closing `}` stops the build. To keep a
+literal `#{`, write `\#{` in a single-quoted or unquoted YAML string.
+
+!!! tip
+    Because of the `#` it’s a good idea to wrap any string values in your YAML
+    that rely on Ruby string expansion with quotation marks. Quotation marks for YAML 
+    strings are optional. However, the `#` can cause a YAML parser to see a 
+    comment. Explicitly indicating a string to the YAML parser with enclosing 
+    quotation marks alleviates this problem.
 
 #### Ruby string expansion example
 
@@ -148,9 +174,9 @@ marks alleviates this problem.
 In the example above, the two YAML strings will include the strings returned by
 the Ruby code within `#{…}`:
 
-1. The first string uses Ruby's environment variable lookup `ENV[…]` to fetch 
+1. The first string uses Ruby’s environment variable lookup `ENV[…]` to fetch 
 the value assigned to variable `VAR1`.
-1. The second string uses Ruby's backtick shell execution ``…`` to insert the 
+1. The second string uses Ruby’s backtick shell execution ``…`` to insert the 
 string generated by a command line utility.
 
 #### Project file sections that offer inline Ruby string expansion
@@ -159,12 +185,15 @@ string generated by a command line utility.
 * `:environment`
 * `:paths` plus any second tier configuration key name ending in `_path` or
   `_paths`
+* `:files`
+* `:project` ↳ `:build_root`
+* `:plugins` ↳ `:load_paths`
 * `:flags`
 * `:defines`
 * `:tools`
 * `:release_build` ↳ `:artifacts`
 
-See each section's documentation for details.
+See each section’s documentation for details.
 
 [inline-ruby-string-expansion]: #inline-ruby-string-expansion
 
@@ -193,6 +222,6 @@ any trouble. Ceedling will happily process that section
 or value and simply use the properly spelled default maintained
 internally — thus leading to unexpected behavior without warning.
 
-[example-config-file]: ../snapshot/assets/project.yml
+[example-config-file]: ../snapshot/assets/features/project.yml
 
 <br/><br/>

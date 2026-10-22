@@ -7,14 +7,14 @@ toc_depth: 3
 Naming and location conventions:
 
 * `<plugin_name>/lib/<plugin_name>.rb`
-* The plugin's class name must be the camelized version (a.k.a. "bumpy case")
+* The plugin’s class name must be the camelized version (a.k.a. "bumpy case")
   of the plugin filename — `whiz_bang.rb` ➡️ `WhizBang`.
 
 This plugin option allows full programmatic ability connected to any of a number
 of predefined Ceedling build steps.
 
 The contents of `<plugin_name>.rb` must implement a class that subclasses
-`Plugin`, Ceedling's plugin base class.
+`Plugin`, Ceedling’s plugin base class.
 
 ## Example `Plugin` subclass
 
@@ -132,7 +132,7 @@ whose associated value is itself a hash with the following contents:
 !!! warning "Preprocessing Hook Limitations"
     Test preprocessing steps are quite sophisticated and involve various combinations
     of tool executions. The `post_` preprocessing hooks do not include shell results.
-    Future updates to Ceedling's plugin system will create a more robust means of
+    Future updates to Ceedling’s plugin system will create a more robust means of
     attaching custom behaviors to test preprocessing or connecting your own
     preprocessing pipeline with toolchains other than GCC.
 
@@ -237,6 +237,42 @@ arg_hash = {
 }
 ```
 
+## Delta build hooks
+
+Ceedling skips work when nothing has changed. This is called a delta build.
+See [Delta Builds](../../getting-started/builds.md) for the full picture.
+
+Three hook methods run before Ceedling checks delta build state for a
+target. Each one always runs, for every target, whether or not that target
+turns out to need rebuilding. A plugin uses one of these hooks to swap in
+its own tool for its own build context. Doing the swap here, not only in
+the matching `pre_*_execute` hook below, makes sure Ceedling’s delta build
+check sees the real tool. Otherwise a change to that tool’s own settings
+will not force a rebuild.
+
+## `Plugin` hook method `pre_test_compile_register(arg_hash)`
+
+Test builds only, not release builds. Runs once per C file in a test build.
+Runs before Ceedling registers the file as a delta build target.
+
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  :tool => {
+    # Hash holding compiler tool properties — see ':tools' in the Project Configuration Reference
+  },
+  # Symbol of the operation being considered, e.g. :compile or :assemble
+  :operation => :<operation>,
+  :context => :<context>,
+  :module_name => "<name>",
+  :source => "<filepath>",
+  :object => "<filepath>",
+  :flags => [<flags>],
+  :defines => [<defines>]
+}
+```
+
 ## `Plugin` hook methods `pre_compile_execute(arg_hash)` and `post_compile_execute(arg_hash)`
 
 These methods are called before and after source file compilation. These are
@@ -269,6 +305,32 @@ arg_hash = {
   :list => "<filepath>",
   # Filepath of the dependencies file, e.g. .d file
   :dependencies => "<filepath>"
+}
+```
+
+## `Plugin` hook method `pre_test_link_register(arg_hash)`
+
+Test builds only, not release builds. Runs once per test executable in a
+test build. Runs before Ceedling registers the executable as a delta build
+target. See [Delta build hooks](#delta-build-hooks) above for why this hook
+exists and when it runs.
+
+A plugin swapping in its own linker tool for its own build context should
+do so here, for the same reason described under `pre_test_compile_register`
+above. Because this hook always runs, it also gives a plugin a reliable
+place to note that its own build context ran at all, apart from whether
+anything actually needed relinking.
+
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  :tool => {
+    # Hash holding linker tool properties — see ':tools' in the Project Configuration Reference
+  },
+  :context => :<context>,
+  :flags => [<flags>],
+  :executable => "<filepath>"
 }
 ```
 
@@ -306,6 +368,45 @@ arg_hash = {
 }
 ```
 
+## `Plugin` hook method `pre_test_fixture_register(arg_hash)`
+
+Runs once per test executable. Runs before Ceedling registers the test run
+as a delta build target. See [Delta build hooks](#delta-build-hooks) above
+for why this hook exists and when it runs.
+
+A plugin swapping in its own wrapper tool to run the test executable (as
+Valgrind does) should do so here, for the same reason described under
+`pre_test_compile_register` above. Otherwise a change to that wrapper tool’s own
+settings will not force a rerun.
+
+A wrapper tool runs the test executable as one of its own arguments. Ceedling
+places Unity’s test case filters (from `--test-case`, `--exclude_test_case`, and
+backtrace reruns) after the tool’s arguments, where the executable is.
+
+A crashed test executable reruns one test case at a time when
+`:use_backtrace` is `:simple`. By default the reruns go through Ceedling’s own
+backtrace tool, not a swapped wrapper. A wrapper the reruns should run through
+too (as the Sanitize plugin’s does, to keep its runtime options) sets
+`:backtrace_rerun => true` in its tool hash. Such a tool can't run under gdb, so
+`:gdb` backtraces fall back to `:simple` for it, with a notice. Leave the key out
+for a wrapper that writes one report per test, as Valgrind’s does, since each
+rerun would overwrite it.
+
+The argument `arg_hash` follows the structure below:
+
+```ruby
+arg_hash = {
+  :tool => {
+    # Hash holding execution tool properties — see ':tools' in the Project Configuration Reference
+  },
+  :context => :<context>,
+  :test_name => "<name>",
+  # The delta build target for this test run. A plugin can register its own
+  # additional data against this same target — see Delta Builds.
+  :target => "<filepath>"
+}
+```
+
 ## `Plugin` hook methods `pre_test_fixture_execute(arg_hash)` and `post_test_fixture_execute(arg_hash)`
 
 These methods are called before and after running a test executable. If a build
@@ -335,6 +436,45 @@ arg_hash = {
 }
 ```
 
+## `Plugin` hook method `explain_test_crash(arg_hash)`
+
+Called when a test executable crashed, before Ceedling writes the crash as test
+failures. A plugin that recognizes the cause, such as a sanitizer’s report in the
+run’s output, sets `arg_hash[:explanation]` to a short message. That message
+replaces the generic crash message in the test’s failure, except with `:gdb`
+backtraces, whose failures carry gdb’s own trace. It also replaces Ceedling’s
+generic crash notice and its backtrace advice.
+
+Two optional keys shape the notice:
+
+- `:explanation_heading` completes its first line, “Test executable `x` …”.
+  Without it, the line ends “crashed.”
+- `:explanation_details` lists lines that follow the cause, such as where a
+  log is. The failure message adds them in parentheses.
+
+With `:use_backtrace` set to `:simple`, it is called again for each rerun that
+crashes, with that rerun’s own shell result, so each crashed test case can be
+explained on its own.
+
+The argument `arg_hash` holds the same keys as `pre_test_fixture_execute` above,
+plus:
+
+```ruby
+arg_hash = {
+  # ...the keys above...
+  # The crashed run’s shell result -- see Command line tool shell results
+  :shell_result => { ... },
+  # Set by a plugin that recognizes the cause; nil otherwise
+  :explanation => nil,
+  # True for the crash's main run, whose explanation reaches the crash notice;
+  # false for a backtrace rerun
+  :crash_notice => true,
+  # Optional, set alongside :explanation
+  :explanation_details => nil,
+  :explanation_heading => nil
+}
+```
+
 ## `Plugin` hook methods `pre_test(test)` and `post_test(test)`
 
 These methods are called before and after performing all steps needed to run a
@@ -353,6 +493,11 @@ termination points, including early exit due to a build error.
 The argument `context` is the build context symbol (e.g. `:test`, `:gcov`) that
 was passed to `TestInvoker#setup_and_invoke`. This lets a plugin respond
 differently depending on which kind of build triggered the pipeline.
+
+Each context also gets its own separate delta build cache. A plugin that
+runs its own build under a distinct context symbol keeps that build’s
+tracked state apart from ordinary test builds and from any other plugin’s
+builds. See [Delta Builds](../../getting-started/builds.md) for more.
 
 The argument `timestamp_s` is a floating-point stopwatch value in seconds
 (from `SystemWrapper.time_stopwatch_s`). Compare the `pre_test_build` and
@@ -395,21 +540,21 @@ This method is called when invoking the summary task, `ceedling summary`. This
 method facilitates logging the results of the last build without running the
 previous build again.
 
-## Validating a plugin's tools
+## Validating a plugin’s tools
 
 By default, Ceedling validates configured tools at startup according to a 
 simple setting within the tool definition. This works just fine for default
 core tools and options. However, in the case of plugins, tools may not be even 
-relevant to a plugin's operation depending on its configurable options. It's
+relevant to a plugin’s operation depending on its configurable options. It’s
 a bit silly for a tool not needed by your project to fail validation if 
-Ceedling can't find it in your `$PATH`. Similarly, it's irresponsible to skip
+Ceedling can't find it in your `$PATH`. Similarly, it’s irresponsible to skip
 validating a tool just because it may not be needed.
 
 Ceedling provides optional, programmatic tool validation for these cases.
-`@ceedling[:tool_validator].validate()` can be forced to ignore a tool's 
+`@ceedling[:tool_validator].validate()` can be forced to ignore a tool’s 
 `required:` setting to validate it. In such a scenario, a plugin should 
 configure its own tools as `:optional => true` but forcibly validate them at 
-plugin startup if the plugin's configuration options require said tool.
+plugin startup if the plugin’s configuration options require said tool.
 
 An example from the `gcov` plugin illustrates this.
 
@@ -437,7 +582,7 @@ utility method is available for this purpose.
 
 This method takes as an argument a list of results filepaths. These typically
 correspond directly to the collection of test files Ceedling processed in a
-given test build. It's common for this list of filepaths to be assembled from
+given test build. It’s common for this list of filepaths to be assembled from
 the `post_test_fixture_execute` build step execution hook.
 
 The data that `assemble_test_results()` returns has a structure as follows. In 
@@ -488,7 +633,7 @@ hash/array Ruby code with comments and with some edits to reduce line length.
   :stdout => [
     {
       :source => {:file => "test/TestUsartModel.c", :dirname => "test", :basename => "TestUsartModel.c"},
-      # Calls to print to $stdout are outside Unity's scope, preventing attaching test file line numbers
+      # Calls to print to $stdout are outside Unity’s scope, preventing attaching test file line numbers
       :collection => [
         "<$stdout string (e.g. printf() call)>"
       ]
@@ -507,6 +652,111 @@ hash/array Ruby code with comments and with some edits to reduce line length.
   :total_time => 0.21196400001645088
 }
 ```
+
+## Test results report templates
+
+Ceedling renders test results reports from templates. A plugin that prints test
+results supplies a template, and Ceedling compiles these templates with its own 
+compiler rather than with ERB.
+
+ERB was removed as a Ceedling dependency in 1.2.0. The template language Ceedling
+accepts is now a deliberate subset of what ERB accepted. Every template Ceedling
+ships stays within that subset. A template written for an earlier Ceedling works
+unchanged if it does the same.
+
+### Supplying a template
+
+A `ReportTestsStdoutPlugin` subclass supplies a template by overriding the private
+`load_template` method. That method returns the template as a String. The base
+class registers the template during `setup()` and owns every build step hook, so a
+subclass needs nothing else.
+
+The default `load_template` reads `assets/test_results.template` from the plugin’s
+own root path. It falls back to the historical `assets/template.erb` name when only
+that older file exists. A plugin shipping the old filename therefore keeps working.
+
+Every stock stdout report plugin uses the asset file default.
+`report_tests_pretty_stdout` has an empty subclass body.
+
+A template can also call its own plugin object. Ceedling’s system objects include
+each loaded plugin, named for it, so a template reaches its plugin as
+`@ceedling[:<plugin name>]`. `report_tests_gtestlike_stdout` and
+`report_tests_ide_stdout` work this way. Their templates hand results to plugin
+methods that build lines in Ruby. That keeps formatting logic testable and
+configurable. Gcov, Bullseye, and Valgrind render test results through whichever
+template is registered, so they get the same lines.
+
+A plugin can also render a template directly. `@ceedling[:plugin_reportinator]`
+exposes `run_report(template, hash)` for this. The Bullseye plugin uses it to
+render its coverage summary from `assets/coverage.template`.
+
+### Supported syntax
+
+Five constructs are available, and two of them carry nearly every template. A
+percent sign in column zero introduces a line of Ruby. A `<%= expression %>` tag
+inserts that expression’s value into the output.
+
+| Construct | Effect |
+| --- | --- |
+| `% ruby_code` | Executes the line as Ruby. Nothing is emitted. |
+| `%%` | Emits one literal percent sign. Column zero only. |
+| `<%= expression %>` | Emits the expression, converted with `to_s`. |
+| `<% ruby_code %>` | Executes the code. Nothing is emitted. |
+| `<%# comment %>` | Emits nothing. |
+
+A percent sign is only special in column zero. Whitespace may follow it freely, so
+a template can indent Ruby lines to show nesting. A percent sign anywhere else on a
+line is literal text.
+
+All Ruby in a template shares one scope. A value assigned on a percent line is
+visible to every later line and tag, including across block boundaries.
+
+### Newline trimming
+
+A line whose first tag opens it and whose last tag closes it contributes no newline
+of its own. Text between those two tags does not change that. Every other line
+keeps its newline. Ceedling’s own templates depend on this behavior to control
+blank lines in report output.
+
+### What a template can reference
+
+Templates render against `PluginReportinator`’s own binding. The report data
+arrives as a local named `hash`. Global constants such as `TEST_SYM` resolve
+normally.
+
+`@ceedling[:plugin_reportinator]` exposes several helpers intended for templates.
+
+| Helper | Purpose |
+| --- | --- |
+| `test_report_preamble(hash)` | Returns the counts and banner prefix every stdout report needs. |
+| `generate_banner(text)` | Formats a section divider. |
+| `generate_heading(text)` | Formats a heading. |
+| `reflow_message(message, continuation_prefix)` | Indents the second and later lines of a multi-line message. |
+| `decorate_summary_banner(text, failed_count)` | Colors a summary banner by outcome. |
+
+### Unsupported syntax
+
+Four ERB constructs are unavailable. A template relying on any of them needs
+revision.
+
+| Construct | Behavior |
+| --- | --- |
+| `-%>` | Raises `SyntaxError`. ERB offered this only under a trim mode Ceedling never used. |
+| `<%%` | Not an escape. The characters are not translated to a literal `<%`. |
+| A tag spanning lines | Raises `CeedlingException` naming the template line. |
+| A tag never closed on its line | Raises `CeedlingException` naming the template line. |
+
+The last two are deliberate. ERB accepted a multi-line tag. ERB also responded to
+an unclosed tag by treating the rest of the template as Ruby, which produced
+garbled output rather than an error. Naming the offending line is more useful to a
+template author than either behavior.
+
+!!! warning "Porting a template written for ERB"
+    Ceedling’s own templates never used the unsupported constructs above, and
+    neither did any template this project has seen. Check a template against the
+    table before assuming it needs no changes. A Ruby error inside a template
+    reports its location as `(ceedling template):<line>`, where the line number is
+    the template’s own.
 
 [preprocessing]: ../../testing-guide/conventions.md#test-preprocessing
 

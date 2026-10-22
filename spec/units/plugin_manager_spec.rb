@@ -39,10 +39,87 @@ describe PluginManager do
       expect(@pm.plugins_failed?).to be(false)
     end
 
+    # A delta build reports a skipped test's results from the last build, without running it
+    it 'prints no raw output for a test reported from cached results' do
+      allow(@configurator).to receive(:plugins_display_raw_test_results).and_return(true)
+      allow(@loginator).to receive(:log)
+
+      arg_hash = { :context => TEST_SYM, :shell_result => nil, :results => { :counts => { :failed => 1 } } }
+      @pm.post_test_fixture_execute(arg_hash)
+
+      expect(@loginator).not_to have_received(:log)
+      expect(@pm.plugins_failed?).to be(true)
+    end
+
     it 'does not register a build failure when result counts are absent' do
       arg_hash = { :context => TEST_SYM, :shell_result => { :output => '' }, :results => {} }
       @pm.post_test_fixture_execute(arg_hash)
       expect(@pm.plugins_failed?).to be(false)
+    end
+  end
+
+  # These fire ahead of TestBuildExecutor's own dependency-tracker meta capture (see
+  # TestBuildExecutor's resolve_compile_tool/resolve_link_tool/resolve_fixture_tool) --
+  # distinct from and additional to the existing pre_compile_execute/pre_link_execute/
+  # pre_test_fixture_execute hooks, which only fire for a target actually rebuilt.
+  describe 'pre_test_compile_register / pre_test_link_register / pre_test_fixture_register' do
+    before(:each) do
+      allow(@loginator).to receive(:lazy)
+    end
+
+    def stub_plugin_implementing(method)
+      plugin = double('plugin', :name => 'fake')
+      allow(plugin).to receive(:respond_to?).and_return(false)
+      allow(plugin).to receive(:respond_to?).with(method).and_return(true)
+      @pm.instance_variable_set(:@plugin_objects, [plugin])
+      plugin
+    end
+
+    it 'dispatches pre_test_compile_register to a plugin implementing it, with the given arg_hash' do
+      plugin = stub_plugin_implementing(:pre_test_compile_register)
+      arg_hash = { tool: 'fake tool' }
+
+      expect(plugin).to receive(:pre_test_compile_register).with(arg_hash)
+      @pm.pre_test_compile_register(arg_hash)
+    end
+
+    it 'dispatches pre_test_link_register to a plugin implementing it, with the given arg_hash' do
+      plugin = stub_plugin_implementing(:pre_test_link_register)
+      arg_hash = { tool: 'fake tool' }
+
+      expect(plugin).to receive(:pre_test_link_register).with(arg_hash)
+      @pm.pre_test_link_register(arg_hash)
+    end
+
+    it 'dispatches pre_test_fixture_register to a plugin implementing it, with the given arg_hash' do
+      plugin = stub_plugin_implementing(:pre_test_fixture_register)
+      arg_hash = { tool: 'fake tool' }
+
+      expect(plugin).to receive(:pre_test_fixture_register).with(arg_hash)
+      @pm.pre_test_fixture_register(arg_hash)
+    end
+
+    it 'is a harmless no-op for any of the three when no plugin implements it' do
+      expect { @pm.pre_test_compile_register({}) }.to_not raise_error
+      expect { @pm.pre_test_link_register({}) }.to_not raise_error
+      expect { @pm.pre_test_fixture_register({}) }.to_not raise_error
+    end
+  end
+
+  describe '#explain_test_crash' do
+    before(:each) { allow(@loginator).to receive(:lazy) }
+
+    it 'lets a plugin implementing it name the cause of a crash' do
+      plugin = double('plugin', :name => 'fake')
+      allow(plugin).to receive(:respond_to?).and_return(false)
+      allow(plugin).to receive(:respond_to?).with(:explain_test_crash).and_return(true)
+      allow(plugin).to receive(:explain_test_crash) { |arg_hash| arg_hash[:explanation] = 'ASan heap-buffer-overflow' }
+      @pm.instance_variable_set(:@plugin_objects, [plugin])
+
+      arg_hash = { explanation: nil }
+      @pm.explain_test_crash( arg_hash )
+
+      expect(arg_hash[:explanation]).to eq( 'ASan heap-buffer-overflow' )
     end
   end
 end

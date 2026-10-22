@@ -19,11 +19,10 @@ describe CExtractorDeclarations do
   describe "#try_extract_variable" do
     # Helper to create extractor and test variable extraction
     let(:extract_variable) do
-      ->(content, max_line_length=1000) do
+      ->(content) do
         scanner = StringScanner.new(content)
         declarations = CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new() })
         declarations.setup()
-        declarations.max_line_length = max_line_length
         success, variable = declarations.try_extract_variable(scanner)
         return [success, variable, scanner.pos, scanner.rest]
       end
@@ -50,6 +49,22 @@ describe CExtractorDeclarations do
         check_single(variable, name: 'x', type: 'int', text: 'int x;')
         expect(variable[0].original).to eq 'int x;'
         expect(pos).to eq(6)
+        expect(rest).to eq("")
+      end
+
+      # #1266 follow-on: same unanchored-substring risk class as #1262/#1266. The type-side
+      # identifier "counter_t" itself contains "count" as a substring; a plain rindex(name)
+      # would still find the real trailing occurrence here (rindex searches right-to-left),
+      # but this pins down that the \b-anchored match extract_type now uses doesn't regress
+      # this ordinary case, where the type name happens to share a substring with the
+      # declared name.
+      it "extracts a variable whose type name contains the variable's own name as a substring" do
+        content = "counter_t count;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'count', type: 'counter_t', text: 'counter_t count;')
+        expect(pos).to eq(content.length)
         expect(rest).to eq("")
       end
 
@@ -194,9 +209,33 @@ describe CExtractorDeclarations do
         success, variable, pos, rest = extract_variable.call(content)
 
         expect(success).to be true
-        # Leading `const` is a decorator; gsub removes all `const` occurrences
-        check_single(variable, name: 'ptr', type: 'int*', decorators: ['const'], text: 'int* ptr;')
+        # Leading `const` (qualifying `int`) is a decorator; the second `const`
+        # (qualifying the pointer itself) is part of the declarator and stays put
+        check_single(variable, name: 'ptr', type: 'int* const', decorators: ['const'], text: 'int* const ptr;')
         expect(pos).to eq(21)
+        expect(rest).to eq("")
+      end
+
+      it "extracts volatile pointer to volatile" do
+        content = "volatile int* volatile ptr;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        # Same as const/const above: only the leading qualifier is a decorator
+        check_single(variable, name: 'ptr', type: 'int* volatile', decorators: ['volatile'], text: 'int* volatile ptr;')
+        expect(pos).to eq(27)
+        expect(rest).to eq("")
+      end
+
+      it "extracts static const pointer to const" do
+        content = "static const int* const ptr;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        # `static` and the leading `const` are decorators; the trailing `const`
+        # on the pointer itself is retained in both `.type` and `.text`
+        check_single(variable, name: 'ptr', type: 'int* const', decorators: ['static', 'const'], text: 'int* const ptr;')
+        expect(pos).to eq(28)
         expect(rest).to eq("")
       end
     end
@@ -445,6 +484,58 @@ describe CExtractorDeclarations do
       end
     end
 
+    context "escape sequences in string literal initializers" do
+      it "extracts pointer variable with escaped quote in string literal initializer" do
+        content = 'char* s = "say \"hi\"";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "say \"hi\"";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts pointer variable with escaped backslash in string literal initializer" do
+        content = 'char* s = "C:\\\\dir";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "C:\\\\dir";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts pointer variable with escaped newline in string literal initializer" do
+        content = 'char* s = "line1\\nline2";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "line1\\nline2";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts pointer variable with hex escape in string literal initializer" do
+        content = 'char* s = "\\x41\\x42";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "\\x41\\x42";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts pointer variable with octal escape in string literal initializer" do
+        content = 'char* s = "\\101\\102";'
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 's', type: 'char*', text: 'char* s = "\\101\\102";')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+    end
+
     context "qualified type declarations" do
       it "extracts const variable" do
         content = "const int value;"
@@ -685,6 +776,82 @@ describe CExtractorDeclarations do
       end
     end
 
+    context "multiline declarations" do
+      it "extracts array declaration whose closing brace and semicolon fall on the final line after multiline data (GH #1182)" do
+        content = "static uint8_t arr[10] = {\n    0x00, 0x01, 0x02, 0x03, 0x04,\n    0x05, 0x06, 0x07, 0x08, 0x09\n};"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'arr', type: 'uint8_t', decorators: ['static'],
+                     text: 'uint8_t arr[10] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 };',
+                     array_suffix: '[10]')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts nested multi-dimensional array initializer whose closing braces and semicolon fall on the final line" do
+        content = "static int matrix[2][3] = {\n    {1, 2, 3},\n    {4, 5, 6}\n};"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'matrix', type: 'int', decorators: ['static'],
+                     text: 'int matrix[2][3] = { {1, 2, 3}, {4, 5, 6} };',
+                     array_suffix: '[2][3]')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "expands a compound declaration whose second declarator has a multiline brace initializer" do
+        content = "static int a, arr[3] = {\n    1,\n    2,\n    3\n};"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        expect(variable.length).to eq 2
+
+        expect(variable[0].name).to eq 'a'
+        expect(variable[0].decorators).to eq ['static']
+        expect(variable[0].text).to eq 'int a;'
+
+        expect(variable[1].name).to eq 'arr'
+        expect(variable[1].decorators).to eq ['static']
+        expect(variable[1].array_suffix).to eq '[3]'
+        expect(variable[1].text).to eq 'int arr[3] = { 1, 2, 3 };'
+
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts a declaration with the type and name split across lines and no braces involved" do
+        content = "int\n    x;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'x', type: 'int', text: 'int x;')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts a declaration whose initializer value falls on the line after the assignment" do
+        content = "int x =\n    5;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'x', type: 'int', text: 'int x = 5;')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+
+      it "extracts a declaration whose terminating semicolon is alone on the line following a bracketed declarator" do
+        content = "int arr[10]\n;"
+        success, variable, pos, rest = extract_variable.call(content)
+
+        expect(success).to be true
+        check_single(variable, name: 'arr', type: 'int', text: 'int arr[10] ;', array_suffix: '[10]')
+        expect(pos).to eq(content.length)
+        expect(rest).to eq("")
+      end
+    end
+
     context "array_suffix field" do
       it "returns empty string for a scalar variable" do
         content = "static uint8 s_count;"
@@ -740,6 +907,76 @@ describe CExtractorDeclarations do
         expect(success).to be true
         check_single(variable, name: 'cb', type: 'void', decorators: ['static'],
                      text: 'void (*cb)(int);', array_suffix: '')
+      end
+    end
+
+    context "comments and malformed input" do
+      it "scans past a block comment mid-declaration and still finds the real terminator" do
+        content = "int x /* note */ = 5;"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable).to be_an(Array)
+        expect(variable.length).to eq 1
+        expect(pos).to eq content.length
+        expect(rest).to eq ''
+      end
+
+      it "scans past a line comment containing a ';' without treating it as the terminator" do
+        content = "int x // ;\n = 5;"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable).to be_an(Array)
+        expect(variable.length).to eq 1
+        # If the ';' inside the comment had wrongly terminated the scan, pos would land
+        # mid-string instead of consuming the real, later terminator.
+        expect(pos).to eq content.length
+        expect(rest).to eq ''
+      end
+
+      it "rejects an unbalanced closing paren with no matching open" do
+        content = ");"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be false
+        expect(variable).to be_nil
+        expect(pos).to eq 0
+        expect(rest).to eq content
+      end
+
+      it "rejects an unbalanced closing bracket with no matching open" do
+        content = "];"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be false
+        expect(variable).to be_nil
+        expect(pos).to eq 0
+        expect(rest).to eq content
+      end
+
+      it "rejects an unbalanced closing brace with no matching open" do
+        content = "};"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be false
+        expect(variable).to be_nil
+        expect(pos).to eq 0
+        expect(rest).to eq content
+      end
+
+      it "scans past a lone '/' that doesn't start a comment" do
+        content = "int x /y;"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be true
+        expect(variable).to be_an(Array)
+        expect(variable.length).to eq 1
+        expect(pos).to eq content.length
+        expect(rest).to eq ''
+      end
+
+      it "rejects a bare semicolon that doesn't look like a valid declaration" do
+        content = ";"
+        success, variable, pos, rest = extract_variable.call(content)
+        expect(success).to be false
+        expect(variable).to be_nil
+        expect(pos).to eq 0
+        expect(rest).to eq content
       end
     end
   end

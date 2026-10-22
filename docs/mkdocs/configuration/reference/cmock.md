@@ -6,7 +6,7 @@ Ceedling sets values for a subset of CMock settings. All CMock options are
 available to be set, but only those options set by Ceedling in an automated
 fashion are documented below. See [CMock documentation][cmock-docs].
 
-## Exmaple `:cmock` YAML
+## Example `:cmock` YAML
 
 ```yaml
 :cmock:
@@ -20,6 +20,21 @@ fashion are documented below. See [CMock documentation][cmock-docs].
 ## `:enforce_strict_ordering`
 
 Tests fail if expected call order is not same as source order
+
+**Default**: TRUE
+
+## `:mock_name_include_folder`
+
+Names each mock’s include guard and `Init()`, `Verify()`, and `Destroy()`
+functions by the folder its `#include` names. A mock included as
+`drivers/uart/mock_config.h` (`#include "drivers/uart/mock_config.h"`) gets 
+functions such as `drivers_uart_mock_config_Init()`. A mock included without
+a folder keeps its plain name.
+
+This is what lets one test file mock two headers sharing a filename, such as
+`drivers/uart/config.h` and `drivers/spi/config.h`. Include each mock through
+its own folder. Ceedling copies this setting into the test runner
+configuration, so runners always call the names the mocks define.
 
 **Default**: TRUE
 

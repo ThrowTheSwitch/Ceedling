@@ -7,11 +7,18 @@
 
 require 'spec_system_helper'
 require_relative 'support/gcov_common_test_cases'
+require_relative 'support/gcov_partials_test_cases'
 
 ceedling_system_tests do
   describe "Gcov" do
     include CommonSystemTestCases
     include GcovCommonTestCases
+    include GcovPartialsTestCases
+
+    # Coverage instrumentation alongside exact line- and branch-count
+    # assertions. See the shared context for why opting out is mandatory --
+    # :test flags reach the :gcov context whether or not that was intended.
+    include_context "cannot be sanitized"
     before :all do
       determine_reports_to_test
       @c = SystemContext.new
@@ -31,6 +38,7 @@ ceedling_system_tests do
         end
       end
 
+      test_case :project_with_gcov_enabled_test_all_does_not_require_gcovr
       test_case :project_with_gcov_success
       test_case :project_with_gcov_fail
       test_case :gcov_console_report_with_system_header
@@ -44,10 +52,88 @@ ceedling_system_tests do
       test_case :project_with_gcov_untested_sources_list
       test_case :project_with_gcov_untested_sources_compile_failure
       test_case :project_with_gcov_untested_sources_standalone_task
+      test_case :project_with_gcov_untested_sources_compiled_with_matched_defines
       test_case :help_tasks_include_gcov
       test_case :create_html_report
-      test_case :create_html_report_with_gcovr_config_file_overrides_default
+      test_case :create_html_report_with_gcovr_custom_args
       test_case :create_html_report_100_coverage_excluding_crashing_test_case
+    end
+
+    # Version-gated gcov features, each in its own group so one unavailable tool version
+    # skips only the cases that actually need it.
+    describe "Decision coverage thresholds" do
+      # :fail_under_decision passes --fail-under-decision to gcovr, which rejects it
+      # outright before 7.0. The plugin gates the option and breaks the build by design on
+      # an older gcovr, so this asserts a successful build only where the option exists.
+      include_context "requires gcovr", [7, 0]
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :project_with_gcov_fail_under_decision
+    end
+
+    describe "JaCoCo and LCOV reports" do
+      # gcovr gained JaCoCo XML and LCOV output in 7.0. The plugin stops the build when either
+      # report is configured against an older gcovr, so these assert generation only where it exists.
+      include_context "requires gcovr", [7, 0]
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :create_gcovr_jacoco_report
+      test_case :create_gcovr_lcov_report
+    end
+
+    describe "Function merge mode" do
+      # Ceedling injects --merge-mode-functions, which gcovr gained in 6.0. Below that the
+      # plugin omits the flag silently rather than breaking the build, so these cases would
+      # pass on an older gcovr while proving nothing about the behavior they name.
+      include_context "requires gcovr", [6, 0]
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :create_html_report_with_gcovr_config_file_overrides_default
+      test_case :gcovr_merge_mode_functions_reaches_the_command_line
+    end
+
+    describe "Modified condition/decision coverage" do
+      # Gated on both tools, each raising on its own account: gcovr reports MC/DC from 8.0,
+      # GCC emits it from 14.0. Most toolchains satisfy neither, which is why this skips far
+      # more often than it runs.
+      include_context "requires gcovr", [8, 0]
+      include_context "requires gcc", [14, 0]
+
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :project_with_gcov_mcdc_coverage
+    end
+
+    describe "Coverage reporting with Partials" do
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :gcov_partials_coverage_blank_lines_in_function_body
+      test_case :gcov_partials_coverage_decorators_on_own_lines
+      test_case :gcov_partials_coverage_function_scope_static_promotion
+      test_case :gcov_partials_coverage_same_named_modules
     end
 
     describe "Backtrace with GDB" do
@@ -78,7 +164,7 @@ ceedling_system_tests do
             # than resetting, crashing the test executable before Unity can print
             # its statistics line.
             FileUtils.rm_rf('temp_sensor')
-            output = `bundle exec ruby -S ceedling example temp_sensor 2>&1`
+            output = @c.ceedling_appcmd_exec("example temp_sensor")
             expect(output).to match(/created/)
           end
         end
@@ -86,7 +172,7 @@ ceedling_system_tests do
         it "should be testable" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:all 2>&1`
+              @output = @c.ceedling_build_exec("gcov:all --mixin=add_gcov")
               # Validate full test suite results
               expect(@output).to match(/TESTED:\s+86/)
               expect(@output).to match(/PASSED:\s+86/)
@@ -107,7 +193,7 @@ ceedling_system_tests do
         it "should be able to test a single module (it should INHERIT file-specific flags)" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:TemperatureCalculator 2>&1`
+              @output = @c.ceedling_build_exec("gcov:TemperatureCalculator --mixin=add_gcov")
               expect(@output).to match(/TESTED:\s+2/)
               expect(@output).to match(/PASSED:\s+2/)
 
@@ -119,7 +205,7 @@ ceedling_system_tests do
         it "should be able to test multiple files matching a pattern" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:pattern[Temp] 2>&1`
+              @output = @c.ceedling_build_exec("gcov:pattern[Temp] --mixin=add_gcov")
               expect(@output).to match(/TESTED:\s+6/)
               expect(@output).to match(/PASSED:\s+6/)
 
@@ -132,7 +218,7 @@ ceedling_system_tests do
         it "should be able to test all files matching in a path" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:path[adc] 2>&1`
+              @output = @c.ceedling_build_exec("gcov:path[adc] --mixin=add_gcov")
               expect(@output).to match(/TESTED:\s+24/)
               expect(@output).to match(/PASSED:\s+24/)
 
@@ -147,7 +233,7 @@ ceedling_system_tests do
         it "should be able to test specific test cases in a file" do
           @c.with_context do
             Dir.chdir "temp_sensor" do
-              @output = `bundle exec ruby -S ceedling --mixin=add_gcov gcov:path[adc] --test-case="RunShouldNot" 2>&1`
+              @output = @c.ceedling_build_exec('gcov:path[adc] --mixin=add_gcov --test-case="RunShouldNot"')
               expect(@output).to match(/TESTED:\s+2/)
               expect(@output).to match(/PASSED:\s+2/)
 

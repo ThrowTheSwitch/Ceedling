@@ -16,17 +16,6 @@ class Mixinator
     @standardinator = @mixin_standardizer
   end
 
-  def validate_cmdline_filepaths(paths)
-    validated = @path_validator.validate(
-      paths: paths,
-      source: 'Filepath argument',
-    )
-
-    if !validated
-      raise 'Mixins command line failed validation'
-    end
-  end
-
   def validate_cmdline_yaml_strings(yaml_strings)
     # Validate a list of inline YAML strings from --mixin "=..." command line arguments.
     # Errors are accumulated so the user sees all problems before the run aborts.
@@ -68,22 +57,32 @@ class Mixinator
   def fetch_env_filepaths(env)
     var_names = []
 
-    env.each do |var, filepath|
-      # Explicitly ignores CEEDLING_MIXIN_0
-      var_names << var if var =~ /CEEDLING_MIXIN_[1-9]\d*/
+    env.each_key do |var|
+      next unless var.start_with?( 'CEEDLING_MIXIN_' )
+
+      suffix = var.sub( 'CEEDLING_MIXIN_', '' )
+      unless suffix.match?( /\A\d+\z/ )
+        raise "Malformed mixin environment variable name '#{var}' — expected CEEDLING_MIXIN_<number>"
+      end
+
+      # Explicitly ignores CEEDLING_MIXIN_0 (a leading zero, e.g. CEEDLING_MIXIN_01,
+      # is otherwise treated the same as no leading zero)
+      var_names << var unless suffix.to_i() == 0
     end
 
-    # Extract numeric string (guranteed to exist) and convert to integer for ascending sorting
-    var_names.sort_by! {|name| name.match(/\d+$/)[0].to_i() }
+    # Ascending numeric order; to_i() ignores leading zeros so CEEDLING_MIXIN_01 sorts as 1
+    # -- meaning CEEDLING_MIXIN_1 and CEEDLING_MIXIN_01, two distinct, simultaneously-
+    # settable env var names, are a genuine tie here. Ruby's sort_by doesn't guarantee a
+    # stable order among ties, so the full original name is a second tiebreaker: both
+    # spellings resolve in a fixed, deterministic order instead of depending on sort
+    # stability for a case that can otherwise reach it.
+    var_names.sort_by! {|name| [name.sub( 'CEEDLING_MIXIN_', '' ).to_i(), name] }
 
     _vars = []
     # Iterate over sorted environment variable names
     var_names.each do |name|
-      # Duplicate the filepath string to get unfrozen copy
-      # Handle any Windows path shenanigans
-      # Insert in array {env var name => filepath}
-      path = env[name].dup()
-      @path_validator.standardize_paths( path )
+      # Handle any Windows path shenanigans; insert in array {env var name => filepath}
+      path = @path_validator.standardize_paths( env[name] ).first
       _vars << {name => path}
     end
 
@@ -121,11 +120,11 @@ class Mixinator
     #   3. Project configuration :enabled mixins (last → lowest dedup priority)
     #
     dedup = []
-    # cmdline entries are pre-tagged {source_label => value} hashes from configinator;
+    # cmdline entries are pre-tagged {source_label => value} hashes from composinator;
     # they carry either 'command line' (file/builtin) or 'command line (inline)' (YAML string)
     cmdline.each {|mixin| dedup << mixin}
     dedup += env
-    # config entries arrive pre-built from configinator as {'project configuration' => path, :_input => name}
+    # config entries arrive pre-built from composinator as {'project configuration' => path, :_input => name}
     config.each  {|entry| dedup << entry}
 
     # Remove duplicate mixins, keeping the highest-priority (first) occurrence.
@@ -157,7 +156,7 @@ class Mixinator
     return config_entries + env_entries + cmdline_entries
   end
 
-  def mixin(builtins:, config:, mixins:)
+  def mixin(config:, mixins:)
     mixins.each do |mixin|
       source = mixin.keys.first
       filepath = mixin.values.first
@@ -193,12 +192,11 @@ class Mixinator
         # Log what filepath we used for this mixin
         @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging #{'(empty) ' if _mixin.nil?}#{source} mixin using #{filepath}" }
 
-      # Reference mixin from built-in hash-based mixins
+      # lookup_mixins() only ever hands back inline YAML or a real filepath for
+      # validated input -- reaching here means something upstream let an
+      # unresolved bare name through.
       else
-        _mixin = builtins[filepath.to_sym()]
-
-        # Log built-in mixin we used
-        @loginator.lazy( Verbosity::OBNOXIOUS ) { " + Merging built-in mixin '#{filepath}' from #{source}" }
+        raise "Mixin '#{filepath}' from #{source} could not be resolved to a file"
       end
 
       # Hnadle an empty mixin (it's unlikely but logically coherent and a good safety check)

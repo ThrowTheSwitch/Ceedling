@@ -1,35 +1,5 @@
-Ceedling ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15117/badge)](https://www.bestpractices.dev/projects/15117) [![Docs](https://img.shields.io/badge/Docs-white?logo=materialformkdocs&link=https%3A%2F%2Fdocs.throwtheswitch.org%2FCeedling%2F)](https://docs.throwtheswitch.org/Ceedling/) [![Discourse](https://img.shields.io/badge/Discourse-purple?logo=discourse&link=https%3A%2F%2Fthrowtheswitch.discourse.group)](https://throwtheswitch.discourse.group) ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
-
-**Ceedling 1.1.0** is nearing release.
-
-[_Changelog_](docs/Changelog.md) is receiving updates and revisions and will 
-soon be complete. [_Release Notes_][release-notes], [_Breaking Changes_][breaking-changes], and 
-[_Known Issues_][known-issues] documents will be revised and updated soon. See _Releases_ for 
-the latest prerelease version.
-
-**New goodies:**
-* A [Partial][partials-docs] allows a test to mix mocked and real functions 
-from the same source module in a single test file and enables testing of 
-`static` and `inline` functions without modifying source code.
-* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site].
-* More and expanded [example projects][example-projects].
-* New stock plugins for [Valgrind memory checking][valgrind-plugin] and 
-[Cppcheck static analysis][cppcheck-plugin].
-* The [GCov plugin][gcov-plugin]:
-   * _Finally_ supports coverage reports for all sources.
-   * Adds support for Modified Condition / Decision Coverage.
-* Mixins improvements including an option for [inline YAML at the command line][mixins-inline-yaml].
-* Ceedling’s test preprocessing is once again compatible with Unity’s parameterized test cases (support was temporarily removed with 1.0.0).
-* Incorporates the latest versions of [CMock], [Unity], and [CException].
-
-[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
-[example-projects]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/example-projects/
-[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
-[valgrind-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/valgrind/
-[cppcheck-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/cppcheck/
-[gcov-plugin]: https://throwtheswitch.github.io/Ceedling/1.1.0/plugins/gcov/
-[mixins-inline-yaml]: https://throwtheswitch.github.io/Ceedling/latest/configuration/mixins/?h=mixins#-mixin-command-line-flags
 
 # 🌱 Ceedling is a handy-dandy build system for C projects
 
@@ -42,6 +12,24 @@ unit test suites for your C projects — even in tricky embedded systems.
 [📚 Documentation & Learning](#-documentation--learning) and
 [🚀 Getting Started](#-getting-started).**
 
+For a test suite project using the default toolchain `gcc`, Ceedling’s
+configuration file could be as simple as this:
+
+```yaml
+:project:
+  :build_root: project/build/
+
+:paths:
+  :test:
+    - tests/**
+  :source:
+    - source/**
+  :include:
+    - inc/**
+```
+
+To execute all your unit tests, you would run `ceedling test:all`. That‘s it!
+
 Ceedling works the way developers want to work. It is flexible and entirely
 command-line driven. It drives code generation and command line tools for you.
 All generated and framework code is easy to see and understand.
@@ -49,6 +37,53 @@ All generated and framework code is easy to see and understand.
 Ceedling’s features support all types of C development from low-level embedded
 to enterprise systems. No tool is perfect, but Ceedling can do a whole lot to 
 help you and your team produce quality software.
+
+## Ceedling 1.2.0 is the latest and greatest
+
+See [_Changelog_](docs/Changelog.md), [_Release Notes_][release-notes], [_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues].
+
+**New goodies in 1.2.0:**
+* **[Delta builds][delta-builds]** have been restored after a temporary hiatus following a major refactoring for 1.0.0. A [delta build][delta-build-overview] is simply a build run that only performs regeneration, compilation, or linking as needed because of changed files. [Delta builds][delta-builds] are automatic with no configuration and complement [parallel builds][parallel-builds] introduced in 1.0.0 for build time speedups.
+* **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully supports [relative paths in `#include` directives][same-named-files] and [`TEST_SOURCE_FILE()` build directive macros][test-source-file]. Ceedling is now also able to distinguish files of the same name using paths in the preceding and [at the command line][test-path-task] to distinguish test files of the same name (e.g. `ceedling test:foo/file` vs. `ceedling test:bar/file`).
+* **Multiple file extensions per file type.** You may now provide a list of file types via [`:extensions`][extension-config] to gather files into your project’s build. For instance, the extensions `.c` and `.cc` can now both be used together to collect all source file in your project.
+* **Shuffled test order.** Ceedling now supports [Unity’s][unity-framework] randomized test case ordering (via a [`:unity` configuration setting][shuffle-tests]). [Delta builds][delta-builds] automatically adjust to always rerun test executables so test case ordering is shuffled.
+* The [`TEST_SOURCE_FILE()` build directive macro][test-source-file-subtractive] can now be used to remove source files from a test executable build. This can be handy in overriding [Ceedling’s conventions][header-source-convention] for associating source files with a test executable if your project structure does not match up with [Ceedling’s conventions][header-source-convention].
+* The [build warnings], [JUnit report], [IDE integration], [GoogleTest report], [module generator], and [dependencies] plugins all received numerous bug fixes and feature expansions.
+* [Bullseye code coverage plugin][bullseye-plugin] re-enabled and modernized (disabled since 1.0.0).
+* **Dedicated mocks and test runner generation build tasks.** It is now possible to run the test build pipeline only up through generating mocks or test runners without running the rest of a build using `ceedling gen:mocks:<test>` and `ceedling gen:test_runner:<test>` mirroring the convention of `test:` tasks.
+* Ceedling prerelease and release builds now automatically [generate Software Bills of Material][sbom-docs] (SBOMs) and attach them to GitHub pre/releases along with the final Ruby gem.
+
+**Goodness introduced in 1.1.0:**
+* A [Partial][partials-docs] allows a test to mix mocked and real functions 
+from the same source module in a single test file and enables testing of 
+`static` and `inline` functions without modifying source code.
+* Ceedling is now complemented by a full, searchable [documentation site][ceedling-docs-site]
+  available both online and as a local bundle exported from Ceedling’s 
+  command line.
+* A new [Discourse community forum][forums] to 
+  supersede the old, spammy Google Group and handful of disparate support channels.
+
+[delta-builds]: https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/builds/
+[delta-build-overview]: https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/builds/#delta-build-overview
+[parallel-builds]: https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/parallel-builds/
+[same-named-files]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#distinguishing-same-named-files
+[test-source-file]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file
+[test-path-task]: https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/command-line/#ceedling-testpath
+[extension-config]: https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/extension/
+[unity-framework]: https://docs.throwtheswitch.org/Ceedling/1.2.0/overview/tools-and-frameworks/#unity
+[shuffle-tests]: https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/unity/#shuffle_tests
+[test-source-file-subtractive]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file-subtractive-notation
+[header-source-convention]: https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file-the-headersource-convention
+[build warnings]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-build-warnings-log/
+[JUnit report]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-log-factory/#junit-xml-format
+[IDE integration]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-ide-stdout/
+[GoogleTest report]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/
+[module generator]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/
+[dependencies]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/dependencies/
+[bullseye-plugin]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/
+[sbom-docs]: https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/
+[partials-docs]: https://docs.throwtheswitch.org/Ceedling/1.1.0/testing-guide/partials/
+[ceedling-docs-site]: https://docs.throwtheswitch.org/Ceedling/
 
 ## Supporting this work
 
@@ -77,6 +112,9 @@ awesomeness in the C language.
 1. **[CMock]**<sup>†</sup>, a code generating, 
    [function mocking & stubbing][test-doubles] kit for interaction-based testing.
 
+If you are a Visual Studio Code user, you may also be interested in the
+[Ceedling extension](https://marketplace.visualstudio.com/items?itemName=throw-the-switch.vscode-ceedling).
+
 <sup>†</sup> Through a [plugin][FFF-plugin], Ceedling also supports [FFF] for 
 [fake functions][test-doubles] as an alternative to CMock’s mocks and stubs.
 
@@ -102,37 +140,43 @@ library builds & dependency management, and more.
 [TDD]: http://en.wikipedia.org/wiki/Test-driven_development
 [test-doubles]: https://blog.pragmatists.com/test-doubles-fakes-mocks-and-stubs-1a7491dfa3da
 [FFF]: https://github.com/meekrosoft/fff
-[FFF-plugin]: https://throwtheswitch.github.io/Ceedling/latest/plugins/fff/
+[FFF-plugin]: https://docs.throwtheswitch.org/Ceedling/latest/plugins/fff/
 
 <br/>
 
 # 📦 Releases
 
-Ceedling release numbering follows [SemVer convention](https://semver.org). See the [_Getting Started_](#-getting-started) section for installation details.
+Ceedling release numbering follows [SemVer convention](https://semver.org). See the [_Getting Started_](#-getting-started) section for installation details for both official releases and prereleases.
 
 ## Official releases
-Releases have a version number `#.#.#`.
+Releases have a version number `#.#.#` (`<major>.<minor>.<patch>`). Production systems and automated tooling should rely on official releases and not prereleases.
 
 Official releases are available as:
 
-1. A prepackaged Ruby Gem available through the public [RubyGems registry](https://rubygems.org/gems/ceedling).
+1. A prepackaged Ruby Gem available through the public [RubyGems repository](https://rubygems.org/gems/ceedling) (installable with `gem install ceedling --no-document` at the command line).
 1. Ready-to-run [Docker images](https://hub.docker.com/u/throwtheswitch).
 
-The latest `<major>.<minor>` version is officially supported with limited support for earlier minor releases.
+The latest `<major>.<minor>` version is supported with limited support for earlier minor releases.
+
+Bug fix patches `<major>.<minor>.<patch>` are official releases. Generally speaking, if you have adopted a `<major>.<minor>` release, you should update to bug fix releases when available.
 
 All official releases are retained historically.
 
+In rare cases of fatal flaws, severe security vulnerabilities, etc. an official release may be pulled.
+
 ## Prereleases
-Prerelease versions include `pre` in their version numbering. Prereleases are only available as downloadable .gem files attached to [release listings](https://github.com/throwtheswitch/ceedling/releases). These require local installation steps including some basic dependencies installation.
+Prerelease versions include `pre` in their version numbering (`#.#.#-pre.#`). Prereleases are only available as downloadable .gem files attached to [release listings](https://github.com/throwtheswitch/ceedling/releases). These require local installation steps including some basic dependencies management.
 
-Prereleases are ephemeral and unsupported. Particularly in the case of significant bugs or considerable new development, earlier prereleases will be pulled. Prereleases should not be relied upon in production systems or automated tooling.
+Prereleases are ephemeral and will be pulled as development continues or bugs are found. Prereleases should not be relied upon in production systems or automated tooling. At an official release, all prior prereleases will be pulled.
 
-At an official release, all prior prereleases will be pulled.
+Prereleases are not officially supported, but feedback through submitting issues is very much welcome. As much help as is practical will be offered to support those exercising prereleases.
 
-## Bug fix patch releases
-Bug fix patches `<major>.<minor>.<patch>` are official releases and can be relied upon for production systems or automated tooling.
+## Software Bill of Materials
+Every release publishes a Software Bill of Materials in both CycloneDX and SPDX formats. Each document is attached to its release alongside the .gem file and is signed against it.
 
-In rare cases of fatal flaws, severe security vulnerabilities, etc. a patch release may be pulled.
+The documents describe the Ceedling gem as distributed. They list what ships inside it — Unity, CMock, CException, and more — plus the Ruby dependencies a user installs. They do not describe the C code Ceedling builds for you, and they cannot describe the external tools an enabled plugin needs.
+
+See [Software Bill of Materials](https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/) for what is included, how to verify a signature, and why a version-specific download link is the reliable one.
 
 <br/>
 
@@ -141,7 +185,7 @@ In rare cases of fatal flaws, severe security vulnerabilities, etc. a patch rele
 * Found a bug or want to suggest a feature?
   **[Submit an issue][ceedling-issues]** at this repo.
 * Trying to understand features or solve a testing problem? Hit the
-  **[discussion forums][forums]**.
+  **[Discourse forums][forums]**.
 * Paid training, customizations, and support contracts are available through 
   **[Ceedling Assist][ceedling-assist]**.
 
@@ -152,7 +196,7 @@ Please familiarize yourself with our guidelines for **[contributing](docs/CONTRI
 Yes, work has begun on **[Ceedling Certified][ceedling-certified]**, a validated version of Ceedling to meet the needs of industry software certification.
 
 [ceedling-issues]: https://github.com/ThrowTheSwitch/Ceedling/issues
-[forums]: https://www.throwtheswitch.org/forums
+[forums]: https://throwtheswitch.discourse.group
 [ceedling-certified]: https://www.thingamabyte.com/ceedlingcertified
 
 <br/>
@@ -405,12 +449,12 @@ The [Agile Embedded Podcast][ae-podcast] includes an [episode on Ceedling][ceedl
 ## Ceedling docs
 
 * **_[Ceedling’s documentation site][ceedling-docs-site]_** contains everything you need to know to run Ceedling. It also references and links to the documentation of the projects, _Unity_ and _CMock_, that Ceedling weaves together into your test and release builds.
-* **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, **[Known Issues][known-issues]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory along with a number of guides (PDFs).
+* **[Release Notes][release-notes]**, **[Breaking Changes][breaking-changes]**, **[Known Issues][known-issues]**, and **[Changelog][changelog]** can be found in the **[docs/](docs/)** directory.
 * The **[Plugins section][ceedling-docs-plugins]** of Ceedling’s documentation lists all of Ceedling’s built-in plugins providing overviews and links to their documentation.
 
 _Note:_ Check the [Release Notes][release-notes] for a “cheat sheet” illustrating project configuration option changes for new releases in the form of a Ceedling project YAML configuration file. This may be especially useful to those already familiar with the tool wanting to update to the latest and greatest as quickly as possible.
 
-[ceedling-docs-plugins]: https://throwtheswitch.github.io/Ceedling/latest/plugins/
+[ceedling-docs-plugins]: https://docs.throwtheswitch.org/Ceedling/latest/plugins/
 
 ## Library and courses
 
@@ -440,16 +484,16 @@ Matt Chernosky’s **[detailed tutorial][tutorial]** demonstrates using Ceedling
 
 👀 See the **_[Quick Start][ceedling-docs-quick-start]_** section of Ceedling’s documentation site.
 
-[ceedling-docs-quick-start]: https://throwtheswitch.github.io/Ceedling/latest/getting-started/quick-start/
+[ceedling-docs-quick-start]: https://docs.throwtheswitch.org/Ceedling/latest/getting-started/quick-start/
 
 ## The basics
 
 ### Local installation from the RubyGems repository
 
-1. Install [Ruby]. (Only Ruby 3+ supported.)
+1. Install [Ruby]. (Ceedling requires Ruby 3+ but only unoficially supports Ruby 4.)
 1. Install the Ceedling gem from the RubyGems repository. All supporting frameworks are included and this style of installation installs dependencies as well.
    ```shell
-   > gem install ceedling
+   > gem install ceedling --no-document
    ```
 1. Begin crafting your project:
    1. Create an empty Ceedling project.
@@ -571,8 +615,8 @@ Or, use Ceedling’s built-in `examples` & `example` commands to extract a sampl
 
 See the [configuration section][ceedling-docs-config] of Ceedling’s documentation for way more details on your project configuration options than we can provide here.
 
-[example-config-file]: assets/project.yml
-[ceedling-docs-config]: https://throwtheswitch.github.io/Ceedling/latest/configuration/
+[example-config-file]: assets/features/project.yml
+[ceedling-docs-config]: https://docs.throwtheswitch.org/Ceedling/latest/configuration/
 
 ## Using Ceedling’s command line (and related)
 
@@ -713,4 +757,4 @@ the **[Ceedling development workflow][ceedling-dev-workflow]** guide.
 
 [coding-standard]: docs/ThrowTheSwitchCodingStandard.md
 [pr-checklist]: docs/CeedlingPullRequestChecklist.md
-[ceedling-dev-workflow]: https://throwtheswitch.github.io/Ceedling/latest/development/workflow/
+[ceedling-dev-workflow]: https://docs.throwtheswitch.org/Ceedling/latest/development/workflow/

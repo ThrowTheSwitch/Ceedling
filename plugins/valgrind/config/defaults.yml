@@ -10,7 +10,13 @@
   # Register a build failure if valgrind reports memory errors in any test binary
   :fail_build: TRUE
 
-  # Valgrind flags (do not include --log-file or the ${1} executable token)
+  # Write a machine-readable XML report per test binary alongside the text log
+  :xml_report: FALSE
+
+  # Valgrind suppression files, one --suppressions= argument each
+  :suppressions: []
+
+  # Valgrind flags (do not include --log-file, --xml-file, --suppressions, or the ${1} executable token)
   :arguments:
     - "--leak-check=full"
     - "--show-leak-kinds=all"

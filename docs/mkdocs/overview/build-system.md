@@ -36,14 +36,14 @@ toolchain `gcc`, the configuration file could be as simple as this:
     - inc/**
 ```
 
+From the command line, to run all your unit tests, you would run 
+`ceedling test:all`. To build the release version of your project,
+you would simply run `ceedling release`. That's it!
+
 !!! tip "Want to see a real world project configuration?"
     See this [commented project file][example-config-file] 
     for a much more complete and sophisticated example of a project 
     configuration.
-
-From the command line, to run all your unit tests, you would run 
-`ceedling test:all`. To build the release version of your project,
-you would simply run `ceedling release`. That's it!
 
 Of course, many more advanced options allow you to configure
 your project with a variety of features to meet a variety of needs.
@@ -58,7 +58,7 @@ extend Ceedling's capabilities for needs such as custom code metrics
 reporting, build artifact packaging, and much more. A variety of 
 built-in plugins come with Ceedling.
 
-[example-config-file]: ../snapshot/assets/project.yml
+[example-config-file]: ../snapshot/assets/features/project.yml
 [project-configuration]: ../configuration/index.md
 
 ## What's with this name?

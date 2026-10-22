@@ -12,9 +12,11 @@ require 'ceedling/parsing_parcels'
 describe PreprocessinatorReconstructor do
   before(:each) do
     @parsing_parcels = ParsingParcels.new()
+    @file_wrapper    = double( "FileWrapper" )
     @extractor = described_class.new(
       {
-        :parsing_parcels => @parsing_parcels
+        :parsing_parcels => @parsing_parcels,
+        :file_wrapper    => @file_wrapper,
       }
     )
   end
@@ -75,6 +77,105 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
     end
 
+    it "should preserve a run of multiple consecutive blank lines rather than collapsing to one" do
+      filepath = "this/path/MY_FILE.C"
+
+      file_contents = [
+        '# 1 "./this/path/MY_FILE.C" 99999',
+        'void some_function(void) {',
+        '',
+        '',
+        '',
+        '  return 0;',
+        '}'
+      ]
+
+      # All three blank lines must survive -- e.g. a stripped multi-line comment
+      # or literal blank lines in the source, either way nothing gets dropped.
+      expected = [
+        'void some_function(void) {',
+        '',
+        '',
+        '',
+        '  return 0;',
+        '}'
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
+    it "should preserve independent runs of differing blank-line counts between separate code lines" do
+      filepath = "path/multi.c"
+
+      file_contents = [
+        '# 1 "path/multi.c" 1',
+        'int a;',
+        '',
+        '',
+        'int b;',
+        '',
+        'int c;',
+        '',
+        '',
+        '',
+        'int d;'
+      ]
+
+      # Each run's count must stay attached to its own gap -- not merged with a
+      # neighboring run, not truncated to a shared count.
+      expected = [
+        'int a;',
+        '',
+        '',
+        'int b;',
+        '',
+        'int c;',
+        '',
+        '',
+        '',
+        'int d;'
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
+    it "should preserve a following blank-line run after a marker-continuation (dangling semicolon) fragment" do
+      filepath = "sys/types_wrapper.c"
+
+      file_contents = [
+        '# 1 "sys/types_wrapper.c" 1',
+        'typedef unsigned long uint32_t',    # System typedef expansion, unterminated
+        '# 1 "sys/types_wrapper.c" 2',       # GCC re-marks the SAME source line...
+        ';',                                  # ...to attach a dangling ';' as a continuation, not a new line
+        '',
+        '',
+        'void some_function(void) {',
+        '  return;',
+        '}',
+        '# 1 "some/useless/file.c"'
+      ]
+
+      # The typedef and its dangling ';' must aggregate onto a single output
+      # line (existing behavior), and the two blank lines that follow -- e.g.
+      # from a stripped comment after the typedef -- must both still survive.
+      expected = [
+        'typedef unsigned long uint32_t;',
+        '',
+        '',
+        'void some_function(void) {',
+        '  return;',
+        '}'
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
     it "should extract text of original file from preprocessed expansion with complex preprocessor line marker sequence" do
       filepath = "dir/our_file.c"
       
@@ -110,6 +211,41 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
     end
   
+    # #1268: GCC's -fdirectives-only output preserves the ORIGINAL indentation of a
+    # top-level #include when it replaces that directive with a line marker entering
+    # the included file -- e.g. a source line "    #include \"Module3.h\"" produces
+    # "    # 1 \"Module3.h\" 1", not the flush-left "# 1 ..." this method's marker
+    # regexes assumed every marker would be. An unrecognized entering-marker leaves
+    # `extract` stuck at whatever it already was instead of turning off, so the
+    # marker line itself (and everything up to the NEXT recognized marker, e.g. one
+    # from a nested system include triggered from inside the ignored file) leaks into
+    # the extracted output before the ping-pong finally self-corrects.
+    it "does not leak file content when the marker entering an included file is itself indented" do
+      filepath = "dir/our_file.c"
+
+      file_contents = [
+        '# 1 "dir/our_file.c"',
+        'void wanted_before(void);',
+        '    # 1 "dir/included.h" 1',        # indented entering-marker (leading whitespace from source)
+        'int leaked_from_included_h;',
+        '# 1 "/usr/include/nested.h" 1 3 4',  # a normal, flush-left marker from within included.h
+        'int also_should_not_leak;',
+        '# 2 "dir/included.h" 2',             # returning from nested.h back into included.h (still not our file)
+        'int still_should_not_leak;',
+        '# 3 "dir/our_file.c" 2',             # returning to our file
+        'void wanted_after(void);',
+      ]
+
+      expected = [
+        'void wanted_before(void);',
+        'void wanted_after(void);',
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
     it "should extract text of original file from preprocessed expansion ignoring embedded expansions having similar names" do
       filepath = "dir1/dir2/our_file.c"
       
@@ -160,6 +296,35 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_file_as_array_from_expansion(input, filepath) ).to eq expected
     end
 
+    # GH #1352: the marker returning from a header's own include must not make the next
+    # source line read as a continuation of the line before it
+    it "keeps source lines apart whose numbers match a line of an included header" do
+      filepath = "path/a.c"
+
+      file_contents = [
+        '# 1 "path/a.c"',
+        '# 1 "path/a.h" 1',
+        '',
+        '',
+        '# 1 "/usr/include/stdint.h" 1 3 4',
+        'typedef unsigned int uint32_t;',
+        '# 4 "path/a.h" 2',
+        'uint32_t a_sum(void);',
+        '# 2 "path/a.c" 2',
+        '#define A_FIRST (1U)',
+        '#define A_SECOND (2U)',
+      ]
+
+      expected = [
+        '#define A_FIRST (1U)',
+        '#define A_SECOND (2U)',
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
     it "should extract text of original file from staggered system include expansions" do
       filepath = "path/system_header_expansion.c"
       
@@ -207,6 +372,8 @@ describe PreprocessinatorReconstructor do
         '',
         'static _Bool ecs_foo__init_structure(void);',
         '',
+        '',
+        '',
         'void ecs_foo_init(void) {',
         '    var1 = ecs_foo__init_structure();',
         '}',
@@ -220,8 +387,33 @@ describe PreprocessinatorReconstructor do
 
       expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
     end
+
+    it "cleans an incomplete (truncated) multi-byte UTF-8 sequence without raising" do
+      filepath = "path/do/WANT.c"
+
+      # \xE4\xBD is the first two of three bytes of U+4F60 (你), missing its
+      # final continuation byte -- a "half" Unicode character, as if clipped
+      # by a chunk boundary. Placed inside a line GCC's expansion output would
+      # itself produce (a localized diagnostic or macro-expanded string
+      # literal can contain non-ASCII bytes -- see compact_file_from_expansion's
+      # own comment on this).
+      half = [0xE4, 0xBD].pack('C*').force_encoding('BINARY')
+
+      file_contents = [
+        '# 1 "path/do/WANT.c" 1',
+        ("some_text_with_a_" + half + "_truncated_char();"),
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ).force_encoding('BINARY') )
+
+      expect {
+        @result = @extractor.extract_file_as_array_from_expansion( input, filepath )
+      }.not_to raise_error
+
+      expect( @result ).to eq( ['some_text_with_a__truncated_char();'] )
+    end
   end
-  
+
   context "#extract_file_as_string_from_expansion" do
     it "should simply extract text of original file from preprocessed expansion" do
       filepath = "path/do/WANT.c"
@@ -695,6 +887,92 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_macro_defs( file_text, '_INCLUDE_GUARD_' ) ).to eq expected
     end
 
+    # #1266: a plain substring test against the include guard rejected any macro whose
+    # name OR value merely contained the guard string, not only the guard macro itself.
+    # RTC_HOUR_SECONDS' own name contains the guard "RTC_H", and RTC_DAY_SECONDS'
+    # *value* references RTC_HOUR_SECONDS, so its captured text also contains "RTC_H" --
+    # both were silently dropped from the reconstructed header, breaking compilation.
+    it "does not reject an ordinary macro whose name or value merely contains the include guard as a substring (GH #1266)" do
+      file_text = <<~FILE_TEXT
+        #ifndef RTC_H
+        #define RTC_H
+
+        #define RTC_MINUTE_SECONDS 60u
+        #define RTC_HOUR_SECONDS (60u * RTC_MINUTE_SECONDS)
+        #define RTC_DAY_SECONDS (24u * RTC_HOUR_SECONDS)
+
+        #endif
+      FILE_TEXT
+
+      expected = [
+        "#define RTC_MINUTE_SECONDS 60u",
+        "#define RTC_HOUR_SECONDS (60u * RTC_MINUTE_SECONDS)",
+        "#define RTC_DAY_SECONDS (24u * RTC_HOUR_SECONDS)"
+      ]
+
+      expect( @extractor.extract_macro_defs( file_text, 'RTC_H' ) ).to eq expected
+    end
+
+    it "still rejects the include guard when it appears with trailing whitespace instead of a value" do
+      file_text = <<~FILE_TEXT
+        #ifndef RTC_H
+        #define RTC_H
+
+        #define RTC_MINUTE_SECONDS 60u
+      FILE_TEXT
+
+      expected = [ "#define RTC_MINUTE_SECONDS 60u" ]
+
+      expect( @extractor.extract_macro_defs( file_text, 'RTC_H' ) ).to eq expected
+    end
+
+  end
+
+  context "#compact_file_from_expansion" do
+    it "should open its input in binary mode and its output in binary mode" do
+      # Binary mode on both ends: this content is read again downstream by code
+      # that depends on its line count being exact, so nothing here should be
+      # subject to platform-specific line ending translation.
+      input_handle  = StringIO.new( '# 1 "WANT.c" 5' + "\n" + 'text_we_want();' + "\n" )
+      output_handle = StringIO.new
+
+      expect(@file_wrapper).to receive(:open_with_retry).with( 'input.c', 'rb' ).and_yield( input_handle )
+      expect(@file_wrapper).to receive(:open).with( 'output.c', 'wb' ).and_yield( output_handle )
+
+      @extractor.compact_file_from_expansion(
+        input_filepath:  'input.c',
+        source_filepath: 'WANT.c',
+        output_filepath: 'output.c'
+      )
+    end
+
+    it "should extract the same content from CRLF-terminated input as from LF-terminated input" do
+      # GCC's preprocessor output on Windows is CRLF-terminated. Extraction must
+      # produce identical results regardless of the input's line endings, since
+      # the exact line count of what's extracted matters to code downstream.
+      lf_input = StringIO.new(
+        '# 1 "WANT.c" 5' + "\n" + "line_one();\n" + "\n" + "line_two();\n"
+      )
+      crlf_input = StringIO.new(
+        '# 1 "WANT.c" 5' + "\r\n" + "line_one();\r\n" + "\r\n" + "line_two();\r\n"
+      )
+      lf_output   = StringIO.new
+      crlf_output = StringIO.new
+
+      allow(@file_wrapper).to receive(:open_with_retry).with( 'lf.c', 'rb' ).and_yield( lf_input )
+      allow(@file_wrapper).to receive(:open).with( 'lf_out.c', 'wb' ).and_yield( lf_output )
+      allow(@file_wrapper).to receive(:open_with_retry).with( 'crlf.c', 'rb' ).and_yield( crlf_input )
+      allow(@file_wrapper).to receive(:open).with( 'crlf_out.c', 'wb' ).and_yield( crlf_output )
+
+      @extractor.compact_file_from_expansion(
+        input_filepath: 'lf.c', source_filepath: 'WANT.c', output_filepath: 'lf_out.c'
+      )
+      @extractor.compact_file_from_expansion(
+        input_filepath: 'crlf.c', source_filepath: 'WANT.c', output_filepath: 'crlf_out.c'
+      )
+
+      expect( crlf_output.string ).to eq( lf_output.string )
+    end
   end
 
 end

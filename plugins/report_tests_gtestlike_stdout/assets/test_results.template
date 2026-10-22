@@ -1,0 +1,3 @@
+% # GtestlikeReport (plugin lib/) builds the whole report. Gcov, Bullseye, and Valgrind render
+% # their results through this same template, so the plugin object reaches all of them.
+<%= @ceedling[:report_tests_gtestlike_stdout].gtest_report( hash ) %>

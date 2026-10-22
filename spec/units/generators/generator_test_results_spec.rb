@@ -6,11 +6,13 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/filename_extension'
 require 'tmpdir'
 require 'fileutils'
 require 'ceedling/generators/generator_test_results_sanity_checker'
 require 'ceedling/generators/generator_test_results'
 require 'ceedling/yaml_wrapper'
+require 'ceedling/file_wrapper'
 require 'ceedling/constants'
 require 'ceedling/config/configurator'
 
@@ -140,7 +142,18 @@ describe GeneratorTestResults do
       :ruby_expandinator    => nil
     })
 
-    @yaml_wrapper = YamlWrapper.new
+    # Configurator generates its `extension_*` accessors at runtime from flattened
+    # project config (:extension ↳ :testfail). These examples never run
+    # Configurator#build, so the method does not exist for partial-double verification
+    # to find, even though it is perfectly real in a running build. Declared on this
+    # instance so the stubs below stay verified rather than silently unchecked.
+    def @configurator.extension_testfail; end
+
+    @file_wrapper = FileWrapper.new({
+      :loginator    => @loginator,
+      :verbosinator => double('verbosinator').as_null_object
+    })
+    @yaml_wrapper = YamlWrapper.new({ :file_wrapper => @file_wrapper })
     @sanity_checker = GeneratorTestResultsSanityChecker.new({
       :configurator => @configurator,
       :loginator    => @loginator
@@ -151,7 +164,8 @@ describe GeneratorTestResults do
       :generator_test_results_sanity_checker => @sanity_checker,
       :loginator                             => @loginator,
       :reportinator                          => @reportinator,
-      :yaml_wrapper                          => @yaml_wrapper
+      :yaml_wrapper                          => @yaml_wrapper,
+      :file_wrapper                          => @file_wrapper
     })
 
     @tmpdir = Dir.mktmpdir
@@ -161,6 +175,34 @@ describe GeneratorTestResults do
 
   after(:each) do
     FileUtils.rm_rf(@tmpdir)
+  end
+
+  describe '#read_cached_results' do
+    before(:each) do
+      allow(@configurator).to receive(:extension_testfail).and_return(FilenameExtension.new('.fail'))
+    end
+
+    it 'returns the parsed .pass file when only a passing result is cached' do
+      @yaml_wrapper.dump( @tmp_out_file, { :counts => { :failed => 0 } } )
+
+      cached = @generate_test_results.read_cached_results( @tmp_out_file )
+
+      expect( cached[:result_file] ).to eq( @tmp_out_file )
+      expect( cached[:results] ).to eq( { :counts => { :failed => 0 } } )
+    end
+
+    it 'returns the parsed .fail file when a failing result is cached, even though the .pass base path was asked for' do
+      @yaml_wrapper.dump( @tmp_out_file_fail, { :counts => { :failed => 1 } } )
+
+      cached = @generate_test_results.read_cached_results( @tmp_out_file )
+
+      expect( cached[:result_file] ).to eq( @tmp_out_file_fail )
+      expect( cached[:results] ).to eq( { :counts => { :failed => 1 } } )
+    end
+
+    it 'returns nil when neither a cached .pass nor .fail file exists' do
+      expect( @generate_test_results.read_cached_results( @tmp_out_file ) ).to be_nil
+    end
   end
 
   describe '#process_and_write_results' do
@@ -235,7 +277,7 @@ describe GeneratorTestResults do
     end
 
     it 'handles a normal test output with failures' do
-      allow(@configurator).to receive(:extension_testfail).and_return('.fail')
+      allow(@configurator).to receive(:extension_testfail).and_return(FilenameExtension.new('.fail'))
       @generate_test_results.process_and_write_results(
         { :executable => 'test_example.out',
           :output => FAIL_OUTPUT,
@@ -269,7 +311,7 @@ describe GeneratorTestResults do
     end
 
     it 'handles color (ANSI) test output for failing tests' do
-      allow(@configurator).to receive(:extension_testfail).and_return('.fail')
+      allow(@configurator).to receive(:extension_testfail).and_return(FilenameExtension.new('.fail'))
       @generate_test_results.process_and_write_results(
         { :executable => 'test_example.out',
           :output => COLOR_FAIL_OUTPUT,
@@ -288,7 +330,7 @@ describe GeneratorTestResults do
           :test_file => 'some/place/test_example.c'
         }
       )
-      result = YAML.load(IO.read(@tmp_out_file))
+      result = @yaml_wrapper.load(@tmp_out_file)
       expect(result[:counts][:passed]).to eq(2)
       expect(result[:successes][0][:unity_test_time]).to be_within(0.001).of(0.0015)
       expect(result[:successes][1][:unity_test_time]).to be_within(0.001).of(0.0003)
@@ -302,14 +344,14 @@ describe GeneratorTestResults do
           :test_file => 'some/place/test_example.c'
         }
       )
-      result = YAML.load(IO.read(@tmp_out_file))
+      result = @yaml_wrapper.load(@tmp_out_file)
       expect(result[:counts][:passed]).to eq(2)
       expect(result[:successes][0][:unity_test_time]).to be_within(0.0001).of(0.0015)
       expect(result[:successes][1][:unity_test_time]).to be_within(0.0001).of(0.0003)
     end
 
     it 'separates passes, failures, and ignores from a mixed-result run' do
-      allow(@configurator).to receive(:extension_testfail).and_return('.fail')
+      allow(@configurator).to receive(:extension_testfail).and_return(FilenameExtension.new('.fail'))
       @generate_test_results.process_and_write_results(
         { :executable => 'test_example.out',
           :output => MIXED_OUTPUT,
@@ -317,12 +359,27 @@ describe GeneratorTestResults do
           :test_file => 'some/place/test_example.c'
         }
       )
-      result = YAML.load(IO.read(@tmp_out_file_fail))
+      result = @yaml_wrapper.load(@tmp_out_file_fail)
       expect(result[:counts]).to eq({ :total => 4, :passed => 2, :failed => 1, :ignored => 1 })
       expect(result[:successes].map { |s| s[:test] }).to eq(['test_one', 'test_four'])
       expect(result[:failures][0][:test]).to eq('test_two')
       expect(result[:failures][0][:message]).to eq('Expected 2 Was 3')
       expect(result[:ignores][0][:test]).to eq('test_three')
+    end
+  end
+
+  describe '#create_crash_failure' do
+    let(:test_cases) { [{ test: 'test_x', line_number: 4 }] }
+
+    it 'fails each test case as a crash of the test executable' do
+      result = @generate_test_results.create_crash_failure( 'test_a.c', { output: '' }, test_cases )
+      expect(result[:output]).to include( 'test_a.c:4:test_x:FAIL: Test executable crashed' )
+    end
+
+    # A plugin that recognized the crash names its cause in place of the generic message
+    it 'fails each test case with a given message' do
+      result = @generate_test_results.create_crash_failure( 'test_a.c', { output: '' }, test_cases, message: 'ASan heap-buffer-overflow at src/a.c:9' )
+      expect(result[:output]).to include( 'test_a.c:4:test_x:FAIL: ASan heap-buffer-overflow at src/a.c:9' )
     end
   end
 
