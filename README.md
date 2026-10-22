@@ -47,11 +47,12 @@ See [_Changelog_](docs/Changelog.md), [_Release Notes_][release-notes], [_Breaki
 * **`#include` relative paths & duplicate filename disambiguation**. Ceedling now fully supports [relative paths in `#include` directives][same-named-files] and [`TEST_SOURCE_FILE()` build directive macros][test-source-file]. Ceedling is now also able to distinguish files of the same name using paths in the preceding and [at the command line][test-path-task] to distinguish test files of the same name (e.g. `ceedling test:foo/file` vs. `ceedling test:bar/file`).
 * **Multiple file extensions per file type.** You may now provide a list of file types via [`:extensions`][extension-config] to gather files into your project’s build. For instance, the extensions `.c` and `.cc` can now both be used together to collect all source file in your project.
 * **Shuffled test order.** Ceedling now supports [Unity’s][unity-framework] randomized test case ordering (via a [`:unity` configuration setting][shuffle-tests]). [Delta builds][delta-builds] automatically adjust to always rerun test executables so test case ordering is shuffled.
-* The [`TEST_SOURCE_FILE()` build directive macro][test-source-file-subtractive] can now be used to remove source files from a test executable build. This can be handy in overriding [Ceedling’s conventions][header-source-convention] for associating source files with a test executable if your project structure does not match up with [Ceedling’s conventions][header-source-convention].
-* The [build warnings], [JUnit report], [IDE integration], [GoogleTest report], [module generator], and [dependencies] plugins all received numerous bug fixes and feature expansions.
-* [Bullseye code coverage plugin][bullseye-plugin] re-enabled and modernized (disabled since 1.0.0).
+* The **[`TEST_SOURCE_FILE()` build directive macro][test-source-file-subtractive]** can now be used to remove source files from a test executable build. This can be handy in overriding [Ceedling’s conventions][header-source-convention] for associating source files with a test executable if your project structure does not match up with Ceedling’s conventions.
+* The **new [Sanitize plugin][sanitize-plugin]** builds and runs tests with ASan, UBSan, and LeakSanitizer, naming each finding where a test fails and writing text, JSON, and SARIF reports.
+* The **[build warnings]**, **[JUnit report]**, **[IDE integration]**, **[GoogleTest report]**, **[module generator]**, and **[dependencies]** plugins all received numerous bug fixes and feature expansions.
+* **[Bullseye code coverage plugin][bullseye-plugin]** re-enabled and modernized (disabled since 1.0.0).
 * **Dedicated mocks and test runner generation build tasks.** It is now possible to run the test build pipeline only up through generating mocks or test runners without running the rest of a build using `ceedling gen:mocks:<test>` and `ceedling gen:test_runner:<test>` mirroring the convention of `test:` tasks.
-* Ceedling prerelease and release builds now automatically [generate Software Bills of Material][sbom-docs] (SBOMs) and attach them to GitHub pre/releases along with the final Ruby gem.
+* Ceedling prerelease and release builds now automatically **[generate Software Bills of Material][sbom-docs]** (SBOMs) and attach them to GitHub pre/releases along with the final Ruby gem.
 
 **Goodness introduced in 1.1.0:**
 * A [Partial][partials-docs] allows a test to mix mocked and real functions 
@@ -80,6 +81,7 @@ from the same source module in a single test file and enables testing of
 [GoogleTest report]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-gtestlike-stdout/
 [module generator]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/module-generator/
 [dependencies]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/dependencies/
+[sanitize-plugin]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/sanitize/
 [bullseye-plugin]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/
 [sbom-docs]: https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/
 [partials-docs]: https://docs.throwtheswitch.org/Ceedling/1.1.0/testing-guide/partials/
