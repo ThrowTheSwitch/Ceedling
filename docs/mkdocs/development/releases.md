@@ -11,9 +11,18 @@ release.
 * `next_version` holds the next minor or major release.
 
 Both branches are protected by a GitHub ruleset. Changes reach them only through
-pull requests, and every commit must be signed. Direct pushes, force-pushes, and
-branch deletion are blocked. Only a maintainer merges a pull request, once CI
-passes.
+pull requests, and a pull request merges only once the **CI Gate** check passes.
+Direct pushes, force-pushes, and branch deletion are blocked. Only a maintainer
+merges a pull request.
+
+CI Gate reduces every CI job to one result. A pull request that changes only
+documentation skips the test suites and still passes CI Gate, so it is ready to
+merge in minutes. The development workflow guide describes [what counts as
+documentation][ci-workflows].
+
+Maintainers squash-merge community pull requests, so each lands as one commit
+attributed to its author. Maintainers may merge their own branches with a merge
+commit to keep their history.
 
 ### Patch work
 
@@ -42,6 +51,9 @@ Pushing a tag publishes. Nothing else does.
 Full releases are tagged on `master`. Pre-releases are tagged on `next_version`.
 Neither workflow checks which branch a tag points at, so the convention is yours
 to keep.
+
+Only maintainers can create release tags. Once pushed, a `v` tag cannot be moved
+or deleted, so a published version always points at the code it was built from.
 
 | Tag | Workflow | Result |
 |---|---|---|
@@ -108,7 +120,26 @@ take a bare version number rather than a tag.
 The full task list is in the [documentation section][docs-tasks] of the development
 workflow guide.
 
+### Revising an earlier version’s documentation
+
+Once a newer release becomes `latest`, its `docs/mkdocs/` content is the primary
+source of the published site. An earlier version’s published documentation can
+still need an occasional revision. A `docs-` tag records the source of each such
+version’s published documentation.
+
+1. Branch from the version’s `docs-<version>` tag, or from its release tag if it
+   has no `docs-` tag yet.
+1. Revise `docs/mkdocs/`.
+1. Deploy without changing `latest`, for example `rake docs:deploy:release[1.1.0]`.
+1. Point the annotated `docs-<version>` tag at the deployed commit, with a message
+   naming what was deployed. `docs-1.1.0` is an example.
+
+The branch need not merge anywhere. The tag is the record of what the published
+documentation was built from. Only maintainers can create, move, or delete `docs-`
+tags.
+
 [docs-tasks]: workflow.md#documentation
+[ci-workflows]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/.github/WORKFLOWS.md
 
 [trusted publishing]: https://guides.rubygems.org/trusted-publishing/
 
