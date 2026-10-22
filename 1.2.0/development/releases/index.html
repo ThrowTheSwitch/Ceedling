@@ -4171,6 +4171,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Documentation deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#revising-an-earlier-versions-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Revising an earlier version’s documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -4481,6 +4498,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Documentation deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#revising-an-earlier-versions-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Revising an earlier version’s documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -4561,9 +4595,17 @@ release.</p>
 <li><code>master</code> holds the latest release and subsequent patch releases.</li>
 <li><code>next_version</code> holds the next minor or major release.</li>
 </ul>
-<p>Both branches are protected. Changes reach them only through pull requests, and
-only a maintainer merges a pull request, once CI passes. Direct pushes,
-force-pushes, and branch deletion are blocked.</p>
+<p>Both branches are protected by a GitHub ruleset. Changes reach them only through
+pull requests, and a pull request merges only once the <strong>CI Gate</strong> check passes.
+Direct pushes, force-pushes, and branch deletion are blocked. Only a maintainer
+merges a pull request.</p>
+<p>CI Gate reduces every CI job to one result. A pull request that changes only
+documentation skips the test suites and still passes CI Gate, so it is ready to
+merge in minutes. The development workflow guide describes <a href="https://github.com/ThrowTheSwitch/Ceedling/blob/master/.github/WORKFLOWS.md">what counts as
+documentation</a>.</p>
+<p>Maintainers squash-merge community pull requests, so each lands as one commit
+attributed to its author. Maintainers may merge their own branches with a merge
+commit to keep their history.</p>
 <h3 id="patch-work">Patch work</h3>
 <p>Branch from <code>master</code> for a patch fix. Open the pull request against <code>master</code>.</p>
 <p>Short-lived topic branches are the norm. Delete the branch once the pull request
@@ -4581,6 +4623,9 @@ name another branch or revision.</p>
 <p>Full releases are tagged on <code>master</code>. Pre-releases are tagged on <code>next_version</code>.
 Neither workflow checks which branch a tag points at, so the convention is yours
 to keep.</p>
+<p>Only repository administrators can create, move, or delete <code>v</code> tags. A pushed
+release tag is left where it is, so a published version always points at the code
+it was built from.</p>
 <table>
 <thead>
 <tr>
@@ -4593,17 +4638,22 @@ to keep.</p>
 <tr>
 <td><code>v1.2.0</code></td>
 <td><code>release.yml</code></td>
-<td>GitHub release</td>
+<td>GitHub release, and the gem published to RubyGems.org</td>
 </tr>
 <tr>
 <td><code>v1.2.0-pre.1</code></td>
 <td><code>prerelease.yml</code></td>
-<td>GitHub pre-release</td>
+<td>GitHub pre-release only</td>
 </tr>
 </tbody>
 </table>
 <p>A hyphenated suffix becomes a dot in the gem version, which is RubyGems
 pre-release notation. Tag <code>v1.2.0-pre.1</code> builds <code>ceedling-1.2.0.pre.1.gem</code>.</p>
+<p>A full release reaches RubyGems.org through <a href="https://guides.rubygems.org/trusted-publishing/">trusted publishing</a>. The release
+workflow exchanges its own GitHub identity for a short-lived RubyGems credential
+and pushes the gem it built. No maintainer holds or handles an API key.
+Pre-release gems are attached to the GitHub pre-release and never pushed to
+RubyGems.org.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Neither workflow runs the test suite. Both build and publish directly from the
@@ -4646,8 +4696,7 @@ release, then commit and continue development.</p>
 <li>Push <code>v1.2.0-pre.1</code> from <code>next_version</code>. CI creates a GitHub-available pre-release.</li>
 <li>Iterate with <code>-pre.2</code> and onward as needed.</li>
 <li>Bring the work onto <code>master</code> once the release is ready.</li>
-<li>Push <code>v1.2.0</code> from <code>master</code>. CI creates the GitHub-available release.</li>
-<li>A maintainer with RubyGems permissions downloads the Ceedling gem from (4) and manually pushes to RubyGems.org.</li>
+<li>Push <code>v1.2.0</code> from <code>master</code>. CI creates the GitHub-available release and publishes the gem to RubyGems.org.</li>
 <li>Bump <code>lib/version.rb</code> and continue development.</li>
 </ol>
 <h2 id="documentation-deployment">Documentation deployment</h2>
@@ -4658,6 +4707,22 @@ take a bare version number rather than a tag.</p>
 </code></pre></div>
 <p>The full task list is in the <a href="../workflow/#documentation">documentation section</a> of the development
 workflow guide.</p>
+<h3 id="revising-an-earlier-versions-documentation">Revising an earlier version’s documentation</h3>
+<p>Once a newer release becomes <code>latest</code>, its <code>docs/mkdocs/</code> content is the primary
+source of the published site. An earlier version’s published documentation can
+still need an occasional revision. A <code>docs-</code> tag records the source of each such
+version’s published documentation.</p>
+<ol>
+<li>Branch from the version’s <code>docs-&lt;version&gt;</code> tag, or from its release tag if it
+   has no <code>docs-</code> tag yet.</li>
+<li>Revise <code>docs/mkdocs/</code>.</li>
+<li>Deploy without changing <code>latest</code>, for example <code>rake docs:deploy:release[1.1.0]</code>.</li>
+<li>Point the annotated <code>docs-&lt;version&gt;</code> tag at the deployed commit, with a message
+   naming what was deployed. <code>docs-1.1.0</code> is an example.</li>
+</ol>
+<p>The branch need not merge anywhere. The tag is the record of what the published
+documentation was built from. Only repository administrators can create, move, or
+delete <code>docs-</code> tags.</p>
 <p><br/><br/></p>
 
 
