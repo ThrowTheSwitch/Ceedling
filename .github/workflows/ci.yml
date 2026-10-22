@@ -100,8 +100,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Documentation-only means every changed path is documentation, an issue or pull
-      # request template, or a root Markdown file. Anything else is code, including
+      # Documentation-only means every changed path is documentation, an issue template,
+      # Markdown directly under .github/ (the pull request template, WORKFLOWS.md), or a
+      # root Markdown file. Anything else is code, including
       # workflows. A manual run, or a push whose previous head is unknown, is code.
       - name: Classify
         id: classify
@@ -130,7 +131,7 @@ jobs:
           while IFS= read -r path; do
             [ -z "$path" ] && continue
             case "$path" in
-              docs/*|.github/ISSUE_TEMPLATE/*|.github/pull_request_template.md) ;;
+              docs/*|.github/ISSUE_TEMPLATE/*|.github/*.md) ;;
               */*) code=true ;;
               *.md) ;;
               *) code=true ;;
