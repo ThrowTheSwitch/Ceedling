@@ -10,9 +10,10 @@ release.
 * `master` holds the latest release and subsequent patch releases.
 * `next_version` holds the next minor or major release.
 
-Both branches are protected. Changes reach them only through pull requests, and
-only a maintainer merges a pull request, once CI passes. Direct pushes,
-force-pushes, and branch deletion are blocked.
+Both branches are protected by a GitHub ruleset. Changes reach them only through
+pull requests, and every commit must be signed. Direct pushes, force-pushes, and
+branch deletion are blocked. Only a maintainer merges a pull request, once CI
+passes.
 
 ### Patch work
 
@@ -44,11 +45,17 @@ to keep.
 
 | Tag | Workflow | Result |
 |---|---|---|
-| `v1.2.0` | `release.yml` | GitHub release |
-| `v1.2.0-pre.1` | `prerelease.yml` | GitHub pre-release |
+| `v1.2.0` | `release.yml` | GitHub release, and the gem published to RubyGems.org |
+| `v1.2.0-pre.1` | `prerelease.yml` | GitHub pre-release only |
 
 A hyphenated suffix becomes a dot in the gem version, which is RubyGems
 pre-release notation. Tag `v1.2.0-pre.1` builds `ceedling-1.2.0.pre.1.gem`.
+
+A full release reaches RubyGems.org through [trusted publishing]. The release
+workflow exchanges its own GitHub identity for a short-lived RubyGems credential
+and pushes the gem it built. No maintainer holds or handles an API key.
+Pre-release gems are attached to the GitHub pre-release and never pushed to
+RubyGems.org.
 
 !!! warning
     Neither workflow runs the test suite. Both build and publish directly from the
@@ -85,9 +92,8 @@ release, then commit and continue development.
 1. Push `v1.2.0-pre.1` from `next_version`. CI creates a GitHub-available pre-release.
 2. Iterate with `-pre.2` and onward as needed.
 3. Bring the work onto `master` once the release is ready.
-4. Push `v1.2.0` from `master`. CI creates the GitHub-available release.
-5. A maintainer with RubyGems permissions downloads the Ceedling gem from (4) and manually pushes to RubyGems.org.
-6. Bump `lib/version.rb` and continue development.
+4. Push `v1.2.0` from `master`. CI creates the GitHub-available release and publishes the gem to RubyGems.org.
+5. Bump `lib/version.rb` and continue development.
 
 ## Documentation deployment
 
@@ -103,5 +109,7 @@ The full task list is in the [documentation section][docs-tasks] of the developm
 workflow guide.
 
 [docs-tasks]: workflow.md#documentation
+
+[trusted publishing]: https://guides.rubygems.org/trusted-publishing/
 
 <br/><br/>
