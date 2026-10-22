@@ -82,6 +82,65 @@ permissions:
 
 
 jobs:
+  # Job: Classify the change as documentation-only or code
+  #
+  # A documentation-only change skips the test and build jobs below through their
+  # if: conditions. The workflow itself is never skipped (no paths: filter): a skipped
+  # workflow leaves a required check pending forever, while a job skipped by its if:
+  # reports success. CI Gate, the required check, turns the results into one verdict.
+  changes:
+    name: "Classify Changes"
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Documentation-only means every changed path is documentation, an issue template,
+      # Markdown directly under .github/ (the pull request template, WORKFLOWS.md), or a
+      # root Markdown file. Anything else is code, including
+      # workflows. A manual run, or a push whose previous head is unknown, is code.
+      - name: Classify
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          case "$EVENT" in
+            pull_request) base="$PR_BASE" ;;
+            push)         base="$PUSH_BEFORE" ;;
+            *)            base="" ;;
+          esac
+
+          if [ -z "$base" ] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            echo "No comparable base; treating as code."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed=$(git diff --name-only "$base" HEAD)
+          echo "Changed files:"
+          echo "$changed"
+
+          code=false
+          while IFS= read -r path; do
+            [ -z "$path" ] && continue
+            case "$path" in
+              docs/*|.github/ISSUE_TEMPLATE/*|.github/*.md) ;;
+              */*) code=true ;;
+              *.md) ;;
+              *) code=true ;;
+            esac
+          done <<< "$changed"
+
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Code changed: $code"
+
   # Job: Build MkDocs HTML documentation bundle for gem inclusion
   generate-docs:
     name: "Generate Local Docs Bundle for Gem Inclusion"
@@ -97,12 +156,12 @@ jobs:
   # Job: Linux test suite
   tests-linux:
     name: "Linux Test Suite"
-    needs: generate-docs
+    needs: [changes, generate-docs]
     # success() is spelled out explicitly here (not left implicit) because a custom
     # if: replaces GitHub's default success()-on-needs: check entirely rather than
     # being ANDed with it -- every job below with a needs: dependency carries this
     # same explicit success() alongside its own draft-PR guard for that reason.
-    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -325,8 +384,8 @@ jobs:
   # Job: Windows test suite
   tests-windows:
     name: "Windows Test Suite"
-    needs: generate-docs
-    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    needs: [changes, generate-docs]
+    if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -429,8 +488,8 @@ jobs:
   # Note for the future: Ruby 3.1 will itself be dropped starting with macOS 26.
   tests-macos:
     name: "macOS Test Suite"
-    needs: generate-docs
-    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    needs: [changes, generate-docs]
+    if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -541,7 +600,8 @@ jobs:
   # a path-based Bundler deployment (deploy_gem) that does not require a gem build.
   tests-linux-locale:
     name: "Linux Test Suite (ja_JP.UTF-8 Locale)"
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: changes
+    if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v6
@@ -613,7 +673,8 @@ jobs:
   # deployment (deploy_gem) that does not require a gem build.
   tests-linux-encoding-stress:
     name: "Linux Encoding Stress Test (C/POSIX)"
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: changes
+    if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@v6
@@ -688,7 +749,8 @@ jobs:
   # never gate the gem build.
   lint:
     name: "Lint Ruby Source"
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: changes
+    if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
 
     # continue-on-error makes findings visible without failing the build. This is the
@@ -743,12 +805,13 @@ jobs:
   build-gem:
     name: "Validate Ceedling Gem Build"
     needs:
+      - changes
       - tests-linux
       - tests-windows
       - tests-macos
       - tests-linux-locale
       - tests-linux-encoding-stress
-    if: success() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
 
     steps:
@@ -855,7 +918,8 @@ jobs:
       - tests-linux-encoding-stress
       - lint
       - build-gem
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+      - changes
+    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     runs-on: ubuntu-latest
 
     # actions: read lists this run's jobs and downloads the baseline from a base-branch run
@@ -968,3 +1032,58 @@ jobs:
           path: ci-baseline.json
           if-no-files-found: error
           retention-days: 90
+
+
+  # Job: The single required status check
+  #
+  # Every other job's result reduces to one verdict here. A failed or cancelled job
+  # fails the gate. A code change that skipped a test or build job fails it too,
+  # because a skipped job reports success and would otherwise slip through. A
+  # documentation-only change passes with those jobs skipped. CI Summary is left out:
+  # it reports results rather than producing them.
+  ci-gate:
+    name: "CI Gate"
+    needs:
+      - changes
+      - generate-docs
+      - tests-linux
+      - tests-windows
+      - tests-macos
+      - tests-linux-locale
+      - tests-linux-encoding-stress
+      - lint
+      - build-gem
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          CODE: ${{ needs.changes.outputs.code }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+
+          bad=$(echo "$NEEDS" | jq -r 'to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key')
+          if [ -n "$bad" ]; then
+            echo "::error::Failed or cancelled: $(echo $bad)"
+            exit 1
+          fi
+
+          for job in changes generate-docs; do
+            result=$(echo "$NEEDS" | jq -r --arg j "$job" '.[$j].result')
+            if [ "$result" != "success" ]; then
+              echo "::error::$job did not succeed ($result)"
+              exit 1
+            fi
+          done
+
+          if [ "$CODE" = "true" ]; then
+            skipped=$(echo "$NEEDS" | jq -r 'to_entries[] | select(.value.result == "skipped") | .key')
+            if [ -n "$skipped" ]; then
+              echo "::error::Code changed but these jobs were skipped: $(echo $skipped)"
+              exit 1
+            fi
+            echo "Code change: every job ran and passed."
+          else
+            echo "Documentation-only change: test and build jobs skipped by design."
+          fi
