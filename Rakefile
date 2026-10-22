@@ -948,10 +948,11 @@ namespace :docs do
     end
 
     namespace :release do
-      desc "Deploy release docs to Github Pages without and set it as 'latest'"
+      desc "Deploy release docs to Github Pages and set it as 'latest'"
       task :latest, [:version] => [:snapshot] do |t, args|
         version = args[:version] || raise("Version required: rake docs:deploy:release:latest[#.#.#]")
-        venv_sh "mike deploy --push #{version} latest"
+        # --update-aliases moves 'latest' off whichever version currently holds it
+        venv_sh "mike deploy --push --update-aliases #{version} latest"
       end
     end
   end

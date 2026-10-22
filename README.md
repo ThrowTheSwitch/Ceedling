@@ -1,14 +1,46 @@
-Ceedling [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15117/badge)](https://www.bestpractices.dev/projects/15117) [![Docs](https://img.shields.io/badge/Docs-white?logo=materialformkdocs&link=https%3A%2F%2Fdocs.throwtheswitch.org%2FCeedling%2F)](https://docs.throwtheswitch.org/Ceedling/) [![Discourse](https://img.shields.io/badge/Discourse-purple?logo=discourse&link=https%3A%2F%2Fthrowtheswitch.discourse.group)](https://throwtheswitch.discourse.group) ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15117/badge)](https://www.bestpractices.dev/projects/15117) [![Docs](https://img.shields.io/badge/Docs-white?logo=materialformkdocs&link=https%3A%2F%2Fdocs.throwtheswitch.org%2FCeedling%2F)](https://docs.throwtheswitch.org/Ceedling/) [![Discourse](https://img.shields.io/badge/Discourse-purple?logo=discourse&link=https%3A%2F%2Fthrowtheswitch.discourse.group)](https://throwtheswitch.discourse.group) ![CI](https://github.com/ThrowTheSwitch/Ceedling/workflows/CI/badge.svg)
 ========
 
-**Ceedling 1.2.0** is the latest and greatest.
+# 🌱 Ceedling is a handy-dandy build system for C projects
 
-See [_Changelog_](docs/Changelog.md). [_Release Notes_][release-notes], 
-[_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues] are
-not yet updated.
+## Developer-friendly release _and_ test builds
 
-See [🚀 Getting Started](#-getting-started) for installation and new 
-project set up.
+Ceedling can build your release artifact but is especially adept at building
+unit test suites for your C projects — even in tricky embedded systems.
+
+⭐️ **Eager to just get going? Jump to 
+[📚 Documentation & Learning](#-documentation--learning) and
+[🚀 Getting Started](#-getting-started).**
+
+For a test suite project using the default toolchain `gcc`, Ceedling’s
+configuration file could be as simple as this:
+
+```yaml
+:project:
+  :build_root: project/build/
+
+:paths:
+  :test:
+    - tests/**
+  :source:
+    - source/**
+  :include:
+    - inc/**
+```
+
+To execute all your unit tests, you would run `ceedling test:all`. That‘s it!
+
+Ceedling works the way developers want to work. It is flexible and entirely
+command-line driven. It drives code generation and command line tools for you.
+All generated and framework code is easy to see and understand.
+
+Ceedling’s features support all types of C development from low-level embedded
+to enterprise systems. No tool is perfect, but Ceedling can do a whole lot to 
+help you and your team produce quality software.
+
+## Ceedling 1.2.0 is the latest and greatest
+
+See [_Changelog_](docs/Changelog.md), [_Release Notes_][release-notes], [_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues].
 
 **New goodies in 1.2.0:**
 * **[Delta builds][delta-builds]** have been restored after a temporary hiatus following a major refactoring for 1.0.0. A [delta build][delta-build-overview] is simply a build run that only performs regeneration, compilation, or linking as needed because of changed files. [Delta builds][delta-builds] are automatic with no configuration and complement [parallel builds][parallel-builds] introduced in 1.0.0 for build time speedups.
@@ -50,45 +82,8 @@ from the same source module in a single test file and enables testing of
 [dependencies]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/dependencies/
 [bullseye-plugin]: https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/
 [sbom-docs]: https://docs.throwtheswitch.org/Ceedling/latest/project/sbom/
-[partials-docs]: https://throwtheswitch.github.io/Ceedling/1.1.0/testing-guide/partials/
-[ceedling-docs-site]: https://throwtheswitch.github.io/Ceedling/
-
-# 🌱 Ceedling is a handy-dandy build system for C projects
-
-## Developer-friendly release _and_ test builds
-
-Ceedling can build your release artifact but is especially adept at building
-unit test suites for your C projects — even in tricky embedded systems.
-
-⭐️ **Eager to just get going? Jump to 
-[📚 Documentation & Learning](#-documentation--learning) and
-[🚀 Getting Started](#-getting-started).**
-
-For a test suite project using the default toolchain `gcc`, Ceedling’s
-configuration file could be as simple as this:
-
-```yaml
-:project:
-  :build_root: project/build/
-
-:paths:
-  :test:
-    - tests/**
-  :source:
-    - source/**
-  :include:
-    - inc/**
-```
-
-To execute all your unit tests, you would run `ceedling test:all`. That‘s it!
-
-Ceedling works the way developers want to work. It is flexible and entirely
-command-line driven. It drives code generation and command line tools for you.
-All generated and framework code is easy to see and understand.
-
-Ceedling’s features support all types of C development from low-level embedded
-to enterprise systems. No tool is perfect, but Ceedling can do a whole lot to 
-help you and your team produce quality software.
+[partials-docs]: https://docs.throwtheswitch.org/Ceedling/1.1.0/testing-guide/partials/
+[ceedling-docs-site]: https://docs.throwtheswitch.org/Ceedling/
 
 ## Supporting this work
 

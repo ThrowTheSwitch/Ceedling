@@ -4,11 +4,14 @@
   Material's own `outdated`/`announce` blocks (base.html) ship empty by
   default -- both are opt-in via a project template override like this one.
 
+  Material only renders a block's wrapping banner markup when the block
+  produces non-empty output, and whitespace alone counts as output. The
+  `{%- -%}` whitespace control below is load-bearing: without it the
+  indentation around each `if` leaks out, rendering an empty banner (a blank
+  dark bar for `announce`) even when the condition is false.
+
   `outdated`: the standard "you're not viewing the latest version" warning
-  banner. Material only renders its wrapping markup when this block actually
-  produces non-empty output, so suppressing it here for prerelease pages
-  (rather than just leaving the block's *content* blank) is what keeps the
-  banner from appearing at all on those pages.
+  banner, suppressed entirely on prerelease pages.
 
   `announce`: a separate announcement bar, used here to carry the prerelease
   notice instead. `extra.prerelease` is set to `true` only in
@@ -17,16 +20,16 @@
 #}
 
 {% block outdated %}
-  {% if not config.extra.prerelease %}
+  {%- if not config.extra.prerelease -%}
     You are not viewing the latest version.
     <a href="{{ '../' ~ base_url }}">
       <strong>Click here to go to latest.</strong>
     </a>
-  {% endif %}
+  {%- endif -%}
 {% endblock %}
 
 {% block announce %}
-  {% if config.extra.prerelease %}
+  {%- if config.extra.prerelease -%}
     This is prerelease documentation for an upcoming Ceedling release.
-  {% endif %}
+  {%- endif -%}
 {% endblock %}
