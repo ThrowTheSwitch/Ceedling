@@ -18,7 +18,7 @@ The workflows call one another in two chains.
 - **Testing:** `ci.yml` calls `_generate-docs.yml` first, because system and plugin tests build a gem that includes the documentation bundle. When `ci.yml` completes, its completion triggers `pr-comment.yml`.
 - **Releasing:** `prerelease.yml` and `release.yml` each call `_generate-docs.yml`, then `_publish-gem.yml`. They differ only in the `prerelease` input.
 
-Feature branches get CI only through their pull request. `ci.yml` deliberately triggers on push only for `master` and `next_version`, the branches that are never themselves the source of a pull request. This avoids two identical runs for one commit. A `concurrency` group keyed on the commit SHA cancels any duplicate run that still occurs. Draft pull requests skip every job until they are marked ready for review.
+Feature branches get CI only through their pull request. `ci.yml` triggers on push only for `master` and `next_version`, so a feature branch's commit never runs twice. A `concurrency` group keyed on the ref and the commit cancels a run only when the same commit runs again for the same ref. A pull request whose head is `master` or `next_version`, such as one bringing `master` into `next_version`, therefore runs alongside that branch's own push run rather than cancelling it. Draft pull requests skip every job until they are marked ready for review.
 
 ## Required check and documentation-only changes
 

@@ -52,8 +52,9 @@ Full releases are tagged on `master`. Pre-releases are tagged on `next_version`.
 Neither workflow checks which branch a tag points at, so the convention is yours
 to keep.
 
-Only maintainers can create release tags. Once pushed, a `v` tag cannot be moved
-or deleted, so a published version always points at the code it was built from.
+Only repository administrators can create, move, or delete `v` tags. A pushed
+release tag is left where it is, so a published version always points at the code
+it was built from.
 
 | Tag | Workflow | Result |
 |---|---|---|
@@ -135,8 +136,8 @@ version’s published documentation.
    naming what was deployed. `docs-1.1.0` is an example.
 
 The branch need not merge anywhere. The tag is the record of what the published
-documentation was built from. Only maintainers can create, move, or delete `docs-`
-tags.
+documentation was built from. Only repository administrators can create, move, or
+delete `docs-` tags.
 
 [docs-tasks]: workflow.md#documentation
 [ci-workflows]: https://github.com/ThrowTheSwitch/Ceedling/blob/master/.github/WORKFLOWS.md

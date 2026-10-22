@@ -59,21 +59,14 @@ on:
   workflow_dispatch:
 
 
-# Cancel any in-progress run for the same commit when a new event arrives.
-# github.event.pull_request.head.sha is the PR branch's real head commit on a
-# pull_request event (github.sha there is the synthetic PR-merge commit, not
-# useful for this); github.sha is the pushed commit on a push event. For the
-# identical commit, both resolve to the same group key -- so a push to a
-# branch that also gets a PR opened from it (immediately or later, whenever
-# a runner picks up the pull_request-triggered run) lands its push and
-# pull_request runs in the *same* group, and GitHub's own cancel-in-progress
-# cancels whichever started first the instant the second one starts. This is
-# keyed on the commit rather than the branch specifically so a *different*,
-# newer commit pushed to that same branch never collides with -- and so
-# never wrongly cancels -- an older commit's still-running pull_request
-# check: each commit gets its own group.
+# Cancels an in-progress run only when the same commit runs again for the same ref,
+# such as a re-triggered pull request run. The ref keeps a push run on master or
+# next_version apart from a pull request whose head is that branch, which shares its
+# commit. The commit keeps an older commit's run from being cancelled by a newer
+# one. On a pull request, github.sha is the synthetic merge commit, so the head
+# commit is used instead.
 concurrency:
-  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
+  group: ci-${{ github.ref }}-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 
