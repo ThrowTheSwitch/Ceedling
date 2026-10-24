@@ -4547,6 +4547,9 @@ is necessary to produce these summaries.</p>
 <p>When the Gcov plugin is active it enables Ceedling tasks like this:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>gcov:Model
 </code></pre></div>
+<p>As with <a href="../../../getting-started/command-line/#ceedling-test"><code>test:</code> tasks</a>,
+a single-file task accepts as much of the file’s path as needed to tell
+same-named test files apart, as in <code>ceedling gcov:unit/TestModel.c</code>.</p>
 <p>… that then generate output like this:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>--------------------------
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>GCOV: OVERALL TEST SUMMARY

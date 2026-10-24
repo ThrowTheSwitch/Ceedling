@@ -4717,11 +4717,14 @@ cannot share objects with <code>test:</code> builds. See
 <p>A <code>bullseye:</code> task compiles and links test executables with Bullseye
 instrumentation, runs them, and accumulates coverage data. All coverage data
 lands in a single coverage data file. Reports are generated from that file.</p>
-<p>Every <code>test:</code> task has a <code>bullseye:</code> counterpart.</p>
+<p>Every <code>test:</code> task has a <code>bullseye:</code> counterpart. As with <code>test:</code> tasks, a
+single-file task accepts as much of the file’s path as needed to tell
+same-named test files apart.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:all
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:Model
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:pattern<span class="o">[</span>Model*<span class="o">]</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:path<span class="o">[</span>controllers<span class="o">]</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:unit/TestModel.c
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:pattern<span class="o">[</span>Model*<span class="o">]</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:path<span class="o">[</span>controllers<span class="o">]</span>
 </code></pre></div>
 <h3 id="coverage-metric">Coverage metric</h3>
 <p>Bullseye measures two things. Function coverage records whether each function
