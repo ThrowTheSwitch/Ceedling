@@ -25,11 +25,14 @@ A `bullseye:` task compiles and links test executables with Bullseye
 instrumentation, runs them, and accumulates coverage data. All coverage data
 lands in a single coverage data file. Reports are generated from that file.
 
-Every `test:` task has a `bullseye:` counterpart.
+Every `test:` task has a `bullseye:` counterpart. As with `test:` tasks, a
+single-file task accepts as much of the file’s path as needed to tell
+same-named test files apart.
 
 ```shell
  > ceedling bullseye:all
  > ceedling bullseye:Model
+ > ceedling bullseye:unit/TestModel.c
  > ceedling bullseye:pattern[Model*]
  > ceedling bullseye:path[controllers]
 ```

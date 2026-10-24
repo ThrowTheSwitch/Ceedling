@@ -34,6 +34,10 @@ When the Gcov plugin is active it enables Ceedling tasks like this:
  > ceedling gcov:Model
 ```
 
+As with [`test:` tasks](../../getting-started/command-line.md#ceedling-test),
+a single-file task accepts as much of the file’s path as needed to tell
+same-named test files apart, as in `ceedling gcov:unit/TestModel.c`.
+
 … that then generate output like this:
 
 ```

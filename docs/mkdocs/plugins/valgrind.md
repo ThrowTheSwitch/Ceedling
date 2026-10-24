@@ -194,7 +194,7 @@ $ ceedling valgrind:all
 
 ### Run Valgrind for a single test file
 
-Build and run Valgrind for one test file (pass the filename, no path):
+Build and run Valgrind for one test file (pass the filename):
 
 ```shell
 $ ceedling valgrind:test_my_module.c
@@ -205,6 +205,13 @@ corresponding test file automatically:
 
 ```shell
 $ ceedling valgrind:my_module.c
+```
+
+As with [`test:` tasks](../getting-started/command-line.md#ceedling-test), add
+as much of the file’s path as needed to tell same-named test files apart:
+
+```shell
+$ ceedling valgrind:unit/test_my_module.c
 ```
 
 ## Artifacts
