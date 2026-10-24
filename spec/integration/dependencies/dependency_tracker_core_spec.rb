@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'dependency_tracker_integration_helper'
+require 'ceedling/test_invoker/test_build_executor'
 
 # Integration-level coverage of DependencyTracker's core query API -- register,
 # stale?, mark_fresh, invalidate, flush -- against a real FileWrapper, real
@@ -238,6 +239,45 @@ describe 'DependencyTracker core tracking (integration)' do
       # Re-declaring the same (unchanged) dependencies, as a real build step would every run:
       second_run.register( target, files: [foo_h] )
       expect( second_run.stale?( target ) ).to be(false)
+    end
+  end
+
+  # A delta build skips running an unchanged test executable and reports its cached results.
+  # An executable linked with command line arguments enabled is identical with or without a
+  # test case filter, so the fixture's own metadata must carry the filter (GH #1360).
+  it 'reruns a fixture in a later run only when its test case filters changed' do
+    in_temp_dir do |dir|
+      store_path = File.join(dir, '.dep_cache.json')
+      executable = write_fixture( File.join(dir, 'test_foo.out'), 'executable bytes' )
+      target = write_fixture( File.join(dir, 'test_foo.fixture_run'), '' )
+
+      executor = TestBuildExecutor.allocate
+      configurator = double( 'configurator' )
+      executor.instance_variable_set( :@configurator, configurator )
+
+      meta_for = lambda do |include, exclude|
+        allow(configurator).to receive(:include_test_case).and_return( include )
+        allow(configurator).to receive(:exclude_test_case).and_return( exclude )
+        executor.fixture_meta( fixture_tool: { executable: '${1}' }, use_backtrace: :simple, backtrace_tools: [] )
+      end
+
+      first_run = build_dependency_tracker( store_path: store_path )
+      first_run.register( target, files: [executable], meta: meta_for.call( 'test_wakeup', '' ) )
+      first_run.mark_fresh( target )
+      first_run.flush
+
+      runs = {
+        'the same filter'      => [['test_wakeup', ''], false],
+        'no filter'            => [['', ''], true],
+        'a different filter'   => [['test_error', ''], true],
+        'an exclusion added'   => [['test_wakeup', 'test_error'], true]
+      }
+
+      runs.each do |label, ((include, exclude), stale)|
+        later_run = build_dependency_tracker( store_path: store_path )
+        later_run.register( target, files: [executable], meta: meta_for.call( include, exclude ) )
+        expect( later_run.stale?( target ) ).to be(stale), "expected #{label} to be #{stale ? 'stale' : 'fresh'}"
+      end
     end
   end
 
