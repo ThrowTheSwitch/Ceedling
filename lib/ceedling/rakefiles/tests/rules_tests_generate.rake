@@ -21,26 +21,9 @@ namespace GEN_SYM do
   # Use a rule to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
   rule(/^#{GENERATE_MOCKS_TASK_ROOT}\S+$/ => [ # Task names by regex
       proc do |task_name|
-        # Yield clean test name => Strip the task string, remove Rake task prefix, and remove any code file extension.
-        # Only one configured source extension can actually be present at the end of a given
-        # task name, so trying each in turn is safe -- chomp is a no-op for the ones that don't match.
-        # Whatever directory the invoker typed ahead of the name (e.g. `gen:mocks:unit/foo.c`)
-        # is left exactly as given -- it's not decoration, it's what disambiguates one test
-        # from another same-named test elsewhere in the project.
-        test = task_name.strip().sub(/^#{GENERATE_MOCKS_TASK_ROOT}/, '')
-        EXTENSION_SOURCE.each { |ext| test = test.chomp( ext ) }
-
-        # Normalized to forward slashes so a directory the invoker typed with backslashes
-        # (a Windows-style task name run under a POSIX Ruby, e.g. WSL or Cygwin, where
-        # File.dirname/basename below don't treat '\' as a separator) still splits correctly.
-        test = test.tr( '\\', '/' )
-
-        # Ensure the test name's own basename begins with the test file prefix, without
-        # disturbing any directory the invoker supplied ahead of it.
-        dir  = File.dirname( test )
-        base = File.basename( test )
-        base = PROJECT_TEST_FILE_PREFIX + base if not (base.start_with?( PROJECT_TEST_FILE_PREFIX ))
-        test = (dir == '.') ? base : File.join( dir, base )
+        # Any directory typed ahead of the name (e.g. `gen:mocks:unit/foo.c`) is kept, since it
+        # tells one test from a same-named test elsewhere. See TestTaskName.
+        test = TestTaskName.test_name( task_name, root: GENERATE_MOCKS_TASK_ROOT )
 
         # Provide the filepath for the target test task back to the Rake task
         @ceedling[:file_finder].find_test_file_from_name( test )
@@ -56,16 +39,7 @@ namespace GEN_SYM do
   # Use a rule to increase efficiency for large projects (instead of iterating through all sources and creating defined tasks)
   rule(/^#{GENERATE_TEST_RUNNER_TASK_ROOT}\S+$/ => [ # Task names by regex
       proc do |task_name|
-        # See gen:mocks's identical rule above for a full explanation of this resolution.
-        test = task_name.strip().sub(/^#{GENERATE_TEST_RUNNER_TASK_ROOT}/, '')
-        EXTENSION_SOURCE.each { |ext| test = test.chomp( ext ) }
-
-        test = test.tr( '\\', '/' )
-
-        dir  = File.dirname( test )
-        base = File.basename( test )
-        base = PROJECT_TEST_FILE_PREFIX + base if not (base.start_with?( PROJECT_TEST_FILE_PREFIX ))
-        test = (dir == '.') ? base : File.join( dir, base )
+        test = TestTaskName.test_name( task_name, root: GENERATE_TEST_RUNNER_TASK_ROOT )
 
         @ceedling[:file_finder].find_test_file_from_name( test )
       end

@@ -23,6 +23,7 @@ Rake::TaskManager.record_task_metadata = true
 
 require 'ceedling/system_wrapper'
 require 'ceedling/reportinator'
+require 'ceedling/rake_app/test_task_name'
 
 # Operation duration logging
 def log_runtime(run, start_time_s, end_time_s, enabled)

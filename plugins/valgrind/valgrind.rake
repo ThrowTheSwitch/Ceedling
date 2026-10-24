@@ -48,11 +48,12 @@ namespace VALGRIND_SYM do
     )
   end
 
-  desc "Run single Valgrind test ([*] test or source file name, no path)."
+  desc "Run single Valgrind test ([*] test or source file name, with optional path)."
   task :* do
     message = "Oops! '#{VALGRIND_ROOT_NAME}:*' isn't a real task. " +
-              "Use a real test or source file name (no path) in place of the wildcard.\n" +
-              "Example: `ceedling #{VALGRIND_ROOT_NAME}:foo.c`"
+              "Use a real test or source file name in place of the wildcard, " +
+              "adding as much of its path as needed to identify one file among any same-named tests.\n" +
+              "Example: `ceedling #{VALGRIND_ROOT_NAME}:foo.c` or `ceedling #{VALGRIND_ROOT_NAME}:unit/foo.c`"
     @ceedling[:loginator].log( message, Verbosity::ERRORS )
   end
 
@@ -93,9 +94,8 @@ end
 # Use a rule to handle dynamic per-file tasks: valgrind:foo → build and run foo under Valgrind
 rule(/^#{VALGRIND_TASK_ROOT}\S+$/ => [
   proc do |task_name|
-    test = task_name.strip().sub(/^#{VALGRIND_TASK_ROOT}/, '')
-    EXTENSION_SOURCE.each { |ext| test = test.chomp(ext) }
-    test = PROJECT_TEST_FILE_PREFIX + test unless test.start_with?(PROJECT_TEST_FILE_PREFIX)
+    # Any directory typed ahead of the name is kept. See TestTaskName.
+    test = TestTaskName.test_name( task_name, root: VALGRIND_TASK_ROOT )
     @ceedling[:file_finder].find_test_file_from_name(test)
   end
 ]) do |test|
