@@ -16,7 +16,8 @@ require 'deep_merge'
 class Configurator
 
   attr_reader :project_config_hash, :programmatic_plugins, :rake_plugins
-  attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case, :force_test_rerun
+  attr_accessor :project_logging, :sanity_checks, :include_test_case, :exclude_test_case, :force_test_rerun,
+                :test_build_tasks, :release_build_tasks
 
   constructor :configurator_setup, :configurator_builder, :configurator_plugins, :config_walkinator, :yaml_wrapper, :system_wrapper, :loginator, :reportinator, :ruby_expandinator
 
@@ -431,7 +432,9 @@ class Configurator
     @configurator_setup.build_directory_structure( flattened_config )
 
     # Copy Unity, CMock, CException into vendor directory within build directory
-    @configurator_setup.vendor_frameworks_and_support_files( ceedling_lib_path, flattened_config )
+    @configurator_setup.vendor_frameworks_and_support_files(
+      ceedling_lib_path, flattened_config, test_build: @test_build_tasks == true, release_build: @release_build_tasks == true
+    )
     @configurator_setup.build_project_collections( flattened_config )
 
     @project_config_hash = flattened_config.clone

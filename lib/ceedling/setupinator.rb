@@ -48,6 +48,8 @@ class Setupinator
 
     # Set special purpose test case filters (from command line)
     @configurator.include_test_case = app_cfg[:include_test_case]
+    @configurator.test_build_tasks = app_cfg[:test_build_tasks?]
+    @configurator.release_build_tasks = app_cfg[:release_build_tasks?]
     @configurator.exclude_test_case = app_cfg[:exclude_test_case]
 
     # Set special purpose forced test re-execution (from command line)

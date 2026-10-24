@@ -5,44 +5,37 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# Integration coverage for Issue #1292: a vendor destination (build/vendor/unity/src,
-# etc.) occasionally turns up as the wrong file/directory type mid-copy, crashing with
-# Errno::ENOTDIR/EISDIR. Does FileWrapper#cp_r_with_retry actually let
-# ConfiguratorSetup#vendor_frameworks_and_support_files ride out a transient fault of
-# that shape, end to end against a real filesystem -- and does a fault that never
-# clears still surface as a clear, path-naming CeedlingException rather than a raw Errno?
+# ConfiguratorSetup#vendor_frameworks_and_support_files with a real FileWrapper on a real
+# filesystem. A build brings build/vendor up to date with the gem's frameworks. It writes only
+# a file that differs from its source, and replaces it whole by renaming a temporary copy over
+# it, so a concurrent build never reads a half-written header (GH #1361). A transient copy
+# fault, such as a path briefly the wrong type (GH #1292), is retried, and one that never
+# clears names the destination.
 #
-# Modeled directly on spec/integration/preprocessing_transient_io_retry_spec.rb: a real
-# ConfiguratorSetup + real FileWrapper subclass that controls exactly one #cp_r call
-# (matched by destination path) so the fault is deterministic. Faulting at #cp_r rather
-# than #cp_r_with_retry itself matters here -- cp_r_with_retry's own retry loop (already
-# proven exhaustively in file_wrapper_spec.rb) is exactly the mechanism this spec needs
-# to actually run.
+# Faults are injected at FileWrapper#replace_file, the one write of each file, so the retry
+# loop in FileWrapper#sync_tree is what runs.
 
 require 'spec_helper'
 require 'spec_integration_helper'
 require 'ceedling/config/configurator_setup'
 require 'ceedling/constants'
 
-describe 'Vendor-copy transient I/O retry (integration)' do
+describe 'Vendor copy into build/vendor (integration)' do
   include IntegrationSpecHelpers
 
-  # A real FileWrapper whose #cp_r raises for `fault_dest` the first `raises_left`
-  # times it's called, then behaves normally -- every other destination is untouched.
-  # Real FileWrapper#cp_r_with_retry (inherited, not overridden) is what actually retries.
-  # Named distinctly from preprocessing_transient_io_retry_spec.rb's own FaultingFileWrapper
-  # -- both are top-level classes loaded into the same RSpec process, and Ruby's open
-  # classes would otherwise let the second file's definition silently clobber the first's.
-  class CpRFaultingFileWrapper < FileWrapper
-    def initialize(fault_dest:, raises_left: 1, error: Errno::EISDIR, **kwargs)
+  # A real FileWrapper whose #replace_file raises for files beneath `fault_dir` the first
+  # `raises_left` times. Named apart from other specs' faulting wrappers, since top-level
+  # classes share one RSpec process.
+  class ReplaceFaultingFileWrapper < FileWrapper
+    def initialize(fault_dir:, raises_left: 1, error: Errno::EISDIR, **kwargs)
       super(**kwargs)
-      @fault_dest = fault_dest
+      @fault_dir = fault_dir
       @raises_left = raises_left
       @error = error
     end
 
-    def cp_r(source, destination, options={})
-      if destination == @fault_dest && @raises_left > 0
+    def replace_file(source, destination)
+      if destination.start_with?( @fault_dir ) && @raises_left > 0
         @raises_left -= 1
         raise @error, "simulated transient type-mismatch on #{destination}"
       end
@@ -50,81 +43,136 @@ describe 'Vendor-copy transient I/O retry (integration)' do
     end
   end
 
-  # Real ConfiguratorSetup wired to `file_wrapper`; every other collaborator is
-  # untouched by #vendor_frameworks_and_support_files, so NULL stands in for them.
+  def file_wrapper(**fault)
+    options = { loginator: IntegrationSpecHelpers::NULL, verbosinator: IntegrationSpecHelpers::NULL }
+    return fault.empty? ? FileWrapper.new( options ) : ReplaceFaultingFileWrapper.new( **fault, **options )
+  end
+
   def build_configurator_setup(file_wrapper)
     ConfiguratorSetup.new(
       configurator_builder:   IntegrationSpecHelpers::NULL,
       configurator_validator: IntegrationSpecHelpers::NULL,
-      loginator:               IntegrationSpecHelpers::NULL,
-      reportinator:            IntegrationSpecHelpers::NULL,
-      file_wrapper:            file_wrapper,
-      system_wrapper:          IntegrationSpecHelpers::NULL,
-      tool_executor:           IntegrationSpecHelpers::NULL
+      loginator:              IntegrationSpecHelpers::NULL,
+      reportinator:           IntegrationSpecHelpers::NULL,
+      file_wrapper:           file_wrapper,
+      system_wrapper:         IntegrationSpecHelpers::NULL,
+      tool_executor:          IntegrationSpecHelpers::NULL
     )
   end
 
-  # A minimal but real fixture standing in for the gem's own vendor/unity/src -- one
-  # real file, so a real FileUtils.cp_r has real directory-tree content to walk.
+  # A stand-in for the gem's vendor/unity/src, with a nested file to show subdirectories copy
   def flattened_config(dir)
-    unity_src = File.join(dir, 'gem_vendor', 'unity', 'src')
-    FileUtils.mkdir_p(unity_src)
-    File.write(File.join(unity_src, 'unity.c'), "// stand-in for the real unity.c\n")
+    unity_src = File.join( dir, 'gem_vendor', 'unity', 'src' )
+    FileUtils.mkdir_p( File.join( unity_src, 'internal' ) )
+    File.write( File.join( unity_src, 'unity.c' ), "// stand-in for unity.c\n" )
+    File.write( File.join( unity_src, 'unity.h' ), "// stand-in for unity.h\n" )
+    File.write( File.join( unity_src, 'internal', 'unity_internals.h' ), "// stand-in\n" )
 
     {
-      # UNITY_LIB_PATH ('unity/src') is joined onto this root -- it must be the
-      # vendor root, not 'unity' itself, matching CEEDLING_VENDOR's real shape.
-      unity_vendor_path:                     File.join(dir, 'gem_vendor'),
-      project_build_vendor_unity_path:       File.join(dir, 'build', 'vendor', 'unity', 'src'),
-      project_use_mocks:                     false,
-      project_use_exceptions:                false,
-      project_use_backtrace:                 false,
-      project_use_partials:                  false,
+      # UNITY_LIB_PATH ('unity/src') joins this vendor root
+      unity_vendor_path:               File.join( dir, 'gem_vendor' ),
+      project_build_vendor_unity_path: File.join( dir, 'build', 'vendor', 'unity', 'src' ),
+      project_use_mocks:               false,
+      project_use_exceptions:          false,
+      project_use_backtrace:           :none,
+      project_use_partials:            false,
     }
   end
 
-  it "recovers from a transient copy failure on its own vendor destination instead of crashing the build" do
-    with_source_tree({}) do |dir|
-      config = flattened_config(dir)
-      dest = config[:project_build_vendor_unity_path]
-      # Real usage always runs build_directory_structure (which mkdir_p's every
-      # vendor destination) before this copy -- match that precondition here so the
-      # only fault in play is the one this spec injects, not a missing parent dir.
-      FileUtils.mkdir_p(dest)
+  def vendor(file_wrapper, dir, config)
+    build_configurator_setup( file_wrapper ).vendor_frameworks_and_support_files( dir, config, test_build: true, release_build: false )
+  end
 
-      # Exactly one raise, well within cp_r_with_retry's own retry budget -- the
-      # source is otherwise 100% fine, the real copy proceeds either way.
-      faulting_fw = CpRFaultingFileWrapper.new(
-        fault_dest: dest, raises_left: 1,
-        loginator: IntegrationSpecHelpers::NULL, verbosinator: IntegrationSpecHelpers::NULL
-      )
-      setup = build_configurator_setup(faulting_fw)
-
-      expect {
-        setup.vendor_frameworks_and_support_files(dir, config)
-      }.not_to raise_error
-
-      expect(File.exist?(File.join(dest, 'unity.c'))).to be true
+  def snapshot(dest)
+    return Dir.glob( File.join( dest, '**', '*' ) ).select { |path| File.file?( path ) }.to_h do |path|
+      stat = File.stat( path )
+      [path, [stat.ino, stat.mtime]]
     end
   end
 
-  it "still raises a clear, path-naming CeedlingException when the fault never clears" do
-    with_source_tree({}) do |dir|
-      config = flattened_config(dir)
-      dest = config[:project_build_vendor_unity_path]
-      FileUtils.mkdir_p(dest)
+  def leftovers(dest)
+    return Dir.glob( File.join( dest, '**', '*' ), File::FNM_DOTMATCH ).select { |path| File.basename( path ).include?( '.tmp' ) }
+  end
 
-      # More raises than cp_r_with_retry's own retry budget (initial attempt + 4
-      # retries) -- every attempt fails, so the fault genuinely never clears.
-      permanently_faulting_fw = CpRFaultingFileWrapper.new(
-        fault_dest: dest, raises_left: 999,
-        loginator: IntegrationSpecHelpers::NULL, verbosinator: IntegrationSpecHelpers::NULL
-      )
-      setup = build_configurator_setup(permanently_faulting_fw)
+  it "copies every file, including those in subdirectories, into a fresh destination" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
+
+      vendor( file_wrapper, dir, config )
+
+      expect( File.read( File.join( dest, 'unity.h' ) ) ).to eq( "// stand-in for unity.h\n" )
+      expect( File.exist?( File.join( dest, 'internal', 'unity_internals.h' ) ) ).to be(true)
+      expect( leftovers( dest ) ).to be_empty
+    end
+  end
+
+  it "rewrites nothing when the destination already matches" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
+      vendor( file_wrapper, dir, config )
+      before = snapshot( dest )
+      sleep( 1.1 ) # Past the coarsest file modification time resolution
+
+      vendor( file_wrapper, dir, config )
+
+      expect( snapshot( dest ) ).to eq( before )
+    end
+  end
+
+  it "restores an edited file by replacing it whole, and leaves matching files alone" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
+      vendor( file_wrapper, dir, config )
+      edited = File.join( dest, 'unity.h' )
+      File.write( edited, "// an errant edit\n" )
+      before = snapshot( dest )
+
+      vendor( file_wrapper, dir, config )
+
+      expect( File.read( edited ) ).to eq( "// stand-in for unity.h\n" )
+      expect( File.stat( edited ).ino ).not_to eq( before[edited].first ) unless SystemWrapper.windows?
+      untouched = File.join( dest, 'unity.c' )
+      expect( snapshot( dest )[untouched] ).to eq( before[untouched] )
+      expect( leftovers( dest ) ).to be_empty
+    end
+  end
+
+  it "restores a missing file" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
+      vendor( file_wrapper, dir, config )
+      FileUtils.rm( File.join( dest, 'internal', 'unity_internals.h' ) )
+
+      vendor( file_wrapper, dir, config )
+
+      expect( File.exist?( File.join( dest, 'internal', 'unity_internals.h' ) ) ).to be(true)
+    end
+  end
+
+  it "recovers from a transient copy failure instead of crashing the build" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
+
+      expect { vendor( file_wrapper( fault_dir: dest, raises_left: 1 ), dir, config ) }.not_to raise_error
+
+      expect( File.exist?( File.join( dest, 'unity.c' ) ) ).to be(true)
+      expect( leftovers( dest ) ).to be_empty
+    end
+  end
+
+  it "raises a clear, path-naming CeedlingException when the fault never clears" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
 
       expect {
-        setup.vendor_frameworks_and_support_files(dir, config)
-      }.to raise_error(CeedlingException, /#{Regexp.escape(dest)}/)
+        vendor( file_wrapper( fault_dir: dest, raises_left: 999 ), dir, config )
+      }.to raise_error( CeedlingException, /#{Regexp.escape( dest )}/ )
     end
   end
 end

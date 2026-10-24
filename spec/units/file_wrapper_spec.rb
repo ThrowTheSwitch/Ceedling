@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'tmpdir'
 require 'ceedling/file_wrapper'
 require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
@@ -215,49 +216,66 @@ describe FileWrapper do
   # a vendor destination briefly reporting the wrong file/directory type mid-copy).
   # Stub-based, matching #open_with_retry's own spec above -- no real filesystem or
   # timing involved.
-  describe '#cp_r_with_retry' do
+  # A transient error mid-copy (a path briefly the wrong type, a file another process holds
+  # open on Windows) is retried; one that never clears names the destination.
+  describe '#sync_tree retries' do
     before(:each) do
       allow(@file_wrapper).to receive(:sleep)
     end
 
-    it 'behaves identically to #cp_r when nothing fails' do
-      allow(FileUtils).to receive(:cp_r)
-
-      @file_wrapper.cp_r_with_retry('/src/.', '/dest')
-
-      expect(FileUtils).to have_received(:cp_r).with('/src/.', '/dest')
-      expect(@file_wrapper).not_to have_received(:sleep)
-    end
-
-    it 'retries past a SystemCallError and succeeds once the underlying copy stops raising' do
-      call_count = 0
-      allow(FileUtils).to receive(:cp_r) do
-        call_count += 1
-        raise Errno::EISDIR, 'transient' if call_count < 3
+    def with_tree
+      Dir.mktmpdir do |dir|
+        source = File.join( dir, 'src' )
+        FileUtils.mkdir_p( source )
+        File.write( File.join( source, 'unity.c' ), "int x;\n" )
+        yield source, File.join( dir, 'dest' )
       end
-
-      @file_wrapper.cp_r_with_retry('/src/.', '/dest')
-
-      expect(call_count).to eq(3)
-      expect(@file_wrapper).to have_received(:sleep).twice
     end
 
-    it 'raises a CeedlingException naming the destination and retry count once every retry is exhausted, and logs it' do
-      allow(FileUtils).to receive(:cp_r).and_raise(Errno::ENOTDIR, 'still wrong type')
+    it 'copies without retrying when nothing fails' do
+      with_tree do |source, dest|
+        @file_wrapper.sync_tree( source, dest )
 
-      expect { @file_wrapper.cp_r_with_retry('/src/.', '/dest') }.to raise_error(CeedlingException, /\/dest/)
-      expect(@loginator).to have_received(:log).with(a_string_including('/dest'), Verbosity::ERRORS)
-      # Initial attempt + one retry per configured delay.
-      expect(FileUtils).to have_received(:cp_r).exactly(FileWrapper::TRANSIENT_IO_RETRY_DELAYS.size + 1).times
+        expect( File.read( File.join( dest, 'unity.c' ) ) ).to eq( "int x;\n" )
+        expect(@file_wrapper).not_to have_received(:sleep)
+      end
     end
 
-    it 'does not retry a non-SystemCallError -- propagates immediately' do
-      allow(FileUtils).to receive(:cp_r).and_raise(ArgumentError, 'not transient')
+    it 'retries past a SystemCallError and succeeds once the copy stops raising' do
+      with_tree do |source, dest|
+        calls = 0
+        allow(@file_wrapper).to receive(:replace_file).and_wrap_original do |original, *args|
+          calls += 1
+          raise Errno::EISDIR, 'transient' if calls < 3
+          original.call( *args )
+        end
 
-      expect {
-        @file_wrapper.cp_r_with_retry('/src/.', '/dest')
-      }.to raise_error(ArgumentError, 'not transient')
-      expect(@file_wrapper).not_to have_received(:sleep)
+        @file_wrapper.sync_tree( source, dest )
+
+        expect( calls ).to eq( 3 )
+        expect(@file_wrapper).to have_received(:sleep).twice
+        expect( File.exist?( File.join( dest, 'unity.c' ) ) ).to be(true)
+      end
+    end
+
+    it 'raises a CeedlingException naming the destination once every retry is exhausted, and logs it' do
+      with_tree do |source, dest|
+        allow(@file_wrapper).to receive(:replace_file).and_raise( Errno::ENOTDIR, 'still wrong type' )
+
+        expect { @file_wrapper.sync_tree( source, dest ) }.to raise_error( CeedlingException, /#{Regexp.escape( dest )}/ )
+        expect(@loginator).to have_received(:log).with( a_string_including( dest ), Verbosity::ERRORS )
+        # Initial attempt plus one retry for each configured delay
+        expect(@file_wrapper).to have_received(:replace_file).exactly( FileWrapper::TRANSIENT_IO_RETRY_DELAYS.size + 1 ).times
+      end
+    end
+
+    it 'propagates an error that is not a SystemCallError without retrying' do
+      with_tree do |source, dest|
+        allow(@file_wrapper).to receive(:replace_file).and_raise( ArgumentError, 'not transient' )
+
+        expect { @file_wrapper.sync_tree( source, dest ) }.to raise_error( ArgumentError, 'not transient' )
+        expect(@file_wrapper).not_to have_received(:sleep)
+      end
     end
   end
 

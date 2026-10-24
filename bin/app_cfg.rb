@@ -61,6 +61,11 @@ class CeedlingAppConfig
       # Default to task categry other than build/plugin tasks
       :build_tasks? => false,
 
+      # Whether the tasks build tests (test:, gcov:, ...) or a release, which decides what
+      # build/vendor needs
+      :test_build_tasks? => false,
+      :release_build_tasks? => false,
+
       # Default to `exit(1)` upon failing test cases
       :tests_graceful_fail? => false,
 
@@ -106,6 +111,14 @@ class CeedlingAppConfig
     @app_cfg[:build_tasks?] = enable
   end
 
+  def set_test_build_tasks(enable)
+    @app_cfg[:test_build_tasks?] = enable
+  end
+
+  def set_release_build_tasks(enable)
+    @app_cfg[:release_build_tasks?] = enable
+  end
+
   def set_tests_graceful_fail(enable)
     @app_cfg[:tests_graceful_fail?] = enable
   end
@@ -127,6 +140,14 @@ class CeedlingAppConfig
 
   def build_tasks?()
     return @app_cfg[:build_tasks?]
+  end
+
+  def test_build_tasks?()
+    return @app_cfg[:test_build_tasks?]
+  end
+
+  def release_build_tasks?()
+    return @app_cfg[:release_build_tasks?]
   end
 
   def tests_graceful_fail?()

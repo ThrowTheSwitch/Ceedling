@@ -902,11 +902,20 @@ describe Configurator do
       flattened = { flat_a: 1, flat_environment: [ { cc: 'gcc' } ] }
       expect( @configurator_setup ).to have_received(:build_project_config).with( 'lib', 'logs', flattened ).ordered
       expect( @configurator_setup ).to have_received(:build_directory_structure).with( flattened ).ordered
-      expect( @configurator_setup ).to have_received(:vendor_frameworks_and_support_files).with( 'lib', flattened ).ordered
+      expect( @configurator_setup ).to have_received(:vendor_frameworks_and_support_files).with( 'lib', flattened, test_build: false, release_build: false ).ordered
       expect( @configurator_setup ).to have_received(:build_project_collections).with( flattened ).ordered
       expect( @configurator_setup ).to have_received(:build_constants_and_accessors).with( flattened, anything ).ordered
       expect( @configurator_setup ).to have_received(:build_constants_and_accessors).with( { environment: [ { cc: 'gcc' } ] }, anything ).ordered
       expect( @configurator.project_config_hash ).to eq( flattened )
+    end
+
+    it "copies the vendor files the requested build tasks need" do
+      @configurator.test_build_tasks = true
+      @configurator.release_build_tasks = true
+
+      @configurator.build( 'lib', 'logs', { a: 1 } )
+
+      expect( @configurator_setup ).to have_received(:vendor_frameworks_and_support_files).with( 'lib', { flat_a: 1 }, test_build: true, release_build: true )
     end
 
     it "redefines an existing element and its constant" do
