@@ -279,6 +279,27 @@ describe FileWrapper do
     end
   end
 
+  # The temporary copy beside the destination is the longest path replace_file writes
+  describe '#replace_file' do
+    it 'checks the length of its temporary path, then leaves only the destination' do
+      Dir.mktmpdir do |dir|
+        source = File.join( dir, 'unity.h' )
+        destination = File.join( dir, 'out', 'unity.h' )
+        File.write( source, "int x;\n" )
+        FileUtils.mkdir_p( File.dirname( destination ) )
+        checked = []
+        allow(@file_wrapper).to receive(:check_path_length) { |path, **| checked << path }
+
+        @file_wrapper.replace_file( source, destination )
+
+        expect( checked.size ).to eq( 1 )
+        expect( File.dirname( checked.first ) ).to eq( File.dirname( destination ) )
+        expect( checked.first.length ).to be > destination.length
+        expect( Dir.children( File.dirname( destination ) ) ).to eq( ['unity.h'] )
+      end
+    end
+  end
+
   # The removal methods are thin pass-throughs to FileUtils. These examples exist
   # for one reason: to pin that a caller's options actually arrive. #rm_r and #rm_rf
   # previously splatted an inline assignment, which replaced the caller's hash with

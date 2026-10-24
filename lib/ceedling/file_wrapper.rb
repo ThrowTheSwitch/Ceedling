@@ -263,8 +263,8 @@ class FileWrapper
   # Copies source to a temporary name beside destination, then renames it over destination.
   # A concurrent reader sees the old file or the new one, never a partial one.
   def replace_file(source, destination)
-    check_path_length( destination, origin: 'FileWrapper#replace_file' )
     temp = File.join( File.dirname( destination ), ".#{File.basename( destination )}.#{Process.pid}.#{Thread.current.object_id}.tmp" )
+    check_path_length( temp, origin: 'FileWrapper#replace_file' )
     FileUtils.cp( source, temp )
     File.rename( temp, destination )
   ensure

@@ -65,6 +65,29 @@ describe 'RakeTaskRegistry against the real rakefiles (integration)' do
     expect_classified( registry )
   end
 
+  # A build reached through a call the registry can't place would leave build/vendor
+  # unpopulated. Each call sits in a namespace, or in a top-level task (`task RELEASE_SYM`)
+  # named for a namespace the registry knows.
+  it 'places every test and release pipeline call where the registry finds it' do
+    registered = registry
+    markers = [RakeTaskRegistry::MARKER_TEST_TASKS_SETUP_AND_INVOKE, RakeTaskRegistry::MARKER_RELEASE_TASKS]
+
+    REGISTRY_SPEC_RAKEFILES.each do |rakefile|
+      lines = File.readlines( rakefile, encoding: 'bom|utf-8' )
+      lines.each_with_index do |line, index|
+        next unless markers.any? { |marker| line.match?( marker ) }
+
+        namespace = registered.send( :find_enclosing_namespace, lines, index )
+        task_line = lines[0...index].reverse.find { |prior| prior.match?( /\Atask\s/ ) }
+        task_name = task_line && task_line[/\Atask\s*\(?\s*:?([A-Za-z_]+)/, 1]
+        task_name = Object.const_get( task_name ).to_s if task_name&.match?( /\A[A-Z_]+\z/ )
+        found = !namespace.nil? || !registered.tags_for( task_name.to_s ).empty?
+
+        expect( found ).to be(true), "#{File.basename( rakefile )}:#{index + 1} runs a pipeline the registry cannot place"
+      end
+    end
+  end
+
   it 'finds every test-building plugin namespace once plugin constants are loaded' do
     REGISTRY_SPEC_PLUGIN_CONSTANTS.each { |name, value| stub_const( name, value ) }
     expect_classified( registry )
