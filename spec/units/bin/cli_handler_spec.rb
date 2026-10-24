@@ -109,7 +109,8 @@ describe CliHandler do
       )
 
       expect(@loginator).to receive(:console) do |message, _label|
-        expect(message).to include( 'Ceedling Launcher => 1.2.0' )
+        # The launcher reports the version of the Ceedling running this spec
+        expect(message).to include( "Ceedling Launcher => #{Ceedling::Version::GEM}" )
         expect(message).to include( 'Ceedling App => 1.2.0' )
       end
 

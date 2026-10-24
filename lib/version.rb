@@ -21,7 +21,7 @@ module Ceedling
     # Target version for the current release cycle. Maintained by hand, one edit
     # per minor or major cycle. Never edited to match a release tag. The release
     # pipeline rewrites this line from the tag that triggered it.
-    BASE = '1.2.0'
+    BASE = '1.2.1'
 
     # Marker for a build the release pipeline did not produce. That pipeline
     # empties this line, so a published gem reports a bare version while a local

@@ -111,6 +111,16 @@ describe CliHelper do
     end
   end
 
+  # Whether a command's tasks build a release decides what build/vendor needs (GH #1361)
+  describe '#release_task?' do
+    it 'is true when any task belongs to a release-building namespace' do
+      allow(@rake_task_registry).to receive(:task_is?) { |task, tag| task == 'release' && tag == RakeTaskRegistry::TAG_RELEASE }
+
+      expect( @cli_helper.release_task?( tasks: ['test:all', 'release'] ) ).to be(true)
+      expect( @cli_helper.release_task?( tasks: ['test:all', 'files:test'] ) ).to be(false)
+    end
+  end
+
   describe '#which_ceedling?' do
     before(:each) do
       @app_cfg = CeedlingAppConfig.new

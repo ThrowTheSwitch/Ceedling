@@ -329,6 +329,11 @@ class CliHelper
   end
 
 
+  def release_task?(tasks:)
+    return tasks.any? { |task| @registry.task_is?( task, RakeTaskRegistry::TAG_RELEASE ) }
+  end
+
+
   def print_rake_tasks()
     # This all required digging into Rake internals a bit.
 

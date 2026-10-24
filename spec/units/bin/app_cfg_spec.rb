@@ -81,6 +81,16 @@ describe CeedlingAppConfig do
       expect(@app_cfg.build_tasks?).to eq( true )
     end
 
+    it '#set_test_build_tasks and #set_release_build_tasks update their flags, which default to false' do
+      expect(@app_cfg.test_build_tasks?).to eq( false )
+      expect(@app_cfg.release_build_tasks?).to eq( false )
+
+      @app_cfg.set_test_build_tasks( true )
+      @app_cfg.set_release_build_tasks( true )
+      expect(@app_cfg.test_build_tasks?).to eq( true )
+      expect(@app_cfg.release_build_tasks?).to eq( true )
+    end
+
     it '#set_tests_graceful_fail updates :tests_graceful_fail? and #tests_graceful_fail?' do
       @app_cfg.set_tests_graceful_fail( true )
       expect(@app_cfg[:tests_graceful_fail?]).to eq( true )

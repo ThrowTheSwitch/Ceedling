@@ -225,74 +225,93 @@ describe ConfiguratorSetup do
     end
   end
 
+  # Only a build populates build/vendor, so a command that only reads the project, such as
+  # files:test or dumpconfig, leaves a concurrent build's files alone (GH #1361)
   context "#vendor_frameworks_and_support_files" do
     def flattened_config
       {
-        unity_vendor_path:                  '/gem/vendor/unity',
+        unity_vendor_path:                  '/gem/vendor',
         project_build_vendor_unity_path:    '/build/vendor/unity/src',
-        cmock_vendor_path:                  '/gem/vendor/cmock',
+        cmock_vendor_path:                  '/gem/vendor',
         project_build_vendor_cmock_path:    '/build/vendor/cmock/src',
-        cexception_vendor_path:             '/gem/vendor/c_exception',
+        cexception_vendor_path:             '/gem/vendor',
         project_build_vendor_cexception_path: '/build/vendor/c_exception/lib',
+        project_build_vendor_ceedling_path: '/build/vendor/ceedling',
+        project_build_tests_root:           '/build/test',
         project_use_mocks:                  true,
         project_use_exceptions:             true,
-        project_use_backtrace:              false,
-        project_use_partials:               false,
+        project_use_backtrace:              :gdb,
+        project_use_partials:               true,
       }
     end
 
     before(:each) do
       allow(@file_wrapper).to receive(:exist?).and_return(false)
       allow(@file_wrapper).to receive(:rm_rf)
-      allow(@file_wrapper).to receive(:cp_r_with_retry)
-    end
-
-    it "copies the gdb backtrace script and the Partials header when those features are in use" do
       allow(@file_wrapper).to receive(:mkdir)
-      allow(@file_wrapper).to receive(:cp_r)
-      config = flattened_config.merge(
-        project_use_backtrace: :gdb, project_build_tests_root: '/build/test',
-        project_use_partials: true, project_build_vendor_ceedling_path: '/build/vendor/ceedling'
-      )
+      allow(@file_wrapper).to receive(:sync_tree)
+      allow(@file_wrapper).to receive(:sync_file)
+    end
 
-      @setup.vendor_frameworks_and_support_files('/gem/lib', config)
+    def vendor(config = flattened_config, test_build: false, release_build: false)
+      @setup.vendor_frameworks_and_support_files( '/gem/lib', config, test_build: test_build, release_build: release_build )
+    end
 
+    def synced_trees
+      synced = []
+      allow(@file_wrapper).to receive(:sync_tree) { |source, destination| synced << [source, destination] }
+      yield
+      return synced
+    end
+
+    it "brings Unity, CMock, CException, the gdb backtrace script and the Partials header up to date for a test build" do
+      synced = synced_trees { vendor( test_build: true ) }
+
+      expect(synced).to eq( [
+        ['/gem/vendor/unity/src', '/build/vendor/unity/src'],
+        ['/gem/vendor/cmock/src', '/build/vendor/cmock/src'],
+        ['/gem/vendor/c_exception/lib', '/build/vendor/c_exception/lib']
+      ] )
       expect(@file_wrapper).to have_received(:mkdir).with('/build/test')
-      expect(@file_wrapper).to have_received(:cp_r).with(File.join('/gem/lib', BACKTRACE_GDB_SCRIPT_FILE), '/build/test')
-      expect(@file_wrapper).to have_received(:cp_r).with('/gem/lib/ceedling.h', '/build/vendor/ceedling')
+      expect(@file_wrapper).to have_received(:sync_file).with(File.join('/gem/lib', BACKTRACE_GDB_SCRIPT_FILE), '/build/test')
+      expect(@file_wrapper).to have_received(:sync_file).with('/gem/lib/ceedling.h', '/build/vendor/ceedling')
     end
 
-    it "always copies Unity, CMock, and CException, regardless of whether the destination looks already populated" do
-      # A prior run's destination "looking populated and uncorrupted" is exactly the
-      # state a skip-check would trust -- simulate it directly (dest is a real
-      # directory, its marker file is a real file, nothing corrupted) to prove there
-      # is no such skip.
-      allow(@file_wrapper).to receive(:exist?).and_return(true)
-      allow(@file_wrapper).to receive(:directory?) do |path|
-        !path.end_with?('.c') # marker files (unity.c, cmock.c, CException.c) are plain files; their parent dirs are directories
-      end
+    it "leaves out CMock, CException, the backtrace script and the Partials header when a test build doesn't use them" do
+      config = flattened_config.merge( project_use_mocks: false, project_use_exceptions: false, project_use_backtrace: :simple, project_use_partials: false )
 
-      @setup.vendor_frameworks_and_support_files('/gem/lib', flattened_config)
+      synced = synced_trees { vendor( config, test_build: true ) }
 
-      expect(@file_wrapper).to have_received(:cp_r_with_retry)
-        .with(a_string_including('/gem/vendor/unity'), '/build/vendor/unity/src')
-      expect(@file_wrapper).to have_received(:cp_r_with_retry)
-        .with(a_string_including('/gem/vendor/cmock'), '/build/vendor/cmock/src')
-      expect(@file_wrapper).to have_received(:cp_r_with_retry)
-        .with(a_string_including('/gem/vendor/c_exception'), '/build/vendor/c_exception/lib')
+      expect(synced).to eq( [['/gem/vendor/unity/src', '/build/vendor/unity/src']] )
+      expect(@file_wrapper).to_not have_received(:sync_file)
     end
 
-    it "skips CMock and CException copying when the project doesn't use them" do
-      config = flattened_config.merge(project_use_mocks: false, project_use_exceptions: false)
+    it "brings only CException up to date for a release build" do
+      synced = synced_trees { vendor( release_build: true ) }
 
-      @setup.vendor_frameworks_and_support_files('/gem/lib', config)
+      expect(synced).to eq( [['/gem/vendor/c_exception/lib', '/build/vendor/c_exception/lib']] )
+      expect(@file_wrapper).to_not have_received(:sync_file)
+    end
 
-      expect(@file_wrapper).to have_received(:cp_r_with_retry)
-        .with(a_string_including('/gem/vendor/unity'), '/build/vendor/unity/src')
-      expect(@file_wrapper).to_not have_received(:cp_r_with_retry)
-        .with(a_string_including('/gem/vendor/cmock'), anything)
-      expect(@file_wrapper).to_not have_received(:cp_r_with_retry)
-        .with(a_string_including('/gem/vendor/c_exception'), anything)
+    it "copies nothing for a release build without exceptions" do
+      vendor( flattened_config.merge( project_use_exceptions: false ), release_build: true )
+
+      expect(@file_wrapper).to_not have_received(:sync_tree)
+      expect(@file_wrapper).to_not have_received(:sync_file)
+    end
+
+    it "copies each framework once when a command builds both tests and a release" do
+      synced = synced_trees { vendor( test_build: true, release_build: true ) }
+
+      expect(synced.map( &:last )).to eq( ['/build/vendor/unity/src', '/build/vendor/cmock/src', '/build/vendor/c_exception/lib'] )
+    end
+
+    it "touches nothing beneath build/vendor for a command that builds nothing" do
+      vendor
+
+      expect(@file_wrapper).to_not have_received(:sync_tree)
+      expect(@file_wrapper).to_not have_received(:sync_file)
+      expect(@file_wrapper).to_not have_received(:rm_rf)
     end
 
     it "heals a corrupted (wrong-typed) vendor destination before copying" do
@@ -300,13 +319,12 @@ describe ConfiguratorSetup do
       allow(@file_wrapper).to receive(:directory?).with('/build/vendor/unity/src').and_return(false)
       allow(@loginator).to receive(:log)
 
-      @setup.vendor_frameworks_and_support_files('/gem/lib', flattened_config)
+      vendor( test_build: true )
 
       expect(@file_wrapper).to have_received(:rm_rf).with('/build/vendor/unity/src')
     end
   end
 
-  # The validations below log each problem they find and report overall validity
   context "configuration validation" do
     before(:each) do
       allow(@loginator).to receive(:log)

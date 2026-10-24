@@ -50,6 +50,10 @@ class Setupinator
     @configurator.include_test_case = app_cfg[:include_test_case]
     @configurator.exclude_test_case = app_cfg[:exclude_test_case]
 
+    # Whether the requested tasks build tests or a release, which decides what build/vendor needs
+    @configurator.test_build_tasks = app_cfg[:test_build_tasks?]
+    @configurator.release_build_tasks = app_cfg[:release_build_tasks?]
+
     # Set special purpose forced test re-execution (from command line)
     @configurator.force_test_rerun = app_cfg[:force_test_rerun]
 

@@ -83,23 +83,19 @@ class ConfiguratorSetup
     @file_wrapper.rm_rf( path )
   end
 
-  # Copies the frameworks a build uses into build/vendor, and the support files its
-  # features need. Copies always, every run. An errant edit beneath build/vendor/, by hand,
-  # an IDE, or an automated agent, is overwritten from the canonical source by the next build.
-  def vendor_frameworks_and_support_files(ceedling_lib_path, flattened_config)
-    vendored_frameworks( flattened_config ).each do |source, destination, marker_file|
+  # Brings build/vendor up to date with the frameworks and support files a build needs. Only
+  # a build does this, so a command that only reads the project leaves a concurrent build's
+  # files alone. A file that already matches its source is not written, and one that differs,
+  # such as an errant edit by hand, an IDE, or an automated agent, is replaced whole.
+  #
+  # A release build needs only CException, and that only when exceptions are enabled.
+  def vendor_frameworks_and_support_files(ceedling_lib_path, flattened_config, test_build:, release_build:)
+    frameworks_for_build( flattened_config, test_build: test_build, release_build: release_build ).each do |source, destination, marker_file|
       heal_vendor_path( destination, marker_file )
-      # '/.' to cause cp_r to copy directory contents
-      @file_wrapper.cp_r_with_retry( File.join( source, '/.' ), destination )
+      @file_wrapper.sync_tree( source, destination )
     end
 
-    copy_backtrace_script( ceedling_lib_path, flattened_config ) if flattened_config[:project_use_backtrace] == :gdb
-
-    # Copy supporting partials code into build/vendor directory structure
-    @file_wrapper.cp_r(
-      File.join( ceedling_lib_path, CEEDLING_HEADER_FILEPATH ),
-      flattened_config[:project_build_vendor_ceedling_path]
-    ) if flattened_config[:project_use_partials]
+    vendor_test_support_files( ceedling_lib_path, flattened_config ) if test_build
   end
 
   # Tests are collected after path collections, both to merge and to filter out of sources
@@ -334,11 +330,26 @@ class ConfiguratorSetup
     return frameworks
   end
 
+  def frameworks_for_build(config, test_build:, release_build:)
+    return vendored_frameworks( config ) if test_build
+    return vendored_frameworks( config ).select { |_, _, marker_file| marker_file == CEXCEPTION_C_FILE } if release_build
+
+    return []
+  end
+
+  def vendor_test_support_files(ceedling_lib_path, config)
+    copy_backtrace_script( ceedling_lib_path, config ) if config[:project_use_backtrace] == :gdb
+
+    return unless config[:project_use_partials]
+
+    @file_wrapper.sync_file( File.join( ceedling_lib_path, CEEDLING_HEADER_FILEPATH ), config[:project_build_vendor_ceedling_path] )
+  end
+
   # The destination may not exist yet on a fresh build, since Rake creates directories
   # after configuration
   def copy_backtrace_script(ceedling_lib_path, flattened_config)
     @file_wrapper.mkdir( flattened_config[:project_build_tests_root] )
-    @file_wrapper.cp_r( File.join( ceedling_lib_path, BACKTRACE_GDB_SCRIPT_FILE ), flattened_config[:project_build_tests_root] )
+    @file_wrapper.sync_file( File.join( ceedling_lib_path, BACKTRACE_GDB_SCRIPT_FILE ), flattened_config[:project_build_tests_root] )
   end
 
   def validate_simple_paths(paths, *keys)

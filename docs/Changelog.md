@@ -10,6 +10,16 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.2.1] — 2026-10-24
+
+## 💪 Fixed
+
+- [#1360](https://github.com/ThrowTheSwitch/Ceedling/issues/1360) Fixed a delta build reporting another run’s cached test results when the [`--test-case` or `--exclude_test_case`](https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/command-line/#ceedling-test-test-casetest_case_name) filter changed between runs. It affected every project whose [`:use_backtrace`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/project/#use_backtrace) is not `:none`, including the `:simple` default. A changed filter now reruns the test executable without recompiling or relinking it. An unchanged filter still reuses the cached results.
+- [#1361](https://github.com/ThrowTheSwitch/Ceedling/issues/1361) Fixed every command that loads a project, `files:test` and `dumpconfig` included, rewriting the vendored Unity, CMock, and CException sources in `build/vendor/` in place. A second command run while a build compiled could leave the compiler reading a half-written header. Only a test build or release build now brings `build/vendor/` up to date. A vendored file that already matches its source is no longer written, and one that differs (e.g. after an accidental edit) is replaced whole.
+- [#1362](https://github.com/ThrowTheSwitch/Ceedling/issues/1362) Fixed [`gcov:`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/gcov/), [`valgrind:`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/valgrind/), [`sanitize:`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/sanitize/), and [`bullseye:`](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) single-file tasks rejecting a project-relative path, such as `gcov:test/test_calculator.c`. They now accept a path to tell same-named test files apart, as [`test:` tasks](https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/command-line/#ceedling-test) do.
+
+---
+
 # [1.2.0] — 2026-10-21
 
 ## 🌟 Added

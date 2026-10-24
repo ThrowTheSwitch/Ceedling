@@ -100,7 +100,8 @@ module ConfiguratorIntegrationHelpers
   end
 
   # Processes `yaml` as a build's setup would and returns the object graph
-  def configure(yaml, include_test_case: '', exclude_test_case: '', plugins_path: File.join( CEEDLING_ROOT_PATH, 'plugins' ))
+  # `test_build:` stands for the requested tasks building tests, which populates build/vendor
+  def configure(yaml, include_test_case: '', exclude_test_case: '', test_build: true, plugins_path: File.join( CEEDLING_ROOT_PATH, 'plugins' ))
     objects = configurator_objects( quiet_loginator )
     objects[:configurator_builder].constants_namespace = constants
 
@@ -121,6 +122,8 @@ module ConfiguratorIntegrationHelpers
       include_test_case:     include_test_case,
       exclude_test_case:     exclude_test_case,
       force_test_rerun:      false,
+      test_build_tasks?:     test_build,
+      release_build_tasks?:  false,
       log_filepath:          nil,
       ceedling_plugins_path: plugins_path,
       ceedling_lib_path:     File.join( CEEDLING_ROOT_PATH, 'lib', 'ceedling' ),

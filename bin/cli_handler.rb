@@ -234,10 +234,16 @@ class CliHandler
     )
 
     # Look up if any tasks we will execute are build tasks
-    build_tasks = @helper.build_task?( tasks: (tasks.empty? ? default_tasks : tasks ) )
+    requested = (tasks.empty? ? default_tasks : tasks)
+    build_tasks = @helper.build_task?( tasks: requested )
 
     # Enable setup / operations duration logging in Rake context if build tasks are being invoked
     app_cfg.set_build_tasks( build_tasks )
+
+    # Only a build populates build/vendor, so a command that only reads the project leaves a
+    # concurrent build's vendored files alone
+    app_cfg.set_test_build_tasks( @helper.test_task?( tasks: requested ) )
+    app_cfg.set_release_build_tasks( @helper.release_task?( tasks: requested ) )
 
     _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 

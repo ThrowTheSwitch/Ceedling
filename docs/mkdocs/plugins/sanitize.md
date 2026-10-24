@@ -247,7 +247,7 @@ $ ceedling sanitize:all
 
 ### Run sanitizers for a single test file
 
-Pass the test filename, no path:
+Pass the test filename:
 
 ```shell
 $ ceedling sanitize:test_my_module.c
@@ -258,6 +258,13 @@ test file:
 
 ```shell
 $ ceedling sanitize:my_module.c
+```
+
+As with [`test:` tasks](../getting-started/command-line.md#ceedling-test), add
+as much of the file’s path as needed to tell same-named test files apart:
+
+```shell
+$ ceedling sanitize:unit/test_my_module.c
 ```
 
 ## How findings are reported

@@ -47,11 +47,12 @@ namespace SANITIZE_SYM do
     )
   end
 
-  desc "Run single sanitized test ([*] test or source file name, no path)."
+  desc "Run single sanitized test ([*] test or source file name, with optional path)."
   task :* do
     message = "Oops! '#{SANITIZE_ROOT_NAME}:*' isn't a real task. " +
-              "Use a real test or source file name (no path) in place of the wildcard.\n" +
-              "Example: `ceedling #{SANITIZE_ROOT_NAME}:foo.c`"
+              "Use a real test or source file name in place of the wildcard, " +
+              "adding as much of its path as needed to identify one file among any same-named tests.\n" +
+              "Example: `ceedling #{SANITIZE_ROOT_NAME}:foo.c` or `ceedling #{SANITIZE_ROOT_NAME}:unit/foo.c`"
     @ceedling[:loginator].log( message, Verbosity::ERRORS )
   end
 
@@ -92,9 +93,8 @@ end
 # Use a rule to handle dynamic per-file tasks: sanitize:foo → build and run foo with sanitizers
 rule(/^#{SANITIZE_TASK_ROOT}\S+$/ => [
   proc do |task_name|
-    test = task_name.strip().sub(/^#{SANITIZE_TASK_ROOT}/, '')
-    EXTENSION_SOURCE.each { |ext| test = test.chomp(ext) }
-    test = PROJECT_TEST_FILE_PREFIX + test unless test.start_with?(PROJECT_TEST_FILE_PREFIX)
+    # Any directory typed ahead of the name is kept. See TestTaskName.
+    test = TestTaskName.test_name( task_name, root: SANITIZE_TASK_ROOT )
     @ceedling[:file_finder].find_test_file_from_name(test)
   end
 ]) do |test|

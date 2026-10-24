@@ -350,6 +350,11 @@ class TestBuildExecutor
   # (not reusing it) so a tool-only change reruns the fixture without also
   # marking the executable itself stale and forcing an unnecessary relink.
   #
+  # The command line test case filters (--test-case, --exclude_test_case) are a fourth.
+  # When :test_runner ↳ :cmdline_args is on, as any :use_backtrace other than :none makes
+  # it, a filtered and an unfiltered executable are identical, and only the filter tells
+  # one run's results from another's. See fixture_meta.
+  #
   # The target itself is a dedicated marker file, not either outcome-dependent
   # results file (.pass/.fail) -- which of those two actually gets written
   # depends on whether the test passes, so neither is guaranteed to exist after
@@ -404,7 +409,7 @@ class TestBuildExecutor
 
         @dependinator.register(
           fixture_target, files: [testable.executable],
-          meta: { tools: [fixture_tool], use_backtrace: use_backtrace, backtrace_tools: backtrace_tools }
+          meta: fixture_meta( fixture_tool: fixture_tool, use_backtrace: use_backtrace, backtrace_tools: backtrace_tools )
         )
 
         run_now = testable.executable_rebuilt || force_rerun || @dependinator.stale?( fixture_target )
@@ -465,6 +470,18 @@ class TestBuildExecutor
   # -----------------------------------------------------------------------
   # Helper methods
   # -----------------------------------------------------------------------
+
+  # What a test fixture's run depends on besides its executable. An unset filter, nil or
+  # empty, is one value, so an unfiltered run keeps a stable key.
+  def fixture_meta(fixture_tool:, use_backtrace:, backtrace_tools:)
+    return {
+      tools:             [fixture_tool],
+      use_backtrace:     use_backtrace,
+      backtrace_tools:   backtrace_tools,
+      include_test_case: @configurator.include_test_case.to_s,
+      exclude_test_case: @configurator.exclude_test_case.to_s
+    }
+  end
 
   def generate_executable(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, tool:)
     begin

@@ -35,6 +35,16 @@ describe 'Configurator pipeline (integration)' do
     end
   end
 
+  # A command that only reads the project, such as files:test, leaves build/vendor alone (GH #1361)
+  it 'vendors nothing for a command that builds nothing' do
+    in_temp_project( minimal_project_files ) do
+      configure( minimal_project_yaml, test_build: false )
+
+      expect(File.exist?( 'build/vendor/unity/src/unity.c' )).to be false
+      expect(File.exist?( 'build/vendor/cmock/src/cmock.c' )).to be false
+    end
+  end
+
   it 'adds and removes files through :files' do
     files = minimal_project_files.merge( 'extra/adder_extra.c' => "\n", 'src/generated.c' => "\n" )
 

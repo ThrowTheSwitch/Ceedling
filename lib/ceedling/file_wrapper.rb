@@ -238,34 +238,37 @@ class FileWrapper
     false
   end
 
-  # As #cp_r, but retries the whole copy on a transient OS-level error instead of
-  # surfacing it on the first attempt -- the same transient-visibility race
-  # #open_with_retry guards against, here hitting FileUtils.cp_r's own internal
-  # stat-then-open sequence on either the source or destination tree. A source/dest
-  # entry briefly reporting the wrong type (a directory where a file was just stat'd,
-  # or vice versa) mid-copy raises Errno::ENOTDIR/EISDIR from deep inside cp_r; a
-  # retry a moment later re-walks the tree fresh rather than trusting stale type info
-  # from the failed attempt. A failure that never clears still surfaces as a
-  # CeedlingException naming the destination and how many attempts were made, not a
-  # bare, unhelpful Errno.
-  def cp_r_with_retry(source, destination, options={})
-    attempts_remaining = TRANSIENT_IO_RETRY_DELAYS.dup
-    begin
-      cp_r(source, destination, options)
-    rescue SystemCallError => e
-      if attempts_remaining.empty?
-        msg = "Failed to copy into '#{destination}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}\n" \
-              "This path may be corrupted (a file exists where Ceedling expects a directory, or vice versa). " \
-              "Try deleting this project's build/ directory and rebuilding -- or, if the error names a path " \
-              "under your Ruby gem install, reinstall the ceedling gem."
-        @loginator.log(msg, Verbosity::ERRORS)
-        raise CeedlingException, msg
+  # Brings every file beneath source_dir up to date beneath destination_dir. A file that
+  # already matches its source is not written, so a reader elsewhere never sees it change. One
+  # that differs or is missing is replaced whole (see #replace_file). Files the destination
+  # has beyond the source are left alone.
+  #
+  # A transient OS-level error retries the whole pass: a path briefly reporting the wrong type
+  # mid-copy, or on Windows a file another process holds open. A failure that never clears
+  # surfaces as a CeedlingException naming the destination, not a bare Errno.
+  def sync_tree(source_dir, destination_dir)
+    with_copy_retry( destination_dir ) do
+      Dir.glob( '**/*', File::FNM_DOTMATCH, base: source_dir ).each do |relative|
+        source = File.join( source_dir, relative )
+        sync_one( source, File.join( destination_dir, relative ) ) if File.file?( source )
       end
-      delay = attempts_remaining.shift
-      @loginator.log("Retrying copy into '#{destination}' after a transient error: #{e.message}", Verbosity::DEBUG)
-      sleep(delay)
-      retry
     end
+  end
+
+  # As #sync_tree, for a single file copied into destination_dir
+  def sync_file(source, destination_dir)
+    with_copy_retry( destination_dir ) { sync_one( source, File.join( destination_dir, File.basename( source ) ) ) }
+  end
+
+  # Copies source to a temporary name beside destination, then renames it over destination.
+  # A concurrent reader sees the old file or the new one, never a partial one.
+  def replace_file(source, destination)
+    temp = File.join( File.dirname( destination ), ".#{File.basename( destination )}.#{Process.pid}.#{Thread.current.object_id}.tmp" )
+    check_path_length( temp, origin: 'FileWrapper#replace_file' )
+    FileUtils.cp( source, temp )
+    File.rename( temp, destination )
+  ensure
+    FileUtils.rm_f( temp ) if temp
   end
 
   def read(filepath, length=nil)
@@ -370,6 +373,33 @@ class FileWrapper
   end
 
   private
+
+  def sync_one(source, destination)
+    return if File.file?( destination ) && File.size( source ) == File.size( destination ) && FileUtils.compare_file( source, destination )
+
+    FileUtils.mkdir_p( File.dirname( destination ) )
+    replace_file( source, destination )
+  end
+
+  def with_copy_retry(destination)
+    attempts_remaining = TRANSIENT_IO_RETRY_DELAYS.dup
+    begin
+      yield
+    rescue SystemCallError => e
+      if attempts_remaining.empty?
+        msg = "Failed to copy into '#{destination}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}\n" \
+              "This path may be corrupted (a file exists where Ceedling expects a directory, or vice versa). " \
+              "Try deleting this project's build/ directory and rebuilding -- or, if the error names a path " \
+              "under your Ruby gem install, reinstall the ceedling gem."
+        @loginator.log(msg, Verbosity::ERRORS)
+        raise CeedlingException, msg
+      end
+      delay = attempts_remaining.shift
+      @loginator.log("Retrying copy into '#{destination}' after a transient error: #{e.message}", Verbosity::DEBUG)
+      sleep(delay)
+      retry
+    end
+  end
 
   def path_length_limit
     return PATH_LENGTH_LIMITS[:windows] if SystemWrapper.windows?

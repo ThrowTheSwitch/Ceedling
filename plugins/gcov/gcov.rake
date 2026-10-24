@@ -38,11 +38,12 @@ namespace GCOV_SYM do
     @ceedling[:gcov].process_untested_sources( sources:COLLECTION_ALL_SOURCE )
   end
 
-  desc 'Run single test w/ coverage ([*] test or source file name, no path).'
+  desc 'Run single test w/ coverage ([*] test or source file name, with optional path).'
   task :* do
     message = "Oops! '#{GCOV_ROOT_NAME}:*' isn't a real task. " \
-              "Use a real test or source file name (no path) in place of the wildcard.\n" \
-              "Example: `ceedling #{GCOV_ROOT_NAME}:foo.c`"
+              "Use a real test or source file name in place of the wildcard, " \
+              "adding as much of its path as needed to identify one file among any same-named tests.\n" \
+              "Example: `ceedling #{GCOV_ROOT_NAME}:foo.c` or `ceedling #{GCOV_ROOT_NAME}:unit/foo.c`"
 
     @ceedling[:loginator].log( message, Verbosity::ERRORS )
   end
@@ -83,12 +84,8 @@ namespace GCOV_SYM do
   # Use a rule to increase efficiency for large projects
   rule(/^#{GCOV_TASK_ROOT}\S+$/ => [ # gcov test tasks by regex
      proc do |task_name|
-        # Yield clean test name => Strip the task string, remove Rake test task prefix, and remove any code file extension
-        test = task_name.strip().sub(/^#{GCOV_TASK_ROOT}/, '')
-        EXTENSION_SOURCE.each { |ext| test = test.chomp( ext ) }
-
-        # Ensure the test name begins with a test name prefix
-        test = PROJECT_TEST_FILE_PREFIX + test if not (test.start_with?( PROJECT_TEST_FILE_PREFIX ))
+        # Any directory typed ahead of the name is kept. See TestTaskName.
+        test = TestTaskName.test_name( task_name, root: GCOV_TASK_ROOT )
 
         # Provide the filepath for the target test task back to the Rake task
         @ceedling[:file_finder].find_test_file_from_name( test )

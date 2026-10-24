@@ -60,6 +60,8 @@ describe TestBuildExecutor do
     # real Configurator would raise NoMethodError.
     allow(@configurator).to receive(:tools_test_fixture_simple_backtrace).and_return( @tools_test_fixture_simple_backtrace )
     allow(@configurator).to receive(:project_config_hash).and_return( { project_use_backtrace: :simple } )
+    allow(@configurator).to receive(:include_test_case).and_return( '' )
+    allow(@configurator).to receive(:exclude_test_case).and_return( '' )
     allow(@configurator).to receive(:test_build_preprocess_force_fallback).and_return( false )
     allow(@configurator).to receive(:project_use_mocks).and_return( false )
     allow(@configurator).to receive(:project_use_exceptions).and_return( false )
@@ -1339,7 +1341,9 @@ describe TestBuildExecutor do
         meta:  {
           tools: [@tools_test_fixture],
           use_backtrace: :gdb,
-          backtrace_tools: [@tools_test_fixture_simple_backtrace, @tools_test_backtrace_gdb]
+          backtrace_tools: [@tools_test_fixture_simple_backtrace, @tools_test_backtrace_gdb],
+          include_test_case: '',
+          exclude_test_case: ''
         }
       )
 
@@ -1363,8 +1367,27 @@ describe TestBuildExecutor do
         meta:  {
           tools: [@tools_test_fixture],
           use_backtrace: :simple,
-          backtrace_tools: [@tools_test_fixture_simple_backtrace]
+          backtrace_tools: [@tools_test_fixture_simple_backtrace],
+          include_test_case: '',
+          exclude_test_case: ''
         }
+      )
+
+      @executor.stage_execute( @state )
+    end
+
+    # An executable linked with command line arguments enabled is the same with or without
+    # a filter, so only the filter tells one run's results from another's (GH #1360)
+    it "registers the command line test case filters as meta" do
+      @testable.executable_rebuilt = false
+      allow(@generator).to receive(:generate_test_results)
+      allow(@configurator).to receive(:include_test_case).and_return( 'test_one' )
+      allow(@configurator).to receive(:exclude_test_case).and_return( 'test_two' )
+
+      expect(@dependinator).to receive(:register).with(
+        @fixture_target,
+        files: ['build/a_test.out'],
+        meta:  hash_including( include_test_case: 'test_one', exclude_test_case: 'test_two' )
       )
 
       @executor.stage_execute( @state )
@@ -1756,4 +1779,21 @@ describe TestBuildExecutor do
     end
   end
 
+
+  context "#fixture_meta" do
+    def meta(include: '', exclude: '')
+      allow(@configurator).to receive(:include_test_case).and_return( include )
+      allow(@configurator).to receive(:exclude_test_case).and_return( exclude )
+      @executor.fixture_meta( fixture_tool: @tools_test_fixture, use_backtrace: :simple, backtrace_tools: [] )
+    end
+
+    it "differs when the test case filters differ" do
+      expect( meta( include: 'test_one' ) ).not_to eq( meta( include: 'test_two' ) )
+      expect( meta( exclude: 'test_one' ) ).not_to eq( meta )
+    end
+
+    it "is the same for an unset filter, whether nil or empty" do
+      expect( meta( include: nil, exclude: nil ) ).to eq( meta( include: '', exclude: '' ) )
+    end
+  end
 end
