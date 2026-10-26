@@ -86,7 +86,7 @@ class DependencyCacheStore
       if !valid_entry?( entry )
         @loginator.log(
           "Dependency cache entry for '#{target}' in #{store_path} is malformed -- dropping just that entry.",
-          Verbosity::COMPLAIN, LogLabels::WARNING
+          Verbosity::COMPLAIN
         )
         pruned << target
       elsif !@file_wrapper.exist?( target )
@@ -139,7 +139,7 @@ class DependencyCacheStore
   def degrade(store_path, reason)
     @loginator.log(
       "Dependency cache #{store_path} #{reason} -- treating it as absent (full rebuild for tracked targets).",
-      Verbosity::COMPLAIN, LogLabels::WARNING
+      Verbosity::COMPLAIN
     )
     empty_store
   end

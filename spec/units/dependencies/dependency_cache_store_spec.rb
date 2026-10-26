@@ -150,7 +150,7 @@ describe DependencyCacheStore do
       )
       stub_file( 'cache.json', payload )
 
-      expect(@loginator).to receive(:log).with( /cache\.json has an incompatible or missing schema_version/, Verbosity::COMPLAIN, LogLabels::WARNING )
+      expect(@loginator).to receive(:log).with( /cache\.json has an incompatible or missing schema_version/, Verbosity::COMPLAIN )
 
       @store.load('cache.json')
     end
@@ -184,7 +184,7 @@ describe DependencyCacheStore do
       result = @store.load('cache.json')
 
       expect( result['entries'].keys ).to eq( ['good.o'] )
-      expect( @loginator ).to have_received(:log)
+      expect( @loginator ).to have_received(:log).with( /'bad\.o' in cache\.json is malformed/, Verbosity::COMPLAIN )
     end
 
     it 'drops an entry with a self_hash of the wrong length' do
