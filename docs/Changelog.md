@@ -25,6 +25,7 @@ This changelog is complemented by three other documents:
    - A misspelled entry now stops the build with an error naming its own test. Previously, the error could name another test, and with [`:use_test_preprocessor`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/project/#use_test_preprocessor) `:none` or `:mocks` the entry went unchecked (see [Breaking Changes](BreakingChanges.md)).
    - An entry using `..` is no longer rejected with test preprocessing on.
 - A “Multiple files matched” notice now prints once a build, not once for every lookup that makes the same choice.
+- Fixed a [delta build](https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/builds/) keeping a test executable or release artifact after a source file left the build — deleted, excluded through `:files`, or moved outside `:paths` — while every other object was unchanged. A test kept passing on the removed code, even with `--force-test-rerun`, and a release artifact kept it. A link now rebuilds whenever its list of objects changes.
 
 ## ⚠️ Changed
 
