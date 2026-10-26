@@ -30,7 +30,7 @@ Without test preprocessing, Ceedling reads these entries as text and does not ev
 
 ---
 
-# [1.2.0] — Prerelease
+# [1.2.0] — 2026-10-21
 
 ## Mocks included through a folder are named by that folder
 
