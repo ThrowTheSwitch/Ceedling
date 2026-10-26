@@ -246,11 +246,9 @@ class FilePathUtils
     )
   end
 
-  # As `form_test_runners_path`: a flat test's own identity forms the shared flat results
-  # directory, untouched -- only a genuinely nested test's own mirrored subdirectory
-  # becomes an extra directory level here, so two same-named tests land in distinct
-  # results directories without perturbing the overwhelmingly common flat, non-duplicate
-  # case.
+  # As `form_test_runners_path`: a test's results sit beneath the directories of its name,
+  # so same-named tests in different directories keep apart. Only a test at the project
+  # root uses the results directory itself.
   def form_test_results_path(name = nil, context: nil)
     subdir = name.nil? ? '' : mirrored_test_subdir(name)
     return form_build_context_path(BUILD_RESULTS_DIR, context: context) if subdir.empty?
@@ -341,11 +339,9 @@ class FilePathUtils
     return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testfail.primary) )
   end
 
-  # A flat test's own identity (no mirrored subdirectory of its own) forms the shared flat
-  # runners directory, untouched -- only a genuinely nested test's own mirrored
-  # subdirectory (excluding its own basename) becomes an extra directory level here, so two
-  # same-named tests in different directories land in distinct runner directories without
-  # perturbing the overwhelmingly common flat, non-duplicate case.
+  # A test's runner sits beneath the directories of its name, so same-named tests in
+  # different directories keep apart. Only a test at the project root uses the runners
+  # directory itself.
   def form_test_runners_path(name, context: nil)
     subdir = mirrored_test_subdir(name)
     return @configurator.project_test_runners_path if subdir.empty?
@@ -611,9 +607,8 @@ class FilePathUtils
     return [TEST_NAME_ABSOLUTE_SEGMENT] + segments.each_with_index.map { |segment, index| index.zero? ? segment.delete_suffix( ':' ) : segment }
   end
 
-  # The mirrored-subdirectory portion of a test's own identity, excluding its own basename
-  # -- '' for a flat test (e.g. 'TestFoo', no subdirectory at all), or the leading segments
-  # for a nested one (e.g. 'unit' for 'unit/test_foo').
+  # The directories of a test's name, excluding its basename: 'test/unit' for
+  # 'test/unit/test_foo', or '' for a test at the project root.
   def mirrored_test_subdir(name)
     dir = File.dirname(name)
     return '' if dir == '.'

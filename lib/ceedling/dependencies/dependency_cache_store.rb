@@ -152,7 +152,8 @@ class DependencyCacheStore
   def upgrade(store_path)
     @loginator.log(
       "Dependency cache #{store_path} comes from an earlier Ceedling build layout -- rebuilding everything once. " \
-      "Run `ceedling clobber` to remove any orphaned build output left in the old layout.",
+      "Run `ceedling clobber` to remove any orphaned build output left in the old layout, which coverage reports would " \
+      "otherwise still include.",
       Verbosity::COMPLAIN
     )
     empty_store

@@ -123,9 +123,9 @@ ceedling_system_tests do
           # so none of this test's mocks are considered stale purely from that
           # unrelated cache miss. Only a change to the header a mock actually
           # mocks, or to the mock's own config meta, can make it regenerate.
-          expect(rebuild).to_not match(/Generating mock for TestAdcModel::TaskScheduler\.h/)
-          expect(rebuild).to_not match(/Generating mock for TestAdcModel::TemperatureCalculator\.h/)
-          expect(rebuild).to_not match(/Generating mock for TestAdcModel::TemperatureFilter\.h/)
+          expect(rebuild).to_not match(/Generating mock for test\/adc\/TestAdcModel::TaskScheduler\.h/)
+          expect(rebuild).to_not match(/Generating mock for test\/adc\/TestAdcModel::TemperatureCalculator\.h/)
+          expect(rebuild).to_not match(/Generating mock for test\/adc\/TestAdcModel::TemperatureFilter\.h/)
 
           expect(rebuild).to match(/^Compiling TestAdcModel\.c/)
           expect(rebuild).to match(/^Linking TestAdcModel\.out/)
@@ -147,7 +147,7 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Compiling .*TimerModel/)
           expect(rebuild).to_not match(/^Linking .*Usart/)
           expect(rebuild).to_not match(/^Linking .*Timer/)
-          expect(rebuild).to_not match(/Generating mock for TestUsartConductor/)
+          expect(rebuild).to_not match(/Generating mock for test\/TestUsartConductor/)
         end
       end
     end
@@ -528,7 +528,7 @@ ceedling_system_tests do
 
           rebuild = @c.ceedling_build_exec("test:all")
 
-          expect(rebuild).to match(/^Compiling TestSoilMoisture::SoilMoisture\.c/)
+          expect(rebuild).to match(/^Compiling test\/TestSoilMoisture::SoilMoisture\.c/)
           expect(rebuild).to match(/^Linking TestSoilMoisture\.out/)
           expect(rebuild).to match(/^Running TestSoilMoisture\.out/)
 
@@ -563,7 +563,7 @@ ceedling_system_tests do
 
           rebuild = @c.ceedling_build_exec("test:all")
 
-          expect(rebuild).to match(/^Compiling TestForestMonitor::ForestMonitor\.c/)
+          expect(rebuild).to match(/^Compiling test\/TestForestMonitor::ForestMonitor\.c/)
 
           expect(rebuild).to_not match(/^Compiling.*SoilMoisture/)
           expect(rebuild).to_not match(/^Compiling.*TemperatureSensor/)
@@ -631,11 +631,11 @@ ceedling_system_tests do
 
           rebuild = @c.ceedling_build_exec("test:all")
 
-          expect(rebuild).to match(/Preprocessing partial (header|source) for TestSoilMoisture/)
-          expect(rebuild).to match(/Preprocessing partial (header|source) for TestForestMonitor/)
-          expect(rebuild).to match(/Generating Partial implementation for TestSoilMoisture/)
-          expect(rebuild).to match(/Generating Partial implementation for TestForestMonitor/)
-          expect(rebuild).to match(/Generating Partial mockable interface for TestForestMonitor/)
+          expect(rebuild).to match(/Preprocessing partial (header|source) for test\/TestSoilMoisture/)
+          expect(rebuild).to match(/Preprocessing partial (header|source) for test\/TestForestMonitor/)
+          expect(rebuild).to match(/Generating Partial implementation for test\/TestSoilMoisture/)
+          expect(rebuild).to match(/Generating Partial implementation for test\/TestForestMonitor/)
+          expect(rebuild).to match(/Generating Partial mockable interface for test\/TestForestMonitor/)
 
           expect(rebuild).to match(/TESTED:\s+71/)
           expect(rebuild).to match(/PASSED:\s+71/)

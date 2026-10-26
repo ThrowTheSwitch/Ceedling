@@ -251,7 +251,6 @@ generator_test_results_backtrace:
      - generator_test_results
      - generator_helper
      - file_path_utils
-     - file_wrapper
      - build_log_writer
      - loginator
 

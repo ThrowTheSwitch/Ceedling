@@ -380,11 +380,9 @@ class TestBuildExecutor
 
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
-        # `paths[:results]` is only per-test-unique for a test mirrored into its own
-        # subdirectory -- a test with no mirrored subdir shares that directory with
-        # every other such test, so the marker's own filename (not just its directory)
-        # must be test-specific too, matching clean_test_results' own `test + '.*'`
-        # naming below.
+        # `paths[:results]` is the directory of the test's name, which every test beside
+        # it shares, so the marker's own filename must be test-specific too, matching
+        # clean_test_results' own `test + '.*'` naming below.
         fixture_target = File.join( testable.paths[:results], "#{File.basename( testable.name )}.fixture_run" )
 
         fixture_tool = resolve_fixture_tool( context: state.context, tool: @configurator.tools_test_fixture, test_name: testable.name, target: fixture_target )

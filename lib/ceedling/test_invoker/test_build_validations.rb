@@ -14,7 +14,8 @@
 # mixed in without any DI wiring of its own.
 module TestBuildValidations
 
-  # A name comes from its test's path, so two tests share one only when a path outside the
+  # A name is its test's path without its extension, so two tests share one only when they
+  # differ in extension alone (`test_a.c` and `test_a.cpp`), or when a path outside the
   # project maps onto a real one (`../x` and a project directory named `_up_/x`). Sharing
   # would silently drop one test, so a build with either in it stops. A build without them
   # is unaffected.

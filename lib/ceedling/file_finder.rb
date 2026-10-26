@@ -111,9 +111,8 @@ class FileFinder
     #       Some legacy files can include naming conventions like <name>.##.<ext> for versioning.
     #       If we use .ext() below we'll clobber the dotted portion of the filename
 
-    # Generated test runners -- a flat test's own runner is searched for in the shared flat
-    # runners directory; only a nested test's own mirrored subdirectory scopes the search
-    # further, so two same-named tests' runners are never mistaken for each other
+    # Generated test runners -- searched for in the runners directory of this test's name,
+    # so two same-named tests' runners are never mistaken for each other
     if (!release) and
        (source_file =~ /^#{Regexp.escape(@configurator.project_test_file_prefix)}.+#{Regexp.escape(@configurator.test_runner_file_suffix)}$/)
       _source_file = source_file + EXTENSION_CORE_SOURCE
@@ -297,9 +296,9 @@ class FileFinder
     raise CeedlingException.new( message )
   end
 
-  # A test object's build directory identity mirrors the configured test root a source
-  # file lives under (e.g. `unit/test_foo` for `test/unit/test_foo.c`, plain `test_foo` for
-  # a flat file). Recovering that identity from a build artifact's own path lets a lookup
+  # A test object's build directory is its test's name, the test's path from the project
+  # root (e.g. `test/unit/test_foo` for `test/unit/test_foo.c`). Recovering that name from
+  # a build artifact's own path lets a lookup
   # go straight to the one test it belongs to, rather than searching the whole project by
   # bare basename -- exactly the query shape that's ambiguous when another same-named test
   # exists elsewhere.
@@ -320,11 +319,20 @@ class FileFinder
     return @file_path_utils.form_test_runners_path( test_context )
   end
 
-  # Every test file by its name. Names are paths, so each is unique. Built once, on first
-  # use, since build threads share this finder.
+  # Every test file by its name. Names are paths, and a build stops before its first lookup
+  # if two tests share one. Built once, on first use, since build threads share this finder.
   def test_files_by_name
     @test_names_lock.synchronize do
       @test_files_by_name ||= @configurator.collection_all_tests.to_h { |test| [@file_path_utils.form_test_name( test ), test.to_s] }
+    end
+  end
+
+  # The names of the tests whose names continue each test's (`test/test_foo/test_bar` after
+  # `test/test_foo`), by that test's name
+  def nested_test_names
+    names = test_files_by_name.keys
+    @test_names_lock.synchronize do
+      @nested_test_names ||= names.to_h { |name| [name, names.select { |other| other.start_with?( name + '/' ) }] }
     end
   end
 
@@ -333,7 +341,7 @@ class FileFinder
   # directory nested here, and the files in it are that test's own.
   def own_generated_files(base, test_context)
     listing = @file_wrapper.directory_listing( File.join( base, test_context, '**/*' + EXTENSION_CORE_SOURCE ) )
-    nested  = test_files_by_name.keys.select { |name| name.start_with?( test_context + '/' ) }.map { |name| File.join( base, name ) + '/' }
+    nested  = nested_test_names.fetch( test_context, [] ).map { |name| File.join( base, name ) + '/' }
     return listing if nested.empty?
 
     return listing.reject { |file| nested.any? { |dir| file.start_with?( dir ) } }

@@ -822,6 +822,11 @@ describe FilePathUtils do
       expect( @fpu.form_test_name( '../../other/test_o.c' ) ).to eq('_up_/_up_/other/test_o')
     end
 
+    it 'names an absolute path outside the project by its path from the project' do
+      outside = File.join( File.dirname( Dir.pwd ), 'shared', 'test', 'test_s.c' )
+      expect( @fpu.form_test_name( outside ) ).to eq('_up_/shared/test/test_s')
+    end
+
     it 'places a test on another Windows drive beneath its drive letter' do
       expect( @fpu.form_test_name( 'D:/work/test/test_x.c' ) ).to eq('_abs_/D/work/test/test_x')
       expect( @fpu.form_test_name( 'D:\\work\\test\\test_x.c' ) ).to eq('_abs_/D/work/test/test_x')

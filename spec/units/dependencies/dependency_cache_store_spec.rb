@@ -137,7 +137,8 @@ describe DependencyCacheStore do
 
       expect(@loginator).to receive(:log).with(
         'Dependency cache build/cache/.test.dep_cache.json comes from an earlier Ceedling build layout -- rebuilding ' \
-        'everything once. Run `ceedling clobber` to remove any orphaned build output left in the old layout.',
+        'everything once. Run `ceedling clobber` to remove any orphaned build output left in the old layout, which coverage ' \
+        'reports would otherwise still include.',
         Verbosity::COMPLAIN
       )
 

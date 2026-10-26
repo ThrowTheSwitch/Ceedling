@@ -142,7 +142,6 @@ describe GeneratorTestResultsBacktrace do
     @tool_executor           = instance_double('ToolExecutor')
     @generator_test_results  = instance_double('GeneratorTestResults')
     @file_path_utils         = instance_double('FilePathUtils')
-    @file_wrapper            = instance_double('FileWrapper')
     @build_log_writer        = instance_double('BuildLogWriter')
     @loginator               = double('loginator').as_null_object
     # A real GeneratorHelper, not a double -- these tests exercise the actual crash
@@ -155,7 +154,6 @@ describe GeneratorTestResultsBacktrace do
       :generator_test_results => @generator_test_results,
       :generator_helper       => @generator_helper,
       :file_path_utils        => @file_path_utils,
-      :file_wrapper           => @file_wrapper,
       :build_log_writer       => @build_log_writer,
       :loginator              => @loginator
     })

@@ -159,6 +159,15 @@ describe TestBuildSetup do
       expect(state.testables.values.map(&:filepath)).to contain_exactly( *tests )
     end
 
+    # Two configured source extensions let one stem name two test files
+    it "stops a build with two test files differing only in extension, naming both" do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_a.c', 'test/test_a.cpp'] )
+
+      expect { @setup.stage_prepare_build_paths( prepare_state( ['test/test_a.c'] ) ) }.to raise_error( CeedlingException ) { |error|
+        expect(error.message).to include( 'test/test_a.c', 'test/test_a.cpp', '`test/test_a`' )
+      }
+    end
+
     context "when two tests map to one name" do
       before(:each) do
         allow(@configurator).to receive(:collection_all_tests).and_return( ['../x/test_a.c', '_up_/x/test_a.c', 'test/test_b.c'] )

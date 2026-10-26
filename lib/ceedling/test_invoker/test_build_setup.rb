@@ -13,7 +13,6 @@ require 'ceedling/partials/partials'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 require 'ceedling/test_invoker/test_build_validations'
-require 'ceedling/path_mirror'
 
 class TestBuildSetup
 

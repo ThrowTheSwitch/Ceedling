@@ -8,7 +8,7 @@
 class GeneratorTestResultsBacktrace
 
   constructor :configurator, :tool_executor, :generator_test_results, :generator_helper,
-              :file_path_utils, :file_wrapper, :build_log_writer, :loginator
+              :file_path_utils, :build_log_writer, :loginator
 
   def setup()
     @RESULTS_COLLECTOR = Struct.new( :passed, :failed, :ignored, :output, keyword_init:true )
@@ -42,7 +42,6 @@ class GeneratorTestResultsBacktrace
 
     # Reset time
     shell_result[:time] = 0
-
 
     # True once some retry group has actually shown crash evidence of its own -- an
     # unresolved member, or (below) a group whose real status contradicts a fully clean

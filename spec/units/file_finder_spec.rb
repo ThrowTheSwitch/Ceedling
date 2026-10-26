@@ -448,6 +448,19 @@ describe FileFinder do
       expect(found).to eq('build/test/mocks/test/test_foo/test_bar/Mockwidget.c')
     end
 
+    it 'keeps a test whose directory nests inside another test\'s from sharing that test\'s Partials' do
+      allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_foo.c', 'test/test_foo/test_bar.c'] )
+      partials = ['build/test/partials/test/test_foo/ceedling_partial_widget_impl.c', 'build/test/partials/test/test_foo/test_bar/ceedling_partial_widget_impl.c']
+      allow(@file_wrapper).to receive(:directory_listing) do |glob|
+        root = glob.delete_suffix( '/**/*.c' )
+        partials.select { |partial| partial.start_with?( root + '/' ) }
+      end
+
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/ceedling_partial_widget_impl.o', complain: :error, context: TEST_SYM )
+      expect(found).to eq('build/test/partials/test/test_foo/ceedling_partial_widget_impl.c')
+    end
+
     it 'still raises when the very same test mocks two different same-named headers from different directories' do
       allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
       allow(@file_wrapper).to receive(:directory_listing).and_return(
