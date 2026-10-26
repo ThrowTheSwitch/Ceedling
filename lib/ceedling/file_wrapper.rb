@@ -333,6 +333,13 @@ class FileWrapper
     return FileUtils.mkdir_p(folder)
   end
 
+  # Makes the directory a file is about to be written in and returns the filepath. Safe
+  # when build threads make the same directory at once.
+  def mkdir_for(filepath)
+    mkdir( File.dirname( filepath ) )
+    return filepath
+  end
+
   # Creates a uniquely-named, empty directory nested inside `parent` and returns its path.
   # `parent` must already exist. Collision-free even across concurrent callers targeting
   # the same `parent` -- Dir.mktmpdir retries internally on name clash.

@@ -27,12 +27,10 @@ class ReportLogWriterPlugin < Plugin
 
   private
 
-  # Ensures <build root>/artifacts/<context>/ exists and returns the full
-  # filepath for `filename` inside it.
+  # Returns the filepath for `filename` beneath <build root>/artifacts/<context>/, with its
+  # directory made. A filename named for a test carries the test's subdirectories.
   def artifact_filepath(context, filename)
-    path = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s)
-    @file_wrapper.mkdir(path)
-    File.join(path, filename)
+    @file_wrapper.mkdir_for( File.join(PROJECT_BUILD_ARTIFACTS_ROOT, context.to_s, filename) )
   end
 
   # Logs a heading, then either reports `empty_message` or runs the

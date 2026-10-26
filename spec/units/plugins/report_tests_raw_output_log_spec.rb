@@ -72,7 +72,7 @@ describe ReportTestsRawOutputLog do
   describe '#post_build' do
     it 'logs that no extra output was produced and never touches the filesystem when nothing was collected' do
       expect(@loginator).to receive(:log).with("Tests produced no extra console output.\n")
-      expect(@file_wrapper).not_to receive(:mkdir)
+      expect(@file_wrapper).not_to receive(:mkdir_for)
       expect(@file_wrapper).not_to receive(:write)
 
       @plugin.post_build(0)
@@ -86,11 +86,22 @@ describe ReportTestsRawOutputLog do
         'TestFoo' => ["Debug: entering state X\n", "Debug: leaving state X\n"]
       }
 
-      expect(@file_wrapper).to receive(:mkdir).with(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test'))
+      allow(@file_wrapper).to receive(:mkdir_for) { |path| path }
       expect(@file_wrapper).to receive(:write).with(
         File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test', 'TestFoo.raw.log'),
         "Debug: entering state X\nDebug: leaving state X\n"
       )
+
+      @plugin.post_build(0)
+    end
+
+    # GH #1364: a nested test's log sits beneath its name
+    it "makes the directory a nested test's log goes in" do
+      @plugin.instance_variable_get(:@raw_output)[:test] = { 'test/unit/test_foo' => ["Debug\n"] }
+      filepath = File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test', 'test/unit/test_foo.raw.log')
+
+      expect(@file_wrapper).to receive(:mkdir_for).with(filepath) { |path| path }
+      expect(@file_wrapper).to receive(:write).with(filepath, "Debug\n")
 
       @plugin.post_build(0)
     end

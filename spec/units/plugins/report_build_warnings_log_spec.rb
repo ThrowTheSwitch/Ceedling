@@ -53,7 +53,7 @@ describe ReportBuildWarningsLog do
   describe '#post_build' do
     it 'logs that no warnings were produced and never touches the filesystem when nothing was collected' do
       expect(@loginator).to receive(:log).with("Build produced no warnings.\n")
-      expect(@file_wrapper).not_to receive(:mkdir)
+      expect(@file_wrapper).not_to receive(:mkdir_for)
       expect(@file_wrapper).not_to receive(:write)
 
       @plugin.post_build(0)
@@ -91,7 +91,7 @@ describe ReportBuildWarningsLog do
         collection: WarningCollector.new.warnings( "foo.c:3:5: warning: unused variable 'x'\nbar.c:9:1: warning: missing return\n" )
       }
 
-      expect(@file_wrapper).to receive(:mkdir).with(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test'))
+      allow(@file_wrapper).to receive(:mkdir_for) { |path| path }
       expect(@file_wrapper).to receive(:write).with(
         File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test', 'warnings.log'),
         "foo.c:3:5: warning: unused variable 'x'\nbar.c:9:1: warning: missing return\n"
@@ -138,7 +138,7 @@ describe ReportBuildWarningsLog do
 
     def written
       files = []
-      allow(@file_wrapper).to receive(:mkdir)
+      allow(@file_wrapper).to receive(:mkdir_for) { |path| path }
       allow(@file_wrapper).to receive(:write) { |path, _| files << path }
       return files
     end

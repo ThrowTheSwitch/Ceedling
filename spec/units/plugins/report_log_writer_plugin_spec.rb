@@ -37,11 +37,20 @@ describe ReportLogWriterPlugin do
 
   describe '#artifact_filepath' do
     it 'ensures the per-context artifact directory exists and returns the joined filepath' do
-      expect(@file_wrapper).to receive(:mkdir).with(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test'))
+      expect(@file_wrapper).to receive(:mkdir_for).with(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test', 'warnings.log')) { |path| path }
 
       filepath = @plugin.send(:artifact_filepath, :test, 'warnings.log')
 
       expect(filepath).to eq(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test', 'warnings.log'))
+    end
+
+    # GH #1364: a nested test's log sits in its own subdirectory
+    it 'ensures the directory of a filename with subdirectories exists' do
+      expect(@file_wrapper).to receive(:mkdir_for).with(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test', 'test/unit/test_foo.raw.log')) { |path| path }
+
+      filepath = @plugin.send(:artifact_filepath, :test, 'test/unit/test_foo.raw.log')
+
+      expect(filepath).to eq(File.join(PROJECT_BUILD_ARTIFACTS_ROOT, 'test', 'test/unit/test_foo.raw.log'))
     end
   end
 

@@ -148,6 +148,10 @@ plugin_reportinator_helper:
 
 verbosinator:
 
+build_log_writer:
+  compose:
+    - file_wrapper
+
 file_finder:
   compose:
     - configurator
@@ -248,6 +252,7 @@ generator_test_results_backtrace:
      - generator_helper
      - file_path_utils
      - file_wrapper
+     - build_log_writer
      - loginator
 
 generator_test_results_sanity_checker:

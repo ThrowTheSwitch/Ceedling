@@ -300,6 +300,29 @@ describe FileWrapper do
     end
   end
 
+  describe '#mkdir_for' do
+    it 'makes every directory above a file and returns the filepath' do
+      Dir.mktmpdir do |dir|
+        filepath = File.join( dir, 'artifacts', 'test', 'unit', 'test_foo.log' )
+
+        expect( @file_wrapper.mkdir_for( filepath ) ).to eq( filepath )
+        expect( File.directory?( File.dirname( filepath ) ) ).to be true
+        expect( File.exist?( filepath ) ).to be false
+      end
+    end
+
+    it 'tolerates threads making the same directory at once' do
+      Dir.mktmpdir do |dir|
+        filepath = File.join( dir, 'a', 'b', 'c', 'test_foo.log' )
+
+        threads = Array.new( 8 ) { Thread.new { @file_wrapper.mkdir_for( filepath ) } }
+
+        expect { threads.each( &:join ) }.to_not raise_error
+        expect( File.directory?( File.dirname( filepath ) ) ).to be true
+      end
+    end
+  end
+
   # The removal methods are thin pass-throughs to FileUtils. These examples exist
   # for one reason: to pin that a caller's options actually arrive. #rm_r and #rm_rf
   # previously splatted an inline assignment, which replaced the caller's hash with

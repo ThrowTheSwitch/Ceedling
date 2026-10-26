@@ -143,6 +143,7 @@ describe GeneratorTestResultsBacktrace do
     @generator_test_results  = instance_double('GeneratorTestResults')
     @file_path_utils         = instance_double('FilePathUtils')
     @file_wrapper            = instance_double('FileWrapper')
+    @build_log_writer        = instance_double('BuildLogWriter')
     @loginator               = double('loginator').as_null_object
     # A real GeneratorHelper, not a double -- these tests exercise the actual crash
     # detection logic a retry's status is checked against, not a stubbed stand-in for it.
@@ -155,6 +156,7 @@ describe GeneratorTestResultsBacktrace do
       :generator_helper       => @generator_helper,
       :file_path_utils        => @file_path_utils,
       :file_wrapper           => @file_wrapper,
+      :build_log_writer       => @build_log_writer,
       :loginator              => @loginator
     })
     @backtrace.setup()
@@ -170,9 +172,13 @@ describe GeneratorTestResultsBacktrace do
     allow(@file_path_utils).to receive(:form_test_gdb_log) do |test, context:, name:|
       "/build/logs/#{context}/#{test}/#{name}.gdb.log"
     end
-    allow(@file_wrapper).to receive(:mkdir)
-    allow(@file_wrapper).to receive(:write)
+    allow(@build_log_writer).to receive(:write)
     allow(@generator_test_results).to receive(:regenerate_test_executable_stdout).and_return('regenerated')
+  end
+
+  # A test is named by its path from the project root
+  def test_name_of(filename)
+    return "test/#{File.basename( filename, '.*' )}"
   end
 
   # ── #do_gdb ────────────────────────────────────────────────────────────────
@@ -203,7 +209,7 @@ describe GeneratorTestResultsBacktrace do
           time: 0.1, exit_code: 0, stderr: '', status: @ok_status }
       )
 
-      expect(@file_wrapper).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything, anything)
+      expect(@build_log_writer).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything)
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
@@ -211,7 +217,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
+      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test, test_name: test_name_of( filename ) )
 
       expect(expected_output_lines).to include('test_lib.c:9:test_asserting:PASS')
     end
@@ -223,7 +229,7 @@ describe GeneratorTestResultsBacktrace do
           time: 0.1, exit_code: 0, stderr: '', status: @ok_status }
       )
 
-      expect(@file_wrapper).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything, anything)
+      expect(@build_log_writer).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything)
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
@@ -231,7 +237,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
+      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test, test_name: test_name_of( filename ) )
 
       expect(expected_output_lines).to include('test_lib.c:9:test_asserting:IGNORE')
     end
@@ -243,7 +249,7 @@ describe GeneratorTestResultsBacktrace do
           time: 0.1, exit_code: 1, stderr: '', status: @ok_status }
       )
 
-      expect(@file_wrapper).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything, anything)
+      expect(@build_log_writer).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything)
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
@@ -251,7 +257,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
+      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test, test_name: test_name_of( filename ) )
 
       expect(expected_output_lines).to include('test_lib.c:9:test_asserting:FAIL: Expected 1 Was 2')
     end
@@ -259,7 +265,7 @@ describe GeneratorTestResultsBacktrace do
     # Ignored-crash false positive: a TEST_IGNORE_MESSAGE(...) test case carries a
     # trailing message, same as FAIL. Before this fix, only FAIL tolerated one --
     # a message-carrying IGNORE fell through to "unresolved" and was misreported
-    # as crash evidence (a second @file_wrapper.write, for a companion_case that
+    # as crash evidence (a second log write, for a companion_case that
     # never actually crashed).
     it 'handles an IGNORE test case with a trailing message and does not write a log' do
       allow(@tool_executor).to receive(:exec).and_return(
@@ -268,7 +274,7 @@ describe GeneratorTestResultsBacktrace do
           time: 0.1, exit_code: 0, stderr: '', status: @ok_status }
       )
 
-      expect(@file_wrapper).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything, anything)
+      expect(@build_log_writer).to receive(:write).once.with(%r{test_crashes_elsewhere}, anything)
 
       expected_output_lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) do |**kwargs|
@@ -276,7 +282,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test )
+      @backtrace.do_gdb( filename, executable, shell_result, [companion_case] + test_cases, context: :test, test_name: test_name_of( filename ) )
 
       expect(expected_output_lines).to include('test_lib.c:9:test_asserting:IGNORE: Not yet implemented')
     end
@@ -297,7 +303,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test, test_name: test_name_of( filename ) )
 
       expect(result[:exit_code]).to eq(1)
       expect(expected_output_lines.first).to include(':FAIL:')
@@ -317,7 +323,7 @@ describe GeneratorTestResultsBacktrace do
         .with(filename, shell_result, test_cases)
         .and_return(fallback_result)
 
-      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+      result = @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test, test_name: test_name_of( filename ) )
 
       expect(result).to eq(fallback_result)
     end
@@ -335,17 +341,17 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      expect(@file_wrapper).to receive(:write)
-        .with('/build/logs/test/TestUsartModel/testCrash.gdb.log', /=== testCrash ===/, 'a')
+      expect(@build_log_writer).to receive(:write)
+        .with('/build/logs/test/test/TestUsartModel/testCrash.gdb.log', /=== testCrash ===/)
 
-      @backtrace.do_gdb( filename_sigsegv, executable, shell_result, test_cases_sigsegv, context: :test )
+      @backtrace.do_gdb( filename_sigsegv, executable, shell_result, test_cases_sigsegv, context: :test, test_name: test_name_of( filename_sigsegv ) )
 
       crash_line = expected_output_lines.first
       expect(crash_line).to include('>> [SIGSEGV] Segmentation fault')
       expect(crash_line).not_to include('testCrash() at TestUsartModel.c:40')
       expect(crash_line).to include("#{NEWLINE_TOKEN}`uint32_t i = *null_ptr;`")
       expect(crash_line).not_to include('(log: ')
-      expect(crash_line).to include('(/build/logs/test/TestUsartModel/testCrash.gdb.log)')
+      expect(crash_line).to include('(/build/logs/test/test/TestUsartModel/testCrash.gdb.log)')
     end
 
     it 'attributes a crash in a parameterized test to its wrapper symbol, not its display name' do
@@ -365,10 +371,10 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      expect(@file_wrapper).to receive(:write)
-        .with('/build/logs/test/test_module_d/test_value_out_of_range_good(101, 1).gdb.log', /=== test_value_out_of_range_good\(101, 1\) ===/, 'a')
+      expect(@build_log_writer).to receive(:write)
+        .with('/build/logs/test/test/test_module_d/test_value_out_of_range_good(101, 1).gdb.log', /=== test_value_out_of_range_good\(101, 1\) ===/)
 
-      @backtrace.do_gdb( filename_param, executable, shell_result, test_cases_param, context: :test )
+      @backtrace.do_gdb( filename_param, executable, shell_result, test_cases_param, context: :test, test_name: test_name_of( filename_param ) )
 
       crash_line = expected_output_lines.first
       # The FAIL line reports the human-facing display name (with args)...
@@ -399,10 +405,10 @@ describe GeneratorTestResultsBacktrace do
       allow(@tool_executor).to receive(:exec)
         .and_return({ output: crash_output, time: 0.5, exit_code: 139, stderr: '', status: @ok_status })
 
-      expect(@file_wrapper).to receive(:write)
-        .with('/build/logs/test/test_module/test_x(2).gdb.log', /=== test_x\(2\) ===/, 'a')
+      expect(@build_log_writer).to receive(:write)
+        .with('/build/logs/test/test/test_module/test_x(2).gdb.log', /=== test_x\(2\) ===/)
 
-      @backtrace.do_gdb( filename_suffix, executable, shell_result, test_cases_suffix, context: :test )
+      @backtrace.do_gdb( filename_suffix, executable, shell_result, test_cases_suffix, context: :test, test_name: test_name_of( filename_suffix ) )
     end
 
     it 'handles a SIGABRT crash from assert() — shows assertion text, no source line' do
@@ -417,7 +423,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_gdb( filename, executable, shell_result, test_cases_assert, context: :test )
+      @backtrace.do_gdb( filename, executable, shell_result, test_cases_assert, context: :test, test_name: test_name_of( filename ) )
 
       crash_line = expected_output_lines.first
       expect(crash_line).to include('>> [SIGABRT]')
@@ -425,7 +431,7 @@ describe GeneratorTestResultsBacktrace do
       expect(crash_line).not_to include('Aborted')
       expect(crash_line).not_to include('asserting() at lib.c:5')
       expect(crash_line).not_to include('(log: ')
-      expect(crash_line).to include('(/build/logs/test/test_lib/test_asserting.gdb.log)')
+      expect(crash_line).to include('(/build/logs/test/test/test_lib/test_asserting.gdb.log)')
     end
 
     it 'handles a crash with no identifiable signal — fallback message, log path without "log: " prefix' do
@@ -438,12 +444,12 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+      @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test, test_name: test_name_of( filename ) )
 
       crash_line = expected_output_lines.first
       expect(crash_line).not_to include(' >> ')
       expect(crash_line).not_to include('(log: ')
-      expect(crash_line).to include('(/build/logs/test/test_lib/test_asserting.gdb.log)')
+      expect(crash_line).to include('(/build/logs/test/test/test_lib/test_asserting.gdb.log)')
     end
 
     # A crashed test case that resolves to no useful gdb report is worth flagging on
@@ -458,7 +464,7 @@ describe GeneratorTestResultsBacktrace do
       expect(@loginator).to receive(:log)
         .with(a_string_including('test_asserting'), Verbosity::COMPLAIN)
 
-      @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test )
+      @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: :test, test_name: test_name_of( filename ) )
     end
   end
 
@@ -489,8 +495,8 @@ describe GeneratorTestResultsBacktrace do
       allow(@tool_executor).to receive(:exec)
         .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
 
-      @backtrace.do_gdb( 'test_lib.c', executable, shell_result.dup, test_cases, context: :test )
-      @backtrace.do_gdb( 'test_module.c', executable, shell_result.dup, test_cases, context: :test )
+      @backtrace.do_gdb( 'test_lib.c', executable, shell_result.dup, test_cases, context: :test, test_name: test_name_of( 'test_lib.c' ) )
+      @backtrace.do_gdb( 'test_module.c', executable, shell_result.dup, test_cases, context: :test, test_name: test_name_of( 'test_module.c' ) )
 
       expect(@loginator).to receive(:log)
         .with(a_string_including('test suite run'), Verbosity::ERRORS, LogLabels::WARNING).once
@@ -504,12 +510,12 @@ describe GeneratorTestResultsBacktrace do
       )
       @backtrace.do_gdb(
         'TestUsartModel.c', executable, shell_result.dup,
-        [{ test: 'testCrash', symbol: 'testCrash', line_number: 37 }], context: :test
+        [{ test: 'testCrash', symbol: 'testCrash', line_number: 37 }], context: :test, test_name: test_name_of( 'TestUsartModel.c' )
       )
 
       allow(@tool_executor).to receive(:exec)
         .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
-      @backtrace.do_gdb( 'test_lib.c', executable, shell_result.dup, test_cases, context: :test )
+      @backtrace.do_gdb( 'test_lib.c', executable, shell_result.dup, test_cases, context: :test, test_name: test_name_of( 'test_lib.c' ) )
 
       expect(@loginator).to_not receive(:log)
         .with(anything, Verbosity::ERRORS, LogLabels::WARNING)
@@ -520,7 +526,7 @@ describe GeneratorTestResultsBacktrace do
     it 'only flushes once -- a second call logs nothing further without a new crash' do
       allow(@tool_executor).to receive(:exec)
         .and_return({ output: GDB_NO_SIGNAL_OUTPUT, time: 0.1, exit_code: 1, stderr: '', status: @ok_status })
-      @backtrace.do_gdb( filename, executable, shell_result.dup, test_cases, context: :test )
+      @backtrace.do_gdb( filename, executable, shell_result.dup, test_cases, context: :test, test_name: test_name_of( filename ) )
 
       expect(@loginator).to receive(:log)
         .with(anything, Verbosity::ERRORS, LogLabels::WARNING).once
@@ -563,7 +569,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_simple( filename, executable, shell_result, test_cases_multi, context: :test )
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_multi )
 
       expect(expected_output_lines).to include('test_lib.c:3:test_empty:PASS')
     end
@@ -582,7 +588,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_simple( filename, executable, shell_result, test_cases_fail, context: :test )
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_fail )
 
       expect(expected_output_lines).to include('test_lib.c:8:test_bad:FAIL: Expected 1 Was 2')
     end
@@ -601,7 +607,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore, context: :test )
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore )
 
       expect(expected_output_lines).to include('test_lib.c:12:test_skip:IGNORE')
     end
@@ -625,7 +631,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore, context: :test )
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_ignore )
 
       expect(expected_output_lines).to include('test_lib.c:12:test_skip:IGNORE: Not yet implemented')
       expect(expected_output_lines).to_not include(a_string_matching(/test_skip:FAIL/))
@@ -645,7 +651,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      result = @backtrace.do_simple( filename, executable, shell_result, test_cases, context: :test )
+      result = @backtrace.do_simple( filename, executable, shell_result, test_cases )
 
       expect(result[:exit_code]).to eq(1)
       expect(expected_output_lines.first).to include(':FAIL:')
@@ -666,7 +672,7 @@ describe GeneratorTestResultsBacktrace do
         .with(filename, shell_result, test_cases)
         .and_return(fallback_result)
 
-      result = @backtrace.do_simple( filename, executable, shell_result, test_cases, context: :test )
+      result = @backtrace.do_simple( filename, executable, shell_result, test_cases )
 
       expect(result).to eq(fallback_result)
     end
@@ -683,7 +689,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_simple( filename, executable, shell_result, test_cases_crash, context: :test )
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_crash )
 
       crash_line = expected_output_lines.first
       expect(crash_line).to include(':FAIL: Test case crashed')
@@ -703,7 +709,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_simple( filename, executable, shell_result, test_cases_crash, context: :test )
+      @backtrace.do_simple( filename, executable, shell_result, test_cases_crash )
 
       crash_line = expected_output_lines.first
       expect(crash_line).to include(':FAIL: Test case crashed')
@@ -734,7 +740,7 @@ describe GeneratorTestResultsBacktrace do
     end
 
     def rerun(tool)
-      @backtrace.do_simple( filename, executable, { exit_code: 1, output: '', time: 0.0 }, test_cases, context: :test, tool: tool )
+      @backtrace.do_simple( filename, executable, { exit_code: 1, output: '', time: 0.0 }, test_cases, tool: tool )
     end
 
     it 'reruns through the dedicated backtrace tool when the fixture tool is the configured one' do
@@ -769,7 +775,7 @@ describe GeneratorTestResultsBacktrace do
     def crashed_lines(explain)
       lines = []
       allow(@generator_test_results).to receive(:regenerate_test_executable_stdout) { |**kwargs| lines = kwargs[:output]; 'regenerated' }
-      @backtrace.do_simple( filename, executable, { exit_code: 1, output: '', time: 0.0 }, test_cases, context: :test, explain: explain )
+      @backtrace.do_simple( filename, executable, { exit_code: 1, output: '', time: 0.0 }, test_cases, explain: explain )
       return lines
     end
 
@@ -923,7 +929,7 @@ describe GeneratorTestResultsBacktrace do
         'regenerated'
       end
 
-      @backtrace.do_gdb( filename_assert, executable, shell_result, test_cases_assert, context: :test )
+      @backtrace.do_gdb( filename_assert, executable, shell_result, test_cases_assert, context: :test, test_name: test_name_of( filename_assert ) )
 
       crash_line = expected_output_lines.first
       expect(crash_line).to include(">> Assertion '0' failed")

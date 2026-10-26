@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/build_log_writer'
 require 'sanitize_constants'
 require 'sanitize_reports'
 
@@ -20,7 +21,7 @@ class SanitizeRecords
     @loginator    = loginator
     @reports      = reports
     @records      = []
-    @logged_tests = []
+    @log_writer   = BuildLogWriter.new( file_wrapper: file_wrapper )
     @written      = []
     @mutex        = Mutex.new
   end
@@ -101,11 +102,7 @@ class SanitizeRecords
 
   # A build's first report for a test replaces the last build's log, and later ones follow it
   def write_log(log, findings)
-    first = @mutex.synchronize { !@logged_tests.include?( log ) && @logged_tests << log }
-    text  = findings.map( &:text ).join( "\n" )
-
-    @file_wrapper.mkdir( File.dirname( log ) )
-    @file_wrapper.write( log, first ? text : "\n#{text}", first ? 'w' : 'a' )
+    @log_writer.write( log, findings.map( &:text ).join( "\n" ), separator: "\n" )
   end
 
   def pluralize(count, word)
