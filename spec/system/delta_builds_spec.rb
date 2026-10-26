@@ -220,6 +220,24 @@ ceedling_system_tests do
       end
     end
 
+    # Every remaining object is unchanged, so only the list of objects shows the change. A
+    # stale executable would still hold the source's code and report its cached pass.
+    it "relinks a test whose source leaves the build, failing at link without it" do
+      @c.with_context do
+        Dir.chdir "temp_sensor" do
+          @c.ceedling_build_exec("test:all")
+
+          @c.merge_project_yml_for_test({ :files => { :source => ['-:src/TemperatureFilter.c'] } })
+          rebuild = @c.ceedling_build_exec("test:TestTemperatureFilter.c")
+
+          expect(@c.last_exit_status).to_not eq(0)
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to match(/^Linking TestTemperatureFilter\.out/)
+          expect(rebuild).to match(/undefined reference|Undefined symbols/)
+        end
+      end
+    end
+
     it "clobber removes the dependency cache and forces a full rebuild afterward" do
       @c.with_context do
         Dir.chdir "temp_sensor" do
@@ -700,6 +718,25 @@ ceedling_system_tests do
           expect(rebuild).to_not match(/^Compiling analyzer\.c/)
           expect(rebuild).to_not match(/^Compiling text_utils\.c/)
           expect(rebuild).to_not match(/^Compiling main\.c/)
+        end
+      end
+    end
+
+    # main.c is unchanged, so only the list of objects shows the change. A stale artifact
+    # would still hold the analyzer's code.
+    it "relinks when a source leaves the build, failing at link without it" do
+      @c.with_context do
+        Dir.chdir "cipher_quest" do
+          enable_release_features!
+          @c.ceedling_build_exec("release")
+
+          @c.merge_project_yml_for_test({ :files => { :source => ['-:src/analyzer.c'] } })
+          rebuild = @c.ceedling_build_exec("release")
+
+          expect(@c.last_exit_status).to_not eq(0)
+          expect(rebuild).to_not match(/^Compiling main\.c/)
+          expect(rebuild).to match(/^Linking /)
+          expect(rebuild).to match(/undefined reference|Undefined symbols/)
         end
       end
     end

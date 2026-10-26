@@ -269,6 +269,8 @@ class PartialsManager
       end
     end
 
+    order_partials( partials.map { |partial| partial[:testable] }.uniq )
+
     log_skip_summary( task: "Partial types generation", count: skipped_types, noun: "types headers" )
     log_skip_summary( task: "Partial implementation generation", count: skipped_impl, noun: "implementations" )
     log_skip_summary( task: "Partial interface generation", count: skipped_interface, noun: "interfaces" )
@@ -296,6 +298,16 @@ class PartialsManager
   # and `config.includes` is recalled from the on-disk list a prior stale run wrote
   # -- so `config` ends up populated identically either way, and stage 8 (which
   # reads only `config`) needs no knowledge of which path produced it.
+  # Build threads finish in any order. Each test's Partial modules return to its configuration
+  # order, which its link and mock lists follow, so an unchanged build sees unchanged lists.
+  def order_partials(testables)
+    testables.each do |testable|
+      order = testable.partials.configs.values.map( &:module )
+      testable.partials.tests.sort_by! { |_module| order.index( _module ) }
+      testable.partials.mocks.sort_by! { |_module| order.index( _module ) }
+    end
+  end
+
   def preprocess_partials(items:, kind:, noun:, preserve_macros_method:, expand_macros_method:)
     directives_only = @configurator.test_build_preprocess_directives_only_available
     skipped = 0

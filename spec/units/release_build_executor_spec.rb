@@ -345,7 +345,17 @@ describe ReleaseBuildExecutor do
       expect(@dependinator).to receive(:register).with(
         'build/release/out/project.out',
         files: ['build/release/out/foo.o'],
-        meta:  { flags: ['-Wall'], lib_args: ['-lm'], lib_paths: ['-Lvendor/lib'], tools: [@tools_release_linker] }
+        meta:  { flags: ['-Wall'], lib_args: ['-lm'], lib_paths: ['-Lvendor/lib'], tools: [@tools_release_linker], objects: ['build/release/out/foo.o'] }
+      )
+
+      @executor.link( @state )
+    end
+
+    # A source dropped from the build leaves every remaining object as it was, so only the
+    # object list, as meta, relinks an artifact that would otherwise keep the dropped code
+    it "registers the objects it links as meta" do
+      expect(@dependinator).to receive(:register).with(
+        'build/release/out/project.out', files: ['build/release/out/foo.o'], meta: hash_including( objects: ['build/release/out/foo.o'] )
       )
 
       @executor.link( @state )

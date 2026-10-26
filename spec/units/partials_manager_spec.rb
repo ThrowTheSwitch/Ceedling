@@ -364,6 +364,23 @@ describe PartialsManager do
       expect( @testable.partials.mocks ).to eq( ['Foo'] )
     end
 
+    # Build threads finish in any order, and a test's link records its objects in order
+    it "keeps a test's Partial modules in configuration order, however the batch finishes" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@batchinator).to receive(:exec) do |workload:, things:, &block|
+        things.reverse_each { |thing| block.call( thing ) }
+      end
+      @testable.partials.configs = %w[Alpha Beta Gamma].to_h do |name|
+        [name, Partials::Config.new( module: name, header: @config.header, source: @config.source )]
+      end
+
+      @manager.stage_generate_partials( @state )
+
+      expect( @testable.partials.tests ).to eq( %w[Alpha Beta Gamma] )
+      expect( @testable.partials.mocks ).to eq( %w[Alpha Beta Gamma] )
+    end
+
     it "does not add to tests when no implementation is extracted" do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
