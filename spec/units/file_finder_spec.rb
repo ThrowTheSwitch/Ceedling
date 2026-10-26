@@ -272,6 +272,14 @@ describe FileFinder do
       allow(@configurator).to receive(:project_build_root).and_return('build')
       # No configured include root contains these queries, so each keeps its own path.
       allow(@configurator).to receive(:paths_include).and_return( ['include'] )
+
+      # A test is named by its path without its extension. Examples that look tests up by
+      # name give their own test collection.
+      allow(@configurator).to receive(:collection_all_tests).and_return( [] )
+      allow(@file_path_utils).to receive(:form_test_name) { |test| test.to_s.ext( '' ) }
+      allow(@file_path_utils).to receive(:form_test_runners_path) do |name, **|
+        File.dirname( name ) == '.' ? 'build/test/runners' : File.join( 'build/test/runners', File.dirname( name ) )
+      end
     end
 
     it 'never raises, rather than silently missing a build, when two release sources share a basename -- resolves to the first by project path order' do
@@ -309,16 +317,69 @@ describe FileFinder do
       allow(@configurator).to receive(:collection_all_tests).and_return(
         ['test/unit/test_foo.c', 'test/integration/test_foo.c']
       )
-
+    
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/unit/test_foo/test_foo.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/test/unit/test_foo/test_foo.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('test/unit/test_foo.c')
-
+    
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/integration/test_foo/test_foo.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/test/integration/test_foo/test_foo.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('test/integration/test_foo.c')
+    end
+    
+    # GH #1364: one test's name ended another's path, and the search by name was ambiguous
+    {
+      'flat and nested under one root'        => ['test/test_calc.c', 'test/unit/test_calc.c'],
+      'the same subdirectory under two roots' => ['test/unit/test_calc.c', 'extra/unit/test_calc.c'],
+      'the same layout under two roots'       => ['test/foo/test_x.c', 'extra/foo/test_x.c']
+    }.each do |layout, tests|
+      it "resolves each test's own source exactly with #{layout}" do
+        allow(@configurator).to receive(:collection_all_tests).and_return( tests )
+    
+        tests.each do |test|
+          name   = test.ext( '' )
+          object = File.join( 'build/test/out', name, File.basename( name ) + '.o' )
+    
+          expect(@file_finder.find_build_input_file( filepath: object, complain: :error, context: TEST_SYM, test: name )).to eq( test )
+          expect(@file_finder.find_build_input_file( filepath: object, complain: :error, context: TEST_SYM )).to eq( test )
+        end
+      end
+    end
+    
+    it 'resolves the source of a test outside the project, whose name matches no path' do
+      allow(@file_path_utils).to receive(:form_test_name) { |test| test.to_s.ext( '' ).gsub( '..', '_up_' ) }
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['../shared/test/unit/test_s.c'] )
+
+      found = @file_finder.find_build_input_file(
+        filepath: 'build/test/out/_up_/shared/test/unit/test_s/test_s.o', complain: :error, context: TEST_SYM
+      )
+      expect(found).to eq('../shared/test/unit/test_s.c')
+    end
+
+    it 'resolves a test whose name ends another test\'s path' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/unit/test_calc.c', 'other/test/unit/test_calc.c'] )
+
+      found = @file_finder.find_build_input_file(
+        filepath: 'build/test/out/test/unit/test_calc/test_calc.o', complain: :error, context: TEST_SYM
+      )
+      expect(found).to eq('test/unit/test_calc.c')
+    end
+
+    it 'resolves a header named like its test to the test itself' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_calc.c', 'test/unit/test_calc.c'] )
+    
+      found = @file_finder.find_build_input_file( filepath: 'test_calc.h', complain: :error, context: TEST_SYM, test: 'test/unit/test_calc' )
+      expect(found).to eq('test/unit/test_calc.c')
+    end
+    
+    it 'names every test once, however many lookups follow' do
+      expect(@configurator).to receive(:collection_all_tests).once.and_return( ['test/test_calc.c', 'test/unit/test_calc.c'] )
+    
+      2.times do
+        @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_calc/test_calc.o', complain: :error, context: TEST_SYM )
+      end
     end
 
     it 'resolves a test\'s own runner by its own runner subdirectory, without treating another same-named test\'s runner as ambiguous' do
@@ -368,6 +429,23 @@ describe FileFinder do
         filepath: 'build/test/out/TestModel/MockTemperatureFilter.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('build/test/mocks/TestModel/MockTemperatureFilter.c')
+    end
+
+    # One test's name continues another's, so its mock directory sits inside the other's
+    it 'keeps a test whose directory nests inside another test\'s from sharing that test\'s mocks' do
+      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_foo.c', 'test/test_foo/test_bar.c'] )
+      mocks = ['build/test/mocks/test/test_foo/Mockwidget.c', 'build/test/mocks/test/test_foo/test_bar/Mockwidget.c']
+      allow(@file_wrapper).to receive(:directory_listing) do |glob|
+        root = glob.delete_suffix( '/**/*.c' )
+        mocks.select { |mock| mock.start_with?( root + '/' ) }
+      end
+
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/Mockwidget.o', complain: :error, context: TEST_SYM )
+      expect(found).to eq('build/test/mocks/test/test_foo/Mockwidget.c')
+
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test_bar/Mockwidget.o', complain: :error, context: TEST_SYM )
+      expect(found).to eq('build/test/mocks/test/test_foo/test_bar/Mockwidget.c')
     end
 
     it 'still raises when the very same test mocks two different same-named headers from different directories' do

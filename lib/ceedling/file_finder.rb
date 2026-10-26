@@ -16,6 +16,10 @@ class FileFinder
 
   constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper
 
+  def setup
+    @test_names_lock = Mutex.new
+  end
+
 
   # `collection`, when given, is a caller's own already-ordered, per-test header list
   # (see IncludePathinator#ordered_header_files) reflecting that one test's real search-path
@@ -140,9 +144,7 @@ class FileFinder
       found_file =
         @file_finder_helper.find_file_in_collection(
           _source_file,
-          @file_wrapper.directory_listing(
-            File.join(mocks_root, ('**/*' + EXTENSION_CORE_SOURCE))
-          ),
+          own_generated_files( @configurator.cmock_mock_path, test_context ),
           complain)
 
     # Generated partials -- same per-test scoping rationale as mocks, above
@@ -157,10 +159,7 @@ class FileFinder
       _source_file = source_file + EXTENSION_CORE_SOURCE
       _source_file = File.join( subdir, _source_file ) unless subdir.empty?
 
-      collection =
-        @file_wrapper.directory_listing(
-          File.join(partials_root, ('**/*' + EXTENSION_CORE_SOURCE))
-        )
+      collection = own_generated_files( @configurator.project_test_partials_path, test_context )
 
       # Ambiguity is detected here rather than rescued from the matching below. One
       # matching implementation stays in force, and the message is composed from the
@@ -180,12 +179,11 @@ class FileFinder
           @configurator.collection_existing_test_build_input,
           complain)
 
-    # The test file's own object, resolving back to its own source -- go directly by this
-    # object's own test identity rather than searching the whole project's test collection
-    # by bare basename, which is exactly the kind of query that's ambiguous the moment
-    # another same-named test exists elsewhere
+    # The test file's own object resolves to the test it names. A name is the test's path,
+    # so the lookup is exact. Searching by name instead is ambiguous wherever one test's
+    # name ends another test's path.
     elsif (!release) and !test_context.empty? and (source_file == File.basename( test_context ))
-      found_file = find_test_file_from_name( test_context )
+      found_file = test_files_by_name[test_context]
 
     end
 
@@ -316,15 +314,29 @@ class FileFinder
     return dir.start_with?( root + '/' ) ? dir[(root.length + 1)..] : ''
   end
 
-  # A flat test's own runner lives in the shared flat runners directory; only a nested
-  # test's own mirrored subdirectory (excluding its own basename) narrows the search
-  # further -- mirroring FilePathUtils#form_test_runners_path's own directory-forming rule.
-  # Takes the test identity already recovered by the caller rather than a raw filepath, so
-  # it isn't independently re-deriving what the caller already has in hand.
+  # A test's runner lives where FilePathUtils#form_test_runners_path puts it. Takes the test
+  # identity the caller already recovered rather than a raw filepath.
   def runner_scope_dir(test_context)
-    subdir = File.dirname( test_context )
-    root   = @configurator.project_test_runners_path
-    return subdir == '.' ? root : File.join(root, subdir)
+    return @file_path_utils.form_test_runners_path( test_context )
+  end
+
+  # Every test file by its name. Names are paths, so each is unique. Built once, on first
+  # use, since build threads share this finder.
+  def test_files_by_name
+    @test_names_lock.synchronize do
+      @test_files_by_name ||= @configurator.collection_all_tests.to_h { |test| [@file_path_utils.form_test_name( test ), test.to_s] }
+    end
+  end
+
+  # A test's generated mocks or Partials, beneath its own directory below `base`. A test
+  # whose name continues this one's (`test/test_foo/test_bar` after `test/test_foo`) has its
+  # directory nested here, and the files in it are that test's own.
+  def own_generated_files(base, test_context)
+    listing = @file_wrapper.directory_listing( File.join( base, test_context, '**/*' + EXTENSION_CORE_SOURCE ) )
+    nested  = test_files_by_name.keys.select { |name| name.start_with?( test_context + '/' ) }.map { |name| File.join( base, name ) + '/' }
+    return listing if nested.empty?
+
+    return listing.reject { |file| nested.any? { |dir| file.start_with?( dir ) } }
   end
 
   # A release or module-under-test object's own path mirrors its source's subdirectory
