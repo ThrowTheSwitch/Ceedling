@@ -39,16 +39,17 @@ class ReportTestsTeamcityStdout < Plugin
   def pre_test(test)
     return if !@output_enabled
 
-    # Generate a new Flow ID and store it in test hash
+    # Generate a new Flow ID and store it in test hash. A suite is named for its test, which
+    # tells same-named tests in different directories apart.
     @mutex.synchronize do
       @flowid_count += 1
-      @suites[test] = { :flowid => @flowid_count }
+      @suites[test] = { :flowid => @flowid_count, :name => escape( @ceedling[:file_path_utils].form_test_name( test ) ) }
     end
 
     # Generate first TeamCity service message
     @mutex.synchronize do
       teamcity_service_message(
-        "testSuiteStarted name='#{File.basename(test, '.*')}'",
+        "testSuiteStarted name='#{@suites[test][:name]}'",
         @suites[test][:flowid]
       )
     end
@@ -146,7 +147,7 @@ class ReportTestsTeamcityStdout < Plugin
 
     @mutex.synchronize do
       teamcity_service_message(
-        "testSuiteFinished name='#{File.basename(test, '.*')}'",
+        "testSuiteFinished name='#{@suites[test][:name]}'",
         @suites[test][:flowid]
       )
     end
