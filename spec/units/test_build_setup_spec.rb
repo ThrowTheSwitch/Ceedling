@@ -374,6 +374,19 @@ describe TestBuildSetup do
       end
     end
 
+    # Only a scan without test preprocessing caches TEST_SOURCE_FILE() entries, so switching
+    # modes must rescan rather than recall a cache missing them
+    it "caches build directives against the test preprocessing mode that scanned them" do
+      [true, false].each do |preprocessing|
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( preprocessing )
+        expect(@dependinator).to receive(:register).with(
+          'build/preprocess/build_directives/a_test/Foo.c.yml', files: ['test/TestFoo.c'], meta: { source_files_scanned: !preprocessing }
+        )
+
+        @setup.stage_collect_test_context( @state )
+      end
+    end
+
     it "leaves TEST_SOURCE_FILE() entries to stage 11 when test preprocessing is on" do
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
       allow(@dependinator).to receive(:stale?).and_return( true )

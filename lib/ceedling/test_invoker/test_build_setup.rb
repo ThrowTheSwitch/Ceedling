@@ -44,7 +44,8 @@ class TestBuildSetup
   end
 
   # Stage 1: Create per-test build/results/mock/partial directory structure
-  # and populate the testables hash with initial entries.
+  # and populate the testables hash with initial entries. Stops first if two
+  # tests in the build share a name.
   def stage_prepare_build_paths(state)
     validate_unique_test_names!( tests: state.tests )
 
@@ -114,8 +115,10 @@ class TestBuildSetup
       filepath = testable.filepath
       filename = File.basename( filepath )
 
+      # Only a scan without test preprocessing finds TEST_SOURCE_FILE() entries, so a cache
+      # from the other mode is stale
       cache_target = @file_path_utils.form_test_build_directives_cache_filepath( filepath, testable.name )
-      @dependinator.register( cache_target, files: [filepath] )
+      @dependinator.register( cache_target, files: [filepath], meta: { source_files_scanned: !@configurator.project_use_test_preprocessor_tests } )
       directives_stale = @dependinator.stale?( cache_target )
 
       contexts = [TestContextExtractor::Context::INCLUDES]

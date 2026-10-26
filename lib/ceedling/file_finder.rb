@@ -7,6 +7,7 @@
 
 require 'rubygems'
 require 'rake' # for adding ext() method to string
+require 'set'
 require 'ceedling/exceptions'
 require 'ceedling/path_matcher'
 require 'ceedling/path_mirror'
@@ -298,10 +299,9 @@ class FileFinder
 
   # A test object's build directory is its test's name, the test's path from the project
   # root (e.g. `test/unit/test_foo` for `test/unit/test_foo.c`). Recovering that name from
-  # a build artifact's own path lets a lookup
-  # go straight to the one test it belongs to, rather than searching the whole project by
-  # bare basename -- exactly the query shape that's ambiguous when another same-named test
-  # exists elsewhere.
+  # a build artifact's own path lets a lookup go straight to the one test it belongs to,
+  # rather than searching the whole project by bare basename -- exactly the query shape
+  # that's ambiguous when another same-named test exists elsewhere.
   #
   # A filepath that isn't under the test build root at all (a source-tree-relative query
   # from an #include or TEST_SOURCE_FILE(), rather than a build artifact's own path) has no
@@ -320,27 +320,44 @@ class FileFinder
   end
 
   # Every test file by its name. Names are paths, and a build stops before its first lookup
-  # if two tests share one. Built once, on first use, since build threads share this finder.
+  # if two tests in it share one. Built once, on first use, since build threads share this
+  # finder.
   def test_files_by_name
     @test_names_lock.synchronize do
       @test_files_by_name ||= @configurator.collection_all_tests.to_h { |test| [@file_path_utils.form_test_name( test ), test.to_s] }
     end
   end
 
-  # The names of the tests whose names continue each test's (`test/test_foo/test_bar` after
-  # `test/test_foo`), by that test's name
+  # For each test's name, the names of the tests nested beneath it (`test/test_foo/test_bar`
+  # beneath `test/test_foo`)
   def nested_test_names
     names = test_files_by_name.keys
     @test_names_lock.synchronize do
-      @nested_test_names ||= names.to_h { |name| [name, names.select { |other| other.start_with?( name + '/' ) }] }
+      @nested_test_names ||= nest_names( names )
     end
+  end
+
+  # Files each name under every other name that is one of its parent directories
+  def nest_names(names)
+    known  = names.to_set
+    nested = Hash.new { |hash, name| hash[name] = [] }
+
+    names.each do |name|
+      parts = name.split( '/' )
+      (1...parts.length).each do |count|
+        parent = parts.first( count ).join( '/' )
+        nested[parent] << name if known.include?( parent )
+      end
+    end
+
+    return nested
   end
 
   # A test's generated mocks or Partials, beneath its own directory below `base`. A test
   # whose name continues this one's (`test/test_foo/test_bar` after `test/test_foo`) has its
   # directory nested here, and the files in it are that test's own.
   def own_generated_files(base, test_context)
-    listing = @file_wrapper.directory_listing( File.join( base, test_context, '**/*' + EXTENSION_CORE_SOURCE ) )
+    listing = @file_wrapper.directory_listing( FilePathUtils.glob( File.join( base, test_context ), '**/*' + EXTENSION_CORE_SOURCE ) )
     nested  = nested_test_names.fetch( test_context, [] ).map { |name| File.join( base, name ) + '/' }
     return listing if nested.empty?
 
