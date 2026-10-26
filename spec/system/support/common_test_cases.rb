@@ -901,8 +901,11 @@ module CommonSystemTestCases
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures/)
         expect(File.exist?('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')).to be(true)
-        output_rd = read_spec_file('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_nosanitize_crash_sigsegv.c\:\d+/ )
+        # Without backtraces the whole executable crashed, so every case fails as a crash at its own line
+        results = yaml_wrapper_for_test.load('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')
+        crashed = results[:failures].find { |failure| failure[:test] == 'test_add_numbers_will_fail' }
+        expect(crashed).to include(message: 'Test executable crashed')
+        expect(crashed[:line]).to be > 0
       end
     end
   end
