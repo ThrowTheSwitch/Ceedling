@@ -271,7 +271,7 @@ class Valgrind < Plugin
       # A silent skip here reads exactly like a clean result. It is not one. The
       # memory error status of this test is unknown.
       msg = "Valgrind wrote no report for #{test_name} at #{path}. Memory error status is unknown."
-      @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::WARNING )
+      @loginator.log( msg, Verbosity::COMPLAIN )
       return nil
     end
 

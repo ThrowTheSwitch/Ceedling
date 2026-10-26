@@ -220,7 +220,7 @@ class Bullseye < Plugin
       end
 
       header = "Untested source files not in the coverage report (:untested_sources is :list):"
-      @loginator.log_list( untested_sources.sort, header, Verbosity::COMPLAIN, LogLabels::WARNING )
+      @loginator.log_list( untested_sources.sort, header, Verbosity::COMPLAIN )
 
     when BULLSEYE_UNTESTED_SOURCES_COMPILE
       untested_sources = collect_untested_sources( sources )

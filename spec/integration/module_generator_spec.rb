@@ -249,7 +249,7 @@ describe 'Module Generator plugin (integration)' do
         File.write( 'src/old/a_file.c', '' )
         plugin = plugin_for( config )
         loginator = plugin.instance_variable_get( :@ceedling )[:loginator]
-        expect(loginator).to receive(:log).with( /`src\/a_file.c`.*`src\/old\/a_file.c`/, anything, anything )
+        expect(loginator).to receive(:log).with( /`src\/a_file.c`.*`src\/old\/a_file.c`/, Verbosity::COMPLAIN )
 
         capture_stdout { plugin.create( ModuleGeneratorRequest.new( name: 'a_file' ) ) }
 

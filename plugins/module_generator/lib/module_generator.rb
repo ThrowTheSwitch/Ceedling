@@ -110,7 +110,7 @@ class ModuleGenerator < Plugin
 
     @ceedling[:loginator].log(
       'Module Generator :update_svn is deprecated and ignored. Add generated files to source control with your own tools.',
-      Verbosity::COMPLAIN, LogLabels::WARNING
+      Verbosity::COMPLAIN
     )
   end
 
@@ -119,7 +119,7 @@ class ModuleGenerator < Plugin
     project.same_named( files.map { |file| file[:path].to_s } ).each do |planned, existing|
       @ceedling[:loginator].log(
         "Module file `#{planned}` shares its name with #{existing.map { |path| "`#{path}`" }.join( ', ' )}.",
-        Verbosity::COMPLAIN, LogLabels::WARNING
+        Verbosity::COMPLAIN
       )
     end
   end
@@ -133,7 +133,7 @@ class ModuleGenerator < Plugin
       @ceedling[:loginator].log(
         "Generated test `#{path}` is wrapped in `##{options.test_guard} #{define}`, but its build does not " \
         "define #{define}. Add it under :defines ↳ :test, or the test compiles to nothing.",
-        Verbosity::COMPLAIN, LogLabels::WARNING
+        Verbosity::COMPLAIN
       )
     end
   end

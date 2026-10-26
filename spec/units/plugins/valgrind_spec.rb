@@ -466,7 +466,7 @@ describe Valgrind do
 
     # A silent skip reads exactly like a clean result. It is not one.
     it 'warns and records nothing when no report was written' do
-      expect(loginator).to receive(:log).with(/wrote no report for test_thing/, anything, anything)
+      expect(loginator).to receive(:log).with(/wrote no report for test_thing/, Verbosity::COMPLAIN)
 
       valgrind = execute({}, '', exists: false)
 
