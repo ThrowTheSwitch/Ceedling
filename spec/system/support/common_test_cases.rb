@@ -188,8 +188,8 @@ module CommonSystemTestCases
 
         # Windows' Installer Detection reads a manifest beside each test executable
         if windows
-          manifests = Dir.glob('build/test/out/test_example_file_success/*.manifest')
-          expect(manifests).to eq(['build/test/out/test_example_file_success/test_example_file_success.exe.manifest'])
+          manifests = Dir.glob('build/test/out/test/test_example_file_success/*.manifest')
+          expect(manifests).to eq(['build/test/out/test/test_example_file_success/test_example_file_success.exe.manifest'])
         end
       end
     end
@@ -727,7 +727,7 @@ module CommonSystemTestCases
         expect(output).to match(/PASSED:\s+\d/)
         expect(output).to match(/FAILED:\s+\d/)
         expect(output).to match(/IGNORED:\s+\d/)
-        expect(File.exist?("build/artifacts/test/test_example_file_verbose.raw.log")).to eq true
+        expect(File.exist?("build/artifacts/test/test/test_example_file_verbose.raw.log")).to eq true
       end
     end
   end
@@ -880,7 +880,6 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(!File.exist?('./build/test/results/test_add.fail'))
       end
     end
   end
@@ -901,9 +900,12 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
-        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_nosanitize_crash_sigsegv.c\:\d+/ )
+        expect(File.exist?('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        # Without backtraces the whole executable crashed, so every case fails as a crash at its own line
+        results = yaml_wrapper_for_test.load('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')
+        crashed = results[:failures].find { |failure| failure[:test] == 'test_add_numbers_will_fail' }
+        expect(crashed).to include(message: 'Test executable crashed')
+        expect(crashed[:line]).to be > 0
       end
     end
   end
@@ -924,15 +926,15 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
-        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
+        expect(File.exist?('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
-        log_path = './build/logs/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
@@ -955,15 +957,15 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
-        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
+        expect(File.exist?('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
-        log_path = './build/logs/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
@@ -986,15 +988,15 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/test/results/test_nosanitize_crash_sigsegv.fail')).to be(true)
-        output_rd = read_spec_file('./build/test/results/test_nosanitize_crash_sigsegv.fail')
+        expect(File.exist?('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        output_rd = read_spec_file('./build/test/results/test/test_nosanitize_crash_sigsegv.fail')
         expect(output_rd).to match(/Test case crashed/)
         expect(output_rd).to match(/SIGSEGV/i)
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
         expect(output).to match(/IGNORED:\s+0/)
-        log_path = './build/logs/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
         expect(output).to match(/test_add_numbers_will_fail\.gdb\.log/)
@@ -1021,7 +1023,7 @@ module CommonSystemTestCases
         expect(output).to match(/Unit test failures/)
         expect(output).to match(/SIGABRT/i)
         expect(output).to match(/Assertion/i)
-        log_path = './build/logs/test/test_nosanitize_crash_assert/test_add_numbers_triggers_assert.gdb.log'
+        log_path = './build/logs/test/test/test_nosanitize_crash_assert/test_add_numbers_triggers_assert.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         # Windwos gdb output for an assertion failure can be quite different from Linux.
         # Windows gdb reports do not seem to cite the signal "SIGABRT" and may be quite brief,
@@ -1116,7 +1118,7 @@ module CommonSystemTestCases
         expect(output).to match(/FAILED:\s+1/)
         expect(output).to match(/IGNORED:\s+0/)
 
-        result_file = './build/test/results/test_nosanitize_crash_sigsegv_with_param.fail'
+        result_file = './build/test/results/test/test_nosanitize_crash_sigsegv_with_param.fail'
         expect(File.exist?(result_file)).to be(true)
         results = yaml_wrapper_for_test.load(result_file)
 
@@ -1158,7 +1160,7 @@ module CommonSystemTestCases
         expect(output).to match(/FAILED:\s+1/)
         expect(output).to match(/IGNORED:\s+0/)
 
-        result_file = './build/test/results/test_nosanitize_crash_sigsegv_with_param.fail'
+        result_file = './build/test/results/test/test_nosanitize_crash_sigsegv_with_param.fail'
         expect(File.exist?(result_file)).to be(true)
         results = yaml_wrapper_for_test.load(result_file)
 
@@ -1174,7 +1176,7 @@ module CommonSystemTestCases
           'test_difference_between_numbers_is_correct(0, 0, 0)'
         )
 
-        log_path = './build/logs/test/test_nosanitize_crash_sigsegv_with_param/test_add_numbers_will_fail.gdb.log'
+        log_path = './build/logs/test/test/test_nosanitize_crash_sigsegv_with_param/test_add_numbers_will_fail.gdb.log'
         expect(File.exist?(log_path)).to be(true)
         expect(read_spec_file(log_path)).to match(/SIGSEGV|Segmentation fault/i)
       end

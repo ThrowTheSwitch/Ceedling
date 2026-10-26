@@ -50,6 +50,7 @@ describe 'Partial module resolution (integration)' do
     allow(@configurator).to receive(:extension_source).and_return( FilenameExtension.new('.c') )
     allow(@configurator).to receive(:collection_all_headers).and_return( RESOLUTION_HEADERS )
     allow(@configurator).to receive(:collection_all_source).and_return( RESOLUTION_SOURCES )
+    allow(@configurator).to receive(:collection_all_tests).and_return( [] )
 
     @finder = FileFinder.new({
       :configurator      => @configurator,

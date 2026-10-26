@@ -156,9 +156,25 @@ describe TestFilePreprocessinator do
     it "validates a test's TEST_SOURCE_FILE() entries through the resolver, regardless of staleness" do
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@test_source_file_directive_resolver).to receive(:validate!).with( test: 'a_test', filepath: 'test/TestFoo.c' )
+      expect(@test_source_file_directive_resolver).to receive(:validate!).with( test: 'a_test', test_filepath: 'test/TestFoo.c', context: :test )
 
       @preprocessinator_stage.preprocess( @state )
+    end
+
+    # Each test checks its own entries, not every test's
+    it "validates each test's entries once, under that test's own name" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      others = %w[b_test c_test].to_h do |name|
+        [name.to_sym, @testable.dup.tap { |testable| testable.name = name; testable.filepath = "test/#{name}.c" }]
+      end
+      @state.testables.merge!( others )
+
+      checked = []
+      allow(@test_source_file_directive_resolver).to receive(:validate!) { |test:, test_filepath:, context:| checked << [test, test_filepath, context] }
+
+      @preprocessinator_stage.preprocess( @state )
+
+      expect(checked).to contain_exactly( ['a_test', 'test/TestFoo.c', :test], ['b_test', 'test/b_test.c', :test], ['c_test', 'test/c_test.c', :test] )
     end
   end
 

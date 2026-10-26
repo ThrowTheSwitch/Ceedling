@@ -32,7 +32,7 @@ The plugin provides two invocation modes mirroring standard `test:` tasks.
 
 - **Whole test suite**: By running `ceedling valgrind:all`, all test
   executables are built and then each is run under Valgrind. A separate log
-  file is produced for each test executable in `build/artifacts/valgrind/`.
+  file is produced for each test executable beneath `build/artifacts/valgrind/`.
 - **Single test file**: By running `ceedling valgrind:<filename>`, a single
   test executable is built and run under Valgrind, producing one log file.
 
@@ -229,11 +229,14 @@ beside it:
 build/artifacts/valgrind/<test_name>.xml
 ```
 
-For example, running `ceedling valgrind:test_my_module.c` produces:
+A [test’s name][test-names] is its path from your project’s root. For example,
+running `ceedling valgrind:test/test_my_module.c` produces:
 
 ```
-build/artifacts/valgrind/test_my_module.log
+build/artifacts/valgrind/test/test_my_module.log
 ```
+
+[test-names]: ../testing-guide/conventions.md#test-names-build-output
 
 These log files contain the full Valgrind Memcheck output, including any
 detected memory errors, leak summaries, and (with `--track-origins=yes`)
@@ -263,7 +266,7 @@ report. It replaces Ceedling’s generic crash notice:
 ```
 ☠️ ERROR: Test executable `test_nosanitize_crash_sigsegv.out` terminated with Valgrind memory errors.
 > Invalid read of size 4 at test_nosanitize_crash_sigsegv.c:32
-> Boom log: build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log
+> Boom log: build/artifacts/valgrind/test/test_nosanitize_crash_sigsegv.log
 
 VALGRIND: FAILED TEST SUMMARY
 [test/test_nosanitize_crash_sigsegv.c]
@@ -289,14 +292,14 @@ line. Only the test failure fails the build.
 A test that completes despite memory errors logs one line as it runs:
 
 ```
-🪲 ERROR: Valgrind detected 2 memory errors in test_example ➡️ see build/artifacts/valgrind/test_example.log
+🪲 ERROR: Valgrind detected 2 memory errors in test/test_example ➡️ see build/artifacts/valgrind/test/test_example.log
 ```
 
 A test whose report is missing logs a warning, since its memory error status
 is unknown:
 
 ```
-⚠️ WARNING: Valgrind wrote no report for test_example at build/artifacts/valgrind/test_example.log. Memory error status is unknown.
+⚠️ WARNING: Valgrind wrote no report for test/test_example at build/artifacts/valgrind/test/test_example.log. Memory error status is unknown.
 ```
 
 ## Interpreting results
@@ -304,7 +307,7 @@ is unknown:
 To review the log for a specific test:
 
 ```shell
-cat build/artifacts/valgrind/test_my_module.log
+cat build/artifacts/valgrind/test/test_my_module.log
 ```
 
 Common Valgrind findings include:

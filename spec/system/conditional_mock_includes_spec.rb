@@ -128,7 +128,7 @@ ceedling_system_tests do
 
       # The runner initializes and verifies the newly enabled module's mock
       in_project do
-        expect(File.read( 'build/test/runners/test_Case_02_runner.c' )).to include( 'mock_MyModulePart2' )
+        expect(File.read( 'build/test/runners/test/test_Case_02_runner.c' )).to include( 'mock_MyModulePart2' )
       end
     end
 

@@ -242,6 +242,28 @@ describe 'DependencyTracker core tracking (integration)' do
     end
   end
 
+  # Staleness checks only the dependencies registered this build, so one dropped from the list
+  # leaves the rest as they were. A link registers the list itself as meta, which a shorter list
+  # changes, for when a source leaves the build.
+  it 'is stale when a dependency drops out of a list registered as meta' do
+    in_temp_dir do |dir|
+      store_path = File.join(dir, '.dep_cache.json')
+      kept       = write_fixture( File.join(dir, 'kept.o'), 'kept object' )
+      dropped    = write_fixture( File.join(dir, 'dropped.o'), 'dropped object' )
+      listed     = write_fixture( File.join(dir, 'listed.out'), 'executable bytes' )
+
+      first_run = build_dependency_tracker( store_path: store_path )
+      first_run.register( listed, files: [kept, dropped], meta: { objects: [kept, dropped] } )
+      first_run.mark_fresh( listed )
+      first_run.flush
+
+      second_run = build_dependency_tracker( store_path: store_path )
+      second_run.register( listed, files: [kept], meta: { objects: [kept] } )
+
+      expect( second_run.stale?( listed ) ).to be(true)
+    end
+  end
+
   # A delta build skips running an unchanged test executable and reports its cached results.
   # An executable linked with command line arguments enabled is identical with or without a
   # test case filter, so the fixture's own metadata must carry the filter (GH #1360).

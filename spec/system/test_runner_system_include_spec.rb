@@ -55,7 +55,7 @@ ceedling_system_tests do
         # The generated runner is what actually failed to compile in the reported
         # issue -- assert on its content directly rather than just overall build
         # success, since only the runner (not the test file itself) was affected.
-        runner_path = Dir.glob('build/test/runners/*_runner.c').first
+        runner_path = Dir.glob('build/test/runners/**/*_runner.c').first
         expect(runner_path).not_to be_nil
 
         runner_contents = read_spec_file(runner_path)

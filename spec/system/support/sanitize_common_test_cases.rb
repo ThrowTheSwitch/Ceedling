@@ -33,7 +33,7 @@ module SanitizeCommonTestCases
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/SANITIZE: .*OVERALL TEST SUMMARY/)
         expect(output).not_to match(/Sanitizers found/)
-        expect(Dir.glob('build/artifacts/sanitize/sanitize/*.log')).to be_empty
+        expect(Dir.glob('build/artifacts/sanitize/sanitize/**/*.log')).to be_empty
       end
     end
   end
@@ -68,7 +68,7 @@ module SanitizeCommonTestCases
         expect(@c.last_exit_status).to eq(1)
         expect(output).to match(/test_writes_past_its_buffer.*\n.*AddressSanitizer heap-buffer-overflow at \S*test_nosanitize_heap_buffer_overflow\.c:\d+/)
         expect(output).to match(/Sanitizers found 1 problem in 1 test/)
-        expect(read_spec_file('build/artifacts/sanitize/sanitize/test_nosanitize_heap_buffer_overflow.log')).to match(/ERROR: AddressSanitizer: heap-buffer-overflow/)
+        expect(read_spec_file('build/artifacts/sanitize/sanitize/test/test_nosanitize_heap_buffer_overflow.log')).to match(/ERROR: AddressSanitizer: heap-buffer-overflow/)
       end
     end
   end

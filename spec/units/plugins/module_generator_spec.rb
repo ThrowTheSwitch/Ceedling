@@ -105,7 +105,7 @@ describe ModuleGenerator do
     config[:module_generator_update_svn] = true
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:generate)
-    expect(loginator).to receive(:log).with( /:update_svn.*deprecated/, Verbosity::COMPLAIN, LogLabels::WARNING )
+    expect(loginator).to receive(:log).with( /:update_svn.*deprecated/, Verbosity::COMPLAIN )
 
     plugin.create( request( 'Lair' ) )
   end
@@ -127,7 +127,7 @@ describe ModuleGenerator do
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:files_to_operate_on).with( 'Lair' ).and_return( [{ path: Pathname.new( 'src/Lair.c' ) }, planned_test( 'test/test_Lair.c' )] )
     allow(unity).to receive(:generate)
-    expect(loginator).to receive(:log).with( /`test\/test_Lair.c`.*`#ifdef TEST`.*:defines/m, Verbosity::COMPLAIN, LogLabels::WARNING ).once
+    expect(loginator).to receive(:log).with( /`test\/test_Lair.c`.*`#ifdef TEST`.*:defines/m, Verbosity::COMPLAIN ).once
 
     plugin.create( request( 'Lair' ) )
   end
@@ -138,7 +138,7 @@ describe ModuleGenerator do
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:files_to_operate_on).and_return( [planned_test( 'test/test_Lair.c' )] )
     allow(unity).to receive(:generate)
-    expect(loginator).to receive(:log).with( /`#if TEST`/, Verbosity::COMPLAIN, LogLabels::WARNING )
+    expect(loginator).to receive(:log).with( /`#if TEST`/, Verbosity::COMPLAIN )
 
     plugin.create( request( 'Lair' ) )
   end
@@ -156,7 +156,7 @@ describe ModuleGenerator do
     config.merge!( collection_all_source: ['lib/Lair.c'], collection_all_headers: [], collection_all_tests: [] )
     allow(ModuleGeneratorUnity).to receive(:new).and_return( unity )
     allow(unity).to receive(:files_to_operate_on).with( 'Lair' ).and_return( [{ path: Pathname.new( 'src/Lair.c' ) }] )
-    expect(loginator).to receive(:log).with( /`src\/Lair.c`.*`lib\/Lair.c`/, Verbosity::COMPLAIN, LogLabels::WARNING )
+    expect(loginator).to receive(:log).with( /`src\/Lair.c`.*`lib\/Lair.c`/, Verbosity::COMPLAIN )
     expect(unity).to receive(:generate).with( 'Lair' )
 
     plugin.create( request( 'Lair' ) )
@@ -192,7 +192,7 @@ describe ModuleGenerator do
       resolved_defines['test/test_widget.c'] = []
       allow(file_wrapper).to receive(:exist?).with( 'test/test_widget.c' ).and_return( false )
       allow(file_wrapper).to receive(:write)
-      expect(loginator).to receive(:log).with( /`test\/test_widget.c`.*`#ifdef TEST`/m, Verbosity::COMPLAIN, LogLabels::WARNING )
+      expect(loginator).to receive(:log).with( /`test\/test_widget.c`.*`#ifdef TEST`/m, Verbosity::COMPLAIN )
 
       plugin.test( request( 'widget' ) )
     end

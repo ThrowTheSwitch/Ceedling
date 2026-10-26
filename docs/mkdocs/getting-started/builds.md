@@ -25,6 +25,8 @@ Where a C file change ripples out only along that file’s dependency chain, a s
 
 ## Delta build special cases
 
+An upgrade that changes where Ceedling organizes build output rebuilds everything once. The first build after upgrading logs a warning saying so. Run `ceedling clobber` to remove the output left in the old layout, which coverage reports in particular would otherwise still read.
+
 Add the [`--force-test-rerun`](command-line.md#ceedling-build-tasks) flag to test build tasks to bypass the checks for only running changed test fixture executables. This command line flag forces those executables to run and produce fresh test results.
 
 When [Unity’s test shuffling feature](../configuration/reference/unity.md#shuffle_tests) is enabled, delta builds automatically rerun test fixture executables to randomize test case order regardless of change or lack thereof in a test’s dependency tree. That is, since the feature requires test executables to run in order to shuffle test case order, effectively, delta builds are disabled for test fixture executables.

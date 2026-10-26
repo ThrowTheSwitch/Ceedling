@@ -124,7 +124,7 @@ describe TestSourceFileDirectiveResolver do
         .with( filepath: 'foo.c', complain: :ignore, context: TEST_SYM ).and_return( 'src/foo.c' )
 
       expect {
-        @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+        @resolver.validate!( test: 'TestFoo', test_filepath: 'test/TestFoo.c', context: TEST_SYM )
       }.to_not raise_error
     end
 
@@ -135,7 +135,7 @@ describe TestSourceFileDirectiveResolver do
         .with( filepath: 'foo.c', complain: :ignore, context: TEST_SYM ).and_return( nil )
 
       expect {
-        @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+        @resolver.validate!( test: 'TestFoo', test_filepath: 'test/TestFoo.c', context: TEST_SYM )
       }.to raise_error( CeedlingException, /'foo\.c'.*cannot be found in the source file collection/ )
     end
 
@@ -144,7 +144,7 @@ describe TestSourceFileDirectiveResolver do
         .with( 'test/TestFoo.c' ).and_return( ['-:foo.txt'] )
 
       expect {
-        @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+        @resolver.validate!( test: 'TestFoo', test_filepath: 'test/TestFoo.c', context: TEST_SYM )
       }.to raise_error( CeedlingException, /'foo\.txt'.*not a .*\.c.*source file/ )
     end
 
@@ -155,8 +155,39 @@ describe TestSourceFileDirectiveResolver do
         .with( filepath: 'foo.c', complain: :ignore, context: TEST_SYM ).and_return( nil )
 
       expect {
-        @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+        @resolver.validate!( test: 'TestFoo', test_filepath: 'test/TestFoo.c', context: TEST_SYM )
       }.to raise_error( CeedlingException, /^File 'foo\.c'/ )
+    end
+
+    # The check and the build find an entry the same way, so an entry the build uses passes
+    it "anchors a .. entry to the test's own directory, as the build does" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/unit/TestFoo.c' ).and_return( ['../common/extra.c'] )
+      expect(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'test/common/extra.c', complain: :ignore, context: TEST_SYM ).and_return( 'test/common/extra.c' )
+
+      expect {
+        @resolver.validate!( test: 'TestFoo', test_filepath: 'test/unit/TestFoo.c', context: TEST_SYM )
+      }.to_not raise_error
+    end
+
+    it "looks entries up in the build's own context" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/TestFoo.c' ).and_return( ['foo.c'] )
+      expect(@file_finder).to receive(:find_build_input_file)
+        .with( filepath: 'foo.c', complain: :ignore, context: :gcov ).and_return( 'src/foo.c' )
+
+      @resolver.validate!( test: 'TestFoo', test_filepath: 'test/TestFoo.c', context: :gcov )
+    end
+
+    it "names the test it was given in its error" do
+      allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
+        .with( 'test/m13/test_m13.c' ).and_return( ['mod_13_typo.c'] )
+      allow(@file_finder).to receive(:find_build_input_file).and_return( nil )
+
+      expect {
+        @resolver.validate!( test: 'test/m13/test_m13', test_filepath: 'test/m13/test_m13.c', context: TEST_SYM )
+      }.to raise_error( CeedlingException, %r{'mod_13_typo\.c' specified with TEST_SOURCE_FILE\(\) in test/m13/test_m13 cannot be found} )
     end
 
     context "when assembly support is enabled" do
@@ -172,7 +203,7 @@ describe TestSourceFileDirectiveResolver do
           .with( filepath: 'foo.asm', complain: :ignore, context: TEST_SYM ).and_return( 'src/foo.asm' )
 
         expect {
-          @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+          @resolver.validate!( test: 'TestFoo', test_filepath: 'test/TestFoo.c', context: TEST_SYM )
         }.to_not raise_error
       end
 
@@ -183,7 +214,7 @@ describe TestSourceFileDirectiveResolver do
           .with( filepath: 'foo.c', complain: :ignore, context: TEST_SYM ).and_return( 'src/foo.c' )
 
         expect {
-          @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+          @resolver.validate!( test: 'TestFoo', test_filepath: 'test/TestFoo.c', context: TEST_SYM )
         }.to_not raise_error
       end
 
@@ -192,7 +223,7 @@ describe TestSourceFileDirectiveResolver do
           .with( 'test/TestFoo.c' ).and_return( ['foo.txt'] )
 
         expect {
-          @resolver.validate!( test: 'TestFoo', filepath: 'test/TestFoo.c' )
+          @resolver.validate!( test: 'TestFoo', test_filepath: 'test/TestFoo.c', context: TEST_SYM )
         }.to raise_error( CeedlingException, /not a \.c or \.asm source file/ )
       end
     end

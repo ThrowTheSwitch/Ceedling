@@ -50,7 +50,7 @@ class TestFilePreprocessinator
       state.lock.synchronize { skipped += 1 } unless stale
 
       stale ? scan_source_directives( testable ) : recall_source_directives( testable )
-      state.testables.each_value { |each| @test_source_file_directive_resolver.validate!( test: testable.name, filepath: each.filepath ) }
+      @test_source_file_directive_resolver.validate!( test: testable.name, test_filepath: testable.filepath, context: state.context )
     end
 
     log_skip_summary( task: "test file preprocessing", count: skipped, noun: "test files" )

@@ -152,7 +152,7 @@ class Valgrind < Plugin
 
     test_name = arg_hash[:test_name]
     path      = report_filepath( test_name )
-    return unless @file_wrapper.exist?( path )
+    return unless report_written?( path )
 
     cause = ValgrindReport.first_error( @file_wrapper.read( path ), xml: xml_report_enabled? )
     return if cause.nil?
@@ -230,7 +230,14 @@ class Valgrind < Plugin
     return xml_report_enabled? ? xml_filepath( test_name ) : log_filepath( test_name )
   end
 
-  # Assembles the full Valgrind argument list for one test.
+  # Valgrind wrote the report moments ago in another process, so a miss is retried before
+  # it is believed
+  def report_written?(path)
+    return @file_wrapper.exist_with_retry?( path )
+  end
+
+  # Assembles the full Valgrind argument list for one test, making the directories its
+  # reports go in. A nested test's reports sit in subdirectories, and Valgrind makes none.
   #
   # Suppression files lead so a user's own :arguments entries can still override
   # anything they set. `${1}` is the test executable substitution token and is always
@@ -240,11 +247,11 @@ class Valgrind < Plugin
 
     arguments = Array( config[:valgrind_suppressions] ).map { |file| "--suppressions=\"#{file}\"" }
 
-    arguments << "--log-file=\"#{log_filepath( test_name )}\""
+    arguments << "--log-file=\"#{@file_wrapper.mkdir_for( log_filepath( test_name ) )}\""
 
     if xml_report_enabled?
       arguments << '--xml=yes'
-      arguments << "--xml-file=\"#{xml_filepath( test_name )}\""
+      arguments << "--xml-file=\"#{@file_wrapper.mkdir_for( xml_filepath( test_name ) )}\""
     end
 
     arguments += Array( config[:valgrind_arguments] )
@@ -260,11 +267,11 @@ class Valgrind < Plugin
   def count_errors(test_name)
     path = report_filepath( test_name )
 
-    unless @file_wrapper.exist?( path )
+    unless report_written?( path )
       # A silent skip here reads exactly like a clean result. It is not one. The
       # memory error status of this test is unknown.
       msg = "Valgrind wrote no report for #{test_name} at #{path}. Memory error status is unknown."
-      @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::WARNING )
+      @loginator.log( msg, Verbosity::COMPLAIN )
       return nil
     end
 

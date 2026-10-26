@@ -155,7 +155,13 @@ describe Generator do
 
     it 'has each simple backtrace rerun explained by the plugins' do
       run( use_backtrace: :simple )
-      expect(backtrace).to have_received(:do_simple).with( 'test_a.c', 'build/test_a.out', anything, [], context: :test, tool: :fixture, explain: kind_of(Proc) )
+      expect(backtrace).to have_received(:do_simple).with( 'test_a.c', 'build/test_a.out', anything, [], tool: :fixture, explain: kind_of(Proc) )
+    end
+
+    # GH #1364: same-named tests keep separate gdb logs
+    it 'places gdb backtraces by the test name' do
+      run( use_backtrace: :gdb )
+      expect(backtrace).to have_received(:do_gdb).with( 'test_a.c', 'build/test_a.out', anything, [], context: :test, test_name: 'test_a' )
     end
 
     # A tool that runs the reruns itself can't run under gdb

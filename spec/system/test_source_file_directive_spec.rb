@@ -122,6 +122,35 @@ ceedling_system_tests do
     end
 
     # =========================================================================
+    describe "A project where one of several tests misspells a TEST_SOURCE_FILE() entry" do
+    # =========================================================================
+
+      # A misspelled entry stops the build naming its own test, with test preprocessing on or off
+      before do
+        copy_duplicate_calc_sources
+        in_project do
+          copy_fixture("test_source_file_duplicate_basenames/test_calc_alpha.c", 'test')
+          copy_fixture("test_source_file_duplicate_basenames/test_calc_beta.c", 'test')
+          copy_fixture("test_source_file_duplicate_basenames/test_calc_typo.c", 'test')
+        end
+      end
+
+      [:none, :tests].each do |preprocessing|
+        it "names the test with the misspelled entry, with test preprocessing #{preprocessing}" do
+          in_project do
+            @c.merge_project_yml_for_test({ :project => { :use_test_preprocessor => preprocessing } })
+
+            output = @c.ceedling_build_exec("test:all")
+            expect(@c.last_exit_status).not_to eq(0)
+            expect(output).to match(%r{'alpha/clac\.c' specified with TEST_SOURCE_FILE\(\) in test/test_calc_typo cannot be found})
+            expect(output).not_to match(/Undefined symbols|undefined reference/)
+          end
+        end
+      end
+
+    end
+
+    # =========================================================================
     describe "A project with two same-named, header-less sources, each identified by a disambiguating TEST_SOURCE_FILE() path" do
     # =========================================================================
 
@@ -165,8 +194,8 @@ ceedling_system_tests do
           # is untouched by the override), so its own NOTICE still fires -- but the
           # correctly-linked pass above already proves only beta/dup.c was ever compiled,
           # not both. A duplicate-symbol link error would have failed the build otherwise.
-          expect(File.exist?('build/test/out/test_dup_override/beta/dup.o')).to be true
-          expect(File.exist?('build/test/out/test_dup_override/alpha/dup.o')).to be false
+          expect(File.exist?('build/test/out/test/test_dup_override/beta/dup.o')).to be true
+          expect(File.exist?('build/test/out/test/test_dup_override/alpha/dup.o')).to be false
 
           # A second, distinct NOTICE -- from extract_sources's own override, not the
           # header-ambiguity NOTICE above -- names the winning TEST_SOURCE_FILE() entry
@@ -195,8 +224,8 @@ ceedling_system_tests do
           expect(output).to match(/TESTED:\s+1/)
           expect(output).to match(/PASSED:\s+1/)
 
-          expect(File.exist?('build/test/out/test_dup_subtractive/alpha/dup.o')).to be false
-          expect(File.exist?('build/test/out/test_dup_subtractive/gamma/dup_gamma.o')).to be true
+          expect(File.exist?('build/test/out/test/test_dup_subtractive/alpha/dup.o')).to be false
+          expect(File.exist?('build/test/out/test/test_dup_subtractive/gamma/dup_gamma.o')).to be true
 
           expect(output).to match(/TEST_SOURCE_FILE\(.*-:alpha[\/\\]dup\.c.*\)/)
           expect(output).to match(/removed/)
@@ -222,7 +251,7 @@ ceedling_system_tests do
           expect(output).to match(/TESTED:\s+1/)
           expect(output).to match(/PASSED:\s+1/)
 
-          expect(File.exist?('build/test/out/test_dup_subtractive_noop/alpha/dup.o')).to be true
+          expect(File.exist?('build/test/out/test/test_dup_subtractive_noop/alpha/dup.o')).to be true
 
           expect(output).to_not match(/TEST_SOURCE_FILE\(.*removed/)
         end

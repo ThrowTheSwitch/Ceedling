@@ -10,6 +10,29 @@ This changelog is complemented by three other documents:
 
 ---
 
+# [1.2.2] — Unreleased
+
+## 💪 Fixed
+
+- [#1364](https://github.com/ThrowTheSwitch/Ceedling/issues/1364) Fixed test builds stopping with “Ambiguous file reference” when a test file’s name ended another test file’s path, such as `test/test_calc.c` beside `test/unit/test_calc.c`. It stopped `test:all`, a test named by its full path, and plugin builds such as `gcov:all`. Each test is now properly [named by its path from the project root](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#test-names-build-output), and its build finds its own source by that name.
+- Fixed two test files sharing one build name, so that one silently replaced the other: tests under overlapping `:paths` ↳ `:test` roots (e.g. `test/**` and `test/unit/**`), the same layout under two roots, or a `:files` ↳ `:test` test outside every root. Since 1.2.0, the error above hid it.
+- Fixed a directory of tests named like a test beside it, such as `test/test_foo/` beside `test/test_foo.c`, making a mock both tests use ambiguous.
+- Fixed the [Valgrind plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/valgrind/) writing no report, and reporting a crash, for any test below its test root. The [Raw Output Log plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-raw-output-log/) failed to write such a test’s log.
+- Fixed [`:use_backtrace: :gdb`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/project/#use_backtrace) logs of same-named tests sharing one file, and every log collecting crashes from earlier builds. A crash summary pointed to a log whose first trace could be stale. Each test now has its own logs, and each holds only the latest crash.
+- Fixed [TeamCity](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/report-tests-teamcity-stdout/) naming the suites of same-named tests alike. A suite is now named by its test’s path, and escaped as TeamCity requires.
+- Fixed checking of [`TEST_SOURCE_FILE()`](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/build-directives/#test_source_file) entries:
+   - Each test now checks only its own entries, removing unnecessarily duplicated checks yielding a test build speedup.
+   - A misspelled entry now stops the build with an error naming its own test. Previously, the error could name another test, and with [`:use_test_preprocessor`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/project/#use_test_preprocessor) `:none` or `:mocks` the entry went unchecked (see [Breaking Changes](BreakingChanges.md)).
+   - An entry using `..` is no longer rejected with test preprocessing on.
+- A “Multiple files matched” notice now prints once a build, not once for every lookup that makes the same choice.
+- Fixed a [delta build](https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/builds/) keeping a test executable or release artifact after a source file left the build — deleted, excluded through `:files`, or moved outside `:paths` — while every other object was unchanged. A test kept passing on the removed code, even with `--force-test-rerun`, and a release artifact kept it. A link now rebuilds whenever its list of objects changes.
+
+## ⚠️ Changed
+
+- Each test’s build output, results, and logs now sit beneath [its path from the project root](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#test-names-build-output). `test/unit/test_calc.c`, once `unit/test_calc`, is now `test/unit/test_calc`, and a test at its root gains its root (e.g. `build/artifacts/valgrind/test/test_calc.log`). The first build after upgrading rebuilds everything once and logs a warning saying so. Run `ceedling clobber` to remove the output left in the old layout, which [coverage reports](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/gcov/) would otherwise still read. See [Breaking Changes](BreakingChanges.md).
+
+---
+
 # [1.2.1] — 2026-10-24
 
 ## 💪 Fixed

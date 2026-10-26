@@ -55,7 +55,9 @@ require 'ceedling/dependencies/dependency_hasher'
 # only when it knows a run's registrations were comprehensive.
 class DependencyCacheStore
 
-  CACHE_SCHEMA_VERSION = 1 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
+  # Cache keys are build paths, so a change to where a build puts its output changes the
+  # schema too. 2: per-test output is placed by the test's path from the project root.
+  CACHE_SCHEMA_VERSION = 2 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
 
   constructor :file_wrapper, :loginator
 
@@ -73,6 +75,7 @@ class DependencyCacheStore
     parsed = JSON.parse( raw )
 
     return degrade( store_path, "does not contain a JSON object" ) unless parsed.is_a?( Hash )
+    return upgrade( store_path ) if earlier_layout?( parsed['schema_version'] )
     return degrade( store_path, "has an incompatible or missing schema_version" ) unless parsed['schema_version'] == CACHE_SCHEMA_VERSION
     return degrade( store_path, "has an incompatible or missing hash_algorithm" ) unless parsed['hash_algorithm'] == DependencyHasher::HASH_ALGORITHM
     return degrade( store_path, "is missing its entries object" ) unless parsed['entries'].is_a?( Hash )
@@ -83,7 +86,7 @@ class DependencyCacheStore
       if !valid_entry?( entry )
         @loginator.log(
           "Dependency cache entry for '#{target}' in #{store_path} is malformed -- dropping just that entry.",
-          Verbosity::COMPLAIN, LogLabels::WARNING
+          Verbosity::COMPLAIN
         )
         pruned << target
       elsif !@file_wrapper.exist?( target )
@@ -136,7 +139,21 @@ class DependencyCacheStore
   def degrade(store_path, reason)
     @loginator.log(
       "Dependency cache #{store_path} #{reason} -- treating it as absent (full rebuild for tracked targets).",
-      Verbosity::COMPLAIN, LogLabels::WARNING
+      Verbosity::COMPLAIN
+    )
+    empty_store
+  end
+
+  def earlier_layout?(version)
+    return version.is_a?( Integer ) && version.between?( 1, CACHE_SCHEMA_VERSION - 1 )
+  end
+
+  # An earlier build layout leaves its output where this build no longer looks
+  def upgrade(store_path)
+    @loginator.log(
+      "Dependency cache #{store_path} comes from an earlier Ceedling build layout -- rebuilding everything once. " \
+      "Run `ceedling clobber` to remove any orphaned build output left in the old layout.",
+      Verbosity::COMPLAIN
     )
     empty_store
   end

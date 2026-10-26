@@ -287,10 +287,14 @@ class TestBuildExecutor
       link_flags = testable.link_flags
       tool, link_flags = resolve_link_tool( context: state.context, tool: @configurator.tools_test_linker, flags: link_flags, executable: testable.executable )
 
+      # Staleness checks only the objects registered here, so an object dropped from the link
+      # (its source deleted, excluded, or moved out of the configured paths) changes nothing
+      # they see. The object list as meta does change.
+      objects = testable.objects.to_a
       @dependinator.register(
         testable.executable,
-        files: testable.objects,
-        meta:  { flags: link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [tool] }
+        files: objects,
+        meta:  { flags: link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [tool], objects: objects }
       )
       stale = @dependinator.stale?( testable.executable )
 
@@ -380,11 +384,9 @@ class TestBuildExecutor
 
     @batchinator.exec(workload: :test, things: state.testables) do |_, testable|
       begin
-        # `paths[:results]` is only per-test-unique for a test mirrored into its own
-        # subdirectory -- a test with no mirrored subdir shares that directory with
-        # every other such test, so the marker's own filename (not just its directory)
-        # must be test-specific too, matching clean_test_results' own `test + '.*'`
-        # naming below.
+        # `paths[:results]` is the directory of the test's name, which every test beside
+        # it shares, so the marker's own filename must be test-specific too, matching
+        # clean_test_results' own `test + '.*'` naming below.
         fixture_target = File.join( testable.paths[:results], "#{File.basename( testable.name )}.fixture_run" )
 
         fixture_tool = resolve_fixture_tool( context: state.context, tool: @configurator.tools_test_fixture, test_name: testable.name, target: fixture_target )

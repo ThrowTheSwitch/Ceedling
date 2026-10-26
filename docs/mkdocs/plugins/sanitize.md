@@ -280,13 +280,13 @@ A sanitizer’s finding is reported where you would look for a test failure.
   ```
   ☠️ ERROR: Test executable `test_buffer.out` was stopped by a sanitizer finding.
   > AddressSanitizer heap-buffer-overflow at test/test_buffer.c:21
-  > Boom log: build/artifacts/sanitize/sanitize/test_buffer.log
+  > Boom log: build/artifacts/sanitize/sanitize/test/test_buffer.log
   ```
 
   The test’s failure message carries the same on one line:
 
   ```
-  AddressSanitizer heap-buffer-overflow at test/test_buffer.c:21 (Boom log: build/artifacts/sanitize/sanitize/test_buffer.log)
+  AddressSanitizer heap-buffer-overflow at test/test_buffer.c:21 (Boom log: build/artifacts/sanitize/sanitize/test/test_buffer.log)
   ```
 
 - **A leak** is a finding, not a test failure. Leaks are found as a test
@@ -312,12 +312,12 @@ A halted test, with `:reports` set to `[:text, :json, :sarif]`:
 ```
 ☠️ ERROR: Test executable `test_nosanitize_heap_buffer_overflow.out` was stopped by a sanitizer finding.
 > AddressSanitizer heap-buffer-overflow at test/test_nosanitize_heap_buffer_overflow.c:29
-> Boom log: build/artifacts/sanitize/sanitize/test_nosanitize_heap_buffer_overflow.log
+> Boom log: build/artifacts/sanitize/sanitize/test/test_nosanitize_heap_buffer_overflow.log
 
 SANITIZE: FAILED TEST SUMMARY
 [test/test_nosanitize_heap_buffer_overflow.c]
   Test: test_writes_past_its_buffer
-  At line (27): "AddressSanitizer heap-buffer-overflow at test/test_nosanitize_heap_buffer_overflow.c:29 (Boom log: build/artifacts/sanitize/sanitize/test_nosanitize_heap_buffer_overflow.log)"
+  At line (27): "AddressSanitizer heap-buffer-overflow at test/test_nosanitize_heap_buffer_overflow.c:29 (Boom log: build/artifacts/sanitize/sanitize/test/test_nosanitize_heap_buffer_overflow.log)"
 
 SANITIZE: ❌ OVERALL TEST SUMMARY
 TESTED:  2
@@ -334,7 +334,7 @@ A leak. Every test passes, and the leak alone fails the build. The test’s
 own output section shows the sanitizer’s report:
 
 ```
-🪲 ERROR: test_nosanitize_leak: LeakSanitizer memory-leak at test/test_nosanitize_leak.c:32 ➡️ see build/artifacts/sanitize/sanitize/test_nosanitize_leak.log
+🪲 ERROR: test/test_nosanitize_leak: LeakSanitizer memory-leak at test/test_nosanitize_leak.c:32 ➡️ see build/artifacts/sanitize/sanitize/test/test_nosanitize_leak.log
 
 SANITIZE: TEST OUTPUT
 [test/test_nosanitize_leak.c]
@@ -375,11 +375,14 @@ already includes the stack.
 
 ## Artifacts
 
-Each test with findings has a log of its sanitizer reports:
+Each test with findings has a log of its sanitizer reports, placed by the
+[test’s name][test-names], its path from your project’s root:
 
 ```
 build/artifacts/sanitize/sanitize/<test_name>.log
 ```
+
+[test-names]: ../testing-guide/conventions.md#test-names-build-output
 
 The configured reports are written beside the logs:
 

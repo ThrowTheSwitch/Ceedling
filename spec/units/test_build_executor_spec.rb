@@ -1059,8 +1059,22 @@ describe TestBuildExecutor do
       expect(@dependinator).to receive(:register).with(
         'build/a_test.out',
         files: ['build/foo.o'],
-        meta:  { flags: [], lib_args: [], lib_paths: [], tools: [@tools_test_linker] }
+        meta:  { flags: [], lib_args: [], lib_paths: [], tools: [@tools_test_linker], objects: ['build/foo.o'] }
       )
+
+      @executor.stage_build_executables( @state )
+    end
+
+    # Staleness checks only the objects registered this build, so an object dropped from the
+    # link changes nothing they see. The list itself, as meta, does change (a source deleted,
+    # excluded, or moved out of the configured paths).
+    it "registers the objects it links as meta, as a plain list" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      @testable.objects = FileList.new.tap { |list| list << 'build/foo.o' }
+
+      expect(@dependinator).to receive(:register).with( 'build/a_test.out', files: ['build/foo.o'], meta: hash_including( objects: ['build/foo.o'] ) ) do |_, files:, meta:|
+        expect(meta[:objects]).to be_an_instance_of( Array )
+      end
 
       @executor.stage_build_executables( @state )
     end

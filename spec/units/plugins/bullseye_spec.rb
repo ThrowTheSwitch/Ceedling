@@ -861,7 +861,7 @@ describe Bullseye do
         bullseye = build_process_bullseye({ bullseye_untested_sources: BULLSEYE_UNTESTED_SOURCES_LIST })
 
         expect(loginator).to receive(:log_list)
-          .with(['src/a.c', 'src/b.c'], kind_of(String), Verbosity::COMPLAIN, LogLabels::WARNING)
+          .with(['src/a.c', 'src/b.c'], kind_of(String), Verbosity::COMPLAIN)
         expect(generator).to_not receive(:generate_object_file_c)
 
         bullseye.process_untested_sources(sources: ['src/b.c', 'src/a.c'])

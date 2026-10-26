@@ -41,7 +41,7 @@ ceedling_system_tests do
         Dir.chdir "temp_sensor" do
           output = @c.ceedling_build_exec("gen:mocks")
 
-          expect(output).to match(/Generating mock for adc\/TestAdcModel::TaskScheduler\.h/)
+          expect(output).to match(/Generating mock for test\/adc\/TestAdcModel::TaskScheduler\.h/)
           expect(output).to_not match(/Generating runner for/)
           expect(output).to_not match(/^Compiling /)
           expect(output).to_not match(/^Linking /)
@@ -62,7 +62,7 @@ ceedling_system_tests do
         Dir.chdir "temp_sensor" do
           output = @c.ceedling_build_exec("gen:test_runner")
 
-          expect(output).to match(/Generating mock for adc\/TestAdcModel::TaskScheduler\.h/)
+          expect(output).to match(/Generating mock for test\/adc\/TestAdcModel::TaskScheduler\.h/)
           expect(output).to match(/Generating runner for TestAdcModel\.c/)
           expect(output).to_not match(/^Compiling /)
           expect(output).to_not match(/^Linking /)
@@ -80,7 +80,7 @@ ceedling_system_tests do
         Dir.chdir "temp_sensor" do
           output = @c.ceedling_build_exec("gen:mocks:TestAdcModel.c")
 
-          expect(output).to match(/Generating mock for adc\/TestAdcModel::TaskScheduler\.h/)
+          expect(output).to match(/Generating mock for test\/adc\/TestAdcModel::TaskScheduler\.h/)
           # TestAdcModel.c mocks TaskScheduler, TemperatureCalculator, and TemperatureFilter --
           # exactly its own 3 mocks, none belonging to any other test.
           expect(output.to_s.scan(/Generating mock for /).length).to eq(3)
@@ -101,7 +101,7 @@ ceedling_system_tests do
         Dir.chdir "temp_sensor" do
           output = @c.ceedling_build_exec("gen:test_runner:TestAdcModel.c")
 
-          expect(output).to match(/Generating mock for adc\/TestAdcModel::TaskScheduler\.h/)
+          expect(output).to match(/Generating mock for test\/adc\/TestAdcModel::TaskScheduler\.h/)
           # TestAdcModel.c mocks TaskScheduler, TemperatureCalculator, and TemperatureFilter --
           # exactly its own 3 mocks, none belonging to any other test.
           expect(output.to_s.scan(/Generating mock for /).length).to eq(3)

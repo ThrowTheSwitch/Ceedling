@@ -66,6 +66,9 @@ describe TestBuildSetup do
     allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
     allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
 
+    @test_source_file_directive_resolver = double( "TestSourceFileDirectiveResolver" )
+    allow(@test_source_file_directive_resolver).to receive(:validate!)
+
     @mock_locator = MockLocator.new(
       configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
     )
@@ -89,7 +92,8 @@ describe TestBuildSetup do
         :test_search_paths      => TestSearchPaths.new(
           configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
         ),
-        :mock_locator           => @mock_locator
+        :mock_locator           => @mock_locator,
+        :test_source_file_directive_resolver => @test_source_file_directive_resolver
       }
     )
 
@@ -119,15 +123,17 @@ describe TestBuildSetup do
       allow(@file_path_utils).to receive(:form_test_preprocess_files_directives_only_path).and_return( 'build/test/preprocess/directives/a_test' )
       allow(@file_path_utils).to receive(:form_test_preprocess_files_raw_directives_only_path).and_return( 'build/test/preprocess/raw/a_test' )
       allow(@file_path_utils).to receive(:form_test_preprocess_build_directives_path).and_return( 'build/test/preprocess/build_directives/a_test' )
+      allow(@file_path_utils).to receive(:form_test_name) { |filepath| filepath.to_s.ext( '' ).sub( '../', '_up_/' ) }
       allow(@file_wrapper).to receive(:mkdir)
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/TestFoo.c'] )
       allow(@configurator).to receive(:project_use_mocks).and_return( false )
       allow(@configurator).to receive(:project_use_partials).and_return( false )
       allow(@configurator).to receive(:project_use_test_preprocessor).and_return( :none )
     end
 
-    def prepare_state
+    def prepare_state(tests = ['test/TestFoo.c'])
       TestInvokerTypes::PipelineState.new(
-        :tests => ['test/TestFoo.c'], :testables => {}, :context => :test, :options => [], :lock => Mutex.new
+        :tests => tests, :testables => {}, :context => :test, :options => [], :lock => Mutex.new
       )
     end
 
@@ -136,9 +142,53 @@ describe TestBuildSetup do
 
       @setup.stage_prepare_build_paths( state )
 
-      testable = state.testables[:TestFoo]
+      testable = state.testables[:"test/TestFoo"]
       expect(testable.filepath).to eq( 'test/TestFoo.c' )
-      expect(testable.name).to eq( 'TestFoo' )
+      expect(testable.name).to eq( 'test/TestFoo' )
+    end
+
+    # GH #1364: same-named tests at a root and below it
+    it "keeps same-named tests apart by their names" do
+      tests = ['test/test_calc.c', 'test/unit/test_calc.c']
+      allow(@configurator).to receive(:collection_all_tests).and_return( tests )
+      state = prepare_state( tests )
+
+      @setup.stage_prepare_build_paths( state )
+
+      expect(state.testables.keys).to contain_exactly( :'test/test_calc', :'test/unit/test_calc' )
+      expect(state.testables.values.map(&:filepath)).to contain_exactly( *tests )
+    end
+
+    # Two configured source extensions let one stem name two test files
+    it "stops a build with two test files differing only in extension, naming both" do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_a.c', 'test/test_a.cpp'] )
+
+      expect { @setup.stage_prepare_build_paths( prepare_state( ['test/test_a.c'] ) ) }.to raise_error( CeedlingException ) { |error|
+        expect(error.message).to include( 'test/test_a.c', 'test/test_a.cpp', '`test/test_a`' )
+      }
+    end
+
+    context "when two tests map to one name" do
+      before(:each) do
+        allow(@configurator).to receive(:collection_all_tests).and_return( ['../x/test_a.c', '_up_/x/test_a.c', 'test/test_b.c'] )
+      end
+
+      it "stops before making any directory or testable, naming both files" do
+        state = prepare_state( ['_up_/x/test_a.c'] )
+
+        expect(@file_wrapper).to_not receive(:mkdir)
+        expect { @setup.stage_prepare_build_paths( state ) }.to raise_error( CeedlingException ) { |error|
+          expect(error.message).to include( '../x/test_a.c', '_up_/x/test_a.c', '`_up_/x/test_a`' )
+        }
+        expect(state.testables).to be_empty
+      end
+
+      it "lets a build go ahead when neither test is in it" do
+        state = prepare_state( ['test/test_b.c'] )
+
+        expect { @setup.stage_prepare_build_paths( state ) }.to_not raise_error
+        expect(state.testables.keys).to eq( [:'test/test_b'] )
+      end
     end
 
     it "always assembles the build, results, dependencies, and runners paths" do
@@ -146,7 +196,7 @@ describe TestBuildSetup do
 
       @setup.stage_prepare_build_paths( state )
 
-      paths = state.testables[:TestFoo].paths
+      paths = state.testables[:"test/TestFoo"].paths
       expect(paths[:build]).to eq( 'build/test/out/a_test' )
       expect(paths[:results]).to eq( 'build/test/results/a_test' )
       expect(paths[:dependencies]).to eq( 'build/test/dependencies/a_test' )
@@ -159,7 +209,7 @@ describe TestBuildSetup do
 
       @setup.stage_prepare_build_paths( state )
 
-      expect(state.testables[:TestFoo].paths).to_not have_key( :mocks )
+      expect(state.testables[:"test/TestFoo"].paths).to_not have_key( :mocks )
     end
 
     it "assembles the mocks path when the project has mocking enabled" do
@@ -168,7 +218,7 @@ describe TestBuildSetup do
 
       @setup.stage_prepare_build_paths( state )
 
-      expect(state.testables[:TestFoo].paths[:mocks]).to eq( 'build/test/mocks/a_test' )
+      expect(state.testables[:"test/TestFoo"].paths[:mocks]).to eq( 'build/test/mocks/a_test' )
     end
 
     it "omits the partials path when the project has Partials disabled" do
@@ -176,7 +226,7 @@ describe TestBuildSetup do
 
       @setup.stage_prepare_build_paths( state )
 
-      expect(state.testables[:TestFoo].paths).to_not have_key( :partials )
+      expect(state.testables[:"test/TestFoo"].paths).to_not have_key( :partials )
     end
 
     it "assembles the partials path when the project has Partials enabled" do
@@ -185,7 +235,7 @@ describe TestBuildSetup do
 
       @setup.stage_prepare_build_paths( state )
 
-      expect(state.testables[:TestFoo].paths[:partials]).to eq( 'build/test/partials/a_test' )
+      expect(state.testables[:"test/TestFoo"].paths[:partials]).to eq( 'build/test/partials/a_test' )
     end
 
     it "omits the preprocessing paths and scratch state when preprocessing is off" do
@@ -193,7 +243,7 @@ describe TestBuildSetup do
 
       @setup.stage_prepare_build_paths( state )
 
-      testable = state.testables[:TestFoo]
+      testable = state.testables[:"test/TestFoo"]
       expect(testable.paths).to_not have_key( :preprocess_includes )
       expect(testable.preprocess).to_not have_key( :includes )
     end
@@ -204,7 +254,7 @@ describe TestBuildSetup do
 
       @setup.stage_prepare_build_paths( state )
 
-      testable = state.testables[:TestFoo]
+      testable = state.testables[:"test/TestFoo"]
       expect(testable.paths[:preprocess_includes]).to eq( 'build/test/preprocess/includes/a_test' )
       expect(testable.paths[:preprocess_files]).to eq( 'build/test/preprocess/files/a_test' )
       expect(testable.paths[:preprocess_files_full_expansion]).to eq( 'build/test/preprocess/full/a_test' )
@@ -312,6 +362,38 @@ describe TestBuildSetup do
 
         @setup.stage_collect_test_context( @state )
       end
+
+      # Stage 11, which checks entries otherwise, does not run without test preprocessing
+      it "checks each test's TEST_SOURCE_FILE() entries once, under its own name, scanned or cached" do
+        expect(@test_source_file_directive_resolver).to receive(:validate!).with( test: 'a_test', test_filepath: 'test/TestFoo.c', context: :test ).twice
+
+        [true, false].each do |stale|
+          allow(@dependinator).to receive(:stale?).and_return( stale )
+          @setup.stage_collect_test_context( @state )
+        end
+      end
+    end
+
+    # Only a scan without test preprocessing caches TEST_SOURCE_FILE() entries, so switching
+    # modes must rescan rather than recall a cache missing them
+    it "caches build directives against the test preprocessing mode that scanned them" do
+      [true, false].each do |preprocessing|
+        allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( preprocessing )
+        expect(@dependinator).to receive(:register).with(
+          'build/preprocess/build_directives/a_test/Foo.c.yml', files: ['test/TestFoo.c'], meta: { source_files_scanned: !preprocessing }
+        )
+
+        @setup.stage_collect_test_context( @state )
+      end
+    end
+
+    it "leaves TEST_SOURCE_FILE() entries to stage 11 when test preprocessing is on" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@test_source_file_directive_resolver).to_not receive(:validate!)
+
+      @setup.stage_collect_test_context( @state )
     end
 
     it "logs one summary line stating how many test files' build directives were recalled from cache" do

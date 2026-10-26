@@ -42,7 +42,7 @@ describe Valgrind do
   let(:plugin_manager)      { double('plugin_manager', register_build_failure: nil) }
   let(:plugin_reportinator) { double('plugin_reportinator') }
   let(:dependinator)        { double('dependinator', register: nil) }
-  let(:file_wrapper)        { double('file_wrapper', exist?: true, read: '', mkdir: nil) }
+  let(:file_wrapper)        { double('file_wrapper', exist_with_retry?: true, read: '', mkdir: nil) }
   let(:system_wrapper)      { double('system_wrapper', windows?: false) }
   let(:ceedling) do
     {
@@ -207,11 +207,26 @@ describe Valgrind do
   end
 
   describe '#pre_test_fixture_register' do
-    def register(project_config, context: VALGRIND_SYM)
+    before(:each) do
+      allow(file_wrapper).to receive(:mkdir_for) { |path| path }
+    end
+
+    def register(project_config, context: VALGRIND_SYM, test_name: 'test_thing')
       valgrind = build_valgrind(project_config)
-      arg_hash = { context: context, test_name: 'test_thing', target: 'build/out/test_thing.out', tool: { name: 'original' } }
+      arg_hash = { context: context, test_name: test_name, target: 'build/out/test_thing.out', tool: { name: 'original' } }
       valgrind.pre_test_fixture_register(arg_hash)
       [valgrind, arg_hash]
+    end
+
+    # GH #1364: Valgrind writes its reports but makes no directories of its own
+    it "makes the directories a nested test's reports go in" do
+      expect(file_wrapper).to receive(:mkdir_for).with('artifacts/valgrind/test/unit/test_thing.log')
+      expect(file_wrapper).to receive(:mkdir_for).with('artifacts/valgrind/test/unit/test_thing.xml')
+
+      _valgrind, arg_hash = register({ valgrind_xml_report: true }, test_name: 'test/unit/test_thing')
+
+      expect(arg_hash[:tool][:arguments]).to include('--log-file="artifacts/valgrind/test/unit/test_thing.log"')
+      expect(arg_hash[:tool][:arguments]).to include('--xml-file="artifacts/valgrind/test/unit/test_thing.xml"')
     end
 
     it 'leaves a non-valgrind context untouched' do
@@ -315,7 +330,7 @@ describe Valgrind do
     end
 
     def explain(report, project_config: {}, context: VALGRIND_SYM, crash_notice: true, exists: true)
-      wrapper  = double('file_wrapper', exist?: exists, read: report)
+      wrapper  = double('file_wrapper', exist_with_retry?: exists, read: report)
       valgrind = build_valgrind(project_config, file_wrapper: wrapper)
       arg_hash = { context: context, test_name: 'test_thing', crash_notice: crash_notice, explanation: nil }
       valgrind.explain_test_crash( arg_hash )
@@ -384,7 +399,7 @@ describe Valgrind do
 
   describe '#post_test_fixture_execute' do
     def execute(project_config, log_contents, exists: true, result_file: File.join('build', 'valgrind', 'results', 'test_thing.pass'))
-      wrapper  = double('file_wrapper', exist?: exists, read: log_contents)
+      wrapper  = double('file_wrapper', exist_with_retry?: exists, read: log_contents)
       valgrind = build_valgrind(project_config, file_wrapper: wrapper)
       valgrind.post_test_fixture_execute(
         { context: VALGRIND_SYM, test_name: 'test_thing', result_file: result_file }
@@ -451,7 +466,7 @@ describe Valgrind do
 
     # A silent skip reads exactly like a clean result. It is not one.
     it 'warns and records nothing when no report was written' do
-      expect(loginator).to receive(:log).with(/wrote no report for test_thing/, anything, anything)
+      expect(loginator).to receive(:log).with(/wrote no report for test_thing/, Verbosity::COMPLAIN)
 
       valgrind = execute({}, '', exists: false)
 

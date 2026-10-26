@@ -38,7 +38,7 @@ Ceedling’s features support all types of C development from low-level embedded
 to enterprise systems. No tool is perfect, but Ceedling can do a whole lot to 
 help you and your team produce quality software.
 
-## Ceedling 1.2.1 is the latest and greatest
+## Ceedling 1.2.2 is the latest and greatest
 
 See [_Changelog_](docs/Changelog.md), [_Release Notes_][release-notes], [_Breaking Changes_][breaking-changes], and [_Known Issues_][known-issues].
 

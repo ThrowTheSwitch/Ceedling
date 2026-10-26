@@ -295,9 +295,12 @@ extracted from the `gdb` report. Ceedling will attempt to surface in the
 summary the offending line of code or failing `assert()` from the report.
 
 The full `gdb` report is captured to a log file, and the log filepath is 
-provided in the crash summary. The log filepath will comprise the containing 
-test executable as a subdirectory and the name of the crashing test case 
-function as the filename.
+provided in the crash summary. The log filepath comprises the [test’s name][test-names],
+its path from your project’s root, as a subdirectory plus the name of the crashing 
+test case function as the filename. A build that logs a test case’s crash replaces 
+that log; a log holds only the latest crash.
+
+[test-names]: ../../testing-guide/conventions.md#test-names-build-output
 
 !!! warning "macOS: a working `gdb` can stop attaching to processes"
     macOS restricts which debuggers may attach to a process. A Homebrew `gdb`
@@ -326,7 +329,7 @@ FAILED TEST SUMMARY
   Test: testCrash
   At line (40): "Test case crashed >> [SIGSEGV] Segmentation fault
                 `uint32_t i = *null_ptr;`
-                (build/logs/test/TestUsartModel/testCrash.gdb.log)"
+                (build/logs/test/test/TestUsartModel/testCrash.gdb.log)"
 
 -----------------------
 ❌ OVERALL TEST SUMMARY

@@ -124,6 +124,37 @@ describe DependencyCacheStore do
       expect( @store.load('cache.json')['entries'] ).to eq( {} )
     end
 
+    # GH #1364: version 2 places per-test build output by the test's path from the project root
+    it 'marks the 1.2.2 build layout as schema version 2' do
+      expect( DependencyCacheStore::CACHE_SCHEMA_VERSION ).to eq( 2 )
+    end
+
+    it 'rebuilds once from an older build layout, advising clobber for what that layout left' do
+      payload = JSON.generate(
+        'schema_version' => 1, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => { 'foo.o' => valid_entry }
+      )
+      stub_file( 'build/cache/.test.dep_cache.json', payload )
+
+      expect(@loginator).to receive(:log).with(
+        'Dependency cache build/cache/.test.dep_cache.json comes from an earlier Ceedling build layout -- rebuilding ' \
+        'everything once. Run `ceedling clobber` to remove any orphaned build output left in the old layout.',
+        Verbosity::COMPLAIN
+      )
+
+      expect( @store.load('build/cache/.test.dep_cache.json')['entries'] ).to eq( {} )
+    end
+
+    it 'keeps its usual warning for a schema_version it never wrote' do
+      payload = JSON.generate(
+        'schema_version' => DependencyCacheStore::CACHE_SCHEMA_VERSION + 1, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => {}
+      )
+      stub_file( 'cache.json', payload )
+
+      expect(@loginator).to receive(:log).with( /cache\.json has an incompatible or missing schema_version/, Verbosity::COMPLAIN )
+
+      @store.load('cache.json')
+    end
+
     it 'treats a mismatched hash_algorithm as an absent cache' do
       payload = JSON.generate(
         'schema_version' => DependencyCacheStore::CACHE_SCHEMA_VERSION,
@@ -153,7 +184,7 @@ describe DependencyCacheStore do
       result = @store.load('cache.json')
 
       expect( result['entries'].keys ).to eq( ['good.o'] )
-      expect( @loginator ).to have_received(:log)
+      expect( @loginator ).to have_received(:log).with( /'bad\.o' in cache\.json is malformed/, Verbosity::COMPLAIN )
     end
 
     it 'drops an entry with a self_hash of the wrong length' do

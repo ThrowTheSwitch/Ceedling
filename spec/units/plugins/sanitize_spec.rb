@@ -37,7 +37,7 @@ describe Sanitize do
 
   let(:loginator)      { double('loginator', log: nil) }
   let(:dependinator)   { double('dependinator', register: nil) }
-  let(:file_wrapper)   { double('file_wrapper', write: nil, mkdir: nil) }
+  let(:file_wrapper)   { double('file_wrapper', write: nil, mkdir: nil, mkdir_for: nil) }
   let(:plugin_manager) { double('plugin_manager', register_build_failure: nil) }
   let(:tracker)        { double('rake_invocation_tracker', invoked?: true) }
   let(:tool_validator) { double('tool_validator', validate: nil) }

@@ -86,8 +86,8 @@ ceedling_system_tests do
           # A mock's location mirrors its real header's resolved path, not whatever path its
           # own #include happened to write, so both tests' mocks land at the identical
           # location -- each #include names the same real header, drivers/foo.h.
-          expect(File.exist?('build/test/mocks/test_bare_mock/drivers/mock_foo.h')).to be true
-          expect(File.exist?('build/test/mocks/test_pathed_mock/drivers/mock_foo.h')).to be true
+          expect(File.exist?('build/test/mocks/test/test_bare_mock/drivers/mock_foo.h')).to be true
+          expect(File.exist?('build/test/mocks/test/test_pathed_mock/drivers/mock_foo.h')).to be true
         end
       end
 
@@ -159,7 +159,7 @@ ceedling_system_tests do
 
           # alt_drivers sorts ahead of drivers within :include's single src/** glob,
           # so the generated mock mirrors alt_drivers/foo.h's own location.
-          expect(File.exist?('build/test/mocks/test_ambiguous_mock/alt_drivers/mock_foo.h')).to be true
+          expect(File.exist?('build/test/mocks/test/test_ambiguous_mock/alt_drivers/mock_foo.h')).to be true
         end
       end
 
@@ -172,7 +172,7 @@ ceedling_system_tests do
           expect(output).to match(/TESTED:\s+1/)
           expect(output).to match(/PASSED:\s+1/)
 
-          expect(File.exist?('build/test/mocks/test_pathed_mock_ambiguous/drivers/mock_foo.h')).to be true
+          expect(File.exist?('build/test/mocks/test/test_pathed_mock_ambiguous/drivers/mock_foo.h')).to be true
         end
       end
 

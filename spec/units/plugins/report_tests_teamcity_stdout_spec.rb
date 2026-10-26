@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'stringio'
 require 'ceedling/plugins/plugin'
+require 'ceedling/file_path_utils'
 
 $: << File.expand_path('../../../../plugins/report_tests_teamcity_stdout/lib', __FILE__)
 require 'report_tests_teamcity_stdout'
@@ -23,7 +24,10 @@ describe ReportTestsTeamcityStdout do
     @plugin.instance_variable_set(:@flowid_count, 0)
     @plugin.instance_variable_set(:@suites, {})
     @plugin.instance_variable_set(:@stream, @stream)
-    @plugin.instance_variable_set(:@ceedling, { plugin_reportinator: @plugin_reportinator })
+    @plugin.instance_variable_set(:@ceedling, {
+      plugin_reportinator: @plugin_reportinator,
+      file_path_utils:     FilePathUtils.new( configurator: nil, file_wrapper: nil )
+    })
   end
 
   describe '#escape' do
@@ -38,8 +42,23 @@ describe ReportTestsTeamcityStdout do
       @plugin.post_test('test/TestFoo.c')
 
       lines = @stream.string.lines
-      expect(lines[0]).to eq("##teamcity[testSuiteStarted name='TestFoo' flowId='1']\n")
-      expect(lines[1]).to eq("##teamcity[testSuiteFinished name='TestFoo' flowId='1']\n")
+      expect(lines[0]).to eq("##teamcity[testSuiteStarted name='test/TestFoo' flowId='1']\n")
+      expect(lines[1]).to eq("##teamcity[testSuiteFinished name='test/TestFoo' flowId='1']\n")
+    end
+
+    # GH #1364: same-named tests in different directories are different suites
+    it 'names each suite by its test, so same-named tests are told apart' do
+      @plugin.pre_test('test/a/test_x.c')
+      @plugin.pre_test('test/b/test_x.c')
+
+      expect(@stream.string).to include("testSuiteStarted name='test/a/test_x'", "testSuiteStarted name='test/b/test_x'")
+    end
+
+    it 'escapes a suite name, as every TeamCity value is' do
+      @plugin.pre_test("test/o'neil/test_x.c")
+      @plugin.post_test("test/o'neil/test_x.c")
+
+      expect(@stream.string.lines).to all( include("name='test/o|'neil/test_x'") )
     end
 
     it 'gives each successive test its own flow id' do

@@ -161,6 +161,32 @@ describe 'DependencyTracker cache hardening (integration)' do
       end
     end
 
+    # GH #1364: a build after upgrading from a version-1 layout rebuilds everything once, and
+    # the next build trusts the cache it then wrote
+    it 'rebuilds once after an upgrade from the version-1 build layout, then trusts its own cache' do
+      in_temp_dir do |dir|
+        store_path = File.join(dir, '.dep_cache.json')
+        target = write_fixture( File.join(dir, 'foo.o'), 'object bytes' )
+
+        write_fixture( store_path, JSON.generate(
+          'schema_version' => 1, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM,
+          'entries' => { target => { 'self_hash' => real_sha256(target), 'meta_hash' => nil, 'deps' => {} } }
+        ) )
+
+        upgraded = build_dependency_tracker( store_path: store_path )
+        upgraded.register( target, files: [] )
+        expect( upgraded.stale?( target ) ).to be(true)
+        upgraded.mark_fresh( target )
+        upgraded.flush
+
+        expect( JSON.parse( File.read( store_path ) )['schema_version'] ).to eq( DependencyCacheStore::CACHE_SCHEMA_VERSION )
+
+        rebuilt = build_dependency_tracker( store_path: store_path )
+        rebuilt.register( target, files: [] )
+        expect( rebuilt.stale?( target ) ).to be(false)
+      end
+    end
+
     # Same principle, but for a mismatched hash_algorithm field rather than
     # schema_version -- the two are independent, both-checked axes.
     it 'discards an entire cache whose hash_algorithm does not match' do

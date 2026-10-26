@@ -13,7 +13,6 @@ require 'ceedling/partials/partials'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 require 'ceedling/test_invoker/test_build_validations'
-require 'ceedling/path_mirror'
 
 class TestBuildSetup
 
@@ -36,7 +35,8 @@ class TestBuildSetup
     :test_runner_manager,
     :dependinator,
     :test_search_paths,
-    :mock_locator
+    :mock_locator,
+    :test_source_file_directive_resolver
   )
 
   def setup()
@@ -44,14 +44,15 @@ class TestBuildSetup
   end
 
   # Stage 1: Create per-test build/results/mock/partial directory structure
-  # and populate the testables hash with initial entries.
+  # and populate the testables hash with initial entries. Stops first if two
+  # tests in the build share a name.
   def stage_prepare_build_paths(state)
-    clean_test_roots = PathMirror.clean_roots( @configurator.paths_test )
+    validate_unique_test_names!( tests: state.tests )
 
     @batchinator.exec(workload: :compile, things: state.tests) do |filepath|
       filepath = filepath.to_s
-      key  = testable_symbolize( filepath, clean_test_roots )
-      name = key.to_s
+      name = @file_path_utils.form_test_name( filepath )
+      key  = name.to_sym
 
       state.lock.synchronize do
         state.testables[key] = Testable.new(
@@ -114,8 +115,10 @@ class TestBuildSetup
       filepath = testable.filepath
       filename = File.basename( filepath )
 
+      # Only a scan without test preprocessing finds TEST_SOURCE_FILE() entries, so a cache
+      # from the other mode is stale
       cache_target = @file_path_utils.form_test_build_directives_cache_filepath( filepath, testable.name )
-      @dependinator.register( cache_target, files: [filepath] )
+      @dependinator.register( cache_target, files: [filepath], meta: { source_files_scanned: !@configurator.project_use_test_preprocessor_tests } )
       directives_stale = @dependinator.stale?( cache_target )
 
       contexts = [TestContextExtractor::Context::INCLUDES]
@@ -166,6 +169,8 @@ class TestBuildSetup
         @context_extractor.load_build_directives_cache( filepath: filepath, cache_filepath: cache_target )
         state.lock.synchronize { skipped += 1 }
       end
+
+      validate_source_file_directives( testable, state.context )
 
       validate_mocks_in_use(
         filename: filename,
@@ -321,12 +326,12 @@ class TestBuildSetup
 
   private
 
-  def testable_symbolize(filepath, clean_roots)
-    basename = File.basename( filepath ).ext( '' )
-    subdir   = PathMirror.relative_subdir_from_clean_roots( filepath, clean_roots )
-    name     = subdir.empty? ? basename : File.join( subdir, basename )
+  # Without test preprocessing, stage 11 never runs, and only stage 2's scan finds a test's
+  # TEST_SOURCE_FILE() entries
+  def validate_source_file_directives(testable, context)
+    return if @configurator.project_use_test_preprocessor_tests
 
-    return name.to_sym
+    @test_source_file_directive_resolver.validate!( test: testable.name, test_filepath: testable.filepath, context: context )
   end
 
 end

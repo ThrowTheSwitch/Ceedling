@@ -113,6 +113,91 @@ ceedling_system_tests do
 
     end
 
+    # =========================================================================
+    describe "A test at its root beside same-named tests below it" do
+    # =========================================================================
+
+      # GH #1364: a test at its root builds beside same-named tests below it
+      before do
+        in_project do
+          copy_fixture("tests_with_duplicate_test_names/test_foo.c", 'test')
+          copy_fixture("tests_with_duplicate_test_names/unit/test_foo.c", 'test/unit')
+          copy_fixture("tests_with_duplicate_test_names/integration/test_foo.c", 'test/integration')
+        end
+      end
+
+      it "runs all three under test:all, and summarizes all three" do
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Ambiguous/)
+          expect(output).to match(/TESTED:\s+3/)
+          expect(output).to match(/PASSED:\s+3/)
+          expect(output).to match(/test_this_is_the_root_directory_test_foo/)
+
+          summary = @c.ceedling_build_exec("summary")
+          expect(summary).to match(/TESTED:\s+3/)
+        end
+      end
+
+      it "runs exactly the test at the root when named by its full path" do
+        in_project do
+          output = @c.ceedling_build_exec("test:test/test_foo.c")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+1/)
+          expect(output).to match(/test_this_is_the_root_directory_test_foo/)
+        end
+      end
+
+      it "runs all three under gcov:all" do
+        in_project do
+          @c.merge_project_yml_for_test({ :plugins => { :enabled => ['gcov'] } })
+
+          output = @c.ceedling_build_exec("gcov:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/Ambiguous/)
+          expect(output).to match(/TESTED:\s+3/)
+          expect(output).to match(/PASSED:\s+3/)
+        end
+      end
+
+    end
+
+    # =========================================================================
+    describe "Same-named tests under more than one test root" do
+    # =========================================================================
+
+      # GH #1364: tests with one path below different roots keep apart
+      it "runs both tests when one root lies inside the other" do
+        in_project do
+          copy_fixture("tests_with_duplicate_test_names/unit/test_foo.c", 'test')
+          copy_fixture("tests_with_duplicate_test_names/integration/test_foo.c", 'test/unit')
+          @c.merge_project_yml_for_test({ :paths => { :test => ['+:test/unit/**'] } })
+
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/test_this_is_the_unit_directory_test_foo/)
+          expect(output).to match(/test_this_is_the_integration_directory_test_foo/)
+        end
+      end
+
+      it "runs both tests when two roots hold the same layout" do
+        in_project do
+          copy_fixture("tests_with_duplicate_test_names/unit/test_foo.c", 'test/foo')
+          copy_fixture("tests_with_duplicate_test_names/integration/test_foo.c", 'extra/foo')
+          @c.merge_project_yml_for_test({ :paths => { :test => ['+:extra/**'] } })
+
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/test_this_is_the_unit_directory_test_foo/)
+          expect(output).to match(/test_this_is_the_integration_directory_test_foo/)
+        end
+      end
+
+    end
+
   end
 
 end

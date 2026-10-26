@@ -47,10 +47,12 @@ class ReleaseBuildExecutor
     lib_paths = get_library_paths_to_arguments()
     target    = @configurator.project_release_build_target
 
+    # As with a test link, the object list as meta relinks an artifact that a dropped source
+    # would otherwise leave holding that source's code
     @dependinator.register(
       target,
       files: objects,
-      meta:  { flags: state.link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [@configurator.tools_release_linker] }
+      meta:  { flags: state.link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [@configurator.tools_release_linker], objects: objects }
     )
     stale = @dependinator.stale?( target )
 

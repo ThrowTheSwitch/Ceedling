@@ -8,6 +8,8 @@
 require 'spec_helper'
 require 'ceedling/constants'
 
+# Ceedling runtime path constants sanitize_constants.rb needs at require time
+PROJECT_BUILD_ROOT           = 'build'           unless defined?(PROJECT_BUILD_ROOT)
 PROJECT_BUILD_ARTIFACTS_ROOT = 'build/artifacts' unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
 
 $: << File.expand_path('../../../../plugins/sanitize/lib', __FILE__)
@@ -15,7 +17,7 @@ require 'sanitize_findings'
 require 'sanitize_records'
 
 describe SanitizeRecords do
-  let(:file_wrapper) { double('file_wrapper', mkdir: nil, write: nil) }
+  let(:file_wrapper) { double('file_wrapper', mkdir: nil, write: nil, mkdir_for: nil) }
   let(:loginator)    { double('loginator', log: nil) }
   let(:records)      { described_class.new( file_wrapper: file_wrapper, loginator: loginator, reports: [] ) }
   let(:log)          { described_class.log_filepath( :sanitize, 'test_a' ) }

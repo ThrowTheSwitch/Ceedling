@@ -8,7 +8,7 @@
 class GeneratorTestResultsBacktrace
 
   constructor :configurator, :tool_executor, :generator_test_results, :generator_helper,
-              :file_path_utils, :file_wrapper, :loginator
+              :file_path_utils, :build_log_writer, :loginator
 
   def setup()
     @RESULTS_COLLECTOR = Struct.new( :passed, :failed, :ignored, :output, keyword_init:true )
@@ -31,7 +31,10 @@ class GeneratorTestResultsBacktrace
   # Writes the full gdb transcript to a per-test-case log file and assembles a
   # terse crash label (signal + description, optional source line in backticks)
   # for each failing test case. Returns a modified shell_result with regenerated output.
-  def do_gdb(filename, executable, shell_result, test_cases, context:)
+  #
+  # `test_name` places the logs, so same-named tests keep separate ones. Each log holds only
+  # this build's crash.
+  def do_gdb(filename, executable, shell_result, test_cases, context:, test_name:)
     gdb_script_filepath = File.join( @configurator.project_build_tests_root, BACKTRACE_GDB_SCRIPT_FILE )
 
     # Clean stats tracker
@@ -39,8 +42,6 @@ class GeneratorTestResultsBacktrace
 
     # Reset time
     shell_result[:time] = 0
-
-    test_name = File.basename( filename, '.*' )
 
     # True once some retry group has actually shown crash evidence of its own -- an
     # unresolved member, or (below) a group whose real status contradicts a fully clean
@@ -120,8 +121,7 @@ class GeneratorTestResultsBacktrace
 
         # Per-test-case log file: <log_path>/<context>/<test_name>/<test_case>.gdb.log
         log_path = @file_path_utils.form_test_gdb_log( test_name, context: context, name: crashed_case[:test] )
-        @file_wrapper.mkdir( File.dirname( log_path ) )
-        @file_wrapper.write( log_path, "=== #{crashed_case[:test]} ===\n#{crash_result[:output]}\n", 'a' )
+        @build_log_writer.write( log_path, "=== #{crashed_case[:test]} ===\n#{crash_result[:output]}\n" )
 
         unresolved.each do |test_case|
           group_results[:failed] += 1
@@ -296,7 +296,7 @@ class GeneratorTestResultsBacktrace
   # such as Valgrind's, keeps the main run's report.
   #
   # `explain` names the cause of a rerun's crash, if a plugin recognizes it.
-  def do_simple(filename, executable, shell_result, test_cases, context:, tool: nil, explain: nil)
+  def do_simple(filename, executable, shell_result, test_cases, tool: nil, explain: nil)
     results = @RESULTS_COLLECTOR.new( passed:0, failed:0, ignored:0, output:[] )
     shell_result[:time] = 0 # Summed over the per-group sub-process runs
     any_crashed = false

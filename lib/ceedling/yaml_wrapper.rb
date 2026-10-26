@@ -82,8 +82,9 @@ class YamlWrapper
   # already picks the right calling convention for the installed Psych, so this should be
   # unreachable in practice; it exists as a last-resort safety net for an unanticipated
   # Psych version/interface mismatch, reported distinctly so it isn't mistaken for a user
-  # YAML-authoring error.
-  rescue ArgumentError => e
+  # YAML-authoring error. `::ArgumentError` names Ruby's own class, which the constructor
+  # gem's same-named class would otherwise shadow here.
+  rescue ::ArgumentError => e
     raise YamlLoadException.new(
       reason: :incompatible, source: source_label, original_error: e,
       message: "Installed Psych YAML library (#{Psych::VERSION}) does not support a safe-loading feature Ceedling requires ⏩️ #{e.message}"

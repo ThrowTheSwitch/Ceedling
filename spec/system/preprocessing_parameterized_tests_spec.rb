@@ -164,7 +164,7 @@ ceedling_system_tests do
             @c.ceedling_build_exec
             expect(@c.last_exit_status).to eq(0)
 
-            runner_path = 'build/test/runners/test_ptc_runner.c'
+            runner_path = 'build/test/runners/test/test_ptc_runner.c'
             expect(File.exist?(runner_path)).to eq(true)
             runner_contents = read_spec_file(runner_path)
 

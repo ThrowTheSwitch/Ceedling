@@ -40,9 +40,9 @@ class IncludeFactory
 
   # A resolved mock include's filepath may carry a leading build directory path that
   # snuck in from discovering an empty mock stand-in or an already-generated mock file.
-  # That leading path is the current test's own mock subdirectory -- which mirrors the
-  # test's path below its configured :paths -> :test root, so it can be more than one
-  # segment deep (e.g. `adc/TestFoo`) -- followed by however many further segments mirror
+  # That leading path is the current test's own mock subdirectory -- named by the test's
+  # path from the project root, so it can be more than one segment deep (e.g.
+  # `test/adc/TestFoo`) -- followed by however many further segments mirror
   # the mocked header's own relative directory (e.g. `calculators/`). Knowing the current
   # test's identity lets exactly the first part be removed, leaving any header-mirroring
   # segments after it untouched. Without that identity, fall back to stripping everything

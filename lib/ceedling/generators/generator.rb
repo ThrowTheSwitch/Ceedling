@@ -514,8 +514,8 @@ class Generator
     explain = ->(result) { crash_message( crash_explanation( arg_hash, result ) ) }
 
     case backtrace
-    when :gdb    then @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: context )
-    when :simple then @backtrace.do_simple( filename, executable, shell_result, test_cases, context: context, tool: arg_hash[:tool], explain: explain )
+    when :gdb    then @backtrace.do_gdb( filename, executable, shell_result, test_cases, context: context, test_name: arg_hash[:test_name] )
+    when :simple then @backtrace.do_simple( filename, executable, shell_result, test_cases, tool: arg_hash[:tool], explain: explain )
     # A crash is otherwise reported as a single failure
     else @generator_test_results.create_crash_failure( filename, shell_result, test_cases, message: crash_message( explanation ) || 'Test executable crashed' )
     end

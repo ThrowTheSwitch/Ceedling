@@ -141,7 +141,7 @@ class Gcov < Plugin
 
       # Full filepaths (not basenames)
       header = "Untested source files not in the coverage report (:untested_sources is :list):"
-      @loginator.log_list( untested_sources.sort, header, Verbosity::COMPLAIN, LogLabels::WARNING )
+      @loginator.log_list( untested_sources.sort, header, Verbosity::COMPLAIN )
 
     when GCOV_UNTESTED_SOURCES_COMPILE
       validate_mcdc_gcc_version!

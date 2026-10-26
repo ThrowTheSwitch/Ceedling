@@ -19,10 +19,13 @@ describe 'Test pipeline object wiring' do
     test_invoker test_pipeline_manager test_build_setup test_includes_extractinator test_bare_includes_extractinator
     test_includes_preprocessinator test_includes_reconcilinator test_build_planner partials_manager
     test_build_executor test_file_preprocessinator test_runner_generatinator test_search_paths mock_locator
-    standin_headerinator
-  ].each do |name|
+    standin_headerinator test_source_file_directive_resolver
+  ].map { |name| [name, "ceedling/test_invoker/#{name}"] }.concat( [
+    ['build_log_writer',                 'ceedling/build_log_writer'],
+    ['generator_test_results_backtrace', 'ceedling/generators/generator_test_results_backtrace']
+  ] ).each do |name, path|
     it "composes exactly what #{name}'s constructor takes" do
-      require "ceedling/test_invoker/#{name}"
+      require path
       klass = Object.const_get( name.split( '_' ).map( &:capitalize ).join )
 
       expect(OBJECTS_WIRING.dig( name, 'compose' )).to match_array( klass.constructor_keys.map( &:to_s ) )

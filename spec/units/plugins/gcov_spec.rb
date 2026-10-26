@@ -215,7 +215,7 @@ describe Gcov do
 
       it 'logs the full, sorted filepath list and records @untested_sources without compiling' do
         gcov = build_process_gcov({ gcov_untested_sources: GCOV_UNTESTED_SOURCES_LIST })
-        expect(loginator).to receive(:log_list).with(['src/a.c', 'src/b.c'], kind_of(String), Verbosity::COMPLAIN, LogLabels::WARNING)
+        expect(loginator).to receive(:log_list).with(['src/a.c', 'src/b.c'], kind_of(String), Verbosity::COMPLAIN)
         expect(generator).to_not receive(:generate_object_file_c)
         gcov.process_untested_sources(sources: ['src/b.c', 'src/a.c'])
         expect(gcov.instance_variable_get(:@untested_sources)).to eq(['src/b.c', 'src/a.c'])

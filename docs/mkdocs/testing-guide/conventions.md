@@ -243,6 +243,30 @@ Before 1.2.0, Ceedling wrote no manifest. With a toolchain that embeds none,
 test files with these words in their names could not be run on Windows without
 administrator privileges.
 
+### Test names & build output
+
+Ceedling names each test by its path from your project’s root, without its
+file extension. `test/unit/test_calc.c` is named `test/unit/test_calc`. Every
+test gets its own build output, even when test files share a filename.
+
+The name places a test’s output beneath each build directory:
+
+* Objects and executable: `build/test/out/test/unit/test_calc/`
+* Results: `build/test/results/test/unit/test_calc.pass`
+* Logs from plugins and backtraces, such as
+  `build/artifacts/valgrind/test/unit/test_calc.log` or
+  `build/logs/test/test/unit/test_calc/<test case>.gdb.log`
+
+A test outside your project keeps its whole path. Each `..` becomes `_up_`, so
+`../shared/test/test_io.c` is named `_up_/shared/test/test_io`. A test with no
+path relative to your project, such as one on another Windows drive, is named
+beneath `_abs_`. Neither name reaches outside the build directory.
+
+Two tests share a name only if their paths differ in extension alone (e.g.
+`test_a.c` and `test_a.cpp`), or if a test outside your project maps onto a real
+directory named `_up_` or `_abs_`. A build that includes either test stops with
+an error naming both files.
+
 ### Source & mock files to compile and link
 
 Ceedling knows what files to compile and link into each individual

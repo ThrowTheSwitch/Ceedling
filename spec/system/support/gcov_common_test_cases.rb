@@ -448,9 +448,12 @@ module GcovCommonTestCases
         expect(@c.last_exit_status).to eq(1) # Ceedling should exit with error because of failed test due to crash
         expect(output).to match(/crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/gcov/results/test_nosanitize_crash_sigsegv.fail'))
-        output_rd = read_spec_file('./build/gcov/results/test_nosanitize_crash_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_nosanitize_crash_sigsegv.c\:\d+/ )
+        expect(File.exist?('./build/gcov/results/test/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        # gdb names the crashing case, its signal, and the log of its backtrace
+        results = yaml_wrapper_for_test.load('./build/gcov/results/test/test_nosanitize_crash_sigsegv.fail')
+        expect(results[:failures].map { |failure| failure[:test] }).to eq(['test_add_numbers_will_fail'])
+        expect(results[:failures].first[:message]).to match(/Test case crashed >> \[SIGSEGV\] Segmentation fault/)
+        expect(results[:failures].first[:message]).to include('build/logs/gcov/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log')
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+(?:0|1)/)
         expect(output).to match(/FAILED:\s+(?:1|2)/)
@@ -482,9 +485,12 @@ module GcovCommonTestCases
         expect(@c.last_exit_status).to eq(1) # Ceedling should exit with error because of failed test due to crash
         expect(output).to match(/Test Case Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(File.exist?('./build/gcov/results/test_nosanitize_crash_sigsegv.fail'))
-        output_rd = read_spec_file('./build/gcov/results/test_nosanitize_crash_sigsegv.fail')
-        expect(output_rd =~ /test_add_numbers_will_fail \(\) at test\/test_nosanitize_crash_sigsegv.c\:\d+/ )
+        expect(File.exist?('./build/gcov/results/test/test_nosanitize_crash_sigsegv.fail')).to be(true)
+        # gdb names the crashing case, its signal, and the log of its backtrace
+        results = yaml_wrapper_for_test.load('./build/gcov/results/test/test_nosanitize_crash_sigsegv.fail')
+        expect(results[:failures].map { |failure| failure[:test] }).to eq(['test_add_numbers_will_fail'])
+        expect(results[:failures].first[:message]).to match(/Test case crashed >> \[SIGSEGV\] Segmentation fault/)
+        expect(results[:failures].first[:message]).to include('build/logs/gcov/test/test_nosanitize_crash_sigsegv/test_add_numbers_will_fail.gdb.log')
         expect(output).to match(/TESTED:\s+1/)
         expect(output).to match(/PASSED:\s+0/)
         expect(output).to match(/FAILED:\s+1/)
@@ -522,7 +528,7 @@ module GcovCommonTestCases
 
         output = @c.ceedling_build_exec("gcov:all --exclude_test_case=test_add_numbers_will_fail")
         expect(@c.last_exit_status).to eq(0)
-        expect(File.exist?('./build/gcov/results/test_nosanitize_crash_sigsegv.pass'))
+        expect(File.exist?('./build/gcov/results/test/test_nosanitize_crash_sigsegv.pass')).to be(true)
         expect(output).to match(/TESTED:\s+2/)
         expect(output).to match(/PASSED:\s+2/)
         expect(output).to match(/FAILED:\s+0/)

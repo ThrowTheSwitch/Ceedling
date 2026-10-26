@@ -8,7 +8,29 @@ These breaking changes are complemented by three other documents:
 
 ---
 
-# [1.2.0] — Prerelease
+# [1.2.2]
+
+## Test build output is organized by each test’s path from the project root
+
+A test’s build output, results, and logs are organized by its name, and a test is now named by its path from the project root without its extension. Before 1.2.2, the name was its path below its test root, so two tests could mistakenly share one. `test/unit/test_calc.c` was named `unit/test_calc` and is now `test/unit/test_calc`. A test directly in its root gains a directory: `test/test_calc.c` logs to `build/artifacts/valgrind/test/test_calc.log`, not `build/artifacts/valgrind/test_calc.log`.
+
+Update anything that reads per-test output by path:
+
+1. Scripts that collect Valgrind, sanitizer, raw output, or gdb backtrace logs. A glob such as `build/artifacts/valgrind/*.log` no longer reaches them; use `build/artifacts/valgrind/**/*.log`.
+1. Tools that read results, runners, or objects from `build/test/` directly.
+1. TeamCity suite names, which now carry the same path (e.g. `test/TestUsartModel`).
+
+The first build after upgrading rebuilds everything once. Run `ceedling clobber` to remove the output left in the old layout. Until then, any coverage reports also read the old coverage data.
+
+## `TEST_SOURCE_FILE()` entries are checked without test preprocessing
+
+With `:project` ↳ `:use_test_preprocessor` set to `:none` or `:mocks`, a `TEST_SOURCE_FILE()` entry naming a file that doesn’t exist, or that isn’t a source file, was previously silently dropped. A build now stops with an error naming the entry and its test file, as it already did with test preprocessing.
+
+Without test preprocessing, Ceedling reads these entries as text and does not evaluate `#if`. An entry inside an `#if` branch that is off is checked too, so it must name a real file.
+
+---
+
+# [1.2.0] — 2026-10-21
 
 ## Mocks included through a folder are named by that folder
 

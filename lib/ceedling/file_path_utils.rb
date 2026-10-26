@@ -8,10 +8,12 @@
 require 'rubygems'
 require 'rake' # for ext()
 require 'fileutils'
+require 'pathname'
 require 'ceedling/exceptions'
 require 'ceedling/system_wrapper'
 require 'ceedling/constants'
 require 'ceedling/path_mirror'
+require 'ceedling/path_matcher'
 
 # global utility methods (for plugins, project files, etc.)
 def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)
@@ -24,6 +26,9 @@ class FilePathUtils
 
   constructor :configurator, :file_wrapper
 
+  # Test names stand in for path segments that cannot be build subdirectories
+  TEST_NAME_PARENT_SEGMENT   = '_up_'  unless const_defined?(:TEST_NAME_PARENT_SEGMENT, false)
+  TEST_NAME_ABSOLUTE_SEGMENT = '_abs_' unless const_defined?(:TEST_NAME_ABSOLUTE_SEGMENT, false)
 
   ######### Class methods ##########
 
@@ -217,6 +222,19 @@ class FilePathUtils
 
   ### Tests ###
 
+  # A test is named by its path from the project root, without its extension. The name places
+  # the test's build, results, runner, mock, preprocessing and log directories, and a path is
+  # unique, so no two tests share them. A test outside the project keeps its whole path too,
+  # with each `..` written as `_up_`, and a path with no relative form (another Windows drive)
+  # placed under `_abs_`, so no name reaches outside the build directory.
+  def form_test_name(filepath)
+    path     = relative_to_working_dir( filepath.to_s.tr( '\\', '/' ) )
+    segments = path.ext( '' ).split( '/' ).reject { |segment| segment.empty? || segment == '.' }
+    segments = absolute_name_segments( path, segments )
+
+    return segments.map { |segment| segment == '..' ? TEST_NAME_PARENT_SEGMENT : segment }.join( '/' )
+  end
+
   def form_test_build_path(name, context: nil)
     form_build_context_path(BUILD_OUT_DIR, name: name, context: context)
   end
@@ -228,11 +246,9 @@ class FilePathUtils
     )
   end
 
-  # As `form_test_runners_path`: a flat test's own identity forms the shared flat results
-  # directory, untouched -- only a genuinely nested test's own mirrored subdirectory
-  # becomes an extra directory level here, so two same-named tests land in distinct
-  # results directories without perturbing the overwhelmingly common flat, non-duplicate
-  # case.
+  # As `form_test_runners_path`: a test's results sit beneath the directories of its name,
+  # so same-named tests in different directories keep apart. Only a test at the project
+  # root uses the results directory itself.
   def form_test_results_path(name = nil, context: nil)
     subdir = name.nil? ? '' : mirrored_test_subdir(name)
     return form_build_context_path(BUILD_RESULTS_DIR, context: context) if subdir.empty?
@@ -323,11 +339,9 @@ class FilePathUtils
     return File.join( build_output_path, File.basename(filepath).ext(@configurator.extension_testfail.primary) )
   end
 
-  # A flat test's own identity (no mirrored subdirectory of its own) forms the shared flat
-  # runners directory, untouched -- only a genuinely nested test's own mirrored
-  # subdirectory (excluding its own basename) becomes an extra directory level here, so two
-  # same-named tests in different directories land in distinct runner directories without
-  # perturbing the overwhelmingly common flat, non-duplicate case.
+  # A test's runner sits beneath the directories of its name, so same-named tests in
+  # different directories keep apart. Only a test at the project root uses the runners
+  # directory itself.
   def form_test_runners_path(name, context: nil)
     subdir = mirrored_test_subdir(name)
     return @configurator.project_test_runners_path if subdir.empty?
@@ -546,13 +560,13 @@ class FilePathUtils
     return form_partial_filename( _module, PARTIAL_SUFFIX_IMPL, EXTENSION_CORE_SOURCE )
   end
 
+  # Each test's results file sits where `form_test_results_path` puts it, beneath its name
   def form_pass_results_filelist(path, files)
-    return mirror_build_objects(
-      files,
-      root:  path,
-      ext:   @configurator.extension_testpass.primary,
-      roots: @configurator.paths_test
-    )
+    results = @file_wrapper.instantiate_file_list_literal( files ).map do |file|
+      subdir = mirrored_test_subdir( form_test_name( file ) )
+      form_pass_results_filepath( subdir.empty? ? path : File.join( path, subdir ), file )
+    end
+    return @file_wrapper.instantiate_file_list_literal( results )
   end
 
   ### Private ###
@@ -577,9 +591,24 @@ class FilePathUtils
     return path
   end
 
-  # The mirrored-subdirectory portion of a test's own identity, excluding its own basename
-  # -- '' for a flat test (e.g. 'TestFoo', no subdirectory at all), or the leading segments
-  # for a nested one (e.g. 'unit' for 'unit/test_foo').
+  # Collection paths are already relative to the working directory. An absolute one is made
+  # relative too, so a test has one name however its path arrives. Another Windows drive has
+  # no relative form and stays absolute.
+  def relative_to_working_dir(path)
+    return path unless PathMatcher.absolute?( path )
+    return Pathname.new( path ).relative_path_from( Pathname.new( Dir.pwd ) ).to_s
+  rescue ::ArgumentError
+    return path
+  end
+
+  # A path left absolute keeps all of it beneath `_abs_`, a drive letter as a plain segment
+  def absolute_name_segments(path, segments)
+    return segments unless PathMatcher.absolute?( path )
+    return [TEST_NAME_ABSOLUTE_SEGMENT] + segments.each_with_index.map { |segment, index| index.zero? ? segment.delete_suffix( ':' ) : segment }
+  end
+
+  # The directories of a test's name, excluding its basename: 'test/unit' for
+  # 'test/unit/test_foo', or '' for a test at the project root.
   def mirrored_test_subdir(name)
     dir = File.dirname(name)
     return '' if dir == '.'
