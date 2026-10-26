@@ -439,6 +439,7 @@ test_build_setup:
     - dependinator
     - test_search_paths
     - mock_locator
+    - test_source_file_directive_resolver
 
 test_includes_extractinator:
   compose:

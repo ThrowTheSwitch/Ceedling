@@ -14,6 +14,10 @@ class FileFinderHelper
 
   constructor :loginator
 
+  def setup
+    @noticed      = []
+    @notice_mutex = Mutex.new
+  end
 
   def find_file_in_collection(filename, file_list, complain)
     found = PathMatcher.match(filename, file_list)
@@ -25,7 +29,8 @@ class FileFinderHelper
   # As `#find_file_in_collection`, but never raises on ambiguity -- a query matching
   # more than one file resolves to the first entry in `file_list`'s own order (which
   # already reflects real project path priority), with an ℹ️ NOTICE naming what else
-  # matched so the choice isn't silent.
+  # matched so the choice isn't silent. Every test that names the file makes the same
+  # choice, so a build notes it once.
   def resolve_file_in_collection(filename, file_list, complain)
     found, others = PathMatcher.resolve(filename, file_list)
     return not_found_in_collection(filename, file_list, complain) if found.nil?
@@ -34,7 +39,8 @@ class FileFinderHelper
       msg = "Multiple files matched '#{filename}' but chose '#{found}' by search-path priority. " \
             "Other candidates: #{others.join(', ')}. Add more path to '#{filename}' at its point " \
             "of reference to select a different file."
-      @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+      first = @notice_mutex.synchronize { !@noticed.include?( msg ) && @noticed << msg }
+      @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE ) if first
     end
 
     return found

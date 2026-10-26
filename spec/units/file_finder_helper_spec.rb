@@ -124,6 +124,23 @@ describe FileFinderHelper do
       @ff_helper.resolve_file_in_collection('c.cpp', FILE_LIST, :ignore)
     end
 
+    # Every test that names an ambiguous file looks it up, and so did a check of every test's
+    # TEST_SOURCE_FILE() entries by every test, repeating one notice many times a build
+    it 'logs a given choice once, however many lookups make it' do
+      expect(@loginator).to receive(:log).once
+
+      3.times { @ff_helper.resolve_file_in_collection('c.cpp', FILE_LIST, :ignore) }
+    end
+
+    it 'logs each different choice' do
+      expect(@loginator).to receive(:log).twice
+
+      2.times do
+        @ff_helper.resolve_file_in_collection('c.cpp', FILE_LIST, :ignore)
+        @ff_helper.resolve_file_in_collection('c.hpp', FILE_LIST, :ignore)
+      end
+    end
+
     it 'logs nothing when a bare basename resolves uniquely' do
       expect(@loginator).to_not receive(:log)
       @ff_helper.resolve_file_in_collection('a.c', FILE_LIST, :ignore)

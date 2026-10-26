@@ -36,7 +36,8 @@ class TestBuildSetup
     :test_runner_manager,
     :dependinator,
     :test_search_paths,
-    :mock_locator
+    :mock_locator,
+    :test_source_file_directive_resolver
   )
 
   def setup()
@@ -166,6 +167,8 @@ class TestBuildSetup
         @context_extractor.load_build_directives_cache( filepath: filepath, cache_filepath: cache_target )
         state.lock.synchronize { skipped += 1 }
       end
+
+      validate_source_file_directives( testable, state.context )
 
       validate_mocks_in_use(
         filename: filename,
@@ -317,6 +320,16 @@ class TestBuildSetup
       context: context, operation: OPERATION_PREPROCESS_SYM, filepath: filepath,
       default: compile_flags, no_match_default: compile_flags
     )
+  end
+
+  private
+
+  # Without test preprocessing, stage 11 never runs, and only stage 2's scan finds a test's
+  # TEST_SOURCE_FILE() entries
+  def validate_source_file_directives(testable, context)
+    return if @configurator.project_use_test_preprocessor_tests
+
+    @test_source_file_directive_resolver.validate!( test: testable.name, test_filepath: testable.filepath, context: context )
   end
 
 end

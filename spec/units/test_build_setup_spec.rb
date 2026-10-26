@@ -66,6 +66,9 @@ describe TestBuildSetup do
     allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
     allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
 
+    @test_source_file_directive_resolver = double( "TestSourceFileDirectiveResolver" )
+    allow(@test_source_file_directive_resolver).to receive(:validate!)
+
     @mock_locator = MockLocator.new(
       configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
     )
@@ -89,7 +92,8 @@ describe TestBuildSetup do
         :test_search_paths      => TestSearchPaths.new(
           configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
         ),
-        :mock_locator           => @mock_locator
+        :mock_locator           => @mock_locator,
+        :test_source_file_directive_resolver => @test_source_file_directive_resolver
       }
     )
 
@@ -350,6 +354,24 @@ describe TestBuildSetup do
         @setup.stage_collect_test_context( @state )
       end
 
+      # Stage 11, which checks entries otherwise, does not run without test preprocessing
+      it "checks each test's TEST_SOURCE_FILE() entries once, under its own name, scanned or cached" do
+        expect(@test_source_file_directive_resolver).to receive(:validate!).with( test: 'a_test', test_filepath: 'test/TestFoo.c', context: :test ).twice
+
+        [true, false].each do |stale|
+          allow(@dependinator).to receive(:stale?).and_return( stale )
+          @setup.stage_collect_test_context( @state )
+        end
+      end
+    end
+
+    it "leaves TEST_SOURCE_FILE() entries to stage 11 when test preprocessing is on" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@test_source_file_directive_resolver).to_not receive(:validate!)
+
+      @setup.stage_collect_test_context( @state )
     end
 
     it "logs one summary line stating how many test files' build directives were recalled from cache" do

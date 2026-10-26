@@ -122,6 +122,36 @@ ceedling_system_tests do
     end
 
     # =========================================================================
+    describe "A project where one of several tests misspells a TEST_SOURCE_FILE() entry" do
+    # =========================================================================
+
+      # Every test once checked every test's entries under its own name, and nothing checked
+      # them at all without test preprocessing, where the build failed at link time instead
+      before do
+        copy_duplicate_calc_sources
+        in_project do
+          copy_fixture("test_source_file_duplicate_basenames/test_calc_alpha.c", 'test')
+          copy_fixture("test_source_file_duplicate_basenames/test_calc_beta.c", 'test')
+          copy_fixture("test_source_file_duplicate_basenames/test_calc_typo.c", 'test')
+        end
+      end
+
+      [:none, :tests].each do |preprocessing|
+        it "names the test with the misspelled entry, with test preprocessing #{preprocessing}" do
+          in_project do
+            @c.merge_project_yml_for_test({ :project => { :use_test_preprocessor => preprocessing } })
+
+            output = @c.ceedling_build_exec("test:all")
+            expect(@c.last_exit_status).not_to eq(0)
+            expect(output).to match(%r{'alpha/clac\.c' specified with TEST_SOURCE_FILE\(\) in test/test_calc_typo cannot be found})
+            expect(output).not_to match(/Undefined symbols|undefined reference/)
+          end
+        end
+      end
+
+    end
+
+    # =========================================================================
     describe "A project with two same-named, header-less sources, each identified by a disambiguating TEST_SOURCE_FILE() path" do
     # =========================================================================
 

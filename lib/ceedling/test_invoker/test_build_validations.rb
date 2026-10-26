@@ -7,8 +7,8 @@
 
 # Test-build configuration validators shared by more than one test pipeline stage
 # class -- each raises CeedlingException on a real, user-facing mistake it's
-# positioned to catch (a project using mocking, Partials, or a build-directive
-# source without configuring for it, or a header that doesn't actually resolve).
+# positioned to catch (a project using mocking or Partials without configuring for
+# it, a header that doesn't actually resolve, or two tests sharing one name).
 # Relies on whichever including class's own constructor DI already provides the
 # collaborators a given validator needs, the same way TestPipelineHelpers is
 # mixed in without any DI wiring of its own.
@@ -83,35 +83,6 @@ module TestBuildValidations
       next if include.filename.start_with?( PARTIAL_FILENAME_PREFIX )
 
       @file_finder.find_header_file( include.filepath, :error, collection: collection )
-    end
-  end
-
-  # A TEST_SOURCE_FILE() entry must name a real, recognized file whether it
-  # adds or removes -- a typo or a nonexistent path is worth failing loudly
-  # on either side of the +:/-: convention, the same way a missing file has
-  # always been treated for a plain, additive entry.
-  def validate!(test:, filepath:)
-    sources = @test_context_extractor.lookup_build_directive_sources_list( filepath )
-
-    ext_message = @configurator.extension_source.to_s
-    ext_message += " or #{@configurator.extension_assembly}" if @configurator.test_build_use_assembly
-
-    sources.each do |raw_source|
-      source = FilePathUtils.no_aggregation_decorators( raw_source )
-      valid_extension =
-        if @configurator.test_build_use_assembly
-          @configurator.extension_assembly.match?( source ) || @configurator.extension_source.match?( source )
-        else
-          @configurator.extension_source.match?( source )
-        end
-
-      unless valid_extension
-        raise CeedlingException.new( "File '#{source}' specified with TEST_SOURCE_FILE() in #{test} is not a #{ext_message} source file" )
-      end
-
-      if @file_finder.find_build_input_file( filepath: source, complain: :ignore, context: TEST_SYM ).nil?
-        raise CeedlingException.new( "File '#{source}' specified with TEST_SOURCE_FILE() in #{test} cannot be found in the source file collection" )
-      end
     end
   end
 
