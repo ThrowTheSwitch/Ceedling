@@ -124,6 +124,37 @@ describe DependencyCacheStore do
       expect( @store.load('cache.json')['entries'] ).to eq( {} )
     end
 
+    # GH #1364: version 2 places per-test build output by the test's path from the project root
+    it 'places per-test output by test path from version 2 on' do
+      expect( DependencyCacheStore::CACHE_SCHEMA_VERSION ).to eq( 2 )
+    end
+
+    it 'rebuilds once from an older build layout, advising clobber for what that layout left' do
+      payload = JSON.generate(
+        'schema_version' => 1, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => { 'foo.o' => valid_entry }
+      )
+      stub_file( 'build/cache/.test.dep_cache.json', payload )
+
+      expect(@loginator).to receive(:log).with(
+        'Dependency cache build/cache/.test.dep_cache.json comes from an earlier Ceedling build layout -- rebuilding ' \
+        'everything once. Run `ceedling clobber` to remove any orphaned build output left in the old layout.',
+        Verbosity::COMPLAIN
+      )
+
+      expect( @store.load('build/cache/.test.dep_cache.json')['entries'] ).to eq( {} )
+    end
+
+    it 'keeps its usual warning for a schema_version it never wrote' do
+      payload = JSON.generate(
+        'schema_version' => DependencyCacheStore::CACHE_SCHEMA_VERSION + 1, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => {}
+      )
+      stub_file( 'cache.json', payload )
+
+      expect(@loginator).to receive(:log).with( /cache\.json has an incompatible or missing schema_version/, Verbosity::COMPLAIN, LogLabels::WARNING )
+
+      @store.load('cache.json')
+    end
+
     it 'treats a mismatched hash_algorithm as an absent cache' do
       payload = JSON.generate(
         'schema_version' => DependencyCacheStore::CACHE_SCHEMA_VERSION,
