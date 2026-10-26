@@ -33,8 +33,8 @@ module ValgrindCommonTestCases
         output = @c.ceedling_build_exec("valgrind:all")
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/Wrote 1 Valgrind report/i)
-        expect(File.exist?('build/artifacts/valgrind/test_example_file_success.log')).to eq(true)
-        expect(File.size('build/artifacts/valgrind/test_example_file_success.log')).to be > 0
+        expect(File.exist?('build/artifacts/valgrind/test/test_example_file_success.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test/test_example_file_success.log')).to be > 0
       end
     end
   end
@@ -70,8 +70,8 @@ module ValgrindCommonTestCases
         output = @c.ceedling_build_exec("valgrind:test_example_file_success.c")
         expect(@c.last_exit_status).to eq(0)
         expect(output).to match(/Wrote 1 Valgrind report/i)
-        expect(File.exist?('build/artifacts/valgrind/test_example_file_success.log')).to eq(true)
-        expect(File.size('build/artifacts/valgrind/test_example_file_success.log')).to be > 0
+        expect(File.exist?('build/artifacts/valgrind/test/test_example_file_success.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test/test_example_file_success.log')).to be > 0
       end
     end
   end
@@ -97,10 +97,10 @@ module ValgrindCommonTestCases
         # Aggregate build failure registered by Valgrind plugin
         expect(output).to match(/Valgrind detected.*memory error.*across/i)
         expect(output).to match(/Wrote 1 Valgrind report/i)
-        expect(File.exist?('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to eq(true)
-        expect(File.size('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to be > 0
+        expect(File.exist?('build/artifacts/valgrind/test/test_nosanitize_crash_sigsegv.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test/test_nosanitize_crash_sigsegv.log')).to be > 0
         # Expected memory error(s) detected by Valgrind
-        expect(read_spec_file('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
+        expect(read_spec_file('build/artifacts/valgrind/test/test_nosanitize_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
       end
     end
   end
@@ -127,10 +127,10 @@ module ValgrindCommonTestCases
         # No aggregate Valgrind build failure registered
         expect(output).not_to match(/Valgrind detected.*memory error.*across/i)
         expect(output).to match(/Wrote 1 Valgrind report/i)
-        expect(File.exist?('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to eq(true)
-        expect(File.size('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to be > 0
+        expect(File.exist?('build/artifacts/valgrind/test/test_nosanitize_crash_sigsegv.log')).to eq(true)
+        expect(File.size('build/artifacts/valgrind/test/test_nosanitize_crash_sigsegv.log')).to be > 0
         # Expected memory error(s) detected by Valgrind
-        expect(read_spec_file('build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
+        expect(read_spec_file('build/artifacts/valgrind/test/test_nosanitize_crash_sigsegv.log')).to match(/ERROR SUMMARY:\s+[1-9]/)
       end
     end
   end
@@ -149,7 +149,7 @@ module ValgrindCommonTestCases
 
         expect(@c.last_exit_status).to eq(0)
 
-        xml_path = 'build/artifacts/valgrind/test_example_file_success.xml'
+        xml_path = 'build/artifacts/valgrind/test/test_example_file_success.xml'
         expect(File.exist?(xml_path)).to eq(true)
         expect(read_spec_file(xml_path)).to match(/<valgrindoutput>/)
       end
@@ -175,7 +175,7 @@ module ValgrindCommonTestCases
         @c.ceedling_build_exec("valgrind:all")
 
         expect(@c.last_exit_status).to eq(0)
-        expect(File.exist?('build/artifacts/valgrind/test_example_file_success.log')).to eq(true)
+        expect(File.exist?('build/artifacts/valgrind/test/test_example_file_success.log')).to eq(true)
       end
     end
   end

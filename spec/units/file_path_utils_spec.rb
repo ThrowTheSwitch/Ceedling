@@ -762,20 +762,69 @@ describe FilePathUtils do
       })
 
       allow(@configurator).to receive(:extension_testpass).and_return( FilenameExtension.new('.pass') )
-      allow(@configurator).to receive(:paths_test).and_return( ['test'] )
+      allow(@configurator).to receive(:project_build_root).and_return( 'build' )
+      allow(@file_wrapper).to receive(:check_path_length)
     end
 
-    it 'mirrors each expected results file beneath the same test identity its own build directory uses' do
+    it 'mirrors each expected results file beneath the same test name its own build directory uses' do
       results = @fpu.form_pass_results_filelist(
         'build/test/results', ['test/unit/test_foo.c', 'test/integration/test_foo.c']
       )
-      expect( results ).to include('build/test/results/unit/test_foo.pass')
-      expect( results ).to include('build/test/results/integration/test_foo.pass')
+      expect( results ).to include('build/test/results/test/unit/test_foo.pass')
+      expect( results ).to include('build/test/results/test/integration/test_foo.pass')
     end
 
-    it 'leaves a flat test\'s own results file flat, undisturbed by mirroring' do
+    it 'places a test at its root beneath that root, as its name does' do
       results = @fpu.form_pass_results_filelist('build/test/results', ['test/test_bar.c'])
-      expect( results ).to eq(['build/test/results/test_bar.pass'])
+      expect( results ).to eq(['build/test/results/test/test_bar.pass'])
+    end
+
+    # GH #1364: same-named tests at a root and below it, and under two roots
+    it 'gives same-named tests distinct results files' do
+      tests = ['test/test_calc.c', 'test/unit/test_calc.c', 'extra/unit/test_calc.c']
+      results = @fpu.form_pass_results_filelist( 'build/test/results', tests )
+      expect( results.uniq.size ).to eq(3)
+    end
+
+    it 'agrees with the results path each test is given' do
+      ['test/test_calc.c', 'test/unit/test_calc.c', '../shared/test/test_s.c'].each do |test|
+        name = @fpu.form_test_name( test )
+        expected = @fpu.form_pass_results_filepath( @fpu.form_test_results_path( name, context: 'test' ), test )
+        expect( @fpu.form_pass_results_filelist( 'build/test/results', [test] ) ).to eq([expected])
+      end
+    end
+  end
+
+  describe '#form_test_name' do
+    before(:each) do
+      @fpu = described_class.new({ :configurator => double('configurator'), :file_wrapper => double('file_wrapper') })
+    end
+
+    it 'names a test by its path from the project root, without its extension' do
+      expect( @fpu.form_test_name( 'test/test_calc.c' ) ).to eq('test/test_calc')
+      expect( @fpu.form_test_name( 'test/unit/test_calc.c' ) ).to eq('test/unit/test_calc')
+    end
+
+    # GH #1364: the same layout under two roots and a :files test outside every root
+    it 'keeps the root, so same-named tests under different roots get different names' do
+      names = ['test/foo/test_x.c', 'extra/foo/test_x.c', 'other/test_x.c'].map { |test| @fpu.form_test_name( test ) }
+      expect( names ).to eq(['test/foo/test_x', 'extra/foo/test_x', 'other/test_x'])
+    end
+
+    it 'gives one name however the path is written' do
+      expect( @fpu.form_test_name( './test/unit/test_calc.c' ) ).to eq('test/unit/test_calc')
+      expect( @fpu.form_test_name( 'test\\unit\\test_calc.c' ) ).to eq('test/unit/test_calc')
+      expect( @fpu.form_test_name( File.join( Dir.pwd, 'test/unit/test_calc.c' ) ) ).to eq('test/unit/test_calc')
+    end
+
+    it 'keeps a test outside the project inside the build directory' do
+      expect( @fpu.form_test_name( '../shared/test/unit/test_s.c' ) ).to eq('_up_/shared/test/unit/test_s')
+      expect( @fpu.form_test_name( '../../other/test_o.c' ) ).to eq('_up_/_up_/other/test_o')
+    end
+
+    it 'places a test on another Windows drive beneath its drive letter' do
+      expect( @fpu.form_test_name( 'D:/work/test/test_x.c' ) ).to eq('_abs_/D/work/test/test_x')
+      expect( @fpu.form_test_name( 'D:\\work\\test\\test_x.c' ) ).to eq('_abs_/D/work/test/test_x')
     end
   end
 

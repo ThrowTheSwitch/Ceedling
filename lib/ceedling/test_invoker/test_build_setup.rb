@@ -46,12 +46,12 @@ class TestBuildSetup
   # Stage 1: Create per-test build/results/mock/partial directory structure
   # and populate the testables hash with initial entries.
   def stage_prepare_build_paths(state)
-    clean_test_roots = PathMirror.clean_roots( @configurator.paths_test )
+    validate_unique_test_names!( tests: state.tests )
 
     @batchinator.exec(workload: :compile, things: state.tests) do |filepath|
       filepath = filepath.to_s
-      key  = testable_symbolize( filepath, clean_test_roots )
-      name = key.to_s
+      name = @file_path_utils.form_test_name( filepath )
+      key  = name.to_sym
 
       state.lock.synchronize do
         state.testables[key] = Testable.new(
@@ -317,16 +317,6 @@ class TestBuildSetup
       context: context, operation: OPERATION_PREPROCESS_SYM, filepath: filepath,
       default: compile_flags, no_match_default: compile_flags
     )
-  end
-
-  private
-
-  def testable_symbolize(filepath, clean_roots)
-    basename = File.basename( filepath ).ext( '' )
-    subdir   = PathMirror.relative_subdir_from_clean_roots( filepath, clean_roots )
-    name     = subdir.empty? ? basename : File.join( subdir, basename )
-
-    return name.to_sym
   end
 
 end

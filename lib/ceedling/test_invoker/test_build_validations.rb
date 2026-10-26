@@ -14,6 +14,22 @@
 # mixed in without any DI wiring of its own.
 module TestBuildValidations
 
+  # A name comes from its test's path, so two tests share one only when a path outside the
+  # project maps onto a real one (`../x` and a project directory named `_up_/x`). Sharing
+  # would silently drop one test, so a build with either in it stops. A build without them
+  # is unaffected.
+  def validate_unique_test_names!(tests:)
+    by_name = @configurator.collection_all_tests.map( &:to_s ).uniq.group_by { |test| @file_path_utils.form_test_name( test ) }
+
+    tests.each do |test|
+      name  = @file_path_utils.form_test_name( test )
+      files = by_name.fetch( name, [] )
+      next if files.size < 2
+
+      raise CeedlingException.new( "Test files #{files.join( ' and ' )} map to one build name `#{name}`. Rename or move one of them." )
+    end
+  end
+
   def validate_mocks_in_use(filename:, mocks:)
     if !@configurator.project_use_mocks and !mocks.empty?
       _mocks = mocks.map { |include| include.filename }
