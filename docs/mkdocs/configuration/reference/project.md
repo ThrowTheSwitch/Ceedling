@@ -295,10 +295,10 @@ extracted from the `gdb` report. Ceedling will attempt to surface in the
 summary the offending line of code or failing `assert()` from the report.
 
 The full `gdb` report is captured to a log file, and the log filepath is 
-provided in the crash summary. The log filepath comprises the test file
-path from your project’s root as a subdirectory plus the name of crashing 
-test case function as the filename. Each build that reruns a test replaces 
-its logs; a log holds only the latest crash.
+provided in the crash summary. The log filepath comprises the [test’s name][test-names],
+its path from your project’s root, as a subdirectory plus the name of the crashing 
+test case function as the filename. A build that logs a test case’s crash replaces 
+that log; a log holds only the latest crash.
 
 [test-names]: ../../testing-guide/conventions.md#test-names-build-output
 

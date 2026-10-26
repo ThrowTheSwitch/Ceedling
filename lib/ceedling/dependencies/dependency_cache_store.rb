@@ -148,7 +148,7 @@ class DependencyCacheStore
     return version.is_a?( Integer ) && version.between?( 1, CACHE_SCHEMA_VERSION - 1 )
   end
 
-  # An earlier build layout leaves its output where nothing reads it any more
+  # An earlier build layout leaves its output where this build no longer looks
   def upgrade(store_path)
     @loginator.log(
       "Dependency cache #{store_path} comes from an earlier Ceedling build layout -- rebuilding everything once. " \

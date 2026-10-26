@@ -125,8 +125,7 @@ ceedling_system_tests do
     describe "A project where one of several tests misspells a TEST_SOURCE_FILE() entry" do
     # =========================================================================
 
-      # Every test once checked every test's entries under its own name, and nothing checked
-      # them at all without test preprocessing, where the build failed at link time instead
+      # A misspelled entry stops the build naming its own test, with test preprocessing on or off
       before do
         copy_duplicate_calc_sources
         in_project do

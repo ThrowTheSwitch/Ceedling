@@ -32,7 +32,7 @@ The plugin provides two invocation modes mirroring standard `test:` tasks.
 
 - **Whole test suite**: By running `ceedling valgrind:all`, all test
   executables are built and then each is run under Valgrind. A separate log
-  file is produced for each test executable in `build/artifacts/valgrind/`.
+  file is produced for each test executable beneath `build/artifacts/valgrind/`.
 - **Single test file**: By running `ceedling valgrind:<filename>`, a single
   test executable is built and run under Valgrind, producing one log file.
 

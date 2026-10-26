@@ -334,7 +334,7 @@ A leak. Every test passes, and the leak alone fails the build. The test’s
 own output section shows the sanitizer’s report:
 
 ```
-🪲 ERROR: test_nosanitize_leak: LeakSanitizer memory-leak at test/test_nosanitize_leak.c:32 ➡️ see build/artifacts/sanitize/sanitize/test/test_nosanitize_leak.log
+🪲 ERROR: test/test_nosanitize_leak: LeakSanitizer memory-leak at test/test_nosanitize_leak.c:32 ➡️ see build/artifacts/sanitize/sanitize/test/test_nosanitize_leak.log
 
 SANITIZE: TEST OUTPUT
 [test/test_nosanitize_leak.c]

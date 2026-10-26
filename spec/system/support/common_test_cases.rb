@@ -880,7 +880,6 @@ module CommonSystemTestCases
         expect(@c.last_exit_status).to eq(1) # Test should fail because of crash
         expect(output).to match(/Test Executable Crashed/i)
         expect(output).to match(/Unit test failures/)
-        expect(!File.exist?('./build/test/results/test/test_add.fail'))
       end
     end
   end

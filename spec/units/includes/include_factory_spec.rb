@@ -18,15 +18,15 @@ describe IncludeFactory do
   end
 
   describe '#user_include_from_filepath' do
-    it 'strips a flat test\'s own mock subdirectory down to the bare mock filename' do
-      include_obj = @factory.user_include_from_filepath( 'build/test/mocks/TestFoo/MockBar.h', test: 'TestFoo' )
+    it 'strips a test\'s own mock subdirectory down to the bare mock filename' do
+      include_obj = @factory.user_include_from_filepath( 'build/test/mocks/test/TestFoo/MockBar.h', test: 'test/TestFoo' )
       expect( include_obj.filename ).to eq( 'MockBar.h' )
       expect( include_obj.filepath ).to eq( 'MockBar.h' )
     end
 
     it 'strips a nested test\'s own multi-segment mock subdirectory down to the bare mock filename' do
       include_obj = @factory.user_include_from_filepath(
-        'build/test/mocks/adc/TestAdcConductor/MockAdcHardware.h', test: 'adc/TestAdcConductor'
+        'build/test/mocks/test/adc/TestAdcConductor/MockAdcHardware.h', test: 'test/adc/TestAdcConductor'
       )
       expect( include_obj.filename ).to eq( 'MockAdcHardware.h' )
       expect( include_obj.filepath ).to eq( 'MockAdcHardware.h' )

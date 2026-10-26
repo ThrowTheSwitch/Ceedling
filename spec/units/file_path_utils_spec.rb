@@ -365,25 +365,25 @@ describe FilePathUtils do
         .to eq('build/test/runners/test_foo_runner.c')
     end
 
-    it 'forms a flat runner filepath for a flat test\'s own identity' do
-      expect( @fpu.form_runner_filepath_from_test('test/test_foo.c', name: 'test_foo') )
+    it 'forms a runner filepath in the runners directory itself for a test at the project root' do
+      expect( @fpu.form_runner_filepath_from_test('test_foo.c', name: 'test_foo') )
         .to eq('build/test/runners/test_foo_runner.c')
     end
 
-    it 'mirrors the runner beneath the test\'s own mirrored subdirectory, distinguishing same-named tests' do
-      expect( @fpu.form_runner_filepath_from_test('test/unit/test_foo.c', name: 'unit/test_foo') )
-        .to eq('build/test/runners/unit/test_foo_runner.c')
+    it 'places the runner beneath the directories of the test\'s name, distinguishing same-named tests' do
+      expect( @fpu.form_runner_filepath_from_test('test/unit/test_foo.c', name: 'test/unit/test_foo') )
+        .to eq('build/test/runners/test/unit/test_foo_runner.c')
 
-      expect( @fpu.form_runner_filepath_from_test('test/integration/test_foo.c', name: 'integration/test_foo') )
-        .to eq('build/test/runners/integration/test_foo_runner.c')
+      expect( @fpu.form_runner_filepath_from_test('test/integration/test_foo.c', name: 'test/integration/test_foo') )
+        .to eq('build/test/runners/test/integration/test_foo_runner.c')
     end
 
-    it 'forms a flat runner directory for a flat test' do
+    it 'forms the runners directory itself for a test at the project root' do
       expect( @fpu.form_test_runners_path('test_foo') ).to eq('build/test/runners')
     end
 
-    it 'forms the runner directory itself beneath a nested test\'s own mirrored subdirectory' do
-      expect( @fpu.form_test_runners_path('unit/test_foo') ).to eq('build/test/runners/unit')
+    it 'forms the runner directory beneath the directories of the test\'s name' do
+      expect( @fpu.form_test_runners_path('test/unit/test_foo') ).to eq('build/test/runners/test/unit')
     end
   end
 

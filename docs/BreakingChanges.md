@@ -24,7 +24,7 @@ The first build after upgrading rebuilds everything once. Run `ceedling clobber`
 
 ## `TEST_SOURCE_FILE()` entries are checked without test preprocessing
 
-With `:project` ↳ `:use_test_preprocessor` set to `:none` or `:mocks`, a `TEST_SOURCE_FILE()` entry naming a file that doesn’t exist was previously silently dropped. A build now stops with an error naming the entry and its test file, as it already did with test preprocessing.
+With `:project` ↳ `:use_test_preprocessor` set to `:none` or `:mocks`, a `TEST_SOURCE_FILE()` entry naming a file that doesn’t exist, or that isn’t a source file, was previously silently dropped. A build now stops with an error naming the entry and its test file, as it already did with test preprocessing.
 
 Without test preprocessing, Ceedling reads these entries as text and does not evaluate `#if`. An entry inside an `#if` branch that is off is checked too, so it must name a real file.
 

@@ -5,8 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# How tests are named, across the project layouts that once gave two tests one name or let
-# a build mistake one test for another (GH #1364). A project's YAML runs through the real
+# How tests are named, across project layouts with same-named tests (GH #1364). A project's YAML runs through the real
 # configuration pipeline in a temporary project, so test paths and collections come from
 # real globs. A real FilePathUtils names each test, and a real TestBuildSetup prepares its
 # directories, as stage 1 of a build does.

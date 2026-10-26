@@ -7,9 +7,8 @@
 
 # Per-test logs placed by a test's name, written with real file I/O in a temporary project.
 # A test's name is its path from the project root, so its logs sit in subdirectories that
-# must exist before anything writes there (GH #1364). The raw-output log and Valgrind's
-# reports failed for any test below its root because nothing made those directories, and
-# same-named tests shared one gdb log.
+# must exist before anything writes there (GH #1364). Same-named tests keep separate gdb
+# logs, each holding only its latest build's crash.
 
 require 'spec_helper'
 require 'tmpdir'
@@ -24,7 +23,7 @@ $LOAD_PATH.unshift( File.expand_path( '../../plugins/valgrind/lib', __dir__ ) )
 
 # Ceedling runtime path constants the plugins need at require time
 PROJECT_BUILD_ROOT           = 'build'              unless defined?(PROJECT_BUILD_ROOT)
-PROJECT_BUILD_ARTIFACTS_ROOT = 'build/artifacts'    unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
+PROJECT_BUILD_ARTIFACTS_ROOT = 'artifacts'          unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
 PROJECT_TEST_RESULTS_PATH    = 'build/test/results' unless defined?(PROJECT_TEST_RESULTS_PATH)
 
 require 'report_tests_raw_output_log'

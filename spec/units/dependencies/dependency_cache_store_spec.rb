@@ -125,7 +125,7 @@ describe DependencyCacheStore do
     end
 
     # GH #1364: version 2 places per-test build output by the test's path from the project root
-    it 'places per-test output by test path from version 2 on' do
+    it 'marks the 1.2.2 build layout as schema version 2' do
       expect( DependencyCacheStore::CACHE_SCHEMA_VERSION ).to eq( 2 )
     end
 

@@ -161,7 +161,7 @@ describe TestFilePreprocessinator do
       @preprocessinator_stage.preprocess( @state )
     end
 
-    # Every test once checked every test, each under its own name
+    # Each test checks its own entries, not every test's
     it "validates each test's entries once, under that test's own name" do
       allow(@dependinator).to receive(:stale?).and_return( false )
       others = %w[b_test c_test].to_h do |name|

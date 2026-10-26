@@ -46,7 +46,7 @@ describe ReportTestsTeamcityStdout do
       expect(lines[1]).to eq("##teamcity[testSuiteFinished name='test/TestFoo' flowId='1']\n")
     end
 
-    # GH #1364: same-named tests in different directories were one suite name
+    # GH #1364: same-named tests in different directories are different suites
     it 'names each suite by its test, so same-named tests are told apart' do
       @plugin.pre_test('test/a/test_x.c')
       @plugin.pre_test('test/b/test_x.c')

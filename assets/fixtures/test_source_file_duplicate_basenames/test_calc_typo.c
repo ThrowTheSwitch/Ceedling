@@ -1,7 +1,6 @@
 #include "unity.h"
 
-// calc.c has no corresponding header; enough path is given here to identify
-// alpha/calc.c specifically, distinct from beta/calc.c elsewhere in the project.
+// Misspells alpha/calc.c on purpose, so no source file matches this entry.
 TEST_SOURCE_FILE("alpha/clac.c")
 
 extern int calc_value(void);

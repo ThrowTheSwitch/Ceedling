@@ -9,9 +9,8 @@
 # the real context extractor, and the real resolver looks each entry up through the real
 # file finder in a temporary project configured by the real configuration pipeline.
 #
-# Every test once checked every test's entries under its own name, so a typo was blamed on
-# whichever test happened to check it, and with test preprocessing off nothing was checked
-# at all. A misspelled entry then failed only at link time, or, for a removal, never.
+# Each test's entries are checked once, under that test's own name, with test preprocessing
+# on or off, so a misspelled entry stops the build naming the test that holds it (GH #1364).
 
 require 'spec_helper'
 require 'configurator_integration_helper'
@@ -144,8 +143,8 @@ describe 'TEST_SOURCE_FILE() checks (integration)' do
     end
   end
 
-  # Stage 2 scans the entries when test preprocessing is off, and now checks them there too
-  it 'checks each test once, under its own name, in stage 2 without test preprocessing' do
+  # Without test preprocessing, stage 2 scans the entries and checks them
+  it 'checks each test under its own name in stage 2 without test preprocessing' do
     in_temp_project( project_files.merge( 'test/unit/test_m3.c' => test_file( ['nowhere.c'] ) ) ) do
       o = objects
       setup = TestBuildSetup.new( TestBuildSetup.constructor_keys.to_h { |key| [key, double( key.to_s ).as_null_object] }.merge(

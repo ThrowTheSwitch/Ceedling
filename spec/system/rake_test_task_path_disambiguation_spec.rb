@@ -117,8 +117,7 @@ ceedling_system_tests do
     describe "A test at its root beside same-named tests below it" do
     # =========================================================================
 
-      # GH #1364: test/test_foo.c was named test_foo, which ends both other tests' paths,
-      # so every build that included it stopped as ambiguous
+      # GH #1364: a test at its root builds beside same-named tests below it
       before do
         in_project do
           copy_fixture("tests_with_duplicate_test_names/test_foo.c", 'test')
@@ -168,7 +167,7 @@ ceedling_system_tests do
     describe "Same-named tests under more than one test root" do
     # =========================================================================
 
-      # GH #1364: these tests once shared one name, so one silently replaced the other
+      # GH #1364: tests with one path below different roots keep apart
       it "runs both tests when one root lies inside the other" do
         in_project do
           copy_fixture("tests_with_duplicate_test_names/unit/test_foo.c", 'test')
