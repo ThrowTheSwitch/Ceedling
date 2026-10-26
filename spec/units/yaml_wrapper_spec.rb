@@ -65,6 +65,17 @@ describe YamlWrapper do
       end
     end
 
+    # Ruby's ArgumentError, not the constructor gem's same-named class every DIY object sees
+    it 'reports a Psych that rejects safe_load\'s arguments as :incompatible' do
+      allow(YAML).to receive(:safe_load).and_raise( ::ArgumentError.new( 'unknown keyword: :aliases' ) )
+
+      expect { @yaml_wrapper.load_string("a: 1\n", source_label: 'my_project.yml') }.to raise_error(YamlLoadException) do |e|
+        expect(e.reason).to eq(:incompatible)
+        expect(e.message).to match(/does not support a safe-loading feature.*unknown keyword: :aliases/)
+        expect(e.original_error).to be_a( ::ArgumentError )
+      end
+    end
+
     it 'embeds the source_label in the underlying Psych message' do
       yaml = "a: [1, 2\n"
 
