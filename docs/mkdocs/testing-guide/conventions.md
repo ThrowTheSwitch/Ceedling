@@ -205,6 +205,30 @@ or `testing_MyAwesomeCode.C` could each be valid test file
 names. Note, however, that Ceedling can recognize only one test
 file naming convention per project.
 
+### Test names & build output
+
+Ceedling names each test by its path from your project’s root, without its
+file extension. `test/unit/test_calc.c` is named `test/unit/test_calc`. A path
+is unique, so every test gets its own build output, even when test files share
+a filename.
+
+The name places a test’s output beneath each build directory:
+
+* Objects and executable: `build/test/out/test/unit/test_calc/`
+* Results: `build/test/results/test/unit/test_calc.pass`
+* Logs from plugins and backtraces, such as
+  `build/artifacts/valgrind/test/unit/test_calc.log` or
+  `build/logs/test/test/unit/test_calc/<test case>.gdb.log`
+
+A test outside your project keeps its whole path. Each `..` becomes `_up_`, so
+`../shared/test/test_io.c` is named `_up_/shared/test/test_io`. A test with no
+path relative to your project, such as one on another Windows drive, is named
+beneath `_abs_`. Neither name reaches outside the build directory.
+
+Two tests share a name only if a test outside your project maps onto a real
+directory named `_up_` or `_abs_`. A build that includes either test stops with
+an error naming both files.
+
 #### Installer-like test filenames on Windows
 
 On Windows, Ceedling writes a manifest beside each test executable. It lets a

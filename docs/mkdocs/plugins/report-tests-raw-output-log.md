@@ -33,7 +33,11 @@ respective test executables.
 
 Builds are differentiated by build context — `test`, `release`, or
 plugin-modified build (e.g. `gcov`). Log files are written to `<build
-root>/artifacts/<context>/<test file>.raw.log`.
+root>/artifacts/<context>/<test name>.raw.log`. A [test’s name][test-names] is its path
+from your project’s root, so `test/unit/test_calc.c` logs to
+`build/artifacts/test/test/unit/test_calc.raw.log`.
+
+[test-names]: ../testing-guide/conventions.md#test-names-build-output
 
 ## Setup
 

@@ -67,7 +67,10 @@ underlying Java language in which TeamCity is written,
 `package_or_namespace.ClassName.TestName`.
 
 This plugin maps Ceedling conventions to TeamCity test service messages as
-`context.TestFilepath.TestCaseName`.
+`context.TestFilepath.TestCaseName`. Each test suite is named by its test file’s
+path from your project’s root, without its file extension (e.g.
+`test/TestUsartModel`), so same-named test files in different directories are
+distinct suites.
 
 * `context` Your build's context defaults to `test`. Certain other test build 
   plugins (e.g. GCov) provide a different context (`gcov`) for test builds, 
@@ -81,7 +84,7 @@ This plugin maps Ceedling conventions to TeamCity test service messages as
 ```
 
 ```
-##teamcity[testSuiteStarted name='TestUsartModel' flowId='15']
+##teamcity[testSuiteStarted name='test/TestUsartModel' flowId='15']
 ##teamcity[testStarted name='test.test/TestUsartModel.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting' flowId='15']
 ##teamcity[testFinished name='test.test/TestUsartModel.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting' duration='81' flowId='15']
 ##teamcity[testStarted name='test.test/TestUsartModel.testShouldReturnErrorMessageUponInvalidTemperatureValue' flowId='15']
@@ -90,7 +93,7 @@ This plugin maps Ceedling conventions to TeamCity test service messages as
 ##teamcity[testFailed name='test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately' message='Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected.' details='File: test/TestUsartModel.c Line: 25' flowId='15']
 ##teamcity[testFinished name='test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately' duration='81' flowId='15']
 ##teamcity[testIgnored name='test.test/TestUsartModel.testShouldReturnWakeupMessage' flowId='15']
-##teamcity[testSuiteFinished name='TestUsartModel' flowId='15']
+##teamcity[testSuiteFinished name='test/TestUsartModel' flowId='15']
 ```
 
 <br/><br/>
