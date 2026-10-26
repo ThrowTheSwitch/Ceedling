@@ -827,9 +827,17 @@ describe FilePathUtils do
       expect( @fpu.form_test_name( outside ) ).to eq('_up_/shared/test/test_s')
     end
 
+    # A drive other than the working directory's, which on Windows may itself be C: or D:
     it 'places a test on another Windows drive beneath its drive letter' do
-      expect( @fpu.form_test_name( 'D:/work/test/test_x.c' ) ).to eq('_abs_/D/work/test/test_x')
-      expect( @fpu.form_test_name( 'D:\\work\\test\\test_x.c' ) ).to eq('_abs_/D/work/test/test_x')
+      drive = Dir.pwd.match?( /\A[Qq]:/ ) ? 'R' : 'Q'
+
+      expect( @fpu.form_test_name( "#{drive}:/work/test/test_x.c" ) ).to eq("_abs_/#{drive}/work/test/test_x")
+      expect( @fpu.form_test_name( "#{drive}:\\work\\test\\test_x.c" ) ).to eq("_abs_/#{drive}/work/test/test_x")
+    end
+
+    it 'names a test on the working directory\'s own Windows drive by its relative path', if: Dir.pwd.match?( /\A[A-Za-z]:/ ) do
+      inside = File.join( Dir.pwd, 'test', 'test_x.c' ).tr( '/', '\\' )
+      expect( @fpu.form_test_name( inside ) ).to eq('test/test_x')
     end
   end
 
