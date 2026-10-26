@@ -8,6 +8,8 @@
 require 'spec_helper'
 require 'ceedling/constants'
 
+# Ceedling runtime path constants sanitize_constants.rb needs at require time
+PROJECT_BUILD_ROOT           = 'build'           unless defined?(PROJECT_BUILD_ROOT)
 PROJECT_BUILD_ARTIFACTS_ROOT = 'build/artifacts' unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
 
 $: << File.expand_path('../../../../plugins/sanitize/lib', __FILE__)
