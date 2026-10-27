@@ -6,4 +6,4 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-ruby vendor/ceedling/bin/ceedling $*
+ruby vendor/ceedling/bin/ceedling "$@"

@@ -269,5 +269,20 @@ describe 'Launcher hand-off' do
       expect(status.exitstatus).to eq( 0 ), stdout + stderr
       expect(File.directory?( File.join( @copy, Installation::BUILTIN_MIXINS_DIR ) )).to be( true )
     end
+
+    # Windows has ceedling.cmd, whose %* passes the command tail intact
+    it 'takes arguments through its ./ceedling launch script exactly as typed', unless: Installation.windows? do
+      Dir.mktmpdir do |dir|
+        dump = File.join( dir, 'dump with spaces.yml' )
+
+        stdout, stderr, status = Open3.capture3(
+          {'CEEDLING_DECORATORS' => 'false'}, './ceedling', 'dumpconfig', '--no-app', '--mixin', "=:project:\n  :name: Two Words", dump,
+          chdir: @project
+        )
+
+        expect(status.exitstatus).to eq( 0 ), stdout + stderr
+        expect(YAML.safe_load_file( dump, permitted_classes: [Symbol] )[:project][:name]).to eq( 'Two Words' )
+      end
+    end
   end
 end
