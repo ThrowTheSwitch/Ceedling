@@ -291,7 +291,7 @@ describe CliHandler do
       end
     end
 
-    # GH #1365: no `--local` copy carries a documentation bundle, so it would export only licenses
+    # GH #1365: a `--local` copy carries no documentation bundle, so it would export only licenses
     describe 'docs' do
       before(:each) do
         @launcher = Installation.new( @app_cfg[:launcher_root_path] )
@@ -311,7 +311,7 @@ describe CliHandler do
         allow(@helper).to receive(:docs_bundle?).with( @copy.root ).and_return( false )
 
         expect(@loginator).to receive(:console).with(
-          "#{@copy.describe} holds no documentation bundle to export, as no `--local` copy does. " +
+          "#{@copy.describe} holds no documentation bundle to export. " +
           "Exporting the documentation of #{@launcher.describe( 'Ceedling launcher' )} instead.",
           LogLabels::NOTICE
         ).ordered

@@ -501,7 +501,7 @@ class CliHandler
       @launchinator.proceed( target:target, app_cfg:app_cfg )
     else
       app_cfg.set_paths( launcher.root )
-      msg = "#{target.describe()} holds no documentation bundle to export, as no `--local` copy does. " +
+      msg = "#{target.describe()} holds no documentation bundle to export. " +
             "Exporting the documentation of #{launcher.describe( 'Ceedling launcher' )} instead."
       @loginator.console( msg, LogLabels::NOTICE )
     end
