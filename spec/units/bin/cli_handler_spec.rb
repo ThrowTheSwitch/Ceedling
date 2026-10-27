@@ -46,6 +46,8 @@ describe CliHandler do
     @composinator  = double('composinator').as_null_object
     @projectinator = double('projectinator').as_null_object
     @path_validator = double('path_validator').as_null_object
+    @actionator    = double('actionator').as_null_object
+    @launchinator  = double('launchinator').as_null_object
 
     @cli_handler = described_class.new({
       :composinator       => @composinator,
@@ -53,7 +55,8 @@ describe CliHandler do
       :cli_helper         => @helper,
       :path_validator     => @path_validator,
       :rake_task_registry => double('rake_task_registry').as_null_object,
-      :actionator         => double('actionator').as_null_object,
+      :actionator         => @actionator,
+      :launchinator       => @launchinator,
       :loginator          => @loginator,
     })
   end
@@ -136,7 +139,7 @@ describe CliHandler do
         expect(@composinator).to receive(:loadinate).with(
           hash_including( filepath: 'other/project.yml', mixins: ['ci.yml'], silent: true )
         ).and_return( ['other/project.yml', config] )
-        expect(@helper).to receive(:which_ceedling?).with( env: {}, config: config, app_cfg: @app_cfg )
+        expect(@launchinator).to receive(:resolve).with( env: {}, app_cfg: @app_cfg, config: config )
 
         @cli_handler.version( {}, @app_cfg, {:project => 'other/project.yml', :mixin => ['ci.yml']} )
       end
@@ -161,7 +164,7 @@ describe CliHandler do
         config = {:project => {:which_ceedling => 'vendor/ceedling'}}
         allow(@projectinator).to receive(:config_available?).and_return( true )
         allow(@composinator).to receive(:loadinate).and_return( ['project.yml', config] )
-        expect(@helper).to receive(:which_ceedling?).with( env: {}, config: config, app_cfg: @app_cfg )
+        expect(@launchinator).to receive(:resolve).with( env: {}, app_cfg: @app_cfg, config: config )
 
         @cli_handler.version( {}, @app_cfg )
       end
@@ -169,20 +172,26 @@ describe CliHandler do
       it 'falls back to resolving without a project when the default project file cannot be loaded' do
         allow(@projectinator).to receive(:config_available?).and_return( true )
         allow(@composinator).to receive(:loadinate).and_raise( 'Project configuration file section :mixins failed validation' )
-        expect(@helper).to receive(:which_ceedling?).with( env: {}, config: {}, app_cfg: @app_cfg )
+        expect(@launchinator).to receive(:resolve).with( env: {}, app_cfg: @app_cfg, config: {} )
 
         expect { @cli_handler.version( {}, @app_cfg ) }.to_not raise_error
       end
 
       it 'resolves without a project when no project file is available' do
         expect(@composinator).to_not receive(:loadinate)
-        expect(@helper).to receive(:which_ceedling?).with( env: {}, config: {}, app_cfg: @app_cfg )
+        expect(@launchinator).to receive(:resolve).with( env: {}, app_cfg: @app_cfg, config: {} )
 
         @cli_handler.version( {}, @app_cfg )
       end
 
+      it 'never hands off, since it reports on both installations' do
+        @cli_handler.version( {}, @app_cfg )
+
+        expect(@launchinator).to_not have_received(:launch)
+      end
+
       it 'reports the launcher from where it runs, even after resolution moves the application paths' do
-        allow(@helper).to receive(:which_ceedling?) { |app_cfg:, **| app_cfg.set_paths( '/elsewhere' ) }
+        allow(@launchinator).to receive(:resolve) { |app_cfg:, **| app_cfg.set_paths( '/elsewhere' ) }
 
         expect(@loginator).to receive(:console) do |message, _label|
           expect(message).to include( "Ceedling Launcher => #{Ceedling::Version::GEM}" )
@@ -191,6 +200,95 @@ describe CliHandler do
 
         @cli_handler.version( {}, @app_cfg )
       end
+    end
+  end
+
+  # GH #1365: every command but `version` runs in the installation it selects. An exec
+  # never returns, so a raise stands in for it: nothing after the hand-off may run.
+  describe 'hand-off' do
+    HandedOff = Class.new( StandardError )
+
+    before(:each) do
+      @app_cfg = CeedlingAppConfig.new
+      @config  = {:project => {:which_ceedling => 'vendor/ceedling'}}
+      allow(@path_validator).to receive(:standardize_paths) { |*paths| paths }
+      allow(@helper).to receive(:process_mixin_filepaths) { |mixins| mixins }
+      allow(@composinator).to receive(:loadinate).and_return( ['project.yml', @config] )
+    end
+
+    def expect_no_work_done
+      [:log_project_name, :console_project_name, :load_ceedling, :run_rake_tasks, :dump_yaml,
+       :project_exists?, :vendor_tools, :copy_docs, :lookup_example_projects, :help_footer].each do |work|
+        expect(@helper).to_not have_received( work )
+      end
+      expect(@actionator).to_not have_received(:make_directory)
+      expect(@actionator).to_not have_received(:remove_directory)
+      expect(@loginator).to_not have_received(:console)
+    end
+
+    {
+      'build'                    => ->(h, cfg) { h.build( env: {}, app_cfg: cfg, options: {:project => nil, :mixin => []}, tasks: ['test:all'] ) },
+      'check'                    => ->(h, cfg) { h.check( {}, cfg, {:project => nil, :mixin => []} ) },
+      'environment'              => ->(h, cfg) { h.environment( {}, cfg, {:project => nil, :mixin => []} ) },
+      'dumpconfig'               => ->(h, cfg) { h.dumpconfig( {}, cfg, {:project => nil, :mixin => [], :app => true}, 'out.yml', [] ) },
+      'dumpconfig --no-app'      => ->(h, cfg) { h.dumpconfig( {}, cfg, {:project => nil, :mixin => [], :app => false}, 'out.yml', [] ) },
+      '-T'                       => ->(h, cfg) { h.rake_help( env: {}, app_cfg: cfg ) },
+    }.each do |name, command|
+      it "#{name} hands off with the project's configuration before doing anything else" do
+        expect(@launchinator).to receive(:launch).with( env: {}, app_cfg: @app_cfg, config: @config ).and_raise( HandedOff )
+
+        expect { command.call( @cli_handler, @app_cfg ) }.to raise_error( HandedOff )
+        expect_no_work_done()
+      end
+    end
+
+    it 'help hands off with the project\'s configuration before printing any help' do
+      allow(@projectinator).to receive(:config_available?).and_return( true )
+      expect(@launchinator).to receive(:launch).with( env: {}, app_cfg: @app_cfg, config: @config ).and_raise( HandedOff )
+      printed = false
+
+      expect { @cli_handler.app_help( {}, @app_cfg, {:project => nil, :mixin => []}, nil ) { printed = true } }.to raise_error( HandedOff )
+      expect(printed).to be( false )
+      expect_no_work_done()
+    end
+
+    it 'help without a project hands off by environment and vendor detection alone' do
+      allow(@projectinator).to receive(:config_available?).and_return( false )
+      expect(@launchinator).to receive(:launch).with( env: {}, app_cfg: @app_cfg, config: {} ).and_raise( HandedOff )
+
+      expect { @cli_handler.app_help( {}, @app_cfg, {:project => nil, :mixin => []}, 'build' ) { } }.to raise_error( HandedOff )
+      expect(@composinator).to_not have_received(:loadinate)
+    end
+
+    {
+      'new'      => ->(h, cfg) { h.new_project( {}, cfg, '1.2.2', {:local => true, :configs => true}, 'proj' ) },
+      'examples' => ->(h, cfg) { h.list_examples( {}, cfg, {} ) },
+      'example'  => ->(h, cfg) { h.create_example( {}, cfg, {:local => true}, 'temp_sensor', nil ) },
+      'docs'     => ->(h, cfg) { h.docs( {}, cfg, 'out' ) },
+    }.each do |name, command|
+      it "#{name} hands off by environment and vendor detection before doing anything else" do
+        expect(@launchinator).to receive(:launch).with( env: {}, app_cfg: @app_cfg ).and_raise( HandedOff )
+
+        expect { command.call( @cli_handler, @app_cfg ) }.to raise_error( HandedOff )
+        expect_no_work_done()
+      end
+    end
+
+    it 'upgrade hands off by environment alone, never to a vendor/ceedling it detects' do
+      expect(@launchinator).to receive(:launch).with( env: {}, app_cfg: @app_cfg, detect_vendor: false ).and_raise( HandedOff )
+
+      expect { @cli_handler.upgrade_project( {}, @app_cfg, {:project => 'project.yml'}, 'proj' ) }.to raise_error( HandedOff )
+      expect_no_work_done()
+    end
+
+    it 'upgrade refuses to re-vendor a project from its own vendored copy' do
+      allow(@helper).to receive(:project_exists?).and_return( true )
+      allow(@launchinator).to receive(:launch) { |app_cfg:, **| app_cfg.set_paths( 'proj/vendor/ceedling' ) }
+
+      expect {
+        @cli_handler.upgrade_project( {}, @app_cfg, {:project => 'project.yml'}, 'proj' )
+      }.to raise_error( CeedlingException, /Cannot upgrade #{Regexp.escape( File.expand_path( 'proj/vendor/ceedling' ) )}\/ from itself/ )
+      expect(@actionator).to_not have_received(:remove_directory)
     end
   end
 
@@ -244,6 +342,7 @@ describe CliHandler do
         :path_validator     => real_path_validator,
         :rake_task_registry => double('rake_task_registry').as_null_object,
         :actionator         => double('actionator').as_null_object,
+        :launchinator       => double('launchinator').as_null_object,
         :loginator          => double('loginator').as_null_object,
       })
     end

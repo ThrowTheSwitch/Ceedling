@@ -603,7 +603,7 @@ module CeedlingTasks
     ) )
     def docs(dest=nil)
       _dest = dest.dup() if !dest.nil?
-      @handler.docs( @app_cfg, _dest )
+      @handler.docs( ENV, @app_cfg, _dest )
     end
     # simplecov:enable line
 

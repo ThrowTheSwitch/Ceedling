@@ -151,6 +151,47 @@ describe Installation do
     end
   end
 
+  # GH #1365: copies vendored by 1.1.0 through 1.2.1 lack the built-in mixins their own launcher validates
+  describe '#missing_builtin_mixins?' do
+    def write_mixins_rb(root, text)
+      FileUtils.mkdir_p( File.join( root, 'bin' ) )
+      File.write( File.join( root, 'bin', 'mixins.rb' ), text )
+    end
+
+    BUILTIN = "BUILTIN_MIXIN_LOAD_PATHS = [ File.join( _vendor, UNITY_ROOT_PATH, 'test', 'targets' ) ].freeze\n"
+
+    it 'is true when the launcher validates built-in mixins the installation does not hold' do
+      Dir.mktmpdir do |root|
+        write_mixins_rb( root, BUILTIN )
+
+        expect(described_class.new( root ).missing_builtin_mixins?).to be( true )
+      end
+    end
+
+    it 'is false when the installation holds its built-in mixins' do
+      Dir.mktmpdir do |root|
+        write_mixins_rb( root, BUILTIN )
+        FileUtils.mkdir_p( File.join( root, 'vendor', 'unity', 'test', 'targets' ) )
+
+        expect(described_class.new( root ).missing_builtin_mixins?).to be( false )
+      end
+    end
+
+    it 'is false for a launcher with no built-in mixins, as before 1.1.0' do
+      Dir.mktmpdir do |root|
+        write_mixins_rb( root, "BUILTIN_MIXINS = {}\n" )
+
+        expect(described_class.new( root ).missing_builtin_mixins?).to be( false )
+      end
+    end
+
+    it 'is false for an installation with no bin/mixins.rb' do
+      Dir.mktmpdir do |root|
+        expect(described_class.new( root ).missing_builtin_mixins?).to be( false )
+      end
+    end
+  end
+
   describe '#describe' do
     it 'names the version and root' do
       Dir.mktmpdir do |root|

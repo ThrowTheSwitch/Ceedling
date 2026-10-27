@@ -106,79 +106,6 @@ class CliHelper
   end
 
 
-  # Returns two value: (1) symbol :gem or :path and (2) path for Ceedling installation
-  def which_ceedling?(env:, config:{}, app_cfg:)
-    # Determine which Ceedling we're running (in priority)
-    #  1. If there's an environment variable set, validate it, and return :gem or a path
-    #  2. If :project ↳ :which_ceedling exists in the config, validate it, and return :gem or a path
-    #  3. If there's a vendor/ceedling/ path in our working directory, return it as a path
-    #  4. If nothing is set, default to :gem and return it
-    #  5. Update app_cfg paths if not the gem
-
-    # Nil for prioritized case checking logic blocks that follow
-    which_ceedling = nil
-
-    # Environment variable
-    if !env['WHICH_CEEDLING'].nil?
-      @loginator.console( " > Set which Ceedling using environment variable WHICH_CEEDLING" ) 
-      which_ceedling = env['WHICH_CEEDLING'].strip()
-      which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
-    end
-
-    # Configuration file
-    if which_ceedling.nil?
-      value, _ = @config_walkinator.fetch_value( :project, :which_ceedling, hash:config )
-      if !value.nil?
-        which_ceedling = value.strip()
-        @loginator.lazy( Verbosity::OBNOXIOUS ) { " > Set which Ceedling from config :project ↳ :which_ceedling => #{which_ceedling}" }
-        which_ceedling = :gem if (which_ceedling.casecmp( 'gem' ) == 0)
-      end
-    end
-
-    # Working directory
-    if which_ceedling.nil?
-      if @file_wrapper.directory?( 'vendor/ceedling' )
-        which_ceedling = 'vendor/ceedling'
-        @loginator.log( " > Set which Ceedling to be vendored installation", Verbosity::OBNOXIOUS )
-      end
-    end
-
-    # Default to gem
-    if which_ceedling.nil?
-      which_ceedling = :gem
-      @loginator.log( " > Defaulting to running Ceedling from Gem", Verbosity::OBNOXIOUS )
-    end
-
-    # If we're launching from the gem, return :gem and initial Rakefile path
-    if which_ceedling == :gem
-      @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
-      return which_ceedling, app_cfg[:ceedling_rakefile_filepath]
-    end
-
-    # Otherwise, handle which_ceedling as a base path
-    ceedling_path = which_ceedling.dup()
-    @path_validator.standardize_paths( ceedling_path )
-    if !@file_wrapper.directory?( ceedling_path )
-      raise "Configured Ceedling launch path #{ceedling_path}/ does not exist"
-    end
-
-    # Update Ceedling installation paths
-    app_cfg.set_paths( ceedling_path )
-
-    # Check updated Ceedling paths
-    if !@file_wrapper.exist?( app_cfg[:ceedling_rakefile_filepath] )
-      raise "Configured Ceedling launch path #{ceedling_path}/ contains no Ceedling installation"
-    end
-
-    # Update variable to full application start path
-    ceedling_path = app_cfg[:ceedling_rakefile_filepath]
-    
-    @loginator.log( " > Launching Ceedling from #{app_cfg[:ceedling_root_path]}/", Verbosity::OBNOXIOUS )
-
-    return :path, ceedling_path
-  end
-
-
   def build_rake_task_registry(config:)
     paths = RakefileComponentResolver.resolve(
       config,
@@ -580,6 +507,7 @@ class CliHelper
       'vendor/diy/lib/',         
       'vendor/unity/auto/',     
       'vendor/unity/src/',      
+      'vendor/unity/test/targets/', # Built-in mixins, which the vendored launcher validates
     ]
 
     # Copy necessary subcomponent dirs into project

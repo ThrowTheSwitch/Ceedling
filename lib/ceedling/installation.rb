@@ -15,6 +15,7 @@ require 'rbconfig'
 class Installation
 
   VERSION_FILE = File.join( 'lib', 'version.rb' )
+  BUILTIN_MIXINS_DIR = File.join( 'vendor', 'unity', 'test', 'targets' )
 
   attr_reader :root
 
@@ -38,6 +39,17 @@ class Installation
   def version
     @version = read_version() unless defined?( @version )
     return @version
+  end
+
+  # True when this installation's launcher validates a built-in mixin directory the
+  # installation does not hold. `--local` vendoring left it out from 1.1.0 through 1.2.1,
+  # so such a copy fails on its own and only ever ran inside another launcher's process.
+  def missing_builtin_mixins?
+    mixins_filepath = File.join( @root, 'bin', 'mixins.rb' )
+    return false if !File.exist?( mixins_filepath )
+    return false if !File.read( mixins_filepath ).include?( 'BUILTIN_MIXIN_LOAD_PATHS' )
+
+    return !File.directory?( File.join( @root, BUILTIN_MIXINS_DIR ) )
   end
 
   # Symlinks resolve, and Windows paths compare without case

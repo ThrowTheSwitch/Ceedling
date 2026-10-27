@@ -16,7 +16,7 @@ class CliHandler
 
   DOCS_SUBDIR = 'docs'
 
-  constructor :composinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actionator, :loginator
+  constructor :composinator, :projectinator, :cli_helper, :path_validator, :rake_task_registry, :actionator, :launchinator, :loginator
 
   # Override to prevent exception handling from walking & stringifying the object variables.
   # Object variables are lengthy and produce a flood of output.
@@ -45,6 +45,16 @@ class CliHandler
     verbosity = @helper.set_verbosity( options[:verbosity] )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
+    # Help comes from the installation the project (if any) selects, so hand off before printing any
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
+    config, rakefile_path = nil, nil
+    if @projectinator.config_available?( filepath:options[:project], env:env )
+      # Silent Ceedling loading unless debug verbosity
+      config, rakefile_path = load_project_and_launch( env:env, app_cfg:app_cfg, options:options, silent:!(verbosity == Verbosity::DEBUG) )
+    else
+      @launchinator.launch( env:env, app_cfg:app_cfg, config:{} )
+    end
+
     # If help requested for a command, show it and skip listing build tasks
     if !command.nil?
       # Block handler
@@ -56,16 +66,8 @@ class CliHandler
     yield( command ) if block_given?
 
     # If project configuration is available, also display Rake tasks
-    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
-    if @projectinator.config_available?( filepath:options[:project], env:env )
-      list_rake_tasks(
-        env:env,
-        app_cfg: app_cfg,
-        filepath: options[:project],
-        mixins: options[:mixin],
-        # Silent Ceedling loading unless debug verbosity
-        silent: !(verbosity == Verbosity::DEBUG)
-      )
+    if !config.nil?
+      list_rake_tasks( app_cfg:app_cfg, config:config, rakefile_path:rakefile_path )
     else
       # If no project configuration is available then note why we aren't displaying more
       msg = "Run help commands in a directory with a project file to list additional options\n\n"
@@ -82,12 +84,17 @@ class CliHandler
   def rake_help(env:, app_cfg:)
     @helper.set_verbosity( Verbosity::ERRORS )
 
-    list_rake_tasks( env:env, app_cfg:app_cfg )
+    config, rakefile_path = load_project_and_launch( env:env, app_cfg:app_cfg, options:{:project => nil, :mixin => []} )
+
+    list_rake_tasks( app_cfg:app_cfg, config:config, rakefile_path:rakefile_path )
   end
 
 
   def new_project(env, app_cfg, ceedling_tag, options, dest)
     @helper.set_verbosity( options[:verbosity] )
+
+    # The selected installation creates the project with its own code and contents
+    @launchinator.launch( env:env, app_cfg:app_cfg )
 
     dest = @path_validator.standardize_paths( dest ).first
 
@@ -101,9 +108,6 @@ class CliHandler
       msg = "It appears a project already exists at \"#{dest}/\"! Use --force to destroy it and create a new project."
       raise msg
     end unless options[:force]
-
-    # Update app_cfg paths (ignore return values)
-    @helper.which_ceedling?( env:env, app_cfg:app_cfg )
 
     # Source paths for project tasks resolve in relation to this path
     @actions.source_root = app_cfg[:ceedling_root_path]
@@ -142,6 +146,10 @@ class CliHandler
   def upgrade_project(env, app_cfg, options, path)
     @helper.set_verbosity( options[:verbosity] )
 
+    # The source is the Ceedling running or WHICH_CEEDLING. A detected vendor/ceedling/ is
+    # likely the very copy being replaced.
+    @launchinator.launch( env:env, app_cfg:app_cfg, detect_vendor:false )
+
     path, options[:project] = @path_validator.standardize_paths( path, options[:project] )
 
     # Check for existing project
@@ -150,10 +158,9 @@ class CliHandler
       raise msg
     end
 
-    which, _ = @helper.which_ceedling?( env:env, app_cfg:app_cfg )
-    if (which == :gem)
-      msg = "Project configuration specifies the Ceedling gem, not vendored Ceedling"
-      @loginator.console( msg, LogLabels::NOTICE )
+    source = Installation.new( app_cfg[:ceedling_root_path] )
+    if source == Installation.new( File.join( path, 'vendor', 'ceedling' ) )
+      raise CeedlingException.new( "Cannot upgrade #{source.root}/ from itself. Run `upgrade` with the Ceedling to upgrade to, or set WHICH_CEEDLING." )
     end
 
     # Source paths for project tasks resolve in relation to this path
@@ -183,10 +190,9 @@ class CliHandler
     @helper.set_verbosity( _verbosity, override: false )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
     options[:logfile] = @path_validator.standardize_paths( options[:logfile] ).first
 
-    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    config, rakefile_path = load_project_and_launch( env:env, app_cfg:app_cfg, options:options )
 
     @cli_helper.log_project_name( config )
 
@@ -246,8 +252,6 @@ class CliHandler
     app_cfg.set_test_build_tasks( @helper.test_task?( tasks: requested ) )
     app_cfg.set_release_build_tasks( @helper.release_task?( tasks: requested ) )
 
-    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
-
     # Log Ceedling Application version information
     _version = Versionator.new(
       app_cfg[:ceedling_root_path],
@@ -273,7 +277,7 @@ class CliHandler
 
     @helper.load_ceedling(
       config: config,
-      rakefile_path: path,
+      rakefile_path: rakefile_path,
       default_tasks: default_tasks
     )
 
@@ -290,9 +294,9 @@ class CliHandler
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
     filepath = @path_validator.standardize_paths( filepath ).first
-    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
-    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    # Even without --app, the selected installation merges the configuration by its own rules
+    config, rakefile_path = load_project_and_launch( env:env, app_cfg:app_cfg, options:options )
 
     # A nil filepath means --stdout was set -- the YAML itself is the only thing
     # that may reach stdout in that case, for a consuming tool to parse cleanly,
@@ -311,11 +315,9 @@ class CliHandler
         app_cfg.set_project_config( config )
         app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
-        _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
-
         config = @helper.load_ceedling(
           config: config,
-          rakefile_path: path,
+          rakefile_path: rakefile_path,
           default_tasks: default_tasks
         )
       else
@@ -334,9 +336,7 @@ class CliHandler
     @helper.set_verbosity( options[:verbosity] )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
-
-    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    config, rakefile_path = load_project_and_launch( env:env, app_cfg:app_cfg, options:options )
 
     @cli_helper.log_project_name( config )
 
@@ -347,12 +347,10 @@ class CliHandler
     app_cfg.set_logging_path( @helper.process_logging_path( config ) )
     app_cfg.set_log_filepath( '' )
 
-    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
-
     begin
       @helper.load_ceedling(
         config: config,
-        rakefile_path: path,
+        rakefile_path: rakefile_path,
         default_tasks: default_tasks
       )
     ensure
@@ -365,9 +363,7 @@ class CliHandler
     @helper.set_verbosity( options[:verbosity] )
     @helper.set_ruby_replacement( options[:ruby_replacement] )
 
-    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
-
-    _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:options[:project], mixins:options[:mixin], env:env )
+    config, rakefile_path = load_project_and_launch( env:env, app_cfg:app_cfg, options:options )
 
     @cli_helper.console_project_name( config )
 
@@ -375,11 +371,9 @@ class CliHandler
     app_cfg.set_project_config( config )
     app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
-    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
-
     config = @helper.load_ceedling(
       config: config,
-      rakefile_path: path
+      rakefile_path: rakefile_path
     )
 
     env_list = []
@@ -418,8 +412,8 @@ class CliHandler
   def list_examples(env, app_cfg, options)
     @helper.set_verbosity( options[:verbosity] )
 
-    # Process which_ceedling for app_cfg modifications but ignore return values
-    @helper.which_ceedling?( env:env, app_cfg:app_cfg )
+    # The selected installation lists its own examples
+    @launchinator.launch( env:env, app_cfg:app_cfg )
 
     examples = @helper.lookup_example_projects( app_cfg[:ceedling_examples_path] )
 
@@ -444,10 +438,10 @@ class CliHandler
   def create_example(env, app_cfg, options, name, dest)
     @helper.set_verbosity( options[:verbosity] )
 
-    dest = @path_validator.standardize_paths( dest ).first
+    # The selected installation creates the example with its own code and contents
+    @launchinator.launch( env:env, app_cfg:app_cfg )
 
-    # Process which_ceedling for app_cfg modifications but ignore return values
-    @helper.which_ceedling?( env:env, app_cfg:app_cfg )
+    dest = @path_validator.standardize_paths( dest ).first
 
     examples = @helper.lookup_example_projects( app_cfg[:ceedling_examples_path] )
 
@@ -492,7 +486,10 @@ class CliHandler
   end
 
 
-  def docs(app_cfg, dest)
+  def docs(env, app_cfg, dest)
+    # The selected installation exports its own documentation
+    @launchinator.launch( env:env, app_cfg:app_cfg )
+
     # File operations require an anchored source root
     @actions.source_root = app_cfg[:ceedling_root_path]
 
@@ -514,7 +511,7 @@ class CliHandler
 
     # This call updates Ceedling paths in app_cfg if the project or environment selects another Ceedling
     config = version_project_config( env, options )
-    @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
+    @launchinator.resolve( env:env, app_cfg:app_cfg, config:config )
 
     # Ceedling application
     application = @helper.manufacture_app_version( app_cfg )
@@ -607,25 +604,32 @@ class CliHandler
     return _project, _mixins
   end
 
-  def list_rake_tasks(env:, app_cfg:, filepath:nil, mixins:[], silent:false)
-    _, config = 
-      @composinator.loadinate(
-        builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS,
-        filepath: filepath,
-        mixins: mixins,
-        env: env,
-        silent: silent
-      )
+  # Loads the project configuration, then runs this command in the installation it selects.
+  # Returns the configuration and the rakefile to load, unless another installation took over.
+  def load_project_and_launch(env:, app_cfg:, options:, silent:false)
+    options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
 
+    _, config = @composinator.loadinate(
+      builtin_load_paths: BUILTIN_MIXIN_LOAD_PATHS,
+      filepath: options[:project],
+      mixins: options[:mixin],
+      env: env,
+      silent: silent
+    )
+
+    rakefile_path = @launchinator.launch( env:env, app_cfg:app_cfg, config:config )
+
+    return config, rakefile_path
+  end
+
+  def list_rake_tasks(app_cfg:, config:, rakefile_path:)
     # Save reference to loaded configuration
     app_cfg.set_project_config( config )
     app_cfg.set_logging_path( @helper.process_logging_path( config ) )
 
-    _, path = @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
-
     @helper.load_ceedling(
       config: config,
-      rakefile_path: path,
+      rakefile_path: rakefile_path,
       default_tasks: app_cfg[:default_tasks]
     )
 

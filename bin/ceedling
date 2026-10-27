@@ -16,10 +16,16 @@ $LOAD_PATH.unshift( ceedling_bin_path )
 
 # Pull in our startup configuration code in bin/
 require 'app_cfg'
-CEEDLING_APPCFG = CeedlingAppConfig.new()
+# The command line as given, before Thor consumes it
+CEEDLING_APPCFG = CeedlingAppConfig.new( argv: ARGV )
 
 # Add load paths for `require 'ceedling/*'` statements in bin/ code
 $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_base_path] )
+
+# A launcher that handed off to this process left markers. Taking them here keeps any
+# subprocess of this build from inheriting them.
+require 'ceedling/handoff'
+CEEDLING_APPCFG.set_handoff( Handoff.take_markers( ENV ) )
 
 # Assumed installed via Ceedling gem dependencies
 require 'constructor'
