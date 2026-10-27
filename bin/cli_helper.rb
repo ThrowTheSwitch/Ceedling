@@ -464,9 +464,8 @@ class CliHelper
     end
 
     # If present copy internl HTML documentation bundle (site-local/) to docs/ceedling/
-    site_local_path = File.join( ceedling_root, DOCS_SITE_LOCAL_PATH )
-    if @file_wrapper.directory?( site_local_path )
-      @actions.copy_directory( site_local_path, docs_path_ceedling, force: true )
+    if docs_bundle?( ceedling_root )
+      @actions.copy_directory( File.join( ceedling_root, DOCS_SITE_LOCAL_PATH ), docs_path_ceedling, force: true )
     else
       @loginator.console( "Internal HTML documentation bundle not found", LogLabels::WARNING )
       return
@@ -480,6 +479,13 @@ class CliHelper
     
     dest_abs = File.absolute_path( dest )
     @loginator.console( " > All other documentation available at #{dest_abs}/\n" )
+  end
+
+
+  # Whether an installation holds the HTML documentation bundle, which a gem does and no
+  # `--local` copy does
+  def docs_bundle?(ceedling_root)
+    return @file_wrapper.directory?( File.join( ceedling_root, DOCS_SITE_LOCAL_PATH ) )
   end
 
 

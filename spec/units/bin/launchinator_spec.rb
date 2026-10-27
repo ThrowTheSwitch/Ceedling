@@ -54,6 +54,26 @@ describe Launchinator do
     end
   end
 
+  describe '#proceed' do
+    it 'hands off to an already selected installation without selecting again' do
+      Dir.mktmpdir do |other|
+        target = Installation.new( other )
+        FileUtils.mkdir_p( File.dirname( target.bin_path ) )
+        FileUtils.touch( target.bin_path )
+
+        expect(@selector).to_not receive(:select)
+
+        @launchinator.proceed( target: target, app_cfg: @app_cfg )
+
+        expect(Handoff).to have_received(:exec).with( target: target, launcher: @launcher, argv: @app_cfg[:argv], loginator: @loginator )
+      end
+    end
+
+    it 'returns the rakefile of the launcher\'s own installation' do
+      expect(@launchinator.proceed( target: @launcher, app_cfg: @app_cfg )).to eq( @launcher.rakefile_path )
+    end
+  end
+
   describe '#launch' do
     it 'continues in-process and returns the rakefile when the launcher\'s own installation is selected' do
       select( @launcher )

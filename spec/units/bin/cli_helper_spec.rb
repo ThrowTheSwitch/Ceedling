@@ -121,6 +121,20 @@ describe CliHelper do
     end
   end
 
+  describe '#docs_bundle?' do
+    it 'is true when the installation holds an HTML documentation bundle' do
+      allow(@file_wrapper).to receive(:directory?).with( File.join( '/ceedling', DOCS_SITE_LOCAL_PATH ) ).and_return( true )
+
+      expect(@cli_helper.docs_bundle?( '/ceedling' )).to be( true )
+    end
+
+    it 'is false when it does not, as for any --local copy' do
+      allow(@file_wrapper).to receive(:directory?).with( File.join( '/ceedling', DOCS_SITE_LOCAL_PATH ) ).and_return( false )
+
+      expect(@cli_helper.docs_bundle?( '/ceedling' )).to be( false )
+    end
+  end
+
   describe '#set_verbosity' do
     after(:each) do
       # These globals are frozen once set -- clear them so later specs in the

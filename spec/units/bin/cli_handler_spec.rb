@@ -282,13 +282,55 @@ describe CliHandler do
       'new'      => ->(h, cfg) { h.new_project( {}, cfg, '1.2.2', {:local => true, :configs => true}, 'proj' ) },
       'examples' => ->(h, cfg) { h.list_examples( {}, cfg, {} ) },
       'example'  => ->(h, cfg) { h.create_example( {}, cfg, {:local => true}, 'temp_sensor', nil ) },
-      'docs'     => ->(h, cfg) { h.docs( {}, cfg, 'out' ) },
     }.each do |name, command|
       it "#{name} hands off by environment and vendor detection before doing anything else" do
         expect(@launchinator).to receive(:launch).with( env: {}, app_cfg: @app_cfg ).and_raise( HandedOff )
 
         expect { command.call( @cli_handler, @app_cfg ) }.to raise_error( HandedOff )
         expect_no_work_done()
+      end
+    end
+
+    # GH #1365: no `--local` copy carries a documentation bundle, so it would export only licenses
+    describe 'docs' do
+      before(:each) do
+        @launcher = Installation.new( @app_cfg[:launcher_root_path] )
+        @copy = Installation.new( 'vendor/ceedling' )
+        allow(@launchinator).to receive(:resolve) { |app_cfg:, **| app_cfg.set_paths( @copy.root ); @copy }
+      end
+
+      it 'hands off to the selected installation when it holds a documentation bundle' do
+        allow(@helper).to receive(:docs_bundle?).with( @copy.root ).and_return( true )
+        expect(@launchinator).to receive(:proceed).with( target: @copy, app_cfg: @app_cfg ).and_raise( HandedOff )
+
+        expect { @cli_handler.docs( {}, @app_cfg, 'out' ) }.to raise_error( HandedOff )
+        expect_no_work_done()
+      end
+
+      it 'exports the launcher\'s documentation, saying so, when the selected installation has none' do
+        allow(@helper).to receive(:docs_bundle?).with( @copy.root ).and_return( false )
+
+        expect(@loginator).to receive(:console).with(
+          "#{@copy.describe} holds no documentation bundle to export, as no `--local` copy does. " +
+          "Exporting the documentation of #{@launcher.describe( 'Ceedling launcher' )} instead.",
+          LogLabels::NOTICE
+        ).ordered
+        expect(@helper).to receive(:copy_docs).with( @launcher.root, 'out' ).ordered
+
+        @cli_handler.docs( {}, @app_cfg, 'out' )
+
+        expect(@launchinator).to_not have_received(:proceed)
+        expect(@app_cfg[:ceedling_root_path]).to eq( @launcher.root )
+      end
+
+      it 'exports the launcher\'s own documentation with no notice when it is selected' do
+        allow(@launchinator).to receive(:resolve).and_return( @launcher )
+
+        expect(@helper).to receive(:copy_docs).with( @launcher.root, 'out' )
+
+        @cli_handler.docs( {}, @app_cfg, 'out' )
+
+        expect(@loginator).to_not have_received(:console)
       end
     end
 

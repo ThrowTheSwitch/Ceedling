@@ -184,13 +184,22 @@ describe 'Launcher hand-off' do
       end
     end
 
-    ['examples', 'docs'].each do |command|
-      it "`#{command}` runs in the copy WHICH_CEEDLING selects" do
-        Dir.mktmpdir do |dir|
-          _, stderr, _ = ceedling( command, env: {'WHICH_CEEDLING' => @copy}, dir: dir )
+    it '`examples` runs in the copy WHICH_CEEDLING selects' do
+      Dir.mktmpdir do |dir|
+        _, stderr, _ = ceedling( 'examples', env: {'WHICH_CEEDLING' => @copy}, dir: dir )
 
-          expect_copy_ran( stderr )
-        end
+        expect_copy_ran( stderr )
+      end
+    end
+
+    it '`docs` exports the launcher\'s documentation, saying so, since the copy holds none' do
+      Dir.mktmpdir do |dir|
+        stdout, stderr, status = ceedling( 'docs', 'out', env: {'WHICH_CEEDLING' => @copy}, dir: dir )
+
+        expect(status.exitstatus).to eq( 0 ), stdout + stderr
+        expect(stderr).to_not include( 'LAUNCHER FILES LOADED' )
+        expect(stdout).to include( "Ceedling #{@copy_version} at" )
+        expect(stdout).to include( "Exporting the documentation of Ceedling launcher #{LAUNCHER_VERSION} at #{REPO_ROOT}/ instead." )
       end
     end
   end

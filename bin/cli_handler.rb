@@ -494,8 +494,17 @@ class CliHandler
 
 
   def docs(env, app_cfg, dest)
-    # The selected installation exports its own documentation
-    @launchinator.launch( env:env, app_cfg:app_cfg )
+    # The selected installation exports its own documentation, if it has any to export
+    target = @launchinator.resolve( env:env, app_cfg:app_cfg )
+    launcher = Installation.new( app_cfg[:launcher_root_path] )
+    if target == launcher or @helper.docs_bundle?( target.root )
+      @launchinator.proceed( target:target, app_cfg:app_cfg )
+    else
+      app_cfg.set_paths( launcher.root )
+      msg = "#{target.describe()} holds no documentation bundle to export, as no `--local` copy does. " +
+            "Exporting the documentation of #{launcher.describe( 'Ceedling launcher' )} instead."
+      @loginator.console( msg, LogLabels::NOTICE )
+    end
 
     # File operations require an anchored source root
     @actions.source_root = app_cfg[:ceedling_root_path]

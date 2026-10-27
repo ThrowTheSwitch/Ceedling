@@ -26,6 +26,11 @@ class Launchinator
   # and never hands off again.
   def launch(env:, app_cfg:, config: {}, detect_vendor: true)
     target = resolve( env:env, app_cfg:app_cfg, config:config, detect_vendor:detect_vendor )
+    return proceed( target:target, app_cfg:app_cfg )
+  end
+
+  # As #launch, for a target already selected through #resolve
+  def proceed(target:, app_cfg:)
     launcher = Installation.new( app_cfg[:launcher_root_path] )
 
     if Handoff.received?( app_cfg[:handoff], own:launcher )
