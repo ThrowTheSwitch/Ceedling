@@ -205,6 +205,61 @@ describe 'Launcher hand-off' do
     end
   end
 
+  # A launcher before 1.2.2 loads the application into its own process. The application
+  # finishes the hand-off itself.
+  describe 'an application loaded into an older launcher\'s process' do
+    # Stands in for every 1.x launcher before 1.2.2: it builds its bin/ objects before
+    # Thor consumes ARGV, hands them over in CEEDLING_HANDOFF_OBJECTS, and requires the
+    # application's rakefile. Docker runs the real 1.0.0 through 1.2.1 launchers.
+    OLD_LAUNCHER = <<~RUBY
+      repo, app = ARGV.shift( 2 )
+      $LOAD_PATH.unshift( File.join( repo, 'bin' ) )
+      require 'app_cfg'
+      CEEDLING_APPCFG = CeedlingAppConfig.new
+      lib = CEEDLING_APPCFG[:ceedling_lib_path]
+      $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_base_path], lib, File.join( lib, 'config' ), File.join( lib, 'rake_app' ),
+                          File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'diy', 'lib' ) )
+      require 'constructor'
+      require 'ceedling/constants'
+      require 'diy'
+      objects = DIY::Context.from_yaml( File.read( File.join( repo, 'bin', 'objects.yml' ) ) )
+      objects.build_everything
+      CEEDLING_HANDOFF_OBJECTS = [:rake_task_registry, :reportinator, :loginator, :file_wrapper, :yaml_wrapper,
+                                  :ruby_expandinator, :config_walkinator, :system_wrapper, :verbosinator].to_h { |n| [n, objects[n]] }
+      def boom_handler(_loginator, exception) = $stderr.puts( exception.message )
+      objects[:cli_helper].set_verbosity( Verbosity::NORMAL )
+      CEEDLING_APPCFG.set_paths( app )
+      require CEEDLING_APPCFG[:ceedling_rakefile_filepath]
+    RUBY
+
+    it 'restarts in its own process, with the original command line, saying so on both sides' do
+      script = File.join( @tmp, 'old_launcher.rb' )
+      File.write( script, OLD_LAUNCHER )
+
+      stdout, stderr, status = Open3.capture3(
+        {'CEEDLING_DECORATORS' => 'false'}, RbConfig.ruby, script, REPO_ROOT, @copy, 'check', chdir: @project
+      )
+
+      expect(status.exitstatus).to eq( 0 ), stdout + stderr
+      expect_copy_ran( stderr )
+      expect(stdout).to include( "Ceedling launcher #{LAUNCHER_VERSION} at #{REPO_ROOT}/ loaded Ceedling #{@copy_version}" )
+      expect(stdout).to include( "Restarting in Ceedling #{@copy_version}'s own process." )
+      expect(stdout).to include( 'Project configuration processed.' )
+    end
+
+    it 'warns and continues in that process when a hand-off already brought it there' do
+      stdout, stderr, status = ceedling(
+        'check', env: {'CEEDLING_HANDOFF_LAUNCHER' => '/elsewhere', 'CEEDLING_HANDOFF_TARGET' => REPO_ROOT}
+      )
+
+      expect(status.exitstatus).to eq( 0 ), stdout + stderr
+      expect(stderr).to_not include( 'LAUNCHER FILES LOADED' )
+      expect(stdout).to include( "Ceedling #{LAUNCHER_VERSION} at #{REPO_ROOT}/ is now running, launched from Ceedling at /elsewhere/." )
+      expect(stdout).to include( "loaded Ceedling #{@copy_version}" )
+      expect(stdout).to include( "Continuing in the launcher's process" )
+    end
+  end
+
   describe 'the vendored copy' do
     it 'runs on its own, holding the built-in mixins its launcher validates' do
       stdout, stderr, status = Open3.capture3(

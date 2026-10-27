@@ -5,6 +5,18 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+# A launcher before 1.2.2 loads this application into its own process, where its code
+# mixes with this installation's. Before anything else loads, restart in this
+# installation's own process. require_relative, because such a launcher's load path
+# cannot reach files newer than itself.
+require_relative 'handoff'
+Handoff.complete_in_process(
+  app_root: File.expand_path( File.join( __dir__, '..', '..' ) ),
+  app_cfg: CEEDLING_APPCFG,
+  handoff_objects: CEEDLING_HANDOFF_OBJECTS,
+  env: ENV
+)
+
 require 'fileutils'
 
 # Add Unity and CMock's Ruby code paths to $LOAD_PATH for runner generation and mocking

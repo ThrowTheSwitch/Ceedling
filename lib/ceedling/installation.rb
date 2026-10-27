@@ -58,9 +58,14 @@ class Installation
     return Installation.windows? ? identity.casecmp?( other.identity ) : (identity == other.identity)
   end
 
+  # "Ceedling 1.2.0", or without the version when it cannot be read
+  def name(noun='Ceedling')
+    return [noun, version()].compact.join( ' ' )
+  end
+
   # "Ceedling 1.2.0 at /path/", or without the version when it cannot be read
   def describe(noun='Ceedling')
-    return [noun, version(), "at #{@root}/"].compact.join( ' ' )
+    return "#{name( noun )} at #{@root}/"
   end
 
   protected

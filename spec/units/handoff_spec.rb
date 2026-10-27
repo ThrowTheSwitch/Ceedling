@@ -10,6 +10,8 @@ require 'tmpdir'
 require 'fileutils'
 require 'rbconfig'
 require 'ceedling/handoff'
+require 'ceedling/constants'
+require 'app_cfg'
 
 describe Handoff do
   def installation_with_version(root, version)
@@ -70,6 +72,104 @@ describe Handoff do
         expect(described_class.received_message( {launcher: launcher.root, target: own.root}, own: own )).to eq(
           "Ceedling 1.2.2 at #{own.root}/ is now running, launched from Ceedling 1.2.3 at #{launcher.root}/."
         )
+      end
+    end
+  end
+
+  # GH #1365: a launcher before 1.2.2 always loads the application into its own process
+  describe '.complete_in_process' do
+    before(:each) do
+      # This repository's launcher stands in for an older one: its CeedlingAppConfig is
+      # defined beneath this repository's bin/, so any other application root is foreign
+      @app_cfg = CeedlingAppConfig.new
+      @launcher = Installation.new( @app_cfg[:launcher_root_path] )
+      @loginator = double('loginator').as_null_object
+      @system_wrapper = double('system_wrapper', get_cmdline: ['test:all', '-v', 'obnoxious'])
+      @handoff_objects = {loginator: @loginator, system_wrapper: @system_wrapper}
+      allow(described_class).to receive(:exec)
+    end
+
+    def complete(app_root, env: {})
+      described_class.complete_in_process( app_root: app_root, app_cfg: @app_cfg, handoff_objects: @handoff_objects, env: env )
+    end
+
+    it 'restarts a foreign launcher\'s application in its own process, with the original command line' do
+      Dir.mktmpdir do |root|
+        app = Installation.new( root )
+
+        expect(@loginator).to receive(:log).with(
+          "#{@launcher.describe( 'Ceedling launcher' )} loaded #{app.describe} into its own process. " +
+          "Restarting in #{app.name}'s own process. Upgrade Ceedling and review your installations to avoid this.",
+          Verbosity::COMPLAIN
+        ).ordered
+        expect(described_class).to receive(:exec).with(
+          target: app, launcher: @launcher, argv: ['test:all', '-v', 'obnoxious'], loginator: @loginator
+        ).ordered
+
+        complete( root )
+      end
+    end
+
+    it 'does nothing for the launcher\'s own application' do
+      complete( @launcher.root )
+
+      expect(described_class).to_not have_received(:exec)
+      expect(@loginator).to_not have_received(:log)
+    end
+
+    def expect_fallback(app)
+      expect(@loginator).to receive(:log).with(
+        "#{@launcher.describe( 'Ceedling launcher' )} loaded #{app.describe} into its own process. " +
+        "Continuing in the launcher's process, which can fail or misbehave. Upgrade Ceedling, or run this " +
+        "installation's own launcher directly with `ruby #{app.bin_path}`. A project created with `--local` has a " +
+        "launch script at its root that does this: run `./ceedling` from the project root (`.\\ceedling.cmd` on Windows).",
+        Verbosity::COMPLAIN
+      )
+    end
+
+    it 'warns and continues when the launcher kept no command line to restart with' do
+      Dir.mktmpdir do |root|
+        @handoff_objects[:system_wrapper] = double('old_system_wrapper')
+        expect_fallback( Installation.new( root ) )
+
+        complete( root )
+
+        expect(described_class).to_not have_received(:exec)
+      end
+    end
+
+    # A hand-off already happened in this chain; restarting again could cycle
+    it 'warns and continues when a launcher handed off to this process' do
+      Dir.mktmpdir do |root|
+        @app_cfg.set_handoff( {launcher: '/gem', target: @launcher.root} )
+        expect_fallback( Installation.new( root ) )
+
+        complete( root )
+
+        expect(described_class).to_not have_received(:exec)
+      end
+    end
+
+    it 'warns and continues when hand-off markers are still in the environment' do
+      Dir.mktmpdir do |root|
+        expect_fallback( Installation.new( root ) )
+
+        complete( root, env: {'CEEDLING_HANDOFF_TARGET' => '/somewhere'} )
+
+        expect(described_class).to_not have_received(:exec)
+      end
+    end
+
+    it 'names the launcher relative to the working directory when it lies beneath it' do
+      Dir.mktmpdir do |root|
+        Dir.chdir( root ) do
+          app = Installation.new( File.join( Dir.pwd, 'vendor', 'ceedling' ) )
+          @handoff_objects[:system_wrapper] = double('old_system_wrapper')
+
+          expect(@loginator).to receive(:log).with( /directly with `ruby vendor\/ceedling\/bin\/ceedling`/, Verbosity::COMPLAIN )
+
+          complete( app.root )
+        end
       end
     end
   end

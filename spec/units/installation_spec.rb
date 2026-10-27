@@ -192,6 +192,18 @@ describe Installation do
     end
   end
 
+  describe '#name' do
+    it 'is the noun and version, or the noun alone when the version cannot be read' do
+      Dir.mktmpdir do |root|
+        expect(described_class.new( root ).name).to eq( 'Ceedling' )
+
+        write_version( root, VERSION_1_1 )
+        expect(described_class.new( root ).name).to eq( 'Ceedling 1.1.10' )
+        expect(described_class.new( root ).name( 'Ceedling launcher' )).to eq( 'Ceedling launcher 1.1.10' )
+      end
+    end
+  end
+
   describe '#describe' do
     it 'names the version and root' do
       Dir.mktmpdir do |root|
