@@ -252,6 +252,24 @@ describe CliHandler do
       expect_no_work_done()
     end
 
+    it 'help for one command hands off without the project when the project fails to load' do
+      allow(@projectinator).to receive(:config_available?).and_return( true )
+      allow(@composinator).to receive(:loadinate).and_raise( 'Project configuration file section :mixins failed validation' )
+      expect(@launchinator).to receive(:launch).with( env: {}, app_cfg: @app_cfg, config: {} ).and_raise( HandedOff )
+
+      expect { @cli_handler.app_help( {}, @app_cfg, {:project => nil, :mixin => []}, 'build' ) { } }.to raise_error( HandedOff )
+    end
+
+    it 'help for every command still fails when the project fails to load' do
+      allow(@projectinator).to receive(:config_available?).and_return( true )
+      allow(@composinator).to receive(:loadinate).and_raise( 'Project configuration file section :mixins failed validation' )
+
+      expect {
+        @cli_handler.app_help( {}, @app_cfg, {:project => nil, :mixin => []}, nil ) { }
+      }.to raise_error( /failed validation/ )
+      expect(@launchinator).to_not have_received(:launch)
+    end
+
     it 'help without a project hands off by environment and vendor detection alone' do
       allow(@projectinator).to receive(:config_available?).and_return( false )
       expect(@launchinator).to receive(:launch).with( env: {}, app_cfg: @app_cfg, config: {} ).and_raise( HandedOff )

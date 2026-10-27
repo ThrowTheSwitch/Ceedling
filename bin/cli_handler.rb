@@ -49,8 +49,15 @@ class CliHandler
     options[:project], options[:mixin] = standardize_project_and_mixins( options[:project], options[:mixin] )
     config, rakefile_path = nil, nil
     if @projectinator.config_available?( filepath:options[:project], env:env )
-      # Silent Ceedling loading unless debug verbosity
-      config, rakefile_path = load_project_and_launch( env:env, app_cfg:app_cfg, options:options, silent:!(verbosity == Verbosity::DEBUG) )
+      begin
+        # Silent Ceedling loading unless debug verbosity
+        config, rakefile_path = load_project_and_launch( env:env, app_cfg:app_cfg, options:options, silent:!(verbosity == Verbosity::DEBUG) )
+      rescue StandardError
+        # Help for one command needs no project, so a project that fails to load does not block it
+        raise if command.nil?
+
+        @launchinator.launch( env:env, app_cfg:app_cfg, config:{} )
+      end
     else
       @launchinator.launch( env:env, app_cfg:app_cfg, config:{} )
     end
