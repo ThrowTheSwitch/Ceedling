@@ -48,7 +48,8 @@ module Sbom
     # Header-derived versions for Unity, CMock, and CException, by way of the existing
     # Versionator, which is already the authority on them elsewhere in Ceedling. It
     # requires `bin`, `lib`, and `lib/ceedling` on the load path: `exceptions` and
-    # `constants` resolve under lib/ceedling while `version` sits directly in lib.
+    # `constants` resolve under lib/ceedling while `ceedling/installation` resolves
+    # under lib.
     #
     # Versionator raises when a header cannot be read, which is the behavior wanted
     # here. An uninitialized submodule should stop generation rather than yield a
