@@ -20,6 +20,7 @@ $: << File.join(here, '../../../lib')
 # real bin/ceedling bootstrap always loads ceedling/constants first, so this load
 # order only ever bites a spec harness requiring cli_handler.rb directly.
 require 'ceedling/constants'
+require 'version' # The launcher's own version, which #version reports for this repository
 require 'cli_handler'
 require 'app_cfg'
 require 'path_validator'
@@ -40,14 +41,17 @@ require 'ceedling/rake_app/rake_task_registry'
 # exercising the real filtering/standardizing behavior it coordinates).
 describe CliHandler do
   before(:each) do
-    @loginator = double('loginator').as_null_object
-    @helper    = double('cli_helper').as_null_object
+    @loginator     = double('loginator').as_null_object
+    @helper        = double('cli_helper').as_null_object
+    @composinator  = double('composinator').as_null_object
+    @projectinator = double('projectinator').as_null_object
+    @path_validator = double('path_validator').as_null_object
 
     @cli_handler = described_class.new({
-      :composinator       => double('composinator').as_null_object,
-      :projectinator      => double('projectinator').as_null_object,
+      :composinator       => @composinator,
+      :projectinator      => @projectinator,
       :cli_helper         => @helper,
-      :path_validator     => double('path_validator').as_null_object,
+      :path_validator     => @path_validator,
       :rake_task_registry => double('rake_task_registry').as_null_object,
       :actionator         => double('actionator').as_null_object,
       :loginator          => @loginator,
@@ -77,6 +81,9 @@ describe CliHandler do
   describe '#version' do
     before(:each) do
       @app_cfg = CeedlingAppConfig.new
+      # No project file unless an example says otherwise
+      allow(@projectinator).to receive(:config_available?).and_return( false )
+      allow(@path_validator).to receive(:standardize_paths) { |*paths| paths }
     end
 
     def fake_application_version(install_path)
@@ -115,6 +122,75 @@ describe CliHandler do
       end
 
       @cli_handler.version( {}, @app_cfg )
+    end
+
+    # GH #1365: `version` reported the launcher for a project selecting another installation
+    context 'with a project' do
+      before(:each) do
+        allow(@helper).to receive(:manufacture_app_version).and_return( fake_application_version( '/elsewhere' ) )
+        allow(@helper).to receive(:process_mixin_filepaths) { |mixins| mixins }
+      end
+
+      it 'resolves which Ceedling from an explicit --project and its mixins, loading silently' do
+        config = {:project => {:which_ceedling => '/elsewhere'}}
+        expect(@composinator).to receive(:loadinate).with(
+          hash_including( filepath: 'other/project.yml', mixins: ['ci.yml'], silent: true )
+        ).and_return( ['other/project.yml', config] )
+        expect(@helper).to receive(:which_ceedling?).with( env: {}, config: config, app_cfg: @app_cfg )
+
+        @cli_handler.version( {}, @app_cfg, {:project => 'other/project.yml', :mixin => ['ci.yml']} )
+      end
+
+      it 'raises when an explicit --project cannot be loaded' do
+        allow(@composinator).to receive(:loadinate).and_raise( 'Could not find project filepath' )
+
+        expect {
+          @cli_handler.version( {}, @app_cfg, {:project => 'missing.yml', :mixin => []} )
+        }.to raise_error( /Could not find project filepath/ )
+      end
+
+      it 'raises when an explicit --mixin cannot be loaded with the default project file' do
+        allow(@composinator).to receive(:loadinate).and_raise( 'Command line failed validation' )
+
+        expect {
+          @cli_handler.version( {}, @app_cfg, {:project => nil, :mixin => ['missing.yml']} )
+        }.to raise_error( /Command line failed validation/ )
+      end
+
+      it 'reads the default project file when one is available' do
+        config = {:project => {:which_ceedling => 'vendor/ceedling'}}
+        allow(@projectinator).to receive(:config_available?).and_return( true )
+        allow(@composinator).to receive(:loadinate).and_return( ['project.yml', config] )
+        expect(@helper).to receive(:which_ceedling?).with( env: {}, config: config, app_cfg: @app_cfg )
+
+        @cli_handler.version( {}, @app_cfg )
+      end
+
+      it 'falls back to resolving without a project when the default project file cannot be loaded' do
+        allow(@projectinator).to receive(:config_available?).and_return( true )
+        allow(@composinator).to receive(:loadinate).and_raise( 'Project configuration file section :mixins failed validation' )
+        expect(@helper).to receive(:which_ceedling?).with( env: {}, config: {}, app_cfg: @app_cfg )
+
+        expect { @cli_handler.version( {}, @app_cfg ) }.to_not raise_error
+      end
+
+      it 'resolves without a project when no project file is available' do
+        expect(@composinator).to_not receive(:loadinate)
+        expect(@helper).to receive(:which_ceedling?).with( env: {}, config: {}, app_cfg: @app_cfg )
+
+        @cli_handler.version( {}, @app_cfg )
+      end
+
+      it 'reports the launcher from where it runs, even after resolution moves the application paths' do
+        allow(@helper).to receive(:which_ceedling?) { |app_cfg:, **| app_cfg.set_paths( '/elsewhere' ) }
+
+        expect(@loginator).to receive(:console) do |message, _label|
+          expect(message).to include( "Ceedling Launcher => #{Ceedling::Version::GEM}" )
+          expect(message).to include( "#{@app_cfg[:launcher_root_path]}/" )
+        end
+
+        @cli_handler.version( {}, @app_cfg )
+      end
     end
   end
 

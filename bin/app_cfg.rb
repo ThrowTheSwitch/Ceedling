@@ -18,6 +18,9 @@ class CeedlingAppConfig
 
     # Create internal hash of needed values
     @app_cfg = {
+      # Base path of the installation running this launcher, unchanged by #set_paths
+      :launcher_root_path => File.expand_path( ceedling_root_path ),
+
       # Base path of any Ceedling installation
       :ceedling_root_path => '',
 

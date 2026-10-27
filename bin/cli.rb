@@ -610,6 +610,9 @@ module CeedlingTasks
 
     # simplecov:disable line
     desc "version", "Display version details of Ceedling components"
+    method_option :project, :type => :string, :default => nil, :lazy_default => CLI_MISSING_PARAMETER_DEFAULT, :aliases => ['-p'], :desc => DOC_PROJECT_FLAG
+    method_option :mixin, :type => :string, :default => [], :repeatable => true, :aliases => ['-m'], :desc => DOC_MIXIN_FLAG
+    method_option :debug, :type => :boolean, :default => false, :hide => true
     long_desc( CEEDLING_HANDOFF_OBJECTS[:loginator].sanitize(
       <<-LONGDESC
       `ceedling version` displays the version details of Ceedling and its supporting
@@ -620,9 +623,9 @@ module CeedlingTasks
       command line. The application runs your build and plugin tasks. The
       launcher hands off to the application. The two components are not
       necessarily from the same installation or of the same version. Local
-      vendoring options, the WHICH_CEEDLING environment variable, and more can
-      cause the Ceedling launcher to load a Ceedling application that is run
-      from a different path than the launcher.
+      vendoring options, the WHICH_CEEDLING environment variable, your project
+      configuration's :project ↳ :which_ceedling, and more can select a Ceedling
+      application at a different path than the launcher.
 
       If the launcher and application are from different locations, the version
       output lists details for both. If they are from the same location, only a 
@@ -630,14 +633,30 @@ module CeedlingTasks
 
       NOTES:
 
-      • `version` does not load your project file.
+      • `version` reads your project file, when one is available, to find the
+      Ceedling application it selects. A project file that cannot be loaded is
+      skipped unless you name it with --project.
+
+      • #{LONGDOC_MIXIN_FLAG}
 
       • The build frameworks Unity, CMock, and CException are always sourced from
       the Ceedling application.
       LONGDESC
     ) )
     def version()
-      @handler.version( ENV, @app_cfg )
+      @handler.validate_string_param(
+        options[:project],
+        CLI_MISSING_PARAMETER_DEFAULT,
+        "--project is missing a required filepath parameter"
+      )
+
+      # Get an unfrozen copy so we can add / modify
+      _options = options.dup()
+
+      _options[:verbosity] = Verbosity::ERRORS
+      CliOptionsTransform.apply_debug_flag( _options )
+
+      @handler.version( ENV, @app_cfg, _options )
     end
     # simplecov:enable line
 

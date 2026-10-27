@@ -10,6 +10,7 @@ require 'mixins' # Built-in Mixins
 require 'ceedling/constants' # From Ceedling application
 require 'ceedling/rake_app/rake_task_registry' # From Ceedling application
 require 'versionator' # Outside DIY context
+require 'ceedling/installation'
 
 class CliHandler
 
@@ -503,16 +504,17 @@ class CliHandler
   end
 
 
-  def version(env, app_cfg)
+  def version(env, app_cfg, options={})
     # Versionator is not needed to persist. So, it's not built in the DIY collection.
 
-    @helper.set_verbosity( Verbosity::ERRORS )
+    @helper.set_verbosity( options[:verbosity] || Verbosity::ERRORS )
 
     # Ceedling bootloader
-    launcher = Versionator.new( app_cfg[:ceedling_root_path] )
+    launcher = Versionator.new( app_cfg[:launcher_root_path] )
 
-    # This call updates Ceedling paths in app_cfg if which Ceedling has been modified
-    @helper.which_ceedling?( env:env, app_cfg:app_cfg )
+    # This call updates Ceedling paths in app_cfg if the project or environment selects another Ceedling
+    config = version_project_config( env, options )
+    @helper.which_ceedling?( env:env, config:config, app_cfg:app_cfg )
 
     # Ceedling application
     application = @helper.manufacture_app_version( app_cfg )
@@ -521,7 +523,7 @@ class CliHandler
     ceedling = nil
 
     # A simple Ceedling version block because launcher and application are the same
-    if launcher.ceedling_install_path == application.ceedling_install_path
+    if Installation.new( launcher.ceedling_install_path ) == Installation.new( application.ceedling_install_path )
       ceedling = <<~CEEDLING
       Ceedling => #{application.ceedling_build}
       ----------------------
@@ -565,6 +567,25 @@ class CliHandler
   ### Private ###
 
   private
+
+  # The project configuration `version` resolves which Ceedling from. A --project or
+  # --mixin the user names must load. The default project file is read only when it
+  # loads cleanly, so `version` still answers for a broken or absent project.
+  def version_project_config(env, options)
+    project, mixins = standardize_project_and_mixins( options[:project], options[:mixin] || [] )
+    explicit = !project.nil? || !mixins.empty?
+
+    return {} if !explicit and !@projectinator.config_available?( env:env )
+
+    begin
+      _, config = @composinator.loadinate( builtin_load_paths:BUILTIN_MIXIN_LOAD_PATHS, filepath:project, mixins:mixins, env:env, silent:true )
+    rescue StandardError
+      raise if explicit
+      config = {}
+    end
+
+    return config
+  end
 
   # Standardizes a project filepath and a mixins list together. PathValidator's
   # standardize_paths() returns new values rather than updating its arguments in
