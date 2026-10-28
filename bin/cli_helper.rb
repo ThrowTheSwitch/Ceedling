@@ -15,6 +15,18 @@ require 'versionator' # Outside DIY context
 
 class CliHelper
 
+  # Where a documentation export writes the HTML bundle, within a project's docs/
+  DOCS_BUNDLE_DIR = 'ceedling'
+
+  # Directories a documentation export writes into a project's docs/, beside Ceedling's license
+  EXPORTED_DOCS_DIRS = [DOCS_BUNDLE_DIR, 'unity', 'cmock', 'c_exception'].freeze
+
+  # What a 1.0.x export also wrote into docs/: Ceedling's own pages, and its plugins' pages
+  LEGACY_EXPORTED_DOCS = %w[
+    BreakingChanges.md CODE_OF_CONDUCT.md CONTRIBUTING.md CeedlingPacket.md CeedlingUpgrade.md
+    Changelog.md PluginDevelopmentGuide.md ReleaseNotes.md ThrowTheSwitchCodingStandard.md plugins
+  ].freeze
+
   constructor :file_wrapper, :actionator, :config_walkinator, :path_validator, :rake_task_registry, :loginator, :reportinator, :system_wrapper, :ruby_expandinator
 
   def setup
@@ -418,7 +430,7 @@ class CliHelper
 
 
   def copy_docs(ceedling_root, dest)
-    docs_path_ceedling = File.join( dest, 'ceedling' )
+    docs_path_ceedling = File.join( dest, DOCS_BUNDLE_DIR )
 
     # Hash that will hold documentation copy paths
     #  - Key: (modified) destination documentation path
@@ -485,6 +497,26 @@ class CliHelper
   # Whether an installation holds the HTML documentation bundle. A `--local` copy carries none.
   def docs_bundle?(ceedling_root)
     return @file_wrapper.directory?( File.join( ceedling_root, DOCS_SITE_LOCAL_PATH ) )
+  end
+
+
+  # Whether a project's docs/ holds documentation an export wrote, in the layout of 1.1.0
+  # and later or of 1.0.x
+  def exported_docs?(docs_path)
+    return (EXPORTED_DOCS_DIRS + ['CeedlingPacket.md']).any? { |entry| @file_wrapper.exist?( File.join( docs_path, entry ) ) }
+  end
+
+
+  # Removes what an export wrote into a project's docs/, leaving everything else. An HTML
+  # bundle the source cannot replace is kept.
+  def remove_exported_docs(docs_path, keep_bundle:)
+    entries = EXPORTED_DOCS_DIRS + LEGACY_EXPORTED_DOCS
+    entries -= [DOCS_BUNDLE_DIR] if keep_bundle
+    entries += @file_wrapper.directory_entries( docs_path ).grep( LICENSE_FILENAME )
+
+    entries.map { |entry| File.join( docs_path, entry ) }.each do |path|
+      @actions.remove_directory( path ) if @file_wrapper.exist?( path )
+    end
   end
 
 
