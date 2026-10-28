@@ -24,13 +24,12 @@ Lint/UnusedBlockArgument:
     - 'spec/units/test_build_planner_spec.rb'
     - 'spec/units/test_build_setup_spec.rb'
 
-# Offense count: 30
+# Offense count: 21
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: AllowUnusedKeywordArguments, IgnoreEmptyMethods, IgnoreNotImplementedMethods, NotImplementedExceptions.
 # NotImplementedExceptions: NotImplementedError
 Lint/UnusedMethodArgument:
   Exclude:
-    - 'lib/ceedling/file_path_utils.rb'
     - 'lib/ceedling/generators/generator.rb'
     - 'lib/ceedling/generators/generator_partials.rb'
     - 'lib/ceedling/preprocess/preprocessinator.rb'

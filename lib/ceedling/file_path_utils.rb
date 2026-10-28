@@ -267,35 +267,35 @@ class FilePathUtils
     return subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
   end
 
-  def form_test_mocks_path(name, context: nil)
+  def form_test_mocks_path(name)
     form_named_path(@configurator.cmock_mock_path, name)
   end
 
-  def form_test_partials_path(name, context: nil)
+  def form_test_partials_path(name)
     form_named_path(@configurator.project_test_partials_path, name)
   end
 
-  def form_test_preprocess_includes_path(name, context: nil)
+  def form_test_preprocess_includes_path(name)
     form_named_path(@configurator.project_test_preprocess_includes_path, name)
   end
 
-  def form_test_preprocess_files_path(name, context: nil)
+  def form_test_preprocess_files_path(name)
     form_named_path(@configurator.project_test_preprocess_files_path, name)
   end
 
-  def form_test_preprocess_files_full_expansion_path(name, context: nil)
+  def form_test_preprocess_files_full_expansion_path(name)
     form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_FULL_EXPANSION_DIR)
   end
 
-  def form_test_preprocess_files_directives_only_path(name, context: nil)
+  def form_test_preprocess_files_directives_only_path(name)
     form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_DIRECTIVES_ONLY_DIR)
   end
 
-  def form_test_preprocess_files_raw_directives_only_path(name, context: nil)
+  def form_test_preprocess_files_raw_directives_only_path(name)
     form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_RAW_DIRECTIVES_ONLY_DIR)
   end
 
-  def form_test_preprocess_build_directives_path(name, context: nil)
+  def form_test_preprocess_build_directives_path(name)
     form_named_path(@configurator.project_test_preprocess_build_directives_path, name)
   end
 
@@ -324,7 +324,7 @@ class FilePathUtils
   # A test's runner sits beneath the directories of its name, so same-named tests in
   # different directories keep apart. Only a test at the project root uses the runners
   # directory itself.
-  def form_test_runners_path(name, context: nil)
+  def form_test_runners_path(name)
     subdir = mirrored_test_subdir(name)
     return @configurator.project_test_runners_path if subdir.empty?
     return File.join(@configurator.project_test_runners_path, subdir)
