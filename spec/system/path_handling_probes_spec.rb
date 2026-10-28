@@ -45,9 +45,7 @@ ceedling_system_tests do
 
       in_app do |parent|
         write( 'test/test_m.c', PROBE_TEST_PREAMBLE + "#include \"mock_sdk.h\"\nvoid test_reads(void) { sdk_read_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, sdk_read()); }\n" )
-        # The exclusion must name an existing directory, which the build root is not before a first build
-        FileUtils.mkdir_p( 'build' )
-        @c.merge_project_yml_for_test( { :paths => { :include => ['../**', '-:../app/build/**', sdk] } } )
+        @c.merge_project_yml_for_test( { :paths => { :include => ['../**', sdk] } } )
 
         output = @c.ceedling_build_exec( "test:all" )
 
@@ -101,14 +99,16 @@ ceedling_system_tests do
     end
   end
 
-  # Assumes Ceedling refuses a build root holding the project's own directories
-  it "G16: never lets clobber empty the project's own test directory", pending: "G16: clobber deletes the test directory" do
+  # Ceedling refuses a build root holding the project's own directories
+  it "G16: never lets clobber empty the project's own test directory" do
     in_app do
       write( 'test/test_keep.c', PROBE_TEST_PREAMBLE + "void test_it(void) {}\n" )
       @c.merge_project_yml_for_test( { :project => { :build_root => '.' } } )
 
-      @c.ceedling_build_exec( "clobber" )
+      output = @c.ceedling_build_exec( "clobber" )
 
+      expect(@c.last_exit_status).to_not eq(0)
+      expect(output).to match( /:build_root => '\.' is the project directory or holds it/ )
       expect(File.exist?( 'test/test_keep.c' )).to be( true )
     end
   end

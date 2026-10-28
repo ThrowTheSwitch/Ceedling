@@ -7,6 +7,8 @@
 
 require 'ceedling/constants'
 require 'ceedling/file_path_utils'  # for glob handling class methods
+require 'ceedling/project_paths'
+require 'ceedling/config/build_root_policy'
 
 # Checks the paths a project file names against the filesystem: each :paths and :files
 # entry, and paths named singly
@@ -21,10 +23,8 @@ class ConfiguratorPathsValidator
     return false if list.nil?
 
     # Trimming add/subtract notation and glob specifiers leaves nothing of a path that
-    # begins with a glob, so there is nothing to check. An entry YAML read as something
-    # other than a string is left to the entries validation, which reports it.
-    paths   = list.grep( String ).map { |path| FilePathUtils::no_decorators( path ) }
-    missing = paths.reject { |path| path.empty? or @file_wrapper.exist?( path ) }
+    # begins with a glob, so there is nothing to check
+    missing = checked_bases( list ).reject { |path| path.empty? or @file_wrapper.exist?( path ) }
 
     walk = @reportinator.generate_config_walk( keys, depth )
     missing.each { |path| log_error( "Config path #{walk} => '#{path}' does not exist in the filesystem." ) }
@@ -35,21 +35,25 @@ class ConfiguratorPathsValidator
 
   # Validate :paths entries, exercising each entry as Ceedling directory glob (variation of Ruby glob)
   def validate_paths_entries(config, key)
-    list, _ = @config_walkinator.fetch_value( :paths, key, hash:config )
-    return false if list.nil?
-
-    walk = @reportinator.generate_config_walk( [:paths, key] )
-    return list.map { |path| usable_entry?( path, walk ) && valid_paths_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
+    return validate_entries( config, :paths, key ) { |entry, walk, build_root| valid_paths_entry?( entry, walk, build_root ) }
   end
 
 
   # Validate :files entries, exercising each entry as FileList glob
   def validate_files_entries(config, key)
-    list, _ = @config_walkinator.fetch_value( :files, key, hash:config )
-    return false if list.nil?
+    return validate_entries( config, :files, key ) { |entry, walk, build_root| valid_files_entry?( entry, walk, build_root ) }
+  end
 
-    walk = @reportinator.generate_config_walk( [:files, key] )
-    return list.map { |path| usable_entry?( path, walk ) && valid_files_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
+
+  # A build root of its own (BuildRootPolicy)
+  def validate_build_root(config)
+    root    = config[:project][:build_root].to_s
+    problem = BuildRootPolicy.problem( root, config )
+    return true if problem.nil?
+
+    walk = @reportinator.generate_config_walk( [:project, :build_root] )
+    log_error( "#{walk} => '#{root}' #{problem}. Give the build its own directory, such as 'build'." )
+    return false
   end
 
 
@@ -65,6 +69,22 @@ class ConfiguratorPathsValidator
   ### Private ###
 
   private
+
+  # Each entry of one :paths or :files list, usable and passing `check`
+  def validate_entries(config, section, key)
+    list, _ = @config_walkinator.fetch_value( section, key, hash:config )
+    return false if list.nil?
+
+    walk       = @reportinator.generate_config_walk( [section, key] )
+    build_root = config.dig( :project, :build_root )
+    return list.map { |entry| usable_entry?( entry, walk ) && yield( entry, walk, build_root ) }.all?
+  end
+
+  # Each additive entry's path up to its first glob. An entry YAML read as something other
+  # than a string, and a `-:` entry, which may name nothing, are left to the entries validation.
+  def checked_bases(list)
+    return list.grep( String ).select { |path| FilePathUtils.add_path?( path ) }.map { |path| FilePathUtils::no_decorators( path ) }
+  end
 
   # A :paths or :files entry that names no path, or wraps its path in quotes, usually
   # quotes only the path after its decoration. YAML keeps those quote marks as part of
@@ -89,17 +109,30 @@ class ConfiguratorPathsValidator
   end
 
   # A path naming a file is ignored with a warning. Any other entry must yield directories,
-  # except a subdirectories glob of a directory that has none.
-  def valid_paths_entry?(path, walk)
+  # except a subdirectories glob of a directory that has none, and a `-:` entry.
+  def valid_paths_entry?(entry, walk, build_root)
+    path = FilePathUtils::no_aggregation_decorators( entry )
+
     if @file_wrapper.exist?( path ) and !@file_wrapper.directory?( path )
       log_complaint( "#{walk} => '#{path}' is a filepath and will be ignored (FYI :paths is directory-oriented while :files is file-oriented)" )
       return true
     end
 
     return true if globbed_directories?( path ) or path =~ /\/\*{1,2}$/
+    return subtracts_nothing( entry, walk, build_root, 'directory' ) unless FilePathUtils.add_path?( entry )
 
     log_error( "#{walk} => '#{path}' yielded no directories -- matching glob is malformed or directories do not exist" )
     return false
+  end
+
+  # A `-:` entry names what a build leaves out, so naming nothing is no error. Below the build
+  # root, where nothing exists before a first build, it passes without a word.
+  def subtracts_nothing(entry, walk, build_root, kind)
+    unless build_root and ProjectPaths.contains?( build_root, FilePathUtils.no_decorators( entry ) )
+      log_complaint( "#{walk} => '#{entry.strip}' leaves out nothing; no #{kind} matches it" )
+    end
+
+    return true
   end
 
   # #104 -- FilePathUtils.subdirectory_glob escapes literal brackets in the path, so they
@@ -108,8 +141,11 @@ class ConfiguratorPathsValidator
     return @file_wrapper.directory_listing( FilePathUtils.subdirectory_glob( path ) ).any? { |entry| @file_wrapper.directory?( entry ) }
   end
 
-  # A path naming a directory is ignored with a warning. Any other entry must yield files.
-  def valid_files_entry?(path, walk)
+  # A path naming a directory is ignored with a warning. Any other entry must yield files,
+  # except a `-:` entry.
+  def valid_files_entry?(entry, walk, build_root)
+    path = FilePathUtils::no_aggregation_decorators( entry )
+
     if @file_wrapper.exist?( path ) and @file_wrapper.directory?( path )
       log_complaint( "#{walk} => '#{path}' is a directory path and will be ignored (FYI :files is file-oriented while :paths is directory-oriented)" )
       return true
@@ -117,6 +153,7 @@ class ConfiguratorPathsValidator
 
     # #104 -- literal brackets are escaped so they are matched rather than read as a glob
     return true unless @file_wrapper.instantiate_file_list( FilePathUtils.escape_glob_brackets( path ) ).size.zero?
+    return subtracts_nothing( entry, walk, build_root, 'file' ) unless FilePathUtils.add_path?( entry )
 
     log_error( "#{walk} => '#{path}' yielded no files -- matching glob is malformed or files do not exist" )
     return false

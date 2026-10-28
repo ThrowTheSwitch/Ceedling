@@ -27,7 +27,7 @@ class Configurator
 
   # Validations of the completed configuration
   FINAL_VALIDATIONS = [
-    :validate_paths, :validate_tools, :validate_defines, :validate_flags, :validate_line_markers,
+    :validate_build_root, :validate_paths, :validate_tools, :validate_defines, :validate_flags, :validate_line_markers,
     :validate_test_preprocessor, :validate_backtrace, :validate_threads, :validate_partials, :validate_plugins
   ].freeze
 

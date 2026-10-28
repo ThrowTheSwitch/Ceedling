@@ -54,9 +54,15 @@ describe ConfiguratorPathsValidator do
     end
 
     it 'logs each path that does not exist' do
-      existing('test')
+      existing()
       expect(@validator.validate_path_list( config, :paths, :test )).to be false
-      expect(@loginator).to have_received(:log).with("Config path :paths ↳ :test => 'test/ignore' does not exist in the filesystem.", Verbosity::ERRORS)
+      expect(@loginator).to have_received(:log).with("Config path :paths ↳ :test => 'test' does not exist in the filesystem.", Verbosity::ERRORS)
+    end
+
+    # The path handling audit around GH #1370: a `-:` entry may name nothing to leave out
+    it 'leaves a `-:` path to the entries validation' do
+      existing('test')
+      expect(@validator.validate_path_list( config, :paths, :test )).to be true
     end
 
     it 'fails a missing entry' do
@@ -126,8 +132,26 @@ describe ConfiguratorPathsValidator do
       existing; directories
       allow(@file_wrapper).to receive(:directory_listing).and_return([])
 
-      expect(validate( "    - -:src/missing\n" )).to be false
+      expect(validate( "    - +:src/missing\n" )).to be false
       expect(@loginator).to have_received(:log).with(/'src\/missing' yielded no directories/, Verbosity::ERRORS)
+    end
+
+    # The path handling audit around GH #1370: a `-:` entry names what a build leaves out
+    it 'accepts a `-:` path that names nothing, warning of it' do
+      existing; directories
+      allow(@file_wrapper).to receive(:directory_listing).and_return([])
+
+      expect(validate( "    - -:src/missing\n" )).to be true
+      expect(@loginator).to have_received(:log).with(/'-:src\/missing' leaves out nothing; no directory matches it/, Verbosity::COMPLAIN)
+    end
+
+    it 'accepts a `-:` path below the build root that names nothing, without a word' do
+      existing; directories
+      allow(@file_wrapper).to receive(:directory_listing).and_return([])
+
+      config = config_from_yaml( ":project:\n  :build_root: build\n:paths:\n  :source:\n    - -:build/gen\n" )
+      expect(@validator.validate_paths_entries( config, :source )).to be true
+      expect(@loginator).to_not have_received(:log)
     end
 
     it 'escapes literal brackets before globbing' do
@@ -171,6 +195,14 @@ describe ConfiguratorPathsValidator do
       expect(@loginator).to have_received(:log).with(/'src\/\*.x' yielded no files/, Verbosity::ERRORS)
     end
 
+    it 'accepts a `-:` glob that names no files, warning of it' do
+      existing; directories
+      allow(@file_wrapper).to receive(:instantiate_file_list).and_return([])
+
+      expect(validate( "    - -:src/*.x\n" )).to be true
+      expect(@loginator).to have_received(:log).with(/'-:src\/\*.x' leaves out nothing; no file matches it/, Verbosity::COMPLAIN)
+    end
+
     it 'escapes literal brackets before globbing' do
       existing; directories
       allow(@file_wrapper).to receive(:instantiate_file_list).with('src/\[legacy\]/*.c').and_return(['src/[legacy]/a.c'])
@@ -183,6 +215,41 @@ describe ConfiguratorPathsValidator do
     end
 
     it_behaves_like 'an entry that names no usable path', ':files ↳ :source'
+  end
+
+  # The path handling audit around GH #1370: clobber empties the build root's test and
+  # release trees
+  describe '#validate_build_root' do
+    def validate(build_root, paths: "  :source:\n    - src/**\n", files: '')
+      yaml = ":project:\n  :build_root: '#{build_root}'\n:paths:\n#{paths}"
+      yaml += ":files:\n#{files}" unless files.empty?
+      @validator.validate_build_root( config_from_yaml( yaml ) )
+    end
+
+    it 'accepts a build root of its own' do
+      expect(validate( 'build' )).to be true
+    end
+
+    {
+      ''      => 'names no directory',
+      '.'     => 'is the project directory or holds it',
+      '..'    => 'is the project directory or holds it',
+      '/'     => 'is the project directory or holds it',
+      'src'   => "holds 'src/**', which adds to a build"
+    }.each do |root, problem|
+      it "refuses a build root of '#{root}', which #{problem}" do
+        expect(validate( root )).to be false
+        expect(@loginator).to have_received(:log).with( ":project ↳ :build_root => '#{root}' #{problem}. Give the build its own directory, such as 'build'.", Verbosity::ERRORS )
+      end
+    end
+
+    it 'refuses a build root holding a :files entry that adds to a build' do
+      expect(validate( 'gen', files: "  :source:\n    - gen/out/a.c\n" )).to be false
+    end
+
+    it 'accepts a build root holding only what `-:` entries name' do
+      expect(validate( 'build', paths: "  :source:\n    - src/**\n    - -:build/gen\n" )).to be true
+    end
   end
 
   describe '#validate_filepath_simple' do

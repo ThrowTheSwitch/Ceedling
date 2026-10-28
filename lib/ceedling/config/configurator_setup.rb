@@ -131,6 +131,11 @@ class ConfiguratorSetup
   end
 
 
+  def validate_build_root(config)
+    return @configurator_paths_validator.validate_build_root( config )
+  end
+
+
   # Every check runs, so every problem is reported
   def validate_paths(config)
     valid  = validate_simple_paths( config[:cmock][:unity_helper_path], :cmock, :unity_helper_path )

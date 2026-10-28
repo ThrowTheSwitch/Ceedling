@@ -22,12 +22,39 @@ describe 'Path intake (integration)' do
     return ":project:\n#{project_lines}\n  :use_test_preprocessor: :none\n:paths:\n#{path_lines}\n#{extra}"
   end
 
-  # Assumes a build root holding the project's own directories is refused, since clobber
-  # empties the build root's test and release trees. An empty build root is left out
-  # here: it names the filesystem root, where configuring would create directories.
-  it 'G16: refuses a build root that is the project directory', pending: 'G16: the build root is never checked' do
+  # Clobber empties the build root's test and release trees, so a build root holding the
+  # project's own files is refused. An empty build root is left to the unit specs: it names
+  # the filesystem root, where a configuration that got past it would create directories.
+  { '.' => 'the project directory', '..' => 'a directory above the project', 'src' => 'a directory holding sources' }.each do |root, what|
+    it "G16: refuses a build root that is #{what}" do
+      in_temp_project( minimal_project_files ) do
+        expect { configure( yaml( project: { build_root: root } ) ) }.to raise_error( CeedlingException )
+        expect(logged.join( "\n" )).to match( /build_root.*'#{Regexp.escape( root )}'/ )
+      end
+    end
+  end
+
+  it 'G16: accepts a build root beside the project\'s own directories' do
     in_temp_project( minimal_project_files ) do
-      expect { configure( yaml( project: { build_root: '.' } ) ) }.to raise_error( CeedlingException )
+      expect { configure( yaml( project: { build_root: 'out/build' } ) ) }.to_not raise_error
+    end
+  end
+
+  # A `-:` entry names what a build leaves out, and nothing there to leave out is no error.
+  # Below the build root, where nothing exists before a first build, it is not worth a word.
+  it 'G24: accepts a `-:` path below the build root that names nothing, silently' do
+    in_temp_project( minimal_project_files ) do
+      configure( yaml( paths: { include: ['src/**', '-:build/gen'] } ) )
+
+      expect(logged.join( "\n" )).to_not match( %r{build/gen} )
+    end
+  end
+
+  it 'G24: accepts a `-:` path elsewhere that names nothing, warning of it' do
+    in_temp_project( minimal_project_files ) do
+      configure( yaml( paths: { include: ['src/**', '-:src/gone'] } ) )
+
+      expect(logged.join( "\n" )).to match( %r{'-:src/gone' leaves out nothing} )
     end
   end
 
