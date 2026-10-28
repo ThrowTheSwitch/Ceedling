@@ -715,12 +715,12 @@ describe TestBuildPlanner do
 
       result = @planner.collect_test_framework_sources( true )
 
-      expect(result).to include( 'test/support/unity_helper' )
+      expect(result).to include( 'test/support/unity_helper.c' )
     end
 
     # The path handling audit around GH #1370: :unity_helper_path names the helper's header,
     # and its source is what compiles
-    it "G25: compiles the source beside a Unity helper named by its header", pending: "G25: the helper path itself is added, not its source" do
+    it "G25: compiles the source beside a Unity helper named by its header" do
       allow(@configurator).to receive(:project_use_mocks).and_return( true )
       allow(@configurator).to receive(:cmock_unity_helper_path).and_return( ['test/support/unity_helper.h'] )
       allow(@file_wrapper).to receive(:exist?).with( 'test/support/unity_helper.c' ).and_return( true )

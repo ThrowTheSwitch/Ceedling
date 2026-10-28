@@ -237,10 +237,11 @@ class TestBuildPlanner
     sources << File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE ) if @configurator.project_use_exceptions
 
     if @configurator.project_use_mocks
+      # :unity_helper_path names a helper's header, or its path without an extension. The
+      # source beside it is what compiles.
       @configurator.cmock_unity_helper_path.each do |helper|
-        if @file_wrapper.exist?( helper.ext( EXTENSION_SOURCE.primary ) )
-          sources << helper
-        end
+        source = helper.ext( EXTENSION_SOURCE.primary )
+        sources << source if @file_wrapper.exist?( source )
       end
     end
 
