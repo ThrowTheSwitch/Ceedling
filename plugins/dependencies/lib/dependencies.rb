@@ -121,13 +121,15 @@ class Dependencies < Plugin
     end
   end
 
-  # Library names and their directories, for test and release linking
+  # Library names and their directories, for test and release linking, and the library files
+  # themselves, which those links depend on
   def link_libraries
     libraries = @specs.flat_map { |spec| spec.static_libraries + spec.dynamic_libraries }
 
     return {
       names: libraries.map { |library| File.basename( library, '.*' ).delete_prefix( 'lib' ) }.reject( &:empty? ).uniq,
-      paths: libraries.map { |library| File.dirname( library ) }.reject( &:empty? ).uniq
+      paths: libraries.map { |library| File.dirname( library ) }.reject( &:empty? ).uniq,
+      files: libraries.uniq
     }
   end
 

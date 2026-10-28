@@ -29,7 +29,8 @@ class TestBuildExecutor
     :dependinator,
     :gcc_dependency_parser,
     :quote_include_isolator,
-    :generator_helper
+    :generator_helper,
+    :library_resolver
   )
 
   # Stage 9: Preprocess header files to be mocked.
@@ -279,6 +280,7 @@ class TestBuildExecutor
   def stage_build_executables(state)
     lib_args  = convert_libraries_to_arguments()
     lib_paths = get_library_paths_to_arguments()
+    libraries = resolve_library_files( test_library_entries() )
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
@@ -287,14 +289,14 @@ class TestBuildExecutor
       link_flags = testable.link_flags
       tool, link_flags = resolve_link_tool( context: state.context, tool: @configurator.tools_test_linker, flags: link_flags, executable: testable.executable )
 
-      # Staleness checks only the objects registered here, so an object dropped from the link
-      # (its source deleted, excluded, or moved out of the configured paths) changes nothing
-      # they see. The object list as meta does change.
+      # Staleness checks only the files registered here, so an object or library dropped from
+      # the link (a source deleted, excluded, or moved out of the configured paths) changes
+      # nothing they see. The object and library lists as meta do change.
       objects = testable.objects.to_a
       @dependinator.register(
         testable.executable,
-        files: objects,
-        meta:  { flags: link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [tool], objects: objects }
+        files: objects + libraries,
+        meta:  { flags: link_flags, lib_args: lib_args, lib_paths: lib_paths, tools: [tool], objects: objects, libraries: libraries }
       )
       stale = @dependinator.stale?( testable.executable )
 
@@ -548,7 +550,7 @@ class TestBuildExecutor
   end
 
   def convert_libraries_to_arguments()
-    args = ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
+    args = test_library_entries()
     if (defined? LIBRARIES_FLAG)
       args.map! { |v| LIBRARIES_FLAG.gsub( /\$\{1\}/, v ) }
     end
@@ -564,6 +566,21 @@ class TestBuildExecutor
   end
 
   private
+
+  # The :libraries entries a test links, whatever form each takes
+  def test_library_entries()
+    return ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
+  end
+
+  # The library files a link depends on: those its entries resolve to on the library search
+  # paths, and those a plugin knows exactly
+  def resolve_library_files(entries)
+    return @library_resolver.resolve(
+      entries:      entries,
+      search_paths: ((defined? PATHS_LIBRARIES) ? PATHS_LIBRARIES : nil) || [],
+      files:        ((defined? LIBRARIES_LINK_FILES) ? LIBRARIES_LINK_FILES : nil) || []
+    )
+  end
 
   # Finds the folder a mock's #include names and the directory the mock is written to.
   #

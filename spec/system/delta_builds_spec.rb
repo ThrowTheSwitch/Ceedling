@@ -447,6 +447,95 @@ ceedling_system_tests do
     end
   end
 
+  # GH #1368: a link tracked its libraries only by their -l and -L arguments, so a library
+  # rebuilt under the same name relinked nothing. A test kept its cached result against the
+  # old library, and a release kept the old library's code. `m` is on no library path the
+  # project configures, so it is never tracked, and never relinks an unchanged build.
+  describe "Delta builds: linked libraries" do
+    before { @proj_name = unique_proj_name("delta_libs") }
+
+    def build_library!(value)
+      FileUtils.mkdir_p( ['vendor/lib', 'vendor/obj'] )
+      File.write( 'vendor/obj/x.c', "int lib_value(void) { return #{value}; }\n" )
+      FileUtils.rm_f( 'vendor/lib/libx.a' )
+      system( 'gcc', '-c', 'vendor/obj/x.c', '-o', 'vendor/obj/x.o' ) or raise 'Could not compile the library'
+      system( 'ar', 'rcs', 'vendor/lib/libx.a', 'vendor/obj/x.o' ) or raise 'Could not archive the library'
+    end
+
+    def deploy_library_project!
+      @c.ceedling_appcmd_exec("new #{@proj_name}")
+
+      Dir.chdir @proj_name do
+        build_library!( 1 )
+        File.write( 'src/x.h', "int lib_value(void);\n" )
+        File.write( 'src/main.c', "#include \"x.h\"\nint main(void) { return lib_value(); }\n" )
+        File.write( 'test/test_lib.c', <<~C )
+          #include "unity.h"
+          #include "x.h"
+          void setUp(void) {}
+          void tearDown(void) {}
+          void test_value(void) { TEST_ASSERT_EQUAL_INT(1, lib_value()); }
+        C
+        @c.merge_project_yml_for_test( {
+          :project   => { :release_build => true },
+          :paths     => { :libraries => ['vendor/lib'] },
+          :libraries => { :test => ['x', 'm'], :release => ['x', 'm'] }
+        } )
+      end
+    end
+
+    it "relinks a test when a library it links is rebuilt under the same name" do
+      @c.with_context do
+        deploy_library_project!
+
+        Dir.chdir @proj_name do
+          baseline = @c.ceedling_build_exec("test:all")
+          expect(baseline).to match(/PASSED:\s+1/)
+
+          build_library!( 2 )
+          rebuild = @c.ceedling_build_exec("test:all")
+
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to match(/^Linking test_lib\.out/)
+          expect(rebuild).to match(/FAILED:\s+1/)
+        end
+      end
+    end
+
+    it "relinks a release when a library it links is rebuilt under the same name" do
+      @c.with_context do
+        deploy_library_project!
+
+        Dir.chdir @proj_name do
+          @c.ceedling_build_exec("release")
+
+          build_library!( 2 )
+          rebuild = @c.ceedling_build_exec("release")
+
+          expect(rebuild).to_not match(/^Compiling /)
+          expect(rebuild).to match(/^Linking /)
+        end
+      end
+    end
+
+    it "relinks nothing when no library changed, whatever libraries it can't find" do
+      @c.with_context do
+        deploy_library_project!
+
+        Dir.chdir @proj_name do
+          @c.ceedling_build_exec("test:all")
+          @c.ceedling_build_exec("release")
+
+          tests = @c.ceedling_build_exec("test:all")
+          release = @c.ceedling_build_exec("release")
+
+          expect(tests).to_not match(/^Linking /)
+          expect(release).to_not match(/^Linking /)
+        end
+      end
+    end
+  end
+
   # :unity ↳ :shuffle_tests decides test-case execution order at runtime, inside
   # the compiled executable's own main() -- not at compile or link time. So an
   # executable delta builds correctly judge unchanged (same source, same flags,

@@ -89,12 +89,15 @@
   task :prepare => all_deps
 end
 
-# Dependency libraries join the library names and paths test and release builds link with
+# Dependency libraries join the library names and paths test and release builds link with,
+# and their files join those the links depend on
 link_libraries = @ceedling[DEPENDENCIES_SYM].link_libraries
 PATHS_LIBRARIES ||= []
 PATHS_LIBRARIES.concat( link_libraries[:paths] ).uniq!
 LIBRARIES_SYSTEM ||= []
 LIBRARIES_SYSTEM.concat( link_libraries[:names] ).uniq!
+LIBRARIES_LINK_FILES ||= []
+LIBRARIES_LINK_FILES.concat( link_libraries[:files] ).uniq!
 
 # Add any artifact:include or :source folders to our release & test includes paths so linking and mocking work.
 @ceedling[DEPENDENCIES_SYM].add_headers_and_sources()
