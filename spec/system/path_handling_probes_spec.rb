@@ -99,6 +99,29 @@ ceedling_system_tests do
     end
   end
 
+  # A project file's relative paths resolve against the working directory, not the project
+  # file's own directory
+  it "G22: builds a project named by --project from another directory, with paths relative to that directory" do
+    in_app do |parent|
+      write( 'src/calc.c', "#include \"calc.h\"\nint calc(int a) { return a + 1; }\n" )
+      write( 'src/calc.h', "int calc(int a);\n" )
+      write( 'test/test_calc.c', PROBE_TEST_PREAMBLE + "#include \"calc.h\"\nvoid test_calc(void) { TEST_ASSERT_EQUAL_INT(2, calc(1)); }\n" )
+
+      project = YAML.load_file( 'project.yml' )
+      project[:project][:build_root] = 'app/build'
+      project[:paths] = { :test => ['app/test/**'], :source => ['app/src/**'], :include => ['app/src/**'], :support => [] }
+      File.write( 'project.yml', project.to_yaml )
+
+      Dir.chdir( parent ) do
+        output = @c.ceedling_build_exec( "--project app/project.yml test:all" )
+
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+1/)
+        expect(Dir.exist?( 'app/build/test' )).to be true
+      end
+    end
+  end
+
   # Ceedling refuses a build root holding the project's own directories
   it "G16: never lets clobber empty the project's own test directory" do
     in_app do
