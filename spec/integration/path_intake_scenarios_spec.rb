@@ -58,7 +58,7 @@ describe 'Path intake (integration)' do
     end
   end
 
-  it 'G18: includes a Unity helper written with backslashes in every mock by its own filename', pending: "G18: the helper filename is taken before paths are standardized" do
+  it "G18: includes a Unity helper written with backslashes in every mock by its own filename" do
     files = minimal_project_files.merge( 'test/support/helper.h' => "\n" )
     in_temp_project( files ) do
       config = configure( yaml( extra: ":cmock:\n  :unity_helper_path: 'test\\support\\helper.h'\n" ) )[:configurator]

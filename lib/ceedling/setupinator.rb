@@ -16,8 +16,9 @@ class Setupinator
   #  - Environment variables again, before configuration that may reference them by inline
   #    Ruby string expansion
   #  - Paths, flags, and defines expanded, then paths standardized
+  #  - Unity helpers, included in mocks by their standardized filenames
   COMPLETION_STEPS = %i[populate_unity_config populate_cmock_config populate_partials_config populate_test_runner_generation_config
-    populate_exceptions_config eval_environment_variables eval_paths eval_flags eval_defines standardize_paths].freeze
+    populate_exceptions_config eval_environment_variables eval_paths eval_flags eval_defines standardize_paths populate_cmock_helpers].freeze
 
   # Configurator settings taken from the command line, each by its application
   # configuration key: test case filters, whether the requested tasks build tests or a

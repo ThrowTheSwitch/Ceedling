@@ -226,6 +226,13 @@ class Configurator
   end
 
 
+  # Each Unity helper's header is included in every mock by its filename, so this follows
+  # path standardizing, which a helper written with backslashes needs to have a filename
+  def populate_cmock_helpers(config)
+    include_unity_helpers( config[:cmock] ) if config[:project][:use_mocks]
+  end
+
+
   def populate_test_runner_generation_config(config)
     progress( 'Populating test runner generation settings' )
 
@@ -565,8 +572,6 @@ class Configurator
   def prepare_cmock_config(cmock)
     # Plugins housekeeping
     cmock[:plugins].map! { |plugin| plugin.to_sym() }.uniq!
-
-    include_unity_helpers( cmock )
 
     # Add mocking prefix symbol for all test compilation
     cmock[:defines] << "CMOCK_MOCK_PREFIX=#{cmock[:mock_prefix]}"

@@ -606,17 +606,39 @@ describe Configurator do
       expect( @configurator.get_cmock_config[:plugins] ).to eq( ['ignore', :ignore, 'expect_any_args'] )
     end
 
-    it "normalizes plugins, helper paths, includes, and the mock prefix define when mocks are on" do
+    it "normalizes plugins and the mock prefix define when mocks are on" do
       config = cmock_config(true)
 
       @configurator.populate_cmock_config( config )
 
       expect( @configurator.get_cmock_config ).to include(
-        plugins:           [:ignore, :expect_any_args],
-        unity_helper_path: ['support/unity_helper.h'],
-        includes:          ['unity_helper.h'],
-        defines:           ['CMOCK_MOCK_PREFIX=mock_']
+        plugins: [:ignore, :expect_any_args],
+        defines: ['CMOCK_MOCK_PREFIX=mock_']
       )
+    end
+  end
+
+  # The path handling audit around GH #1370: a helper's filename is taken from its path
+  # as standardized, so this runs after path standardizing
+  describe "#populate_cmock_helpers" do
+    def helper_config(use_mocks, helper)
+      { project: { use_mocks: use_mocks }, cmock: { unity_helper_path: helper, includes: ['unity_helper.h'] } }
+    end
+
+    it "lists a single helper path and includes each helper in every mock, once, by its filename" do
+      config = helper_config( true, 'support/unity_helper.h' )
+
+      @configurator.populate_cmock_helpers( config )
+
+      expect( config[:cmock] ).to include( unity_helper_path: ['support/unity_helper.h'], includes: ['unity_helper.h'] )
+    end
+
+    it "leaves the helpers alone when mocks are off" do
+      config = helper_config( false, 'support/unity_helper.h' )
+
+      @configurator.populate_cmock_helpers( config )
+
+      expect( config[:cmock][:unity_helper_path] ).to eq( 'support/unity_helper.h' )
     end
   end
 
