@@ -51,9 +51,21 @@ describe ReleaseBuildPlanner do
     end
 
     it "includes extra link-only objects alongside the compiled sources" do
-      allow(@configurator).to receive(:collection_release_artifact_extra_link_objects).and_return( ['vendor/cexception/CException.o'] )
-      expect(@file_path_utils).to receive(:form_release_build_objects_filelist).with( ['src/Foo.c', 'vendor/cexception/CException.o'] ).and_return( [] )
+      allow(@configurator).to receive(:collection_release_artifact_extra_link_objects).and_return( ['CException.o'] )
       @planner.plan( @state, files: nil )
+      expect( @state.objects ).to eq( ['build/release/out/Foo.o', 'build/release/out/CException.o'] )
+    end
+
+    # A link-only name is no source of its own, so naming the object a compiled source builds
+    # to is no collision between two sources
+    it "places link-only objects apart from the compiled sources, adding a shared object once" do
+      allow(@configurator).to receive(:collection_release_build_input).and_return( ['build/vendor/c_exception/lib/CException.c'] )
+      allow(@configurator).to receive(:collection_release_artifact_extra_link_objects).and_return( ['CException.o'] )
+      expect(@file_path_utils).to receive(:form_release_build_objects_filelist).with( ['build/vendor/c_exception/lib/CException.c'] ).and_return( ['build/release/out/CException.o'] )
+      expect(@file_path_utils).to receive(:form_release_build_objects_filelist).with( ['CException.o'] ).and_return( ['build/release/out/CException.o'] )
+
+      @planner.plan( @state, files: nil )
+      expect( @state.objects ).to eq( ['build/release/out/CException.o'] )
     end
 
     it "scopes the object list to just the given file when files is provided, ignoring the full source collection" do

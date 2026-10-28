@@ -502,19 +502,28 @@ describe FilePathUtils do
       })
 
       allow(@configurator).to receive(:project_release_build_output_path).and_return('build/release/out')
+      allow(@configurator).to receive(:project_build_root).and_return('build')
       allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
-      allow(@configurator).to receive(:paths_source).and_return( ['drivers'] )
     end
 
-    it 'mirrors each object beneath whichever configured source root matched its file, distinguishing same-named sources' do
-      objects = @fpu.form_release_build_objects_filelist( ['drivers/foo/bar.c', 'drivers/baz/bar.c'] )
-      expect( objects ).to include('build/release/out/foo/bar.o')
-      expect( objects ).to include('build/release/out/baz/bar.o')
+    it 'places each object by its source\'s path from the project root, distinguishing same-named sources' do
+      objects = @fpu.form_release_build_objects_filelist( ['drivers/foo/bar.c', 'drivers/baz/bar.c', 'lib/bar.c'] )
+      expect( objects ).to eq(['build/release/out/drivers/foo/bar.o', 'build/release/out/drivers/baz/bar.o', 'build/release/out/lib/bar.o'])
     end
 
-    it 'leaves a file matching no configured source root flat' do
-      objects = @fpu.form_release_build_objects_filelist( ['vendor/unity.c'] )
-      expect( objects ).to eq(['build/release/out/unity.o'])
+    it 'places a source above the project root below the output root' do
+      objects = @fpu.form_release_build_objects_filelist( ['../shared/src/crc.c'] )
+      expect( objects ).to eq(['build/release/out/_up_/shared/src/crc.o'])
+    end
+
+    it 'leaves a source below the build root flat' do
+      objects = @fpu.form_release_build_objects_filelist( ['build/vendor/c_exception/lib/CException.c'] )
+      expect( objects ).to eq(['build/release/out/CException.o'])
+    end
+
+    it 'refuses two sources that would build to one object, naming both' do
+      expect { @fpu.form_release_build_objects_filelist( ['build/vendor/c_exception/lib/CException.c', 'CException.c'] ) }
+        .to raise_error( CeedlingException, /`build\/vendor\/c_exception\/lib\/CException.c` and `CException.c`.*`build\/release\/out\/CException.o`/ )
     end
   end
 
@@ -531,21 +540,16 @@ describe FilePathUtils do
       })
 
       allow(@configurator).to receive(:project_release_dependencies_path).and_return('build/release/dependencies')
+      allow(@configurator).to receive(:project_build_root).and_return('build')
       allow(@configurator).to receive(:extension_dependencies).and_return( FilenameExtension.new('.d') )
-      allow(@configurator).to receive(:paths_source).and_return( ['drivers'] )
     end
 
-    it 'mirrors each dependency file the same way as its corresponding object' do
+    it 'places each dependency file the same way as its corresponding object' do
       deps = @fpu.form_release_dependencies_filelist( ['drivers/foo/bar.c', 'drivers/baz/bar.c'] )
-      expect( deps ).to include('build/release/dependencies/foo/bar.d')
-      expect( deps ).to include('build/release/dependencies/baz/bar.d')
+      expect( deps ).to eq(['build/release/dependencies/drivers/foo/bar.d', 'build/release/dependencies/drivers/baz/bar.d'])
     end
   end
 
-  # Every preprocessed artifact for a test lands below that test's own subdirectory.
-  # That alone kept artifacts apart while a test had at most one source of any given
-  # basename. Two same-basename sources in one test overwrite each other, so the
-  # source's own namespace below its configured root is mirrored as well.
   # A mock's generated files sit below its test's mock root, in the subdirectory mirroring
   # whatever it mocks. Two places need that directory -- the stage that compiles the mock
   # and the stage that generates it -- and they must agree, or a mock is compiled from a
@@ -585,46 +589,35 @@ describe FilePathUtils do
 
       allow(@configurator).to receive(:project_test_preprocess_files_path).and_return('build/test/preprocess/files')
       allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
-      allow(@configurator).to receive(:paths_source).and_return( ['src/**'] )
-      allow(@configurator).to receive(:paths_include).and_return( ['include/**'] )
-      allow(@configurator).to receive(:paths_support).and_return( [] )
-      allow(@configurator).to receive(:paths_test).and_return( ['test/**'] )
+      allow(@configurator).to receive(:project_build_root).and_return('build')
       allow(@configurator).to receive(:project_use_partials).and_return( true )
       allow(@configurator).to receive(:project_use_mocks).and_return( true )
       allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
       allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
     end
 
-    # A file sitting directly in a configured root has no namespace of its own, so its
-    # artifact stays flat -- the layout every project has always seen.
-    it 'keeps a file directly in a configured root flat' do
-      expect( @fpu.form_preprocessed_file_filepath('src/foo.c', 'test_foo') )
-        .to eq('build/test/preprocess/files/test_foo/foo.c')
-      expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/foo.c', 'test_foo') )
-        .to eq('build/test/preprocess/files/test_foo/full_expansion/foo.c')
-      expect( @fpu.form_preprocessed_file_raw_directives_only_filepath('src/foo.c', 'test_foo') )
-        .to eq('build/test/preprocess/files/test_foo/directives_only/raw/foo.c')
-      expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/foo.c', 'test_foo') )
-        .to eq('build/test/preprocess/files/test_foo/directives_only/foo.c')
-      expect( @fpu.form_preprocessed_file_fallback_expansion_filepath('src/foo.c', 'test_foo') )
-        .to eq('build/test/preprocess/files/test_foo/fallback_expansion/foo.c')
-      expect( @fpu.form_preprocessed_includes_list_filepath('src/foo.c', 'test_foo') )
-        .to eq('build/test/preprocess/includes/test_foo/foo.c.yml')
+    # Each artifact of a test sits below the test's own subdirectory, at its file's path
+    # from the project root, so two same-named files in one test never share one
+    it 'places a file by its path from the project root below the test subdirectory' do
+      expect( @fpu.form_preprocessed_file_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/src/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/full_expansion/src/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/directives_only/raw/src/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/directives_only/src/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_fallback_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/fallback_expansion/src/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/includes/test_both/src/drivers/uart/config.c.yml')
     end
 
-    it 'mirrors a nested source below the test subdirectory' do
-      expect( @fpu.form_preprocessed_file_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/drivers/uart/config.c')
-      expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/full_expansion/drivers/uart/config.c')
-      expect( @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/directives_only/raw/drivers/uart/config.c')
-      expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/directives_only/drivers/uart/config.c')
-      expect( @fpu.form_preprocessed_file_fallback_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/fallback_expansion/drivers/uart/config.c')
-      expect( @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/includes/test_both/drivers/uart/config.c.yml')
+    it 'keeps a header far above the project below the test subdirectory' do
+      far = File.expand_path( '../../far/inc/sdk.h' )
+      expect( @fpu.form_preprocessed_file_filepath( far, 'test_both' ) )
+        .to eq( File.join( 'build/test/preprocess/files/test_both', BuildSubpath.of_directory( File.dirname( far ) ), 'sdk.h' ) )
+      expect( BuildSubpath.of_directory( File.dirname( far ) ) ).to_not include( '..' )
     end
 
     # The defect itself: two sources sharing a basename in one test.
@@ -646,9 +639,9 @@ describe FilePathUtils do
       @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both')
     end
 
-    it 'mirrors a nested header below its own include root' do
+    it 'places a header by its path from the project root' do
       expect( @fpu.form_preprocessed_file_filepath('include/drivers/uart/config.h', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/drivers/uart/config.h')
+        .to eq('build/test/preprocess/files/test_both/include/drivers/uart/config.h')
     end
 
     # A generated Partial or mock sits below its own test's generated root rather than a
@@ -681,9 +674,7 @@ describe FilePathUtils do
       ).to eq('build/test/preprocess/files/test_both/drivers/spi/mock_config.h')
     end
 
-    # A generated file sits below no configured root, so nothing mirrors it and its
-    # artifact stays where it has always been.
-    it 'keeps a generated file flat' do
+    it 'keeps a generated file directly in its test root flat' do
       expect( @fpu.form_preprocessed_file_filepath('build/test/mocks/test_both/Mockconfig.h', 'test_both') )
         .to eq('build/test/preprocess/files/test_both/Mockconfig.h')
     end
@@ -702,27 +693,26 @@ describe FilePathUtils do
       })
 
       allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
-      allow(@configurator).to receive(:paths_source).and_return( ['drivers'] )
-      allow(@configurator).to receive(:paths_support).and_return( ['support'] )
+      allow(@configurator).to receive(:project_build_root).and_return('build')
     end
 
-    it 'mirrors a module-under-test or support source beneath its matching configured root' do
+    it 'places a test, module-under-test or support source by its path from the project root' do
       objects = @fpu.form_test_build_objects_filelist(
-        'build/test/out/TestFoo', ['drivers/foo/bar.c', 'drivers/baz/bar.c']
-      )
-      expect( objects ).to include('build/test/out/TestFoo/foo/bar.o')
-      expect( objects ).to include('build/test/out/TestFoo/baz/bar.o')
-    end
-
-    it 'leaves the test file itself, mocks, and other unmatched inputs flat' do
-      objects = @fpu.form_test_build_objects_filelist(
-        'build/test/out/TestFoo', ['test/TestFoo.c', 'MockBar.c', 'support/qux.c']
+        'build/test/out/TestFoo', ['test/TestFoo.c', 'drivers/foo/bar.c', 'drivers/baz/bar.c', 'support/qux.c']
       )
       expect( objects ).to eq([
-        'build/test/out/TestFoo/TestFoo.o',
-        'build/test/out/TestFoo/MockBar.o',
-        'build/test/out/TestFoo/qux.o'
+        'build/test/out/TestFoo/test/TestFoo.o',
+        'build/test/out/TestFoo/drivers/foo/bar.o',
+        'build/test/out/TestFoo/drivers/baz/bar.o',
+        'build/test/out/TestFoo/support/qux.o'
       ])
+    end
+
+    it 'leaves a runner or vendored framework source below the build root flat' do
+      objects = @fpu.form_test_build_objects_filelist(
+        'build/test/out/TestFoo', ['build/test/runners/TestFoo_runner.c', 'build/vendor/unity/src/unity.c']
+      )
+      expect( objects ).to eq(['build/test/out/TestFoo/TestFoo_runner.o', 'build/test/out/TestFoo/unity.o'])
     end
 
     # Generated Partial sources sit below their own build root, not a configured source
@@ -744,7 +734,7 @@ describe FilePathUtils do
       ])
     end
 
-    it 'leaves inputs flat when no extra root is supplied' do
+    it 'leaves a generated source flat when its root is not supplied' do
       objects = @fpu.form_test_build_objects_filelist(
         'build/test/out/TestFoo',
         ['build/test/partials/TestFoo/drivers/uart/ceedling_partial_config_impl.c']
@@ -857,19 +847,15 @@ describe FilePathUtils do
       })
 
       allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
-      # The test file sits directly in its root, so nothing is mirrored here.
+      allow(@configurator).to receive(:project_build_root).and_return('build')
       allow(@configurator).to receive(:project_use_partials).and_return( false )
       allow(@configurator).to receive(:project_use_mocks).and_return( false )
-      allow(@configurator).to receive(:paths_source).and_return( [] )
-      allow(@configurator).to receive(:paths_support).and_return( [] )
-      allow(@configurator).to receive(:paths_include).and_return( [] )
-      allow(@configurator).to receive(:paths_test).and_return( ['test'] )
     end
 
     it 'uses the fixed internal .yml extension regardless of a project-configured :extension ↳ :yaml setting' do
       expect(@configurator).to_not receive(:extension_yaml)
       expect( @fpu.form_preprocessed_includes_list_filepath('test/TestFoo.c', 'TestFoo') )
-        .to eq('build/test/preprocess/includes/TestFoo/TestFoo.c.yml')
+        .to eq('build/test/preprocess/includes/TestFoo/test/TestFoo.c.yml')
     end
   end
 

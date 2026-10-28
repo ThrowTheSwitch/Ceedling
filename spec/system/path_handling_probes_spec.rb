@@ -72,7 +72,7 @@ ceedling_system_tests do
     end
   end
 
-  it "G5: compiles both of two same-named sources below two roots into a release", pending: "G5: both map to one object; one source never compiles" do
+  it "G5: compiles both of two same-named sources below two roots into a release" do
     in_app do
       write( 'src/foo.c', "int foo_a(void) { return 1; }\n" )
       write( 'lib/foo.c', "int foo_b(void) { return 2; }\n" )

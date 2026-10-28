@@ -12,6 +12,8 @@ require 'ceedling/exceptions'
 require 'ceedling/path_matcher'
 require 'ceedling/path_mirror'
 require 'ceedling/file_path_utils'
+require 'ceedling/project_paths'
+require 'ceedling/build_subpath'
 
 class FileFinder
 
@@ -199,37 +201,16 @@ class FileFinder
     # We save the existence handling until the end.
     #
 
-    # A module-under-test or release source's object mirrors that source's own subdirectory
-    # below whichever configured root it came from -- recovering that mirrored subdirectory
-    # here lets the query go straight to the matching source, rather than a bare basename
-    # that's ambiguous the moment another same-named source exists elsewhere.
-    query_file = mirrored_query(filepath, release: release, test: test, context: context)
+    # A module-under-test or release object sits at its source's own path below its build
+    # root, so that path recovers the one source, rather than a bare basename that is
+    # ambiguous the moment another same-named source exists elsewhere.
+    query_file, exact = mirrored_query(filepath, release: release, test: test, context: context)
 
-    # Assembly files for release build
-    if release and @configurator.release_build_use_assembly
-      found_file = try_extensions(query_file, @configurator.extension_assembly, @configurator.collection_release_build_input)
-
-    # Assembly files for test build
-    elsif (!release) and @configurator.test_build_use_assembly
-      found_file = try_extensions(query_file, @configurator.extension_assembly, @configurator.collection_existing_test_build_input)
-    end
-
-    if !found_file.nil?
-        return found_file
-    end
-
-    # Release build C files
-    if release
-      found_file = try_extensions(query_file, @configurator.extension_source, @configurator.collection_release_build_input)
-
-    # Test build C files
-    else
-      found_file = try_extensions(query_file, @configurator.extension_source, @configurator.collection_existing_test_build_input)
-    end
+    found_file = find_compiled_input( query_file, release: release, exact: exact )
 
     if found_file.nil?
-      # Every name actually attempted above, laid out for the reader in the same order they
-      # were tried, so a missing-file complaint names every filename ceedling went looking for.
+      # Every name actually attempted, in the order tried, so a missing-file complaint
+      # names every filename ceedling went looking for.
       tried = @configurator.extension_source.map { |ext| query_file + ext }
       tried += @configurator.extension_assembly.map { |ext| query_file + ext } if @configurator.release_build_use_assembly
       @file_finder_helper.handle_missing_file(tried.join(' or '), complain)
@@ -261,6 +242,24 @@ class FileFinder
   ### Private ###
 
   private
+
+  # A C or assembly build input for `query`, assembly first where the build uses it. An
+  # exact query is the file's own path, matched as such before any tail match.
+  def find_compiled_input(query, release:, exact:)
+    collection = release ? @configurator.collection_release_build_input : @configurator.collection_existing_test_build_input
+
+    compiled_extensions( release ).each do |extension|
+      found = (exact && exact_file( query, extension, collection )) || try_extensions( query, extension, collection )
+      return found unless found.nil?
+    end
+
+    return nil
+  end
+
+  def compiled_extensions(release)
+    assembly = release ? @configurator.release_build_use_assembly : @configurator.test_build_use_assembly
+    return assembly ? [@configurator.extension_assembly, @configurator.extension_source] : [@configurator.extension_source]
+  end
 
   # Translates a generated-Partial ambiguity into the test author's own terms. The query
   # here is a generated filename under a build directory, neither of which the author
@@ -306,10 +305,20 @@ class FileFinder
   # from an #include or TEST_SOURCE_FILE(), rather than a build artifact's own path) has no
   # test identity to recover -- empty string, never a directory name that could coincidentally
   # match some unrelated file's own basename.
+  #
+  # A test's build directory also holds its objects at their sources' own paths, so the
+  # name is the longest one of a known test that the directory begins with.
   def test_context_of(filepath)
-    dir  = File.dirname( filepath )
-    root = @configurator.project_test_build_output_path
-    return dir.start_with?( root + '/' ) ? dir[(root.length + 1)..] : ''
+    subdir = ProjectPaths.subdir_below( @configurator.project_test_build_output_path, File.dirname( filepath ) )
+    return '' if subdir.nil?
+
+    parts = subdir.split( '/' )
+    parts.length.downto( 1 ) do |count|
+      name = parts.first( count ).join( '/' )
+      return name if test_files_by_name.key?( name )
+    end
+
+    return ''
   end
 
   # A test's runner lives where FilePathUtils#form_test_runners_path puts it. Takes the test
@@ -363,46 +372,56 @@ class FileFinder
     return listing.reject { |file| nested.any? { |dir| file.start_with?( dir ) } }
   end
 
-  # A release or module-under-test object's own path mirrors its source's subdirectory
-  # below whichever configured root it came from, rooted at the release build output path
-  # or (given the current test's identity) that test's own build path. Recovering that
-  # mirrored subdirectory and combining it with the bare basename recreates a query that
-  # identifies the same one source PathMirror originally mirrored it from.
+  # The query for the source of a release or module-under-test object, and whether it is
+  # exact. Such an object sits at its source's own path below the release output root, or
+  # below the build path of the test it belongs to, so decoding that path names the source.
   #
-  # A filepath that isn't under the project's build root at all is a source-tree-relative
-  # query in its own right -- straight from an #include or a TEST_SOURCE_FILE() directive,
-  # say. Such a path keeps whatever disambiguating path it carries rather than being
-  # collapsed to a bare basename, reduced to its own namespace below a configured include
-  # root when one contains it (see header_root_relative_query below).
+  # A filepath outside the build root is a source-tree-relative query in its own right,
+  # from an #include or a TEST_SOURCE_FILE() directive, say. It keeps whatever path it
+  # carries, reduced to its namespace below a configured include root when one contains it
+  # (see header_root_relative_query below).
   #
-  # A filepath that IS somewhere under the build root, but either belongs to a build
-  # context this method doesn't specifically know how to mirror (a plugin's own object
-  # output, e.g. build/valgrind/out/..., rather than release or test) or lacks enough to
-  # peel back a known per-test root (test build input queried without a test identity),
-  # falls back to the bare basename -- exactly what every caller has always seen for those
-  # cases.
+  # A filepath below the build root in a context this method doesn't know (a plugin's own
+  # object output, e.g. build/valgrind/out/...), or test build input queried without a test
+  # identity, falls back to the bare basename.
   def mirrored_query(filepath, release:, test:, context:)
-    dir = File.dirname(filepath)
-    build_root = @configurator.project_build_root
+    return [source_tree_query( filepath ), false] unless ProjectPaths.contains?( @configurator.project_build_root, filepath )
 
-    unless dir == build_root || dir.start_with?(build_root + '/')
-      query = header_root_relative_query( filepath )
-      return query.nil? ? filepath.ext('') : query
+    root     = placement_root( release, test, context )
+    subdir   = root.nil? ? nil : ProjectPaths.subdir_below( root, File.dirname( filepath ) )
+    basename = File.basename( filepath ).ext('')
+    return [basename, false] if subdir.nil? || subdir.empty?
+
+    return [File.join( BuildSubpath.decode( subdir ), basename ), true]
+  end
+
+  def source_tree_query(filepath)
+    query = header_root_relative_query( filepath )
+    return query.nil? ? filepath.ext('') : query
+  end
+
+  # The root a release or test object is placed below, or nil where none is known
+  def placement_root(release, test, context)
+    return @configurator.project_release_build_output_path if release
+    return nil if test.nil?
+
+    return @file_path_utils.form_test_build_path( test, context: context )
+  end
+
+  # The file of `collection` at exactly `query` plus one of `extension`'s spellings, or nil.
+  # Compared by absolute path, through an index built once per collection, since build
+  # threads share this finder.
+  def exact_file(query, extension, collection)
+    index = @test_names_lock.synchronize do
+      (@exact_indexes ||= {}.compare_by_identity)[collection] ||= collection.to_h { |file| [ProjectPaths.absolute( file ), file.to_s] }
     end
 
-    basename = File.basename(filepath).ext('')
+    extension.to_a.each do |ext|
+      found = index[ProjectPaths.absolute( query + ext )]
+      return found unless found.nil?
+    end
 
-    root =
-      if release
-        @configurator.project_release_build_output_path
-      elsif test
-        @file_path_utils.form_test_build_path(test, context: context)
-      end
-
-    return basename if root.nil?
-
-    subdir = PathMirror.relative_subdir(filepath, [root])
-    return subdir.empty? ? basename : File.join(subdir, basename)
+    return nil
   end
 
   # The subdirectory a generated file's query carries, mirroring the module it belongs to.

@@ -193,12 +193,7 @@ class FilePathUtils
   end
 
   def form_release_build_objects_filelist(files)
-    return mirror_build_objects(
-      files,
-      root:  @configurator.project_release_build_output_path,
-      ext:   @configurator.extension_object.primary,
-      roots: @configurator.paths_source
-    )
+    return mirror_build_objects( files, root: @configurator.project_release_build_output_path, ext: @configurator.extension_object.primary )
   end
 
   # `filepath` is an already-mirrored object path -- its own directory is exactly where its
@@ -208,12 +203,7 @@ class FilePathUtils
   end
 
   def form_release_dependencies_filelist(files)
-    return mirror_build_objects(
-      files,
-      root:  @configurator.project_release_dependencies_path,
-      ext:   @configurator.extension_dependencies.primary,
-      roots: @configurator.paths_source
-    )
+    return mirror_build_objects( files, root: @configurator.project_release_dependencies_path, ext: @configurator.extension_dependencies.primary )
   end
 
   ### Tests ###
@@ -379,13 +369,7 @@ class FilePathUtils
   # the same filepath, so all of them agree on where the artifact lands without
   # coordinating.
   def preprocessed_file_subpath(filepath, test = nil)
-    roots = @configurator.paths_source +
-            @configurator.paths_support +
-            @configurator.paths_include +
-            @configurator.paths_test +
-            generated_roots( test )
-
-    subdir   = PathMirror.relative_subdir( filepath, roots )
+    subdir   = form_build_subpath( filepath, generated_roots: generated_roots( test ) )
     basename = File.basename( filepath )
 
     return basename if subdir.empty?
@@ -456,12 +440,7 @@ class FilePathUtils
   # standard roots mirrors it. Without its root here, two modules sharing a basename
   # collapse onto one object filename.
   def form_test_build_objects_filelist(path, sources, extra_roots: [])
-    return mirror_build_objects(
-      sources,
-      root:  path,
-      ext:   @configurator.extension_object.primary,
-      roots: @configurator.paths_source + @configurator.paths_support + extra_roots
-    )
+    return mirror_build_objects( sources, root: path, ext: @configurator.extension_object.primary, generated_roots: extra_roots )
   end
 
   # Where one mock's generated files sit: its test's mock root, plus the subdirectory
@@ -607,15 +586,38 @@ class FilePathUtils
   # it contains a literal `[`/`]`. FileWrapper#instantiate_file_list_literal (`<<`, not
   # `.new`/`.include`) adds every entry as-is, with no glob interpretation at all -- the
   # correct construction for a list that's already the real, final answer.
-  def mirror_build_objects(files, root:, ext:, roots:)
-    clean_roots = PathMirror.clean_roots( roots )
-
-    objects = @file_wrapper.instantiate_file_list_literal(files).map do |file|
-      subdir   = PathMirror.relative_subdir_from_clean_roots( file, clean_roots )
-      basename = File.basename(file).ext(ext)
-      subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
+  def mirror_build_objects(files, root:, ext:, generated_roots: [])
+    sources = @file_wrapper.instantiate_file_list_literal( files ).to_a.uniq
+    objects = sources.map do |file|
+      subdir   = form_build_subpath( file, generated_roots: generated_roots )
+      basename = File.basename( file ).ext( ext )
+      subdir.empty? ? File.join( root, basename ) : File.join( root, subdir, basename )
     end
+
+    validate_distinct_build_files!( sources, objects )
     return @file_wrapper.instantiate_file_list_literal( objects )
+  end
+
+  # Where below a build output root a file of `file` lands. A file below one of the
+  # caller's generated roots (a test's mocks or Partials) mirrors below that root; one
+  # below the build root otherwise (vendored frameworks, runners) lands flat; and any other
+  # lands by its own path from the project root, so two sources never share one.
+  def form_build_subpath(file, generated_roots: [])
+    generated = PathMirror.relative_subdir_if_rooted_in_clean_roots( file, generated_roots )
+    return generated unless generated.nil?
+    return '' if ProjectPaths.contains?( @configurator.project_build_root, file )
+
+    return BuildSubpath.of_directory( File.dirname( file ) )
+  end
+
+  # Two sources building to one file would leave one of them out of the build
+  def validate_distinct_build_files!(sources, built)
+    sources.zip( built ).group_by( &:last ).each_value do |pairs|
+      next if pairs.size == 1
+
+      names = pairs.map { |pair| "`#{pair.first}`" }.join( ' and ' )
+      raise CeedlingException.new( "#{names} would build to the same file `#{pairs.first.last}`. Rename one, or move it to its own directory." )
+    end
   end
 
 end

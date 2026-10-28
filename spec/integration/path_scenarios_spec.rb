@@ -96,7 +96,7 @@ describe 'Path scenarios (integration)' do
     end
 
     (PathScenarioHarness::ROOT_SPELLINGS.keys - [:plain]).each do |spelling|
-      it "places every build file as the plain spelling does, with #{spelling} roots", pending: (spelling == :symlink && 'G2: mirror roots are matched as written, not as the place a symlink names') do
+      it "places every build file as the plain spelling does, with #{spelling} roots" do
         in_workspace( files, symlink: spelling == :symlink ) do |ws, app|
           _, plain = placed_with( :plain, ws, app )
           scene, spelled = placed_with( spelling, ws, app )
@@ -174,7 +174,7 @@ describe 'Path scenarios (integration)' do
   # --- G5 and G6: collisions --------------------------------------------------------------
 
   context 'G5: the same relative path below two roots' do
-    it 'gives each source its own release object', pending: "G5: placement drops the root, so the same path below two roots collides" do
+    it 'gives each source its own release object' do
       files = { 'app/src/foo.c' => c( 'a' ), 'app/lib/foo.c' => c( 'b' ), 'app/src/foo.h' => h( 'a' ), 'app/test/test_f.c' => TEST_C }
       in_workspace( files ) do |ws, app|
         scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**', 'lib/**'], include: ['src/**'] } ) )
@@ -185,7 +185,7 @@ describe 'Path scenarios (integration)' do
   end
 
   context 'G6: nested roots' do
-    it 'gives a file in the inner root and one in the outer root their own objects', pending: "G6: the longest root wins, dropping the outer prefix" do
+    it 'gives a file in the inner root and one in the outer root their own objects' do
       files = { 'app/src/util.c' => c( 'a' ), 'app/src/legacy/util.c' => c( 'b' ), 'app/src/util.h' => h( 'a' ), 'app/test/test_u.c' => TEST_C }
       in_workspace( files ) do |ws, app|
         scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**', 'src/legacy/**'], include: ['src/**'] } ) )
@@ -200,7 +200,7 @@ describe 'Path scenarios (integration)' do
   # --- G8: outside every root -------------------------------------------------------------
 
   context 'G8: sources reached only through :files' do
-    it 'gives same-named files outside every root their own objects', pending: "G8: a file outside every root is placed flat" do
+    it 'gives same-named files outside every root their own objects' do
       files = { 'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/a/util.c' => c( 'a' ), 'app/b/util.c' => c( 'b' ), 'app/test/test_m.c' => TEST_C }
       in_workspace( files ) do |ws, app|
         scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**'], include: ['src/**'] }, files: { source: ['a/util.c', 'b/util.c'] } ) )

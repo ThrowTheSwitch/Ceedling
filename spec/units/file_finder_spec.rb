@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'tmpdir'
 require 'ceedling/file_finder'
 require 'ceedling/file_finder_helper'
 require 'ceedling/filename_extension'
@@ -404,6 +405,7 @@ describe FileFinder do
 
     it 'resolves a test\'s own runner by its own runner subdirectory, without treating another same-named test\'s runner as ambiguous' do
       allow(@configurator).to receive(:project_test_runners_path).and_return('build/test/runners')
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['unit/test_foo.c', 'integration/test_foo.c'] )
 
       all_runners = {
         'build/test/runners/unit'        => ['build/test/runners/unit/test_foo_runner.c'],
@@ -427,6 +429,7 @@ describe FileFinder do
 
     it 'resolves a mock generated once per test, by the current test\'s own build directory, without treating that expected repetition as ambiguous' do
       allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['TestAdcModel.c', 'TestModel.c'] )
 
       all_mocks = {
         'build/test/mocks/TestAdcModel'  => ['build/test/mocks/TestAdcModel/MockTemperatureFilter.c'],
@@ -534,37 +537,78 @@ describe FileFinder do
       expect(found).to eq('build/test/mocks/TestModel/MockTemperatureFilter.c')
     end
 
-    it 'resolves a release object via its own mirrored subdirectory, even when another same-named source exists elsewhere' do
+    it 'resolves a release object to the source at its own path, even when another same-named source exists elsewhere' do
       allow(@configurator).to receive(:collection_release_build_input).and_return(
         ['drivers/foo/bar.c', 'drivers/baz/bar.c']
       )
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/release/out/foo/bar.o', complain: :error, context: RELEASE_SYM
+        filepath: 'build/release/out/drivers/foo/bar.o', complain: :error, context: RELEASE_SYM
       )
       expect(found).to eq('drivers/foo/bar.c')
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/release/out/baz/bar.o', complain: :error, context: RELEASE_SYM
+        filepath: 'build/release/out/drivers/baz/bar.o', complain: :error, context: RELEASE_SYM
       )
       expect(found).to eq('drivers/baz/bar.c')
     end
 
-    it 'resolves a module-under-test object via its own mirrored subdirectory, even when another same-named module exists elsewhere' do
+    it 'resolves a module-under-test object to the source at its own path, even when another same-named module exists elsewhere' do
       allow(@file_path_utils).to receive(:form_test_build_path).with('TestFoo', context: TEST_SYM).and_return('build/test/out/TestFoo')
       allow(@configurator).to receive(:collection_existing_test_build_input).and_return(
         ['drivers/foo/bar.c', 'drivers/baz/bar.c']
       )
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/TestFoo/foo/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
+        filepath: 'build/test/out/TestFoo/drivers/foo/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
       )
       expect(found).to eq('drivers/foo/bar.c')
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/TestFoo/baz/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
+        filepath: 'build/test/out/TestFoo/drivers/baz/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
       )
       expect(found).to eq('drivers/baz/bar.c')
+    end
+
+    # A tail match of `src/util` takes whichever of these comes first
+    it 'resolves an object to exactly its own source, never one whose path merely ends the same way' do
+      allow(@configurator).to receive(:collection_release_build_input).and_return( ['lib/src/util.c', 'src/util.c'] )
+
+      found = @file_finder.find_build_input_file( filepath: 'build/release/out/src/util.o', complain: :error, context: RELEASE_SYM )
+      expect(found).to eq('src/util.c')
+    end
+
+    it 'resolves an object of a source above the project root' do
+      allow(@configurator).to receive(:collection_release_build_input).and_return( ['src/crc.c', '../shared/src/crc.c'] )
+
+      found = @file_finder.find_build_input_file( filepath: 'build/release/out/_up_/shared/src/crc.o', complain: :error, context: RELEASE_SYM )
+      expect(found).to eq('../shared/src/crc.c')
+    end
+
+    it 'resolves an object of a file in the running Ceedling installation, placed below `_ceedling_`' do
+      helper = File.join( BuildSubpath::INSTALLATION_ROOT, 'plugins/fff/src/fff_unity_helper.c' )
+      allow(@file_path_utils).to receive(:form_test_build_path).with( 'test/test_x', context: TEST_SYM ).and_return( 'build/test/out/test/test_x' )
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/fff_unity_helper.c', helper] )
+
+      Dir.mktmpdir do |project|
+        Dir.chdir( project ) do
+          found = @file_finder.find_build_input_file(
+            filepath: 'build/test/out/test/test_x/_ceedling_/plugins/fff/src/fff_unity_helper.o', complain: :error, context: TEST_SYM, test: 'test/test_x'
+          )
+          expect(found).to eq( helper )
+        end
+      end
+    end
+
+    it 'recovers a nested test\'s identity from its object\'s path, rather than its parent test\'s' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_foo.c', 'test/test_foo/test_bar.c'] )
+      allow(@file_path_utils).to receive(:form_test_build_path) { |name, **| File.join( 'build/test/out', name ) }
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/util.c'] )
+
+      expect(@file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test_bar/test/test_foo/test_bar.o', complain: :error, context: TEST_SYM ))
+        .to eq('test/test_foo/test_bar.c')
+      expect(@file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test/test_foo.o', complain: :error, context: TEST_SYM ))
+        .to eq('test/test_foo.c')
     end
 
     it 'still resolves a flat module-under-test object by basename when no test identity is given' do
