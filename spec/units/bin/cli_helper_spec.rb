@@ -275,7 +275,7 @@ describe CliHelper do
   # The path handling audit around GH #1370: every other build path reads the build root
   # after Ruby expansion
   describe 'G17: #process_logging_path' do
-    it 'places the log directory below the build root as expanded', pending: "G17: the log path is built from the unexpanded build root" do
+    it 'places the log directory below the build root as expanded' do
       helper = described_class.new({
         :file_wrapper => @file_wrapper, :actionator => double('actionator').as_null_object, :config_walkinator => ConfigWalkinator.new,
         :path_validator => @path_validator, :rake_task_registry => @rake_task_registry, :loginator => @loginator,

@@ -22,26 +22,14 @@ class MixinResolvinator
     #  - Empty load paths
     return [], [] if _mixins.nil?
 
-    # Build list of load paths
     # Configured load paths are higher in search path ordering
     load_paths = _mixins[:load_paths] || []
+    enabled    = (_mixins[:enabled] || []).clone # A copy of the configuration section
 
-    # Get list of mixins
-    enabled = _mixins[:enabled] || []
-    enabled = enabled.clone # Ensure it's a copy of configuration section
-
-    # Handle any inline Ruby string expansion, then standardize Windows backslashes --
-    # cmdline and env var mixin paths already go through standardize_paths elsewhere,
-    # so config :mixins section paths need the same treatment for consistency.
-    load_paths.each do |load_path|
-      load_path.replace( @ruby_expandinator.expand( load_path, source: ":mixins ↳ :load_paths" ) )
-      load_path.replace( @path_validator.standardize_paths( load_path ).first )
-    end
-
-    enabled.each do |mixin|
-      mixin.replace( @ruby_expandinator.expand( mixin, source: ":mixins ↳ :enabled" ) )
-      mixin.replace( @path_validator.standardize_paths( mixin ).first )
-    end
+    # Command line and environment variable mixin paths are standardized elsewhere, so
+    # :mixins section paths are too, after any inline Ruby string expansion
+    prepare_in_place( load_paths, ":mixins ↳ :load_paths" )
+    prepare_in_place( enabled, ":mixins ↳ :enabled" )
 
     # Remove the :mixins section of the configuration
     config.delete( :mixins )
@@ -66,25 +54,7 @@ class MixinResolvinator
 
   # Validate mixins list
   def validate_mixins(mixins:, load_paths:, source:, yaml_extensions:)
-    validated = true
-
-    mixins.each do |mixin|
-      # Validate mixin filepaths
-      if @path_validator.filepath?( mixin )
-        if !@file_wrapper.exist?( mixin )
-          @loginator.log( "Cannot find mixin at #{mixin}", Verbosity::ERRORS )
-          validated = false
-        end
-
-      # Otherwise, validate that mixin name can be found in load paths
-      elsif mixin_filepath( mixin, load_paths, yaml_extensions ).nil?
-        filenames = yaml_extensions.map { |extension| "'#{mixin}#{extension}'" }.join( ' or ' )
-        @loginator.log( "#{source} '#{mixin}' cannot be found in mixin load paths as #{filenames}", Verbosity::ERRORS )
-        validated = false
-      end
-    end
-
-    return validated
+    return mixins.map { |mixin| mixin_found?( mixin, load_paths, source, yaml_extensions ) }.all?
   end
 
 
@@ -113,6 +83,26 @@ class MixinResolvinator
   ### Private ###
 
   private
+
+  # Expands and standardizes each of `paths`, keeping each String the configuration holds
+  def prepare_in_place(paths, source)
+    paths.each { |path| path.replace( @path_validator.standardize_paths( @ruby_expandinator.expand( path, source: source ) ).first ) }
+  end
+
+  # A mixin filepath must exist, and a mixin name must be found in the load paths
+  def mixin_found?(mixin, load_paths, source, yaml_extensions)
+    if @path_validator.filepath?( mixin )
+      return true if @file_wrapper.exist?( mixin )
+
+      @loginator.log( "Cannot find mixin at #{mixin}", Verbosity::ERRORS )
+      return false
+    end
+    return true unless mixin_filepath( mixin, load_paths, yaml_extensions ).nil?
+
+    filenames = yaml_extensions.map { |extension| "'#{mixin}#{extension}'" }.join( ' or ' )
+    @loginator.log( "#{source} '#{mixin}' cannot be found in mixin load paths as #{filenames}", Verbosity::ERRORS )
+    return false
+  end
 
   # The first existing file named for the mixin, searching each load path in turn for each
   # extension

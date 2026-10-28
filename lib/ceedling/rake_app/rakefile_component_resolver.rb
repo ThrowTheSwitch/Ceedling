@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/project_paths'
 
 # Resolves the ordered list of .rake files Ceedling will load for a given project
 # configuration. Callable from both bin/ (early, before do_setup) and lib/ (within
@@ -39,8 +40,11 @@ module RakefileComponentResolver
   # plugins path last. This ordering lets user plugins shadow built-in plugins of the
   # same name. Used by both resolve() (bin/ CLI scope) and Configurator#prepare_plugins_load_paths
   # (application scope) so both scopes search plugins in the same priority order.
-  def prepare_plugin_load_paths(config, ceedling_plugins_path)
-    load_paths = Array( config.dig(:plugins, :load_paths) ).dup
+  #
+  # `expand` applies inline Ruby string expansion to each configured path, and each is then
+  # standardized as every other configured path is, so both scopes read them alike.
+  def prepare_plugin_load_paths(config, ceedling_plugins_path, expand: ->(path) { path })
+    load_paths = Array( config.dig(:plugins, :load_paths) ).compact.map { |path| ProjectPaths.standardize( expand.call( path ) ) }
     load_paths << ceedling_plugins_path
     load_paths.compact!
     load_paths.uniq!
@@ -51,7 +55,7 @@ module RakefileComponentResolver
   #   - Stock files (always)
   #   - Conditional stock files (rules_release, tasks_release if release_build is enabled)
   #   - Plugin .rake files (first matching <root>/<plugin>/<plugin>.rake across load_paths)
-  def resolve(config, ceedling_lib_path, ceedling_plugins_path)
+  def resolve(config, ceedling_lib_path, ceedling_plugins_path, expand: ->(path) { path })
     paths = base_rakefiles(ceedling_lib_path) + test_rakefiles(ceedling_lib_path)
 
     if config.dig(:project, :release_build)
@@ -59,7 +63,7 @@ module RakefileComponentResolver
     end
 
     paths.concat(
-      plugin_rake_files( config, prepare_plugin_load_paths(config, ceedling_plugins_path) )
+      plugin_rake_files( config, prepare_plugin_load_paths(config, ceedling_plugins_path, expand: expand) )
     )
 
     return paths
@@ -70,20 +74,9 @@ module RakefileComponentResolver
   # Uses File.exist? directly (no DI needed) — same check as ConfiguratorPlugins#find_rake_plugins.
   # Array() wraps nil gracefully so missing config keys don't raise.
   def plugin_rake_files(config, load_paths)
-    enabled = Array( config.dig(:plugins, :enabled) )
-    results = []
-
-    enabled.each do |plugin|
-      load_paths.each do |load_path|
-        candidate = File.join(load_path, plugin, "#{plugin}.rake")
-        if File.exist?(candidate)
-          results << candidate
-          break
-        end
-      end
+    return Array( config.dig(:plugins, :enabled) ).filter_map do |plugin|
+      load_paths.lazy.map { |load_path| File.join(load_path, plugin, "#{plugin}.rake") }.find { |candidate| File.exist?(candidate) }
     end
-
-    results
   end
 
 end

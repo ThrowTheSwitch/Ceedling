@@ -11,6 +11,7 @@ require 'app_cfg'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/rake_app/rakefile_component_resolver'
+require 'ceedling/project_paths'
 require 'versionator' # Outside DIY context
 
 class CliHelper
@@ -122,7 +123,8 @@ class CliHelper
     paths = RakefileComponentResolver.resolve(
       config,
       CEEDLING_APPCFG[:ceedling_lib_path],
-      CEEDLING_APPCFG[:ceedling_plugins_path]
+      CEEDLING_APPCFG[:ceedling_plugins_path],
+      expand: ->(path) { @ruby_expandinator.expand( path, source: ":plugins ↳ :load_paths" ) }
     )
 
     @registry.register_test_tasks( paths )
@@ -215,7 +217,9 @@ class CliHelper
 
     return '' if build_root.nil?
 
-    return File.join( build_root, DEFAULT_BUILD_LOGS_PATH )
+    # Read as configuration reads it, after inline Ruby string expansion
+    build_root = @ruby_expandinator.expand( build_root.to_s, source: ':project ↳ :build_root' )
+    return File.join( ProjectPaths.standardize( build_root ), DEFAULT_BUILD_LOGS_PATH )
   end
 
 

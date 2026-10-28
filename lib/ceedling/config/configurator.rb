@@ -151,18 +151,11 @@ class Configurator
 
 
   def prepare_plugins_load_paths(plugins_load_path, config)
-    # Plugins must be loaded before generic path evaluation & magic that happen later.
-    # So, perform path magic here as discrete step.
-    # (String replacement and standardization require DI objects not available in bin/ scope.)
-    config[:plugins][:load_paths].each do |path|
-      path.replace( @ruby_expandinator.expand( path, source: ":plugins ↳ :load_paths" ) )
-      FilePathUtils::standardize_in_place( path )
-    end
-
-    # Delegate list construction to the shared helper (user paths first, built-in last).
-    # This mirrors what RakefileComponentResolver.resolve() does in the bin/ CLI scope,
-    # ensuring both scopes search plugins in the same priority order.
-    config[:plugins][:load_paths] = RakefileComponentResolver.prepare_plugin_load_paths( config, plugins_load_path )
+    # Plugins must be loaded before generic path evaluation & magic that happen later, so
+    # their load paths are expanded and standardized here, by the helper bin/ shares (user
+    # paths first, built-in last), so both scopes search plugins alike.
+    expand = ->(path) { @ruby_expandinator.expand( path, source: ":plugins ↳ :load_paths" ) }
+    config[:plugins][:load_paths] = RakefileComponentResolver.prepare_plugin_load_paths( config, plugins_load_path, expand: expand )
 
     return @configurator_plugins.process_aux_load_paths( config )
   end

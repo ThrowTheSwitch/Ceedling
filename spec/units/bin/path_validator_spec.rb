@@ -94,6 +94,11 @@ describe PathValidator do
     it 'passes nil and empty arguments through unchanged, without raising' do
       expect(@path_validator.standardize_paths( nil, '' )).to eq( [nil, ''] )
     end
+
+    # The path handling audit around GH #1370: a path bin/ takes in reads as lib/ reads one
+    it 'reads `~` as the home directory and drops a trailing separator' do
+      expect(@path_validator.standardize_paths( '~/mixins/clang.yml', 'mixins\\' )).to eq( [File.join( Dir.home, 'mixins/clang.yml' ), 'mixins'] )
+    end
   end
 
   describe '#filepath?' do

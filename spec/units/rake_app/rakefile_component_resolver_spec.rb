@@ -33,6 +33,18 @@ describe RakefileComponentResolver do
 
       expect(result).to eq(['ceedling/plugins'])
     end
+
+    # The path handling audit around GH #1370: bin/ reads :load_paths before the
+    # configuration pipeline, so it must expand and standardize them as that pipeline does
+    it 'expands and standardizes each configured load path, leaving the configuration as written' do
+      config = { plugins: { load_paths: ["\#{'my'}\\plugins\\", '~/plugins'] } }
+      expand = ->(path) { path.sub( "\#{'my'}", 'my' ) }
+
+      result = described_class.prepare_plugin_load_paths(config, 'ceedling/plugins', expand: expand)
+
+      expect(result).to eq(['my/plugins', File.join( Dir.home, 'plugins' ), 'ceedling/plugins'])
+      expect(config[:plugins][:load_paths].first).to eq( "\#{'my'}\\plugins\\" )
+    end
   end
 
   describe '.gather_rakefiles' do
@@ -124,6 +136,15 @@ describe RakefileComponentResolver do
         'lib/rakefiles/tests/tests.rake',
         File.join('ceedling/plugins', 'gcov', 'gcov.rake'),
       ])
+    end
+
+    it 'finds a plugin below a load path that needs expanding' do
+      config = { project: { release_build: false }, plugins: { enabled: ['mine'], load_paths: ["\#{'my'}/plugins"] } }
+      allow(File).to receive(:exist?).with(File.join('my/plugins', 'mine', 'mine.rake')).and_return(true)
+
+      result = described_class.resolve(config, 'lib', 'ceedling/plugins', expand: ->(path) { path.sub( "\#{'my'}", 'my' ) })
+
+      expect(result.last).to eq( File.join('my/plugins', 'mine', 'mine.rake') )
     end
   end
 
