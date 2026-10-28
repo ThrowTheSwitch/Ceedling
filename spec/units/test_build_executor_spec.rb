@@ -35,6 +35,7 @@ describe TestBuildExecutor do
     @gcc_dependency_parser                                        = double( "GccDependencyParser" )
     @quote_include_isolator                                       = double( "QuoteIncludeIsolator" )
     @generator_helper                                                = double( "GeneratorHelper" )
+    @library_resolver                                                = double( "LibraryResolver" )
 
     @tools_test_compiler                     = { name: 'fake compiler' }
     @tools_test_assembler                    = { name: 'fake assembler' }
@@ -107,6 +108,7 @@ describe TestBuildExecutor do
     allow(@dependinator).to receive(:stale?).and_return( true )
     allow(@dependinator).to receive(:mark_fresh)
     allow(@test_source_file_directive_resolver).to receive(:validate!)
+    allow(@library_resolver).to receive(:link_files).and_return( [] )
 
     @executor = described_class.new(
       {
@@ -123,7 +125,8 @@ describe TestBuildExecutor do
         :dependinator            => @dependinator,
         :gcc_dependency_parser   => @gcc_dependency_parser,
         :quote_include_isolator  => @quote_include_isolator,
-        :generator_helper        => @generator_helper
+        :generator_helper        => @generator_helper,
+        :library_resolver        => @library_resolver
       }
     )
 
@@ -1059,7 +1062,23 @@ describe TestBuildExecutor do
       expect(@dependinator).to receive(:register).with(
         'build/a_test.out',
         files: ['build/foo.o'],
-        meta:  { flags: [], lib_args: [], lib_paths: [], tools: [@tools_test_linker], objects: ['build/foo.o'] }
+        meta:  { flags: [], lib_args: [], lib_paths: [], tools: [@tools_test_linker], objects: ['build/foo.o'], libraries: [] }
+      )
+
+      @executor.stage_build_executables( @state )
+    end
+
+    # GH #1368: a library rebuilt under the same name changed nothing a link registered
+    it "registers the library files its libraries resolve to, as files and as meta" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      allow(@configurator).to receive(:project_config_hash).and_return( { libraries_test: ['x'] } )
+      stub_const( 'LIBRARIES_SYSTEM', ['m', 'fusion'] )
+
+      expect(@library_resolver).to receive(:link_files).with( ['x', 'm', 'fusion'] ).and_return( ['vendor/lib/libx.a', 'build/deps/libfusion.so.1'] )
+      expect(@dependinator).to receive(:register).with(
+        'build/a_test.out',
+        files: ['build/foo.o', 'vendor/lib/libx.a', 'build/deps/libfusion.so.1'],
+        meta:  hash_including( libraries: ['vendor/lib/libx.a', 'build/deps/libfusion.so.1'] )
       )
 
       @executor.stage_build_executables( @state )

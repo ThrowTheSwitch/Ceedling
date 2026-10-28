@@ -88,6 +88,13 @@ class FileWrapper
     return File.basename(path)
   end
 
+  # A file's status (size, modification time, ...), or nil when it can't be read
+  def stat(filepath)
+    return File.stat( filepath )
+  rescue SystemCallError
+    return nil
+  end
+
   def exist?(filepath)
     return true if (filepath == NULL_FILE_PATH)
     return File.exist?(filepath)

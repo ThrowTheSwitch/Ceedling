@@ -189,8 +189,8 @@ class ToolExecutor
 
     # Handle array or anything else passed into method to be expanded in place of replacement operators
     case (to_process)
-      when Array then to_process.each {|value| build_string.concat( "#{element.sub(match, value.to_s)} " ) } if (to_process.size > 0)
-      else build_string.concat( element.sub(match, to_process.to_s) )
+      when Array then to_process.each {|value| build_string.concat( "#{substitute( element, match, value )} " ) } if (to_process.size > 0)
+      else build_string.concat( substitute( element, match, to_process ) )
     end
 
     # Handle inline ruby string substitution
@@ -256,12 +256,18 @@ class ToolExecutor
     # expand elements (whether string or array) into substitution string & replace escaped '\$'
     elements.flatten!
     elements.each do |element|
-      build_string.concat( substitution.sub(/([^\\]*)\$/, "\\1#{element}") ) # don't replace escaped '\$' but allow us to replace just a lonesome '$'
+      build_string.concat( substitute( substitution, /(?<!\\)\$/, element ) ) # don't replace escaped '\$' but allow us to replace just a lonesome '$'
       build_string.gsub!(/\\\$/, '$')
       build_string.concat(' ')
     end
 
     return build_string.strip
+  end
+
+  # Replaces the first match of pattern in template with value, taken literally. A
+  # replacement string would read a path's `\0`, `\1` or `\\` as a back-reference.
+  def substitute(template, pattern, value)
+    return template.sub( pattern ) { value.to_s }
   end
 
   def pretty_tool_name(command)

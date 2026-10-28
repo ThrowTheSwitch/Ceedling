@@ -52,6 +52,8 @@ describe DependencyTracker do
     allow( @file_wrapper ).to receive(:mkdir)
     allow( @file_wrapper ).to receive(:write)
     allow( @file_wrapper ).to receive(:mv)
+    # No file status, so every hash reads its file afresh
+    allow( @file_wrapper ).to receive(:stat).and_return(nil)
     allow( @system_wrapper ).to receive(:env_get).with('CEEDLING_DEP_DEBUG').and_return(nil)
 
     hasher = DependencyHasher.new( { :file_wrapper => @file_wrapper } )

@@ -74,6 +74,16 @@ Library search paths may be added to your project with `:paths` ↳ `:libraries`
 
 ## `:libraries` notes
 
+* A [delta build](../../getting-started/builds.md#delta-build-special-cases)
+  relinks when a library file entry in `:libraries` changes names or paths.
+  A library Ceedling cannot find, such as one internal to your toolchain’s
+  search paths, is not tracked. Ceedling looks for named libraries within 
+  `:paths` ↳ `:libraries`:
+    * A bare name such as `m` as `libm.a`, `libm.so`, and the other typical 
+      names toolchains use.
+    * An entry such as `:libm.a` as that exact filename.
+    * And a full filepath as itself.
+
 * If you've specified your own link step, you are going to want to add `${4}` to
   your argument list in the position where library files should be added to the
   command line. For `gcc`, this is often at the very end. Other tools may vary.

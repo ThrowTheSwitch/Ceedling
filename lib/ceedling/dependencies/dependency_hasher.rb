@@ -30,7 +30,17 @@ class DependencyHasher
   HASH_ALGORITHM = 'sha256'.freeze unless const_defined?(:HASH_ALGORITHM, false)
   DIGEST_RE = /\A[0-9a-f]{64}\z/.freeze unless const_defined?(:DIGEST_RE, false)
 
+  # The coarsest file timestamp a filesystem keeps (FAT's two seconds), so a file modified as
+  # the build began never counts as older than it
+  TIMESTAMP_TICK_S = 2
+
   constructor :file_wrapper
+
+  def setup
+    @digests = {}
+    @digests_lock = Mutex.new
+    @unchanged_before = Time.now - TIMESTAMP_TICK_S
+  end
 
   # SHA-256 hex digest of a file's exact on-disk bytes.
   #
@@ -62,8 +72,22 @@ class DependencyHasher
   #   reflect the source -- exactly the failure this class exists to prevent.
   #   Any normalization narrows the margin between those two outcomes in
   #   exchange for skipping some rebuilds; that trade isn't worth it here.
+  #
+  # A file unchanged since before the build began hashes once a build, keyed by its size and
+  # modification time. Many targets share one dependency, as every test executable shares a
+  # library it links. A file modified as the build began or since, as anything the build
+  # writes is, hashes afresh every time: a timestamp is too coarse to show a rewrite within
+  # one tick.
   def hash_of_file(path)
-    Digest::SHA256.hexdigest( @file_wrapper.read_binary( path ) )
+    status = @file_wrapper.stat( path )
+    return digest_of( path ) unless memoizable?( status )
+
+    key = [path, status.size, status.mtime]
+    @digests_lock.synchronize { return @digests[key] if @digests.key?( key ) }
+
+    digest = digest_of( path )
+    @digests_lock.synchronize { @digests[key] = digest }
+    return digest
   end
 
   # SHA-256 hex digest of a canonicalized `meta` value, or nil for nil/empty
@@ -89,6 +113,16 @@ class DependencyHasher
     else
       obj
     end
+  end
+
+  private
+
+  def digest_of(path)
+    return Digest::SHA256.hexdigest( @file_wrapper.read_binary( path ) )
+  end
+
+  def memoizable?(status)
+    return !status.nil? && status.mtime < @unchanged_before
   end
 
 end

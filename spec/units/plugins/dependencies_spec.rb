@@ -245,10 +245,15 @@ describe Dependencies do
   end
 
   describe 'libraries' do
-    it 'names every library and its directory for linking, leaving executables out' do
-      plugin = plugin_for( dependency( artifacts: { static_libraries: ['libw.a'], dynamic_libraries: ['sub/libv.so'], executables: ['bin/tool'] } ) )
+    # GH #1368: a link depends on each library's exact file, which a name can't always reach
+    it 'names every library, its directory, and its file for linking, leaving executables out' do
+      plugin = plugin_for( dependency( artifacts: { static_libraries: ['libw.a'], dynamic_libraries: ['sub/libv.so.1'], executables: ['bin/tool'] } ) )
 
-      expect(plugin.link_libraries).to eq( names: ['w', 'v'], paths: ['deps/dep/build', 'deps/dep/build/sub'] )
+      expect(plugin.link_libraries).to eq(
+        names: ['w', 'v.so'],
+        paths: ['deps/dep/build', 'deps/dep/build/sub'],
+        files: ['deps/dep/build/libw.a', 'deps/dep/build/sub/libv.so.1']
+      )
     end
   end
 

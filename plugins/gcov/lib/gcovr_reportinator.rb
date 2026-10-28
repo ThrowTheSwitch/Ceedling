@@ -9,6 +9,7 @@ require 'ceedling/exceptions'
 require 'ceedling/constants'
 require 'gcov_types'
 require 'gcov_reportinator'
+require 'gcovr_thresholds'
 
 class GcovrReportinator < GcovReportinator
 
@@ -576,23 +577,6 @@ class GcovrReportinator < GcovReportinator
   end
 
 
-  # Returns the error message text from gcovr stderr, or nil if none found.
-  # Matches lines beginning with "error" or "(ERROR)" and extracts the trailing message.
-  def extract_gcovr_error_message(shell_result)
-    return nil if shell_result.nil?
-
-    stderr = shell_result[:stderr]
-    return nil if stderr.nil? || stderr.empty?
-
-    stderr.each_line do |line|
-      match = line.match( /^\(?error\S*\s+(.+)/i )
-      return match[1].strip.capitalize if match
-    end
-
-    nil
-  end
-
-
   # Extract the last contiguous block of lines containing '%' from gcovr stdout.
   # gcovr --print-summary emits lines like "lines: 69.6% (80 out of 115)" — this
   # locates that block generically without depending on exact line labels.
@@ -620,33 +604,17 @@ class GcovrReportinator < GcovReportinator
   end
 
 
-  # Output to console a human-friendly message on certain coverage failure exit codes.
-  # Prefers the actual gcovr error text from stderr; falls back to descriptive strings.
-  # gcovr's composite exit code bit-ORs every violated :fail_under_* threshold together --
-  # every violated bit is collected and reported, not just whichever is checked first.
+  # Reports every :fail_under_* threshold a gcovr run violated, raising when boom is set and
+  # logging otherwise. Returns whether the exit code holds a problem no threshold explains.
   def gcovr_exec_exception?(opts, exitcode, boom, shell_result=nil)
-    violations = []
-
-    {
-      2  => [:fail_under_line,     'Line'],
-      4  => [:fail_under_branch,   'Branch'],
-      8  => [:fail_under_decision, 'Decision'],
-      16 => [:fail_under_function, 'Function'],
-    }.each do |bit, (option, label)|
-      next unless ((exitcode & bit) == bit) && !opts[option].nil?
-
-      fallback = "#{label} coverage is less than the configured minimum of #{opts[option]}%"
-      violations << "Gcovr ⏩️ #{extract_gcovr_error_message( shell_result ) || fallback}"
-      exitcode &= ~bit
-    end
+    violations, exitcode = GcovrThresholds.decode( opts: opts, exitcode: exitcode, stderr: shell_result&.dig( :stderr ) )
 
     if boom
-      raise CeedlingException.new( violations.join("\n") ) unless violations.empty?
+      raise GcovrThresholdError.new( violations ) unless violations.empty?
     else
       violations.each { |msg| @loginator.log( msg, Verbosity::COMPLAIN ) }
     end
 
-    # A non-zero exit code is a problem
     return (exitcode != 0)
   end
 

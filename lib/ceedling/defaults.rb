@@ -58,14 +58,14 @@ DEFAULT_TEST_LINKER_TOOL = {
   }
 
 DEFAULT_TEST_FIXTURE_TOOL = {
-  :executable => '${1}'.freeze, # Unity test runner executable
+  :executable => '"${1}"'.freeze, # Unity test runner executable, quoted as a path
   :name => 'default_test_fixture'.freeze,
   :optional => false.freeze,
   :arguments => [].freeze
   }
 
 DEFAULT_TEST_FIXTURE_SIMPLE_BACKTRACE_TOOL = {
-  :executable => '${1}'.freeze, # Unity test runner executable
+  :executable => '"${1}"'.freeze, # Unity test runner executable, quoted as a path
   :name => 'default_test_fixture_simple_backtrace'.freeze,
   :optional => false.freeze,
   :arguments => [
@@ -204,7 +204,7 @@ DEFAULT_TEST_BACKTRACE_GDB_TOOL = {
     '--eval-command run'.freeze,
     "--command \"${1}\"".freeze, # Debug script file to run
     '--args'.freeze,
-    '${2}'.freeze,               # Test executable
+    '"${2}"'.freeze,             # Test executable, quoted as a path
     # Test case matching flag and (quoted) value, fully composed by the caller as
     # either `-n "<exact name>"` or `-f "<base name>"` -- see
     # GeneratorTestResultsBacktrace#unity_filter_arg.

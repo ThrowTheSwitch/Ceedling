@@ -564,6 +564,7 @@ test_build_executor:
     - gcc_dependency_parser
     - quote_include_isolator
     - generator_helper
+    - library_resolver
 
 partials_manager:
   compose:
@@ -608,6 +609,12 @@ release_build_executor:
     - file_wrapper
     - file_path_utils
     - dependinator
+    - library_resolver
+
+library_resolver:
+  compose:
+    - file_wrapper
+    - file_path_collection_utils
 
 gcc_dependency_parser:
 

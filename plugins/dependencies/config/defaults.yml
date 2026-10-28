@@ -26,9 +26,9 @@
     :name: 'Dependencies archiver'
     :optional: true  # Checked when :build_lib archives, not by every Ceedling command
     :arguments:  
-      - rcs  
-      - ${2}  
-      - ${1}
+      - rcs
+      - '"${2}"'  # Library
+      - '"${1}"'  # Objects
 
   :deps_zip:
     :executable: unzip
@@ -36,7 +36,7 @@
     :optional: true
     :arguments:
       - -o
-      - ${1}  # Filepath
+      - '"${1}"'  # Filepath
 
   :deps_targzip:
     :executable: tar
@@ -57,7 +57,7 @@
       - clone
       - ${1}  # Optional branch with `-b` flag
       - ${2}  # Optional depth with `--depth` flag
-      - ${3}  # Repository source
+      - '"${3}"'  # Repository source
       - .
 
   :deps_git_checkout:
@@ -75,7 +75,7 @@
     :arguments:
       - checkout
       - ${1}  # Optional branch with `--revision` flag
-      - ${2}  # Repository source
+      - '"${2}"'  # Repository source
       - .
 
 ...

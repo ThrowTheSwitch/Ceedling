@@ -23,6 +23,7 @@ describe ReleaseBuildExecutor do
     @file_wrapper     = double( "FileWrapper" )
     @file_path_utils  = double( "FilePathUtils" )
     @dependinator     = double( "Dependinator" )
+    @library_resolver = double( "LibraryResolver" )
 
     @tools_release_compiler  = { name: 'fake compiler' }
     @tools_release_assembler = { name: 'fake assembler' }
@@ -56,6 +57,7 @@ describe ReleaseBuildExecutor do
     allow(@dependinator).to receive(:register_gcc_deps_file)
     allow(@dependinator).to receive(:stale?).and_return( true )
     allow(@dependinator).to receive(:mark_fresh)
+    allow(@library_resolver).to receive(:link_files).and_return( [] )
 
     @executor = described_class.new(
       {
@@ -67,7 +69,8 @@ describe ReleaseBuildExecutor do
         :file_finder      => @file_finder,
         :file_wrapper     => @file_wrapper,
         :file_path_utils  => @file_path_utils,
-        :dependinator     => @dependinator
+        :dependinator     => @dependinator,
+        :library_resolver => @library_resolver
       }
     )
 
@@ -345,7 +348,7 @@ describe ReleaseBuildExecutor do
       expect(@dependinator).to receive(:register).with(
         'build/release/out/project.out',
         files: ['build/release/out/foo.o'],
-        meta:  { flags: ['-Wall'], lib_args: ['-lm'], lib_paths: ['-Lvendor/lib'], tools: [@tools_release_linker], objects: ['build/release/out/foo.o'] }
+        meta:  { flags: ['-Wall'], lib_args: ['-lm'], lib_paths: ['-Lvendor/lib'], tools: [@tools_release_linker], objects: ['build/release/out/foo.o'], libraries: [] }
       )
 
       @executor.link( @state )
@@ -356,6 +359,23 @@ describe ReleaseBuildExecutor do
     it "registers the objects it links as meta" do
       expect(@dependinator).to receive(:register).with(
         'build/release/out/project.out', files: ['build/release/out/foo.o'], meta: hash_including( objects: ['build/release/out/foo.o'] )
+      )
+
+      @executor.link( @state )
+    end
+
+    # GH #1368: a library rebuilt under the same name changed nothing a link registered
+    it "registers the library files its libraries resolve to, including those named by path, as files and as meta" do
+      @state.objects = ['build/release/out/foo.o', 'vendor/prebuilt/libp.a']
+      stub_const( 'EXTENSION_LIBRARIES', FilenameExtension.new( ['.a'] ) )
+      stub_const( 'LIBRARIES_SYSTEM', ['m'] )
+      stub_const( 'LIBRARIES_RELEASE', ['x'] )
+
+      expect(@library_resolver).to receive(:link_files).with( ['vendor/prebuilt/libp.a', 'm', 'x'] ).and_return( ['vendor/prebuilt/libp.a', 'vendor/lib/libx.a', 'build/deps/libfusion.a'] )
+      expect(@dependinator).to receive(:register).with(
+        'build/release/out/project.out',
+        files: ['build/release/out/foo.o', 'vendor/prebuilt/libp.a', 'vendor/lib/libx.a', 'build/deps/libfusion.a'],
+        meta:  hash_including( libraries: ['vendor/prebuilt/libp.a', 'vendor/lib/libx.a', 'build/deps/libfusion.a'] )
       )
 
       @executor.link( @state )

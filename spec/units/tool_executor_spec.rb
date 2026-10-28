@@ -81,6 +81,15 @@ describe ToolExecutor do
 
       expect(command[:line]).to include('--flag=2')
     end
+
+    # GH #1373: a value was a replacement string, so its \0, \1 and \\ were read as back-references
+    it 'substitutes a value holding backslash sequences exactly as given' do
+      tool_config = { :name => 't', :executable => 'exe', :arguments => [ { '-I"$"' => ['C:\proj\2024\0x', 'a\\\\b'] } ] }
+
+      command = @tool_executor.build_command_line( tool_config, [] )
+
+      expect(command[:line]).to eq( 'exe -I"C:\proj\2024\0x" -I"a\\\\b"' )
+    end
   end
 
   # A command run with :boom false always reports an :exit_code of 0, so a caller handling
@@ -451,6 +460,23 @@ describe ToolExecutor do
       command = @tool_executor.build_command_line(tool_config, [], 'a', 'out.o')
 
       expect(command[:line]).to include('-o "out.o"')
+    end
+
+    # GH #1373: a value was a replacement string, so its \0, \1 and \\ were read as back-references
+    it 'substitutes a value holding backslash sequences exactly as given' do
+      tool_config = { :name => 't', :executable => 'exe', :arguments => ['-c "${1}"', '${2}'] }
+
+      command = @tool_executor.build_command_line(tool_config, [], 'C:\proj\2024\0x', 'a\\\\b\&c')
+
+      expect(command[:line]).to eq( 'exe -c "C:\proj\2024\0x" a\\\\b\&c' )
+    end
+
+    it 'substitutes each value of an Array exactly as given' do
+      tool_config = { :name => 't', :executable => 'exe', :arguments => ['"${1}"'] }
+
+      command = @tool_executor.build_command_line(tool_config, [], ['C:\a\1', 'C:\b\0'])
+
+      expect(command[:line]).to eq( 'exe "C:\a\1" "C:\b\0"' )
     end
 
     it 'raises CeedlingException when args is empty but a ${n} element is present' do

@@ -208,6 +208,14 @@ Linker for release source code
 1. `:arguments` - List (array of strings) of command line arguments and
     substitutions (required).
 
+    !!! tip "Quote the paths your tools name"
+        Ceedling runs each tool’s command line through your system’s shell, which
+        reads a space, an apostrophe, and other characters in a path as part of
+        the command. Wrap each path argument in escaped quotes, as Ceedling’s
+        own tools do, for example `"-c \"${1}\""`. Quoting protects most
+        characters. On Linux and macOS, a path holding `"`, `$`, a backtick, or
+        `\` can still break a command.
+
 1. `:name` - Simple name (i.e. "nickname") of tool beyond its executable name.
    This is optional. If not explicitly set then Ceedling will form a name from
    the tool’s YAML entry key.
