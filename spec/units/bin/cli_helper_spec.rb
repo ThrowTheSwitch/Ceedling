@@ -121,70 +121,17 @@ describe CliHelper do
     end
   end
 
-  describe '#which_ceedling?' do
-    before(:each) do
-      @app_cfg = CeedlingAppConfig.new
-      # Baseline: no :project ↳ :which_ceedling entry found. Tests exercising that
-      # config path override this with a more specific `.with(...)` stub below.
-      allow(@config_walkinator).to receive(:fetch_value).and_return( [nil, nil] )
+  describe '#docs_bundle?' do
+    it 'is true when the installation holds an HTML documentation bundle' do
+      allow(@file_wrapper).to receive(:directory?).with( File.join( '/ceedling', DOCS_SITE_LOCAL_PATH ) ).and_return( true )
+
+      expect(@cli_helper.docs_bundle?( '/ceedling' )).to be( true )
     end
 
-    it 'uses the WHICH_CEEDLING environment variable at highest priority' do
-      which, path = @cli_helper.which_ceedling?( env: {'WHICH_CEEDLING' => 'gem'}, app_cfg: @app_cfg )
+    it 'is false when it does not, as for any --local copy' do
+      allow(@file_wrapper).to receive(:directory?).with( File.join( '/ceedling', DOCS_SITE_LOCAL_PATH ) ).and_return( false )
 
-      expect(which).to eq( :gem )
-      expect(path).to eq( @app_cfg[:ceedling_rakefile_filepath] )
-    end
-
-    it 'falls back to config :project ↳ :which_ceedling when no environment variable is set' do
-      config = {:project => {:which_ceedling => 'gem'}}
-      allow(@config_walkinator).to receive(:fetch_value).with( :project, :which_ceedling, hash: config ).and_return( ['gem', nil] )
-
-      which, path = @cli_helper.which_ceedling?( env: {}, config: config, app_cfg: @app_cfg )
-
-      expect(which).to eq( :gem )
-      expect(path).to eq( @app_cfg[:ceedling_rakefile_filepath] )
-    end
-
-    it 'falls back to a vendor/ceedling directory when neither environment nor config specify anything' do
-      allow(@file_wrapper).to receive(:directory?).with( 'vendor/ceedling' ).and_return( true )
-      allow(@file_wrapper).to receive(:exist?).and_return( true )
-
-      which, path = @cli_helper.which_ceedling?( env: {}, app_cfg: @app_cfg )
-
-      expect(which).to eq( :path )
-      expect(path).to eq( @app_cfg[:ceedling_rakefile_filepath] )
-      expect(@app_cfg[:ceedling_root_path]).to eq( File.expand_path('vendor/ceedling') )
-    end
-
-    it 'defaults to :gem when nothing is set and no vendor/ceedling directory exists' do
-      allow(@file_wrapper).to receive(:directory?).with( 'vendor/ceedling' ).and_return( false )
-
-      which, path = @cli_helper.which_ceedling?( env: {}, app_cfg: @app_cfg )
-
-      expect(which).to eq( :gem )
-      expect(path).to eq( @app_cfg[:ceedling_rakefile_filepath] )
-    end
-
-    it 'raises when a configured launch path does not exist as a directory' do
-      config = {:project => {:which_ceedling => 'nonexistent/path'}}
-      allow(@config_walkinator).to receive(:fetch_value).with( :project, :which_ceedling, hash: config ).and_return( ['nonexistent/path', nil] )
-      allow(@file_wrapper).to receive(:directory?).and_return( false )
-
-      expect {
-        @cli_helper.which_ceedling?( env: {}, config: config, app_cfg: @app_cfg )
-      }.to raise_error( /does not exist/ )
-    end
-
-    it 'raises when a configured launch path exists but contains no Ceedling installation' do
-      config = {:project => {:which_ceedling => 'empty/path'}}
-      allow(@config_walkinator).to receive(:fetch_value).with( :project, :which_ceedling, hash: config ).and_return( ['empty/path', nil] )
-      allow(@file_wrapper).to receive(:directory?).and_return( true )
-      allow(@file_wrapper).to receive(:exist?).and_return( false )
-
-      expect {
-        @cli_helper.which_ceedling?( env: {}, config: config, app_cfg: @app_cfg )
-      }.to raise_error( /contains no Ceedling installation/ )
+      expect(@cli_helper.docs_bundle?( '/ceedling' )).to be( false )
     end
   end
 

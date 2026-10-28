@@ -12,12 +12,21 @@ require "io/console"
 
 class CeedlingAppConfig
 
-  def initialize()
+  def initialize(argv: [])
     # Default installation location determined from the location of this file
     ceedling_root_path = File.join( File.dirname( __FILE__ ), '..' )
 
     # Create internal hash of needed values
     @app_cfg = {
+      # The command line as given, before Thor consumes it, for handing off to another installation
+      :argv => argv.dup().freeze(),
+
+      # Markers from a launcher that handed off to this process, or nil
+      :handoff => nil,
+
+      # Base path of the installation running this launcher, unchanged by #set_paths
+      :launcher_root_path => File.expand_path( ceedling_root_path ),
+
       # Base path of any Ceedling installation
       :ceedling_root_path => '',
 
@@ -82,6 +91,10 @@ class CeedlingAppConfig
       # Do nothing; allow value already set to stand as default
     end
   end 
+
+  def set_handoff(markers)
+    @app_cfg[:handoff] = markers
+  end
 
   def set_project_config(config)
     @app_cfg[:project_config] = config

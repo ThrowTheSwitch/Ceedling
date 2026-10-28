@@ -57,6 +57,10 @@ Ceedling will automatically look for your project yaml file and do its best to d
 to be updated. If installed locally, this will mean copying the latest copy of Unity, CMock, and
 Ceedling. It will also involve copying documentation, if you had that installed.
 
+`upgrade` copies the Ceedling you run, or the installation the `WHICH_CEEDLING` environment
+variable names. As of 1.2.2, it never copies from your project’s own vendored Ceedling, so
+`ceedling upgrade .` from inside the project works too.
+
 ## Step 3: Solving Problems
 
 We wish every project would update seamlessly... unfortunately there is a lot of customization that

@@ -190,10 +190,12 @@ upon by test executables.
 ## `:which_ceedling`
 
 This is an advanced project option primarily meant for development work on
-Ceedling itself. This setting tells the code that launches the Ceedling
-application where to find the code to launch.
+Ceedling itself. This setting selects the Ceedling installation that runs
+your project’s commands. The `ceedling` command you run hands each command off to
+that installation’s own launcher.
 
-This entry can be either a directory path or `gem`.
+This entry can be either a directory path or `gem`. A relative path is
+relative to your working directory.
 
 See the section [Which Ceedling](../which-ceedling.md) for full details.
 

@@ -11,8 +11,7 @@ require 'fileutils'
 
 # versionator.rb's bare `require 'exceptions'`/`require 'constants'` statements only
 # resolve when lib/ceedling/ is directly on the load path -- true in the real
-# bin/ceedling bootstrap but not in this spec harness's load path setup. `require
-# 'version'` similarly needs lib/ on the load path.
+# bin/ceedling bootstrap but not in this spec harness's load path setup.
 here = File.dirname(__FILE__)
 $: << File.join(here, '../../../lib/ceedling')
 $: << File.join(here, '../../../lib')
@@ -35,30 +34,60 @@ describe Versionator do
     HEADER
   end
 
+  # Each fixture root is its own installation with its own lib/version.rb
+  def write_version(root, base)
+    FileUtils.mkdir_p( File.join( root, 'lib' ) )
+    File.write( File.join( root, 'lib', 'version.rb' ), <<~RUBY )
+      module Ceedling
+        module Version
+          BASE = '#{base}'
+          DEV = ''
+          GEM = BASE
+          TAG = GEM
+        end
+      end
+    RUBY
+  end
+
   describe 'Ceedling tag and build string' do
-    it 'sets the Ceedling tag from the Version module' do
+    # GH #1365: the tag once came from whichever installation's constant loaded first
+    it 'sets the Ceedling tag from the installation\'s own lib/version.rb' do
       Dir.mktmpdir do |root|
+        write_version( root, '1.2.0' )
+        stub_const( 'Ceedling::Version::TAG', '9.9.9' )
+
         versionator = described_class.new( root )
 
-        expect(versionator.ceedling_tag).to eq( Ceedling::Version::TAG )
+        expect(versionator.ceedling_tag).to eq( '1.2.0' )
+      end
+    end
+
+    it 'raises a CeedlingException naming the file when the installation has no version' do
+      Dir.mktmpdir do |root|
+        expect {
+          described_class.new( root )
+        }.to raise_error( CeedlingException, /#{Regexp.escape( File.join( File.expand_path( root ), 'lib', 'version.rb' ) )}/ )
       end
     end
 
     it 'builds without a commit SHA suffix when no SHA file is present' do
       Dir.mktmpdir do |root|
+        write_version( root, '1.2.0' )
+
         versionator = described_class.new( root )
 
-        expect(versionator.ceedling_build).to eq( Ceedling::Version::TAG )
+        expect(versionator.ceedling_build).to eq( '1.2.0' )
       end
     end
 
     it 'appends the commit SHA to the build string when the SHA file is present' do
       Dir.mktmpdir do |root|
+        write_version( root, '1.2.0' )
         File.write( File.join( root, GIT_COMMIT_SHA_FILENAME ), "abc1234\n" )
 
         versionator = described_class.new( root )
 
-        expect(versionator.ceedling_build).to eq( "#{Ceedling::Version::TAG}-abc1234" )
+        expect(versionator.ceedling_build).to eq( '1.2.0-abc1234' )
       end
     end
   end
@@ -66,6 +95,7 @@ describe Versionator do
   describe 'framework version gathering' do
     it 'skips framework tags entirely when no vendor path is given' do
       Dir.mktmpdir do |root|
+        write_version( root, '1.2.0' )
         versionator = described_class.new( root )
 
         expect(versionator.unity_tag).to be_nil
@@ -76,6 +106,7 @@ describe Versionator do
 
     it 'parses version tags out of each vendored framework header' do
       Dir.mktmpdir do |root|
+        write_version( root, '1.2.0' )
         Dir.mktmpdir do |vendor|
           write_version_header( vendor, 'unity', File.join('src', 'unity.h'), major: 2, minor: 7, build: 1 )
           write_version_header( vendor, 'cmock', File.join('src', 'cmock.h'), major: 2, minor: 7, build: 0 )
@@ -92,6 +123,7 @@ describe Versionator do
 
     it 'raises a CeedlingException when a framework header cannot be read' do
       Dir.mktmpdir do |root|
+        write_version( root, '1.2.0' )
         Dir.mktmpdir do |vendor|
           # No headers written -- vendor is empty, so every read fails.
           expect {

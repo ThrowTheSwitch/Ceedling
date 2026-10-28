@@ -6,9 +6,11 @@ These breaking changes are complemented by three other documents:
 1. 🪵 **[Changelog](Changelog.md)** for a structured list of additions, fixes, changes, and removals.
 1. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
 
+A release has a section only if it breaks something. Each section lists what changed in that release alone, so upgrading across several releases means reading each section between them.
+
 ---
 
-# [1.2.2]
+# [1.2.2] — Unreleased
 
 ## Test build output is organized by each test’s path from the project root
 
@@ -27,6 +29,23 @@ The first build after upgrading rebuilds everything once. Run `ceedling clobber`
 With `:project` ↳ `:use_test_preprocessor` set to `:none` or `:mocks`, a `TEST_SOURCE_FILE()` entry naming a file that doesn’t exist, or that isn’t a source file, was previously silently dropped. A build now stops with an error naming the entry and its test file, as it already did with test preprocessing.
 
 Without test preprocessing, Ceedling reads these entries as text and does not evaluate `#if`. An entry inside an `#if` branch that is off is checked too, so it must name a real file.
+
+## A project that selects another installation runs entirely in it
+
+A project can select another Ceedling installation through `:project` ↳ `:which_ceedling`, the `WHICH_CEEDLING` environment variable, or a `vendor/ceedling/` copy. Before 1.2.2, the `ceedling` command you ran parsed the command line and loaded that installation’s application into its own process. Now that installation’s own launcher runs the command, in a new process.
+
+1. The selected installation parses the command line itself. An older one rejects commands and options added after its release.
+1. `new`, `example`, `examples`, `docs`, and `help` run in the installation `WHICH_CEEDLING` or a `vendor/ceedling/` copy selects, not in the `ceedling` command you ran. A `--local` copy carries no documentation bundle, so `docs` exports the documentation of the `ceedling` command you ran instead, with a notice.
+1. Both sides of a hand-off log a notice at warning verbosity. It names both installations and their versions.
+1. A project vendored by Ceedling 1.1.0 through 1.2.1 lacks Unity’s built-in mixins, so its copy cannot run on its own. The `ceedling` command you run stops with advice to re-vendor it with `ceedling upgrade`.
+
+## `upgrade` no longer finds its source in `vendor/ceedling/`
+
+`ceedling upgrade PATH` copies the Ceedling you run or the installation `WHICH_CEEDLING` names into the project at `PATH`. It no longer selects a `vendor/ceedling/` directory it finds in the working directory, which inside a `--local` project was the very copy it was replacing.
+
+## `version` reads your project file
+
+`ceedling version` reads your project file when one is available, as `build` does, and reports the installation the project selects. For a project that selects another installation, it lists `Ceedling Launcher =>` and `Ceedling App =>` instead of a single `Ceedling =>` line. A tool that parses `version` for the project’s Ceedling should read `Ceedling App =>` when present.
 
 ---
 

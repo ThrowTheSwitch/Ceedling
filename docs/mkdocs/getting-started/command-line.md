@@ -241,6 +241,10 @@ Upgrade vendored installation of Ceedling for an existing project
 along with any locally installed documentation bundles. `PATH` is 
 required and should be the root of the project to upgrade.
 
+`upgrade` copies the Ceedling you run, or the installation the
+`WHICH_CEEDLING` environment variable names. It never copies from a
+`vendor/ceedling/` it finds in your working directory.
+
 | Flag | Alias | Description | Default |
 |---|---|---|---|
 | `--project` | | Project filename used in the project-existence check | `project.yml` |
@@ -251,6 +255,11 @@ required and should be the root of the project to upgrade.
 
 Exports the Ceedling documentation bundle to the filesystem. `DEST` is 
 an optional destination path (default is your working directory).
+
+`docs` exports the documentation of the installation [_Which Ceedling_](../configuration/which-ceedling.md)
+selects. A `--local` copy carries no documentation bundle, so for a vendored
+copy `docs` exports the documentation of the `ceedling` command you ran, with a
+notice naming both installations.
 
 _No parameters._
 
@@ -276,7 +285,32 @@ Displays version information for Ceedling and its components. Version output for
 
 If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling’s automated build in CI.
 
-_No parameters._
+`version` reads your project file when one is available. When your project selects another Ceedling installation through [_Which Ceedling_](../configuration/which-ceedling.md), `version` reports the `ceedling` command you ran and the selected installation separately, each with its own version:
+
+```
+🌱 Welcome to Ceedling!
+
+  Ceedling Launcher => #.#.#-<Short SHA>
+  ----------------------
+  <Ceedling launcher install path>
+
+  Ceedling App => #.#.#-<Short SHA>
+  ----------------------
+  <Ceedling application install path>
+
+  Build Frameworks
+  ----------------------
+       CMock => #.#.#
+       Unity => #.#.#
+  CException => #.#.#
+```
+
+The build frameworks are always those of the Ceedling application.
+
+| Flag | Alias | Description | Default |
+|---|---|---|---|
+| `--project` | `-p` | Project filepath. A project file named this way must load. Without it, a default project file that cannot be loaded is skipped. | `project.yml` or `ceedling.yml` in your working directory |
+| `--mixin` | `-m` | Merge a mixin into the project configuration. Repeatable. | |
 
 ---
 

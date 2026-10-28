@@ -44,6 +44,43 @@ describe CeedlingAppConfig do
     end
   end
 
+  describe ':launcher_root_path' do
+    it 'starts as the root of the installation this code runs from' do
+      expect(@app_cfg[:launcher_root_path]).to eq( @app_cfg[:ceedling_root_path] )
+    end
+
+    # GH #1365: `version` needs the launcher after which-Ceedling resolution moves the paths
+    it 'keeps the launcher root when #set_paths moves the application paths' do
+      launcher = @app_cfg[:ceedling_root_path]
+
+      @app_cfg.set_paths( '/tmp/some/root' )
+
+      expect(@app_cfg[:launcher_root_path]).to eq( launcher )
+    end
+  end
+
+  describe 'launch context' do
+    it 'keeps a frozen copy of the command line it was given' do
+      argv = ['test:all', '--verbosity=obnoxious']
+      app_cfg = described_class.new( argv: argv )
+      argv << 'mutated'
+
+      expect(app_cfg[:argv]).to eq( ['test:all', '--verbosity=obnoxious'] )
+      expect(app_cfg[:argv]).to be_frozen
+    end
+
+    it 'defaults to an empty command line and no hand-off' do
+      expect(@app_cfg[:argv]).to eq( [] )
+      expect(@app_cfg[:handoff]).to be_nil
+    end
+
+    it '#set_handoff keeps the markers a launcher handed this process' do
+      @app_cfg.set_handoff( {launcher: '/gem', target: '/app'} )
+
+      expect(@app_cfg[:handoff]).to eq( {launcher: '/gem', target: '/app'} )
+    end
+  end
+
   describe 'simple setters' do
     it '#set_project_config updates :project_config' do
       @app_cfg.set_project_config( {:project => {}} )

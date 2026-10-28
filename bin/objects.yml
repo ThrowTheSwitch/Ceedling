@@ -55,6 +55,19 @@ cli_handler:
     - path_validator
     - rake_task_registry
     - actionator
+    - launchinator
+    - loginator
+
+launchinator:
+  compose:
+    - installation_selector
+    - loginator
+
+installation_selector:
+  compose:
+    - file_wrapper
+    - config_walkinator
+    - path_validator
     - loginator
 
 cli_helper:
