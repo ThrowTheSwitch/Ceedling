@@ -108,7 +108,7 @@ describe TestBuildExecutor do
     allow(@dependinator).to receive(:stale?).and_return( true )
     allow(@dependinator).to receive(:mark_fresh)
     allow(@test_source_file_directive_resolver).to receive(:validate!)
-    allow(@library_resolver).to receive(:resolve).and_return( [] )
+    allow(@library_resolver).to receive(:link_files).and_return( [] )
 
     @executor = described_class.new(
       {
@@ -1073,12 +1073,8 @@ describe TestBuildExecutor do
       allow(@dependinator).to receive(:stale?).and_return( false )
       allow(@configurator).to receive(:project_config_hash).and_return( { libraries_test: ['x'] } )
       stub_const( 'LIBRARIES_SYSTEM', ['m', 'fusion'] )
-      stub_const( 'PATHS_LIBRARIES', ['vendor/lib'] )
-      stub_const( 'LIBRARIES_LINK_FILES', ['build/deps/libfusion.so.1'] )
 
-      expect(@library_resolver).to receive(:resolve).with(
-        entries: ['x', 'm', 'fusion'], search_paths: ['vendor/lib'], files: ['build/deps/libfusion.so.1']
-      ).and_return( ['vendor/lib/libx.a', 'build/deps/libfusion.so.1'] )
+      expect(@library_resolver).to receive(:link_files).with( ['x', 'm', 'fusion'] ).and_return( ['vendor/lib/libx.a', 'build/deps/libfusion.so.1'] )
       expect(@dependinator).to receive(:register).with(
         'build/a_test.out',
         files: ['build/foo.o', 'vendor/lib/libx.a', 'build/deps/libfusion.so.1'],

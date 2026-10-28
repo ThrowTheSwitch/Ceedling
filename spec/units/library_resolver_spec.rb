@@ -95,6 +95,23 @@ describe LibraryResolver do
     )
   end
 
+  describe '#link_files' do
+    it 'resolves entries on the configured library paths, with the files plugins publish' do
+      make( 'vendor/lib/libx.a', 'build/deps/libfusion.so.1' )
+      stub_const( 'PATHS_LIBRARIES', ['vendor/lib'] )
+      stub_const( 'LIBRARIES_LINK_FILES', ['build/deps/libfusion.so.1'] )
+
+      expect( @resolver.link_files( ['x', 'm'] ) ).to eq( ['vendor/lib/libx.a', 'build/deps/libfusion.so.1'] )
+    end
+
+    it 'resolves nothing when neither library paths nor plugin files are configured' do
+      hide_const( 'PATHS_LIBRARIES' )
+      hide_const( 'LIBRARIES_LINK_FILES' )
+
+      expect( @resolver.link_files( ['x'] ) ).to eq( [] )
+    end
+  end
+
   it 'finds nothing without entries or search paths' do
     expect( resolve( [], search_paths: [] ) ).to eq( [] )
     expect( resolve( nil, search_paths: nil ) ).to eq( [] )

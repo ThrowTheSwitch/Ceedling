@@ -29,6 +29,16 @@ class LibraryResolver
     return found.select { |path| library_file?( path ) }.uniq
   end
 
+  # The library files a link with these :libraries entries depends on: those the entries
+  # resolve to on :paths ↳ :libraries, and those plugins publish in LIBRARIES_LINK_FILES
+  def link_files(entries)
+    return resolve(
+      entries:      entries,
+      search_paths: ((defined? PATHS_LIBRARIES) ? PATHS_LIBRARIES : nil) || [],
+      files:        ((defined? LIBRARIES_LINK_FILES) ? LIBRARIES_LINK_FILES : nil) || []
+    )
+  end
+
   private
 
   # An `-l:` entry names its exact filename, a path names itself, and a bare name names every

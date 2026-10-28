@@ -57,7 +57,7 @@ describe ReleaseBuildExecutor do
     allow(@dependinator).to receive(:register_gcc_deps_file)
     allow(@dependinator).to receive(:stale?).and_return( true )
     allow(@dependinator).to receive(:mark_fresh)
-    allow(@library_resolver).to receive(:resolve).and_return( [] )
+    allow(@library_resolver).to receive(:link_files).and_return( [] )
 
     @executor = described_class.new(
       {
@@ -370,12 +370,8 @@ describe ReleaseBuildExecutor do
       stub_const( 'EXTENSION_LIBRARIES', FilenameExtension.new( ['.a'] ) )
       stub_const( 'LIBRARIES_SYSTEM', ['m'] )
       stub_const( 'LIBRARIES_RELEASE', ['x'] )
-      stub_const( 'PATHS_LIBRARIES', ['vendor/lib'] )
-      stub_const( 'LIBRARIES_LINK_FILES', ['build/deps/libfusion.a'] )
 
-      expect(@library_resolver).to receive(:resolve).with(
-        entries: ['vendor/prebuilt/libp.a', 'm', 'x'], search_paths: ['vendor/lib'], files: ['build/deps/libfusion.a']
-      ).and_return( ['vendor/prebuilt/libp.a', 'vendor/lib/libx.a', 'build/deps/libfusion.a'] )
+      expect(@library_resolver).to receive(:link_files).with( ['vendor/prebuilt/libp.a', 'm', 'x'] ).and_return( ['vendor/prebuilt/libp.a', 'vendor/lib/libx.a', 'build/deps/libfusion.a'] )
       expect(@dependinator).to receive(:register).with(
         'build/release/out/project.out',
         files: ['build/release/out/foo.o', 'vendor/prebuilt/libp.a', 'vendor/lib/libx.a', 'build/deps/libfusion.a'],

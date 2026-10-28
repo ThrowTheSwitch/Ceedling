@@ -46,7 +46,7 @@ class ReleaseBuildExecutor
     objects, libraries = sort_objects_and_libraries( state.objects )
     lib_args  = convert_libraries_to_arguments( libraries )
     lib_paths = get_library_paths_to_arguments()
-    library_files = resolve_library_files( release_library_entries( libraries ) )
+    library_files = @library_resolver.link_files( release_library_entries( libraries ) )
     target    = @configurator.project_release_build_target
 
     # As with a test link, the object and library lists as meta relink an artifact that a
@@ -205,26 +205,16 @@ class ReleaseBuildExecutor
     return args
   end
 
-# The :libraries entries a release links, whatever form each takes, beside the library
-# files its object list names
-def release_library_entries(libraries)
-  entries =
-    (libraries || []) +
-    ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : []) +
-    ((defined? LIBRARIES_RELEASE) ? LIBRARIES_RELEASE : [])
+  # The :libraries entries a release links, whatever form each takes, beside the library
+  # files its object list names
+  def release_library_entries(libraries)
+    entries =
+      (libraries || []) +
+      ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : []) +
+      ((defined? LIBRARIES_RELEASE) ? LIBRARIES_RELEASE : [])
 
-  return entries.flatten.compact
-end
-
-# The library files a link depends on: those its entries resolve to on the library search
-# paths, and those a plugin knows exactly
-def resolve_library_files(entries)
-  return @library_resolver.resolve(
-    entries:      entries,
-    search_paths: ((defined? PATHS_LIBRARIES) ? PATHS_LIBRARIES : nil) || [],
-    files:        ((defined? LIBRARIES_LINK_FILES) ? LIBRARIES_LINK_FILES : nil) || []
-  )
-end
+    return entries.flatten.compact
+  end
 
   def get_library_paths_to_arguments()
     paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []).clone : []
