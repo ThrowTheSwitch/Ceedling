@@ -52,6 +52,10 @@ module IntegrationSpecHelpers
     def get_cmock_config
       {}
     end
+
+    def cmock_mock_name_include_folder
+      true
+    end
     def project_use_mocks
       true
     end

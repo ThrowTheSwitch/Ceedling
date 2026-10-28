@@ -25,6 +25,8 @@ EXTENSION_HEADER       = FilenameExtension.new('.h')  unless defined?(EXTENSION_
 describe TestBuildPlanner do
   before(:each) do
     @configurator           = double( "Configurator" )
+    # Ceedling always defaults it, and the mock locator reads it
+    allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
     @loginator               = double( "Loginator" )
     @reportinator             = double( "Reportinator" )
     @batchinator               = double( "Batchinator" )
@@ -429,6 +431,23 @@ describe TestBuildPlanner do
 
       expect( captured ).to include('build/test/mocks/a_test/drivers/uart/Mockconfig.c')
       expect( captured ).to include('build/test/mocks/a_test/drivers/spi/Mockconfig.c')
+    end
+
+    it "compiles a mock whose #include folder climbs from where it is written, below the mock root" do
+      allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
+      @testable.mocks = {
+        :'x/Mockconfig' => TestInvokerTypes::MockDetails.new( name: 'Mockconfig', path: 'x', partial: false, include_path: '../x/Mockconfig.h' )
+      }
+
+      captured = nil
+      allow(@file_path_utils).to receive(:form_test_build_objects_filelist) do |_path, files, **_kw|
+        captured ||= files
+        []
+      end
+
+      @planner.stage_determine_artifacts( @state )
+
+      expect( captured ).to include('build/test/mocks/a_test/_up_/x/Mockconfig.c')
     end
 
     # A mock and a generated Partial both sit below their own generated root rather than a

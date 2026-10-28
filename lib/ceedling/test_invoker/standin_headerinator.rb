@@ -46,7 +46,7 @@ class StandinHeaderinator
     mock_dirs = place_mocks( testable, mocks, complain )
     place_partials( testable, Includes.filter( includes, /^#{PARTIAL_FILENAME_PREFIX}/ ) )
 
-    return mock_dirs.uniq
+    return mock_dirs.flatten.uniq
   end
 
   private
@@ -67,18 +67,30 @@ class StandinHeaderinator
     end
   end
 
-  # Gives the mock's mirrored directory, or nil when its missing header is tolerated or
-  # the test has no mock root
+  # Gives the search paths that reach the mock, or nil when its missing header is tolerated
+  # or the test has no mock root
   def place_mock(testable, include, collection, complain)
     source, subdir = @mock_locator.locate( include, collection: collection, complain: complain )
     return nil if source.nil?
+    return write_unrooted_mock( testable, include, source, subdir ) if testable.paths[:mocks].nil?
 
+    placement = @mock_locator.placement( mocks_root: testable.paths[:mocks], subdir: subdir, include_path: include.filepath )
+    write_placed_mock( testable.name, placement, include, source )
+
+    return @mock_locator.search_directories( placement )
+  end
+
+  # The test's #include reaches a climbing folder's mock only through CMock's root, so it is made too
+  def write_placed_mock(test, placement, include, source)
+    @file_wrapper.mkdir( placement.root ) if placement.climbs?
+    write_mock( test, File.join( placement.directory, include.filename.ext( EXTENSION_CORE_HEADER ) ), include, source )
+  end
+
+  # Without a mock root, a stand-in sits in its mirrored directory and gives no search path
+  def write_unrooted_mock(testable, include, source, subdir)
     mock_dir = subdir.empty? ? testable.name : File.join( testable.name, subdir )
     write_mock( testable.name, @file_path_utils.form_mock_header_filepath( mock_dir, include.filename ), include, source )
-
-    return nil if testable.paths[:mocks].nil?
-
-    return @file_path_utils.form_mock_output_path( testable.paths[:mocks], subdir )
+    return nil
   end
 
   # A Partial's generated #include names whatever directory its module was named by, and

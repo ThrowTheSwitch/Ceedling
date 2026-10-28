@@ -120,7 +120,7 @@ class Generator
     return @generator_partials.generate_implementation( **arg_hash )
   end
 
-  def generate_mock(context:, mock:, test:, input_filepath:, output_path:, folder: nil, overrides: {})
+  def generate_mock(context:, mock:, test:, input_filepath:, output_path:, mock_root:, folder: nil, overrides: {})
     arg_hash = {
       :header_file => input_filepath,
       :test => test,
@@ -139,8 +139,7 @@ class Generator
       #  - Make CMock thread-safe
 
       # Get default config created by Ceedling and customize it
-      # CMock writes to its root plus `folder`. That folder always ends `output_path`.
-      mock_root = folder ? output_path.delete_suffix( File.join( '', folder ) ) : output_path
+      # CMock writes below `mock_root` at `folder`, which leads to `output_path`
       config = @generator_mocks.build_configuration( mock_root, overrides: overrides )
   
       # Generate mock

@@ -331,8 +331,8 @@ class TestBuildPlanner
     return File.join( subdir, name ).to_sym
   end
 
-  # Each mock's own generated source, below this test's mock root in the subdirectory
-  # mirroring whatever it mocks -- the same place mock generation writes it.
+  # Each mock's own generated source, below this test's mock root where mock generation
+  # writes it (MockLocator#placement)
   #
   # Named by its own path rather than its basename so two same-named mocks in one test
   # stay distinct, and so each one's object mirrors that subdirectory too.
@@ -342,10 +342,8 @@ class TestBuildPlanner
     return [] if root.nil?
 
     testable.mocks.each_value.map do |details|
-      File.join(
-        @file_path_utils.form_mock_output_path( root, details.path ),
-        details.name + EXTENSION_CORE_SOURCE
-      )
+      placement = @mock_locator.placement( mocks_root: root, subdir: details.path, include_path: details.include_path )
+      File.join( placement.directory, details.name + EXTENSION_CORE_SOURCE )
     end
   end
 

@@ -565,6 +565,7 @@ test_build_executor:
     - quote_include_isolator
     - generator_helper
     - library_resolver
+    - mock_locator
 
 partials_manager:
   compose:

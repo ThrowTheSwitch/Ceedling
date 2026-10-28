@@ -185,6 +185,21 @@ describe TestContextExtractor do
       expect{ @extractor.collect_context( "path", StringIO.new(), :bad ) }.to raise_error( CeedlingException )
     end
 
+    # The path handling audit around GH #1370: the compiler resolves a mock's #include from
+    # the test file's own directory, as written, and no mock lives where `..` leads from there
+    it "refuses a mock #include that climbs with `..`, naming the test file and the #include" do
+      input = StringIO.new( "#include \"../inc/x/mock_foo.h\"\n" )
+
+      expect { @extractor.collect_context( "test/test_c.c", input, TestContextExtractor::Context::INCLUDES ) }
+        .to raise_error( CeedlingException, %r{test/test_c\.c.*`\.\./inc/x/mock_foo\.h`.*`#include "mock_foo\.h"`}m )
+    end
+
+    it "keeps a non-mock #include that climbs with `..`, resolved against the test file's directory" do
+      @extractor.collect_context( "test/test_c.c", StringIO.new( "#include \"../inc/x/foo.h\"\n" ), TestContextExtractor::Context::INCLUDES )
+
+      expect( @extractor.lookup_all_header_includes_list( "test/test_c.c" ) ).to eq( [UserInclude.new( 'inc/x/foo.h' )] )
+    end
+
     # collect_context() + lookup_all_header_includes_list() + lookup_mock_header_includes_list()
     it "should extract contents of #include directives" do
       filepath = "path/tests/test_file.c"

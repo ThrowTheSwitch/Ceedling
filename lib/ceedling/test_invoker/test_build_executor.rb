@@ -30,7 +30,8 @@ class TestBuildExecutor
     :gcc_dependency_parser,
     :quote_include_isolator,
     :generator_helper,
-    :library_resolver
+    :library_resolver,
+    :mock_locator
   )
 
   # Stage 9: Preprocess header files to be mocked.
@@ -149,9 +150,10 @@ class TestBuildExecutor
       details  = mock.details
       testable = mock.testable
 
-      output_path = @file_path_utils.form_mock_output_path( testable.paths[:mocks], details.path )
-      folder, output_path = mock_folder_and_path( testable.paths[:mocks], output_path, details.include_path )
-      @file_wrapper.mkdir( output_path )
+      placement   = @mock_locator.placement( mocks_root: testable.paths[:mocks], subdir: details.path, include_path: details.include_path )
+      output_path = placement.directory
+      # The compiler reaches a climbing folder's mock only through CMock's root
+      @mock_locator.search_directories( placement ).each { |dir| @file_wrapper.mkdir( dir ) }
 
       # `details.input` -- not the stage 9 preprocessed target -- is the
       # correct antecedent here: it's exactly what CMock reads, whether or not
@@ -192,7 +194,8 @@ class TestBuildExecutor
         test:           testable.name,
         input_filepath: details.input,
         output_path:    output_path,
-        folder:         folder,
+        mock_root:      placement.root,
+        folder:         placement.folder,
         overrides:      overrides
       }
 
@@ -570,26 +573,6 @@ class TestBuildExecutor
   # The :libraries entries a test links, whatever form each takes
   def test_library_entries()
     return ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
-  end
-
-  # Finds the folder a mock's #include names and the directory the mock is written to.
-  #
-  # CMock names a mock's guard and lifecycle functions by that folder, and the runner names
-  # its calls by the same #include. Two same-named mocks stay distinct only if the folder
-  # reaches CMock. CMock writes below its own root at that folder, so the folder must end the
-  # mock's directory. A folder trailing the mirrored location keeps that location. An #include
-  # spelling more path than the mirror holds moves its mock below the per-test root at the
-  # written path, which the root search path still reaches. A bare #include has no folder.
-  # Without :mock_name_include_folder no folder is passed, and CMock names by filename alone.
-  def mock_folder_and_path(mocks_root, output_path, include_path)
-    return [nil, output_path] unless @configurator.cmock_mock_name_include_folder
-
-    folder = File.dirname( include_path.to_s ).sub( %r{\A(?:\./)+}, '' )
-
-    return [nil, output_path] if folder.empty? || folder == '.'
-    return [folder, output_path] if output_path.end_with?( File.join( '', folder ) )
-
-    return [folder, File.join( mocks_root, folder )]
   end
 
   # Compile a single C or assembly source file into an object file. Returns

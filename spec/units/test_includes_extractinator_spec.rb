@@ -18,6 +18,8 @@ require 'ceedling/test_invoker/standin_headerinator'
 describe TestIncludesExtractinator do
   before(:each) do
     @configurator            = double( "Configurator" )
+    # Ceedling always defaults it, and the mock locator reads it
+    allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
     @loginator               = double( "Loginator" )
     @reportinator            = double( "Reportinator" )
     @batchinator             = double( "Batchinator" )

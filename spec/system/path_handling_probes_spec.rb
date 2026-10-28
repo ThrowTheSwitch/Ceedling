@@ -85,6 +85,22 @@ ceedling_system_tests do
     end
   end
 
+  # The compiler resolves a mock's #include as written, from the test's own directory,
+  # where no generated mock can be
+  it "G14: refuses a mock #include that climbs with `..`, naming the test file and a fix" do
+    in_app do
+      write( 'inc/x/foo.h', "int foo_read(void);\n" )
+      write( 'test/test_c.c', PROBE_TEST_PREAMBLE + "#include \"../inc/x/mock_foo.h\"\nvoid test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+      @c.merge_project_yml_for_test( { :paths => { :include => ['inc/**'] } } )
+
+      output = @c.ceedling_build_exec( "test:all" )
+
+      expect(@c.last_exit_status).to_not eq(0)
+      expect(output).to match(%r{test/test_c\.c includes the mock `\.\./inc/x/mock_foo\.h`})
+      expect(output).to include( '#include "mock_foo.h"' )
+    end
+  end
+
   # Assumes Ceedling refuses a build root holding the project's own directories
   it "G16: never lets clobber empty the project's own test directory", pending: "G16: clobber deletes the test directory" do
     in_app do
