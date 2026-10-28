@@ -316,6 +316,16 @@ describe ReleaseBuildExecutor do
       @executor.link( @state )
     end
 
+    # A target named by an absolute :output may sit in a directory no build made
+    it "makes the target's directory before linking" do
+      allow(@configurator).to receive(:project_release_build_target).and_return( '/elsewhere/out/app.elf' )
+
+      expect(@file_wrapper).to receive(:mkdir).with( '/elsewhere/out' ).ordered
+      expect(@generator).to receive(:generate_executable_file).ordered
+
+      @executor.link( @state )
+    end
+
     it "links plainly, with no library arguments, when none of the library-related project settings are configured" do
       expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, objects, _flags, _target, _map, lib_args, lib_paths|
         expect(objects).to eq( ['build/release/out/foo.o'] )

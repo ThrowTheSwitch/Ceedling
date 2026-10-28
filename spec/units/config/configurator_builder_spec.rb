@@ -202,6 +202,17 @@ describe ConfiguratorBuilder do
           project_release_build_target: 'build/release/app.elf', project_release_build_map: 'build/release/app.map'
         )
       end
+
+      # The path handling audit around GH #1370: an absolute output names the release itself
+      it 'places a target named by an absolute or `~` path where it names, with its map beside it' do
+        output = File.expand_path( '/elsewhere/out/app.elf' )
+        expect(@builder.set_release_target( in_hash.merge( release_build_output: output ) )).to eq(
+          project_release_build_target: output, project_release_build_map: output.ext( '.map' )
+        )
+
+        expect(@builder.set_release_target( in_hash.merge( release_build_output: '~/out/app.elf' ) )[:project_release_build_target])
+          .to eq( File.join( Dir.home, 'out/app.elf' ) )
+      end
     end
 
     describe '#set_build_thread_counts' do

@@ -68,7 +68,7 @@ describe 'Path intake (integration)' do
   end
 
   # Assumes an absolute release output names the release itself
-  it 'G19: places a release named by an absolute :output where it names', pending: "G19: an absolute :output is joined below the release root" do
+  it 'G19: places a release named by an absolute :output where it names' do
     in_temp_project( minimal_project_files ) do |dir|
       output = File.join( File.realpath( dir ), 'out', 'app.elf' )
       config = configure( yaml( project: { release_build: true }, extra: ":release_build:\n  :output: #{output}\n" ) )[:configurator]

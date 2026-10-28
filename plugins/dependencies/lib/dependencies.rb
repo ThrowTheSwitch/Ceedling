@@ -286,7 +286,7 @@ class Dependencies < Plugin
       search_paths: search_paths,
       flags:        spec.flags,
       defines:      spec.defines,
-      list:         @ceedling[:file_path_utils].form_release_build_list_filepath( File.basename( source ).ext )
+      list:         @ceedling[:file_path_utils].form_release_build_list_filepath( object )
     )
     return object
   end

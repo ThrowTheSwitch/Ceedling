@@ -59,6 +59,8 @@ class ReleaseBuildExecutor
     stale = @dependinator.stale?( target )
 
     if stale
+      # A target named by an absolute :output may sit in a directory no build made
+      @file_wrapper.mkdir( File.dirname( target ) )
       @generator.generate_executable_file(
         @configurator.tools_release_linker,
         RELEASE_SYM,

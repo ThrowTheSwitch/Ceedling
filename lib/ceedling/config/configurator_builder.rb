@@ -8,6 +8,7 @@
 require 'rubygems'
 require 'rake'                     # for ext() method
 require 'ceedling/file_path_utils' # for class methods
+require 'ceedling/project_paths'
 require 'ceedling/defaults'
 require 'ceedling/constants'       # for Verbosity constants class & base file paths
 require 'ceedling/filename_extension'
@@ -130,17 +131,18 @@ class ConfiguratorBuilder
 
 
   # A release is named by :release_build ↳ :output, or by default and the executable
-  # extension. Its map file shares its name.
+  # extension. Its map file shares its name. A relative name is below the release build root,
+  # and an absolute one names the release itself.
   def set_release_target(in_hash)
     return {} if (not in_hash[:project_release_build])
 
-    output = in_hash[:release_build_output]
+    output = in_hash[:release_build_output]&.then { |name| ProjectPaths.standardize( name ) }
     target = output || DEFAULT_RELEASE_TARGET_NAME.ext( in_hash[:extension_executable].primary )
     map    = (output || DEFAULT_RELEASE_TARGET_NAME).ext( in_hash[:extension_map].primary )
 
     # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
     root = in_hash[:project_build_release_root]
-    return { project_release_build_target: File.join( root, target ), project_release_build_map: File.join( root, map ) }
+    return { project_release_build_target: release_place( root, target ), project_release_build_map: release_place( root, map ) }
   end
 
 
@@ -338,6 +340,11 @@ class ConfiguratorBuilder
   ### Private ###
 
   private
+
+  # A relative release name is below the release build root, and an absolute one names itself
+  def release_place(root, name)
+    return ProjectPaths.absolute?( name ) ? name : File.join( root, name )
+  end
 
   def flatten_section(section, value)
     case value
