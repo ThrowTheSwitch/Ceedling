@@ -145,6 +145,15 @@ describe FileFinder do
       expect(bare_subdir).to eq(pathed_subdir)
     end
 
+    # GH #1370: a `..` root "contained" a header far above it, so its mock left the build directory
+    it 'places a mock of a header far above a `..` root flat, below the root that truly holds it' do
+      allow(@configurator).to receive(:collection_all_headers).and_return( ['../../../opt/sdk/inc/sdk.h'] )
+      allow(@configurator).to receive(:paths_include).and_return( ['../**', File.expand_path( '../../../opt/sdk/inc' )] )
+
+      _source, subdir = @file_finder.resolve_mock('Mocksdk.h')
+      expect(subdir).to eq('')
+    end
+
     it 'still raises on a bogus (not-found) mock reference, exactly as find_header_input_for_mock does' do
       expect { @file_finder.resolve_mock('nonexistent/dir/Mockfoo.h') }.to raise_error(CeedlingException)
     end

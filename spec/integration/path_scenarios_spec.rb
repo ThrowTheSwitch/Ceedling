@@ -64,7 +64,7 @@ describe 'Path scenarios (integration)' do
       ['an absolute vendor path far outside', '%{far}/inc'],
       ['a sibling vendor path', '../vendor/inc']
     ].each do |label, vendor|
-      it "places a mock of the vendor header inside the build root, with #{label}", pending: (vendor.start_with?( '%{far}' ) && 'G1 (#1370): a `..` root contains any path that climbs past it') do
+      it "places a mock of the vendor header inside the build root, with #{label}" do
         in_workspace( files, far: { 'inc/sdk.h' => h( 'sdk' ) } ) do |ws, app|
           scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**'], include: ['../**', vendor] } ) )
           placed = placements( scene )
@@ -96,7 +96,7 @@ describe 'Path scenarios (integration)' do
     end
 
     (PathScenarioHarness::ROOT_SPELLINGS.keys - [:plain]).each do |spelling|
-      it "places every build file as the plain spelling does, with #{spelling} roots", pending: (spelling != :backslash && 'G2: roots are matched as written, not as the place they name') do
+      it "places every build file as the plain spelling does, with #{spelling} roots", pending: (spelling == :symlink && 'G12: a symlinked spelling is collected as a second file') do
         in_workspace( files, symlink: spelling == :symlink ) do |ws, app|
           _, plain = placed_with( :plain, ws, app )
           scene, spelled = placed_with( spelling, ws, app )
@@ -127,7 +127,7 @@ describe 'Path scenarios (integration)' do
     end
 
     # A file the exclusion fails to drop (G13) must not mirror below the exclusion itself
-    it 'G3: is never a root that kept files mirror below', pending: "G3: a `-:` exclusion counts as a root" do
+    it 'G3: is never a root that kept files mirror below' do
       in_workspace( files ) do |ws, app|
         scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['+:src/**', '-:src/exp'], include: ['src/**'] } ) )
         placed = placements( scene )
@@ -153,7 +153,7 @@ describe 'Path scenarios (integration)' do
       'a `./` include root'      => ['./include/**'],
       'an absolute include root' => ['%{app}/include/**']
     }.each do |label, include|
-      it "finds the source of a header below #{label}", pending: (label != 'a plain include root' && 'G4: the include root is matched as written') do
+      it "finds the source of a header below #{label}" do
         in_workspace( files ) do |ws, app|
           scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**'], include: include } ) )
 

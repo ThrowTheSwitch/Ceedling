@@ -38,7 +38,7 @@ ceedling_system_tests do
   end
 
   # The report's setup: a vendor SDK far above the project, beside a `..` root
-  it "G1 (#1370): mocks a header far outside the project beside a `..` root", pending: "G1 (#1370): the mock is written outside its test, and not found" do
+  it "G1 (#1370): mocks a header far outside the project beside a `..` root" do
     Dir.mktmpdir do |far|
       sdk = File.join( File.realpath( far ), 'deep', 'sdk', 'inc' )
       write( File.join( sdk, 'sdk.h' ), "int sdk_read(void);\n" )
@@ -58,7 +58,7 @@ ceedling_system_tests do
     end
   end
 
-  it "G4: links the source beside a header below a `./` include root", pending: "G4: the source is left out, and the link fails" do
+  it "G4: links the source beside a header below a `./` include root" do
     in_app do
       write( 'include/drv/x.h', "int x_value(void);\n" )
       write( 'src/drv/x.c', "#include \"x.h\"\nint x_value(void) { return 7; }\n" )

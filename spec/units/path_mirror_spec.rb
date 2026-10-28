@@ -20,9 +20,9 @@ describe PathMirror do
       expect(described_class.relative_subdir('src/drivers/sensors/foo.c', ['src/**'])).to eq('drivers/sensors')
     end
 
-    it 'strips +:/-: aggregation decorators from configured roots before comparing' do
+    it 'strips a +: decorator, and never treats a -: exclusion as a root' do
       expect(described_class.relative_subdir('src/drivers/foo.c', ['+:src/**'])).to eq('drivers')
-      expect(described_class.relative_subdir('src/drivers/foo.c', ['-:src/**'])).to eq('drivers')
+      expect(described_class.relative_subdir('src/drivers/foo.c', ['-:src/**'])).to eq('')
     end
 
     it 'picks the most specific (longest) matching root when configured roots are nested' do
@@ -49,7 +49,7 @@ describe PathMirror do
     it 'produces the same result as .relative_subdir when roots are cleaned once upfront' do
       clean = described_class.clean_roots(['+:src/**', '-:src/legacy/**'])
       expect(described_class.relative_subdir_from_clean_roots('src/drivers/foo.c', clean)).to eq('drivers')
-      expect(described_class.relative_subdir_from_clean_roots('src/legacy/vendor/foo.c', clean)).to eq('vendor')
+      expect(described_class.relative_subdir_from_clean_roots('src/legacy/vendor/foo.c', clean)).to eq('legacy/vendor')
     end
 
     it 'drops decorated roots that clean to nothing' do
@@ -103,28 +103,28 @@ describe PathMirror do
 
   # Root matching across spellings of one place (GH #1370 and the path handling audit)
   describe 'root containment' do
-    it 'G1 (#1370): never answers a subdirectory that climbs out, below a `..` root', pending: "G1 (#1370): roots are matched by text" do
+    it 'G1 (#1370): never answers a subdirectory that climbs out, below a `..` root' do
       subdir = PathMirror.relative_subdir( '../../../opt/vendor/inc/x.h', ['../**'] )
 
       expect(subdir.split( '/' )).to_not include( '..' )
     end
 
-    it 'G2: mirrors below a `./`-spelled root as below the plain one', pending: "G2: roots are matched as written" do
+    it 'G2: mirrors below a `./`-spelled root as below the plain one' do
       expect(PathMirror.relative_subdir( 'src/a/x.c', ['./src/**'] )).to eq( 'a' )
     end
 
-    it 'G2: mirrors below an absolute root spelling of a relative file\'s directory', pending: "G2: roots are matched as written" do
+    it 'G2: mirrors below an absolute root spelling of a relative file\'s directory' do
       expect(PathMirror.relative_subdir( 'src/a/x.c', [File.join( Dir.pwd, 'src/**' )] )).to eq( 'a' )
     end
 
-    it 'G2: mirrors a file spelled relatively below an absolute root outside the working directory', pending: "G2: roots are matched as written" do
+    it 'G2: mirrors a file spelled relatively below an absolute root outside the working directory' do
       file = File.join( '..', '..', 'opt', 'x', 'a', 'f.c' )
       root = File.join( File.expand_path( '../..' ), 'opt', 'x', '**' )
 
       expect(PathMirror.relative_subdir( file, [root] )).to eq( 'a' )
     end
 
-    it 'G3: never treats a `-:` exclusion as a root', pending: "G3: a `-:` exclusion counts as a root" do
+    it 'G3: never treats a `-:` exclusion as a root' do
       expect(PathMirror.relative_subdir( 'src/exp/sub/x.c', ['+:src/**', '-:src/exp'] )).to eq( 'exp/sub' )
     end
   end
