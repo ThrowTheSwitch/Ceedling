@@ -14,6 +14,7 @@ require 'ceedling/system_wrapper'
 require 'ceedling/constants'
 require 'ceedling/path_mirror'
 require 'ceedling/path_matcher'
+require 'ceedling/build_subpath'
 
 # global utility methods (for plugins, project files, etc.)
 def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)
@@ -25,10 +26,6 @@ end
 class FilePathUtils
 
   constructor :configurator, :file_wrapper
-
-  # Test names stand in for path segments that cannot be build subdirectories
-  TEST_NAME_PARENT_SEGMENT   = '_up_'  unless const_defined?(:TEST_NAME_PARENT_SEGMENT, false)
-  TEST_NAME_ABSOLUTE_SEGMENT = '_abs_' unless const_defined?(:TEST_NAME_ABSOLUTE_SEGMENT, false)
 
   ######### Class methods ##########
 
@@ -228,11 +225,7 @@ class FilePathUtils
   # with each `..` written as `_up_`, and a path with no relative form (another Windows drive)
   # placed under `_abs_`, so no name reaches outside the build directory.
   def form_test_name(filepath)
-    path     = relative_to_working_dir( filepath.to_s.tr( '\\', '/' ) )
-    segments = path.ext( '' ).split( '/' ).reject { |segment| segment.empty? || segment == '.' }
-    segments = absolute_name_segments( path, segments )
-
-    return segments.map { |segment| segment == '..' ? TEST_NAME_PARENT_SEGMENT : segment }.join( '/' )
+    return BuildSubpath.encode( filepath.to_s.ext( '' ) )
   end
 
   def form_test_build_path(name, context: nil)
@@ -589,22 +582,6 @@ class FilePathUtils
     path = subdir ? File.join( base, name, subdir ) : File.join( base, name )
     @file_wrapper.check_path_length( path, origin: 'FilePathUtils#form_named_path' )
     return path
-  end
-
-  # Collection paths are already relative to the working directory. An absolute one is made
-  # relative too, so a test has one name however its path arrives. Another Windows drive has
-  # no relative form and stays absolute.
-  def relative_to_working_dir(path)
-    return path unless PathMatcher.absolute?( path )
-    return Pathname.new( path ).relative_path_from( Pathname.new( Dir.pwd ) ).to_s
-  rescue ::ArgumentError
-    return path
-  end
-
-  # A path left absolute keeps all of it beneath `_abs_`, a drive letter as a plain segment
-  def absolute_name_segments(path, segments)
-    return segments unless PathMatcher.absolute?( path )
-    return [TEST_NAME_ABSOLUTE_SEGMENT] + segments.each_with_index.map { |segment, index| index.zero? ? segment.delete_suffix( ':' ) : segment }
   end
 
   # The directories of a test's name, excluding its basename: 'test/unit' for

@@ -193,11 +193,11 @@ describe PathMatcher do
 
   # A `.` segment names nothing (the path handling audit around GH #1370)
   describe 'G9: `.` segments' do
-    it 'matches a query with a leading `./`', pending: "G9: `.` segments are kept" do
+    it 'matches a query with a leading `./`' do
       expect(PathMatcher.candidates( './foo.h', ['inc/foo.h'] )).to eq( ['inc/foo.h'] )
     end
 
-    it 'matches a query with a `.` segment within it', pending: "G9: `.` segments are kept" do
+    it 'matches a query with a `.` segment within it' do
       expect(PathMatcher.candidates( 'sub/./bar.h', ['inc/sub/bar.h'] )).to eq( ['inc/sub/bar.h'] )
     end
   end

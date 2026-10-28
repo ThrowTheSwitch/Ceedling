@@ -1,0 +1,83 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'spec_helper'
+require 'tmpdir'
+require 'fileutils'
+require 'ceedling/build_subpath'
+
+# GH #1370 and the path handling audit around it: a build file placed by text could land
+# outside the build directory
+describe BuildSubpath do
+  WINDOWS_ONLY_BUILD = { if: Gem.win_platform? }.freeze
+
+  around(:each) do |example|
+    Dir.mktmpdir do |dir|
+      @ws = File.realpath( dir )
+      FileUtils.mkdir_p( File.join( @ws, 'app' ) )
+      Dir.chdir( File.join( @ws, 'app' ) ) { example.run }
+    end
+  end
+
+  describe '.encode and .decode' do
+    {
+      'a file in the project'    => ['src/drv/uart', 'src/drv/uart'],
+      'a sibling of the project' => ['../shared/src', '_up_/shared/src'],
+      'the working directory'    => ['.', '']
+    }.each do |label, (path, encoded)|
+      it "places #{label} by its path from the project root, and reads it back" do
+        expect(BuildSubpath.encode( path )).to eq( encoded )
+        expect(BuildSubpath.decode( encoded )).to eq( path == '.' ? '' : path )
+      end
+    end
+
+    it 'places an absolute path below the project as a relative one' do
+      expect(BuildSubpath.encode( File.join( @ws, 'app/src/x' ) )).to eq( 'src/x' )
+    end
+
+    it 'places a file of the running Ceedling outside the project below `_ceedling_`, and reads it back' do
+      file = File.join( BuildSubpath::INSTALLATION_ROOT, 'plugins/fff/src' )
+
+      expect(BuildSubpath.encode( file )).to eq( '_ceedling_/plugins/fff/src' )
+      expect(File.expand_path( BuildSubpath.decode( '_ceedling_/plugins/fff/src' ) )).to eq( file )
+    end
+
+    it 'places a file of the running Ceedling inside the project by its path from the project root' do
+      Dir.chdir( BuildSubpath::INSTALLATION_ROOT ) do
+        expect(BuildSubpath.encode( 'plugins/fff/src' )).to eq( 'plugins/fff/src' )
+      end
+    end
+
+    it 'places a path on another drive below `_abs_`, and reads it back', **WINDOWS_ONLY_BUILD do
+      other = Dir.pwd.start_with?( 'C' ) ? 'D' : 'C'
+
+      expect(BuildSubpath.encode( "#{other}:/x/inc" )).to eq( "_abs_/#{other}/x/inc" )
+      expect(BuildSubpath.decode( "_abs_/#{other}/x/inc" )).to eq( "#{other}:/x/inc" )
+    end
+
+    it 'places a UNC path below `_unc_`, and reads it back' do
+      expect(BuildSubpath.encode( '//server/share/inc' )).to eq( '_unc_/server/share/inc' )
+      expect(BuildSubpath.decode( '_unc_/server/share/inc' )).to eq( '//server/share/inc' )
+    end
+
+    it 'never places a file outside the build subpath it names' do
+      ['../../far/x', '/opt/x', '../shared', File.join( @ws, 'app/../../x' )].each do |path|
+        encoded = BuildSubpath.encode( path )
+
+        expect(encoded.split( '/' )).to_not include( '..' ), "#{path}: #{encoded}"
+        expect(encoded).to_not start_with( '/' ), "#{path}: #{encoded}"
+      end
+    end
+  end
+
+  describe '.of_directory' do
+    it 'is the encoding of a directory, with the working directory as empty' do
+      expect(BuildSubpath.of_directory( 'src/drv' )).to eq( 'src/drv' )
+      expect(BuildSubpath.of_directory( '.' )).to eq( '' )
+    end
+  end
+end

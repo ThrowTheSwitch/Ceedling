@@ -138,8 +138,9 @@ class PathMatcher
 
   ### Private ###
 
+  # A `.` segment names nothing, so it is dropped with the empty ones
   def self.segments(path)
-    path.split(/[\\\/]/).reject(&:empty?)
+    path.split(/[\\\/]/).reject { |segment| segment.empty? || segment == '.' }
   end
   private_class_method :segments
 

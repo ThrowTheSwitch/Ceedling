@@ -234,18 +234,16 @@ describe FileFinder do
       expect(@file_finder.find_test_file_from_name('unit/test_foo')).to eq('unit/test_foo.c')
     end
 
-    it 'raises a clear CeedlingException naming .. as unsupported in a CLI task name, rather than a generic not-found' do
-      # A CLI task name has no file of its own to anchor a .. against -- unlike an
-      # #include or TEST_SOURCE_FILE() entry, which are always scoped to the test file
-      # that wrote them. Today's generic "Found no file" message happens to also
-      # contain the query text, so asserting on the query alone would pass for the
-      # wrong reason -- the message must specifically call out .. as the problem.
-      expect { @file_finder.find_test_file_from_name('../unit/test_foo') }.to raise_error(CeedlingException) do |error|
-        expect(error.message).to include('../unit/test_foo')
-        expect(error.message).not_to match(/Found no file/)
-        expect(error.message).to match(/\.\./)
-        expect(error.message).to match(/context/i)
-      end
+    # GH #1370 audit (G9): a task name is relative to the working directory, as every
+    # collected path is, so a leading `..` names a test outside the project
+    it 'resolves a name climbing out of the project, against the working directory' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['../tests/test_x.c', 'unit/test_foo.c'] )
+
+      expect(@file_finder.find_test_file_from_name('../tests/test_x')).to eq('../tests/test_x.c')
+    end
+
+    it 'resolves a name written with `./`' do
+      expect(@file_finder.find_test_file_from_name('./unit/test_foo')).to eq('unit/test_foo.c')
     end
   end
 

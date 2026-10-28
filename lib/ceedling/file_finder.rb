@@ -77,11 +77,10 @@ class FileFinder
   # compilation step downstream to catch a wrong guess the way there is for a header
   # or source file resolved during a build.
   #
-  # A task name has no file of its own to anchor a `..` against, unlike an #include or
-  # TEST_SOURCE_FILE() entry -- resolving with no anchor surfaces that as a specific,
-  # named error rather than falling through to a generic file-not-found further down.
+  # A task name is relative to the working directory, as every collected path is, so a
+  # leading `..` names a test outside the project.
   def find_test_file_from_name(name)
-    name = PathMatcher.resolve_relative(name)
+    name = PathMatcher.resolve_relative(name, anchor: '')
     return find_first_candidate(name, @configurator.extension_source, @configurator.collection_all_tests, :error, strict: true)
   end
 
