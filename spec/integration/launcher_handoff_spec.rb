@@ -263,7 +263,7 @@ describe 'Launcher hand-off' do
 
       expect(status.exitstatus).to eq( 0 ), stdout + stderr
       expect(stderr).to_not include( 'LAUNCHER FILES LOADED' )
-      expect(stdout).to include( "Ceedling #{LAUNCHER_VERSION} at #{REPO_ROOT}/ is now running, launched from Ceedling at /elsewhere/." )
+      expect(stdout).to include( "Ceedling #{LAUNCHER_VERSION} at #{REPO_ROOT}/ is now running, launched from Ceedling at #{File.expand_path( '/elsewhere' )}/." )
       expect(stdout).to include( "loaded Ceedling #{@copy_version}" )
       expect(stdout).to include( "Continuing in the launcher's process" )
     end
