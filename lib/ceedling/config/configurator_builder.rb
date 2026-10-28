@@ -163,11 +163,13 @@ class ConfiguratorBuilder
   end
 
 
-  # Every :paths entry becomes a collection of the directories its globs name
+  # Every :paths entry becomes a collection of the directories its globs name, leaving out
+  # the build root, which a root above it (`../**`, `./**`) would otherwise sweep in
   def expand_all_path_globs(in_hash)
     path_keys = in_hash.keys.select { |key| key.to_s.start_with?( 'paths' ) }
+    exclude   = [in_hash[:project_build_root]].compact
 
-    return path_keys.to_h { |key| [:"collection_#{key}", @file_path_collection_utils.collect_paths( in_hash[key] )] }
+    return path_keys.to_h { |key| [:"collection_#{key}", @file_path_collection_utils.collect_paths( in_hash[key], exclude: exclude )] }
   end
 
 

@@ -78,6 +78,11 @@ describe FilePathUtils do
       expect( FilePathUtils.standardize_in_place( 'foo/bar/baz' ) ).to eq( 'foo/bar/baz' )
     end
 
+    # GH #1370 audit (G21)
+    it 'reads `~` as the home directory' do
+      expect( FilePathUtils.standardize_in_place( +'~/inc' ) ).to eq( File.join( Dir.home, 'inc' ) )
+    end
+
     it 'returns nil unchanged for a nil argument' do
       expect( FilePathUtils.standardize_in_place( nil ) ).to be_nil
     end

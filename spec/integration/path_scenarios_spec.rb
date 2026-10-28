@@ -96,7 +96,7 @@ describe 'Path scenarios (integration)' do
     end
 
     (PathScenarioHarness::ROOT_SPELLINGS.keys - [:plain]).each do |spelling|
-      it "places every build file as the plain spelling does, with #{spelling} roots", pending: (spelling == :symlink && 'G12: a symlinked spelling is collected as a second file') do
+      it "places every build file as the plain spelling does, with #{spelling} roots", pending: (spelling == :symlink && 'G2: mirror roots are matched as written, not as the place a symlink names') do
         in_workspace( files, symlink: spelling == :symlink ) do |ws, app|
           _, plain = placed_with( :plain, ws, app )
           scene, spelled = placed_with( spelling, ws, app )
@@ -118,7 +118,7 @@ describe 'Path scenarios (integration)' do
       }
     end
 
-    it 'G13: excludes the whole subtree it names', pending: "G13: a `-:` exclusion drops only the directory it names" do
+    it 'G13: excludes the whole subtree it names' do
       in_workspace( files ) do |ws, app|
         scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['+:src/**', '-:src/exp'], include: ['src/**'] } ) )
 
@@ -232,7 +232,7 @@ describe 'Path scenarios (integration)' do
   # --- G15: a root above the build root --------------------------------------------------
 
   context 'G15: a root that holds the build root' do
-    it 'collects nothing from an existing build directory', pending: "G15: a root holding the build root collects the build tree" do
+    it 'collects nothing from an existing build directory' do
       files = {
         'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/test/test_m.c' => TEST_C,
         'app/build/test/mocks/test/test_m/mock_main.h' => h( 'mock' ), 'app/build/test/runners/test/test_m/test_m_runner.c' => c( 'r' )
@@ -248,7 +248,7 @@ describe 'Path scenarios (integration)' do
   # --- G12: the working directory reached through a symlink -------------------------------
 
   context 'G12: absolute roots spelled through a symlink to the project' do
-    it 'collects each file once', pending: "G12: a symlinked spelling is collected as a second file" do
+    it 'collects each file once' do
       files = { 'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/test/test_m.c' => TEST_C }
       in_workspace( files, symlink: true ) do |ws, app|
         scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**', '%{ws}/link/src/**'], include: ['src/**'] } ) )

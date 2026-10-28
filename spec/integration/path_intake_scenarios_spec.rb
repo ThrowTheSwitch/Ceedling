@@ -51,7 +51,7 @@ describe 'Path intake (integration)' do
   end
 
   # Assumes `~` means the home directory, as it does in a shell
-  it 'G21: reads a `~` path as below the home directory', pending: "G21: `~` is never expanded (policy to decide)" do
+  it 'G21: reads a `~` path as below the home directory' do
     in_temp_project( minimal_project_files.merge( 'home/inc/extra.h' => "\n" ) ) do |dir|
       home = ENV['HOME']
       begin

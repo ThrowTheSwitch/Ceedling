@@ -14,6 +14,7 @@ require 'ceedling/system_wrapper'
 require 'ceedling/constants'
 require 'ceedling/path_mirror'
 require 'ceedling/path_matcher'
+require 'ceedling/project_paths'
 require 'ceedling/build_subpath'
 
 # global utility methods (for plugins, project files, etc.)
@@ -34,9 +35,7 @@ class FilePathUtils
   def self.standardize_in_place(path)
     if path.is_a? String
       raise CeedlingException.new("Attempted to standardize path in frozen string ⏩️ #{path.inspect}") if path.frozen?
-      path.strip!
-      path.tr!("\\", '/')
-      path.chomp!('/')
+      path.replace( ProjectPaths.standardize( path ) )
     end
     return path
   end

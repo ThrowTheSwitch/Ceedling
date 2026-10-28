@@ -143,6 +143,25 @@ describe FilePathCollectionUtils do
       expect( result ).to include( 'src' )
     end
 
+
+    # GH #1370 audit (G13): an exclusion dropped only the directory it named, keeping those below
+    it 'excludes every directory below a `-:` exclusion' do
+      kept, dropped, deep = File.expand_path( 'src/a' ), File.expand_path( 'src/exp' ), File.expand_path( 'src/exp/deep' )
+      allow( @file_wrapper ).to receive( :directory_listing ).with( 'src/**/**' ).and_return( [kept, dropped, deep] )
+      allow( @file_wrapper ).to receive( :directory_listing ).with( 'src/exp' ).and_return( [dropped] )
+      allow( @file_wrapper ).to receive( :directory? ).and_return( true )
+
+      expect( @fpcu.collect_paths( ['+:src/**', '-:src/exp'] ) ).to match_array( ['src', 'src/a'] )
+    end
+
+    # GH #1370 audit (G15): a root above the build root collected the build tree
+    it 'excludes every directory below an excluded path' do
+      src, build = File.expand_path( 'src' ), File.expand_path( 'build/test/mocks' )
+      allow( @file_wrapper ).to receive( :directory_listing ).with( './**/**' ).and_return( [src, build] )
+      allow( @file_wrapper ).to receive( :directory? ).and_return( true )
+
+      expect( @fpcu.collect_paths( ['./**'], exclude: ['build'] ) ).to_not include( 'build/test/mocks' )
+    end
   end
 
 
