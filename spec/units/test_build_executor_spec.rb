@@ -110,6 +110,7 @@ describe TestBuildExecutor do
     allow(@dependinator).to receive(:mark_fresh)
     allow(@test_source_file_directive_resolver).to receive(:validate!)
     allow(@library_resolver).to receive(:link_files).and_return( [] )
+    allow(@library_resolver).to receive(:search_path_arguments).and_return( [] )
 
     @executor = described_class.new(
       {
@@ -985,17 +986,6 @@ describe TestBuildExecutor do
       expect(@quote_include_isolator).to_not receive(:release)
 
       @executor.stage_build_objects( @state )
-    end
-  end
-
-  # The path handling audit around GH #1370: a library search path is configured like any
-  # other, with decorators and globs, and the linker reads neither
-  context "G11: #get_library_paths_to_arguments" do
-    it "gives the linker the directories a decorated, globbed library path names", pending: "G11: -L is built from the raw library paths" do
-      stub_const( 'PATHS_LIBRARIES', ['+:lib/**'] )
-      stub_const( 'LIBRARIES_PATH_FLAG', '-L "${1}"' )
-
-      expect(@executor.get_library_paths_to_arguments.join( ' ' )).to_not match( /\+:|\*/ )
     end
   end
 

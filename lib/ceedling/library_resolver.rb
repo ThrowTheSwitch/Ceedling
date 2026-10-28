@@ -16,30 +16,50 @@ class LibraryResolver
 
   constructor :file_wrapper, :file_path_collection_utils
 
+  def setup
+    @lock        = Mutex.new
+    @directories = {}
+  end
+
   # entries:      :libraries entries, each a bare name, an `-l:` filename, or a path
   # search_paths: :paths ↳ :libraries, decorated and globbed as configured
   # files:        library files known exactly, as a plugin knows those it builds
   def resolve(entries:, search_paths:, files: [])
-    directories = @file_path_collection_utils.collect_paths( search_paths )
+    return resolve_within( entries, @file_path_collection_utils.collect_paths( search_paths ), files )
+  end
 
+  # The library files a link with these :libraries entries depends on: those the entries
+  # resolve to on :paths ↳ :libraries, and those plugins publish in LIBRARIES_LINK_FILES
+  def link_files(entries)
+    return resolve_within( entries, search_directories(), ((defined? LIBRARIES_LINK_FILES) ? LIBRARIES_LINK_FILES : nil) || [] )
+  end
+
+  # A link's library search path arguments: each directory of search_directories in
+  # :libraries ↳ :path_flag
+  def search_path_arguments
+    directories = search_directories()
+    return directories unless defined?( LIBRARIES_PATH_FLAG )
+
+    return directories.map { |directory| LIBRARIES_PATH_FLAG.gsub( '${1}' ) { directory } }
+  end
+
+  # The directories :paths ↳ :libraries names, decorated and globbed as configured, with
+  # those plugins add once configuration is done. Collected once for a set of paths, since
+  # every link asks.
+  def search_directories
+    paths = ((defined? PATHS_LIBRARIES) ? PATHS_LIBRARIES : nil) || []
+    return @lock.synchronize { @directories[paths.dup] ||= @file_path_collection_utils.collect_paths( paths ) }
+  end
+
+  private
+
+  def resolve_within(entries, directories, files)
     candidates = Array( entries ).flatten.compact.flat_map { |entry| candidates_for( entry.to_s, directories ) }
     candidates += Array( files )
 
     found = candidates.map { |path| @file_path_collection_utils.shortest_path_from_working( File.expand_path( path ) ) }
     return found.select { |path| library_file?( path ) }.uniq
   end
-
-  # The library files a link with these :libraries entries depends on: those the entries
-  # resolve to on :paths ↳ :libraries, and those plugins publish in LIBRARIES_LINK_FILES
-  def link_files(entries)
-    return resolve(
-      entries:      entries,
-      search_paths: ((defined? PATHS_LIBRARIES) ? PATHS_LIBRARIES : nil) || [],
-      files:        ((defined? LIBRARIES_LINK_FILES) ? LIBRARIES_LINK_FILES : nil) || []
-    )
-  end
-
-  private
 
   # An `-l:` entry names its exact filename, a path names itself, and a bare name names every
   # library filename a toolchain makes of it

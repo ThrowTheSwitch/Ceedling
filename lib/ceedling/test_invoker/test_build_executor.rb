@@ -282,7 +282,7 @@ class TestBuildExecutor
   # Stage 16: Link test executables.
   def stage_build_executables(state)
     lib_args  = convert_libraries_to_arguments()
-    lib_paths = get_library_paths_to_arguments()
+    lib_paths = @library_resolver.search_path_arguments()
     libraries = @library_resolver.link_files( test_library_entries() )
     skipped = 0
 
@@ -558,14 +558,6 @@ class TestBuildExecutor
       args.map! { |v| LIBRARIES_FLAG.gsub( /\$\{1\}/, v ) }
     end
     return args
-  end
-
-  def get_library_paths_to_arguments()
-    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []).clone : []
-    if (defined? LIBRARIES_PATH_FLAG)
-      paths.map! { |v| LIBRARIES_PATH_FLAG.gsub( /\$\{1\}/, v ) }
-    end
-    return paths
   end
 
   private

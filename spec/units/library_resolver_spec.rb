@@ -12,6 +12,7 @@ require 'ceedling/file_wrapper'
 require 'ceedling/file_path_collection_utils'
 require 'ceedling/filename_extension'
 require 'ceedling/library_resolver'
+require 'ceedling/defaults'
 
 # GH #1368: a link tracked its libraries only by their -l and -L arguments, so a library
 # rebuilt under the same name relinked nothing. The resolver finds the files they name.
@@ -109,6 +110,43 @@ describe LibraryResolver do
       hide_const( 'LIBRARIES_LINK_FILES' )
 
       expect( @resolver.link_files( ['x'] ) ).to eq( [] )
+    end
+  end
+
+  # The path handling audit around GH #1370: a library search path is configured like any
+  # other, with decorators and globs, and the linker reads neither
+  describe '#search_path_arguments' do
+    it 'gives the linker the directories a decorated, globbed library path names' do
+      FileUtils.mkdir_p( ['vendor/a', 'vendor/skip'] )
+      stub_const( 'PATHS_LIBRARIES', ['+:vendor/**', '-:vendor/skip'] )
+      stub_const( 'LIBRARIES_PATH_FLAG', '-L${1}' )
+
+      expect( @resolver.search_path_arguments ).to eq( ['-Lvendor', '-Lvendor/a'] )
+    end
+
+    # Quoted like every other default path argument, so a path with a space survives the shell
+    it 'quotes each directory under the default flag template' do
+      FileUtils.mkdir_p( 'vendor/third party/lib' )
+      stub_const( 'PATHS_LIBRARIES', ['vendor/third party/lib'] )
+      stub_const( 'LIBRARIES_PATH_FLAG', DEFAULT_CEEDLING_PROJECT_CONFIG[:libraries][:path_flag] )
+
+      expect( @resolver.search_path_arguments ).to eq( ['-L "vendor/third party/lib"'] )
+    end
+
+    # A plugin's library directories join :paths ↳ :libraries once configuration is done
+    it 'includes the directories a plugin adds to the library paths' do
+      FileUtils.mkdir_p( ['vendor/lib', 'build/deps'] )
+      stub_const( 'PATHS_LIBRARIES', ['vendor/lib'] )
+      stub_const( 'LIBRARIES_PATH_FLAG', '-L${1}' )
+      PATHS_LIBRARIES << 'build/deps'
+
+      expect( @resolver.search_path_arguments ).to eq( ['-Lvendor/lib', '-Lbuild/deps'] )
+    end
+
+    it 'gives no arguments without library paths' do
+      hide_const( 'PATHS_LIBRARIES' )
+
+      expect( @resolver.search_path_arguments ).to eq( [] )
     end
   end
 

@@ -45,7 +45,7 @@ class ReleaseBuildExecutor
   def link(state)
     objects, libraries = sort_objects_and_libraries( state.objects )
     lib_args  = convert_libraries_to_arguments( libraries )
-    lib_paths = get_library_paths_to_arguments()
+    lib_paths = @library_resolver.search_path_arguments()
     library_files = @library_resolver.link_files( release_library_entries( libraries ) )
     target    = @configurator.project_release_build_target
 
@@ -214,14 +214,6 @@ class ReleaseBuildExecutor
       ((defined? LIBRARIES_RELEASE) ? LIBRARIES_RELEASE : [])
 
     return entries.flatten.compact
-  end
-
-  def get_library_paths_to_arguments()
-    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []).clone : []
-    if (defined? LIBRARIES_PATH_FLAG)
-      paths.map! { |v| LIBRARIES_PATH_FLAG.gsub(/\$\{1\}/, v) }
-    end
-    return paths
   end
 
   # A release's object list can include precompiled libraries/archives
