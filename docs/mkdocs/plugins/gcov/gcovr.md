@@ -28,7 +28,7 @@ GCovr can be configured in two ways:
     provide any settings that would have been provided by the Gcov plugin, either 
     in the config file itself or via `:custom_args:`.
 
-A Gcovr config file replaces Ceedling's own automatically generated exclusion
+A Gcovr config file replaces Ceedling’s own automatically generated exclusion
 patterns (see [Results filtering](#results-filtering) below) entirely — it is
 the only way to override or remove one of those defaults, since the
 project-configuration `:report_exclude` option can only add further
@@ -70,7 +70,7 @@ Ceedling itself generates as part of a build all skew that number if left in.
     .*(?:^|/)test/(?:.*/)?test_[^/]+(?:\.c)$
     ```
 
-    A project's `:extension` ↳ `:source` can list more than one source
+    A project’s `:extension` ↳ `:source` can list more than one source
     extension; every configured extension is joined into this same
     alternation. Given `:extension` ↳ `:source` ⇒ `['.c', '.C']`:
 
@@ -100,7 +100,7 @@ Ceedling itself generates as part of a build all skew that number if left in.
     `:build_root`: generated mocks, test runners, Partials output, and the
     vendored Unity/CMock/CException framework sources Ceedling copies in to
     build against. Unlike the two patterns above, this one always matches a
-    literal `.c` extension regardless of your project's own `:extension` ↳
+    literal `.c` extension regardless of your project’s own `:extension` ↳
     `:source` setting, since every file it catches is one Ceedling itself
     writes in plain C.
 
@@ -115,7 +115,7 @@ provide via [`:report_exclude`](#report_exclude) below — you don't need to
 (and normally shouldn't) duplicate them yourself.
 
 !!! warning "Not applied when using a Gcovr configuration file"
-    These defaults are only generated when Ceedling builds `gcovr`'s command
+    These defaults are only generated when Ceedling builds `gcovr`’s command
     line directly. As covered in
     [Gcovr configuration file](#gcovr-configuration-file) above, setting
     `:config_file` bypasses this entirely — none of the three patterns above
@@ -132,7 +132,7 @@ own three patterns ahead of anything you configure there. Neither
 either: `:report_include` narrows which files are considered at all, but an
 exclude pattern still wins over it for any file matching both; `:custom_args`
 lets you pass additional raw `gcovr` flags, but a raw `--filter`/`--exclude`
-of your own is just as additive as `:report_exclude` — there's no `gcovr`
+of your own is just as additive as `:report_exclude` — there’s no `gcovr`
 flag that removes or replaces an exclusion already given, only ones that add
 more.
 
@@ -194,7 +194,7 @@ different working directory than your project root, and `:custom_args:` is
 still applied too — the one way to pass Gcovr flags of your own alongside a
 config file (see `:custom_args` below).
 
-To preserve the plugin's base filtering behavior, include exclusion patterns
+To preserve the plugin’s base filtering behavior, include exclusion patterns
 matching your project layout in the config file itself — see
 [Gcovr configuration file](#gcovr-configuration-file) above.
 
@@ -232,7 +232,11 @@ percentage. Can be ORed with the exit status of other `:fail_under_*` options.
 
 `gcovr` treats `--fail-under-decision` as a no-op without `--decisions` also
 present — setting this option implies `:decisions` (below) automatically, so
-it's never silently non-functional.
+it’s never silently non-functional.
+
+From `gcovr` 8.7, `--fail-under-decision` also checks condition coverage, which
+`:mcdc` produces. A run below the minimum for either reports each failure on its
+own line of the build failure summary.
 
 **Values:** `1`–`100`
 
@@ -317,7 +321,7 @@ Keep only source files that match this filter. Filters are regular
 expressions. (`gcovr --filter`)
 
 This narrows which files are considered at all, but does not override
-[Results filtering](#results-filtering)'s automatic exclusion defaults — a
+[Results filtering](#results-filtering)’s automatic exclusion defaults — a
 file excluded by one of those three default patterns stays excluded even if
 it also matches `:report_include`. See
 [Overriding the defaults](#overriding-the-defaults) if you need to remove one
@@ -369,7 +373,7 @@ files. Filters are regular expressions. (`gcovr --exclude-directories`)
 ### `:gcov_executable`
 
 Use a particular `gcov` executable. This may be appropriate and necessary in
-special circumstances — review Ceedling's options for modifying tools first.
+special circumstances — review Ceedling’s options for modifying tools first.
 (`gcovr --gcov-executable`)
 
 ---
@@ -397,7 +401,7 @@ the same source function, this is a real risk. This option controls how
 [gcovr merging docs](https://gcovr.com/en/stable/guide/merging.html) for all
 valid values. Ignored on `gcovr` versions below 6.0.
 
-**Default:** `merge-use-line-max` (`gcovr`'s own default, `strict`, raises an
+**Default:** `merge-use-line-max` (`gcovr`’s own default, `strict`, raises an
 exception for many Ceedling projects)
 
 ---
@@ -447,14 +451,14 @@ Set the number of threads `gcovr` uses in parallel. (`gcovr -j`)
 
 Optional list of one or more raw command line arguments to pass to `gcovr`.
 Useful as an escape hatch for any `gcovr` flag Ceedling has no named option
-for (e.g. limiting `gcovr`'s search root).
+for (e.g. limiting `gcovr`’s search root).
 
 Unlike every other option above, these arguments are still applied even when
 `:config_file` is set — the one way to pass `gcovr` flags of your own
 alongside a config file.
 
 This does not, on its own, let you override
-[Results filtering](#results-filtering)'s automatic exclusion defaults when
+[Results filtering](#results-filtering)’s automatic exclusion defaults when
 `:config_file` is unset — a raw `--filter`/`--exclude` passed here is just as
 additive as [`:report_exclude`](#report_exclude); see
 [Overriding the defaults](#overriding-the-defaults) for the one option that
