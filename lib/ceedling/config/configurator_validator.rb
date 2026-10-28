@@ -6,13 +6,12 @@
 # =========================================================================
 
 require 'ceedling/constants'
-require 'ceedling/file_path_utils'  # for glob handling class methods
 require 'ceedling/config/config_matchinator'
 
 
 class ConfiguratorValidator
 
-  constructor :config_walkinator, :file_wrapper, :loginator, :reportinator, :tool_validator
+  constructor :config_walkinator, :loginator, :reportinator, :tool_validator
 
   # Walk into config hash verify existence of data at key depth
   def exists?(config, *keys)
@@ -20,54 +19,6 @@ class ConfiguratorValidator
     return true unless hash.nil?
 
     log_error( "Required config file entry #{@reportinator.generate_config_walk( keys )} does not exist." )
-    return false
-  end
-
-  # Walk into config hash. verify existence of path(s) at given key depth.
-  # Paths are either full simple paths or a simple portion of a path up to a glob.
-  def validate_path_list(config, *keys)
-    list, depth = @config_walkinator.fetch_value( *keys, hash:config )
-    return false if list.nil?
-
-    # Trimming add/subtract notation and glob specifiers leaves nothing of a path that
-    # begins with a glob, so there is nothing to check. An entry YAML read as something
-    # other than a string is left to the entries validation, which reports it.
-    paths   = list.grep( String ).map { |path| FilePathUtils::no_decorators( path ) }
-    missing = paths.reject { |path| path.empty? or @file_wrapper.exist?( path ) }
-
-    walk = @reportinator.generate_config_walk( keys, depth )
-    missing.each { |path| log_error( "Config path #{walk} => '#{path}' does not exist in the filesystem." ) }
-
-    return missing.empty?
-  end
-
-
-  # Validate :paths entries, exercising each entry as Ceedling directory glob (variation of Ruby glob)
-  def validate_paths_entries(config, key)
-    list, _ = @config_walkinator.fetch_value( :paths, key, hash:config )
-    return false if list.nil?
-
-    walk = @reportinator.generate_config_walk( [:paths, key] )
-    return list.map { |path| usable_entry?( path, walk ) && valid_paths_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
-  end
-
-
-  # Validate :files entries, exercising each entry as FileList glob
-  def validate_files_entries(config, key)
-    list, _ = @config_walkinator.fetch_value( :files, key, hash:config )
-    return false if list.nil?
-
-    walk = @reportinator.generate_config_walk( [:files, key] )
-    return list.map { |path| usable_entry?( path, walk ) && valid_files_entry?( FilePathUtils::no_aggregation_decorators( path ), walk ) }.all?
-  end
-
-
-  # Simple path verification
-  def validate_filepath_simple(path, *keys)
-    return true if @file_wrapper.exist?( path )
-
-    walk = @reportinator.generate_config_walk( keys, keys.size )
-    log_error( "Config path '#{path}' associated with #{walk} does not exist in the filesystem." )
     return false
   end
 
@@ -102,62 +53,6 @@ class ConfiguratorValidator
 
   private
 
-  # A :paths or :files entry that names no path, or wraps its path in quotes, usually
-  # quotes only the path after its decoration. YAML keeps those quote marks as part of
-  # the value, so the hint points at quoting the whole entry. YAML also reads an unquoted
-  # decoration with nothing after it (`- -:`) as a one-key mapping rather than a string.
-  ENTRY_QUOTING_HINT = 'Quote the whole entry, decoration included (e.g. "-:path/to/file.c"), ' +
-                       'not only the path after its +: or -: decoration.'
-
-  def usable_entry?(entry, walk)
-    path = entry.is_a?( String ) ? FilePathUtils::no_aggregation_decorators( entry ) : ''
-
-    problem =
-      if !entry.nil? and !entry.is_a?( String ) then "is not a path (YAML read it as a #{entry.class})"
-      elsif path.empty? then 'names no path'
-      elsif path.start_with?( '"', "'" ) then 'wraps its path in quotes'
-      end
-    return true if problem.nil?
-
-    log_error( "#{walk} => '#{entry}' #{problem}" )
-    log_error( ENTRY_QUOTING_HINT )
-    return false
-  end
-
-  # A path naming a file is ignored with a warning. Any other entry must yield directories,
-  # except a subdirectories glob of a directory that has none.
-  def valid_paths_entry?(path, walk)
-    if @file_wrapper.exist?( path ) and !@file_wrapper.directory?( path )
-      log_complaint( "#{walk} => '#{path}' is a filepath and will be ignored (FYI :paths is directory-oriented while :files is file-oriented)" )
-      return true
-    end
-
-    return true if globbed_directories?( path ) or path =~ /\/\*{1,2}$/
-
-    log_error( "#{walk} => '#{path}' yielded no directories -- matching glob is malformed or directories do not exist" )
-    return false
-  end
-
-  # #104 -- FilePathUtils.subdirectory_glob escapes literal brackets in the path, so they
-  # are matched rather than read as a glob character class
-  def globbed_directories?(path)
-    return @file_wrapper.directory_listing( FilePathUtils.subdirectory_glob( path ) ).any? { |entry| @file_wrapper.directory?( entry ) }
-  end
-
-  # A path naming a directory is ignored with a warning. Any other entry must yield files.
-  def valid_files_entry?(path, walk)
-    if @file_wrapper.exist?( path ) and @file_wrapper.directory?( path )
-      log_complaint( "#{walk} => '#{path}' is a directory path and will be ignored (FYI :files is file-oriented while :paths is directory-oriented)" )
-      return true
-    end
-
-    # #104 -- literal brackets are escaped so they are matched rather than read as a glob
-    return true unless @file_wrapper.instantiate_file_list( FilePathUtils.escape_glob_brackets( path ) ).size.zero?
-
-    log_error( "#{walk} => '#{path}' yielded no files -- matching glob is malformed or files do not exist" )
-    return false
-  end
-
   def validate_regex_matcher(matcher)
     Regexp.compile( matcher[1..-2] )
   rescue RegexpError => ex
@@ -166,10 +61,6 @@ class ConfiguratorValidator
 
   def log_error(message)
     @loginator.log( message, Verbosity::ERRORS )
-  end
-
-  def log_complaint(message)
-    @loginator.log( message, Verbosity::COMPLAIN )
   end
 
 end

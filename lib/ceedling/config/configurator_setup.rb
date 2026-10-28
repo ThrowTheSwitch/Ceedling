@@ -12,7 +12,7 @@ require 'ceedling/config/line_marker_suppressors'
 
 class ConfiguratorSetup
 
-  constructor :configurator_builder, :configurator_validator, :loginator, :reportinator, :file_wrapper,
+  constructor :configurator_builder, :configurator_validator, :configurator_paths_validator, :loginator, :reportinator, :file_wrapper,
               :system_wrapper, :tool_executor
 
   # Path collections, in order, since each builds on those before it
@@ -354,13 +354,13 @@ class ConfiguratorSetup
   end
 
   def validate_simple_paths(paths, *keys)
-    return paths.map { |path| @configurator_validator.validate_filepath_simple( path, *keys ) }.all?
+    return paths.map { |path| @configurator_paths_validator.validate_filepath_simple( path, *keys ) }.all?
   end
 
   # Each entry of :paths or :files must exist and yield what its section expects
   def validate_path_section(config, section, entries_validation)
     return config[section].keys.sort.map do |key|
-      @configurator_validator.validate_path_list( config, section, key ) & @configurator_validator.public_send( entries_validation, config, key )
+      @configurator_paths_validator.validate_path_list( config, section, key ) & @configurator_paths_validator.public_send( entries_validation, config, key )
     end.all?
   end
 

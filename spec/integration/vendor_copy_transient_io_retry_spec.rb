@@ -52,6 +52,7 @@ describe 'Vendor copy into build/vendor (integration)' do
     ConfiguratorSetup.new(
       configurator_builder:   IntegrationSpecHelpers::NULL,
       configurator_validator: IntegrationSpecHelpers::NULL,
+      configurator_paths_validator: IntegrationSpecHelpers::NULL,
       loginator:              IntegrationSpecHelpers::NULL,
       reportinator:           IntegrationSpecHelpers::NULL,
       file_wrapper:           file_wrapper,

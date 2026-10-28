@@ -20,6 +20,7 @@ describe ConfiguratorSetup do
   before(:each) do
     @configurator_builder   = double('ConfiguratorBuilder')
     @configurator_validator = double('ConfiguratorValidator')
+    @paths_validator        = double('ConfiguratorPathsValidator')
     @loginator              = double('Loginator')
     @reportinator           = Reportinator.new
     @file_wrapper           = double('FileWrapper')
@@ -30,6 +31,7 @@ describe ConfiguratorSetup do
       {
         configurator_builder:   @configurator_builder,
         configurator_validator: @configurator_validator,
+        configurator_paths_validator: @paths_validator,
         loginator:              @loginator,
         reportinator:           @reportinator,
         file_wrapper:           @file_wrapper,
@@ -370,19 +372,19 @@ describe ConfiguratorSetup do
       end
 
       it "checks helper paths, plugin load paths, and every :paths and :files entry" do
-        allow(@configurator_validator).to receive_messages(
+        allow(@paths_validator).to receive_messages(
           validate_filepath_simple: true, validate_path_list: true, validate_paths_entries: true, validate_files_entries: true
         )
 
         expect(@setup.validate_paths( config )).to be true
-        expect(@configurator_validator).to have_received(:validate_filepath_simple).with('helper.h', :cmock, :unity_helper_path)
-        expect(@configurator_validator).to have_received(:validate_filepath_simple).with('plugins', :plugins, :load_paths)
-        expect(@configurator_validator).to have_received(:validate_paths_entries).with(config, :source)
-        expect(@configurator_validator).to have_received(:validate_files_entries).with(config, :support)
+        expect(@paths_validator).to have_received(:validate_filepath_simple).with('helper.h', :cmock, :unity_helper_path)
+        expect(@paths_validator).to have_received(:validate_filepath_simple).with('plugins', :plugins, :load_paths)
+        expect(@paths_validator).to have_received(:validate_paths_entries).with(config, :source)
+        expect(@paths_validator).to have_received(:validate_files_entries).with(config, :support)
       end
 
       it "fails when any check fails" do
-        allow(@configurator_validator).to receive_messages(
+        allow(@paths_validator).to receive_messages(
           validate_filepath_simple: true, validate_path_list: true, validate_paths_entries: true, validate_files_entries: false
         )
 

@@ -20,7 +20,7 @@ describe 'Configurator validation (integration)' do
   include ConfigYamlHelper
   include ConfiguratorIntegrationHelpers
 
-  let(:validator) { configurator_objects( quiet_loginator )[:configurator_validator] }
+  let(:validator) { configurator_objects( quiet_loginator )[:configurator_paths_validator] }
 
   let(:files) do
     {
