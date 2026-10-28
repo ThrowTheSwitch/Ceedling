@@ -39,19 +39,13 @@ class ReportTestsTeamcityStdout < Plugin
   def pre_test(test)
     return if !@output_enabled
 
-    # Generate a new Flow ID and store it in test hash. A suite is named for its test, which
-    # tells same-named tests in different directories apart.
+    # Generate a new Flow ID and open the test's suite. A suite is named for its test,
+    # which tells same-named tests in different directories apart.
     @mutex.synchronize do
       @flowid_count += 1
       @suites[test] = { :flowid => @flowid_count, :name => escape( @ceedling[:file_path_utils].form_test_name( test ) ) }
-    end
 
-    # Generate first TeamCity service message
-    @mutex.synchronize do
-      teamcity_service_message(
-        "testSuiteStarted name='#{@suites[test][:name]}'",
-        @suites[test][:flowid]
-      )
+      teamcity_service_message( "testSuiteStarted name='#{@suites[test][:name]}'", @suites[test][:flowid] )
     end
   end
 
@@ -59,86 +53,17 @@ class ReportTestsTeamcityStdout < Plugin
   def post_test_fixture_execute(arg_hash)
     return if !@output_enabled
 
-    flowId = nil
-    test_key = arg_hash[:test_filepath]
-
-    # Get unique Flow ID
-    @mutex.synchronize do
-      flowId = @suites[test_key][:flowid]
-    end
+    flowId = @mutex.synchronize { @suites[arg_hash[:test_filepath]][:flowid] }
 
     # Gather test results for this test executable
     results = @ceedling[:plugin_reportinator].assemble_test_results( [arg_hash[:result_file]] )
-
-    # Apportion total run time of test executable equally to each test case within it.
-    duration_ms = results[:total_time] * 1000.0
-    avg_duration = (duration_ms / [1, results[:counts][:passed] + results[:counts][:failed]].max).round
+    duration = average_duration( results )
 
     context = arg_hash[:context]
 
-    # Handle test case successes within the test executable
-    results[:successes].each do |success|
-      filepath = File.join( success[:source][:dirname], File.basename( success[:source][:basename], '.*' ) )
-
-      # puts(success)
-      success[:collection].each do |test|
-        _test = test[:test]
-
-        # Create Java-like name per TeamCity convention `package_or_namespace.ClassName.TestName`
-        #  ==> `context.TestFilepath.TestCaseName`
-        teamcity_service_message(
-          "testStarted name='#{context}.#{filepath}.#{_test}'",
-          flowId
-        )
-
-        teamcity_service_message(
-          "testFinished name='#{context}.#{filepath}.#{_test}' duration='#{avg_duration}'",
-          flowId
-        )
-      end
-    end
-
-    # Handle test case failures within the test executable
-    results[:failures].each do |failure|
-      failure[:collection].each do |test|
-        filepath = File.join( failure[:source][:dirname], File.basename( failure[:source][:basename], '.*' ) )
-
-        _test = test[:test]
-        _message = test[:message]
-
-        teamcity_service_message(
-          "testStarted name='#{context}.#{filepath}.#{_test}'",
-          flowId
-        )
-
-        # Create Java-like name per TeamCity convention `package_or_namespace.ClassName.TestName`
-        #  ==> `context.TestFilepath.TestCaseName`
-        _message = 
-          "testFailed name='#{context}.#{filepath}.#{_test}' " + 
-          "message='#{escape(_message)}' " +
-          "details='File: #{failure[:source][:file]} Line: #{test[:line]}'"
-
-        teamcity_service_message( _message, flowId )
-
-        teamcity_service_message(
-          "testFinished name='#{context}.#{filepath}.#{_test}' duration='#{avg_duration}'",
-          flowId
-        )
-      end
-    end
-
-    # Handle ignored tests
-    results[:ignores].each do |ignored|
-      ignored[:collection].each do |test|
-        filepath = File.join( ignored[:source][:dirname], File.basename( ignored[:source][:basename], '.*' ) )
-        _test = test[:test]
-
-        service_message = "testIgnored name='#{context}.#{filepath}.#{_test}'"
-
-        teamcity_service_message( service_message, flowId )
-      end
-    end
-
+    report_successes( results[:successes], context, flowId, duration )
+    report_failures( results[:failures], context, flowId, duration )
+    report_ignores( results[:ignores], context, flowId )
   end
 
   # `Plugin` build step hook
@@ -156,6 +81,53 @@ class ReportTestsTeamcityStdout < Plugin
   ### Private
 
   private
+
+  # Total run time of a test executable, apportioned equally to each test case within it, in ms
+  def average_duration(results)
+    duration_ms = results[:total_time] * 1000.0
+
+    return (duration_ms / [1, results[:counts][:passed] + results[:counts][:failed]].max).round
+  end
+
+  def report_successes(successes, context, flowId, duration)
+    successes.each do |success|
+      success[:collection].each do |test|
+        name = test_name( context, success[:source], test[:test] )
+
+        teamcity_service_message( "testStarted name='#{name}'", flowId )
+        teamcity_service_message( "testFinished name='#{name}' duration='#{duration}'", flowId )
+      end
+    end
+  end
+
+  def report_failures(failures, context, flowId, duration)
+    failures.each do |failure|
+      failure[:collection].each do |test|
+        name = test_name( context, failure[:source], test[:test] )
+        details = escape( "File: #{failure[:source][:file]} Line: #{test[:line]}" )
+
+        teamcity_service_message( "testStarted name='#{name}'", flowId )
+        teamcity_service_message( "testFailed name='#{name}' message='#{escape( test[:message] )}' details='#{details}'", flowId )
+        teamcity_service_message( "testFinished name='#{name}' duration='#{duration}'", flowId )
+      end
+    end
+  end
+
+  def report_ignores(ignores, context, flowId)
+    ignores.each do |ignored|
+      ignored[:collection].each do |test|
+        teamcity_service_message( "testIgnored name='#{test_name( context, ignored[:source], test[:test] )}'", flowId )
+      end
+    end
+  end
+
+  # A Java-like name per TeamCity convention `package_or_namespace.ClassName.TestName`
+  #  ==> `context.TestFilepath.TestCaseName`, escaped
+  def test_name(context, source, test)
+    filepath = File.join( source[:dirname], File.basename( source[:basename], '.*' ) )
+
+    return escape( "#{context}.#{filepath}.#{test}" )
+  end
 
   def escape(string)
     # https://www.jetbrains.com/help/teamcity/service-messages.html#Escaped+Values

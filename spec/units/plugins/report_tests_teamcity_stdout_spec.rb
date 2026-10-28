@@ -127,6 +127,61 @@ describe ReportTestsTeamcityStdout do
     end
   end
 
+  # GH #1369: a reserved character in a test's path, case name, or failure location
+  # closed the quoted value early, and TeamCity misread or dropped the message
+  describe '#post_test_fixture_execute escaping' do
+    RESERVED_DIR  = "test/o'neil|x"
+    RESERVED_CASE = 'test_value(1, [2])'
+    ESCAPED_NAME  = "test.test/o|'neil||x/TestFoo.test_value(1, |[2|])"
+
+    before(:each) do
+      @plugin.instance_variable_get(:@suites)['test/TestFoo.c'] = { flowid: 1 }
+    end
+
+    def run_with(results)
+      allow(@plugin_reportinator).to receive(:assemble_test_results).and_return(
+        { total_time: 1.0, counts: { passed: 1, failed: 1 }, successes: [], failures: [], ignores: [] }.merge( results )
+      )
+      @plugin.post_test_fixture_execute(context: :test, test_filepath: 'test/TestFoo.c', result_file: 'x')
+    end
+
+    def source
+      { dirname: RESERVED_DIR, basename: 'TestFoo.c', file: "#{RESERVED_DIR}/TestFoo.c" }
+    end
+
+    it 'escapes the names of testStarted and testFinished for a passing test' do
+      run_with( successes: [ { source: source, collection: [ { test: RESERVED_CASE } ] } ] )
+
+      expect(@stream.string).to include(
+        "##teamcity[testStarted name='#{ESCAPED_NAME}' flowId='1']\n",
+        "##teamcity[testFinished name='#{ESCAPED_NAME}' duration='500' flowId='1']\n"
+      )
+    end
+
+    it 'escapes the name and details of testFailed, and the names around it' do
+      run_with( failures: [ { source: source, collection: [ { test: RESERVED_CASE, line: 7, message: 'm' } ] } ] )
+
+      expect(@stream.string).to include(
+        "##teamcity[testStarted name='#{ESCAPED_NAME}' flowId='1']\n",
+        "##teamcity[testFailed name='#{ESCAPED_NAME}' message='m' details='File: test/o|'neil||x/TestFoo.c Line: 7' flowId='1']\n",
+        "##teamcity[testFinished name='#{ESCAPED_NAME}' duration='500' flowId='1']\n"
+      )
+    end
+
+    it 'escapes the name of testIgnored' do
+      run_with( ignores: [ { source: source, collection: [ { test: RESERVED_CASE } ] } ] )
+
+      expect(@stream.string).to eq( "##teamcity[testIgnored name='#{ESCAPED_NAME}' flowId='1']\n" )
+    end
+
+    it 'keeps each message on one physical line when a name holds a line break' do
+      run_with( ignores: [ { source: source, collection: [ { test: "test_a\r\ntest_b" } ] } ] )
+
+      expect(@stream.string.lines.length).to eq( 1 )
+      expect(@stream.string).to include( 'TestFoo.test_a|r|ntest_b' )
+    end
+  end
+
   # A TeamCity service message must stay on one physical line
   describe '#escape' do
     it 'escapes a real newline as |n, keeping the whole message on one physical output line' do

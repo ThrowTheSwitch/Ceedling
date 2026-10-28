@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'tmpdir'
+require 'fileutils'
 require 'rake'
 
 # bin/versionator.rb (pulled in transitively by cli_helper.rb) uses bare `require`
@@ -22,6 +23,7 @@ $: << File.join(here, '../../../lib')
 require 'cli_helper'
 require 'app_cfg'
 require 'ceedling/ruby_expandinator'
+require 'ceedling/file_wrapper'
 # CliHelper#test_task? references RakeTaskRegistry::TAG_TEST, but only
 # bin/cli_handler.rb requires this file in the real bootstrap (loaded before
 # cli_helper.rb's methods are ever called) -- required directly here since this
@@ -132,6 +134,96 @@ describe CliHelper do
       allow(@file_wrapper).to receive(:directory?).with( File.join( '/ceedling', DOCS_SITE_LOCAL_PATH ) ).and_return( false )
 
       expect(@cli_helper.docs_bundle?( '/ceedling' )).to be( false )
+    end
+  end
+
+  # GH #1371: `upgrade` detected exported documentation by a file exports stopped writing in
+  # 1.1.0, and refreshed it by deleting all of docs/, the project's own files included
+  describe 'exported documentation' do
+    LEGACY_PAGES = %w[BreakingChanges.md CODE_OF_CONDUCT.md CONTRIBUTING.md CeedlingPacket.md CeedlingUpgrade.md
+                      Changelog.md PluginDevelopmentGuide.md ReleaseNotes.md ThrowTheSwitchCodingStandard.md]
+
+    around(:each) do |example|
+      Dir.mktmpdir { |dir| @docs = dir; example.run }
+    end
+
+    before(:each) do
+      @actions = double('actionator')
+      @removed = []
+      allow(@actions).to receive(:remove_directory) { |path| @removed << path }
+      @helper = described_class.new({
+        :file_wrapper       => FileWrapper.new( {:loginator => @loginator, :verbosinator => double('verbosinator').as_null_object} ),
+        :actionator         => @actions,
+        :config_walkinator  => @config_walkinator,
+        :path_validator     => @path_validator,
+        :rake_task_registry => @rake_task_registry,
+        :loginator          => @loginator,
+        :reportinator       => double('reportinator').as_null_object,
+        :system_wrapper     => double('system_wrapper').as_null_object,
+        :ruby_expandinator  => @ruby_expandinator,
+      })
+    end
+
+    def make(*entries)
+      entries.each do |entry|
+        path = File.join( @docs, entry )
+        entry.end_with?( '/' ) ? FileUtils.mkdir_p( path ) : (FileUtils.mkdir_p( File.dirname( path ) ); File.write( path, '' ))
+      end
+    end
+
+    def removed
+      return @removed.map { |path| path.delete_prefix( File.join( @docs, '' ) ) }.sort
+    end
+
+    describe '#exported_docs?' do
+      it 'finds an export of 1.1.0 or later by its framework or bundle directories' do
+        %w[ceedling/ unity/ cmock/ c_exception/].each do |entry|
+          Dir.mktmpdir do |dir|
+            FileUtils.mkdir_p( File.join( dir, entry ) )
+            expect(@helper.exported_docs?( dir )).to be( true ), entry
+          end
+        end
+      end
+
+      it 'finds a 1.0.x export by its CeedlingPacket.md' do
+        make( 'CeedlingPacket.md' )
+
+        expect(@helper.exported_docs?( @docs )).to be( true )
+      end
+
+      it 'finds nothing in a docs/ holding only the project\'s own files, or in no docs/ at all' do
+        make( 'notes.md', 'design/' )
+
+        expect(@helper.exported_docs?( @docs )).to be( false )
+        expect(@helper.exported_docs?( File.join( @docs, 'absent' ) )).to be( false )
+      end
+    end
+
+    describe '#remove_exported_docs' do
+      it 'removes what an export of 1.1.0 or later wrote, and leaves the project\'s own files' do
+        make( 'ceedling/', 'unity/', 'cmock/', 'c_exception/', 'license.txt', 'LICENSE.md', 'notes.md', 'design/' )
+
+        @helper.remove_exported_docs( @docs, keep_bundle: false )
+
+        # The export overwrites its own license, so a license file in docs/ may be the project's
+        expect(removed).to eq( %w[c_exception ceedling cmock unity] )
+      end
+
+      it 'removes what a 1.0.x export wrote, and leaves the project\'s own files' do
+        make( *LEGACY_PAGES, 'plugins/', 'unity/', 'LICENSE.txt', 'notes.md' )
+
+        @helper.remove_exported_docs( @docs, keep_bundle: false )
+
+        expect(removed).to eq( (LEGACY_PAGES + %w[plugins unity]).sort )
+      end
+
+      it 'keeps the HTML bundle when the source has none to replace it with' do
+        make( 'ceedling/', 'unity/' )
+
+        @helper.remove_exported_docs( @docs, keep_bundle: true )
+
+        expect(removed).to eq( %w[unity] )
+      end
     end
   end
 

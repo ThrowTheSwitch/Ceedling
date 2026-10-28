@@ -178,12 +178,11 @@ class CliHandler
     @actions.remove_directory( vendor_path )
     @helper.vendor_tools( app_cfg[:ceedling_root_path], path )
 
-    # Recreate documentation if we find docs/ subdirectory
-    docs_path = File.join( path, 'docs' )
-    founds_docs = @helper.project_exists?( path, :&, File.join( 'docs', 'CeedlingPacket.md' ) )
-    if founds_docs
-      @actions.remove_directory( docs_path )
-      @helper.copy_docs( app_cfg[:ceedling_root_path], File.join( path, DOCS_SUBDIR ) )
+    # Refresh documentation an export wrote, leaving the project's own files in docs/
+    docs_path = File.join( path, DOCS_SUBDIR )
+    if @helper.exported_docs?( docs_path )
+      @helper.remove_exported_docs( docs_path, keep_bundle: !@helper.docs_bundle?( app_cfg[:ceedling_root_path] ) )
+      @helper.copy_docs( app_cfg[:ceedling_root_path], docs_path )
     end
 
     @loginator.console( "\nUpgraded project at #{path}/\n", LogLabels::TITLE )

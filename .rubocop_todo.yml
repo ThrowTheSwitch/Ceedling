@@ -119,7 +119,6 @@ Metrics/AbcSize:
     - 'plugins/gcov/lib/gcovr_reportinator.rb'
     - 'plugins/gcov/lib/reportgenerator_reportinator.rb'
     - 'plugins/module_generator/lib/module_generator.rb'
-    - 'plugins/report_tests_teamcity_stdout/lib/report_tests_teamcity_stdout.rb'
     - 'plugins/valgrind/lib/valgrind.rb'
 
 # Offense count: 32
@@ -277,7 +276,6 @@ Metrics/CyclomaticComplexity:
     - 'plugins/gcov/lib/gcov_reportinator.rb'
     - 'plugins/gcov/lib/gcovr_reportinator.rb'
     - 'plugins/gcov/lib/reportgenerator_reportinator.rb'
-    - 'plugins/report_tests_teamcity_stdout/lib/report_tests_teamcity_stdout.rb'
 
 # Offense count: 286
 # Configuration parameters: CountComments, Max, CountAsOne, AllowedMethods, AllowedPatterns.
@@ -380,7 +378,6 @@ Metrics/MethodLength:
     - 'plugins/gcov/lib/reportgenerator_reportinator.rb'
     - 'plugins/module_generator/Rakefile'
     - 'plugins/report_tests_raw_output_log/lib/report_tests_raw_output_log.rb'
-    - 'plugins/report_tests_teamcity_stdout/lib/report_tests_teamcity_stdout.rb'
     - 'plugins/valgrind/lib/valgrind.rb'
 
 # Offense count: 3

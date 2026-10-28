@@ -356,6 +356,43 @@ describe CliHandler do
   end
 end
 
+  # GH #1371: exported documentation was never refreshed, and refreshing it removed all of docs/
+  describe '#upgrade_project documentation' do
+    before(:each) do
+      @app_cfg = CeedlingAppConfig.new
+      @source = Installation.new( 'elsewhere/ceedling' )
+      @docs = File.join( 'proj', 'docs' )
+      allow(@path_validator).to receive(:standardize_paths) { |*paths| paths }
+      allow(@launchinator).to receive(:resolve) { |app_cfg:, **| app_cfg.set_paths( @source.root ); @source }
+      allow(@helper).to receive(:project_exists?).and_return( true )
+    end
+
+    def upgrade
+      @cli_handler.upgrade_project( {}, @app_cfg, {:project => 'project.yml'}, 'proj' )
+    end
+
+    it 'replaces what an export wrote, keeping the bundle when the source has none, then exports again' do
+      allow(@helper).to receive(:exported_docs?).with( @docs ).and_return( true )
+      allow(@helper).to receive(:docs_bundle?).with( @source.root ).and_return( false )
+
+      expect(@helper).to receive(:remove_exported_docs).with( @docs, keep_bundle: true ).ordered
+      expect(@helper).to receive(:copy_docs).with( @source.root, @docs ).ordered
+
+      upgrade()
+
+      expect(@actionator).to_not have_received(:remove_directory).with( @docs )
+    end
+
+    it 'leaves docs/ alone when it holds no export' do
+      allow(@helper).to receive(:exported_docs?).with( @docs ).and_return( false )
+
+      upgrade()
+
+      expect(@helper).to_not have_received(:remove_exported_docs)
+      expect(@helper).to_not have_received(:copy_docs)
+    end
+  end
+
   describe '#list_examples' do
     it 'raises when no example projects are found' do
       allow(@helper).to receive(:lookup_example_projects).and_return( [] )

@@ -237,9 +237,14 @@ new project (default is your working directory).
 
 ### `ceedling upgrade PATH`
 
-Upgrade vendored installation of Ceedling for an existing project 
-along with any locally installed documentation bundles. `PATH` is 
-required and should be the root of the project to upgrade.
+Upgrade vendored installation of Ceedling for an existing project. `PATH`
+is required and should be the root of the project to upgrade.
+
+If the project holds documentation that `new --docs` or `example --docs`
+exported, `upgrade` replaces it with the documentation of the Ceedling it
+copies. It replaces only what the export wrote, and leaves your own files in
+`docs/`. If that Ceedling has no HTML documentation bundle (a `--local` copy
+carries none), `upgrade` keeps the project’s existing bundle.
 
 `upgrade` copies the Ceedling you run, or the installation the
 `WHICH_CEEDLING` environment variable names. It never copies from a
