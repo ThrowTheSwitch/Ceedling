@@ -120,9 +120,9 @@ use `ceedling example`.
 
 ### [`ceedling upgrade`](../getting-started/command-line.md#ceedling-upgrade-path)
 
-  Upgrade vendored installation of Ceedling for an existing project 
-  along with any locally installed documentation bundles, from the Ceedling
-  you run.
+  Upgrade vendored installation of Ceedling for an existing project, from
+  the version of Ceedling you run, along with any documentation `--docs` 
+  exported.
 
 ---
 
