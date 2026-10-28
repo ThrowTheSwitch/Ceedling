@@ -121,7 +121,8 @@ use `ceedling example`.
 ### [`ceedling upgrade`](../getting-started/command-line.md#ceedling-upgrade-path)
 
   Upgrade vendored installation of Ceedling for an existing project 
-  along with any locally installed documentation bundles.
+  along with any locally installed documentation bundles, from the Ceedling
+  you run.
 
 ---
 
@@ -144,6 +145,11 @@ build identifier and Ceedling’s path of origin.
        Unity => #.#.#
   CException => #.#.#
 ```
+
+!!! note
+    For a project configuration that selects another Ceedling installation
+    different from the installation that launched Ceedling, `version` reports 
+    the launcher and the selected application versions separately.
 
 If the short SHA information is unavailable such as in local 
 development, the SHA is omitted. The source for this string is 

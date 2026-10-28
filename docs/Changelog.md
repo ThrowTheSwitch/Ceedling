@@ -8,6 +8,8 @@ This changelog is complemented by three other documents:
 1. 💔 **[Breaking Changes](BreakingChanges.md)** for a list of impacts to existing Ceedling projects.
 1. 🐛 **[Known Issues](KnownIssues.md)** for a list of presently known problems and limitations.
 
+Each release has its own section, listing only what changed in that release.
+
 ---
 
 # [1.2.2] — Unreleased
@@ -26,10 +28,19 @@ This changelog is complemented by three other documents:
    - An entry using `..` is no longer rejected with test preprocessing on.
 - A “Multiple files matched” notice now prints once a build, not once for every lookup that makes the same choice.
 - Fixed a [delta build](https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/builds/) keeping a test executable or release artifact after a source file left the build — deleted, excluded through `:files`, or moved outside `:paths` — while every other object was unchanged. A test kept passing on the removed code, even with `--force-test-rerun`, and a release artifact kept it. A link now rebuilds whenever its list of objects changes.
+- [#1365](https://github.com/ThrowTheSwitch/Ceedling/issues/1365) Fixed a project that selects another Ceedling installation — through [`:project` ↳ `:which_ceedling`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/which-ceedling/), `WHICH_CEEDLING`, or a `vendor/ceedling/` copy — running on a mix of both installations’ code. Across versions it failed outright: a 1.2.1 `ceedling` could not run a project vendoring 1.2.0. A development checkout selected this way silently ran partly on the gem’s code. Each command now runs whole in the installation it selects (see _Changed_).
+- Fixed [`ceedling version`](https://docs.throwtheswitch.org/Ceedling/1.2.0/getting-started/command-line/#ceedling-version) reporting the launcher’s version number for the application and ignoring a project’s `:which_ceedling`. It now reads your project file and takes `--project` and `--mixin`.
+- Fixed `new`, `example`, and `examples` running the launcher’s code with the installation `WHICH_CEEDLING` selects, and `new` recording the launcher’s version in `:ceedling_version:`. `docs` ignored the selection. It now exports the selected installation’s documentation, or the launcher’s with a notice when the selected installation holds none, as a `--local` copy does not.
+- Fixed `ceedling upgrade` run inside a `--local` project deleting the project’s vendored Ceedling and then failing to copy from it (see [Breaking Changes](BreakingChanges.md)).
+- Fixed a `--local` project’s `./ceedling` failing since 1.1.0 with “`vendor/ceedling/vendor/unity/test/targets` does not exist”. Vendoring now copies Unity’s built-in mixins. Re-vendor an existing project with `ceedling upgrade`.
+- Fixed the `./ceedling` launch script splitting arguments that contain spaces, such as `--test-case="adds two"` or an inline YAML `--mixin`.
+- Fixed backslashes in a `WHICH_CEEDLING` or `:which_ceedling` path going unconverted.
 
 ## ⚠️ Changed
 
 - Each test’s build output, results, and logs now sit beneath [its path from the project root](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#test-names-build-output). `test/unit/test_calc.c`, once `unit/test_calc`, is now `test/unit/test_calc`, and a test at its root gains its root (e.g. `build/artifacts/valgrind/test/test_calc.log`). The first build after upgrading rebuilds everything once and logs a warning saying so. Run `ceedling clobber` to remove the output left in the old layout, which [coverage reports](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/gcov/) would otherwise still read. See [Breaking Changes](BreakingChanges.md).
+- A command that selects another Ceedling installation now runs in that installation’s own process, handed off by the `ceedling` command you run. Both sides log a notice naming both versions. Every command except `version` hands off this way, adding about 0.2 seconds. See [Which Ceedling](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/which-ceedling/) and [Breaking Changes](BreakingChanges.md).
+- A 1.2.2 application loaded by an older launcher into its own process warns and restarts in its own process.
 
 ---
 

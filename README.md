@@ -671,11 +671,9 @@ of your choosing.
 #### Attaching a Ceedling version to your project
 
 Ceedling can be installed as a globally available Ruby gem. Ceedling can 
-also deploy all its guts into your project instead. This allows it to 
-be used without worrying about external dependencies. More importantly, 
-you don’t have to worry about Ceedling changing outside of your project 
-just because you updated your gems. No need to worry about changes in 
-Unity or CMock breaking your build in the future.
+also deploy all its guts into your project instead. Your project then keeps
+its own copy of Ceedling, Unity, and CMock, which updating your gems leaves
+alone. Ceedling itself still needs Ruby and the gems Ceedling depends on.
 
 To use Ceedling this way, tell it you want a local copy when you create
 your project:
@@ -688,6 +686,10 @@ This will install all of Unity, CMock, and Ceedling itself
 into a new folder `vendor/` inside your project `YourNewProjectName/`.
 It will create the same simple empty directory structure for you with
 `src/` and `test/` folders as the standard `new` command.
+
+Run your project with `./ceedling` from its root (`.\ceedling.cmd` on
+Windows), or with the gem’s `ceedling` command. Either way, your project’s copy
+runs every command. The gem’s `ceedling` command hands off to it.
 
 ### Running build & plugin tasks
 
@@ -728,11 +730,11 @@ If you want to force a vendored version of Ceedling inside your project to
 upgrade to match your latest gem, no problem. Just do the following…
 
 ```shell
- > ceedling upgrade --local YourNewProjectName
+ > ceedling upgrade YourProjectName
 ```
 
-Just like with the `new` command, an `upgrade` should be executed from 
-within the root directory of your project.
+`upgrade` takes the path to your project and copies the Ceedling you run
+into it, along with Unity and CMock.
 
 ### Git integration
 

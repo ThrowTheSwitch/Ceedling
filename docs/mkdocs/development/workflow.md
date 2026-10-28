@@ -18,6 +18,25 @@ The handoff from (1) to (2) involves:
    processing, validation, and plugin loading.
 2. Triggering the build/plugin task named at the command line.
 
+### Running your repository with Which Ceedling
+
+Depending on what you’re working on you may need to run Ceedling using
+a specialized approach.
+
+To run your local repository on a project, either:
+
+1. Point `:project` ↳ `:which_ceedling` or `WHICH_CEEDLING` at your
+   repository, then run the `ceedling` command you already have installed. It hands
+   each command off to your repository’s own `bin/ceedling`, so your changes
+   in both `bin/` and `lib/` run.
+1. Run your repository’s `bin/ceedling` directly. Do this for a command or
+   option only your repository knows, or to attach a debugger.
+
+See [Which Ceedling: Ceedling development][which-ceedling-dev] for the
+details and caveats.
+
+[which-ceedling-dev]: ../configuration/which-ceedling.md#ceedling-development
+
 ## Installation options
 
 ### Local installation
@@ -623,30 +642,5 @@ provides an **Open in Browser** button.
 [MkDocs]: https://www.mkdocs.org
 [Material theme]: https://squidfunk.github.io/mkdocs-material/
 [mike]: https://github.com/jimporter/mike
-
-## `bin/` vs. `lib/`
-
-Most of Ceedling’s functionality is contained in the application code residing 
-in `lib/`. Ceedling’s command line handling, startup configuration, project
-file loading, and mixin handling are contained in a “bootloader” in `bin/`.
-The code in `bin/` is the source of the `ceedling` command line tool and 
-launches the application from `lib/`.
-
-Depending on what you’re working on you may need to run Ceedling using
-a specialized approach.
-
-If you are only working in `lib/`, you can:
-
-1. Run Ceedling using the `ceedling` command line utility you already have 
-   installed. The code in `bin/` will run from your locally installed gem or 
-   from within your Docker container and launch the Ceedling application for 
-   you.
-1. Modify a project file by setting a path value for `:project` ↳ `:which_ceedling` 
-   that points to the local copy of Ceedling you cloned from the Git repository.
-
-If you are working in `bin/`, running `ceedling` at the command line will not
-call your modified code. Instead, you must execute the path to the executable
-`ceedling` in the `bin/` folder of the local Ceedling repository you are 
-working on.
 
 <br/><br/>

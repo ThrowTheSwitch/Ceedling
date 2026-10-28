@@ -105,8 +105,12 @@ release, then commit and continue development.
 1. Push `v1.2.0-pre.1` from `next_version`. CI creates a GitHub-available pre-release.
 2. Iterate with `-pre.2` and onward as needed.
 3. Bring the work onto `master` once the release is ready.
-4. Push `v1.2.0` from `master`. CI creates the GitHub-available release and publishes the gem to RubyGems.org.
-5. Bump `lib/version.rb` and continue development.
+4. Date the release’s sections in `docs/Changelog.md`, `docs/BreakingChanges.md`, and `docs/KnownIssues.md`.
+5. Push `v1.2.0` from `master`. CI creates the GitHub-available release and publishes the gem to RubyGems.org.
+6. Bump `lib/version.rb` and continue development. Open the next release’s sections:
+   - `docs/Changelog.md`: a new, empty section.
+   - `docs/KnownIssues.md`: a copy of the released section. Remove each issue the next release resolves, and close the released section by naming it.
+   - `docs/BreakingChanges.md`: a section only once the next release breaks something.
 
 ## Documentation deployment
 
