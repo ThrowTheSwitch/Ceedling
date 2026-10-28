@@ -155,7 +155,9 @@ jobs:
     # being ANDed with it -- every job below with a needs: dependency carries this
     # same explicit success() alongside its own draft-PR guard for that reason.
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    runs-on: ubuntu-latest
+    # Pinned: ruby/setup-ruby has no pre-built Ruby 3.0, 3.1, or 3.5 preview for ubuntu-26.04,
+    # which ubuntu-latest became in October 2026. The 3.5 leg also carries the ASan+UBSan build.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
