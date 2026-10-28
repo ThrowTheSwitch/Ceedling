@@ -341,6 +341,21 @@ describe Gcov do
       expect(succeeding).to have_received(:generate_reports)
     end
 
+    # GH #1366: every violated coverage threshold is its own entry, so each gets its own bullet
+    it 'registers each coverage threshold violation as its own build failure' do
+      failing = double('failing_reportinator', artifacts_path: nil, name: 'Gcovr', summary: '')
+      allow(failing).to receive(:generate_reports).and_raise(GcovrThresholdError.new(['line low', 'condition low']))
+
+      plugin_manager = double('plugin_manager')
+      expect(plugin_manager).to receive(:register_build_failure).with(GCOV_SYM, 'line low').ordered
+      expect(plugin_manager).to receive(:register_build_failure).with(GCOV_SYM, 'condition low').ordered
+
+      gcov = build_gcov({}, reports_enabled: true, configurator: configurator, ceedling: { plugin_manager: plugin_manager })
+      allow(gcov).to receive(:build_reportinators).and_return([failing])
+
+      gcov.generate_coverage_reports
+    end
+
     it 'logs the reportinator summary only when non-empty' do
       r_with_summary = double('r1', artifacts_path: nil, generate_reports: nil, name: 'R1', summary: 'coverage: 80%')
       r_without       = double('r2', artifacts_path: nil, generate_reports: nil, name: 'R2', summary: '')

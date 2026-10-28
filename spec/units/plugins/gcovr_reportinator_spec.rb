@@ -336,25 +336,30 @@ describe GcovrReportinator do
   describe '#gcovr_exec_exception?' do
     let(:reportinator) { build_reportinator({}) }
 
-    it 'raises one exception listing every violated :fail_under_* threshold, not just the first' do
-      opts = { fail_under_line: 90, fail_under_branch: 80 }
-      # exit code 6 = bit 2 (line) | bit 4 (branch)
+    LINE_AND_CONDITION_STDERR = "(ERROR) Failed minimum line coverage (got 76.7%, minimum 100.0%)\n" +
+                                "(ERROR) Failed minimum condition coverage (got 92.9%, minimum 100.0%)\n"
+
+    # GH #1366: a run failing line and condition coverage reported the line message twice
+    it 'raises one error carrying every violated threshold, each with its own gcovr message' do
+      opts = { fail_under_line: 100, fail_under_decision: 100 }
+      # exit code 10 = bit 2 (line) | bit 8 (condition or decision)
       expect {
-        reportinator.send(:gcovr_exec_exception?, opts, 6, true, { stderr: '' })
-      }.to raise_error(CeedlingException) { |ex|
-        expect(ex.message).to match(/Line coverage/)
-        expect(ex.message).to match(/Branch coverage/)
+        reportinator.send(:gcovr_exec_exception?, opts, 10, true, { stderr: LINE_AND_CONDITION_STDERR })
+      }.to raise_error(GcovrThresholdError) { |ex|
+        expect(ex.violations).to eq( [
+          'Gcovr ⏩️ Failed minimum line coverage (got 76.7%, minimum 100.0%)',
+          'Gcovr ⏩️ Failed minimum condition coverage (got 92.9%, minimum 100.0%)'
+        ] )
       }
     end
 
-    it 'logs (not raises) every violation, clearing their bits, when boom is false' do
-      opts = { fail_under_line: 90, fail_under_branch: 80 }
-      expect(loginator).to receive(:log).with(/Line coverage/, Verbosity::COMPLAIN)
-      expect(loginator).to receive(:log).with(/Branch coverage/, Verbosity::COMPLAIN)
-      # exit code 6 (line bit 2 | branch bit 4) is fully explained by the two configured
-      # thresholds above -- both bits clear, leaving no unexplained problem.
+    it 'logs (not raises) every violation once, clearing their bits, when boom is false' do
+      opts = { fail_under_line: 100, fail_under_decision: 100 }
+      expect(loginator).to receive(:log).with(/Failed minimum line coverage/, Verbosity::COMPLAIN).once
+      expect(loginator).to receive(:log).with(/Failed minimum condition coverage/, Verbosity::COMPLAIN).once
+      # Both bits are explained by the two configured thresholds, leaving no unexplained problem
       expect(
-        reportinator.send(:gcovr_exec_exception?, opts, 6, false, { stderr: '' })
+        reportinator.send(:gcovr_exec_exception?, opts, 10, false, { stderr: LINE_AND_CONDITION_STDERR })
       ).to eq(false)
     end
 
@@ -695,39 +700,6 @@ describe GcovrReportinator do
 
       result = reportinator.send(:run_gcovr, { report_root: '.', report_exclude: [] }, '', true)
       expect(result).to eq(shell_result)
-    end
-  end
-
-  describe '#extract_gcovr_error_message' do
-    let(:reportinator) { build_reportinator({}) }
-
-    it 'returns nil for a nil shell_result' do
-      expect( reportinator.send(:extract_gcovr_error_message, nil) ).to be_nil
-    end
-
-    it 'returns nil when stderr is empty' do
-      expect( reportinator.send(:extract_gcovr_error_message, { stderr: '' }) ).to be_nil
-    end
-
-    it 'captures, trims, and capitalizes an (ERROR)-prefixed line' do
-      result = reportinator.send(:extract_gcovr_error_message, { stderr: "(ERROR) something went wrong.\n" })
-      expect(result).to eq('Something went wrong.')
-    end
-
-    it 'matches case-insensitively' do
-      result = reportinator.send(:extract_gcovr_error_message, { stderr: "error: lowercase message\n" })
-      expect(result).to eq('Lowercase message')
-    end
-
-    it 'uses only the first matching line among several' do
-      stderr = "(ERROR) first problem\n(ERROR) second problem\n"
-      result = reportinator.send(:extract_gcovr_error_message, { stderr: stderr })
-      expect(result).to eq('First problem')
-    end
-
-    it 'returns nil when no error-prefixed line exists' do
-      result = reportinator.send(:extract_gcovr_error_message, { stderr: "just some noise\n" })
-      expect(result).to be_nil
     end
   end
 

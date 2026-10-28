@@ -12,6 +12,7 @@ require 'gcov_constants'
 require 'gcov_types'
 require 'gcov_reportinator'
 require 'console_reportinator'
+require 'gcovr_thresholds'
 require 'gcovr_reportinator'
 require 'reportgenerator_reportinator'
 
@@ -382,6 +383,9 @@ class Gcov < Plugin
 
       begin
         reportinator.generate_reports( @configurator.project_config_hash )
+      rescue GcovrThresholdError => ex
+        # Each violated threshold is its own build failure
+        ex.violations.each { |violation| @ceedling[:plugin_manager].register_build_failure( GCOV_SYM, violation ) }
       rescue => ex
         # Register the exception as a build failure
         @ceedling[:plugin_manager].register_build_failure( GCOV_SYM, ex.message )
