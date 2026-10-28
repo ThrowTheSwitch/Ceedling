@@ -8,8 +8,13 @@
 require 'pathname'
 require 'ceedling/exceptions'
 require 'ceedling/file_path_utils'
+require 'ceedling/project_paths'
 
 class IncludePathinator
+
+  NO_HEADERS_MESSAGE = "No header files found in project.\n" +
+                       "Add search paths to :paths ↳ :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.\n" +
+                       "Verify header files with `ceedling paths:include` and\\or `ceedling files:include`."
 
   constructor :configurator, :test_context_extractor, :loginator, :file_wrapper
 
@@ -52,12 +57,7 @@ class IncludePathinator
 
     headers.uniq!
 
-    if headers.length == 0
-      error = "No header files found in project.\n" +
-              "Add search paths to :paths ↳ :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.\n" +
-              "Verify header files with `ceedling paths:include` and\\or `ceedling files:include`."
-      @loginator.log( error, Verbosity::COMPLAIN )
-    end
+    @loginator.log( NO_HEADERS_MESSAGE, Verbosity::COMPLAIN ) if headers.empty?
 
     return headers
   end
@@ -90,7 +90,7 @@ class IncludePathinator
     roots = search_paths.map { |path| FilePathUtils.no_decorators( path ) }.reject(&:empty?)
 
     @configurator.collection_all_headers.to_a.each_with_index.sort_by do |header, index|
-      rank = roots.index { |root| header == root || header.start_with?( root + '/' ) } || roots.length
+      rank = roots.index { |root| ProjectPaths.contains?( root, header ) } || roots.length
       [rank, index]
     end.map(&:first)
   end

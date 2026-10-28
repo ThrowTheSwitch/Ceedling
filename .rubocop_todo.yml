@@ -316,7 +316,6 @@ Metrics/MethodLength:
     - 'lib/ceedling/generators/generator_test_results_backtrace.rb'
     - 'lib/ceedling/generators/generator_test_results_sanity_checker.rb'
     - 'lib/ceedling/generators/generator_test_runner.rb'
-    - 'lib/ceedling/includes/include_pathinator.rb'
     - 'lib/ceedling/includes/includes.rb'
     - 'lib/ceedling/loginator.rb'
     - 'lib/ceedling/parsing_parcels.rb'

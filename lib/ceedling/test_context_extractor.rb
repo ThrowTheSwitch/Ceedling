@@ -10,6 +10,7 @@ require 'ceedling/partials/partials'
 require 'ceedling/file_path_utils'
 require 'ceedling/generators/generator_test_runner' # From lib/ not vendor/unity/auto
 require 'ceedling/encodinator'
+require 'ceedling/project_paths'
 
 class TestContextExtractor
 
@@ -304,9 +305,12 @@ class TestContextExtractor
     end
   end
 
+  # Each path is recorded in the one spelling collections use, so its headers are never
+  # collected a second time under another
   def ingest_build_directive_include_paths(filepath, include_paths)
     return if include_paths.empty?
 
+    include_paths = include_paths.map { |path| ProjectPaths.canonical( path ) }
     key = form_file_key( filepath )
 
     @lock.synchronize do

@@ -124,6 +124,17 @@ describe TestContextExtractor do
     end
   end
 
+  # GH #1370 audit (G10): a TEST_INCLUDE_PATH() spelled another way gave its headers a
+  # second spelling beside the collection's own
+  context "#ingest_build_directive_include_paths" do
+    it "records each path in the one spelling every collection uses" do
+      @extractor.ingest_build_directive_include_paths( "path", ["./include/dir", "include\\other/", File.join( Dir.pwd, "inc" )] )
+
+      expect( @extractor.lookup_include_paths_list( "path" ) ).to eq( ["include/dir", "include/other", "inc"] )
+      expect( @extractor.lookup_all_include_paths ).to eq( ["include/dir", "include/other", "inc"] )
+    end
+  end
+
   context "#store_build_directives_cache and #load_build_directives_cache" do
     it "writes the currently known source files and include paths for a test file to the given cache filepath" do
       @extractor.ingest_build_directive_source_files( "path", ["extra.c"] )
