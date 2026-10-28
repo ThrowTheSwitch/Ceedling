@@ -221,11 +221,11 @@ class FilePathUtils
     form_build_context_path(BUILD_OUT_DIR, name: name, context: context)
   end
 
+  # Where a build places the object of `filepath`: below its test's build path, or below the
+  # context's own output root for a source compiled outside any test
   def form_test_object_filepath(filepath, name: nil, context: nil)
-    File.join(
-      form_build_context_path(BUILD_OUT_DIR, name: name, context: context),
-      File.basename(filepath).ext(@configurator.extension_object.primary)
-    )
+    root = form_build_context_path( BUILD_OUT_DIR, name: name, context: context )
+    return build_filepath( filepath, root: root, ext: @configurator.extension_object.primary, generated_roots: generated_roots( name ) )
   end
 
   # As `form_test_runners_path`: a test's results sit beneath the directories of its name,
@@ -251,19 +251,14 @@ class FilePathUtils
     form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
   end
 
-  # `filepath` is an already-mirrored object path -- recovering the mirrored subdirectory
-  # beyond the test's own build root and re-rooting it under this test's dependencies path
-  # keeps this dependencies file alongside the same-named object it accompanies, rather
-  # than colliding with another object's dependencies file at a shared flat basename.
-  # Without a test identity to recover that build root from, there's no mirroring to do --
-  # the dependencies file stays exactly where its context-level directory alone places it.
+  # `filepath` is an object path. Its dependencies file sits at the object's own place below
+  # the dependencies root, so it never collides with another same-named object's. Without a
+  # test, that place is below the context's own output root.
   def form_test_dependencies_filepath(filepath, name: nil, context: nil)
     root     = form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
     basename = File.basename(filepath).ext(@configurator.extension_dependencies.primary)
 
-    return File.join(root, basename) if name.nil?
-
-    subdir = PathMirror.relative_subdir( filepath, [form_test_build_path(name, context: context)] )
+    subdir = ProjectPaths.subdir_below( form_test_build_path( name, context: context ), File.dirname( filepath ) ) || ''
     return subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
   end
 
@@ -588,17 +583,19 @@ class FilePathUtils
   # correct construction for a list that's already the real, final answer.
   def mirror_build_objects(files, root:, ext:, generated_roots: [])
     sources = @file_wrapper.instantiate_file_list_literal( files ).to_a.uniq
-    objects = sources.map do |file|
-      subdir   = form_build_subpath( file, generated_roots: generated_roots )
-      basename = File.basename( file ).ext( ext )
-      subdir.empty? ? File.join( root, basename ) : File.join( root, subdir, basename )
-    end
+    objects = sources.map { |file| build_filepath( file, root: root, ext: ext, generated_roots: generated_roots ) }
 
     validate_distinct_build_files!( sources, objects )
     return @file_wrapper.instantiate_file_list_literal( objects )
   end
 
-  # Where below a build output root a file of `file` lands. A file below one of the
+  def build_filepath(file, root:, ext:, generated_roots:)
+    subdir   = form_build_subpath( file, generated_roots: generated_roots )
+    basename = File.basename( file ).ext( ext )
+    return subdir.empty? ? File.join( root, basename ) : File.join( root, subdir, basename )
+  end
+
+  # Where below a build output root the build file of `file` lands. A file below one of the
   # caller's generated roots (a test's mocks or Partials) mirrors below that root; one
   # below the build root otherwise (vendored frameworks, runners) lands flat; and any other
   # lands by its own path from the project root, so two sources never share one.

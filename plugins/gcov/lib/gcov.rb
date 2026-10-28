@@ -164,7 +164,7 @@ class Gcov < Plugin
       untested_sources.each do |filepath|
         filename     = File.basename(filepath)
         object       = @file_path_utils.form_test_object_filepath( filepath, context:GCOV_SYM )
-        dependencies = @file_path_utils.form_test_dependencies_filepath( filepath, context:GCOV_SYM )
+        dependencies = @file_path_utils.form_test_dependencies_filepath( object, context:GCOV_SYM )
         search_paths = @configurator.collection_paths_include
         # Defines and flags resolve as a tested source's do, against this source's filepath
         defines      = @test_build_setup.context_defines( context:GCOV_SYM, filepath:filepath )
@@ -196,6 +196,9 @@ class Gcov < Plugin
           skipped += 1
           next
         end
+
+        @file_wrapper.mkdir( File.dirname( object ) )
+        @file_wrapper.mkdir( File.dirname( dependencies ) )
 
         begin
           @generator.generate_object_file_c(

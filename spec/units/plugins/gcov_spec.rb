@@ -176,7 +176,7 @@ describe Gcov do
     let(:test_build_setup) { double('test_build_setup', context_defines: [], flags: []) }
     let(:dependinator)    { double('dependinator', register: nil, register_gcc_deps_file: nil, flush: nil, mark_fresh: nil) }
     let(:generator)       { double('generator', generate_object_file_c: nil) }
-    let(:file_wrapper)    { double('file_wrapper', exist?: false) }
+    let(:file_wrapper)    { double('file_wrapper', exist?: false, mkdir: nil) }
     let(:test_invoker)    { double('test_invoker') }
 
     def build_process_gcov(project_config, ivars = {})
@@ -240,6 +240,16 @@ describe Gcov do
         gcov = build_process_gcov({ gcov_untested_sources: GCOV_UNTESTED_SOURCES_COMPILE, gcov_mcdc: false })
         expect(generator).to_not receive(:generate_object_file_c)
         expect(dependinator).to_not receive(:mark_fresh)
+        gcov.process_untested_sources(sources: ['src/a.c'])
+      end
+
+      # An untested source's object sits at its path below the output root, in a
+      # directory no test build made
+      it 'makes the object\'s and dependencies file\'s directories before compiling' do
+        allow(dependinator).to receive(:stale?).and_return(true)
+        gcov = build_process_gcov({ gcov_untested_sources: GCOV_UNTESTED_SOURCES_COMPILE, gcov_mcdc: false })
+        expect(file_wrapper).to receive(:mkdir).with('build/gcov/out/src').twice.ordered
+        expect(generator).to receive(:generate_object_file_c).ordered
         gcov.process_untested_sources(sources: ['src/a.c'])
       end
 

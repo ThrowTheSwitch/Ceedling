@@ -8,6 +8,7 @@
 require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/project_paths'
 require 'dependency_spec'
 require 'dependency_commands'
 require 'dependency_environment'
@@ -275,7 +276,7 @@ class Dependencies < Plugin
   end
 
   def compile(spec, source, search_paths)
-    object = object_for( spec, source )
+    object = prepared_object( spec, source )
     @ceedling[:generator].generate_object_file_c(
       tool:         TOOLS_DEPS_COMPILER,
       module_name:  File.basename( source ).ext,
@@ -291,7 +292,7 @@ class Dependencies < Plugin
   end
 
   def assemble(spec, source)
-    object = object_for( spec, source )
+    object = prepared_object( spec, source )
     @ceedling[:generator].generate_object_file_asm(
       tool: TOOLS_DEPS_ASSEMBLER, module_name: File.basename( source ).ext, context: DEPENDENCIES_SYM,
       source: source, object: object
@@ -299,8 +300,14 @@ class Dependencies < Plugin
     return object
   end
 
-  def object_for(spec, source)
-    return File.join( spec.build_path, File.basename( source ).ext( EXTENSION_OBJECT.primary ) )
+  # A source's object sits at the source's own path below the dependency's source path, so
+  # same-named sources in different directories keep apart. Its directory is made here.
+  def prepared_object(spec, source)
+    subdir = ProjectPaths.subdir_below( spec.source_path, File.dirname( source ) ) || ''
+    object = File.join( spec.build_path, subdir, File.basename( source ).ext( EXTENSION_OBJECT.primary ) )
+
+    @ceedling[:file_wrapper].mkdir( File.dirname( object ) )
+    return object
   end
 
   def copy_library(built, destination)

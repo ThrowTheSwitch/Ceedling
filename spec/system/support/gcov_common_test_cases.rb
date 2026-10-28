@@ -630,7 +630,7 @@ module GcovCommonTestCases
 
         output = @c.ceedling_build_exec("gcov:untested_sources")
         expect(@c.last_exit_status).to eq(0), output
-        expect(File.exist?('build/gcov/out/needs_define.o')).to eq true
+        expect(File.exist?('build/gcov/out/src/needs_define.o')).to eq true
       end
     end
   end
@@ -651,7 +651,29 @@ module GcovCommonTestCases
         output = @c.ceedling_build_exec("gcov:untested_sources")
         expect(@c.last_exit_status).to eq(0)
         expect(output).not_to match(/TESTED:\s+\d/) # No test build/run occurred
-        expect(File.exist?('build/gcov/out/uncovered_example_file.o')).to eq true
+        expect(File.exist?('build/gcov/out/src/uncovered_example_file.o')).to eq true
+      end
+    end
+  end
+
+  # Untested sources compile outside any test, so only their paths keep same-named ones apart
+  def project_with_gcov_untested_sources_sharing_a_name
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        add_gcov_option("untested_sources", ":compile")
+        FileUtils.cp test_asset_path("example_file.h"), 'src/'
+        FileUtils.cp test_asset_path("example_file.c"), 'src/'
+        FileUtils.cp test_asset_path("test_example_file_success.c"), 'test/'
+        FileUtils.mkdir_p( ['src/a', 'src/b'] )
+        File.write( 'src/a/util.c', "int util_a(void) { return 1; }\n" )
+        File.write( 'src/b/util.c', "int util_b(void) { return 2; }\n" )
+
+        output = @c.ceedling_build_exec("gcov:untested_sources")
+        expect(@c.last_exit_status).to eq(0), output
+        expect(File.exist?('build/gcov/out/src/a/util.o')).to eq true
+        expect(File.exist?('build/gcov/out/src/b/util.o')).to eq true
+        expect(Dir.glob('build/gcov/dependencies/**/util.d').sort).to eq(['build/gcov/dependencies/src/a/util.d', 'build/gcov/dependencies/src/b/util.d'])
       end
     end
   end

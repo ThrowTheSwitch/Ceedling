@@ -454,9 +454,51 @@ describe FilePathUtils do
         .to eq('build/gcov/dependencies/AdcCalc.d')
     end
 
+    # A context's own objects, outside any test, are placed by their sources' paths too
+    it 'follows a context\'s own object below its output root when no test identity is given' do
+      expect( @fpu.form_test_dependencies_filepath('build/gcov/out/src/a/util.o', context: :gcov) )
+        .to eq('build/gcov/dependencies/src/a/util.d')
+    end
+
     it 'forms the list filepath directly alongside the object, wherever it was mirrored to' do
       expect( @fpu.form_test_build_list_filepath('build/test/out/TestFoo/calculators/AdcCalc.o') )
         .to eq('build/test/out/TestFoo/calculators/AdcCalc.lst')
+    end
+  end
+
+  describe '#form_test_object_filepath' do
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper')
+      allow(@file_wrapper).to receive(:check_path_length)
+      @fpu = described_class.new({
+        :configurator => @configurator,
+        :file_wrapper => @file_wrapper
+      })
+
+      allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
+      allow(@configurator).to receive(:project_use_partials).and_return( true )
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+    end
+
+    it 'places a test\'s object where its build does, by the source\'s path from the project root' do
+      expect( @fpu.form_test_object_filepath('src/a/util.c', name: 'test/test_util', context: :gcov) )
+        .to eq('build/gcov/out/test/test_util/src/a/util.o')
+    end
+
+    # Untested sources compile outside any test, so same-named ones keep apart only by path
+    it 'places a context\'s own objects apart, by their sources\' paths, when no test is named' do
+      expect( @fpu.form_test_object_filepath('src/a/util.c', context: :gcov) ).to eq('build/gcov/out/src/a/util.o')
+      expect( @fpu.form_test_object_filepath('src/b/util.c', context: :gcov) ).to eq('build/gcov/out/src/b/util.o')
+    end
+
+    it 'places a test\'s generated Partial below its own subdirectory, as its build does' do
+      expect(
+        @fpu.form_test_object_filepath('build/test/partials/test/test_util/drv/ceedling_partial_util_impl.c', name: 'test/test_util', context: :gcov)
+      ).to eq('build/gcov/out/test/test_util/drv/ceedling_partial_util_impl.o')
     end
   end
 

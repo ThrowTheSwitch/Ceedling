@@ -236,7 +236,7 @@ class Bullseye < Plugin
       untested_sources.each do |filepath|
         filename     = File.basename(filepath)
         object       = @ceedling[:file_path_utils].form_test_object_filepath( filepath, context: BULLSEYE_SYM )
-        dependencies = @ceedling[:file_path_utils].form_test_dependencies_filepath( filepath, context: BULLSEYE_SYM )
+        dependencies = @ceedling[:file_path_utils].form_test_dependencies_filepath( object, context: BULLSEYE_SYM )
         search_paths = @configurator.collection_paths_include
         # Defines and flags resolve as a tested source's do, against this source's filepath
         flags        = @ceedling[:test_build_setup].flags( context: BULLSEYE_SYM, operation: OPERATION_COMPILE_SYM, filepath: filepath )
@@ -262,6 +262,9 @@ class Bullseye < Plugin
           skipped += 1
           next
         end
+
+        @file_wrapper.mkdir( File.dirname( object ) )
+        @file_wrapper.mkdir( File.dirname( dependencies ) )
 
         begin
           @ceedling[:generator].generate_object_file_c(
