@@ -51,35 +51,14 @@ class FileFinderHelper
     raise "No path list provided for #{description} search" if path_list.nil?
     return pathname if path_list.include?(pathname)
 
-    # Determine the closest match by looking for matching path segments, especially paths ENDING the same
-    best_match_index = 0
-    best_match_value = 0
-    reverse_original_pieces = pathname.split(/(?:\\|\/)/).reverse
-    path_list.each_with_index do |p,i|
-      reverse_match_pieces = p.split(/(?:\\|\/)/).reverse
-      # 
-      num = reverse_original_pieces.zip(reverse_match_pieces).inject(0){|s,v| v[0] == v[1] ? s+3 : s}
-      num = reverse_original_pieces.inject(num){|s,v| reverse_match_pieces.include?(v) ? s+1 : s}
-      if num > best_match_value
-        best_match_index = i 
-        best_match_value = num 
-      end
-    end
+    # The closest match shares the most path segments, especially those ENDING the same. The
+    # first of equally close matches wins, and the first path when none shares a segment.
+    pieces = reversed_pieces( pathname )
+    scores = path_list.map { |path| match_score( pieces, reversed_pieces( path ) ) }
 
-    # If none of the options were a good match, handle to the best of our ability
-    if (best_match_value == 0) && (reverse_original_pieces.length > 0)
-      case (complain)
-        when :error
-          raise CeedlingException.new( "Found no path `#{pathname}` in #{description} search paths." ) 
-        when :warn
-          warning = "Found no path `#{pathname}` in #{description} search paths."
-          @loginator.log( warning, Verbosity::COMPLAIN )
-        when :ignore 
-          # nothing further to do
-      end
-    end
+    complain_of_no_path( "Found no path `#{pathname}` in #{description} search paths.", complain ) if scores.max.to_i.zero? and !pieces.empty?
 
-    return path_list[best_match_index]
+    return path_list[best_index( scores )]
   end
 
   def handle_missing_file(filename, complain)
@@ -128,6 +107,26 @@ class FileFinderHelper
     @loginator.log( warning, Verbosity::COMPLAIN )
   end
 
+  def reversed_pieces(path)
+    return path.split( /(?:\\|\/)/ ).reverse
+  end
+
+  # Three for each trailing segment matched in place, and one for each segment found anywhere
+  def match_score(pieces, candidate)
+    in_place = pieces.zip( candidate ).count { |piece, other| piece == other }
+    return (in_place * 3) + pieces.count { |piece| candidate.include?( piece ) }
+  end
+
+  # The first of the highest scores, or the first when none scores
+  def best_index(scores)
+    best = scores.max.to_i
+    return best.zero? ? 0 : scores.index( best )
+  end
+
+  def complain_of_no_path(message, complain)
+    raise CeedlingException.new( message ) if complain == :error
+
+    @loginator.log( message, Verbosity::COMPLAIN ) if complain == :warn
+  end
+
 end
-
-
