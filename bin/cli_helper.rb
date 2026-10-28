@@ -482,8 +482,7 @@ class CliHelper
   end
 
 
-  # Whether an installation holds the HTML documentation bundle, which a gem does and no
-  # `--local` copy does
+  # Whether an installation holds the HTML documentation bundle. A `--local` copy carries none.
   def docs_bundle?(ceedling_root)
     return @file_wrapper.directory?( File.join( ceedling_root, DOCS_SITE_LOCAL_PATH ) )
   end

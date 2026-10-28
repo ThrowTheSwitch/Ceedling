@@ -334,23 +334,27 @@ describe CliHandler do
       end
     end
 
-    it 'upgrade hands off by environment alone, never to a vendor/ceedling it detects' do
-      expect(@launchinator).to receive(:launch).with( env: {}, app_cfg: @app_cfg, detect_vendor: false ).and_raise( HandedOff )
+  it 'upgrade hands off by environment alone, never to a vendor/ceedling it detects' do
+    source = Installation.new( 'elsewhere/ceedling' )
+    expect(@launchinator).to receive(:resolve).with( env: {}, app_cfg: @app_cfg, detect_vendor: false ).and_return( source )
+    expect(@launchinator).to receive(:proceed).with( target: source, app_cfg: @app_cfg ).and_raise( HandedOff )
 
-      expect { @cli_handler.upgrade_project( {}, @app_cfg, {:project => 'project.yml'}, 'proj' ) }.to raise_error( HandedOff )
-      expect_no_work_done()
-    end
-
-    it 'upgrade refuses to re-vendor a project from its own vendored copy' do
-      allow(@helper).to receive(:project_exists?).and_return( true )
-      allow(@launchinator).to receive(:launch) { |app_cfg:, **| app_cfg.set_paths( 'proj/vendor/ceedling' ) }
-
-      expect {
-        @cli_handler.upgrade_project( {}, @app_cfg, {:project => 'project.yml'}, 'proj' )
-      }.to raise_error( CeedlingException, /Cannot upgrade #{Regexp.escape( File.expand_path( 'proj/vendor/ceedling' ) )}\/ from itself/ )
-      expect(@actionator).to_not have_received(:remove_directory)
-    end
+    expect { @cli_handler.upgrade_project( {}, @app_cfg, {:project => 'project.yml'}, 'proj' ) }.to raise_error( HandedOff )
+    expect_no_work_done()
   end
+
+  # GH #1365: WHICH_CEEDLING naming the project's own copy would hand off to it, and a copy
+  # before 1.2.2 deletes itself as its own source
+  it 'upgrade refuses to re-vendor a project from its own vendored copy, before handing off to it' do
+    allow(@launchinator).to receive(:resolve) { |app_cfg:, **| app_cfg.set_paths( 'proj/vendor/ceedling' ); Installation.new( 'proj/vendor/ceedling' ) }
+
+    expect {
+      @cli_handler.upgrade_project( {'WHICH_CEEDLING' => 'proj/vendor/ceedling'}, @app_cfg, {:project => 'project.yml'}, 'proj' )
+    }.to raise_error( CeedlingException, /Cannot upgrade #{Regexp.escape( File.expand_path( 'proj/vendor/ceedling' ) )}\/ from itself/ )
+    expect(@launchinator).to_not have_received(:proceed)
+    expect_no_work_done()
+  end
+end
 
   describe '#list_examples' do
     it 'raises when no example projects are found' do

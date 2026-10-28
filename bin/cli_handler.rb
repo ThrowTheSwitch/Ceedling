@@ -153,21 +153,21 @@ class CliHandler
   def upgrade_project(env, app_cfg, options, path)
     @helper.set_verbosity( options[:verbosity] )
 
-    # The source is the Ceedling running or WHICH_CEEDLING. A detected vendor/ceedling/ is
-    # likely the very copy being replaced.
-    @launchinator.launch( env:env, app_cfg:app_cfg, detect_vendor:false )
-
     path, options[:project] = @path_validator.standardize_paths( path, options[:project] )
+
+    # The source is the Ceedling running or WHICH_CEEDLING. A detected vendor/ceedling/ is
+    # likely the very copy being replaced. A source that is that copy is refused before any
+    # hand-off, since an older copy would delete itself.
+    source = @launchinator.resolve( env:env, app_cfg:app_cfg, detect_vendor:false )
+    if source == Installation.new( File.join( path, 'vendor', 'ceedling' ) )
+      raise CeedlingException.new( "Cannot upgrade #{source.root}/ from itself. Run `upgrade` with the Ceedling to upgrade to, or set WHICH_CEEDLING." )
+    end
+    @launchinator.proceed( target:source, app_cfg:app_cfg )
 
     # Check for existing project
     if !@helper.project_exists?( path, :&, options[:project], 'vendor/ceedling/lib/version.rb' )
       msg = "Could not find an existing project at #{path}/."
       raise msg
-    end
-
-    source = Installation.new( app_cfg[:ceedling_root_path] )
-    if source == Installation.new( File.join( path, 'vendor', 'ceedling' ) )
-      raise CeedlingException.new( "Cannot upgrade #{source.root}/ from itself. Run `upgrade` with the Ceedling to upgrade to, or set WHICH_CEEDLING." )
     end
 
     # Source paths for project tasks resolve in relation to this path
