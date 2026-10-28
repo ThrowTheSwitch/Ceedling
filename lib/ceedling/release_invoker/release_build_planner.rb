@@ -73,7 +73,7 @@ class ReleaseBuildPlanner
     when '.a'
       compiler[:arguments] << '-fPIC' unless compiler[:arguments].include?('-fPIC')
       linker[:executable] = 'ar'
-      linker[:arguments]  = ['rcs', '${2}', '${1}']
+      linker[:arguments]  = ['rcs', '"${2}"', '"${1}"']
     end
   end
 

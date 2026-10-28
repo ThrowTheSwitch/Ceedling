@@ -124,7 +124,7 @@ describe ReleaseBuildPlanner do
 
         expect( compiler[:arguments] ).to include( '-fPIC' )
         expect( linker[:executable] ).to eq( 'ar' )
-        expect( linker[:arguments] ).to eq( ['rcs', '${2}', '${1}'] )
+        expect( linker[:arguments] ).to eq( ['rcs', '"${2}"', '"${1}"'] )
       end
 
       it "does nothing when the project has configured its own compiler tool (not the Ceedling default)" do

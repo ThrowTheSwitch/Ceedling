@@ -16,7 +16,7 @@ DEFAULT_CPPCHECK_TOOL = {
   :optional => true.freeze,
   :arguments => [
     '-I"${1}"'.freeze,
-    '${2}'.freeze
+    '"${2}"'.freeze
   ].freeze
 }
 

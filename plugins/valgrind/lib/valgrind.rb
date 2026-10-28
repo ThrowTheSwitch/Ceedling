@@ -255,7 +255,7 @@ class Valgrind < Plugin
     end
 
     arguments += Array( config[:valgrind_arguments] )
-    arguments << '${1}'
+    arguments << '"${1}"'
 
     return arguments
   end

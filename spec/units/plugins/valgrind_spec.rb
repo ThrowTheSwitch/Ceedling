@@ -247,10 +247,10 @@ describe Valgrind do
       expect(arg_hash[:tool][:arguments]).to include('--log-file="artifacts/valgrind/test_thing.log"')
     end
 
-    it 'appends the executable substitution token last' do
+    it 'appends the executable substitution token last, quoted as a path' do
       _valgrind, arg_hash = register({ valgrind_arguments: ['--leak-check=full'] })
 
-      expect(arg_hash[:tool][:arguments].last).to eq('${1}')
+      expect(arg_hash[:tool][:arguments].last).to eq('"${1}"')
     end
 
     it 'places user arguments after the plugin-managed ones' do
