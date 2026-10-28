@@ -49,13 +49,14 @@ module GcovrThresholds
     return violations, exitcode
   end
 
-  # gcovr's own messages, grouped by the coverage kind each names
+  # gcovr's own messages, grouped by the coverage kind each names. Older gcovr writes them in
+  # lowercase, so the first letter is capitalized, and nothing else is touched.
   def self.messages_by_kind(stderr)
     messages = Hash.new { |hash, kind| hash[kind] = [] }
 
     stderr.to_s.each_line do |line|
       match = line.match( MESSAGE_PATTERN )
-      messages[match[2].downcase] << match[1] if match
+      messages[match[2].downcase] << match[1].sub( /\A./ ) { |first| first.upcase } if match
     end
 
     return messages

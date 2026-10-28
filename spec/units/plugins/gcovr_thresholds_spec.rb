@@ -54,6 +54,14 @@ describe GcovrThresholds do
     expect(violations.first).to end_with( 'Failed minimum branch coverage (got 1.0%, minimum MC/DC 2.0%)' )
   end
 
+  it 'capitalizes the message an older gcovr writes in lowercase' do
+    stderr = "(ERROR) failed minimum line coverage (got 50.0%, minimum 90.0%)\n"
+
+    violations, _ = decode( {fail_under_line: 90}, 2, stderr )
+
+    expect(violations).to eq( ['Gcovr ⏩️ Failed minimum line coverage (got 50.0%, minimum 90.0%)'] )
+  end
+
   it 'falls back to a description of each violated threshold that gcovr gave no message for' do
     violations, _ = decode( {fail_under_line: 90, fail_under_decision: 80, fail_under_function: 70}, 2 | 8 | 16, '' )
 
