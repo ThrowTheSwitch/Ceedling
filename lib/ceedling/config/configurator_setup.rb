@@ -18,6 +18,7 @@ class ConfiguratorSetup
   # Path collections, in order, since each builds on those before it
   PATH_COLLECTIONS = [
     :expand_all_path_globs,
+    :collect_mirror_roots,
     :collect_vendor_paths,
     :collect_source_and_include_paths,
     :collect_source_include_vendor_paths,

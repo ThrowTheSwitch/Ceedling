@@ -165,6 +165,30 @@ describe FilePathCollectionUtils do
   end
 
 
+  # GH #1370 audit: the places build files mirror below, each spelled canonically
+  describe '#collect_mirror_roots' do
+    it 'roots a recursive entry at its base, and a plain entry at itself' do
+      expect( @fpcu.collect_mirror_roots( ['src/**', 'include', './lib/*'] ) ).to eq( ['src', 'include', 'lib'] )
+    end
+
+    it 'roots a glob within an entry at each directory it names' do
+      named = [File.expand_path( 'components/a/include' ), File.expand_path( 'components/b/include' )]
+      allow( @file_wrapper ).to receive( :directory_listing ).with( 'components/*/include' ).and_return( named )
+      allow( @file_wrapper ).to receive( :directory? ).and_return( true )
+
+      expect( @fpcu.collect_mirror_roots( ['components/*/include'] ) ).to eq( ['components/a/include', 'components/b/include'] )
+    end
+
+    it 'roots nothing at a `-:` exclusion, and keeps a literal bracket as part of a name' do
+      expect( @fpcu.collect_mirror_roots( ['+:src/**', '-:src/exp', 'src/[legacy]'] ) ).to eq( ['src', 'src/[legacy]'] )
+    end
+
+    it 'returns [] for nil input' do
+      expect( @fpcu.collect_mirror_roots( nil ) ).to eq( [] )
+    end
+  end
+
+
   describe '#revise_filelist' do
 
     # Nil list must not crash; return an empty FileList

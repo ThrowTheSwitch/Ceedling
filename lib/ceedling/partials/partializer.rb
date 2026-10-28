@@ -124,7 +124,7 @@ class Partializer
   def _find_module_source(_module, header_filepath)
     return @file_finder.find_source_file(_module, :ignore) if _names_directory?(_module)
 
-    subdir = header_filepath.nil? ? '' : PathMirror.relative_subdir(header_filepath, _header_roots)
+    subdir = header_filepath.nil? ? '' : PathMirror.relative_subdir_from_clean_roots( header_filepath, _header_roots )
 
     unless subdir.empty?
       found = @file_finder.find_source_file(File.join(subdir, _module), :ignore)
@@ -135,9 +135,9 @@ class Partializer
   end
 
   # Roots a header can sit beneath, which is what its mirrored directory is measured
-  # against. The same three the project-wide header collection is built from.
+  # against: those the project-wide header collection is built from, spelled canonically.
   def _header_roots
-    @configurator.paths_test + @configurator.paths_support + @configurator.paths_include
+    @configurator.collection_mirror_roots_headers
   end
 
   # Either separator counts. The qualifier validation already rejects a backslash-rooted

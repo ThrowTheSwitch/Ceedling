@@ -86,6 +86,13 @@ module IntegrationSpecHelpers
     def paths_include
       ['src']
     end
+    # The canonical roots configuration computes from the three above
+    def collection_mirror_roots_headers
+      ['test', 'src']
+    end
+    def collection_mirror_roots_include
+      ['src']
+    end
     def collection_paths_support
       []
     end

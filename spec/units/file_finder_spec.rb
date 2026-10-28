@@ -124,6 +124,7 @@ describe FileFinder do
       allow(@configurator).to receive(:paths_test).and_return( [] )
       allow(@configurator).to receive(:paths_support).and_return( [] )
       allow(@configurator).to receive(:paths_include).and_return( ['src'] )
+      allow(@configurator).to receive(:collection_mirror_roots_headers).and_return( ['src'] )
     end
 
     it 'resolves a mock header and its own mirrored subdirectory below the configured root that contains it' do
@@ -149,8 +150,19 @@ describe FileFinder do
     it 'places a mock of a header far above a `..` root flat, below the root that truly holds it' do
       allow(@configurator).to receive(:collection_all_headers).and_return( ['../../../opt/sdk/inc/sdk.h'] )
       allow(@configurator).to receive(:paths_include).and_return( ['../**', File.expand_path( '../../../opt/sdk/inc' )] )
+      allow(@configurator).to receive(:collection_mirror_roots_headers).and_return( ['..', '../../../opt/sdk/inc'] )
 
       _source, subdir = @file_finder.resolve_mock('Mocksdk.h')
+      expect(subdir).to eq('')
+    end
+
+    # GH #1370 audit (G4): a glob in the middle of a root names one root per directory
+    it 'places a mock below the directory a glob-middle root names, not below the glob\'s base' do
+      allow(@configurator).to receive(:collection_all_headers).and_return( ['components/foo/include/foo.h'] )
+      allow(@configurator).to receive(:paths_include).and_return( ['components/*/include'] )
+      allow(@configurator).to receive(:collection_mirror_roots_headers).and_return( ['components/foo/include'] )
+
+      _source, subdir = @file_finder.resolve_mock('Mockfoo.h')
       expect(subdir).to eq('')
     end
 
@@ -279,6 +291,7 @@ describe FileFinder do
       allow(@configurator).to receive(:project_build_root).and_return('build')
       # No configured include root contains these queries, so each keeps its own path.
       allow(@configurator).to receive(:paths_include).and_return( ['include'] )
+      allow(@configurator).to receive(:collection_mirror_roots_include).and_return( ['include'] )
 
       # A test is named by its path without its extension. Examples that look tests up by
       # name give their own test collection.

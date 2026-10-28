@@ -162,7 +162,7 @@ describe 'Path scenarios (integration)' do
       end
     end
 
-    it 'finds the source of a header below a glob-middle include root', pending: "G4: a glob-middle include root is matched as written" do
+    it 'finds the source of a header below a glob-middle include root' do
       in_workspace( files ) do |ws, app|
         scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['components/*/src'], include: ['components/*/include'] } ) )
 

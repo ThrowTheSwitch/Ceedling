@@ -173,6 +173,18 @@ class ConfiguratorBuilder
   end
 
 
+  # The roots build files mirror below, each spelled canonically: those of :paths ↳ :include,
+  # for a header's source by convention, and those every header is collected from
+  def collect_mirror_roots(in_hash)
+    include = Array( in_hash[:paths_include] )
+    headers = Array( in_hash[:paths_test] ) + Array( in_hash[:paths_support] ) + include
+
+    return {
+      :collection_mirror_roots_include => @file_path_collection_utils.collect_mirror_roots( include ),
+      :collection_mirror_roots_headers => @file_path_collection_utils.collect_mirror_roots( headers )
+    }
+  end
+
   def collect_source_and_include_paths(in_hash)
     return {
       :collection_paths_source_and_include =>

@@ -751,7 +751,7 @@ describe ConfiguratorSetup do
   context "#build_project_collections" do
     it "merges every path and file collection" do
       collections = [
-        :expand_all_path_globs, :collect_vendor_paths, :collect_source_and_include_paths, :collect_source_include_vendor_paths,
+        :expand_all_path_globs, :collect_mirror_roots, :collect_vendor_paths, :collect_source_and_include_paths, :collect_source_include_vendor_paths,
         :collect_test_support_source_include_paths, :collect_test_support_source_include_vendor_paths, :collect_assembly,
         :collect_headers, :collect_release_build_input, :collect_existing_test_build_input,
         :collect_release_artifact_extra_link_objects, :collect_test_fixture_extra_link_objects, :collect_vendor_framework_sources

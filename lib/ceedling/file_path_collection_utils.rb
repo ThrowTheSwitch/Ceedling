@@ -48,6 +48,16 @@ class FilePathCollectionUtils
     return result
   end
 
+  # The places files below `entries` mirror below, each spelled canonically: the base of a
+  # `/**` or `/*` entry, every directory a glob within an entry names, or the entry itself.
+  # A `-:` exclusion roots nothing. A `[`/`]` is part of a name (#104), never a glob.
+  def collect_mirror_roots(entries)
+    return [] if entries.nil?
+
+    roots = entries.select { |entry| FilePathUtils.add_path?( entry ) }.flat_map { |entry| entry_roots( entry ) }
+    return roots.map { |root| ProjectPaths.canonical( root ) }.uniq
+  end
+
   # A path relative to the working directory, or absolute when it has no relative form
   def shortest_path_from_working(path)
     return ProjectPaths.relative( File.expand_path( path ) )
@@ -84,6 +94,13 @@ class FilePathCollectionUtils
     parents = dirs.map { |dir| File.join( dir, '..' ) }
     parents << FilePathUtils.no_decorators( path ) if dirs.empty?
     return parents + dirs
+  end
+
+  def entry_roots(entry)
+    path = ProjectPaths.standardize( FilePathUtils.no_aggregation_decorators( entry ) ).sub( %r{/\*\*?\z}, '' )
+    return [path] unless path.match?( /[*?{]/ )
+
+    return @file_wrapper.directory_listing( path ).sort.select { |listed| @file_wrapper.directory?( listed ) }
   end
 
   # Every file one :files revision names, absolute and spelled through its base as the base

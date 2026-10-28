@@ -9,6 +9,7 @@ require 'stringio'
 require 'strscan'
 require 'ceedling/partials/partials'
 require 'ceedling/exceptions'
+require 'ceedling/project_paths'
 require 'ceedling/c_extractor/c_extractor_preprocessing'
 require 'ceedling/encodinator'
 
@@ -259,7 +260,8 @@ class PartializerConfig
     _validate_qualifier!( dir, macro_name )
     _validate_module!( params[1], macro_name, dir: dir )
 
-    File.join( dir, params[1] )
+    # A `.` segment names nothing, so `./drv` and `drv` name one module
+    File.join( *ProjectPaths.segments( dir ), params[1] )
   end
 
   # The module argument names one file's stem and nothing more. The preprocessor emits it

@@ -64,7 +64,7 @@ class FileFinder
     source = find_header_input_for_mock(mock, collection: collection, complain: complain)
     return [nil, nil] if source.nil?
 
-    subdir = PathMirror.relative_subdir(source, @configurator.paths_test + @configurator.paths_support + @configurator.paths_include)
+    subdir = PathMirror.relative_subdir_from_clean_roots( source, @configurator.collection_mirror_roots_headers )
     return [source, subdir]
   end
 
@@ -451,7 +451,7 @@ class FileFinder
   # Only the root is dropped. The namespace is preserved, since that is what keeps two
   # same-basename modules apart.
   def header_root_relative_query(filepath)
-    subdir = PathMirror.relative_subdir_if_rooted( filepath, @configurator.paths_include )
+    subdir = PathMirror.relative_subdir_if_rooted_in_clean_roots( filepath, @configurator.collection_mirror_roots_include )
 
     return nil if subdir.nil?
 
