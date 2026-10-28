@@ -984,6 +984,17 @@ describe TestBuildExecutor do
     end
   end
 
+  # The path handling audit around GH #1370: a library search path is configured like any
+  # other, with decorators and globs, and the linker reads neither
+  context "G11: #get_library_paths_to_arguments" do
+    it "gives the linker the directories a decorated, globbed library path names", pending: "G11: -L is built from the raw library paths" do
+      stub_const( 'PATHS_LIBRARIES', ['+:lib/**'] )
+      stub_const( 'LIBRARIES_PATH_FLAG', '-L "${1}"' )
+
+      expect(@executor.get_library_paths_to_arguments.join( ' ' )).to_not match( /\+:|\*/ )
+    end
+  end
+
   context "#stage_build_executables" do
     before(:each) do
       stub_batchinator_exec()
@@ -1714,6 +1725,18 @@ describe TestBuildExecutor do
         expect(@generator).to receive(:generate_mock)
           .with( hash_including( output_path: 'build/test/mocks/more/sub', folder: 'more/sub' ) )
         expect(@dependinator).to receive(:mark_fresh).with( 'build/test/mocks/more/sub/MockFoo.c' )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # The path handling audit around GH #1370: a folder that climbs must not carry the
+      # mock out of its test's mocks directory
+      it "G14: keeps the mock below its test's mocks directory for a folder that climbs", pending: "G14: the #include folder joins the mocks root unchecked" do
+        include_as( '../x/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock) do |args|
+          expect(args[:output_path].split( '/' )).to_not include( '..' )
+        end
 
         @executor.stage_generate_mocks( @state )
       end

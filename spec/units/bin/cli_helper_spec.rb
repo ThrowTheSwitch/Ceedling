@@ -23,6 +23,7 @@ $: << File.join(here, '../../../lib')
 require 'cli_helper'
 require 'app_cfg'
 require 'ceedling/ruby_expandinator'
+require 'ceedling/config/config_walkinator'
 require 'ceedling/file_wrapper'
 # CliHelper#test_task? references RakeTaskRegistry::TAG_TEST, but only
 # bin/cli_handler.rb requires this file in the real bootstrap (loaded before
@@ -268,6 +269,22 @@ describe CliHelper do
       @cli_helper.set_verbosity( Verbosity::DEBUG )
 
       expect(@cli_helper.set_verbosity( Verbosity::NORMAL )).to eq( Verbosity::NORMAL )
+    end
+  end
+
+  # The path handling audit around GH #1370: every other build path reads the build root
+  # after Ruby expansion
+  describe 'G17: #process_logging_path' do
+    it 'places the log directory below the build root as expanded', pending: "G17: the log path is built from the unexpanded build root" do
+      helper = described_class.new({
+        :file_wrapper => @file_wrapper, :actionator => double('actionator').as_null_object, :config_walkinator => ConfigWalkinator.new,
+        :path_validator => @path_validator, :rake_task_registry => @rake_task_registry, :loginator => @loginator,
+        :reportinator => double('reportinator').as_null_object, :system_wrapper => double('system_wrapper').as_null_object,
+        :ruby_expandinator => @ruby_expandinator
+      })
+      helper.set_ruby_replacement( true )
+
+      expect(helper.process_logging_path( { project: { build_root: "\#{'out'}/build" } } )).to eq( 'out/build/logs' )
     end
   end
 

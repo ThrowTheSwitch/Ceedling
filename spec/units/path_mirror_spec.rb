@@ -100,4 +100,32 @@ describe PathMirror do
       expect( PathMirror.path_segments('drivers//uart/') ).to eq(['drivers', 'uart'])
     end
   end
+
+  # Root matching across spellings of one place (GH #1370 and the path handling audit)
+  describe 'root containment' do
+    it 'G1 (#1370): never answers a subdirectory that climbs out, below a `..` root', pending: "G1 (#1370): roots are matched by text" do
+      subdir = PathMirror.relative_subdir( '../../../opt/vendor/inc/x.h', ['../**'] )
+
+      expect(subdir.split( '/' )).to_not include( '..' )
+    end
+
+    it 'G2: mirrors below a `./`-spelled root as below the plain one', pending: "G2: roots are matched as written" do
+      expect(PathMirror.relative_subdir( 'src/a/x.c', ['./src/**'] )).to eq( 'a' )
+    end
+
+    it 'G2: mirrors below an absolute root spelling of a relative file\'s directory', pending: "G2: roots are matched as written" do
+      expect(PathMirror.relative_subdir( 'src/a/x.c', [File.join( Dir.pwd, 'src/**' )] )).to eq( 'a' )
+    end
+
+    it 'G2: mirrors a file spelled relatively below an absolute root outside the working directory', pending: "G2: roots are matched as written" do
+      file = File.join( '..', '..', 'opt', 'x', 'a', 'f.c' )
+      root = File.join( File.expand_path( '../..' ), 'opt', 'x', '**' )
+
+      expect(PathMirror.relative_subdir( file, [root] )).to eq( 'a' )
+    end
+
+    it 'G3: never treats a `-:` exclusion as a root', pending: "G3: a `-:` exclusion counts as a root" do
+      expect(PathMirror.relative_subdir( 'src/exp/sub/x.c', ['+:src/**', '-:src/exp'] )).to eq( 'exp/sub' )
+    end
+  end
 end

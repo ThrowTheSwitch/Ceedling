@@ -266,4 +266,21 @@ describe IncludePathinator do
       expect(@pathinator.collect_test_include_paths).to eq(['has_headers'])
     end
   end
+
+  # A search path spelled with `./` or absolutely names the same place (the path handling
+  # audit around GH #1370)
+  describe 'G23: #prioritized_header_files with other spellings of a search path' do
+    before(:each) do
+      allow(@configurator).to receive(:collection_all_headers)
+        .and_return(Rake::FileList.new(['vendor/config.h', 'local/config.h']))
+    end
+
+    it 'ranks a `./`-spelled search path as the plain one', pending: "G23: search paths are ranked as written" do
+      expect( @pathinator.prioritized_header_files(['./local', 'vendor']) ).to eq(['local/config.h', 'vendor/config.h'])
+    end
+
+    it 'ranks an absolute search path as the relative one', pending: "G23: search paths are ranked as written" do
+      expect( @pathinator.prioritized_header_files([File.join( Dir.pwd, 'local' ), 'vendor']) ).to eq(['local/config.h', 'vendor/config.h'])
+    end
+  end
 end
