@@ -38,7 +38,7 @@ class InstallationSelector
   def from_environment(env)
     return nil if env['WHICH_CEEDLING'].nil?
 
-    @loginator.console( " > Set which Ceedling using environment variable WHICH_CEEDLING" )
+    @loginator.log( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS )
     return env['WHICH_CEEDLING'].strip()
   end
 

@@ -37,6 +37,14 @@ describe InstallationSelector do
     expect(installation).to eq( Installation.new( @app_cfg[:launcher_root_path] ) )
   end
 
+# A console line would print at every verbosity, into `dumpconfig --stdout` YAML among others
+it 'logs its use of WHICH_CEEDLING at obnoxious verbosity, as for every other source' do
+  @selector.select( env: {'WHICH_CEEDLING' => 'gem'}, app_cfg: @app_cfg )
+
+  expect(@loginator).to have_received(:log).with( " > Set which Ceedling using environment variable WHICH_CEEDLING", Verbosity::OBNOXIOUS )
+  expect(@loginator).to_not have_received(:console)
+end
+
   it 'falls back to config :project ↳ :which_ceedling when no environment variable is set' do
     config = {:project => {:which_ceedling => 'gem'}}
     allow(@config_walkinator).to receive(:fetch_value).with( :project, :which_ceedling, hash: config ).and_return( ['gem', nil] )
