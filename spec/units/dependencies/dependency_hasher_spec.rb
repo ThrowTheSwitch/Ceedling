@@ -22,14 +22,16 @@ describe DependencyHasher do
   # GH #1368: every test link hashes the libraries it links, so a large library was read
   # once per test executable on every build
   describe '#hash_of_file memo' do
-    Status = Struct.new( :size, :mtime )
+    def status(size, mtime)
+      return double( %q(File::Stat), size: size, mtime: mtime )
+    end
 
     before(:each) do
       allow( @file_wrapper ).to receive(:read_binary).with('libx.a').and_return('library')
     end
 
     it 'hashes a file left unchanged since before the build began only once' do
-      allow( @file_wrapper ).to receive(:stat).with('libx.a').and_return( Status.new( 7, Time.now - 60 ) )
+      allow( @file_wrapper ).to receive(:stat).with('libx.a').and_return( status( 7, Time.now - 60 ) )
 
       2.times { expect( @hasher.hash_of_file('libx.a') ).to eq( Digest::SHA256.hexdigest('library') ) }
 
@@ -38,7 +40,7 @@ describe DependencyHasher do
 
     it 'hashes again a file whose size or modification time changed' do
       allow( @file_wrapper ).to receive(:stat).with('libx.a').and_return(
-        Status.new( 7, Time.now - 60 ), Status.new( 8, Time.now - 60 ), Status.new( 8, Time.now - 50 )
+        status( 7, Time.now - 60 ), status( 8, Time.now - 60 ), status( 8, Time.now - 50 )
       )
 
       3.times { @hasher.hash_of_file('libx.a') }
@@ -48,7 +50,7 @@ describe DependencyHasher do
 
     # A file the build writes can change within one timestamp tick, unseen by its status
     it 'hashes afresh, every time, a file modified as the build began or since' do
-      allow( @file_wrapper ).to receive(:stat).with('libx.a').and_return( Status.new( 7, Time.now ) )
+      allow( @file_wrapper ).to receive(:stat).with('libx.a').and_return( status( 7, Time.now ) )
 
       2.times { @hasher.hash_of_file('libx.a') }
 
