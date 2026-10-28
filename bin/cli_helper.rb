@@ -508,11 +508,11 @@ class CliHelper
 
 
   # Removes what an export wrote into a project's docs/, leaving everything else. An HTML
-  # bundle the source cannot replace is kept.
+  # bundle the source cannot replace is kept. The export overwrites its own license, so a
+  # license file here, which may be the project's, stays.
   def remove_exported_docs(docs_path, keep_bundle:)
     entries = EXPORTED_DOCS_DIRS + LEGACY_EXPORTED_DOCS
     entries -= [DOCS_BUNDLE_DIR] if keep_bundle
-    entries += @file_wrapper.directory_entries( docs_path ).grep( LICENSE_FILENAME )
 
     entries.map { |entry| File.join( docs_path, entry ) }.each do |path|
       @actions.remove_directory( path ) if @file_wrapper.exist?( path )

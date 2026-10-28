@@ -201,11 +201,12 @@ describe CliHelper do
 
     describe '#remove_exported_docs' do
       it 'removes what an export of 1.1.0 or later wrote, and leaves the project\'s own files' do
-        make( 'ceedling/', 'unity/', 'cmock/', 'c_exception/', 'license.txt', 'notes.md', 'design/' )
+        make( 'ceedling/', 'unity/', 'cmock/', 'c_exception/', 'license.txt', 'LICENSE.md', 'notes.md', 'design/' )
 
         @helper.remove_exported_docs( @docs, keep_bundle: false )
 
-        expect(removed).to eq( %w[c_exception ceedling cmock license.txt unity] )
+        # The export overwrites its own license, so a license file in docs/ may be the project's
+        expect(removed).to eq( %w[c_exception ceedling cmock unity] )
       end
 
       it 'removes what a 1.0.x export wrote, and leaves the project\'s own files' do
@@ -213,7 +214,7 @@ describe CliHelper do
 
         @helper.remove_exported_docs( @docs, keep_bundle: false )
 
-        expect(removed).to eq( (LEGACY_PAGES + %w[LICENSE.txt plugins unity]).sort )
+        expect(removed).to eq( (LEGACY_PAGES + %w[plugins unity]).sort )
       end
 
       it 'keeps the HTML bundle when the source has none to replace it with' do
