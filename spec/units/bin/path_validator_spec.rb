@@ -96,6 +96,11 @@ describe PathValidator do
     end
 
     # The path handling audit around GH #1370: a path bin/ takes in reads as lib/ reads one
+    # A destination of only spaces stays the relative name it was, never the filesystem root
+    it 'passes a path of only whitespace through unchanged' do
+      expect(@path_validator.standardize_paths( '   ' )).to eq( ['   '] )
+    end
+
     it 'reads `~` as the home directory and drops a trailing separator' do
       expect(@path_validator.standardize_paths( '~/mixins/clang.yml', 'mixins\\' )).to eq( [File.join( Dir.home, 'mixins/clang.yml' ), 'mixins'] )
     end

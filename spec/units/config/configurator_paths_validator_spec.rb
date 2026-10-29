@@ -145,6 +145,22 @@ describe ConfiguratorPathsValidator do
       expect(@loginator).to have_received(:log).with(/'-:src\/missing' leaves out nothing; no directory matches it/, Verbosity::COMPLAIN)
     end
 
+    it 'warns of a `-:` subdirectories glob whose directory does not exist' do
+      existing; directories
+      allow(@file_wrapper).to receive(:directory_listing).and_return([])
+
+      expect(validate( "    - -:src/typo/**\n" )).to be true
+      expect(@loginator).to have_received(:log).with(/'-:src\/typo\/\*\*' leaves out nothing; no directory matches it/, Verbosity::COMPLAIN)
+    end
+
+    it 'accepts a `-:` subdirectories glob of an existing directory without a word' do
+      existing( 'src/legacy' ); directories( 'src/legacy' )
+      allow(@file_wrapper).to receive(:directory_listing).and_return([])
+
+      expect(validate( "    - -:src/legacy/**\n" )).to be true
+      expect(@loginator).to_not have_received(:log)
+    end
+
     it 'accepts a `-:` path below the build root that names nothing, without a word' do
       existing; directories
       allow(@file_wrapper).to receive(:directory_listing).and_return([])

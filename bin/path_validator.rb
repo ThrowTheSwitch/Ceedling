@@ -24,7 +24,7 @@ class PathValidator
   # the arguments given, rather than mutating the caller's own String objects in place.
   def standardize_paths( *paths )
     paths.map do |path|
-      next path if path.nil? or path.empty?
+      next path if path.nil? or path.strip.empty?
       ProjectPaths.standardize( path )
     end
   end

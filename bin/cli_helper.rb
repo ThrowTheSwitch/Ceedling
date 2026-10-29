@@ -12,6 +12,7 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/rake_app/rakefile_component_resolver'
 require 'ceedling/project_paths'
+require 'ceedling/config/build_root_policy'
 require 'versionator' # Outside DIY context
 
 class CliHelper
@@ -217,9 +218,12 @@ class CliHelper
 
     return '' if build_root.nil?
 
-    # Read as configuration reads it, after inline Ruby string expansion
-    build_root = @ruby_expandinator.expand( build_root.to_s, source: ':project ↳ :build_root' )
-    return File.join( ProjectPaths.standardize( build_root ), DEFAULT_BUILD_LOGS_PATH )
+    # Read as configuration reads it, after inline Ruby string expansion. One that expands to
+    # nothing would put the logs at the filesystem root, so it is refused here already.
+    build_root = ProjectPaths.standardize( @ruby_expandinator.expand( build_root.to_s, source: ':project ↳ :build_root' ) )
+    raise CeedlingException.new( BuildRootPolicy.message( build_root, 'names no directory' ) ) if build_root.empty?
+
+    return File.join( build_root, DEFAULT_BUILD_LOGS_PATH )
   end
 
 

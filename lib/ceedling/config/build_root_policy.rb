@@ -14,15 +14,23 @@ require 'ceedling/project_paths'
 # build.
 module BuildRootPolicy
 
-  # Why `root` is no build root for `config`, or nil when it is one
+  # Why `root` is no build root for `config`, or nil when it is one. Compared as the places
+  # really are, so no symlinked spelling of the project gets by.
   def self.problem(root, config)
     return 'names no directory' if root.strip.empty?
-    return 'is the project directory or holds it' if ProjectPaths.contains?( root, ProjectPaths.working_dir )
 
-    held = additive_entries( config ).find { |entry| ProjectPaths.contains?( root, FilePathUtils.no_decorators( entry ) ) }
+    real = ProjectPaths.canonical( root )
+    return 'is the project directory or holds it' if ProjectPaths.contains?( real, ProjectPaths.working_dir )
+
+    held = additive_entries( config ).find { |entry| ProjectPaths.contains?( real, ProjectPaths.canonical( FilePathUtils.no_decorators( entry ) ) ) }
     return "holds '#{held}', which adds to a build" unless held.nil?
 
     return nil
+  end
+
+  # The message refusing `root` for `problem`
+  def self.message(root, problem)
+    return ":project ↳ :build_root => '#{root}' #{problem}. Give the build its own directory, such as 'build'."
   end
 
   # Every :paths and :files entry that adds to a build

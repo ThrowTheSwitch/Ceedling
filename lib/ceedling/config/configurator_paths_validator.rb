@@ -51,8 +51,7 @@ class ConfiguratorPathsValidator
     problem = BuildRootPolicy.problem( root, config )
     return true if problem.nil?
 
-    walk = @reportinator.generate_config_walk( [:project, :build_root] )
-    log_error( "#{walk} => '#{root}' #{problem}. Give the build its own directory, such as 'build'." )
+    log_error( BuildRootPolicy.message( root, problem ) )
     return false
   end
 
@@ -118,11 +117,19 @@ class ConfiguratorPathsValidator
       return true
     end
 
+    return valid_subtraction?( entry, path, walk, build_root ) unless FilePathUtils.add_path?( entry )
     return true if globbed_directories?( path ) or path =~ /\/\*{1,2}$/
-    return subtracts_nothing( entry, walk, build_root, 'directory' ) unless FilePathUtils.add_path?( entry )
 
     log_error( "#{walk} => '#{path}' yielded no directories -- matching glob is malformed or directories do not exist" )
     return false
+  end
+
+  # A `-:` entry leaves out what it names, or warns of naming nothing
+  def valid_subtraction?(entry, path, walk, build_root)
+    base = FilePathUtils.no_decorators( entry )
+    return true if base.empty? or @file_wrapper.exist?( base ) or globbed_directories?( path )
+
+    return subtracts_nothing( entry, walk, build_root, 'directory' )
   end
 
   # A `-:` entry names what a build leaves out, so naming nothing is no error. Below the build

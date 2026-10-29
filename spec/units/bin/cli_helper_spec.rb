@@ -286,6 +286,21 @@ describe CliHelper do
 
       expect(helper.process_logging_path( { project: { build_root: "\#{'out'}/build" } } )).to eq( 'out/build/logs' )
     end
+
+    # An unset environment variable expands to nothing, which would place the logs at the
+    # filesystem root before configuration could refuse the build root
+    it 'refuses a build root that expands to nothing, as configuration does' do
+      helper = described_class.new({
+        :file_wrapper => @file_wrapper, :actionator => double('actionator').as_null_object, :config_walkinator => ConfigWalkinator.new,
+        :path_validator => @path_validator, :rake_task_registry => @rake_task_registry, :loginator => @loginator,
+        :reportinator => double('reportinator').as_null_object, :system_wrapper => double('system_wrapper').as_null_object,
+        :ruby_expandinator => @ruby_expandinator
+      })
+      helper.set_ruby_replacement( true )
+
+      expect { helper.process_logging_path( { project: { build_root: "\#{''}" } } ) }
+        .to raise_error( CeedlingException, ":project ↳ :build_root => '' names no directory. Give the build its own directory, such as 'build'." )
+    end
   end
 
   describe '#process_log_filepath' do
