@@ -23,9 +23,9 @@ describe 'Path intake (integration)' do
   end
 
   # Clobber empties the build root's test and release trees, so a build root holding the
-  # project's own files is refused. An empty build root is left to the unit specs: it names
-  # the filesystem root, where a configuration that got past it would create directories.
-  { '.' => 'the project directory', '..' => 'a directory above the project', 'src' => 'a directory holding sources' }.each do |root, what|
+  # whole project is refused. An empty build root is left to the unit specs: it names the
+  # filesystem root, where a configuration that got past it would create directories.
+  { '.' => 'the project directory', '..' => 'a directory above the project' }.each do |root, what|
     it "G16: refuses a build root that is #{what}" do
       in_temp_project( minimal_project_files ) do
         expect { configure( yaml( project: { build_root: root } ) ) }.to raise_error( CeedlingException )
@@ -37,6 +37,13 @@ describe 'Path intake (integration)' do
   it 'G16: accepts a build root beside the project\'s own directories' do
     in_temp_project( minimal_project_files ) do
       expect { configure( yaml( project: { build_root: 'out/build' } ) ) }.to_not raise_error
+    end
+  end
+
+  it 'G16: accepts a build root holding sources, warning of the entry' do
+    in_temp_project( minimal_project_files ) do
+      expect { configure( yaml( project: { build_root: 'src' } ) ) }.to_not raise_error
+      expect(logged.join( "\n" )).to match( %r{:paths ↳ :source => 'src/\*\*' lies in the build root 'src'} )
     end
   end
 

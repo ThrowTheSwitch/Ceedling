@@ -12,6 +12,7 @@ require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
 require 'ceedling/project_paths'
 require 'ceedling/path_spellings'
+require 'ceedling/path_exclusions'
 
 
 class FilePathCollectionUtils
@@ -24,29 +25,32 @@ class FilePathCollectionUtils
 
   # The directories one or more (+:/-:) paths and globs name, once each, spelled through
   # each entry's base as the base really is, as an #include or a test name reaches them. A
-  # `-:` entry, and each path in `exclude`, drops the directories it names and every
-  # directory below them, except one an additive entry naming it names nearer.
-  def collect_paths(paths, exclude: [])
+  # `-:` entry drops the directories it names and every directory below them, except one an
+  # additive entry naming it names nearer. Each path in `exclude` does so too, except where
+  # an entry naming a directory is based no farther away. Each path in `reserved`, and every
+  # directory below it, is never collected.
+  def collect_paths(paths, exclude: [], reserved: [])
     # Nil input (e.g. unconfigured section) is treated as an empty list
     return [] if paths.nil?
 
     additive, subtractive = paths.partition { |entry| FilePathUtils.add_path?( entry ) }
-    minus = PathSpellings.of( directories_of( subtractive ) + exclude )
+    minus = PathExclusions.of( directories_of( subtractive ), exclude, reserved )
 
-    kept = named_directories( additive ).select { |named| named.distance < PathSpellings.nearer( named.spellings, minus ) }
+    kept = named_directories( additive ).select { |named| minus.keeps?( named.spellings, named.distance ) }
     return kept.map { |named| ProjectPaths.relative( named.spelled ) }
   end
 
   # Given a file list, add to it or remove from it considering (+:/-:) aggregation operators.
   # Rake's FileList does not robustly handle relative filepaths and patterns.
   # So, we rebuild the FileList ourselves and return it. A revision adds no file below a
-  # path in `exclude` unless the revision names that file, or a place below that path.
-  def revise_filelist(list, revisions, exclude: [])
+  # path in `exclude` unless the revision is based no farther away, and none below a path in
+  # `reserved` at all.
+  def revise_filelist(list, revisions, exclude: [], reserved: [])
     # Nil list produces an empty FileList; nil revisions leaves the list unchanged
     return FileList.new([]) if list.nil?
 
     additive, subtractive = (revisions || []).partition { |revision| FilePathUtils.add_path?( revision ) }
-    kept = kept_files( list, additive, subtractive, PathSpellings.of( exclude ) )
+    kept = kept_files( list, additive, subtractive, PathExclusions.of( [], exclude, reserved ) )
 
     # #104 -- every entry here is already a concrete, real file, but plain FileList.new or
     # #include re-reads each as a glob, silently dropping a literal `[`/`]`.
@@ -101,16 +105,16 @@ class FilePathCollectionUtils
     return (list.map { |path| ProjectPaths.absolute( path ) } + added).uniq { |path| real_key( path, real ) }.reject { |path| minus.include?( real_key( path, real ) ) }
   end
 
-  # The files additive revisions name, less those below an excluded path nearer than the
-  # base of the revision naming them
+  # The files additive revisions name that `excluded` keeps, each judged by its distance
+  # below the base of the revision naming it
   def added_files(additive, excluded, real)
-    return files_of( additive ) if excluded.empty?
+    return files_of( additive ) if excluded.none?
 
     return additive.flat_map do |revision|
       bases = PathSpellings.of( [FilePathUtils.no_decorators( revision )] )
       revision_files( revision ).select do |file|
         spellings = [file, real_spelling( file, real )]
-        PathSpellings.nearer( spellings, bases ) < PathSpellings.nearer( spellings, excluded )
+        excluded.keeps?( spellings, PathSpellings.nearer( spellings, bases ) )
       end
     end
   end

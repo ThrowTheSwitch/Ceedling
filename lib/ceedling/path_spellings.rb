@@ -25,6 +25,8 @@ module PathSpellings
   # How many directories above a place, by any of `spellings` of it, the nearest one in
   # `spelled` lies: 0 for the place itself, or infinity for none
   def self.nearer(spellings, spelled)
+    return Float::INFINITY if spelled.empty?
+
     return spellings.map { |path| distance( path, spelled ) }.min
   end
 

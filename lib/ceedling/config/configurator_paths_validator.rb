@@ -45,14 +45,15 @@ class ConfiguratorPathsValidator
   end
 
 
-  # A build root of its own (BuildRootPolicy)
+  # A build root of its own, warning of each :paths and :files entry within it (BuildRootPolicy)
   def validate_build_root(config)
     root    = config[:project][:build_root].to_s
-    problem = BuildRootPolicy.problem( root, config )
-    return true if problem.nil?
+    problem = BuildRootPolicy.problem( root )
+    log_error( BuildRootPolicy.message( root, problem ) ) unless problem.nil?
+    return false unless problem.nil?
 
-    log_error( BuildRootPolicy.message( root, problem ) )
-    return false
+    BuildRootPolicy.warnings( root, config ) { |keys| @reportinator.generate_config_walk( keys ) }.each { |warning| log_complaint( warning ) }
+    return true
   end
 
 

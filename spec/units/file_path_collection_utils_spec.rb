@@ -351,13 +351,31 @@ describe FilePathCollectionUtils, 'on disk' do
     expect(@fpcu.collect_paths( ['+:src/**', '+:src/legacy', '-:src/legacy'] )).to eq( ['src', 'src/a'] )
   end
 
-  it 'leaves out the files a revision glob matches below an excluded root, but keeps one it names exactly' do
+  it 'leaves out the files a revision glob matches below an excluded root, but keeps those a revision based there names' do
     FileUtils.mkdir_p( ['build/gen', 'build/test/mocks'] )
     File.write( 'build/gen/table.c', '' )
     File.write( 'build/test/mocks/mock_x.c', '' )
 
     expect(@fpcu.revise_filelist( ['src/a/bar.c'], ['+:**/*.c'], exclude: ['build'] ).to_a).to eq( ['src/a/bar.c'] )
     expect(@fpcu.revise_filelist( [], ['+:build/gen/table.c'], exclude: ['build'] ).to_a).to eq( ['build/gen/table.c'] )
+    expect(@fpcu.revise_filelist( [], ['+:build/**/*.c'], exclude: ['build'] ).to_a).to eq( ['build/gen/table.c', 'build/test/mocks/mock_x.c'] )
+  end
+
+  it 'adds no file below a reserved directory, however a revision names it' do
+    FileUtils.mkdir_p( ['build/gen', 'build/test/mocks'] )
+    File.write( 'build/gen/table.c', '' )
+    File.write( 'build/test/mocks/mock_x.c', '' )
+
+    expect(@fpcu.revise_filelist( [], ['+:build/**/*.c'], exclude: ['build'], reserved: ['build/test'] ).to_a).to eq( ['build/gen/table.c'] )
+    expect(@fpcu.revise_filelist( [], ['+:build/test/mocks/mock_x.c'], reserved: ['build/test'] ).to_a).to be_empty
+  end
+
+  it 'collects what an entry based below an excluded root names, less any reserved directory' do
+    FileUtils.mkdir_p( ['build/gen/sub', 'build/test/mocks'] )
+
+    expect(@fpcu.collect_paths( ['+:build/**'], exclude: ['build'], reserved: ['build/test'] )).to contain_exactly( 'build', 'build/gen', 'build/gen/sub' )
+    expect(@fpcu.collect_paths( ['+:build/test/mocks'], exclude: ['build'], reserved: ['build/test'] )).to be_empty
+    expect(@fpcu.collect_paths( ['+:./**'], exclude: ['build'], reserved: ['build/test'] )).to_not include( 'build/gen' )
   end
 
   # Only the entries that name a directory decide whether it is kept

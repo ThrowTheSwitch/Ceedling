@@ -13,6 +13,7 @@ require 'ceedling/defaults'
 require 'ceedling/constants'       # for Verbosity constants class & base file paths
 require 'ceedling/filename_extension'
 require 'ceedling/rake_app/rakefile_component_resolver'
+require 'ceedling/config/build_root_policy'
 
 class ConfiguratorBuilder
 
@@ -166,12 +167,12 @@ class ConfiguratorBuilder
 
 
   # Every :paths entry becomes a collection of the directories its globs name, leaving out
-  # the build root, which a root above it (`../**`, `./**`) would otherwise sweep in
+  # the build root, which a root above it (`../**`, `./**`) would otherwise sweep in, and
+  # the directories Ceedling creates
   def expand_all_path_globs(in_hash)
     path_keys = in_hash.keys.select { |key| key.to_s.start_with?( 'paths' ) }
-    exclude   = build_exclusion( in_hash )
 
-    return path_keys.to_h { |key| [:"collection_#{key}", @file_path_collection_utils.collect_paths( in_hash[key], exclude: exclude )] }
+    return path_keys.to_h { |key| [:"collection_#{key}", @file_path_collection_utils.collect_paths( in_hash[key], **build_exclusions( in_hash ) )] }
   end
 
 
@@ -468,13 +469,14 @@ class ConfiguratorBuilder
     return revised( in_hash, file_list( patterns ), revisions )
   end
 
-  # A :files glob adds nothing from the build root
+  # A :files glob adds nothing from the build root it is based above, and no :files entry
+  # adds anything from the directories Ceedling creates
   def revised(in_hash, list, revisions)
-    return @file_path_collection_utils.revise_filelist( list, revisions, exclude: build_exclusion( in_hash ) )
+    return @file_path_collection_utils.revise_filelist( list, revisions, **build_exclusions( in_hash ) )
   end
 
-  def build_exclusion(in_hash)
-    return [in_hash[:project_build_root]].compact
+  def build_exclusions(in_hash)
+    return { exclude: [in_hash[:project_build_root]].compact, reserved: BuildRootPolicy.reserved( in_hash ) }
   end
 
   # FileList expands its patterns lazily, so they are expanded here

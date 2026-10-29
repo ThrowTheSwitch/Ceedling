@@ -259,6 +259,24 @@ describe 'Path scenarios (integration)' do
         expect(scene[:configurator].collection_existing_test_build_input.to_a.grep( %r{\Abuild/test/} )).to be_empty
       end
     end
+
+    # Generated code may sit in the build root, beside the directories Ceedling creates there
+    it 'collects generated code an entry names in the build root, but nothing Ceedling created there' do
+      files = {
+        'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/test/test_m.c' => TEST_C,
+        'app/build/gen/table.c' => c( 'table' ), 'app/build/gen/table.h' => h( 'table' ),
+        'app/build/test/mocks/test/test_m/mock_main.c' => c( 'mock' ), 'app/build/test/mocks/test/test_m/mock_main.h' => h( 'mock' )
+      }
+      in_workspace( files ) do |ws, app|
+        paths = { test: ['test/**'], source: ['src/**', 'build/**'], include: ['src/**', 'build/gen'] }
+        yaml  = scenario_yaml( ws: ws, app: app, paths: paths, files: { source: ['+:build/**/*.c'] } )
+        scene = scenario( yaml )
+
+        expect(scene[:configurator].collection_all_source.to_a).to contain_exactly( 'src/main.c', 'build/gen/table.c' )
+        expect(scene[:configurator].collection_all_headers.to_a).to include( 'build/gen/table.h' )
+        expect(scene[:configurator].collection_all_headers.to_a.grep( %r{\Abuild/test/} )).to be_empty
+      end
+    end
   end
 
   # --- G12: the working directory reached through a symlink -------------------------------

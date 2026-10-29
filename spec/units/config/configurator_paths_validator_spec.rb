@@ -258,8 +258,7 @@ describe ConfiguratorPathsValidator do
       ''      => 'names no directory',
       '.'     => 'is the project directory or holds it',
       '..'    => 'is the project directory or holds it',
-      '/'     => 'is the project directory or holds it',
-      'src'   => "holds 'src/**', which adds to a build"
+      '/'     => 'is the project directory or holds it'
     }.each do |root, problem|
       it "refuses a build root of '#{root}', which #{problem}" do
         expect(validate( root )).to be false
@@ -267,8 +266,10 @@ describe ConfiguratorPathsValidator do
       end
     end
 
-    it 'refuses a build root holding a :files entry that adds to a build' do
-      expect(validate( 'gen', files: "  :source:\n    - gen/out/a.c\n" )).to be false
+    it 'accepts a build root holding :paths and :files entries that add to a build, warning of each' do
+      expect(validate( 'gen', paths: "  :source:\n    - src/**\n    - gen/**\n", files: "  :source:\n    - gen/out/a.c\n" )).to be true
+      expect(@loginator).to have_received(:log).with( ":paths ↳ :source => 'gen/**' lies in the build root 'gen'. Ceedling leaves out the directories it creates there.", Verbosity::COMPLAIN )
+      expect(@loginator).to have_received(:log).with( ":files ↳ :source => 'gen/out/a.c' lies in the build root 'gen'. Ceedling leaves out the directories it creates there.", Verbosity::COMPLAIN )
     end
 
     it 'accepts a build root holding only what `-:` entries name' do
