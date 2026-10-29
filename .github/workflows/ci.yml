@@ -742,8 +742,8 @@ jobs:
 
   # Job: Run FileTree's specs on filesystems the test legs never use
   # An SMB path, the system drive, and a separate NTFS volume on Windows, and a FAT
-  # volume on Linux, each with its own rules for links, names, timestamps, and
-  # compression. The specs read CEEDLING_TEST_FS_ROOT and build their trees there.
+  # volume on Linux, each with its own rules for links, names, and timestamps. The
+  # specs read CEEDLING_TEST_FS_ROOT and build their trees there.
   #
   # A failing spec fails the job, and CI Gate with it. A step that cannot set up its
   # filesystem warns, names why, and skips, since that says nothing about Ceedling.
@@ -788,9 +788,8 @@ jobs:
           $env:CEEDLING_TEST_FS_ROOT = '//localhost/C$/ceedling-fs-unc'
           bundle exec rspec spec/units/filesystem --tag filesystem --format documentation
 
-      # The test legs build their trees on D:, which refuses NTFS compression, so the
-      # system drive gives the WOF example a volume that may allow it. Runs even after an
-      # earlier step fails, so one result never hides another.
+      # The test legs build their trees on D:, so this covers the system drive too. Runs
+      # even after an earlier step fails, so one result never hides another.
       - name: Run Filesystem Specs on the System Drive
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
@@ -799,8 +798,7 @@ jobs:
           $env:CEEDLING_TEST_FS_ROOT = 'C:/ceedling-fs-c'
           bundle exec rspec spec/units/filesystem --tag filesystem --format documentation
 
-      # 4 KB clusters, since NTFS compresses only volumes with clusters of 4 KB or less.
-      # Runs even after an earlier step fails, so one result never hides another.
+      # Runs even after an earlier step fails, so one result never hides another
       - name: Run Filesystem Specs on a VHD-Backed NTFS Volume
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
@@ -809,7 +807,7 @@ jobs:
           create vdisk file=C:\ceedling-fs.vhdx maximum=256 type=expandable
           attach vdisk
           create partition primary
-          format fs=ntfs quick label=CEEDLINGFS unit=4096
+          format fs=ntfs quick label=CEEDLINGFS
           assign letter=T
           "@ | Set-Content C:\ceedling-fs-diskpart.txt
           diskpart /s C:\ceedling-fs-diskpart.txt | Out-Host

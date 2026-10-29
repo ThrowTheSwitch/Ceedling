@@ -14,7 +14,7 @@ require 'ceedling/filesystem/file_tree'
 # as one. A file compressed by the Windows Overlay Filter (WOF) carries a reparse point that
 # is not a link, like a deduplicated file. Each example skips itself when its runner cannot
 # make the reparse point, saying why, and prints a canary line recording how Ruby classifies
-# it.
+# it. Hosted CI runners make no WOF file on any volume tried, so the WOF example skips there.
 describe 'FileTree on Windows reparse points', filesystem: true, if: Gem.win_platform? do
   include FileTreeHelper
 

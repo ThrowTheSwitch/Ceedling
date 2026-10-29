@@ -188,9 +188,16 @@ Specs elsewhere cover the callers:
 - Each skips when its runner cannot make the reparse point. The skip names the command that failed, its exit status, and its output. A failed `compact` also reports the state of the WOF driver.
 
 On hosted Windows runners:
-- The junction example passes on the runner's `D:` drive and on a VHD-backed NTFS volume. Its canary reads `symlink?=true lstat.ftype=link stat.ftype=directory` **[verified]**.
-- `compact /exe` has failed on every volume tried, though the WOF driver runs. `D:` and a VHD volume formatted with default clusters answer "The file system does not support compression". The UNC share answers "The request is not supported". NTFS compresses only volumes whose clusters are 4 KB or smaller **[inferred]**, so the job also tries the system drive `C:` and a VHD volume formatted with 4 KB clusters.
-- The WOF canary has not run, and whether Ruby misreports a WOF file is unknown **[unverified]**.
+- The junction example passes on the `C:` and `D:` drives and on a VHD-backed NTFS volume. Its canary reads `symlink?=true lstat.ftype=link stat.ftype=directory` on each **[verified]**.
+- The WOF example cannot run on a hosted runner, though the WOF driver runs there **[verified]**. It skips on every volume, saying why:
+
+  | Volume | What happens |
+  | --- | --- |
+  | `D:`, and a VHD-backed NTFS volume | `compact /exe` fails with "The file system does not support compression" |
+  | `C:` | `compact /exe` succeeds, but the file carries no reparse point |
+  | The UNC share | `compact /exe` fails with "The request is not supported" |
+
+- Whether Ruby misreports a WOF file is therefore unknown **[unverified]**. The example still runs, and its canary still prints, on a Windows machine that can compress a file this way.
 
 ### Other filesystems
 
@@ -203,8 +210,8 @@ Every `FileTree` spec carries `filesystem: true`, so `rspec spec/units/filesyste
 | tmpfs | Memory-backed | The Linux Ruby 3.3 leg, with `CEEDLING_TEST_FS_ROOT=/dev/shm` | **[verified]** in CI and locally in Docker |
 | NTFS | The Windows baseline | Windows test legs | **[verified]** |
 | UNC administrative share | Reaches the local drive through the SMB client | The Filesystem Substrates job | **[verified]**, the junction and WOF examples skipping |
-| System drive `C:` | The Windows system volume, with 4 KB clusters | The Filesystem Substrates job | **[unverified]** |
-| VHD-backed NTFS volume | A separate volume made with `diskpart`, with 4 KB clusters | The Filesystem Substrates job | **[verified]**, before 4 KB clusters |
+| System drive `C:` | The Windows system volume | The Filesystem Substrates job | **[verified]**, the WOF example skipping |
+| VHD-backed NTFS volume | A separate volume made with `diskpart` | The Filesystem Substrates job | **[verified]**, the WOF example skipping |
 | Loopback FAT image | No links, restricted names, 2 s timestamps | The Filesystem Substrates job | **[verified]**, the link examples skipping |
 
 A failing spec in the Filesystem Substrates job fails CI Gate. A step that cannot set up its filesystem warns, names why, and skips, since that says nothing about Ceedling. Each step runs whatever the others did. The UNC step first enables Windows' evaluation of links on a share that name places on a share.
@@ -227,13 +234,14 @@ A failing spec in the Filesystem Substrates job fails CI Gate. A step that canno
 | Healing entries of the wrong type | Real trees | yes | yes | yes |
 | Links | Real trees, skipping without links | yes | yes | where permitted |
 | Junctions | Windows real trees, canary | n/a | n/a | yes, except on a UNC share, which cannot hold one |
-| WOF reparse points | Windows real trees, canary | n/a | n/a | skips so far: `compact /exe` has failed on every hosted volume tried |
+| WOF reparse points | Windows real trees, canary | n/a | n/a | not on hosted runners, which cannot make a WOF file |
 | Retries and failures | Injected faults | yes | yes | yes |
 | Other filesystems | `CEEDLING_TEST_FS_ROOT` | tmpfs, FAT | none | UNC, `C:`, VHD |
 
 ### Not covered
 
 - A real network share whose `lstat` answers change from call to call, and real Data Deduplication.
+- Any non-link reparse point on a hosted runner. WOF compression, the one tried, cannot be applied there.
 - Antivirus and cloud-sync software holding files open.
 - Two Ceedling processes copying into one `build/vendor/` at once.
 - Windows paths near 260 characters with the temporary name's suffix.
