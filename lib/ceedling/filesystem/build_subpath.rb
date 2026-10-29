@@ -24,8 +24,8 @@ module BuildSubpath
   # since macOS and Windows file systems fold it
   MARKER_NAMED = /\A_+(?:up|abs|unc|ceedling)_\z/i
 
-  # The running Ceedling installation, above lib/ceedling/
-  INSTALLATION_ROOT = File.expand_path( '../..', __dir__ )
+  # The running Ceedling installation, above lib/ceedling/filesystem/
+  INSTALLATION_ROOT = File.expand_path( '../../..', __dir__ )
 
   # The directories of an installation holding what Ceedling ships. A project may itself sit
   # elsewhere in an installation, as in a development checkout, and its files are its own.

@@ -23,6 +23,13 @@ describe BuildSubpath do
     end
   end
 
+  # Every other example reads INSTALLATION_ROOT itself, so only this one shows it names the
+  # running installation
+  it 'names the running installation, which holds what Ceedling ships' do
+    expect(File.file?( File.join( BuildSubpath::INSTALLATION_ROOT, 'lib', 'ceedling', 'filesystem', 'build_subpath.rb' ) )).to be( true )
+    BuildSubpath::INSTALLED_DIRS.each { |dir| expect(File.directory?( dir )).to be( true ), dir }
+  end
+
   describe '.encode and .decode' do
     {
       'a file in the project'    => ['src/drv/uart', 'src/drv/uart'],
