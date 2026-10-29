@@ -35,6 +35,25 @@ describe BuildSubpath do
       end
     end
 
+    # A project's own directory may carry a marker's name, which must read back as itself
+    it 'places a directory named like a marker apart from the marker, and reads it back' do
+      ['_up_/x', 'src/a/_up_', '_ceedling_/src', '_abs_/C/x', '_unc_/srv', 'src/__up_/x', '../_up_/y'].each do |path|
+        encoded = BuildSubpath.encode( path )
+
+        expect(BuildSubpath.decode( encoded )).to eq( path ), "#{path} => #{encoded}"
+      end
+      expect(BuildSubpath.encode( '_up_/x' )).to_not eq( BuildSubpath.encode( '../x' ) )
+    end
+
+    # Windows has no relative path from one drive to another
+    it 'places a file of the running Ceedling on another drive below `_ceedling_` too' do
+      file = File.join( BuildSubpath::INSTALLATION_ROOT, 'plugins/fff/src' )
+      allow(ProjectPaths).to receive(:relative).and_call_original
+      allow(ProjectPaths).to receive(:relative).with( file ).and_return( file )
+
+      expect(BuildSubpath.encode( file )).to eq( '_ceedling_/plugins/fff/src' )
+    end
+
     it 'places an absolute path below the project as a relative one' do
       expect(BuildSubpath.encode( File.join( @ws, 'app/src/x' ) )).to eq( 'src/x' )
     end

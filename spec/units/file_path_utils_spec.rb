@@ -758,6 +758,14 @@ describe FilePathUtils do
       expect( objects ).to eq(['build/test/out/TestFoo/test/support/helper.o', 'build/test/out/TestFoo/CException.o'])
     end
 
+    # A source far from the project gains a directory for each level its path climbs, which
+    # can reach Windows' path length limit
+    it 'checks the length of each object\'s whole path' do
+      expect(@file_wrapper).to receive(:check_path_length).with( 'build/test/out/TestFoo/_up_/_up_/far/src/x.o', origin: 'FilePathUtils#build_filepath' )
+
+      @fpu.form_test_build_objects_filelist( 'build/test/out/TestFoo', ['../../far/src/x.c'] )
+    end
+
     it 'leaves a runner or vendored framework source below the build root flat' do
       objects = @fpu.form_test_build_objects_filelist(
         'build/test/out/TestFoo', ['build/test/runners/TestFoo_runner.c', 'build/vendor/unity/src/unity.c']

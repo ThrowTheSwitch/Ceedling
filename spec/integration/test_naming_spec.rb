@@ -164,17 +164,33 @@ describe 'Test naming (integration)' do
       end
     end
 
-    it 'stops a build that has two tests sharing one name, naming both' do
+    # A project directory named like the marker a test outside the project is named by keeps
+    # a name of its own
+    it 'names a test below a project directory called `_up_` apart from one above the project' do
       files = outside_files.merge( 'app/_up_/other/test_o.c' => "void test_it(void) {}\n" )
 
       in_temp_project( files ) do
         Dir.chdir( 'app' ) do
           configurator = configure( project_yaml( %w[../shared/test/** _up_/**], %w[../other/test_o.c] ) )[:configurator]
 
-          expect { prepare( configurator, ['_up_/other/test_o.c'] ) }.to raise_error( CeedlingException ) { |error|
-            expect(error.message).to include( '../other/test_o.c', '_up_/other/test_o.c', '`_up_/other/test_o`' )
+          state, _file_path_utils = prepare( configurator, ['_up_/other/test_o.c', '../other/test_o.c'] )
+
+          expect(state.testables.keys.map( &:to_s )).to match_array( %w[__up_/other/test_o _up_/other/test_o] )
+        end
+      end
+    end
+
+    it 'stops a build that has two tests sharing one name, naming both' do
+      files = outside_files.merge( 'app/test/test_d.c' => "void test_it(void) {}\n", 'app/test/test_d.cpp' => "void test_it(void) {}\n" )
+
+      in_temp_project( files ) do
+        Dir.chdir( 'app' ) do
+          yaml = project_yaml( %w[test/**], [] ) + ":extension:\n  :source: ['.c', '.cpp']\n"
+          configurator = configure( yaml )[:configurator]
+
+          expect { prepare( configurator, ['test/test_d.c'] ) }.to raise_error( CeedlingException ) { |error|
+            expect(error.message).to include( 'test/test_d.c', 'test/test_d.cpp', '`test/test_d`' )
           }
-          expect { prepare( configurator, ['../shared/test/unit/test_s.c'] ) }.to_not raise_error
         end
       end
     end

@@ -593,7 +593,11 @@ class FilePathUtils
   def build_filepath(file, root:, ext:, generated_roots:)
     subdir   = form_build_subpath( file, generated_roots: generated_roots )
     basename = File.basename( file ).ext( ext )
-    return subdir.empty? ? File.join( root, basename ) : File.join( root, subdir, basename )
+    path     = subdir.empty? ? File.join( root, basename ) : File.join( root, subdir, basename )
+
+    # A source far from the project gains a directory for each level its path climbs
+    @file_wrapper.check_path_length( path, origin: 'FilePathUtils#build_filepath' )
+    return path
   end
 
   # Where below a build output root the build file of `file` lands. A file below one of the

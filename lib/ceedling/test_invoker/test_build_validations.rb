@@ -17,11 +17,8 @@ require 'ceedling/destination_collision'
 module TestBuildValidations
 
   # A name is its test's path without its extension, so two tests share one only when they
-  # differ in extension alone (`test_a.c` and `test_a.cpp`), or when a path outside the
-  # project maps onto a real one (`../x` and a project directory named `_up_/x`, or another
-  # drive's path and a project directory named `_abs_`). Sharing
-  # would silently drop one test, so a build with either in it stops. A build without them
-  # is unaffected.
+  # differ in extension alone (`test_a.c` and `test_a.cpp`). Sharing would silently drop one
+  # test, so a build with them in it stops. A build without them is unaffected.
   def validate_unique_test_names!(tests:)
     shared = DestinationCollision.find( @configurator.collection_all_tests.map( &:to_s ) ) { |test| @file_path_utils.form_test_name( test ) }
 
