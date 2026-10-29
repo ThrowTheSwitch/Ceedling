@@ -80,27 +80,31 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
   s.files        += Dir['vendor/unity/auto/**/*.rb']
   s.files        += Dir['vendor/unity/src/**/*.[ch]']
 
-  s.files        += Dir['**/*']
-  # Dir['**/*'] above sweeps the working tree, so anything a local run leaves behind
-  # would otherwise be packaged into a release.
+  # The working tree, less the top-level directories never packaged. The walk never
+  # descends into them: Bundler evaluates this file on every `bundle exec`, and a
+  # retained system test project below specout/ can nest past Windows' path limit,
+  # which makes the glob itself raise. A retained project also nests a vendored Ceedling
+  # deep enough to exceed the tar name limit (Gem::Package::TooLongFileName).
   #
-  # System test artifacts are the worst of it. `rake spec:system:debug:*` retains whole
-  # deployed projects under specout/, which both bloats the gem and breaks packaging
-  # outright, since a retained project nests a vendored Ceedling deep enough to exceed
-  # the tar name limit (Gem::Package::TooLongFileName).
+  #   build     Local build output
+  #   site-web  Hosted/versioned docs site -- not needed offline
+  #   specout   Retained system test artifacts and run logs
+  #   tools     Dev tooling the Rakefile above shells out to
+  unpackaged = %w[build site-web specout tools]
+  s.files += Dir['*'].reject { |entry| unpackaged.include?( entry ) }.flat_map { |entry| [entry, *Dir["#{entry}/**/*"]] }
+
+  # The walk above still sweeps the rest of the working tree, so anything a local run
+  # leaves behind there would otherwise be packaged into a release.
   #
-  # Build output matters for a second reason. Running the examples or the plugin example
-  # projects locally fills their build/ directories with object files and executables,
-  # and shipping compiled binaries in a release gem is exactly what trips the security
+  # Build output matters most. Running the examples or the plugin example projects
+  # locally fills their build/ directories with object files and executables, and
+  # shipping compiled binaries in a release gem is exactly what trips the security
   # scanners described in docs/SECURITY.md. `build` is matched as a whole path segment
   # on purpose: each vendored submodule ships a `meson.build` file, and a substring test
   # would silently drop all three.
   s.files.reject! do |f|
-    f.start_with?('site-web/') ||                        # Hosted/versioned docs site -- not needed offline
-    f == 'tools' || f.start_with?('tools/') ||            # Dev tooling the Rakefile above shells out to
     f == 'docs/mkdocs' || f.start_with?('docs/mkdocs/') ||  # Raw docs source -- site-local/ is the built artifact the gem actually serves
-    f == 'specout' || f.start_with?('specout/') ||        # Retained system test artifacts and run logs
-    f == 'build' || f.start_with?('build/') || f.include?('/build/') ||  # Local build output
+    f.include?('/build/') ||                              # Local build output
     f.match?(/\.(cdx|spdx)\.json\z/) ||                   # Generated SBOMs -- release assets, not gem contents
     # Upstream fff's own test apparatus. Ceedling needs fff.h from this tree and
     # nothing else, and these three directories are 1.2 MB that no Ceedling code path
@@ -118,7 +122,7 @@ Ceedling projects start with a YAML configuration file. A variety of conventions
     f == 'plugins/fff/vendor/fff/buildandtest'
   end
 
-  # Dir['**/*'] cannot see dotfiles, and a few are required for the spec suites that
+  # The walk above cannot see dotfiles, and a few are required for the spec suites that
   # ship with this gem to run at all. Those suites exist to support certification
   # self-testing, driven by separate tooling against the versioned gem, which is also
   # why spec/, Gemfile, and Gemfile.lock are packaged rather than trimmed out.
