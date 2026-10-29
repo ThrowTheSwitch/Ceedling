@@ -150,7 +150,7 @@ module FileTree
       return if File.directory?( path )
 
       with_retries( path ) do
-        heal( "Replaced a file where the directory '#{path}' belongs" ) { FileUtils.rm_f( path ) || true } if File.exist?( path ) || File.symlink?( path )
+        heal( "Replaced a file where the directory '#{path}' belongs" ) { remove_file( path ) } if File.exist?( path ) || File.symlink?( path )
         FileUtils.mkdir_p( path )
       end
     end
@@ -177,18 +177,35 @@ module FileTree
       log( message, Verbosity::COMPLAIN, LogLabels::NOTICE )
     end
 
-    # Whether this removed the directory. Another run healing the same entry may have removed
-    # it, or replaced it with a file already, which stays. FileUtils.rm_rf classifies by
-    # `lstat`, so it is reached only for a directory with contents. It works on the
-    # destination, and never follows a link out of it.
+    # Whether this removed the file or link. An error removing it reaches the retries.
+    def remove_file(path)
+      File.unlink( path )
+      return true
+    rescue Errno::ENOENT
+      return false
+    end
+
+    # Whether this removed the directory, or the link to one. Another run healing the same
+    # entry may have removed it already, or published a file in its place, which this run
+    # then publishes over. An error removing it reaches the retries.
     def remove_directory(path)
+      return remove_file( path ) if File.symlink?( path )
+
       Dir.rmdir( path )
       return true
     rescue Errno::ENOENT, Errno::ENOTDIR
       return false
     rescue Errno::ENOTEMPTY, Errno::EEXIST
-      FileUtils.rm_rf( path )
+      return remove_tree( path )
+    end
+
+    # FileUtils.rm_r classifies by `lstat`, so it is reached only for a directory with
+    # contents. It works on the destination, and never follows a link out of it.
+    def remove_tree(path)
+      FileUtils.rm_r( path )
       return true
+    rescue Errno::ENOENT
+      return false
     end
 
     def identical?(source, destination)

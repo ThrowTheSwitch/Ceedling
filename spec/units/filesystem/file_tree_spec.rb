@@ -265,8 +265,9 @@ describe FileTree, filesystem: true do
     end
 
     # Another run can heal the same entry first, publishing its file where this run found
-    # a directory. That file must survive.
-    it 'leaves a file another run published in place of the directory it found' do
+    # a directory. That file is never deleted, only published over, so a reader always finds
+    # one.
+    it 'publishes over a file another run put in place of the directory it found, without deleting it' do
       write( File.join( @src, 'unity.h' ), 'int x;' )
       FileUtils.mkdir_p( File.join( @dst, 'unity.h' ) )
       allow(Dir).to receive(:rmdir).and_wrap_original do |original, path|
@@ -274,11 +275,26 @@ describe FileTree, filesystem: true do
         File.write( path, 'published by another run' )
         raise Errno::ENOTDIR, path
       end
-      allow(FileUtils).to receive(:rm_rf).and_call_original
+      allow(FileUtils).to receive(:rm_r).and_call_original
 
-      sync
+      result = sync
 
-      expect(FileUtils).not_to have_received(:rm_rf)
+      expect(FileUtils).not_to have_received(:rm_r)
+      expect( [result.copied, result.healed] ).to eq( [1, 0] )
+      expect( File.read( File.join( @dst, 'unity.h' ) ) ).to eq( 'int x;' )
+    end
+
+    it 'replaces a link to a directory where a file belongs, and says so' do
+      write( File.join( @src, 'unity.h' ), 'int x;' )
+      FileUtils.mkdir_p( File.join( @root, 'elsewhere' ) )
+      FileUtils.mkdir_p( @dst )
+      symlink_or_skip( File.join( @root, 'elsewhere' ), File.join( @dst, 'unity.h' ) )
+
+      result = sync
+
+      expect( result.healed ).to eq( 1 )
+      expect( File.read( File.join( @dst, 'unity.h' ) ) ).to eq( 'int x;' )
+      expect( File.directory?( File.join( @root, 'elsewhere' ) ) ).to be( true )
     end
   end
 
@@ -425,6 +441,41 @@ describe FileTree, filesystem: true do
 
       expect( [outcome.copied, outcome.healed] ).to eq( [1, 1] )
       expect( sleeps ).to eq( delays.first( 1 ) )
+    end
+
+    it 'retries a stray directory with contents it cannot yet remove, counting one heal' do
+      write( File.join( @dst, 'u.c', 'junk' ) )
+      calls = 0
+      allow(FileUtils).to receive(:rm_r).and_wrap_original do |original, *args|
+        calls += 1
+        raise Errno::EACCES, 'simulated' if calls == 1
+
+        original.call( *args )
+      end
+
+      outcome, sleeps, logged = sync_with( FileTreeHelper::PUBLISH )
+
+      expect( [outcome.copied, outcome.healed] ).to eq( [1, 1] )
+      expect( sleeps ).to eq( delays.first( 1 ) )
+      expect( logged.count { |message, *| message.start_with?( 'Replaced a directory' ) } ).to eq( 1 )
+    end
+
+    it 'retries a file it cannot yet remove where a directory belongs' do
+      write( File.join( @dst, 'sub' ), 'i am a file' )
+      write( File.join( @src, 'sub', 'v.c' ), 'v' )
+      calls = 0
+      allow(File).to receive(:unlink).and_wrap_original do |original, *args|
+        calls += 1
+        raise Errno::EACCES, 'simulated' if calls == 1
+
+        original.call( *args )
+      end
+
+      outcome, sleeps, = sync_with( FileTreeHelper::PUBLISH )
+
+      expect( outcome.healed ).to eq( 1 )
+      expect( sleeps ).to eq( delays.first( 1 ) )
+      expect( File.read( File.join( @dst, 'sub', 'v.c' ) ) ).to eq( 'v' )
     end
 
     [Errno::ENOSPC, Errno::EISDIR, Errno::ENOTDIR].each do |error|
