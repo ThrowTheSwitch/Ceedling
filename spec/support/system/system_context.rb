@@ -6,6 +6,8 @@
 # =========================================================================
 
 require 'fileutils'
+require 'securerandom'
+require 'tmpdir'
 require 'bundler'
 require 'ceedling/encodinator'
 require 'ceedling/file_wrapper'
@@ -145,11 +147,27 @@ class SystemContext
       # or fail/) is determined by done!.
       base = File.join(Dir.pwd, ARTIFACTS_DIR, 'proj')
       FileUtils.mkdir_p(base)
-      @dir = Dir.mktmpdir(nil, base)
+      @dir = self.class.brief_tmpdir(base)
     else
-      @dir = Dir.mktmpdir
+      @dir = self.class.brief_tmpdir(Dir.tmpdir)
     end
     @gem = GemDirLayout.new(@dir)
+  end
+
+  # A new directory below `base` with a 7-character name, where Dir.mktmpdir's runs to
+  # 22. Windows paths stop at 260 characters, and a project's deepest build file sits
+  # well over 100 below this directory. Dir.mkdir is atomic, so concurrent runs never
+  # share one.
+  def self.brief_tmpdir(base)
+    loop do
+      dir = File.join(base, "s#{SecureRandom.hex(3)}")
+      begin
+        Dir.mkdir(dir)
+        return dir
+      rescue Errno::EEXIST
+        next
+      end
+    end
   end
 
   def done!
