@@ -583,7 +583,7 @@ class FilePathUtils
   # `.new`/`.include`) adds every entry as-is, with no glob interpretation at all -- the
   # correct construction for a list that's already the real, final answer.
   def mirror_build_objects(files, root:, ext:, generated_roots: [])
-    sources = @file_wrapper.instantiate_file_list_literal( files ).to_a.uniq
+    sources = @file_wrapper.instantiate_file_list_literal( files ).to_a.uniq { |file| ProjectPaths.absolute( file ) }
     objects = sources.map { |file| build_filepath( file, root: root, ext: ext, generated_roots: generated_roots ) }
 
     validate_distinct_build_files!( sources, objects )

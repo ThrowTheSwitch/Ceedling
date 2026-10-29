@@ -186,7 +186,7 @@ class TestBuildPlanner
       test_no_link_objects =
         @file_path_utils.form_test_build_objects_filelist(
           testable.paths[:build],
-          fetch_shallow_source_includes( filepath ),
+          fetch_shallow_source_includes( filepath, state.context, testable.name ),
           extra_roots: generated_roots
         )
 
@@ -315,8 +315,12 @@ class TestBuildPlanner
     )
   end
 
-  def fetch_shallow_source_includes(test_filepath)
-    return @test_context_extractor.lookup_source_includes_list( test_filepath )
+  # The sources a test #includes, which it must not link a second time. Each is the file its
+  # #include names, since that file's object sits at its own path, not the #include's.
+  def fetch_shallow_source_includes(test_filepath, context, test_name)
+    return @test_context_extractor.lookup_source_includes_list( test_filepath ).map do |include|
+      @file_finder.find_build_input_file( filepath: include.filepath, complain: :ignore, context: context, test: test_name ) || include.filepath
+    end
   end
 
   # Every stage resolving a mock's real header must agree on the same winner, or a

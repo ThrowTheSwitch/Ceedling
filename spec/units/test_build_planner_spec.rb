@@ -521,13 +521,34 @@ describe TestBuildPlanner do
         allow(@test_source_file_directive_resolver).to receive(:resolve)
           .with( 'test/TestFoo.c', :test ).and_return( [['src/Foo.c'], {}] )
         allow(@test_context_extractor).to receive(:lookup_source_includes_list)
-          .with( 'test/TestFoo.c' ).and_return( ['src/Foo.c'] )
+          .with( 'test/TestFoo.c' ).and_return( [UserInclude.new( 'src/Foo.c' )] )
+        allow(@file_finder).to receive(:find_build_input_file)
+          .with( filepath: 'src/Foo.c', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/Foo.c' )
       end
 
       it "resolves it as a source to compile but excludes its object from what gets linked" do
         @planner.stage_determine_artifacts( @state )
 
         expect(@testable.sources).to include( 'src/Foo.c' )
+        expect(@testable.objects).to_not include( 'src/Foo.o' )
+      end
+    end
+
+    # A test #includes a source by the name its own #include spells, and that source's object
+    # sits at the source's path, not the #include's
+    context "when a test #includes a source by its name alone" do
+      before(:each) do
+        allow(@test_source_file_directive_resolver).to receive(:resolve)
+          .with( 'test/TestFoo.c', :test ).and_return( [['src/Foo.c'], {}] )
+        allow(@test_context_extractor).to receive(:lookup_source_includes_list)
+          .with( 'test/TestFoo.c' ).and_return( [UserInclude.new( 'Foo.c' )] )
+        allow(@file_finder).to receive(:find_build_input_file)
+          .with( filepath: 'Foo.c', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/Foo.c' )
+      end
+
+      it "excludes the object of the source it names from what gets linked" do
+        @planner.stage_determine_artifacts( @state )
+
         expect(@testable.objects).to_not include( 'src/Foo.o' )
       end
     end

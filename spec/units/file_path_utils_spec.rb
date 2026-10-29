@@ -750,6 +750,14 @@ describe FilePathUtils do
       ])
     end
 
+    # A source collected by one spelling and configured by another is still one source
+    it 'builds one file named by two spellings once, as no collision' do
+      objects = @fpu.form_test_build_objects_filelist(
+        'build/test/out/TestFoo', ['test/support/helper.c', './test/support/helper.c', 'build/vendor/c_exception/lib/CException.c', './build/vendor/c_exception/lib/CException.c']
+      )
+      expect( objects ).to eq(['build/test/out/TestFoo/test/support/helper.o', 'build/test/out/TestFoo/CException.o'])
+    end
+
     it 'leaves a runner or vendored framework source below the build root flat' do
       objects = @fpu.form_test_build_objects_filelist(
         'build/test/out/TestFoo', ['build/test/runners/TestFoo_runner.c', 'build/vendor/unity/src/unity.c']

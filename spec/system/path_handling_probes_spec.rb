@@ -100,6 +100,42 @@ ceedling_system_tests do
     end
   end
 
+  # A test reaches a module's static functions by #including its source, which must not be
+  # linked a second time from its own object
+  it "links a test that #includes both a module's header and its source" do
+    in_app do
+      write( 'src/foo.h', "int foo(void);\n" )
+      write( 'src/foo.c', "#include \"foo.h\"\nstatic int helper(void) { return 2; }\nint foo(void) { return helper() + 1; }\n" )
+      write( 'test/test_foo.c', PROBE_TEST_PREAMBLE + "#include \"foo.h\"\n#include \"foo.c\"\nvoid test_helper(void) { TEST_ASSERT_EQUAL_INT(2, helper()); TEST_ASSERT_EQUAL_INT(3, foo()); }\n" )
+
+      output = @c.ceedling_build_exec( "test:all" )
+
+      expect(@c.last_exit_status).to eq(0), output
+      expect(output).to match(/PASSED:\s+1/)
+    end
+  end
+
+  # One file collected by one spelling and configured by another is one source
+  it "builds with a `./` build root and Unity helper, which name files the collections spell otherwise" do
+    in_app do
+      write( 'src/calc.h', "int calc(int a);\n" )
+      write( 'src/calc.c', "#include \"calc.h\"\n#include \"CException.h\"\nint calc(int a) { if (a < 0) { Throw(1); } return a + 1; }\n" )
+      write( 'test/support/unity_helper.h', "#define UNITY_HELPER_VALUE 1\n" )
+      write( 'test/support/unity_helper.c', "int unity_helper_value(void) { return 1; }\n" )
+      write( 'test/test_calc.c', PROBE_TEST_PREAMBLE + "#include \"CException.h\"\n#include \"calc.h\"\nvoid test_calc(void) { TEST_ASSERT_EQUAL_INT(2, calc(1)); }\n" )
+      @c.merge_project_yml_for_test( {
+        :project => { :build_root => './build', :use_exceptions => true },
+        :paths   => { :support => ['test/support'] },
+        :cmock   => { :unity_helper_path => ['./test/support/unity_helper.h'] }
+      } )
+
+      output = @c.ceedling_build_exec( "test:all" )
+
+      expect(@c.last_exit_status).to eq(0), output
+      expect(output).to match(/PASSED:\s+1/)
+    end
+  end
+
   # A project file's relative paths resolve against the working directory, not the project
   # file's own directory
   it "G22: builds a project named by --project from another directory, with paths relative to that directory" do
