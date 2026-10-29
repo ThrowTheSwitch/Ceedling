@@ -128,7 +128,7 @@ A file's sync raising one of `TRANSIENT_ERRORS` at any step waits the next delay
 
 - **Windows.**
   - Reparse points are the case this design exists for.
-  - A junction is a link to a directory. Whether `File.symlink?` reports one is unknown, and the walk descends it either way **[unverified]**.
+  - A junction is a link to a directory, and the walk descends it **[verified]**. Whether `File.symlink?` reports one is unknown **[unverified]**. A junction cannot be made on a UNC share.
   - `File.rename` replaces an existing file. Windows refuses to replace a read-only one, though Ruby may clear the attribute itself **[inferred]**. `#replace_file` clears it first either way.
   - Names cannot hold `*` or `?`.
   - Paths stop near 260 characters. The temporary name adds about 20 characters beyond the destination's, and `check_path_length` warns as a path nears the limit.
@@ -183,10 +183,13 @@ Specs elsewhere cover the callers:
 ### Windows reparse points
 
 `spec/units/filesystem/file_tree_windows_spec.rb` runs only on Windows.
-- **Junction.** The first example makes a junction with `mklink /J` and copies through it.
-- **WOF canary.** The second compresses a file with `compact /exe:lzx`, confirms its reparse tag is `0x80000017`, and prints what `lstat` and `stat` report, without asserting either. It then asserts the copy is a regular file of full size.
-- Each skips when its runner cannot make the reparse point.
-- Whether Ruby misreports a WOF file is unknown **[unverified]**. The canary answers it on its first run.
+- **Junction.** The first example makes a junction with `mklink /J` and copies through it. A canary line prints what `File.symlink?`, `lstat`, and `stat` report for the junction, without asserting any of them.
+- **WOF canary.** The second compresses a file with `compact /exe:lzx`, confirms its reparse tag is `0x80000017`, and prints the same canary line for the file. It then asserts the copy is a regular file of full size.
+- Each skips when its runner cannot make the reparse point. The skip names the command that failed, its exit status, and its output. A failed `compact` also reports the state of the WOF driver.
+
+On hosted Windows runners:
+- The junction example passes on the runner's own NTFS drive and on a VHD-backed NTFS volume **[verified]**. `mklink /J` cannot make a junction on the UNC share, so it skips there.
+- `compact /exe` fails on every volume tried: the runner's drive, the UNC share, and the VHD volume. The WOF canary has not run, and whether Ruby misreports a WOF file is unknown **[unverified]**.
 
 ### Other filesystems
 
@@ -196,11 +199,11 @@ Every `FileTree` spec carries `filesystem: true`, so `rspec spec/units/filesyste
 | --- | --- | --- | --- |
 | APFS | Case-insensitive by default | macOS test legs, and locally | **[verified]** |
 | ext4 | The Linux baseline | Linux test legs, and locally in Docker | **[verified]** |
-| tmpfs | Memory-backed | The Linux Ruby 3.3 leg, with `CEEDLING_TEST_FS_ROOT=/dev/shm` | **[verified]** locally in Docker |
-| NTFS | The Windows baseline | Windows test legs | **[unverified]** |
-| UNC administrative share | Reaches the local drive through the SMB client | The Filesystem Substrates job | **[unverified]** |
-| VHD-backed NTFS volume | A separate volume made with `diskpart` | The Filesystem Substrates job | **[unverified]** |
-| Loopback FAT image | No links, restricted names, 2 s timestamps | The Filesystem Substrates job | **[unverified]** |
+| tmpfs | Memory-backed | The Linux Ruby 3.3 leg, with `CEEDLING_TEST_FS_ROOT=/dev/shm` | **[verified]** in CI and locally in Docker |
+| NTFS | The Windows baseline | Windows test legs | **[verified]** |
+| UNC administrative share | Reaches the local drive through the SMB client | The Filesystem Substrates job | **[verified]**, the junction example skipping |
+| VHD-backed NTFS volume | A separate volume made with `diskpart` | The Filesystem Substrates job | **[verified]** |
+| Loopback FAT image | No links, restricted names, 2 s timestamps | The Filesystem Substrates job | **[verified]**, the link examples skipping |
 
 The Filesystem Substrates job is advisory. A step that cannot set up its filesystem warns, names why, and skips. Each step runs whatever the others did. The UNC step first enables Windows' evaluation of links on a share that name places on a share. The CI summary leaves the job out of its verdict.
 
@@ -221,8 +224,8 @@ The Filesystem Substrates job is advisory. A step that cannot set up its filesys
 | Tree shapes, glob names, unchanged and changed files | Real trees | yes | yes | yes |
 | Healing entries of the wrong type | Real trees | yes | yes | yes |
 | Links | Real trees, skipping without links | yes | yes | where permitted |
-| Junctions | Windows real trees | n/a | n/a | planned |
-| WOF reparse points | Windows real trees, canary | n/a | n/a | planned |
+| Junctions | Windows real trees, canary | n/a | n/a | yes, except on a UNC share |
+| WOF reparse points | Windows real trees, canary | n/a | n/a | skips: `compact /exe` fails on hosted runners |
 | Retries and failures | Injected faults | yes | yes | yes |
 | Other filesystems | `CEEDLING_TEST_FS_ROOT` | tmpfs, FAT | none | UNC, VHD |
 
