@@ -279,6 +279,34 @@ describe 'Path scenarios (integration)' do
     end
   end
 
+  # --- Test files kept out of the sources and the release --------------------------------
+
+  context 'test files among the sources' do
+    # A release compiles every source it collects, and a test file holds a second main()
+    it 'collects no test file into the sources or the release through a `:files` glob' do
+      files = { 'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/test/test_m.c' => TEST_C }
+      in_workspace( files ) do |ws, app|
+        yaml  = scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**'], include: ['src/**'] }, files: { source: ['+:**/*.c'] } )
+        scene = scenario( yaml )
+
+        expect(scene[:configurator].collection_all_tests.to_a).to eq( ['test/test_m.c'] )
+        expect(scene[:configurator].collection_all_source.to_a).to eq( ['src/main.c'] )
+        expect(scene[:configurator].collection_release_build_input.to_a).to eq( ['src/main.c'] )
+      end
+    end
+
+    # A test root beside the sources reaches the release through :paths as well
+    it 'collects no test file into the release from a source root that holds the tests' do
+      files = { 'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/src/test/test_m.c' => TEST_C }
+      in_workspace( files ) do |ws, app|
+        scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['src/test/**'], source: ['src/**'], include: ['src/**'] } ) )
+
+        expect(scene[:configurator].collection_release_build_input.to_a).to eq( ['src/main.c'] )
+      end
+    end
+
+  end
+
   # --- G12: the working directory reached through a symlink -------------------------------
 
   context 'G12: absolute roots spelled through a symlink to the project' do

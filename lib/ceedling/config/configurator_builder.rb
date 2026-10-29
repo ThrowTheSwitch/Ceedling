@@ -263,15 +263,12 @@ class ConfiguratorBuilder
   end
 
 
-  # Source files, less any test files that overlapping test and source paths also matched
+  # Source files, less any test files that overlapping test and source paths, or :files
+  # revisions, also matched
   def collect_source(in_hash, test_list)
-    sources = file_list( code_patterns( in_hash[:collection_paths_source], in_hash[:extension_source] ) )
-
-    mixed_in = test_list.select { |test| sources.include?( test ) }
-    exclude_tests( sources, mixed_in ) unless mixed_in.empty?
-
     # Add / subtract files via :files ↳ :source
-    return { :collection_all_source => revised( in_hash, sources, in_hash[:files_source] ) }
+    sources = file_collection( in_hash, code_patterns( in_hash[:collection_paths_source], in_hash[:extension_source] ), in_hash[:files_source] )
+    return { :collection_all_source => without_tests( sources, test_list ) }
   end
 
 
@@ -284,7 +281,7 @@ class ConfiguratorBuilder
 
 
   # Source files, plus CException's when exceptions are in use and assembly files when the
-  # release build assembles
+  # release build assembles, less any test file. Source collection already warned of those.
   def collect_release_build_input(in_hash)
     assembly = in_hash[:release_build_use_assembly]
     vendor   = in_hash[:project_use_exceptions] ? [in_hash[:project_build_vendor_cexception_path]] : []
@@ -292,7 +289,7 @@ class ConfiguratorBuilder
 
     # Add / subtract files via :files ↳ :source & :files ↳ :assembly
     revisions = in_hash[:files_source] + (assembly ? in_hash[:files_assembly] : [])
-    return { :collection_release_build_input => file_collection( in_hash, patterns, revisions ) }
+    return { :collection_release_build_input => without_tests( file_collection( in_hash, patterns, revisions ), in_hash[:collection_all_tests], warn: false ) }
   end
 
 
@@ -486,12 +483,13 @@ class ConfiguratorBuilder
     return list.resolve()
   end
 
-  def exclude_tests(sources, tests)
-    sources.exclude( *tests )
-    @loginator.log(
-      "Test file paths and source file paths overlap -- test files have been filtered out of the source file collection",
-      Verbosity::COMPLAIN
-    )
+  # `files` less any of `tests`, compared as collected, warning of any
+  def without_tests(files, tests, warn: true)
+    mixed_in = files.to_a & tests.to_a
+    return files if mixed_in.empty?
+
+    @loginator.log( 'Test file paths and source file paths overlap -- test files have been filtered out of the source file collection', Verbosity::COMPLAIN ) if warn
+    return @file_wrapper.instantiate_file_list_literal( files.to_a - mixed_in ).resolve()
   end
 
 end
