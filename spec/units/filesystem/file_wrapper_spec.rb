@@ -284,6 +284,19 @@ describe FileWrapper do
     end
   end
 
+  describe '#tree_files' do
+    it 'lists every regular file below a directory as full paths in sorted path order' do
+      Dir.mktmpdir do |dir|
+        ['a/b.c', 'a.c', '.hidden', 'dir[1]/x.c'].each do |name|
+          FileUtils.mkdir_p( File.dirname( File.join( dir, name ) ) )
+          File.write( File.join( dir, name ), name )
+        end
+
+        expect( @file_wrapper.tree_files( dir ) ).to eq( ['.hidden', 'a.c', 'a/b.c', 'dir[1]/x.c'].map { |name| File.join( dir, name ) } )
+      end
+    end
+  end
+
   # The temporary copy beside the destination is the longest path replace_file writes
   describe '#replace_file' do
     it 'checks the length of its temporary path, then leaves only the destination' do

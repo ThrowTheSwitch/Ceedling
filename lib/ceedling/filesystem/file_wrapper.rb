@@ -126,6 +126,12 @@ class FileWrapper
     return Dir.glob(glob, File::FNM_PATHNAME).sort()
   end
 
+  # Every regular file below dir as a full path, sorted. Unlike a glob, the walk classifies
+  # entries by `stat`, follows links, and reads names without pattern syntax (see FileTree).
+  def tree_files(dir)
+    return FileTree.each_file( dir ).map { |_relative, path| path }.sort
+  end
+
   # Entry names within a single directory, `.` and `..` excluded.
   #
   # Complements `directory_listing()` for the case a glob cannot serve: matching a
