@@ -562,11 +562,10 @@ class Bullseye < Plugin
     coverage_sources = []
     @test_invoker.each_test_with_sources { |_, srcs| coverage_sources.concat( srcs ) }
     coverage_sources.uniq!
-    # Every configured source extension is a valid ending for a mock/ignored-source name,
-    # so the two are joined into one regex alternation rather than matching just one.
-    source_extensions = EXTENSION_SOURCE.to_a.map { |ext| Regexp.escape(ext) }.join('|')
-    coverage_sources.delete_if {|item| item =~ /#{@configurator.cmock_mock_prefix}.+(?:#{source_extensions})$/}
-    coverage_sources.delete_if {|item| item =~ /(?:#{BULLSEYE_IGNORE_SOURCES.join('|')})(?:#{source_extensions})$/}
+    # Every configured source extension is a valid ending for a mock/ignored-source name
+    source_extensions = EXTENSION_SOURCE.pattern
+    coverage_sources.delete_if {|item| item =~ /#{@configurator.cmock_mock_prefix}.+#{source_extensions}$/}
+    coverage_sources.delete_if {|item| item =~ /(?:#{BULLSEYE_IGNORE_SOURCES.join('|')})#{source_extensions}$/}
 
     coverage_sources.each do |source|
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, [], source)

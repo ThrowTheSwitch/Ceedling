@@ -51,6 +51,17 @@ describe FilenameExtension do
     end
   end
 
+  describe '#pattern' do
+    it 'matches any one of its extensions, escaped, as a group' do
+      pattern = FilenameExtension.new( ['.c', '.c++'] ).pattern
+
+      expect('a.c++').to match( /#{pattern}\z/ )
+      expect('a.c').to match( /#{pattern}\z/ )
+      expect('a.cxx').to_not match( /#{pattern}\z/ )
+      expect('a_c').to_not match( /#{pattern}\z/ )
+    end
+  end
+
   describe '#candidates' do
     it 'produces one candidate filename per configured extension' do
       extension = FilenameExtension.new(['.s', '.S'])

@@ -282,6 +282,18 @@ describe ReleaseBuildExecutor do
       @executor.link( @state )
     end
 
+    it "separates every configured library extension, and a subproject's, from plain objects" do
+      stub_const( "EXTENSION_LIBRARIES", FilenameExtension.new( ['.a', '.so'] ) )
+      stub_const( "EXTENSION_SUBPROJECTS", '.lib' )
+      @state.objects = ['build/release/out/foo.o', 'vendor/libbar.a', 'vendor/libbaz.so', 'sub/x.lib', 'build/release/out/so.o']
+
+      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, objects, *_rest|
+        expect(objects).to eq( ['build/release/out/foo.o', 'build/release/out/so.o'] )
+      end
+
+      @executor.link( @state )
+    end
+
     it "formats a separated library as a linker argument via the configured flag template" do
       stub_const( "EXTENSION_LIBRARIES", FilenameExtension.new('.a') )
       stub_const( "LIBRARIES_FLAG", '-l${1}' )

@@ -51,6 +51,12 @@ class FilenameExtension
     @extensions.include?(File.extname(filepath))
   end
 
+  # A regex source matching any one of this type's extensions, each escaped, as one
+  # non-capturing group, for a pattern naming a file of this type by its ending
+  def pattern
+    return "(?:#{@extensions.map { |ext| Regexp.escape( ext ) }.join( '|' )})"
+  end
+
   # Every filename `basename` could take on under this type, one per
   # configured extension. Used to search a directory for a file of this
   # type when its extension isn't known in advance -- a build input file
