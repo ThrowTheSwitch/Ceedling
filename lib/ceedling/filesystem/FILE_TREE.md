@@ -56,7 +56,7 @@ A glob is no safer a walk. `Dir.glob( '**/*' )` lists a linked directory without
 
 Every change to this code must keep these invariants. Specs pin each one.
 
-- No walk classifies by `lstat`. A copy uses it only on the destination: `FileUtils.rm_rf` on a directory with contents, and `File.symlink?` to find a dangling link.
+- No walk classifies by `lstat`. A copy uses it only on the destination: `FileUtils.rm_r` on a directory with contents, and `File.symlink?` to find a link.
 - A copy holds only regular files and directories.
 - A file that matches its source is never written.
 - A destination file is never visible half-written.
@@ -83,7 +83,7 @@ A destination directory that exists is kept. A file or a dangling link in its pl
 
 ### Files
 
-A destination directory in a file's place is removed. `Dir.rmdir` removes an empty one, and `FileUtils.rm_rf` one with contents. Another run may heal the same entry first. `ENOENT` means it removed the directory, and `ENOTDIR` that it already published the file there. Either way that run's work stays, and this run counts no heal. A destination file of the same size and the same bytes, by `FileUtils.compare_file`, is counted unchanged and left alone. Otherwise `publish` writes the file.
+A destination directory in a file's place is removed. A link to a directory is unlinked, `Dir.rmdir` removes an empty directory, and `FileUtils.rm_r` one with contents. Any error removing it reaches the retries. Another run may heal the same entry first. `ENOENT` means it removed the directory, and `ENOTDIR` that it already published the file there. This run then counts no heal, and publishes over that file rather than deleting it, so a reader always finds one. A destination file of the same size and the same bytes, by `FileUtils.compare_file`, is counted unchanged and left alone. Otherwise `publish` writes the file.
 
 ### Retries
 
@@ -117,19 +117,19 @@ A file's sync raising one of `TRANSIENT_ERRORS` at any step waits the next delay
 ## Limits
 
 - **`stat` is trusted.** The design assumes `stat` reports a type correctly wherever `lstat` does not. That is the observation behind it, not a guarantee.
-- **`lstat` remains on the destination.** `FileUtils.rm_rf` classifies by `lstat` when it removes a destination directory with contents, and never follows a link out of it. `File.symlink?` asks `lstat` whether a destination entry that names nothing is a dangling link. Both work on the destination, which Ceedling creates, not on a source a filesystem may misreport.
+- **`lstat` remains on the destination.** `FileUtils.rm_r` classifies by `lstat` when it removes a destination directory with contents, and never follows a link out of it. `File.symlink?` asks `lstat` whether a destination entry is a link. Both work on the destination, which Ceedling creates, not on a source a filesystem may misreport.
 - **Special files raise.** A socket, a FIFO, or a device in a source tree stops the copy.
 - **Extra files stay.** A copy never removes destination files its source lacks.
 - **Every file is read.** Comparing a file reads both copies on every build. Vendored trees hold a few hundred small files, so this costs little. Comparing by modification time would cost less, but would trust timestamps.
 - **Timestamps.** A written file takes the time of writing. A skipped file keeps its own. Source times are not preserved, and nothing in Ceedling depends on them.
-- **Concurrent builds.** Each file is renamed into place whole, so two builds sharing one `build/vendor/` never read a partial file. A heal leaves a file another build already published. A spec simulates that race. No spec runs two processes.
+- **Concurrent builds.** Each file is renamed into place whole, so two builds sharing one `build/vendor/` never read a partial file. A heal never deletes a file another build already published, and publishes over it instead. A spec simulates that race. No spec runs two processes.
 
 ## Platforms
 
 - **Windows.**
   - Reparse points are the case this design exists for.
-  - A junction is a link to a directory that `File.symlink?` does not report, and the walk descends it **[unverified]**.
-  - `File.rename` replaces an existing file, unless that file is read-only **[inferred]**. `#replace_file` clears the read-only attribute first.
+  - A junction is a link to a directory. Whether `File.symlink?` reports one is unknown, and the walk descends it either way **[unverified]**.
+  - `File.rename` replaces an existing file. Windows refuses to replace a read-only one, though Ruby may clear the attribute itself **[inferred]**. `#replace_file` clears it first either way.
   - Names cannot hold `*` or `?`.
   - Paths stop near 260 characters. The temporary name adds about 20 characters beyond the destination's, and `check_path_length` warns as a path nears the limit.
 - **macOS and Linux.**
@@ -150,11 +150,11 @@ The specs test the shape of the problem rather than the infrastructure that prod
 
 `spec/support/file_tree_helper.rb` defines a `LyingStat`, a stat result that claims a directory. `lie_about_lstat( pattern )` stubs `File.lstat` through RSpec to return one for each path matching `pattern`. `FileUtils` classifies entries by calling `File.lstat` from Ruby, so the stub reaches it **[verified]**. RSpec removes the stub after each example. A global patch of `File` would leak between examples.
 
-Three examples rest on the stand-in.
+Three kinds of example stub `File.lstat`. The control and the survival examples use the stand-in, and the guard a stricter stub.
 
 1. **The control.** `FileUtils.cp_r` fails under the stand-in, making a directory where the file belongs **[verified]**. This shows the stand-in reproduces the failure. If a later Ruby stops failing here, review the control rather than deleting it.
-2. **Survival.** `FileTree.sync` copies every file as a file while every entry lies **[verified]**.
-3. **The guard.** With `File.lstat` raising on any call, a sync that heals an empty stray directory still succeeds **[verified]**.
+2. **Survival.** `FileTree.sync` copies every file as a file while every entry lies, and `FileTree.each_file` lists every file **[verified]**.
+3. **The guard.** With `File.lstat` stubbed to raise on any call, a sync that heals an empty stray directory still succeeds **[verified]**.
 
 The stand-in proves `FileTree` never classifies by `lstat`. It does not prove a real filesystem behaves as the stand-in does, or that `stat` is right everywhere. It exercises the symptom, not the cause.
 
@@ -165,9 +165,9 @@ The stand-in proves `FileTree` never classifies by `lstat`. It does not prove a 
 - names holding glob metacharacters;
 - an unchanged file keeping its modification time, and a changed file replaced, even at the same size;
 - extra destination files left alone;
-- each kind of healing, the destination root and a dangling link included, and a heal another run made first;
+- each kind of healing, the destination root, a dangling link, and a link to a directory included, and a heal another run made first;
 - links: a linked root, a linked file, a linked directory, a loop, and a dangling link;
-- retries on each transient error, on a destination that cannot yet be read, and on a heal, retries spent, and errors that fail at once;
+- retries on each transient error, on a destination that cannot yet be read, and on each kind of heal, retries spent, and errors that fail at once;
 - entries `skip` names, directories that cannot be listed, entries that cannot be read, and real paths that cannot be resolved;
 - `.sync_file`.
 
