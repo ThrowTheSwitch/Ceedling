@@ -24,6 +24,7 @@ module ProjectPaths
 
   @lock         = Mutex.new
   @working_dirs = {}
+  @absolutes    = {}
 
   # The working directory with every symlink resolved. Reads the disk once per directory.
   def self.working_dir
@@ -43,11 +44,15 @@ module ProjectPaths
   end
 
   # `path` as an absolute path, its `..` and `.` resolved against the working directory
-  # without reading the disk. A drive letter is upper case.
+  # without reading the disk. A drive letter is upper case. Remembered for each working
+  # directory and home directory, since a build compares the same few roots many times.
   def self.absolute(path)
-    path = standardize( path )
-    absolute = unc?( path ) ? path.squeeze( '/' ).sub( %r{\A/}, '//' ) : File.expand_path( path, working_dir )
-    return absolute.sub( /\A[a-z](?=:)/ ) { |drive| drive.upcase }
+    key    = [Dir.pwd, Dir.home, path.to_s]
+    cached = @lock.synchronize { @absolutes[key] }
+    return cached unless cached.nil?
+
+    absolute = absolute_of( path ).freeze
+    return @lock.synchronize { @absolutes[key] = absolute }
   end
 
   # The one spelling intake records for `path`: relative to the working directory, with the
@@ -107,6 +112,12 @@ module ProjectPaths
     return WINDOWS ? path.downcase.start_with?( prefix.downcase ) : path.start_with?( prefix )
   end
 
+  def self.absolute_of(path)
+    path = standardize( path )
+    absolute = unc?( path ) ? path.squeeze( '/' ).sub( %r{\A/}, '//' ) : File.expand_path( path, working_dir )
+    return absolute.sub( /\A[a-z](?=:)/ ) { |drive| drive.upcase }
+  end
+
   def self.expand_home(path)
     return path unless path == '~' || path.start_with?( '~/' )
 
@@ -127,6 +138,6 @@ module ProjectPaths
     return File.join( File.realpath( existing ), *missing )
   end
 
-  private_class_method :expand_home, :real
+  private_class_method :absolute_of, :expand_home, :real
 
 end
