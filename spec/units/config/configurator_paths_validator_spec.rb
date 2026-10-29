@@ -153,6 +153,14 @@ describe ConfiguratorPathsValidator do
       expect(@loginator).to have_received(:log).with(/'-:src\/typo\/\*\*' leaves out nothing; no directory matches it/, Verbosity::COMPLAIN)
     end
 
+    it 'warns of a `-:` glob that matches nothing below a directory that exists' do
+      existing( 'src' ); directories( 'src' )
+      allow(@file_wrapper).to receive(:directory_listing).and_return([])
+
+      expect(validate( "    - -:src/nomatch*\n" )).to be true
+      expect(@loginator).to have_received(:log).with(/'-:src\/nomatch\*' leaves out nothing/, Verbosity::COMPLAIN)
+    end
+
     it 'accepts a `-:` subdirectories glob of an existing directory without a word' do
       existing( 'src/legacy' ); directories( 'src/legacy' )
       allow(@file_wrapper).to receive(:directory_listing).and_return([])

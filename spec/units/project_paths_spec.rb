@@ -49,6 +49,12 @@ describe ProjectPaths do
   end
 
   describe '.absolute' do
+    # Spelled as the full computation spells it, whatever the shortcut for a clean path
+    it 'spells a rooted path with a trailing separator or surrounding space without either' do
+      expect(ProjectPaths.absolute( '/a/' )).to eq( '/a' ) unless Gem.win_platform?
+      expect(ProjectPaths.absolute( " #{@ws}/x " )).to eq( "#{@ws}/x" )
+    end
+
     it 'reads `~user` as a directory of that name, never the user\'s home' do
       expect(ProjectPaths.absolute( '~nosuchuser/inc' )).to eq( File.join( @ws, 'app', '~nosuchuser/inc' ) )
     end

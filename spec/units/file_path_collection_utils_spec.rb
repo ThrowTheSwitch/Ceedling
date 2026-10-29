@@ -314,6 +314,21 @@ describe FilePathCollectionUtils, 'on disk' do
     expect(@fpcu.collect_paths( ['+:src/**', '+:src/ext'] ).count { |dir| dir.end_with?( 'ext' ) }).to eq( 1 )
   end
 
+  # An #include or a test name spells a place below a root through the root as listed,
+  # as the compiler and the command line do
+  it 'spells a symlinked directory below an entry\'s base as it is listed', **POSIX_ONLY_COLLECTION do
+    link_ext
+
+    expect(@fpcu.collect_paths( ['+:src/**'] )).to include( 'src/ext' )
+    expect(@fpcu.revise_filelist( ['src/ext/foo.c'], ['+:src/a/*.c'] ).to_a).to eq( ['src/ext/foo.c', 'src/a/bar.c'] )
+  end
+
+  it 'spells an entry\'s symlinked base as it really is', **POSIX_ONLY_COLLECTION do
+    File.symlink( File.join( @ws, 'vendor' ), File.join( @ws, 'app/vend' ) )
+
+    expect(@fpcu.collect_paths( ['+:vend/**'] )).to eq( ['../vendor', '../vendor/ext'] )
+  end
+
   it 'removes a file below a symlinked directory that a `-:` revision names', **POSIX_ONLY_COLLECTION do
     link_ext
 
@@ -334,6 +349,14 @@ describe FilePathCollectionUtils, 'on disk' do
 
     expect(@fpcu.collect_paths( ['+:src/**', '-:src/legacy', '+:src/legacy/keep'] )).to eq( ['src', 'src/a', 'src/legacy/keep'] )
     expect(@fpcu.collect_paths( ['+:src/**', '+:src/legacy', '-:src/legacy'] )).to eq( ['src', 'src/a'] )
+  end
+
+  # Only the entries that name a directory decide whether it is kept
+  it 'judges each directory by the entries that name it, not every entry\'s base' do
+    FileUtils.mkdir_p( ['src/legacy/x/inc', 'src/legacy/keep/sub'] )
+
+    expect(@fpcu.collect_paths( ['+:src/**', '+:src/legacy/*/inc', '-:src'] )).to eq( ['src/legacy/x/inc'] )
+    expect(@fpcu.collect_paths( ['+:src/**', '+:src/legacy/keep', '-:src/legacy'] )).to contain_exactly( 'src', 'src/a', 'src/legacy/keep' )
   end
 
   it 'leaves out many directories below a `-:` entry quickly' do

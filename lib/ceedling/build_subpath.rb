@@ -19,8 +19,9 @@ module BuildSubpath
   UNC_SEGMENT       = '_unc_'
   INSTALLED_SEGMENT = '_ceedling_'
 
-  # A segment of a path named like a marker, perhaps already led by more `_`
-  MARKER_NAMED = /\A_+(?:up|abs|unc|ceedling)_\z/
+  # A segment of a path named like a marker, perhaps already led by more `_`, in any case,
+  # since macOS and Windows file systems fold it
+  MARKER_NAMED = /\A_+(?:up|abs|unc|ceedling)_\z/i
 
   # The running Ceedling installation, above lib/ceedling/
   INSTALLATION_ROOT = File.expand_path( '../..', __dir__ )

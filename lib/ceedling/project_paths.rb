@@ -22,6 +22,13 @@ module ProjectPaths
   DECORATOR = /\A[+-]:/
   WINDOWS   = (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|msys|ucrt/i) ? true : false
 
+  # What `absolute` makes of a path, which `clean_absolute?` finds already so: rooted, `C:/`
+  # on Windows, and free of `.`/`..` segments, doubled `/`, and backslashes. Windows'
+  # File.expand_path also lengthens a short `~` name and drops a trailing dot or space.
+  ROOTED      = WINDOWS ? %r{\A[A-Z]:/} : %r{\A/}
+  ROOT_LENGTH = WINDOWS ? 3 : 1
+  UNCLEAN     = WINDOWS ? %r{//|/\.\.?(?:/|\z)|\\|~|[. ](?:/|\z)} : %r{//|/\.\.?(?:/|\z)|\\}
+
   @lock         = Mutex.new
   @working_dirs = {}
   @absolutes    = {}
@@ -75,11 +82,10 @@ module ProjectPaths
     return absolute if unc?( absolute )
 
     # Most paths lie below the working directory, which needs no Pathname walk
-    base = working_dir
-    return '.' if same?( absolute, base )
-    return absolute[(base.length + 1)..] if clean_absolute?( absolute ) and starts_with?( absolute, "#{base}/" )
+    return '.' if same?( absolute, working_dir )
+    return absolute[(working_dir.length + 1)..] if clean_absolute?( absolute ) and starts_with?( absolute, "#{working_dir}/" )
 
-    return Pathname.new( absolute ).relative_path_from( Pathname.new( base ) ).to_s
+    return Pathname.new( absolute ).relative_path_from( Pathname.new( working_dir ) ).to_s
   rescue ::ArgumentError
     return absolute
   end
@@ -126,12 +132,14 @@ module ProjectPaths
   end
 
   # Already absolute as `absolute` would spell it: rooted (with an upper case drive on
-  # Windows), with no `.` or `..` segment, doubled or trailing `/`, or backslash
+  # Windows), with no `.` or `..` segment, doubled or trailing `/`, backslash, or surrounding
+  # space. On Windows, File.expand_path also lengthens a short `~` name and drops a trailing
+  # dot or space, so a segment with any of those is never clean.
   def self.clean_absolute?(path)
-    return false unless path.is_a?( String )
-    return false unless WINDOWS ? path.match?( %r{\A[A-Z]:/} ) : path.start_with?( '/' )
+    return false unless path.is_a?( String ) and path.match?( ROOTED )
+    return false if path.match?( UNCLEAN ) or path != path.strip
 
-    return !path.match?( %r{//|/\.\.?(?:/|\z)|\\} ) && (path.length <= 3 || !path.end_with?( '/' ))
+    return path.length == ROOT_LENGTH || !path.end_with?( '/' )
   end
 
   # A `~user` path names a directory of that name, which File.expand_path would read as the

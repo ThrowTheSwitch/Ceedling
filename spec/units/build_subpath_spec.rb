@@ -43,6 +43,9 @@ describe BuildSubpath do
         expect(BuildSubpath.decode( encoded )).to eq( path ), "#{path} => #{encoded}"
       end
       expect(BuildSubpath.encode( '_up_/x' )).to_not eq( BuildSubpath.encode( '../x' ) )
+      # macOS and Windows file systems fold case
+      expect(BuildSubpath.encode( '_UP_/x' ).downcase).to_not eq( BuildSubpath.encode( '../x' ).downcase )
+      expect(BuildSubpath.decode( BuildSubpath.encode( '_UP_/x' ) )).to eq( '_UP_/x' )
     end
 
     # Windows has no relative path from one drive to another

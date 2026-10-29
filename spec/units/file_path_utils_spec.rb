@@ -766,10 +766,10 @@ describe FilePathUtils do
 
     # A source far from the project gains a directory for each level its path climbs, which
     # can reach Windows' path length limit
-    it 'checks the length of each object\'s whole path' do
-      expect(@file_wrapper).to receive(:check_path_length).with( 'build/test/out/TestFoo/_up_/_up_/far/src/x.o', origin: 'FilePathUtils#build_filepath' )
+    it 'checks the length of each object\'s whole path, once' do
+      expect(@file_wrapper).to receive(:check_path_length).with( 'build/test/out/TestFoo/_up_/_up_/far/src/x.o', origin: 'FilePathUtils#build_filepath' ).once
 
-      @fpu.form_test_build_objects_filelist( 'build/test/out/TestFoo', ['../../far/src/x.c'] )
+      2.times { @fpu.form_test_build_objects_filelist( 'build/test/out/TestFoo', ['../../far/src/x.c'] ) }
     end
 
     it 'leaves a runner or vendored framework source below the build root flat' do

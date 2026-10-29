@@ -124,10 +124,11 @@ class ConfiguratorPathsValidator
     return false
   end
 
-  # A `-:` entry leaves out what it names, or warns of naming nothing
+  # A `-:` entry leaves out what it names, or warns of naming nothing. A subdirectories glob
+  # names its directory too.
   def valid_subtraction?(entry, path, walk, build_root)
-    base = FilePathUtils.no_decorators( entry )
-    return true if base.empty? or @file_wrapper.exist?( base ) or globbed_directories?( path )
+    named = path.match?( %r{/\*{1,2}\z} ) ? @file_wrapper.exist?( FilePathUtils.no_decorators( entry ) ) : @file_wrapper.exist?( path )
+    return true if named or globbed_directories?( path )
 
     return subtracts_nothing( entry, walk, build_root, 'directory' )
   end

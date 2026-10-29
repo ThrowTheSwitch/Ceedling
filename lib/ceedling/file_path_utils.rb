@@ -10,6 +10,7 @@ require 'rake' # for ext()
 require 'fileutils'
 require 'pathname'
 require 'ceedling/exceptions'
+require 'set'
 require 'ceedling/system_wrapper'
 require 'ceedling/constants'
 require 'ceedling/path_mirror'
@@ -28,6 +29,11 @@ end
 class FilePathUtils
 
   constructor :configurator, :file_wrapper
+
+  def setup
+    @formed_lock  = Mutex.new
+    @formed_paths = Set.new
+  end
 
   ######### Class methods ##########
 
@@ -588,9 +594,14 @@ class FilePathUtils
     basename = File.basename( file ).ext( ext )
     path     = subdir.empty? ? File.join( root, basename ) : File.join( root, subdir, basename )
 
-    # A source far from the project gains a directory for each level its path climbs
-    @file_wrapper.check_path_length( path, origin: 'FilePathUtils#build_filepath' )
+    # A source far from the project gains a directory for each level its path climbs. Each
+    # path is checked once, however often it is formed.
+    @file_wrapper.check_path_length( path, origin: 'FilePathUtils#build_filepath' ) if first_formed?( path )
     return path
+  end
+
+  def first_formed?(path)
+    return @formed_lock.synchronize { @formed_paths.add?( path ) }
   end
 
   # Where below a build output root the build file of `file` lands. A file below one of the

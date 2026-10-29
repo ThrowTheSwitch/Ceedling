@@ -11,23 +11,30 @@ require 'fileutils'
 require 'ceedling/file_path_utils'
 require 'ceedling/exceptions'
 require 'ceedling/project_paths'
+require 'ceedling/path_spellings'
 
 
 class FilePathCollectionUtils
-  
+
+  # One collected directory: its spelling through its entry's real base, both of its
+  # spellings, and how far below the nearest base of an entry naming it it lies
+  Named = Struct.new( :spelled, :spellings, :distance )
+
   constructor :file_wrapper
 
-  # The directories one or more (+:/-:) paths and globs name, each spelled canonically, once.
-  # A `-:` entry, and each path in `exclude`, drops the directories it names and every
-  # directory below them, except one an additive entry names nearer to it.
+  # The directories one or more (+:/-:) paths and globs name, once each, spelled through
+  # each entry's base as the base really is, as an #include or a test name reaches them. A
+  # `-:` entry, and each path in `exclude`, drops the directories it names and every
+  # directory below them, except one an additive entry naming it names nearer.
   def collect_paths(paths, exclude: [])
     # Nil input (e.g. unconfigured section) is treated as an empty list
     return [] if paths.nil?
 
     additive, subtractive = paths.partition { |entry| FilePathUtils.add_path?( entry ) }
+    minus = PathSpellings.of( directories_of( subtractive ) + exclude )
 
-    kept = spelled_directories( additive ).select( &kept_by( additive, subtractive, exclude ) )
-    return kept.map { |_dir, real| ProjectPaths.relative( real ) }.uniq
+    kept = named_directories( additive ).select { |named| named.distance < PathSpellings.nearer( named.spellings, minus ) }
+    return kept.map { |named| ProjectPaths.relative( named.spelled ) }
   end
 
   # Given a file list, add to it or remove from it considering (+:/-:) aggregation operators.
@@ -37,9 +44,7 @@ class FilePathCollectionUtils
     # Nil list produces an empty FileList; nil revisions leaves the list unchanged
     return FileList.new([]) if list.nil?
 
-    additive, subtractive = (revisions || []).partition { |revision| FilePathUtils.add_path?( revision ) }
-    minus = left_out( subtractive )
-    kept  = listed_and_added( list, additive ).reject { |path| minus.include?( key( path ) ) }
+    kept = kept_files( list, *(revisions || []).partition { |revision| FilePathUtils.add_path?( revision ) } )
 
     # #104 -- every entry here is already a concrete, real file, but plain FileList.new or
     # #include re-reads each as a glob, silently dropping a literal `[`/`]`.
@@ -66,43 +71,54 @@ class FilePathCollectionUtils
 
   private
 
-  # Whether a directory lies nearer to an additive entry than to anything left out
-  def kept_by(additive, subtractive, exclude)
-    bases = spellings( additive.map { |entry| FilePathUtils.no_decorators( entry ) } )
-    minus = spellings( directories_of( subtractive ) + exclude )
-    return ->(spelled) { nearer( spelled, bases ) < nearer( spelled, minus ) }
+  # Every directory additive entries name, once each by its real spelling, with its distance
+  # below the nearest base of the entries naming it
+  def named_directories(entries)
+    named = {}
+    entries.each do |entry|
+      bases = PathSpellings.of( [FilePathUtils.no_decorators( entry )] )
+      entry_directories( entry ).each { |dir| name_directory( named, dir, bases ) }
+    end
+
+    return named.values
   end
 
-  # The files `-:` revisions name, compared as `key` spells them
-  def left_out(subtractive)
-    return Set.new( files_of( subtractive ).map { |path| key( path ) } )
+  # Records `dir`, the first spelling of its real place kept, nearer if these bases are
+  def name_directory(named, dir, bases)
+    both  = [dir, ProjectPaths.real_absolute( dir )]
+    found = (named[PathSpellings.key( both.last )] ||= Named.new( dir, both, Float::INFINITY ))
+    found.distance = [found.distance, PathSpellings.nearer( both, bases )].min
   end
 
-  # A file list's files and those additive revisions name, once each
-  def listed_and_added(list, additive)
-    return (list.map { |path| file_spelling( path ) } + files_of( additive )).uniq { |path| key( path ) }
+  # The listed files and those additive revisions name, less those `-:` revisions name, each
+  # compared through its directory as it really is
+  def kept_files(list, additive, subtractive)
+    real  = {}
+    minus = Set.new( files_of( subtractive ).map { |path| real_key( path, real ) } )
+    return listed_and_added( list, additive, real ).reject { |path| minus.include?( real_key( path, real ) ) }
+  end
+
+  # A file list's files and those additive revisions name, once each by their real spelling
+  def listed_and_added(list, additive, real)
+    return (list.map { |path| ProjectPaths.absolute( path ) } + files_of( additive )).uniq { |path| real_key( path, real ) }
   end
 
   def directories_of(entries)
     return entries.flat_map { |entry| entry_directories( entry ) }
   end
 
-  # Every directory `entries` name, once, by its as-listed and its real spelling
-  def spelled_directories(entries)
-    return directories_of( entries ).uniq.map { |dir| [dir, ProjectPaths.real_absolute( dir )] }
-  end
-
   def files_of(revisions)
     return revisions.flat_map { |revision| revision_files( revision ) }
   end
 
-  # Every directory one entry names, absolute as listed
+  # Every directory one entry names, absolute and spelled through its base as the base
+  # really is, so one place is never collected under two spellings of that base
   def entry_directories(entry)
     path = ProjectPaths.standardize( FilePathUtils.no_aggregation_decorators( entry ) )
     dirs = listed_directories( path )
     dirs = with_parents( dirs, path ) if path.end_with?( '/**', '/*' )
 
-    return dirs.map { |dir| ProjectPaths.absolute( dir ) }
+    return PathSpellings.through_real( dirs.map { |dir| ProjectPaths.absolute( dir ) }, ProjectPaths.absolute( FilePathUtils.no_decorators( path ) ) )
   end
 
   # #104 -- FilePathUtils.subdirectory_glob escapes a literal `[`/`]` in the path itself, so
@@ -128,46 +144,20 @@ class FilePathCollectionUtils
     return listing.sort.select { |listed| @file_wrapper.directory?( listed ) }
   end
 
-  # Every file one :files revision names, each spelled through its directory as it really
-  # is. #104 -- a literal `[`/`]` is escaped as in `listed_directories`.
+  # Every file one :files revision names, absolute and spelled through its base as the base
+  # really is. #104 -- a literal `[`/`]` is escaped as in `listed_directories`.
   def revision_files(revision)
     path  = ProjectPaths.standardize( FilePathUtils.no_aggregation_decorators( revision ) )
     files = @file_wrapper.directory_listing( FilePathUtils.escape_glob_brackets( path ) ).sort.reject { |entry| @file_wrapper.directory?( entry ) }
 
-    return files.map { |file| file_spelling( file ) }
+    return PathSpellings.through_real( files.map { |file| ProjectPaths.absolute( file ) }, ProjectPaths.absolute( FilePathUtils.no_decorators( path ) ) )
   end
 
-  # A file's absolute path through its directory as it really is, keeping its own name
-  def file_spelling(file)
-    return File.join( ProjectPaths.real_absolute( File.dirname( file ) ), File.basename( file ) )
+  # A file compared through its directory as it really is, keeping its own name. Each
+  # directory is resolved once per call, in `real`.
+  def real_key(file, real)
+    dir = File.dirname( file )
+    return PathSpellings.key( File.join( (real[dir] ||= ProjectPaths.real_absolute( dir )), File.basename( file ) ) )
   end
 
-  # Both the as-listed and the real spelling of each of `paths`, so either reaches it
-  def spellings(paths)
-    return Set.new( paths.flat_map { |path| [ProjectPaths.absolute( path ), ProjectPaths.real_absolute( path )] }.map { |path| key( path ) } )
-  end
-
-  # How many directories above a directory, by either of its two spellings, the nearest one
-  # in `spelled` lies: 0 for the directory itself, or infinity for none
-  def nearer(spellings, spelled)
-    return spellings.map { |path| distance( path, spelled ) }.min
-  end
-
-  def distance(path, spelled)
-    steps = 0
-    loop do
-      return steps if spelled.include?( key( path ) )
-
-      parent = File.dirname( path )
-      return Float::INFINITY if parent == path
-
-      path   = parent
-      steps += 1
-    end
-  end
-
-  # Windows compares paths without regard to case
-  def key(path)
-    return ProjectPaths::WINDOWS ? path.downcase : path
-  end
 end
