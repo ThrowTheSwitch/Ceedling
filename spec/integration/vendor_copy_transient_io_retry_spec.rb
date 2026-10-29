@@ -201,9 +201,12 @@ describe 'Vendor copy into build/vendor (integration)' do
       dest = config[:project_build_vendor_unity_path]
       lie_about_lstat( %r{gem_vendor/} )
 
-      vendor( file_wrapper, dir, config )
-      # The temporary directory is removed by an lstat-based remover
-      allow(File).to receive(:lstat).and_call_original
+      begin
+        vendor( file_wrapper, dir, config )
+      ensure
+        # The temporary directory is removed by an lstat-based remover
+        allow(File).to receive(:lstat).and_call_original
+      end
 
       expect( File.file?( File.join( dest, 'unity.c' ) ) ).to be(true)
       expect( File.file?( File.join( dest, 'internal', 'unity_internals.h' ) ) ).to be(true)

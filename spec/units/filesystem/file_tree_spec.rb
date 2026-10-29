@@ -114,6 +114,41 @@ describe FileTree, filesystem: true do
     it 'raises when the root is not a directory' do
       expect { files_of( File.join( @root, 'nope' ) ) }.to raise_error( CeedlingException, /nope/ )
     end
+
+    it 'neither lists nor enters an entry `skip` names' do
+      write( File.join( @src, 'keep.c' ) )
+      write( File.join( @src, '.hidden/x.c' ) )
+      symlink_or_skip( File.join( @root, 'nowhere' ), File.join( @src, '.hidden/dangling.c' ) )
+
+      listed = FileTree.each_file( @src, skip: ->( name ) { name.start_with?( '.' ) } ).to_a.map( &:first )
+
+      expect( listed ).to eq( ['keep.c'] )
+    end
+
+    it 'names a directory it cannot list' do
+      FileUtils.mkdir_p( File.join( @src, 'locked' ) )
+      allow(Dir).to receive(:children).and_call_original
+      allow(Dir).to receive(:children).with( File.join( @src, 'locked' ) ).and_raise( Errno::EACCES )
+
+      expect { files_of( @src ) }.to raise_error( CeedlingException, /locked.*could not be listed/ )
+    end
+
+    it 'names an entry it cannot read' do
+      write( File.join( @src, 'locked.c' ) )
+      allow(File).to receive(:stat).and_call_original
+      allow(File).to receive(:stat).with( File.join( @src, 'locked.c' ) ).and_raise( Errno::EACCES )
+
+      expect { files_of( @src ) }.to raise_error( CeedlingException, /locked\.c.*could not be read/ )
+    end
+
+    # Loop detection is a safeguard, and must not stop a walk it cannot apply to
+    it 'walks a directory whose real path cannot be resolved' do
+      write( File.join( @src, 'sub/u.c' ) )
+      allow(File).to receive(:realpath).and_call_original
+      allow(File).to receive(:realpath).with( File.join( @src, 'sub' ) ).and_raise( Errno::EACCES )
+
+      expect( files_of( @src ).map( &:first ) ).to eq( ['sub/u.c'] )
+    end
   end
 
   # ---- copying ---------------------------------------------------------------------------
@@ -217,6 +252,33 @@ describe FileTree, filesystem: true do
       sync
 
       expect( File.read( File.join( @dst, 'u.c' ) ) ).to eq( 'int x;' )
+    end
+
+    it 'replaces a dangling link where a directory belongs' do
+      write( File.join( @src, 'sub/u.c' ), 'int x;' )
+      FileUtils.mkdir_p( @dst )
+      symlink_or_skip( File.join( @root, 'nowhere' ), File.join( @dst, 'sub' ) )
+
+      sync
+
+      expect( File.read( File.join( @dst, 'sub/u.c' ) ) ).to eq( 'int x;' )
+    end
+
+    # Another run can heal the same entry first, publishing its file where this run found
+    # a directory. That file must survive.
+    it 'leaves a file another run published in place of the directory it found' do
+      write( File.join( @src, 'unity.h' ), 'int x;' )
+      FileUtils.mkdir_p( File.join( @dst, 'unity.h' ) )
+      allow(Dir).to receive(:rmdir).and_wrap_original do |original, path|
+        original.call( path )
+        File.write( path, 'published by another run' )
+        raise Errno::ENOTDIR, path
+      end
+      allow(FileUtils).to receive(:rm_rf).and_call_original
+
+      sync
+
+      expect(FileUtils).not_to have_received(:rm_rf)
     end
   end
 
@@ -330,6 +392,39 @@ describe FileTree, filesystem: true do
       _, _, logged = sync_with( failing_publish( 1, Errno::EBUSY ) )
 
       expect( logged.map { |message, verbosity, *| [message[/\ARetrying copy to/], verbosity] } ).to include( ['Retrying copy to', Verbosity::DEBUG] )
+    end
+
+    # A scanner or sync client can hold the destination too, not only the file being written
+    it 'retries a destination file it cannot yet read' do
+      write( File.join( @dst, 'u.c' ), 'no' )
+      reads = 0
+      allow(FileUtils).to receive(:compare_file).and_wrap_original do |original, *args|
+        reads += 1
+        raise Errno::EACCES, 'simulated' if reads == 1
+
+        original.call( *args )
+      end
+
+      outcome, sleeps, = sync_with( FileTreeHelper::PUBLISH )
+
+      expect( outcome.copied ).to eq( 1 )
+      expect( sleeps ).to eq( delays.first( 1 ) )
+    end
+
+    it 'retries a heal that fails transiently' do
+      FileUtils.mkdir_p( File.join( @dst, 'u.c' ) )
+      calls = 0
+      allow(Dir).to receive(:rmdir).and_wrap_original do |original, *args|
+        calls += 1
+        raise Errno::EACCES, 'simulated' if calls == 1
+
+        original.call( *args )
+      end
+
+      outcome, sleeps, = sync_with( FileTreeHelper::PUBLISH )
+
+      expect( [outcome.copied, outcome.healed] ).to eq( [1, 1] )
+      expect( sleeps ).to eq( delays.first( 1 ) )
     end
 
     [Errno::ENOSPC, Errno::EISDIR, Errno::ENOTDIR].each do |error|

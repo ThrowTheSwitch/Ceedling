@@ -27,19 +27,20 @@ module FileTree
   Result = Struct.new( :copied, :unchanged, :healed, keyword_init: true )
 
   # Yields each regular file below `root` as its path relative to `root` and its full path,
-  # sorted within each directory. Returns an Enumerator without a block.
-  def self.each_file(root)
-    return enum_for( :each_file, root ) unless block_given?
+  # sorted within each directory. Returns an Enumerator without a block. An entry whose name
+  # `skip` accepts is neither yielded nor entered.
+  def self.each_file(root, skip: nil)
+    return enum_for( :each_file, root, skip: skip ) unless block_given?
 
-    each_entry( root ) { |relative, path, directory| yield( relative, path ) unless directory }
+    each_entry( root, skip: skip ) { |relative, path, directory| yield( relative, path ) unless directory }
   end
 
   # Yields each directory and regular file below `root`, a directory ahead of its contents,
   # as its relative path, its full path, and whether it is a directory
-  def self.each_entry(root, &block)
+  def self.each_entry(root, skip: nil, &block)
     raise CeedlingException, "'#{root}' is not a directory" unless File.directory?( root )
 
-    walk( root, nil, [File.realpath( root )], &block )
+    walk( root, nil, [real_path( root )], skip, &block )
   end
 
   # Brings every file below `source` up to date below `destination` and returns a Result. A
@@ -59,15 +60,23 @@ module FileTree
     return Sync.new( publish: publish, retry_delays: retry_delays, sleep: sleep, log: log ).file( source, destination_dir )
   end
 
-  def self.walk(dir, relative, ancestors, &block)
-    Dir.children( dir ).sort.each do |name|
+  def self.walk(dir, relative, ancestors, skip, &block)
+    names_in( dir ).each do |name|
+      next if skip&.call( name )
+
       path  = File.join( dir, name )
       entry = relative ? File.join( relative, name ) : name
       next yield( entry, path, false ) unless directory_entry?( path )
 
       yield( entry, path, true )
-      walk( path, entry, ancestors + [real_directory( path, ancestors )], &block )
+      walk( path, entry, ancestors + [real_directory( path, ancestors )], skip, &block )
     end
+  end
+
+  def self.names_in(dir)
+    return Dir.children( dir ).sort
+  rescue SystemCallError => e
+    raise CeedlingException, "'#{dir}' could not be listed ⏩️ #{e.message}"
   end
 
   # Whether a listed entry is a directory. Anything but a directory or a regular file raises.
@@ -83,16 +92,26 @@ module FileTree
     return File.stat( path )
   rescue Errno::ENOENT, Errno::ELOOP
     raise CeedlingException, "'#{path}' is a dangling or unresolvable link"
+  rescue SystemCallError => e
+    raise CeedlingException, "'#{path}' could not be read ⏩️ #{e.message}"
   end
 
   def self.real_directory(path, ancestors)
-    real = File.realpath( path )
+    real = real_path( path )
     raise CeedlingException, "Link loop: '#{path}' resolves to its own ancestor '#{real}'" if ancestors.include?( real )
 
     return real
   end
 
-  private_class_method :walk, :directory_entry?, :stat_of, :real_directory
+  # A directory's real path, for finding loops. A path that cannot be resolved stands for
+  # itself, so the walk goes on without that safeguard rather than stopping.
+  def self.real_path(path)
+    return File.realpath( path )
+  rescue SystemCallError
+    return File.expand_path( path )
+  end
+
+  private_class_method :walk, :names_in, :directory_entry?, :stat_of, :real_directory, :real_path
 
   # One copy's settings and tallies
   class Sync
@@ -125,40 +144,51 @@ module FileTree
 
     private
 
-    # Destination checks follow links, as `stat` does, so they share the source side's view
+    # Destination checks follow links, as `stat` does, so they share the source side's view.
+    # A dangling link counts as a file.
     def directory(path)
       return if File.directory?( path )
 
-      heal( "Replaced a file where the directory '#{path}' belongs" ) { FileUtils.rm_f( path ) } if File.exist?( path )
-      FileUtils.mkdir_p( path )
-    end
-
-    def publish_file(source, destination)
-      if File.directory?( destination )
-        heal( "Replaced a directory where the file '#{destination}' belongs" ) { remove_directory( destination ) }
-      elsif identical?( source, destination )
-        @result.unchanged += 1
-        return
+      with_retries( path ) do
+        heal( "Replaced a file where the directory '#{path}' belongs" ) { FileUtils.rm_f( path ) || true } if File.exist?( path ) || File.symlink?( path )
+        FileUtils.mkdir_p( path )
       end
-
-      with_retries( destination ) { @publish.call( source, destination ) }
-      @result.copied += 1
     end
 
+    # Every step is retried, since a scanner or sync client can hold the destination too
+    def publish_file(source, destination)
+      with_retries( destination ) do
+        if File.directory?( destination )
+          heal( "Replaced a directory where the file '#{destination}' belongs" ) { remove_directory( destination ) }
+        elsif identical?( source, destination )
+          next @result.unchanged += 1
+        end
+
+        @publish.call( source, destination )
+        @result.copied += 1
+      end
+    end
+
+    # Counts and logs a heal the block reports it made
     def heal(message)
-      yield
+      return unless yield
+
       @result.healed += 1
       log( message, Verbosity::COMPLAIN, LogLabels::NOTICE )
     end
 
-    # FileUtils.rm_rf classifies by `lstat`, so it is reached only for a directory with
-    # contents. It works on the destination, and never follows a link out of it.
+    # Whether this removed the directory. Another run healing the same entry may have removed
+    # it, or replaced it with a file already, which stays. FileUtils.rm_rf classifies by
+    # `lstat`, so it is reached only for a directory with contents. It works on the
+    # destination, and never follows a link out of it.
     def remove_directory(path)
       Dir.rmdir( path )
-    rescue Errno::ENOENT
-      nil
-    rescue SystemCallError
+      return true
+    rescue Errno::ENOENT, Errno::ENOTDIR
+      return false
+    rescue Errno::ENOTEMPTY, Errno::EEXIST
       FileUtils.rm_rf( path )
+      return true
     end
 
     def identical?(source, destination)
