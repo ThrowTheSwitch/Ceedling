@@ -221,6 +221,14 @@ jobs:
           CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'units' || 'false' }}
         run: rake specs:units
 
+      # FileTree's specs again, with their trees on a tmpfs. One leg is enough: the
+      # filesystem differs, not Ruby. The Filesystem Substrates job covers the others.
+      - name: Run Filesystem Specs on tmpfs
+        if: matrix.ruby == '3.3'
+        env:
+          CEEDLING_TEST_FS_ROOT: /dev/shm
+        run: bundle exec rspec spec/units/filesystem --tag filesystem
+
       # Integration tests compose real lib/ceedling objects and shell out to real gcc,
       # but drive a single subsystem rather than a whole build. They need only gcc
       # (already on the runner), so they run here -- right after unit tests, before the
@@ -732,6 +740,89 @@ jobs:
           path: specout/
           if-no-files-found: ignore
 
+  # Job: Run FileTree's specs on filesystems the test legs never use
+  # An SMB path and a separate NTFS volume on Windows, and a FAT volume on Linux, each
+  # with its own rules for links, names, and timestamps. The specs read
+  # CEEDLING_TEST_FS_ROOT and build their trees there.
+  #
+  # Advisory: continue-on-error, and absent from CI Gate's needs, until a few runs
+  # prove these filesystems set up reliably on hosted runners. A step that cannot set
+  # up its filesystem warns, names why, and skips.
+  tests-filesystem-substrates:
+    name: "Filesystem Substrates"
+    needs: changes
+    if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    continue-on-error: true
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-24.04]
+    steps:
+      - name: Checkout Latest Repo
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set Up Ruby Test Environment
+        uses: ./.github/actions/setup
+        with:
+          ruby: '3.3'
+
+      - name: Install Gem Dependencies
+        run: |
+          bundle install
+
+      # The administrative share reaches this machine's own C: drive through the SMB
+      # client, as a network share would
+      - name: Run Filesystem Specs on a UNC Share
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force C:\ceedling-fs-unc | Out-Null
+          if (-not (Test-Path '\\localhost\C$\ceedling-fs-unc')) {
+            Write-Host '::warning::The administrative share \\localhost\C$ is unreachable, so the UNC run is skipped'
+            exit 0
+          }
+          $env:CEEDLING_TEST_FS_ROOT = '//localhost/C$/ceedling-fs-unc'
+          bundle exec rspec spec/units/filesystem --tag filesystem --format documentation
+
+      - name: Run Filesystem Specs on a VHD-Backed NTFS Volume
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          @"
+          create vdisk file=C:\ceedling-fs.vhdx maximum=256 type=expandable
+          attach vdisk
+          create partition primary
+          format fs=ntfs quick label=CEEDLINGFS
+          assign letter=T
+          "@ | Set-Content C:\ceedling-fs-diskpart.txt
+          diskpart /s C:\ceedling-fs-diskpart.txt | Out-Host
+          if (-not (Test-Path 'T:\')) {
+            Write-Host '::warning::diskpart could not make the T: volume, so the VHD run is skipped'
+            exit 0
+          }
+          $env:CEEDLING_TEST_FS_ROOT = 'T:/'
+          bundle exec rspec spec/units/filesystem --tag filesystem --format documentation
+
+      # FAT has no links and refuses some names, and its timestamps have a 2 s resolution
+      - name: Run Filesystem Specs on a Loopback FAT Volume
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install --assume-yes --quiet dosfstools > /dev/null
+          truncate -s 64M "$RUNNER_TEMP/ceedling-fs.img"
+          mkfs.vfat "$RUNNER_TEMP/ceedling-fs.img" > /dev/null
+          sudo mkdir -p /mnt/ceedling-fs
+          if ! sudo mount -o loop,uid=$(id -u),gid=$(id -g) "$RUNNER_TEMP/ceedling-fs.img" /mnt/ceedling-fs; then
+            echo '::warning::The FAT image could not be mounted, so the FAT run is skipped'
+            exit 0
+          fi
+          status=0
+          CEEDLING_TEST_FS_ROOT=/mnt/ceedling-fs bundle exec rspec spec/units/filesystem --tag filesystem --format documentation || status=$?
+          sudo umount /mnt/ceedling-fs
+          exit $status
+
 
   # Job: Lint Ceedling's own Ruby source with RuboCop
   # Scoped to the Lint, Metrics, Security, and Performance departments (see
@@ -748,8 +839,8 @@ jobs:
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
 
-    # continue-on-error makes findings visible without failing the build. This is the
-    # only non-blocking job in this workflow, and that is a starting position rather
+    # continue-on-error makes findings visible without failing the build. Like Filesystem
+    # Substrates, this job does not block, and that is a starting position rather
     # than the intent: with a 1,200-entry .rubocop_todo.yml baseline, a regression is
     # still common enough that blocking would mostly obstruct. Drop this line once
     # the baseline has been burned down far enough that a new offense is a genuine

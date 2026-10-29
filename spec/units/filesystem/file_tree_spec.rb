@@ -35,6 +35,17 @@ describe FileTree, filesystem: true do
     FileTree.each_file( root ).to_a
   end
 
+  # Writes files named with glob metacharacters below `dir`, returning the names this
+  # filesystem accepts. Windows and FAT refuse `*` and `?`.
+  def written_glob_names(dir)
+    return ['a[1].c', 'b{x,y}.c', 'c*.c', 'd?.c'].select do |name|
+      write( File.join( dir, name ) )
+      true
+    rescue SystemCallError
+      false
+    end
+  end
+
   # ---- the reported failure, and its absence --------------------------------------------
 
   describe 'under an lstat that reports a regular file as a directory' do
@@ -95,8 +106,7 @@ describe FileTree, filesystem: true do
     end
 
     it 'lists names holding glob metacharacters literally' do
-      names = ['a[1].c', 'b{x,y}.c', 'c*.c', 'd?.c'].reject { |name| Gem.win_platform? && name.match?( /[*?]/ ) }
-      names.each { |name| write( File.join( @src, 'dir[1]', name ) ) }
+      names = written_glob_names( File.join( @src, 'dir[1]' ) )
 
       expect( files_of( @src ).map( &:first ) ).to eq( names.map { |name| "dir[1]/#{name}" }.sort )
     end
@@ -122,8 +132,7 @@ describe FileTree, filesystem: true do
     end
 
     it 'copies names holding glob metacharacters' do
-      names = ['a[1].c', 'b{x,y}.c', 'c*.c', 'd?.c'].reject { |name| Gem.win_platform? && name.match?( /[*?]/ ) }
-      names.each { |name| write( File.join( @src, 'dir[1]', name ) ) }
+      names = written_glob_names( File.join( @src, 'dir[1]' ) )
 
       sync
 
