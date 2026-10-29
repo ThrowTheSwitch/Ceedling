@@ -83,19 +83,20 @@ ceedling_system_tests do
     end
   end
 
-  # The compiler resolves a mock's #include as written, from the test's own directory,
-  # where no generated mock can be
-  it "G14: refuses a mock #include that climbs with `..`, naming the test file and a fix" do
+  # The mock search path for the header's mirrored directory reaches the #include as written
+  it "G14: builds a mock #include that climbs with `..`, keeping the mock below its test's mocks directory" do
     in_app do
       write( 'inc/x/foo.h', "int foo_read(void);\n" )
-      write( 'test/test_c.c', PROBE_TEST_PREAMBLE + "#include \"../inc/x/mock_foo.h\"\nvoid test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+      write( 'test/test_c.c', PROBE_TEST_PREAMBLE + "#include \"../x/mock_foo.h\"\nvoid test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
       @c.merge_project_yml_for_test( { :paths => { :include => ['inc/**'] } } )
 
       output = @c.ceedling_build_exec( "test:all" )
 
-      expect(@c.last_exit_status).to_not eq(0)
-      expect(output).to match(%r{test/test_c\.c includes the mock `\.\./inc/x/mock_foo\.h`})
-      expect(output).to include( '#include "mock_foo.h"' )
+      expect(@c.last_exit_status).to eq(0), output
+      expect(output).to match(/PASSED:\s+1/)
+      expect(Dir.glob( 'build/test/mocks/test/test_c/**/mock_foo.h' )).to_not be_empty
+      expect(Dir.children( 'build/test/mocks' )).to eq( ['test'] )
+      expect(Dir.children( 'build/test/mocks/test' )).to eq( ['test_c'] )
     end
   end
 

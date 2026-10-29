@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/project_paths'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 require 'ceedling/test_invoker/test_build_validations'
@@ -72,11 +73,11 @@ class TestBuildPlanner
         # the mock stays findable by the compiler regardless
         # of how much path the #include itself happened to spell out.
         #
-        # Keyed by that directory alongside the name. Two modules sharing a basename are
-        # two modules, each needing its own mock, and a key of the name alone lets the
-        # second displace the first. `name` stays bare: it is the filename the mock is
-        # written under, joined with `path` at generation.
-        mocks[mock_key( name, subdir )] = MockDetails.new(
+        # Keyed by the directory the mock is written to alongside the name. Two modules
+        # sharing a basename are two modules, each needing its own mock, and a key of the
+        # name alone lets the second displace the first. `name` stays bare: it is the
+        # filename the mock is written under, at generation.
+        mocks[mock_key( name, partial ? subdir : placed_subdir( testable, subdir, include ) )] = MockDetails.new(
           name:     name,
           filepath: source,
           path:     subdir,
@@ -322,6 +323,16 @@ class TestBuildPlanner
   # stand-in, a mock search path, and the real mock would land in different directories
   def ordered_mock_header_collection(testable)
     @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
+  end
+
+  # The mock's directory below its test's mock root, where generation writes it. Two
+  # same-named headers may mirror alike and differ only by the folders their #includes name.
+  def placed_subdir(testable, subdir, include)
+    root = testable.paths[:mocks]
+    return subdir if root.nil?
+
+    placement = @mock_locator.placement( mocks_root: root, subdir: subdir, include_path: include.filepath )
+    return ProjectPaths.subdir_below( root, placement.directory ) || subdir
   end
 
   # One mock's identity within its test. A mock directly in the mock root keeps the bare

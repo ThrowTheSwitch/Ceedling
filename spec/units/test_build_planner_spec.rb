@@ -169,6 +169,7 @@ describe TestBuildPlanner do
 
     context "with a non-Partial mocked header" do
       before(:each) do
+        allow(@file_path_utils).to receive(:form_mock_output_path) { |root, subdir| subdir.to_s.empty? ? root : File.join( root, subdir ) }
         mock = MockInclude.new( 'MockFoo.h' )
         allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
           .with( 'test/TestFoo.c' ).and_return( [mock] )
@@ -204,6 +205,23 @@ describe TestBuildPlanner do
 
         expect(@testable.mocks[:'drivers/MockFoo'].input).to eq( 'build/test/preprocess/files/a_test/full_expansion/foo.h' )
       end
+    end
+
+    # Two headers directly in two include roots mirror alike, and only their #include
+    # folders tell their mocks apart
+    it "keeps two same-named mocks whose #include folders alone differ" do
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [MockInclude.new( 'a/MockFoo.h' ), MockInclude.new( 'b/MockFoo.h' )] )
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+      allow(@file_finder).to receive(:resolve_mock).with( 'a/MockFoo.h', collection: [], complain: :error ).and_return( ['inc/a/foo.h', ''] )
+      allow(@file_finder).to receive(:resolve_mock).with( 'b/MockFoo.h', collection: [], complain: :error ).and_return( ['inc/b/foo.h', ''] )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'unused' )
+
+      @planner.stage_determine_files( @state )
+
+      expect(@testable.mocks.keys).to contain_exactly( :'a/MockFoo', :'b/MockFoo' )
+      expect(@testable.mocks.values.map( &:source )).to contain_exactly( 'inc/a/foo.h', 'inc/b/foo.h' )
     end
 
     context "with a Partial mocked header" do

@@ -8,6 +8,7 @@
 require 'ceedling/constants'
 require 'ceedling/includes/includes'
 require 'ceedling/test_invoker/test_pipeline_helpers'
+require 'ceedling/project_paths'
 
 # Stand-in headers: files placed where a test's mocks and Partials will be generated, so
 # the preprocessor finds something at each of their #includes before stage 8 or stage 10
@@ -70,9 +71,10 @@ class StandinHeaderinator
   # Gives the search paths that reach the mock, or nil when its missing header is tolerated
   # or the test has no mock root
   def place_mock(testable, include, collection, complain)
+    return nil if testable.paths[:mocks].nil?
+
     source, subdir = @mock_locator.locate( include, collection: collection, complain: complain )
     return nil if source.nil?
-    return write_unrooted_mock( testable, include, source, subdir ) if testable.paths[:mocks].nil?
 
     placement = @mock_locator.placement( mocks_root: testable.paths[:mocks], subdir: subdir, include_path: include.filepath )
     write_placed_mock( testable.name, placement, include, source )
@@ -80,17 +82,11 @@ class StandinHeaderinator
     return @mock_locator.search_directories( placement )
   end
 
-  # The test's #include reaches a climbing folder's mock only through CMock's root, so it is made too
+  # The test's #include reaches a climbing folder's mock only from the directory it climbs
+  # from, so that is made too
   def write_placed_mock(test, placement, include, source)
-    @file_wrapper.mkdir( placement.root ) if placement.climbs?
-    write_mock( test, File.join( placement.directory, include.filename.ext( EXTENSION_CORE_HEADER ) ), include, source )
-  end
-
-  # Without a mock root, a stand-in sits in its mirrored directory and gives no search path
-  def write_unrooted_mock(testable, include, source, subdir)
-    mock_dir = subdir.empty? ? testable.name : File.join( testable.name, subdir )
-    write_mock( testable.name, @file_path_utils.form_mock_header_filepath( mock_dir, include.filename ), include, source )
-    return nil
+    @file_wrapper.mkdir( placement.reach ) unless ProjectPaths.contains?( placement.reach, placement.directory )
+    write_mock( test, File.join( placement.directory, include.filename.ext( EXTENSION_CORE_HEADER ) ), include, source, placement.folder )
   end
 
   # A Partial's generated #include names whatever directory its module was named by, and
@@ -109,8 +105,8 @@ class StandinHeaderinator
     @file_wrapper.write_blank_file( filepath )
   end
 
-  def write_mock(test, filepath, include, header)
-    contents = "#{MARKER}\n#{header_include( header )}\n"
+  def write_mock(test, filepath, include, header, folder)
+    contents = "#{MARKER}\n#{header_include( header, folder )}\n"
     return if current?( filepath, contents )
 
     log_placement( test, include )
@@ -118,11 +114,12 @@ class StandinHeaderinator
     @file_wrapper.write( filepath, contents )
   end
 
-  # The line CMock opens a mock with: its :orig_header_include_fmt around the header's name.
-  # Ceedling hands CMock no folder, so the name is the header's own.
-  def header_include( header )
+  # The line CMock opens a mock with: its :orig_header_include_fmt around the header's name,
+  # below the folder CMock is given, if any
+  def header_include( header, folder )
     format = @configurator.get_cmock_config[:orig_header_include_fmt] || '#include "%s"'
-    return format.gsub( '%s', File.basename( header ) )
+    name   = folder.nil? ? File.basename( header ) : File.join( folder, File.basename( header ) )
+    return format.gsub( '%s', name )
   end
 
   # A file that is not a stand-in, such as a real mock, counts as current. Only its first

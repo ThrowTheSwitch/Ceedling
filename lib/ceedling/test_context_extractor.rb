@@ -105,7 +105,7 @@ class TestContextExtractor
         # directory: when preprocessing is off, nothing downstream ever reconciles or
         # otherwise re-resolves this list, so a directory-relative reference has to be
         # settled here, the only place that still knows which file it was written in.
-        includes += _extract_includes( line ).map { |include| anchor_include( filepath, include ) }
+        includes += _extract_includes( line ).map { |include| include.anchored( File.dirname( filepath ) ) }
       end
     end
 
@@ -423,20 +423,6 @@ class TestContextExtractor
     end
 
     return include_paths
-  end
-
-  # The compiler resolves a test's #include of a mock as written, from the test file's own
-  # directory, and no mock is generated where a `..` leads from there
-  def anchor_include(filepath, include)
-    if include.is_a?( MockInclude ) and include.filepath.split( %r{[\\/]} ).include?( '..' )
-      raise CeedlingException.new(
-        "#{filepath} includes the mock `#{include.filepath}` by a path that climbs with `..`. " \
-        "Ceedling generates a test's mocks in its own build directory, which that path cannot reach. " \
-        "Name the mock below a search path instead, such as `#include \"#{include.filename}\"`."
-      )
-    end
-
-    return include.anchored( File.dirname( filepath ) )
   end
 
   def _extract_includes(line)

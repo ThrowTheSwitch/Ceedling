@@ -140,7 +140,8 @@ describe 'Test file #include extraction (integration)' do
 
         extract_in_mode( tree, 'test_reader.c' ) do |harness, testable|
           expect(harness.mocks( 'test/test_reader.c' )).to eq( ['mock_widget.h'] )
-          expect(testable.mock_search_paths).to eq( ['build/mocks/test_reader/drivers'] )
+          # The macro's #include resolves as `drivers/mock_widget.h`, reached from the mock root
+          expect(testable.mock_search_paths).to eq( ['build/mocks/test_reader/drivers', 'build/mocks/test_reader'] )
         end
       end
 
