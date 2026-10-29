@@ -9,9 +9,10 @@ require 'ceedling/project_paths'
 
 # Where a build places a file of a path: by its path from the project root, so two files
 # never share a build file and none lands outside the build directory. `..` becomes `_up_`,
-# a path on another drive goes under `_abs_` or `_unc_`, and a file of the running Ceedling
-# installation outside the project goes under `_ceedling_`. A directory of a path that is
-# itself named like one of these gains a leading `_`, so `decode` inverts `encode` exactly.
+# a path on another drive goes under `_abs_` or `_unc_`, and a file the running Ceedling
+# installation ships, outside the project, goes under `_ceedling_`. A directory of a path
+# that is itself named like one of these gains a leading `_`, so `decode` inverts `encode`
+# exactly.
 module BuildSubpath
 
   PARENT_SEGMENT    = '_up_'
@@ -25,6 +26,10 @@ module BuildSubpath
 
   # The running Ceedling installation, above lib/ceedling/
   INSTALLATION_ROOT = File.expand_path( '../..', __dir__ )
+
+  # The directories of an installation holding what Ceedling ships. A project may itself sit
+  # elsewhere in an installation, as in a development checkout, and its files are its own.
+  INSTALLED_DIRS = %w[assets bin lib plugins vendor].map { |dir| File.join( INSTALLATION_ROOT, dir ) }.freeze
 
   @lock     = Mutex.new
   @subpaths = {}
@@ -64,7 +69,7 @@ module BuildSubpath
   end
 
   def self.installed?(full)
-    return ProjectPaths.same?( INSTALLATION_ROOT, full ) || ProjectPaths.starts_with?( full, "#{INSTALLATION_ROOT}/" )
+    return INSTALLED_DIRS.any? { |dir| ProjectPaths.contains?( dir, full ) }
   end
 
   def self.installed_segments(full)

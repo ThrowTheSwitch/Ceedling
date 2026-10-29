@@ -108,15 +108,15 @@ Four marker segments stand for what a relative path cannot hold.
 | `_up_` | One `..` segment | `../shared/src` | `_up_/shared/src` |
 | `_abs_` | A path with no relative form, on another Windows drive | `D:/sdk/inc` | `_abs_/D/sdk/inc` |
 | `_unc_` | A Windows UNC share | `//server/share/inc` | `_unc_/server/share/inc` |
-| `_ceedling_` | A file of the running Ceedling installation outside the project | `<installation>/plugins/fff/src` | `_ceedling_/plugins/fff/src` |
+| `_ceedling_` | A file Ceedling ships, from the running installation, outside the project | `<installation>/plugins/fff/src` | `_ceedling_/plugins/fff/src` |
 
 The project root itself encodes as `''`. Its files sit directly below the output root.
 
 ### Choosing a marker
 
-`encode(path)` decides in a fixed order. It first asks whether the path lies outside the working directory by containment. If so and the path lies inside `INSTALLATION_ROOT`, the file is Ceedling's own and goes under `_ceedling_`. `INSTALLATION_ROOT` is the directory two levels above `lib/ceedling/`. If the relative form is still absolute, the path takes `_abs_` or `_unc_`. Otherwise each `..` becomes `_up_`.
+`encode(path)` decides in a fixed order. It first asks whether the path lies outside the working directory by containment. If so and the path lies in one of `INSTALLED_DIRS`, the file is Ceedling's own and goes under `_ceedling_`. `INSTALLED_DIRS` are the `assets`, `bin`, `lib`, `plugins`, and `vendor` directories of `INSTALLATION_ROOT`, the directory two levels above `lib/ceedling/`. If the relative form is still absolute, the path takes `_abs_` or `_unc_`. Otherwise each `..` becomes `_up_`.
 
-`_ceedling_` keeps Ceedling's own files short and stable. A gem installation can sit many directories away from a project. Without the marker its plugin sources would encode as a long chain of `_up_` segments that changes with every install location. A Ceedling copy vendored inside the project lies within the working directory, so it encodes by its ordinary path.
+`_ceedling_` keeps Ceedling's own files short and stable. A gem installation can sit many directories away from a project. Without the marker its plugin sources would encode as a long chain of `_up_` segments that changes with every install location. A Ceedling copy vendored inside the project lies within the working directory, so it encodes by its ordinary path. A project may also sit inside a Ceedling checkout, as the system specs' projects do. Its sibling directories lie outside `INSTALLED_DIRS`, so they encode by `_up_` like any other.
 
 ### Escaping a marker-named directory
 

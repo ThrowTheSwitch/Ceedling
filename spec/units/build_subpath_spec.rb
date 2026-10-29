@@ -68,6 +68,16 @@ describe BuildSubpath do
       expect(File.expand_path( BuildSubpath.decode( '_ceedling_/plugins/fff/src' ) )).to eq( file )
     end
 
+    # A project may itself sit inside a Ceedling checkout, as the system specs' projects do.
+    # Only what Ceedling ships places below `_ceedling_`.
+    it 'places a directory beside a project inside the installation by its path from the project root' do
+      root = BuildSubpath::INSTALLATION_ROOT
+      allow(ProjectPaths).to receive(:working_dir).and_return( File.join( root, 'specout/proj/app' ) )
+
+      expect(BuildSubpath.encode( File.join( root, 'specout/proj/shared/src' ) )).to eq( '_up_/shared/src' )
+      expect(BuildSubpath.encode( File.join( root, 'plugins/fff/src' ) )).to eq( '_ceedling_/plugins/fff/src' )
+    end
+
     it 'places a file of the running Ceedling inside the project by its path from the project root' do
       Dir.chdir( BuildSubpath::INSTALLATION_ROOT ) do
         expect(BuildSubpath.encode( 'plugins/fff/src' )).to eq( 'plugins/fff/src' )
