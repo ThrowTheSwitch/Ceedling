@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
-require 'ceedling/path_matcher'
+require 'ceedling/filesystem/path_matcher'
 require 'set'
 require 'stringio'
 

@@ -21,8 +21,8 @@ require 'yaml'  # a Ceedling build always has YAML loaded
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/plugins/plugin'
-require 'ceedling/file_finder_helper'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_finder_helper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/config/config_matchinator'
 require 'ceedling/defineinator'
 

@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
-require 'ceedling/file_path_utils'
+require 'ceedling/filesystem/file_path_utils'
 
 # Set Rake verbosity using global constant verbosity set before Rake is loaded
 if !!defined?(PROJECT_VERBOSITY)

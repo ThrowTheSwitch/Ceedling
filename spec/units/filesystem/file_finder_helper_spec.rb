@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/file_finder_helper'
+require 'ceedling/filesystem/file_finder_helper'
 require 'ceedling/constants'
 require 'ceedling/loginator'
 

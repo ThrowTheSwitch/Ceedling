@@ -7,8 +7,8 @@
 
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'ceedling/file_path_utils'
-require 'ceedling/path_matcher'
+require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/path_matcher'
 
 # Owns everything about the TEST_SOURCE_FILE() build directive's own path
 # content: collecting a test's raw directive strings, telling additive

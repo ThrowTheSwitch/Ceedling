@@ -8,7 +8,7 @@
 require 'ceedling/constants'
 require 'ceedling/includes/includes'
 require 'ceedling/test_invoker/test_pipeline_helpers'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 
 # Stand-in headers: files placed where a test's mocks and Partials will be generated, so
 # the preprocessor finds something at each of their #includes before stage 8 or stage 10

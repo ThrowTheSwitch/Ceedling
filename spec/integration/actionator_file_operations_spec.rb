@@ -24,7 +24,7 @@
 require 'spec_helper'
 require 'spec_integration_helper'
 require 'actionator'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 
 describe 'Actionator file operations (integration)' do
   include IntegrationSpecHelpers

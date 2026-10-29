@@ -6,8 +6,8 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/file_path_utils'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/filename_extension'
 
 describe FilePathUtils do

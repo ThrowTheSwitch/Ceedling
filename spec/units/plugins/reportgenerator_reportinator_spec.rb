@@ -9,7 +9,7 @@ require 'spec_helper'
 require 'ceedling/tool_executor'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'ceedling/file_path_utils'
+require 'ceedling/filesystem/file_path_utils'
 
 PROJECT_BUILD_ROOT           = 'build'     unless defined?(PROJECT_BUILD_ROOT)
 PROJECT_BUILD_ARTIFACTS_ROOT = 'artifacts' unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)

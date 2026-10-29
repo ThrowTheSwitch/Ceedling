@@ -5,8 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/file_path_utils'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/project_paths'
 
 # What a build root may be, and what in it a build may collect. Clobber empties the
 # directories Ceedling creates in the build root, so the build root names a directory,

@@ -56,8 +56,8 @@ require 'ceedling/preprocess/preprocessinator_comment_stripper'
 require 'ceedling/preprocess/c_comment_scanner'
 require 'ceedling/preprocess/preprocessinator_file_assembler'
 require 'ceedling/parsing_parcels'
-require 'ceedling/file_path_utils'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/includes/includes'
 
 

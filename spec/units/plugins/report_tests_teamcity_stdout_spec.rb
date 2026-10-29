@@ -8,7 +8,7 @@
 require 'spec_helper'
 require 'stringio'
 require 'ceedling/plugins/plugin'
-require 'ceedling/file_path_utils'
+require 'ceedling/filesystem/file_path_utils'
 
 $: << File.expand_path('../../../../plugins/report_tests_teamcity_stdout/lib', __FILE__)
 require 'report_tests_teamcity_stdout'

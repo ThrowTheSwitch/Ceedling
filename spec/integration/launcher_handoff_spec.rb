@@ -226,8 +226,8 @@ describe 'Launcher hand-off' do
       require 'app_cfg'
       CEEDLING_APPCFG = CeedlingAppConfig.new
       lib = CEEDLING_APPCFG[:ceedling_lib_path]
-      $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_base_path], lib, File.join( lib, 'config' ), File.join( lib, 'rake_app' ),
-                          File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'diy', 'lib' ) )
+      $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_base_path], lib, File.join( lib, 'config' ), File.join( lib, 'filesystem' ),
+                          File.join( lib, 'rake_app' ), File.join( CEEDLING_APPCFG[:ceedling_vendor_path], 'diy', 'lib' ) )
       require 'constructor'
       require 'ceedling/constants'
       require 'diy'

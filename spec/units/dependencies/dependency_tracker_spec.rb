@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/exceptions'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/system_wrapper'
 require 'ceedling/loginator'
 require 'ceedling/yaml_wrapper'

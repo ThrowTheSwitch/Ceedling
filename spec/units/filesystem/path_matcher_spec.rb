@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/path_matcher'
+require 'ceedling/filesystem/path_matcher'
 require 'ceedling/exceptions'
 
 describe PathMatcher do

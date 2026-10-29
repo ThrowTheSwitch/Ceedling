@@ -9,11 +9,11 @@ require 'rubygems'
 require 'rake' # for adding ext() method to string
 require 'set'
 require 'ceedling/exceptions'
-require 'ceedling/path_matcher'
-require 'ceedling/path_mirror'
-require 'ceedling/file_path_utils'
-require 'ceedling/project_paths'
-require 'ceedling/build_subpath'
+require 'ceedling/filesystem/path_matcher'
+require 'ceedling/filesystem/path_mirror'
+require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/project_paths'
+require 'ceedling/filesystem/build_subpath'
 
 class FileFinder
 

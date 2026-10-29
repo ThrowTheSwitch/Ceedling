@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/file_path_utils'
+require 'ceedling/filesystem/file_path_utils'
 
 # A configured filename-extension setting for one file type (source, header,
 # assembly, and so on). A project may name a file type with a single

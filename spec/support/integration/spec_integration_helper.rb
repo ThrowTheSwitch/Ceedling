@@ -25,7 +25,7 @@ require 'fileutils'
 
 require 'ceedling/constants'
 require 'ceedling/defaults'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/yaml_wrapper'
 require 'ceedling/parsing_parcels'
 require 'ceedling/includes/includes'

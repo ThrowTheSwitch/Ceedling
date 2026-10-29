@@ -16,7 +16,7 @@ require 'spec_helper'
 require 'json'
 require 'tmpdir'
 require 'rexml/document'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/config/config_walkinator'
 
 $: << File.expand_path('../../../plugins/report_tests_log_factory/lib', __FILE__)

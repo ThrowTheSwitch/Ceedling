@@ -6,8 +6,8 @@
 # =========================================================================
 
 require 'ceedling/constants'
-require 'ceedling/file_path_utils'  # for glob handling class methods
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/file_path_utils'  # for glob handling class methods
+require 'ceedling/filesystem/project_paths'
 require 'ceedling/config/build_root_policy'
 
 # Checks the paths a project file names against the filesystem: each :paths and :files

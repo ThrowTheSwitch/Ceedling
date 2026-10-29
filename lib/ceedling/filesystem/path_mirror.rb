@@ -5,8 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/file_path_utils'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/project_paths'
 
 # Answers the question build output asks when it wants to avoid same-basename
 # collisions: given a resolved file and the raw (still possibly glob/decorator-laden)

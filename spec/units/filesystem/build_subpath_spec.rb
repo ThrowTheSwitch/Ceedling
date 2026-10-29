@@ -8,7 +8,7 @@
 require 'spec_helper'
 require 'tmpdir'
 require 'fileutils'
-require 'ceedling/build_subpath'
+require 'ceedling/filesystem/build_subpath'
 
 # GH #1370 and the path handling audit around it: a build file placed by text could land
 # outside the build directory

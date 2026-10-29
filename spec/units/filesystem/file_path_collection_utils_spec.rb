@@ -7,7 +7,7 @@
 
 require 'rake'  # for FileList
 require 'spec_helper'
-require 'ceedling/file_path_collection_utils'
+require 'ceedling/filesystem/file_path_collection_utils'
 
 describe FilePathCollectionUtils do
 
@@ -278,7 +278,7 @@ end
 describe FilePathCollectionUtils, 'on disk' do
   require 'tmpdir'
   require 'fileutils'
-  require 'ceedling/file_wrapper'
+  require 'ceedling/filesystem/file_wrapper'
 
   POSIX_ONLY_COLLECTION = { unless: Gem.win_platform? }.freeze
 

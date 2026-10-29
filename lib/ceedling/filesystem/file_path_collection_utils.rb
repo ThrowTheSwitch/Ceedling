@@ -8,11 +8,11 @@
 require 'set'
 require 'pathname'
 require 'fileutils'
-require 'ceedling/file_path_utils'
+require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/exceptions'
-require 'ceedling/project_paths'
-require 'ceedling/path_spellings'
-require 'ceedling/path_exclusions'
+require 'ceedling/filesystem/project_paths'
+require 'ceedling/filesystem/path_spellings'
+require 'ceedling/filesystem/path_exclusions'
 
 
 class FilePathCollectionUtils

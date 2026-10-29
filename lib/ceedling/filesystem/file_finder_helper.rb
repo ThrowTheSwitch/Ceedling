@@ -8,7 +8,7 @@
 require 'fileutils'
 require 'ceedling/constants' # for Verbosity enumeration
 require 'ceedling/exceptions'
-require 'ceedling/path_matcher'
+require 'ceedling/filesystem/path_matcher'
 
 class FileFinderHelper
 

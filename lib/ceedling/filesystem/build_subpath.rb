@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 
 # Where a build places a file of a path: by its path from the project root, so two files
 # never share a build file and none lands outside the build directory. `..` becomes `_up_`,

@@ -21,8 +21,8 @@
 
 require 'spec_integration_helper'
 require 'ceedling/filename_extension'
-require 'ceedling/file_finder'
-require 'ceedling/file_finder_helper'
+require 'ceedling/filesystem/file_finder'
+require 'ceedling/filesystem/file_finder_helper'
 require 'ceedling/test_context_extractor'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_search_paths'

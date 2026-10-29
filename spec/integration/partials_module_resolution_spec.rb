@@ -20,11 +20,11 @@
 # sharing a basename in different directories.
 
 require 'spec_helper'
-require 'ceedling/file_finder'
-require 'ceedling/file_finder_helper'
+require 'ceedling/filesystem/file_finder'
+require 'ceedling/filesystem/file_finder_helper'
 require 'ceedling/filename_extension'
-require 'ceedling/path_matcher'
-require 'ceedling/file_path_utils'
+require 'ceedling/filesystem/path_matcher'
+require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/constants'
 
 describe 'Partial module resolution (integration)' do

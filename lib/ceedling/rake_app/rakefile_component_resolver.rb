@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 
 # Resolves the ordered list of .rake files Ceedling will load for a given project
 # configuration. Callable from both bin/ (early, before do_setup) and lib/ (within

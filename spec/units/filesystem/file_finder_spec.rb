@@ -7,8 +7,8 @@
 
 require 'spec_helper'
 require 'tmpdir'
-require 'ceedling/file_finder'
-require 'ceedling/file_finder_helper'
+require 'ceedling/filesystem/file_finder'
+require 'ceedling/filesystem/file_finder_helper'
 require 'ceedling/filename_extension'
 require 'ceedling/exceptions'
 require 'ceedling/constants'

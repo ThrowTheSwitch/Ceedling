@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'rake' # for ext() method
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/encodinator'
 require 'ceedling/preprocess/c_preprocessor_conditionals'
 

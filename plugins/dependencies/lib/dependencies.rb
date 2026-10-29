@@ -8,7 +8,7 @@
 require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 require 'dependency_spec'
 require 'dependency_commands'
 require 'dependency_environment'

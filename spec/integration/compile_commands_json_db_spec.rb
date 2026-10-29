@@ -17,7 +17,7 @@ require 'json'
 require 'tmpdir'
 require 'ceedling/constants'
 require 'ceedling/plugins/plugin'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 
 $: << File.expand_path('../../../plugins/compile_commands_json_db/lib', __FILE__)
 require 'compile_commands_json_db'

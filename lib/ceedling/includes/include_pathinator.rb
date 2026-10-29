@@ -7,8 +7,8 @@
 
 require 'pathname'
 require 'ceedling/exceptions'
-require 'ceedling/file_path_utils'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/project_paths'
 
 class IncludePathinator
 

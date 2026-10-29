@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/path_mirror'
+require 'ceedling/filesystem/path_mirror'
 
 # Small helpers shared by more than one test pipeline stage class. Relies on
 # `@reportinator`/`@loginator` already being present via whichever including

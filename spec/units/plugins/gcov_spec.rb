@@ -10,7 +10,7 @@ require 'yaml'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/plugins/plugin'
-require 'ceedling/path_mirror'
+require 'ceedling/filesystem/path_mirror'
 require 'ceedling/filename_extension'
 
 PROJECT_BUILD_ROOT           = 'build'     unless defined?(PROJECT_BUILD_ROOT)

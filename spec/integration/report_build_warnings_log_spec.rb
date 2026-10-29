@@ -16,7 +16,7 @@ require 'open3'
 require 'json'
 require 'ceedling/constants'
 require 'ceedling/plugins/plugin'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 
 $LOAD_PATH.unshift( File.expand_path( '../../plugins/report_build_warnings_log/lib', __dir__ ) )
 

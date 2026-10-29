@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'json'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/loginator'
 require 'ceedling/dependencies/dependency_cache_store'
 
