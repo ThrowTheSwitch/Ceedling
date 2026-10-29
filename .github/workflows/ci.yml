@@ -1085,6 +1085,7 @@ jobs:
           CI_SUMMARY_JOBS: ci-jobs.json
           CI_SUMMARY_BASELINE: ci-baseline/ci-baseline.json
           CI_SUMMARY_DIFF: ci-diff.txt
+          CI_SUMMARY_RUBOCOP_TODO: .rubocop_todo.yml
           CI_SUMMARY_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           CI_SUMMARY_OUT: ci-summary.md
           CI_SUMMARY_BASELINE_OUT: ${{ github.event_name == 'push' && 'ci-baseline.json' || '' }}

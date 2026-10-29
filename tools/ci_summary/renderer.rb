@@ -9,8 +9,9 @@
 # CI run's own job summary.
 #
 # A reviewer reads it top down. The header states the verdict; warnings and failing
-# jobs follow, then the reference leg's test counts and the coverage, each compared
-# with the base branch. Every leg and job sits in collapsed detail at the bottom.
+# jobs follow, then the reference leg's test counts, the coverage, and the size of the
+# RuboCop to-do backlog, each compared with the base branch. Every leg and job sits in
+# collapsed detail at the bottom.
 #
 # Pending counts differ between legs by design, since some specs skip on hosts that
 # lack a tool or a platform feature. Each leg is therefore compared only with the same
@@ -23,6 +24,7 @@ module CiSummary
     REFERENCE_LEG   = 'Linux 3.3'
     SUITES          = %w[units integration system].freeze
     COVERAGE_SUITES = %w[units integration system combined].freeze
+    TODO_COUNTS     = %w[offenses cops].freeze
     FAILED          = %w[failure cancelled timed_out].freeze
     UNCOVERED_LIMIT = 20
 
@@ -33,14 +35,16 @@ module CiSummary
 
     module_function
 
-    def render(sha:, jobs:, legs:, coverage:, diff_coverage:, baseline:)
+    def render(sha:, jobs:, legs:, coverage:, diff_coverage:, baseline:, rubocop_todo: nil)
       run = finished( jobs )
 
       sections = [
         header( sha, run, baseline ), warnings( legs, baseline ), failing_jobs( run ),
         tests_table( legs[REFERENCE_LEG], baseline&.dig( 'legs', REFERENCE_LEG ) ),
         coverage_table( coverage, baseline&.fetch( 'coverage', nil ) ),
-        diff_coverage_line( diff_coverage ), legs_details( legs ), jobs_details( run )
+        diff_coverage_line( diff_coverage ),
+        rubocop_todo_table( rubocop_todo, baseline&.fetch( 'rubocop_todo', nil ) ),
+        legs_details( legs ), jobs_details( run )
       ]
       return sections.compact.join( "\n" )
     end
@@ -124,6 +128,14 @@ module CiSummary
       uncovered = diff[:uncovered].flat_map { |path, ranges| ranges.map { |range| "`#{path}:#{range}`" } }
 
       return uncovered.empty? ? "#{line}\n" : "#{line} Uncovered: #{capped_list( uncovered )}\n"
+    end
+
+    def rubocop_todo_table(todo, base_todo)
+      return "**RuboCop to-do:** unavailable\n" if todo.nil?
+
+      rows = TODO_COUNTS.map { |name| "| #{name} | #{todo[name]} | #{count_change( todo[name], base_todo&.fetch( name, nil ) )} |\n" }
+
+      return "| RuboCop to-do | Count | Δ |\n|---|---:|---:|\n#{rows.join}"
     end
 
     # A pull request comment has a size limit, so a long list stops at a count

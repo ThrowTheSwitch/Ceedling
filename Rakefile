@@ -523,7 +523,8 @@ task 'ci:summary' do
     jobs_path:     ENV['CI_SUMMARY_JOBS'],
     baseline_path: ENV['CI_SUMMARY_BASELINE'],
     diff_path:     ENV['CI_SUMMARY_DIFF'],
-    merge_base:    ENV['CI_SUMMARY_MERGE_BASE']
+    merge_base:    ENV['CI_SUMMARY_MERGE_BASE'],
+    todo_path:     ENV['CI_SUMMARY_RUBOCOP_TODO']
   )
 
   sha = ENV.fetch( 'CI_SUMMARY_SHA' )

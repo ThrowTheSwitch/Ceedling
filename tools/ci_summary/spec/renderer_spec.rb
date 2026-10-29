@@ -37,15 +37,18 @@ describe CiSummary::Renderer do
     { 'sha' => '9f8e7d6c5b', 'branch' => 'next_version', 'nearest' => false,
       'legs' => { 'Linux 3.3'   => { 'units' => counts(4393), 'integration' => counts(348, 0, 15), 'system' => counts(900, 0, 3) },
                   'Windows 3.4' => { 'units' => counts(4393), 'integration' => counts(348, 0, 16), 'system' => counts(880, 0, 9) } },
-      'coverage' => { 'units' => { 'covered' => 911, 'total' => 1000 }, 'combined' => { 'covered' => 910, 'total' => 1000 } } }
+      'coverage' => { 'units' => { 'covered' => 911, 'total' => 1000 }, 'combined' => { 'covered' => 910, 'total' => 1000 } },
+      'rubocop_todo' => { 'offenses' => 760, 'cops' => 10 } }
   end
 
   let(:diff_coverage) { { covered: 48, relevant: 50, uncovered: { 'lib/x.rb' => ['42-43'] } } }
 
+  let(:rubocop_todo) { { 'offenses' => 759, 'cops' => 10 } }
+
   def render(**overrides)
     described_class.render(
       sha: 'a1b2c3d4e5f6', jobs: jobs, legs: legs, coverage: coverage,
-      diff_coverage: diff_coverage, baseline: baseline, **overrides
+      diff_coverage: diff_coverage, rubocop_todo: rubocop_todo, baseline: baseline, **overrides
     )
   end
 
@@ -106,6 +109,28 @@ describe CiSummary::Renderer do
     expect(render( diff_coverage: { covered: 0, relevant: 0, uncovered: {} } )).to include( '**Diff coverage:** no changed lines tracked' )
   end
 
+  # Fewer offenses outstanding is better, so a falling count is the one to want
+  it 'shows the RuboCop to-do counts with changes against the baseline' do
+    expect(render).to include( "| RuboCop to-do | Count | Δ |\n" )
+    expect(render).to include( "| offenses | 759 | ▼1 |\n" )
+    expect(render).to include( "| cops | 10 | ±0 |\n" )
+  end
+
+  it 'marks a growing RuboCop to-do' do
+    expect(render( rubocop_todo: { 'offenses' => 765, 'cops' => 11 } )).to include( "| offenses | 765 | ▲5 |\n", "| cops | 11 | ▲1 |\n" )
+  end
+
+  # A baseline written before the summary tracked the backlog has no counts to compare
+  it 'leaves RuboCop to-do changes blank against a baseline without them' do
+    markdown = render( baseline: baseline.reject { |key, _| key == 'rubocop_todo' } )
+
+    expect(markdown).to include( "| offenses | 759 | — |\n" )
+  end
+
+  it 'says when the RuboCop to-do is unavailable' do
+    expect(render( rubocop_todo: nil )).to include( '**RuboCop to-do:** unavailable' )
+  end
+
   it 'says when diff coverage is unavailable' do
     expect(render( diff_coverage: nil )).to include( '**Diff coverage:** unavailable' )
   end
@@ -134,6 +159,7 @@ describe CiSummary::Renderer do
     expect(markdown).to include( '· no baseline' )
     expect(markdown).to include( "| units | 4405 | 0 | 0 |\n" )
     expect(markdown).to include( "| units | 91.20% | — |\n" )
+    expect(markdown).to include( "| offenses | 759 | — |\n" )
   end
 
   it 'lists every leg in a collapsed matrix' do

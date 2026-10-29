@@ -9,25 +9,28 @@ require 'json'
 require 'fileutils'
 require_relative 'results'
 require_relative 'diff_coverage'
+require_relative 'rubocop_todo'
 require_relative 'renderer'
 
 # The CI summary's file handling, everything the pure modules beside it leave out.
 #
 # The CI workflow gathers every input as a file before this runs: each leg's results
 # artifact in its own directory, the run's job list from the GitHub API, the base
-# branch's baseline, and the pull request's zero-context diff. Reading only files keeps
+# branch's baseline, and the pull request's zero-context diff. The RuboCop to-do is read
+# from the checked-out repository. Reading only files keeps
 # this free of network calls and shell commands. Any input may be missing, since a
 # failed leg uploads partial results and a first run has no baseline; each absence
 # renders as such rather than stopping the summary.
 module CiSummary
   class Collector
 
-    def initialize(results_dir:, jobs_path:, baseline_path:, diff_path:, merge_base:)
+    def initialize(results_dir:, jobs_path:, baseline_path:, diff_path:, merge_base:, todo_path: nil)
       @results_dir   = results_dir
       @jobs_path     = jobs_path
       @baseline_path = baseline_path
       @diff_path     = diff_path
       @merge_base    = merge_base
+      @todo_path     = todo_path
     end
 
     # Per-leg suite counts, keyed by leg name, from each leg's own artifact directory
@@ -61,6 +64,13 @@ module CiSummary
       return DiffCoverage.measure( changed: changed, line_hits: line_hits )
     end
 
+    # The offenses and cops .rubocop_todo.yml records
+    def rubocop_todo
+      return nil if @todo_path.nil? or !File.exist?( @todo_path )
+
+      return RubocopTodo.counts( File.read( @todo_path, encoding: 'UTF-8' ) )
+    end
+
     def jobs
       return (read_json( @jobs_path ) || {}).fetch( 'jobs', [] ).map do |job|
         { 'name' => job['name'], 'conclusion' => job['conclusion'], 'url' => job['html_url'] }
@@ -69,14 +79,16 @@ module CiSummary
 
     def write_summary(path, sha:)
       markdown = Renderer.render(
-        sha: sha, jobs: jobs, legs: legs, coverage: coverage, diff_coverage: diff_coverage, baseline: baseline
+        sha: sha, jobs: jobs, legs: legs, coverage: coverage, diff_coverage: diff_coverage, baseline: baseline,
+        rubocop_todo: rubocop_todo
       )
       File.write( path, markdown )
     end
 
-    # This run's counts and coverage, for later pull requests to compare against
+    # This run's counts, coverage, and RuboCop to-do, for later pull requests to compare against
     def write_baseline(path, sha:, branch:)
-      File.write( path, JSON.pretty_generate( 'sha' => sha, 'branch' => branch, 'legs' => legs, 'coverage' => coverage ) )
+      baseline = { 'sha' => sha, 'branch' => branch, 'legs' => legs, 'coverage' => coverage, 'rubocop_todo' => rubocop_todo }
+      File.write( path, JSON.pretty_generate( baseline ) )
     end
 
     private
