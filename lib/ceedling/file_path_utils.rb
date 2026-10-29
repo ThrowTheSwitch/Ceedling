@@ -16,6 +16,7 @@ require 'ceedling/path_mirror'
 require 'ceedling/path_matcher'
 require 'ceedling/project_paths'
 require 'ceedling/build_subpath'
+require 'ceedling/destination_collision'
 
 # global utility methods (for plugins, project files, etc.)
 def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)
@@ -609,11 +610,9 @@ class FilePathUtils
 
   # Two sources building to one file would leave one of them out of the build
   def validate_distinct_build_files!(sources, built)
-    sources.zip( built ).group_by( &:last ).each_value do |pairs|
-      next if pairs.size == 1
-
-      names = pairs.map { |pair| "`#{pair.first}`" }.join( ' and ' )
-      raise CeedlingException.new( "#{names} would build to the same file `#{pairs.first.last}`. Rename one, or move it to its own directory." )
+    built_from = sources.zip( built ).to_h
+    DestinationCollision.find( sources ) { |source| built_from[source] }.each do |file, sharing|
+      DestinationCollision.raise_for( file, sharing, 'would build to the same file' )
     end
   end
 
