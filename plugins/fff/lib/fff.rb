@@ -40,7 +40,8 @@ class FffCMockWrapper
   def initialize(options=nil)
     @cm_config      = CMockConfig.new(options)
     @cm_parser      = CMockHeaderParser.new(@cm_config)
-    @silent        = (@cm_config.verbosity < 2)
+    # CMock's levels: 0 errors only, 1 warnings, 2 normal, 3 verbose
+    @verbosity      = @cm_config.verbosity
 
     # The additional files to include in the fake files, gathered as CMock gathers them
     @includes_h_pre_orig_header  = quoted( @cm_config.includes, @cm_config.includes_h_pre_orig_header )
@@ -59,7 +60,7 @@ class FffCMockWrapper
 
   def generate_mock(header_file_to_mock, folder=nil)
     module_name = File.basename(header_file_to_mock, '.h')
-    puts( "Creating fake functions for #{module_name}..." ) unless @silent
+    puts( "Creating fake functions for #{module_name}..." ) unless @verbosity < 2
     mock_name = @cm_config.mock_prefix + module_name + @cm_config.mock_suffix
 
     # Parse the header file so we know what to mock.
@@ -94,7 +95,7 @@ class FffCMockWrapper
   def write_fake(path, module_name, mock_name, parsed_header, c_name)
     FileUtils.mkdir_p( File.dirname( path ) )
 
-    puts( "Creating fake functions: #{path}.h" )
+    puts( "Creating fake functions: #{path}.h and #{path}.c" ) unless @verbosity < 3
     File.write( "#{path}.h", FffMockGenerator.create_mock_header( module_name, mock_name, parsed_header,
       @includes_h_pre_orig_header, @includes_h_post_orig_header, c_name: c_name ) )
 
