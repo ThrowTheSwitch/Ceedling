@@ -26,6 +26,9 @@ module CiSummary
     FAILED          = %w[failure cancelled timed_out].freeze
     UNCOVERED_LIMIT = 20
 
+    # Jobs that report without gating a merge, left out of the verdict and the job list
+    ADVISORY = /\AFilesystem Substrates\b/
+
     extend Format
 
     module_function
@@ -42,9 +45,10 @@ module CiSummary
       return sections.compact.join( "\n" )
     end
 
-    # A skipped job ran nothing, and a job without a conclusion is still running
+    # A skipped job ran nothing, a job without a conclusion is still running, and an
+    # advisory job gates nothing
     def finished(jobs)
-      return jobs.reject { |job| job['conclusion'].nil? or job['conclusion'] == 'skipped' }
+      return jobs.reject { |job| job['conclusion'].nil? or job['conclusion'] == 'skipped' or job['name'].match?( ADVISORY ) }
     end
 
     ### Sections ###

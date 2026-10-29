@@ -774,11 +774,14 @@ jobs:
           bundle install
 
       # The administrative share reaches this machine's own C: drive through the SMB
-      # client, as a network share would
+      # client, as a network share would. The link specs make links on the share that
+      # name places on the share, which Windows follows only once remote-to-remote and
+      # remote-to-local link evaluation is enabled.
       - name: Run Filesystem Specs on a UNC Share
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          fsutil behavior set SymlinkEvaluation R2R:1 R2L:1 | Out-Host
           New-Item -ItemType Directory -Force C:\ceedling-fs-unc | Out-Null
           if (-not (Test-Path '\\localhost\C$\ceedling-fs-unc')) {
             Write-Host '::warning::The administrative share \\localhost\C$ is unreachable, so the UNC run is skipped'
@@ -787,8 +790,9 @@ jobs:
           $env:CEEDLING_TEST_FS_ROOT = '//localhost/C$/ceedling-fs-unc'
           bundle exec rspec spec/units/filesystem --tag filesystem --format documentation
 
+      # Runs even after the UNC step fails, so one result never hides the other
       - name: Run Filesystem Specs on a VHD-Backed NTFS Volume
-        if: runner.os == 'Windows'
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
         run: |
           @"
@@ -799,7 +803,8 @@ jobs:
           assign letter=T
           "@ | Set-Content C:\ceedling-fs-diskpart.txt
           diskpart /s C:\ceedling-fs-diskpart.txt | Out-Host
-          if (-not (Test-Path 'T:\')) {
+          $volume = Get-Volume -DriveLetter T -ErrorAction SilentlyContinue
+          if ($null -eq $volume -or $volume.FileSystemLabel -ne 'CEEDLINGFS') {
             Write-Host '::warning::diskpart could not make the T: volume, so the VHD run is skipped'
             exit 0
           }
@@ -810,19 +815,17 @@ jobs:
       - name: Run Filesystem Specs on a Loopback FAT Volume
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get install --assume-yes --quiet dosfstools > /dev/null
-          truncate -s 64M "$RUNNER_TEMP/ceedling-fs.img"
-          mkfs.vfat "$RUNNER_TEMP/ceedling-fs.img" > /dev/null
-          sudo mkdir -p /mnt/ceedling-fs
-          if ! sudo mount -o loop,uid=$(id -u),gid=$(id -g) "$RUNNER_TEMP/ceedling-fs.img" /mnt/ceedling-fs; then
-            echo '::warning::The FAT image could not be mounted, so the FAT run is skipped'
+          image="$RUNNER_TEMP/ceedling-fs.img"
+          if ! { sudo apt-get update -qq && sudo apt-get install --assume-yes --quiet dosfstools > /dev/null &&
+                 truncate -s 64M "$image" && mkfs.vfat "$image" > /dev/null && sudo mkdir -p /mnt/ceedling-fs &&
+                 sudo mount -o loop,uid=$(id -u),gid=$(id -g) "$image" /mnt/ceedling-fs; }; then
+            echo '::warning::The FAT image could not be made or mounted, so the FAT run is skipped'
             exit 0
           fi
           status=0
           CEEDLING_TEST_FS_ROOT=/mnt/ceedling-fs bundle exec rspec spec/units/filesystem --tag filesystem --format documentation || status=$?
           sudo umount /mnt/ceedling-fs
           exit $status
-
 
   # Job: Lint Ceedling's own Ruby source with RuboCop
   # Scoped to the Lint, Metrics, Security, and Performance departments (see
