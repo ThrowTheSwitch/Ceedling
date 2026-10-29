@@ -8,8 +8,8 @@
 require 'tmpdir'
 require 'fileutils'
 
-REPO_ROOT = File.expand_path( '../../..', __dir__ )
-$LOAD_PATH.unshift( File.join( REPO_ROOT, 'lib' ), File.join( REPO_ROOT, 'vendor/cmock/lib' ) )
+repo_root = File.expand_path( '../../..', __dir__ )
+$LOAD_PATH.unshift( File.join( repo_root, 'lib' ), File.join( repo_root, 'vendor/cmock/lib' ) )
 
 require 'fff.rb'
 

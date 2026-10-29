@@ -105,7 +105,7 @@ class FffCMockWrapper
   # Joins include lists, each named once, as #include operands. A name holding `<` is
   # kept as written, and any other is quoted, as CMock does.
   def quoted(*lists)
-    return lists.compact.flatten.uniq.map { |name| name.include?( '<' ) ? name : "\"#{name}\"" }
+    return lists.compact.flatten.uniq.map { |name| name.match?( /</ ) ? name : "\"#{name}\"" }
   end
 
 end
