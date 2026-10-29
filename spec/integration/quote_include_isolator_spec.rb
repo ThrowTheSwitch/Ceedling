@@ -24,7 +24,7 @@ require 'spec_integration_helper'
 require 'fileutils'
 require 'tmpdir'
 require 'open3'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/quote_include_isolator'
 require 'ceedling/constants'
 

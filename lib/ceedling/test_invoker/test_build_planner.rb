@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 require 'ceedling/test_invoker/test_build_validations'

@@ -7,10 +7,10 @@
 
 require 'ceedling/exceptions'
 require 'ceedling/partials/partials'
-require 'ceedling/file_path_utils'
+require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/generators/generator_test_runner' # From lib/ not vendor/unity/auto
 require 'ceedling/encodinator'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 
 class TestContextExtractor
 

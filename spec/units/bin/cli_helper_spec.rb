@@ -24,7 +24,7 @@ require 'cli_helper'
 require 'app_cfg'
 require 'ceedling/ruby_expandinator'
 require 'ceedling/config/config_walkinator'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 # CliHelper#test_task? references RakeTaskRegistry::TAG_TEST, but only
 # bin/cli_handler.rb requires this file in the real bootstrap (loaded before
 # cli_helper.rb's methods are ever called) -- required directly here since this

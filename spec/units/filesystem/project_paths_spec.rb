@@ -8,7 +8,7 @@
 require 'spec_helper'
 require 'tmpdir'
 require 'fileutils'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 
 # GH #1370 and the path handling audit around it: one place spelled many ways compared
 # as text, so `..` "contained" paths above it and build files escaped the build directory

@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 
 class PathValidator
 

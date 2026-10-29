@@ -12,7 +12,7 @@ require 'fileutils'
 require 'ceedling/generators/generator_test_results_sanity_checker'
 require 'ceedling/generators/generator_test_results'
 require 'ceedling/yaml_wrapper'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/constants'
 require 'ceedling/config/configurator'
 

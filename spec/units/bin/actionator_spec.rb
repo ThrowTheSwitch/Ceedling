@@ -213,11 +213,10 @@ describe Actionator do
       allow(@file_wrapper).to receive(:dirname) { |path| File.dirname( path ) }
       allow(@file_wrapper).to receive(:mkdir)
       allow(@file_wrapper).to receive(:write)
-      allow(@file_wrapper).to receive(:directory?).and_return( false )
     end
 
     it 'copies files and omits junk files' do
-      allow(@file_wrapper).to receive(:directory_listing).and_return([
+      allow(@file_wrapper).to receive(:tree_files).and_return([
         src_path('tree', 'keep.txt'),
         src_path('tree', 'thumbs.db'),
         src_path('tree', '.DS_Store'),
@@ -231,25 +230,25 @@ describe Actionator do
     end
 
     it 'rebases nested sources onto the destination' do
-      allow(@file_wrapper).to receive(:directory_listing).and_return([ src_path('tree', 'a', 'b', 'c.txt') ])
+      allow(@file_wrapper).to receive(:tree_files).and_return([ src_path('tree', 'a', 'b', 'c.txt') ])
 
       expect(@file_wrapper).to receive(:write).with( dest_path('out', 'a', 'b', 'c.txt'), 'contents', 'wb' )
 
       @actionator.copy_directory( 'tree', 'out', force: true )
     end
 
-    it 'skips directory entries in the listing' do
-      allow(@file_wrapper).to receive(:directory_listing).and_return([ src_path('tree', 'sub') ])
-      allow(@file_wrapper).to receive(:directory?).with( src_path('tree', 'sub') ).and_return( true )
-
-      expect(@file_wrapper).to_not receive(:write).with( /sub/, anything, anything )
+    it 'lists the source without entries named with a leading dot' do
+      skip_rule = nil
+      allow(@file_wrapper).to receive(:tree_files) { |_dir, skip:| skip_rule = skip; [] }
 
       @actionator.copy_directory( 'tree', 'out', force: true )
+
+      expect( ['.rspec', '.hidden', 'keep.c'].reject { |name| skip_rule.call( name ) } ).to eq( ['keep.c'] )
     end
 
     # Thor reported the destination directory itself before any of its contents.
     it 'reports the destination directory before its files' do
-      allow(@file_wrapper).to receive(:directory_listing).and_return([ src_path('tree', 'keep.txt') ])
+      allow(@file_wrapper).to receive(:tree_files).and_return([ src_path('tree', 'keep.txt') ])
 
       reported = []
       allow(@loginator).to receive(:console) { |message, _label| reported << message }
@@ -262,24 +261,22 @@ describe Actionator do
       ])
     end
 
-    # Issue #104: a Ceedling install path can contain literal glob metacharacters.
-    # FileWrapper#directory_listing does not escape, so Actionator has to.
-    it 'escapes glob metacharacters in the source path' do
+    # Issue #104: a Ceedling install path can contain literal glob metacharacters. The
+    # tree is listed by walking it, so the path passes through as written.
+    it 'lists a source path holding glob metacharacters as written' do
       bracketed_root = File.expand_path( '/src/[legacy]' )
       @actionator.source_root = bracketed_root
-      allow(@file_wrapper).to receive(:directory_listing).and_return([])
 
-      escaped = bracketed_root.gsub( /[*?{}\[\]]/ ) { |char| '\\' + char }
-      expect(@file_wrapper).to receive(:directory_listing).with( File.join( escaped, 'tree', '**', '*' ) )
+      expect(@file_wrapper).to receive(:tree_files).with( File.join( bracketed_root, 'tree' ), skip: Actionator::HIDDEN ).and_return([])
 
       @actionator.copy_directory( 'tree', 'out', force: true )
     end
 
     # cli_helper.rb passes component paths with a trailing separator.
     it 'tolerates a trailing separator on the source' do
-      allow(@file_wrapper).to receive(:directory_listing).and_return([ src_path('tree', 'keep.txt') ])
+      allow(@file_wrapper).to receive(:tree_files).and_return([ src_path('tree', 'keep.txt') ])
 
-      expect(@file_wrapper).to receive(:directory_listing).with( File.join( src_path('tree'), '**', '*' ) )
+      expect(@file_wrapper).to receive(:tree_files).with( src_path('tree'), skip: Actionator::HIDDEN )
       expect(@file_wrapper).to receive(:write).with( dest_path('out', 'keep.txt'), 'contents', 'wb' )
 
       @actionator.copy_directory( 'tree/', 'out', force: true )

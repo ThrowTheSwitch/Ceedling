@@ -9,7 +9,7 @@ require 'stringio'
 require 'strscan'
 require 'ceedling/partials/partials'
 require 'ceedling/exceptions'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 require 'ceedling/c_extractor/c_extractor_preprocessing'
 require 'ceedling/encodinator'
 

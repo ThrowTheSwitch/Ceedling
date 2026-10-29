@@ -7,7 +7,7 @@
 
 require 'ceedling/constants'
 require 'ceedling/system_wrapper'
-require 'ceedling/file_path_utils'
+require 'ceedling/filesystem/file_path_utils'
 
 # Assign a default value for system testing where CEEDLING_APPCFG may not be present
 # TODO: Create code config & test structure that does not internalize a test path like this

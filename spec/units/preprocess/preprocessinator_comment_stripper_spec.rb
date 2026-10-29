@@ -9,7 +9,7 @@ require 'spec_helper'
 require 'ceedling/preprocess/c_comment_scanner'
 require 'ceedling/preprocess/preprocessinator_comment_stripper'
 require 'ceedling/preprocess/preprocessinator_code_finder'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 
 RSpec.describe PreprocessinatorCommentStripper do
 

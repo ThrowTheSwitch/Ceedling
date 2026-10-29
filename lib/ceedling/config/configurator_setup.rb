@@ -73,17 +73,6 @@ class ConfiguratorSetup
     end
   end
 
-  # A vendor destination must be a directory, and the marker file inside it (unity.c,
-  # cmock.c, CException.c) a plain file. An interrupted run, or a second Ceedling run racing
-  # this one, can leave either as the wrong type, and the copy would then fail on every
-  # later build. The whole destination is cleared, so the copy recreates it.
-  def heal_vendor_path(path, marker_file)
-    return unless corrupted_vendor_path?( path, marker_file )
-
-    @loginator.log( "Removing corrupted vendor path (unexpected file/directory type): #{path}", Verbosity::COMPLAIN, LogLabels::NOTICE )
-    @file_wrapper.rm_rf( path )
-  end
-
   # Brings build/vendor up to date with the frameworks and support files a build needs. Only
   # a build does this, so a command that only reads the project leaves a concurrent build's
   # files alone. A file that already matches its source is not written, and one that differs,
@@ -91,8 +80,7 @@ class ConfiguratorSetup
   #
   # A release build needs only CException, and that only when exceptions are enabled.
   def vendor_frameworks_and_support_files(ceedling_lib_path, flattened_config, test_build:, release_build:)
-    frameworks_for_build( flattened_config, test_build: test_build, release_build: release_build ).each do |source, destination, marker_file|
-      heal_vendor_path( destination, marker_file )
+    frameworks_for_build( flattened_config, test_build: test_build, release_build: release_build ).each do |source, destination|
       @file_wrapper.sync_tree( source, destination )
     end
 
@@ -314,23 +302,16 @@ class ConfiguratorSetup
 
   private
 
-  def corrupted_vendor_path?(path, marker_file)
-    marker = File.join( path, marker_file )
-
-    return ( @file_wrapper.exist?( path ) && !@file_wrapper.directory?( path ) ) ||
-           ( @file_wrapper.exist?( marker ) && @file_wrapper.directory?( marker ) )
-  end
-
-  # Each framework a build uses, as [vendored source, build destination, marker file]
+  # Each framework a build uses, as [vendored source, build destination]
   def vendored_frameworks(config)
-    frameworks = [ [File.join( config[:unity_vendor_path], UNITY_LIB_PATH ), config[:project_build_vendor_unity_path], UNITY_C_FILE] ]
+    frameworks = [ [File.join( config[:unity_vendor_path], UNITY_LIB_PATH ), config[:project_build_vendor_unity_path]] ]
 
     if config[:project_use_mocks]
-      frameworks << [File.join( config[:cmock_vendor_path], CMOCK_LIB_PATH ), config[:project_build_vendor_cmock_path], CMOCK_C_FILE]
+      frameworks << [File.join( config[:cmock_vendor_path], CMOCK_LIB_PATH ), config[:project_build_vendor_cmock_path]]
     end
 
     if config[:project_use_exceptions]
-      frameworks << [File.join( config[:cexception_vendor_path], CEXCEPTION_LIB_PATH ), config[:project_build_vendor_cexception_path], CEXCEPTION_C_FILE]
+      frameworks << [File.join( config[:cexception_vendor_path], CEXCEPTION_LIB_PATH ), config[:project_build_vendor_cexception_path]]
     end
 
     return frameworks
@@ -338,7 +319,7 @@ class ConfiguratorSetup
 
   def frameworks_for_build(config, test_build:, release_build:)
     return vendored_frameworks( config ) if test_build
-    return vendored_frameworks( config ).select { |_, _, marker_file| marker_file == CEXCEPTION_C_FILE } if release_build
+    return vendored_frameworks( config ).select { |_, destination| destination == config[:project_build_vendor_cexception_path] } if release_build
 
     return []
   end

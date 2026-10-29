@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/destination_collision'
+require 'ceedling/filesystem/destination_collision'
 
 describe DestinationCollision do
   describe '.find' do

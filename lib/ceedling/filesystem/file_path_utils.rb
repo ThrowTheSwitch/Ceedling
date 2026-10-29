@@ -13,11 +13,11 @@ require 'ceedling/exceptions'
 require 'set'
 require 'ceedling/system_wrapper'
 require 'ceedling/constants'
-require 'ceedling/path_mirror'
-require 'ceedling/path_matcher'
-require 'ceedling/project_paths'
-require 'ceedling/build_subpath'
-require 'ceedling/destination_collision'
+require 'ceedling/filesystem/path_mirror'
+require 'ceedling/filesystem/path_matcher'
+require 'ceedling/filesystem/project_paths'
+require 'ceedling/filesystem/build_subpath'
+require 'ceedling/filesystem/destination_collision'
 
 # global utility methods (for plugins, project files, etc.)
 def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)

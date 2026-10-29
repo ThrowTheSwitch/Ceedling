@@ -179,54 +179,6 @@ describe ConfiguratorSetup do
     end
   end
 
-  # Issue #1292: a vendor destination (build/vendor/unity/src, etc.) occasionally turns
-  # up as the wrong file/directory type, crashing the copy that populates it. These
-  # examples cover the two fixes: unconditional copying (never skipped just because the
-  # destination looks already populated -- an errant edit there must be overwritten, not
-  # left standing) and self-healing a wrong-typed destination before that copy runs.
-  context "#heal_vendor_path" do
-    it "does nothing when neither the destination nor the marker file exist yet" do
-      allow(@file_wrapper).to receive(:exist?).and_return(false)
-
-      @setup.heal_vendor_path('/build/vendor/unity/src', 'unity.c')
-
-      expect(@file_wrapper).to_not receive(:rm_rf)
-    end
-
-    it "does nothing when the destination is a directory and the marker is a plain file inside it" do
-      allow(@file_wrapper).to receive(:exist?).with('/build/vendor/unity/src').and_return(true)
-      allow(@file_wrapper).to receive(:directory?).with('/build/vendor/unity/src').and_return(true)
-      allow(@file_wrapper).to receive(:exist?).with('/build/vendor/unity/src/unity.c').and_return(true)
-      allow(@file_wrapper).to receive(:directory?).with('/build/vendor/unity/src/unity.c').and_return(false)
-
-      @setup.heal_vendor_path('/build/vendor/unity/src', 'unity.c')
-
-      expect(@file_wrapper).to_not receive(:rm_rf)
-    end
-
-    it "removes and logs a NOTICE when the destination itself is the wrong type (a file, not a directory)" do
-      allow(@file_wrapper).to receive(:exist?).with('/build/vendor/unity/src').and_return(true)
-      allow(@file_wrapper).to receive(:directory?).with('/build/vendor/unity/src').and_return(false)
-      expect(@file_wrapper).to receive(:rm_rf).with('/build/vendor/unity/src')
-      expect(@loginator).to receive(:log)
-        .with(a_string_including('/build/vendor/unity/src'), Verbosity::COMPLAIN, LogLabels::NOTICE)
-
-      @setup.heal_vendor_path('/build/vendor/unity/src', 'unity.c')
-    end
-
-    it "removes and logs a NOTICE when the marker file inside an otherwise-fine destination is the wrong type (Issue #1292's own reported shape: unity.c itself became a directory)" do
-      allow(@file_wrapper).to receive(:exist?).with('/build/vendor/unity/src').and_return(true)
-      allow(@file_wrapper).to receive(:directory?).with('/build/vendor/unity/src').and_return(true)
-      allow(@file_wrapper).to receive(:exist?).with('/build/vendor/unity/src/unity.c').and_return(true)
-      allow(@file_wrapper).to receive(:directory?).with('/build/vendor/unity/src/unity.c').and_return(true)
-      expect(@file_wrapper).to receive(:rm_rf).with('/build/vendor/unity/src')
-      expect(@loginator).to receive(:log)
-        .with(a_string_including('/build/vendor/unity/src'), Verbosity::COMPLAIN, LogLabels::NOTICE)
-
-      @setup.heal_vendor_path('/build/vendor/unity/src', 'unity.c')
-    end
-  end
-
   # Only a build populates build/vendor, so a command that only reads the project, such as
   # files:test or dumpconfig, leaves a concurrent build's files alone (GH #1361)
   context "#vendor_frameworks_and_support_files" do
@@ -314,16 +266,6 @@ describe ConfiguratorSetup do
       expect(@file_wrapper).to_not have_received(:sync_tree)
       expect(@file_wrapper).to_not have_received(:sync_file)
       expect(@file_wrapper).to_not have_received(:rm_rf)
-    end
-
-    it "heals a corrupted (wrong-typed) vendor destination before copying" do
-      allow(@file_wrapper).to receive(:exist?).with('/build/vendor/unity/src').and_return(true)
-      allow(@file_wrapper).to receive(:directory?).with('/build/vendor/unity/src').and_return(false)
-      allow(@loginator).to receive(:log)
-
-      vendor( test_build: true )
-
-      expect(@file_wrapper).to have_received(:rm_rf).with('/build/vendor/unity/src')
     end
   end
 

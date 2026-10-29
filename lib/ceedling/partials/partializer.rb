@@ -14,7 +14,7 @@ require 'ceedling/c_extractor/c_extractor'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/constants'
-require 'ceedling/path_mirror'
+require 'ceedling/filesystem/path_mirror'
 require 'ceedling/encodinator'
 
 class Partializer

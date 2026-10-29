@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'set'
-require 'ceedling/path_spellings'
+require 'ceedling/filesystem/path_spellings'
 
 # What collection leaves out, each a set of spellings: `-:` entries' places, outweighed by
 # an entry based nearer; excluded places, outweighed by an entry based no farther away; and

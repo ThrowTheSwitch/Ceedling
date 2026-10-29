@@ -8,7 +8,7 @@
 require 'spec_helper'
 require 'tmpdir'
 require 'fileutils'
-require 'ceedling/build_subpath'
+require 'ceedling/filesystem/build_subpath'
 
 # GH #1370 and the path handling audit around it: a build file placed by text could land
 # outside the build directory
@@ -21,6 +21,13 @@ describe BuildSubpath do
       FileUtils.mkdir_p( File.join( @ws, 'app' ) )
       Dir.chdir( File.join( @ws, 'app' ) ) { example.run }
     end
+  end
+
+  # Every other example reads INSTALLATION_ROOT itself, so only this one shows it names the
+  # running installation
+  it 'names the running installation, which holds what Ceedling ships' do
+    expect(File.file?( File.join( BuildSubpath::INSTALLATION_ROOT, 'lib', 'ceedling', 'filesystem', 'build_subpath.rb' ) )).to be( true )
+    BuildSubpath::INSTALLED_DIRS.each { |dir| expect(File.directory?( dir )).to be( true ), dir }
   end
 
   describe '.encode and .decode' do

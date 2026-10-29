@@ -61,7 +61,9 @@ begin
   #  1. Add full path to $LOAD_PATH to simplify objects.yml
   #  2. Perform object construction + dependency injection
   #  3. Remove full path from $LOAD_PATH
-  $LOAD_PATH.unshift( CEEDLING_APPCFG[:ceedling_lib_path] )
+  # The full path comes last, behind its subdirectories, so a file an older Ceedling left
+  # directly in lib/ceedling/ never stands in for one that has moved below it
+  $LOAD_PATH.push( CEEDLING_APPCFG[:ceedling_lib_path] )
   objects_filepath = File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'objects.yml' )
   
   # Create object hash and dependency injection context

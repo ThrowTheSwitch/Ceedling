@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 
 # Where a build places a file of a path: by its path from the project root, so two files
 # never share a build file and none lands outside the build directory. `..` becomes `_up_`,
@@ -24,8 +24,8 @@ module BuildSubpath
   # since macOS and Windows file systems fold it
   MARKER_NAMED = /\A_+(?:up|abs|unc|ceedling)_\z/i
 
-  # The running Ceedling installation, above lib/ceedling/
-  INSTALLATION_ROOT = File.expand_path( '../..', __dir__ )
+  # The running Ceedling installation, above lib/ceedling/filesystem/
+  INSTALLATION_ROOT = File.expand_path( '../../..', __dir__ )
 
   # The directories of an installation holding what Ceedling ships. A project may itself sit
   # elsewhere in an installation, as in a development checkout, and its files are its own.

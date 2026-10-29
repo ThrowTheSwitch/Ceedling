@@ -8,7 +8,7 @@
 require 'spec_helper'
 require 'tmpdir'
 require 'ceedling/build_log_writer'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 
 describe BuildLogWriter do
   let(:file_wrapper) { double('file_wrapper') }

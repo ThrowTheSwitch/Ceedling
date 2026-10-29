@@ -17,6 +17,7 @@ require 'digest/sha2'
 require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
+require 'ceedling/filesystem/file_tree'
 
 
 class FileWrapper
@@ -123,6 +124,13 @@ class FileWrapper
     # case sensitive wherever the filesystem is, which rules this out for matching a name
     # whose capitalization varies -- see `directory_entries()`.
     return Dir.glob(glob, File::FNM_PATHNAME).sort()
+  end
+
+  # Every regular file below dir as a full path, sorted. Unlike a glob, the walk classifies
+  # entries by `stat`, follows links, and reads names without pattern syntax (see FileTree).
+  # An entry whose name `skip` accepts is neither listed nor entered.
+  def tree_files(dir, skip: nil)
+    return FileTree.each_file( dir, skip: skip ).map { |_relative, path| path }.sort
   end
 
   # Entry names within a single directory, `.` and `..` excluded.
@@ -245,34 +253,32 @@ class FileWrapper
     false
   end
 
-  # Brings every file beneath source_dir up to date beneath destination_dir. A file that
-  # already matches its source is not written, so a reader elsewhere never sees it change. One
-  # that differs or is missing is replaced whole (see #replace_file). Files the destination
-  # has beyond the source are left alone.
+  # Brings every file beneath source_dir up to date beneath destination_dir (see FileTree.sync).
+  # A file that already matches its source is not written, so a reader elsewhere never sees it
+  # change. One that differs or is missing is replaced whole (see #replace_file). An entry of
+  # the wrong type is replaced. Files the destination has beyond the source are left alone.
   #
-  # A transient OS-level error retries the whole pass: a path briefly reporting the wrong type
-  # mid-copy, or on Windows a file another process holds open. A failure that never clears
-  # surfaces as a CeedlingException naming the destination, not a bare Errno.
+  # A write is retried on an error that clears on its own, such as another process holding a
+  # file open on Windows. One that never clears surfaces as a CeedlingException naming the file.
   def sync_tree(source_dir, destination_dir)
-    with_copy_retry( destination_dir ) do
-      Dir.glob( '**/*', File::FNM_DOTMATCH, base: source_dir ).each do |relative|
-        source = File.join( source_dir, relative )
-        sync_one( source, File.join( destination_dir, relative ) ) if File.file?( source )
-      end
-    end
+    FileTree.sync( source_dir, destination_dir, **sync_options )
   end
 
   # As #sync_tree, for a single file copied into destination_dir
   def sync_file(source, destination_dir)
-    with_copy_retry( destination_dir ) { sync_one( source, File.join( destination_dir, File.basename( source ) ) ) }
+    FileTree.sync_file( source, destination_dir, **sync_options )
   end
 
   # Copies source to a temporary name beside destination, then renames it over destination.
-  # A concurrent reader sees the old file or the new one, never a partial one.
+  # A concurrent reader sees the old file or the new one, never a partial one. The copy is
+  # owner-writable, and so is a destination file it replaces, since Windows refuses to rename
+  # over a read-only file. A destination link is replaced, and the file it names left alone.
   def replace_file(source, destination)
     temp = File.join( File.dirname( destination ), ".#{File.basename( destination )}.#{Process.pid}.#{Thread.current.object_id}.tmp" )
     check_path_length( temp, origin: 'FileWrapper#replace_file' )
     FileUtils.cp( source, temp )
+    owner_writable( temp )
+    owner_writable( destination ) if File.file?( destination ) && !File.symlink?( destination )
     File.rename( temp, destination )
   ensure
     FileUtils.rm_f( temp ) if temp
@@ -388,31 +394,18 @@ class FileWrapper
 
   private
 
-  def sync_one(source, destination)
-    return if File.file?( destination ) && File.size( source ) == File.size( destination ) && FileUtils.compare_file( source, destination )
-
-    FileUtils.mkdir_p( File.dirname( destination ) )
-    replace_file( source, destination )
+  def sync_options
+    return {
+      publish:      method( :replace_file ),
+      retry_delays: TRANSIENT_IO_RETRY_DELAYS,
+      sleep:        ->( delay ) { sleep( delay ) },
+      log:          ->( message, verbosity, label ) { @loginator.log( message, verbosity, label ) }
+    }
   end
 
-  def with_copy_retry(destination)
-    attempts_remaining = TRANSIENT_IO_RETRY_DELAYS.dup
-    begin
-      yield
-    rescue SystemCallError => e
-      if attempts_remaining.empty?
-        msg = "Failed to copy into '#{destination}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}\n" \
-              "This path may be corrupted (a file exists where Ceedling expects a directory, or vice versa). " \
-              "Try deleting this project's build/ directory and rebuilding -- or, if the error names a path " \
-              "under your Ruby gem install, reinstall the ceedling gem."
-        @loginator.log(msg, Verbosity::ERRORS)
-        raise CeedlingException, msg
-      end
-      delay = attempts_remaining.shift
-      @loginator.log("Retrying copy into '#{destination}' after a transient error: #{e.message}", Verbosity::DEBUG)
-      sleep(delay)
-      retry
-    end
+  def owner_writable(path)
+    mode = File.stat( path ).mode & 0o7777
+    File.chmod( mode | 0o200, path ) if (mode & 0o200).zero?
   end
 
   def path_length_limit

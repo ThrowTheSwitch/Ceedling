@@ -23,8 +23,9 @@
 
 require 'spec_helper'
 require 'spec_integration_helper'
+require 'file_tree_helper'
 require 'actionator'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 
 describe 'Actionator file operations (integration)' do
   include IntegrationSpecHelpers
@@ -142,6 +143,95 @@ describe 'Actionator file operations (integration)' do
           '      create  out',
           '      create  out/keep.txt',
         ])
+      end
+    end
+
+    # Status lines follow a sorted listing of full paths, so a file sorts ahead of the
+    # contents of a directory named like it
+    it 'reports files in sorted path order' do
+      with_source_tree({ 'tree/a/b.c' => 'b', 'tree/a.c' => 'a', 'tree/a-z.c' => 'z' }) do |dir|
+        actionator = build_actionator( dir )
+
+        actionator.copy_directory( 'tree', File.join( dir, 'out' ), force: true )
+
+        expect(@loginator.lines).to eq([
+          '      create  out',
+          '      create  out/a-z.c',
+          '      create  out/a.c',
+          '      create  out/a/b.c',
+        ])
+      end
+    end
+
+    it 'leaves hidden files and hidden directories out' do
+      with_source_tree({ 'tree/keep.c' => 'k', 'tree/.rspec' => 'r', 'tree/.hidden/x.c' => 'x' }) do |dir|
+        actionator = build_actionator( dir )
+
+        actionator.copy_directory( 'tree', File.join( dir, 'out' ), force: true )
+
+        expect(Dir.children( File.join( dir, 'out' ) )).to eq( ['keep.c'] )
+      end
+    end
+
+    it 'never enters a hidden directory, so nothing inside one stops the copy' do
+      with_source_tree({ 'tree/keep.c' => 'k', 'tree/.venv/x.c' => 'x' }) do |dir|
+        begin
+          File.symlink( File.join( dir, 'nowhere' ), File.join( dir, 'tree', '.venv', 'dangling.c' ) )
+        rescue NotImplementedError, SystemCallError => e
+          skip "symlinks are unavailable here (#{e.class})"
+        end
+        actionator = build_actionator( dir )
+
+        actionator.copy_directory( 'tree', File.join( dir, 'out' ), force: true )
+
+        expect(Dir.children( File.join( dir, 'out' ) )).to eq( ['keep.c'] )
+      end
+    end
+
+    it 'copies a file below a directory named with glob metacharacters' do
+      with_source_tree({ 'tree/dir[1]/a{b}.c' => 'odd' }) do |dir|
+        actionator = build_actionator( dir )
+
+        actionator.copy_directory( 'tree', File.join( dir, 'out' ), force: true )
+
+        expect(File.read( File.join( dir, 'out', 'dir[1]', 'a{b}.c' ) )).to eq( 'odd' )
+      end
+    end
+
+    # GH #1376: the tree is listed and classified without lstat, and a linked directory's
+    # contents are copied
+    it 'descends a linked directory' do
+      with_source_tree({ 'elsewhere/inner.c' => 'inner', 'tree/keep.c' => 'k' }) do |dir|
+        begin
+          File.symlink( File.join( dir, 'elsewhere' ), File.join( dir, 'tree', 'linked' ) )
+        rescue NotImplementedError, SystemCallError => e
+          skip "symlinks are unavailable here (#{e.class})"
+        end
+        actionator = build_actionator( dir )
+
+        actionator.copy_directory( 'tree', File.join( dir, 'out' ), force: true )
+
+        expect(File.read( File.join( dir, 'out', 'linked', 'inner.c' ) )).to eq( 'inner' )
+      end
+    end
+
+    it 'copies every file as a file when lstat reports files as directories' do
+      with_source_tree({ 'tree/unity.c' => 'u', 'tree/sub/unity.h' => 'h' }) do |dir|
+        actionator = build_actionator( dir )
+        allow(File).to receive(:lstat).and_wrap_original do |original, path, *rest|
+          status = original.call( path, *rest )
+          path.to_s.include?( '/tree/' ) ? FileTreeHelper::LyingStat.new( status ) : status
+        end
+
+        begin
+          actionator.copy_directory( 'tree', File.join( dir, 'out' ), force: true )
+        ensure
+          # The temporary directory is removed by an lstat-based remover
+          allow(File).to receive(:lstat).and_call_original
+        end
+
+        expect(File.file?( File.join( dir, 'out', 'unity.c' ) )).to be true
+        expect(File.file?( File.join( dir, 'out', 'sub', 'unity.h' ) )).to be true
       end
     end
   end

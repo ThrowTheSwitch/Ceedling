@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/destination_collision'
+require 'ceedling/filesystem/destination_collision'
 
 # Test-build configuration validators shared by more than one test pipeline stage
 # class -- each raises CeedlingException on a real, user-facing mistake it's

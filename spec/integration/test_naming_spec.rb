@@ -12,9 +12,9 @@
 
 require 'spec_helper'
 require 'configurator_integration_helper'
-require 'ceedling/file_path_utils'
-require 'ceedling/file_finder'
-require 'ceedling/file_finder_helper'
+require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/file_finder'
+require 'ceedling/filesystem/file_finder_helper'
 require 'ceedling/test_invoker/test_build_setup'
 require 'ceedling/test_invoker/test_invoker_types'
 

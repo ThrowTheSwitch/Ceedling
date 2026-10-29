@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/path_mirror'
+require 'ceedling/filesystem/path_mirror'
 
 describe PathMirror do
 

@@ -7,8 +7,8 @@
 
 require 'rubygems'
 require 'rake'                     # for ext() method
-require 'ceedling/file_path_utils' # for class methods
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/file_path_utils' # for class methods
+require 'ceedling/filesystem/project_paths'
 require 'ceedling/defaults'
 require 'ceedling/constants'       # for Verbosity constants class & base file paths
 require 'ceedling/filename_extension'

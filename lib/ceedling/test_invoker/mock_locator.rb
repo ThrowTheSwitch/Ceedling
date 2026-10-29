@@ -6,8 +6,8 @@
 # =========================================================================
 
 require 'ceedling/constants'
-require 'ceedling/build_subpath'
-require 'ceedling/path_matcher'
+require 'ceedling/filesystem/build_subpath'
+require 'ceedling/filesystem/path_matcher'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 
 # Where a test's mocks come from and where they go. A mock's real header resolves

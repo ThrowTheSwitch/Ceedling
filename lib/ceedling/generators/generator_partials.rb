@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/c_extractor/c_extractor_constants'

@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 
 # One configured dependency, validated and normalized.
 #

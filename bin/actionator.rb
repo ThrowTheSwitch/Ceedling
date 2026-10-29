@@ -36,6 +36,9 @@ class Actionator
 
   JUNK_FILE_EXCLUDE_REGEX = /(\.DS_Store)|(thumbs\.db)/
 
+  # A file or directory named with a leading dot stays out of a copy, and is never entered
+  HIDDEN = ->( name ) { name.start_with?( '.' ) }
+
   BOLD  = "\e[1m"
   CLEAR = "\e[0m"
 
@@ -93,19 +96,15 @@ class Actionator
   def copy_directory(source, destination, force: false, verbose: true,
                      exclude_pattern: JUNK_FILE_EXCLUDE_REGEX)
     # Trailing separators arrive from the vendored component paths in cli_helper.
-    # They would otherwise survive into the glob and into the rebasing below.
+    # They would otherwise survive into the rebasing below.
     src  = resolve_source( source ).sub( /\/+\z/, '' )
     dest = resolve_destination( destination )
 
     # Thor reported the destination directory itself ahead of its contents.
     make_directory( dest, verbose: verbose )
 
-    # FileWrapper#directory_listing does not escape glob metacharacters, and a
-    # Ceedling install path can contain them. See issue #104.
-    listing = @file_wrapper.directory_listing( File.join( escape_globs( src ), '**', '*' ) )
-
-    listing.each do |entry|
-      next if @file_wrapper.directory?( entry )
+    # The listing holds regular files only, in sorted path order
+    @file_wrapper.tree_files( src, skip: HIDDEN ).each do |entry|
       next if entry.match( exclude_pattern )
 
       copy_file( entry, rebase( entry, src, dest ), force: force, verbose: verbose )
@@ -195,11 +194,6 @@ class Actionator
 
   def rebase(entry, source_dir, destination_dir)
     return File.join( destination_dir, entry.sub( source_dir, '' ) )
-  end
-
-
-  def escape_globs(path)
-    return path.gsub( /[*?{}\[\]]/ ) { |char| '\\' + char }
   end
 
 

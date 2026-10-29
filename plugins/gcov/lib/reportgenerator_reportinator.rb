@@ -8,7 +8,7 @@
 require 'benchmark'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
-require 'ceedling/file_path_utils'
+require 'ceedling/filesystem/file_path_utils'
 require 'gcov_reportinator'
 
 class ReportGeneratorReportinator < GcovReportinator

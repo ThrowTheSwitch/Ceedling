@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
-require 'ceedling/path_mirror'
+require 'ceedling/filesystem/path_mirror'
 require 'gcov_reportinator'
 
 class ConsoleReportinator < GcovReportinator

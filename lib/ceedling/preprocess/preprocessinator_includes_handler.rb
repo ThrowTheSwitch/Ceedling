@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'ceedling/includes/includes'
-require 'ceedling/path_matcher'
+require 'ceedling/filesystem/path_matcher'
 require 'ceedling/preprocess/preprocessinator_bare_includes_extractor'
 require 'ceedling/preprocess/preprocessinator_line_marker_includes_extractor'
 require 'ceedling/preprocess/c_preprocessor_conditionals'

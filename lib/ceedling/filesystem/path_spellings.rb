@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'set'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 
 # A place reached through a symlink has two spellings: as listed and as it really is.
 # Collection compares places by both, and measures how far one lies below another.

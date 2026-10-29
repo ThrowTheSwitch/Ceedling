@@ -27,6 +27,14 @@ module CiSummary
       return format( ' (%+d)', current - base )
     end
 
+    # A count's change as an arrow and the difference, as #percent_delta marks a percentage's
+    def count_change(current, base)
+      return '—' if base.nil?
+      return '±0' if current == base
+
+      return format( '%s%d', current > base ? '▲' : '▼', (current - base).abs )
+    end
+
     def percent_delta(lines, base)
       return '—' if base.nil?
 

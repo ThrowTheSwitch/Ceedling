@@ -41,8 +41,9 @@ Each release has its own section, listing only what changed in that release.
 
 ### Path handling
 
-The many fixes that follow are the consequence of funneling all path handling through common hygiene, standardized path creation beneath the project build root, and handling for a variety edge cases.
+The bulk of the fixes that follow are the consequence of funneling all path handling through common hygiene, standardized path creation beneath the project build root, and handling for a variety edge cases. While extensive, most of these fixes were for problems most projects never encountered.
 
+- [#1376](https://github.com/ThrowTheSwitch/Ceedling/issues/1376) Fixed the copy of Unity, CMock, and CException into the build directory failing when Ruby reports a vendored file as a directory, as it can for a Ruby installation on a Windows network share with Data Deduplication. The copy left a directory where the file belongs, and every later build failed on it. Ceedling now tells files from directories without that misreport, and replaces any entry of the wrong type with a notice. `ceedling new --local`, `upgrade`, and `example` list what they copy the same way. This is best effort, since Ceedling cannot vouch for every filesystem (see [Known Issues](KnownIssues.md)).
 - [#1364](https://github.com/ThrowTheSwitch/Ceedling/issues/1364) Fixed test builds stopping with “Ambiguous file reference” when a test file’s name ended another test file’s path, such as `test/test_calc.c` beside `test/unit/test_calc.c`. It stopped `test:all`, a test named by its full path, and plugin builds such as `gcov:all`. Each test is now properly [named by its path from the project root](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#test-names-build-output), and its build finds its own source by that name.
 - Fixed two test files sharing one build name, so that one silently replaced the other: tests under overlapping `:paths` ↳ `:test` roots (e.g. `test/**` and `test/unit/**`), the same layout under two roots, or a `:files` ↳ `:test` test outside every root. Since 1.2.0, the error above hid it.
 - Fixed a directory of tests named like a test beside it, such as `test/test_foo/` beside `test/test_foo.c`, making a mock both tests use ambiguous.
@@ -73,6 +74,9 @@ The many fixes that follow are the consequence of funneling all path handling th
 - A `-:` `:paths` entry now removes the directory it names and every directory below it, unless an additive entry names one of them more closely, as `+:src/legacy/keep` does beside `-:src/legacy`. See [Breaking Changes](BreakingChanges.md).
 - A `:paths` or `:files` entry within the build root now logs a warning, and no entry collects from the directories Ceedling and its plugins create, such as `build/test/` or `build/vendor/`. See [Breaking Changes](BreakingChanges.md).
 - `-L` linker arguments now name the directories `:paths` ↳ `:libraries` entries collect, as any `:paths` entry does. An entry that collects no existing directory adds no `-L` argument.
+- Copying Unity, CMock, and CException into the build directory (for short paths and to alleviate possible network filesystem issues with a shared gem installation) retries a file only on an error that clears on its own, such as another program holding the file open, and fails at once on any other. Vendored files are always writable by their owner.
+- `ceedling new --local`, `upgrade`, and `example` now copy the contents of a linked directory within a Ceedling installation, and stop on a link loop.
+- Ceedling’s file and path code moved to `lib/ceedling/filesystem/`. A third-party plugin that requires one of its files directly must name the new path (see [Breaking Changes](BreakingChanges.md)). Plugin development currently makes no guarantees as to the location of internal Ceedling resources.
 
 ---
 

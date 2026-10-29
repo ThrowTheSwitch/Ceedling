@@ -11,7 +11,7 @@ require 'app_cfg'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/rake_app/rakefile_component_resolver'
-require 'ceedling/project_paths'
+require 'ceedling/filesystem/project_paths'
 require 'ceedling/config/build_root_policy'
 require 'versionator' # Outside DIY context
 

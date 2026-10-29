@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'yaml'
-require 'ceedling/file_wrapper'
+require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/yaml_wrapper'
 require 'ceedling/dependencies/dependency_debug_tree'
 
