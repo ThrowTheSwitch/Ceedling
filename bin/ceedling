@@ -66,14 +66,16 @@ begin
   #  5. Remove all paths added to $LOAD_PATH
   #     (Main application will restore certain paths -- possibly updated by :which_ceedling)
   $LOAD_PATH.unshift(
-    # lib/ceedling for base of any require statements
-    CEEDLING_APPCFG[:ceedling_lib_path],
     # Add lib/ceedling/config to load configuration handling utils
     File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'config' ),
     # Add lib/ceedling/filesystem to load file and path handling code
     File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'filesystem' ),
     # Add lib/ceedling/rake_app to load Rake application handling code
     File.join( CEEDLING_APPCFG[:ceedling_lib_path], 'rake_app' ),
+    # lib/ceedling for base of any require statements. It follows its subdirectories, so a
+    # file an older Ceedling left directly in lib/ceedling/ never stands in for one that has
+    # moved below it.
+    CEEDLING_APPCFG[:ceedling_lib_path],
     # DIY vendored path
     diy_vendor_path
   )
