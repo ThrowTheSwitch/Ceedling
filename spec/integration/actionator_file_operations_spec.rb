@@ -173,6 +173,21 @@ describe 'Actionator file operations (integration)' do
       end
     end
 
+    it 'never enters a hidden directory, so nothing inside one stops the copy' do
+      with_source_tree({ 'tree/keep.c' => 'k', 'tree/.venv/x.c' => 'x' }) do |dir|
+        begin
+          File.symlink( File.join( dir, 'nowhere' ), File.join( dir, 'tree', '.venv', 'dangling.c' ) )
+        rescue NotImplementedError, SystemCallError => e
+          skip "symlinks are unavailable here (#{e.class})"
+        end
+        actionator = build_actionator( dir )
+
+        actionator.copy_directory( 'tree', File.join( dir, 'out' ), force: true )
+
+        expect(Dir.children( File.join( dir, 'out' ) )).to eq( ['keep.c'] )
+      end
+    end
+
     it 'copies a file below a directory named with glob metacharacters' do
       with_source_tree({ 'tree/dir[1]/a{b}.c' => 'odd' }) do |dir|
         actionator = build_actionator( dir )
@@ -208,9 +223,12 @@ describe 'Actionator file operations (integration)' do
           path.to_s.include?( '/tree/' ) ? FileTreeHelper::LyingStat.new( status ) : status
         end
 
-        actionator.copy_directory( 'tree', File.join( dir, 'out' ), force: true )
-        # The temporary directory is removed by an lstat-based remover
-        allow(File).to receive(:lstat).and_call_original
+        begin
+          actionator.copy_directory( 'tree', File.join( dir, 'out' ), force: true )
+        ensure
+          # The temporary directory is removed by an lstat-based remover
+          allow(File).to receive(:lstat).and_call_original
+        end
 
         expect(File.file?( File.join( dir, 'out', 'unity.c' ) )).to be true
         expect(File.file?( File.join( dir, 'out', 'sub', 'unity.h' ) )).to be true

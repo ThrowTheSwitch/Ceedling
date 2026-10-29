@@ -128,8 +128,9 @@ class FileWrapper
 
   # Every regular file below dir as a full path, sorted. Unlike a glob, the walk classifies
   # entries by `stat`, follows links, and reads names without pattern syntax (see FileTree).
-  def tree_files(dir)
-    return FileTree.each_file( dir ).map { |_relative, path| path }.sort
+  # An entry whose name `skip` accepts is neither listed nor entered.
+  def tree_files(dir, skip: nil)
+    return FileTree.each_file( dir, skip: skip ).map { |_relative, path| path }.sort
   end
 
   # Entry names within a single directory, `.` and `..` excluded.
@@ -270,14 +271,14 @@ class FileWrapper
 
   # Copies source to a temporary name beside destination, then renames it over destination.
   # A concurrent reader sees the old file or the new one, never a partial one. The copy is
-  # owner-writable, and so is a destination it replaces, since Windows refuses to rename over
-  # a read-only file.
+  # owner-writable, and so is a destination file it replaces, since Windows refuses to rename
+  # over a read-only file. A destination link is replaced, and the file it names left alone.
   def replace_file(source, destination)
     temp = File.join( File.dirname( destination ), ".#{File.basename( destination )}.#{Process.pid}.#{Thread.current.object_id}.tmp" )
     check_path_length( temp, origin: 'FileWrapper#replace_file' )
     FileUtils.cp( source, temp )
     owner_writable( temp )
-    owner_writable( destination ) if File.file?( destination )
+    owner_writable( destination ) if File.file?( destination ) && !File.symlink?( destination )
     File.rename( temp, destination )
   ensure
     FileUtils.rm_f( temp ) if temp

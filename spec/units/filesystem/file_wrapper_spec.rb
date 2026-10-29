@@ -335,6 +335,29 @@ describe FileWrapper do
         expect( File.stat( destination ).mode & 0o200 ).to eq( 0o200 )
       end
     end
+
+    it 'replaces a destination link without changing the mode of the file it names' do
+      Dir.mktmpdir do |dir|
+        source = File.join( dir, 'unity.h' )
+        outside = File.join( dir, 'outside.h' )
+        destination = File.join( dir, 'out', 'unity.h' )
+        File.write( source, "new\n" )
+        File.write( outside, "outside\n" )
+        File.chmod( 0o444, outside )
+        FileUtils.mkdir_p( File.dirname( destination ) )
+        begin
+          File.symlink( outside, destination )
+        rescue NotImplementedError, SystemCallError => e
+          skip "symlinks are unavailable here (#{e.class})"
+        end
+        allow(@file_wrapper).to receive(:check_path_length)
+
+        @file_wrapper.replace_file( source, destination )
+
+        expect( File.read( destination ) ).to eq( "new\n" )
+        expect( File.stat( outside ).mode & 0o777 ).to eq( 0o444 )
+      end
+    end
   end
 
   describe '#mkdir_for' do

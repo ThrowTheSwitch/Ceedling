@@ -36,6 +36,9 @@ class Actionator
 
   JUNK_FILE_EXCLUDE_REGEX = /(\.DS_Store)|(thumbs\.db)/
 
+  # A file or directory named with a leading dot stays out of a copy, and is never entered
+  HIDDEN = ->( name ) { name.start_with?( '.' ) }
+
   BOLD  = "\e[1m"
   CLEAR = "\e[0m"
 
@@ -101,8 +104,7 @@ class Actionator
     make_directory( dest, verbose: verbose )
 
     # The listing holds regular files only, in sorted path order
-    @file_wrapper.tree_files( src ).each do |entry|
-      next if hidden?( entry, src )
+    @file_wrapper.tree_files( src, skip: HIDDEN ).each do |entry|
       next if entry.match( exclude_pattern )
 
       copy_file( entry, rebase( entry, src, dest ), force: force, verbose: verbose )
@@ -192,12 +194,6 @@ class Actionator
 
   def rebase(entry, source_dir, destination_dir)
     return File.join( destination_dir, entry.sub( source_dir, '' ) )
-  end
-
-
-  # A file named with a leading dot, or below a directory so named, stays out of a copy
-  def hidden?(entry, source_dir)
-    return entry.delete_prefix( source_dir ).split( '/' ).any? { |segment| segment.start_with?( '.' ) }
   end
 
 

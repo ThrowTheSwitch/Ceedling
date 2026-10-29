@@ -237,17 +237,13 @@ describe Actionator do
       @actionator.copy_directory( 'tree', 'out', force: true )
     end
 
-    it 'leaves hidden files and files below hidden directories out' do
-      allow(@file_wrapper).to receive(:tree_files).and_return([
-        src_path('tree', '.rspec'),
-        src_path('tree', '.hidden', 'x.c'),
-        src_path('tree', 'keep.c'),
-      ])
-
-      expect(@file_wrapper).to receive(:write).with( dest_path('out', 'keep.c'), 'contents', 'wb' )
-      expect(@file_wrapper).to_not receive(:write).with( /rspec|hidden/, anything, anything )
+    it 'lists the source without entries named with a leading dot' do
+      skip_rule = nil
+      allow(@file_wrapper).to receive(:tree_files) { |_dir, skip:| skip_rule = skip; [] }
 
       @actionator.copy_directory( 'tree', 'out', force: true )
+
+      expect( ['.rspec', '.hidden', 'keep.c'].reject { |name| skip_rule.call( name ) } ).to eq( ['keep.c'] )
     end
 
     # Thor reported the destination directory itself before any of its contents.
@@ -271,7 +267,7 @@ describe Actionator do
       bracketed_root = File.expand_path( '/src/[legacy]' )
       @actionator.source_root = bracketed_root
 
-      expect(@file_wrapper).to receive(:tree_files).with( File.join( bracketed_root, 'tree' ) ).and_return([])
+      expect(@file_wrapper).to receive(:tree_files).with( File.join( bracketed_root, 'tree' ), skip: Actionator::HIDDEN ).and_return([])
 
       @actionator.copy_directory( 'tree', 'out', force: true )
     end
@@ -280,7 +276,7 @@ describe Actionator do
     it 'tolerates a trailing separator on the source' do
       allow(@file_wrapper).to receive(:tree_files).and_return([ src_path('tree', 'keep.txt') ])
 
-      expect(@file_wrapper).to receive(:tree_files).with( src_path('tree') )
+      expect(@file_wrapper).to receive(:tree_files).with( src_path('tree'), skip: Actionator::HIDDEN )
       expect(@file_wrapper).to receive(:write).with( dest_path('out', 'keep.txt'), 'contents', 'wb' )
 
       @actionator.copy_directory( 'tree/', 'out', force: true )
